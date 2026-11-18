@@ -1,0 +1,15 @@
+[package]
+name = "speedyspec-server-infra-http"
+version = "0.1.0"
+description = "The SpeedySpec server's release source over HTTPS, with resumable downloads."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-server-domain = { path = "../speedyspec-server-domain" }
+ureq = "3"
+url = "2"
+
+[dev-dependencies]
+tempfile = "3"

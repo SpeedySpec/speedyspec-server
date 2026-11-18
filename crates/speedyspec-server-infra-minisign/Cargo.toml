@@ -1,0 +1,15 @@
+[package]
+name = "speedyspec-server-infra-minisign"
+version = "0.1.0"
+description = "Minisign signature checks for SpeedySpec server releases."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+minisign-verify = "0.2"
+speedyspec-server-domain = { path = "../speedyspec-server-domain" }
+
+[dev-dependencies]
+minisign = "0.7"
+tempfile = "3"
