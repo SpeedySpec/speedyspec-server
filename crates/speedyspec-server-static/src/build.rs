@@ -1,6 +1,6 @@
 //! Reading a static release into memory: content types, ETags, compressed variants and cache rules.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
@@ -33,6 +33,8 @@ pub struct StaticFile
 pub struct StaticSet
 {
     pub(crate) files: HashMap<String, StaticFile>,
+    /// Every directory that holds a file, as `/`-separated paths without a trailing slash.
+    pub(crate) dirs: HashSet<String>,
     pub(crate) not_found: Option<String>,
     total_bytes: u64,
 }
@@ -102,7 +104,12 @@ impl StaticSet
             return Err(StaticBuildError::NotFoundMissing(name.clone()));
         }
 
-        Ok(StaticSet { files, not_found: section.not_found.clone(), total_bytes })
+        let dirs = files
+            .keys()
+            .flat_map(|rel| rel.match_indices('/').map(move |(index, _)| rel[..index].to_string()))
+            .collect();
+
+        Ok(StaticSet { files, dirs, not_found: section.not_found.clone(), total_bytes })
     }
 
     /// Bytes held: every identity body and every kept compressed variant.
