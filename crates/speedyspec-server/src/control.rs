@@ -154,6 +154,15 @@ impl ControlBackend for ManagedBackend {
             let upgrade = manager
                 .begin_server_switch(targets)
                 .map_err(|err| err.to_string())?;
+            if let Some(order) = &upgrade.rollout {
+                // In a cluster the pods upgrade themselves, turn by turn; nothing happens here now.
+                return Ok(json!(format!(
+                    "rolling out server {} across {} pods ({}), one at a time",
+                    upgrade.version,
+                    order.len(),
+                    order.join(", ")
+                )));
+            }
             // Until the keeper resumes or cancels this generation, its state must not change under the new one,
             // which has already read `state.json`.
             self.draining
@@ -205,7 +214,22 @@ impl ControlBackend for ManagedBackend {
                             .collect()
                     })
                     .unwrap_or_default();
-                listing(&self.server_version, "managed", rows, incompatible)
+                let mut value = listing(&self.server_version, "managed", rows, incompatible);
+                if let Some(cluster) = manager.cluster_status() {
+                    value["cluster"] = json!({
+                        "pod": cluster.pod,
+                        "leader": cluster.leader,
+                        "leader_name": cluster.leader_name,
+                        "members": cluster.members.iter().map(|m| json!({
+                            "pod": m.pod,
+                            "live": m.live,
+                            "serving": m.serving,
+                            "ready": m.ready,
+                            "server": m.server.as_ref().map(ToString::to_string),
+                        })).collect::<Vec<_>>(),
+                    });
+                }
+                value
             }),
             ControlRequest::Check { app } => {
                 let apps: Vec<AppId> = match app {
@@ -393,6 +417,30 @@ pub fn serve_listener(
 
 /// Sends one request to the server's control socket and waits for the answer.
 pub fn request(path: &Path, request: &ControlRequest) -> Result<ControlResponse, String> {
+    let read_only = matches!(
+        request,
+        ControlRequest::Status | ControlRequest::List { .. } | ControlRequest::Check { .. }
+    );
+    match request_once(path, request) {
+        // The keeper closed the connection without answering: it re-executed itself (same socket) or a generation
+        // was replaced. A read-only request is asked once more; anything else may already have happened.
+        Ok(None) if read_only => {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            request_once(path, request)?.ok_or_else(|| {
+                "the server closed the connection without answering; try again".to_string()
+            })
+        }
+        Ok(None) => Err(
+            "the server closed the connection without answering; check `status` before retrying"
+                .to_string(),
+        ),
+        Ok(Some(response)) => Ok(response),
+        Err(err) => Err(err),
+    }
+}
+
+/// One request; `Ok(None)` when the connection closed before an answer.
+fn request_once(path: &Path, request: &ControlRequest) -> Result<Option<ControlResponse>, String> {
     let unreachable = |err: std::io::Error| {
         format!(
             "cannot reach the server at {}: {err}; is it running?",
@@ -407,7 +455,11 @@ pub fn request(path: &Path, request: &ControlRequest) -> Result<ControlResponse,
     BufReader::new(stream)
         .read_line(&mut answer)
         .map_err(unreachable)?;
+    if answer.trim().is_empty() {
+        return Ok(None);
+    }
     serde_json::from_str(&answer)
+        .map(Some)
         .map_err(|err| format!("the server sent an unreadable answer: {err}"))
 }
 
@@ -453,6 +505,37 @@ pub fn format(request: &ControlRequest, value: &Value) -> String {
                 }
                 if let Some(keeper) = value["keeper"]["version"].as_str() {
                     out.push_str(&format!("keeper\t{keeper}\n"));
+                }
+                let cluster = &value["cluster"];
+                if cluster.is_object() {
+                    let role = if cluster["leader"].as_bool() == Some(true) {
+                        "leader"
+                    } else {
+                        "follower"
+                    };
+                    out.push_str(&format!(
+                        "cluster\t{}\t{role}\t{}\n",
+                        dash(&cluster["pod"]),
+                        dash(&cluster["leader_name"])
+                    ));
+                    for member in cluster["members"].as_array().into_iter().flatten() {
+                        out.push_str(&format!(
+                            "member\t{}\t{}\t{}\t{}\t{}\n",
+                            dash(&member["pod"]),
+                            if member["live"].as_bool() == Some(true) {
+                                "live"
+                            } else {
+                                "stale"
+                            },
+                            member["serving"].as_u64().unwrap_or(0),
+                            if member["ready"].as_bool() == Some(true) {
+                                "ready"
+                            } else {
+                                "not-ready"
+                            },
+                            dash(&member["server"]),
+                        ));
+                    }
                 }
             }
             for app in value["apps"].as_array().into_iter().flatten() {

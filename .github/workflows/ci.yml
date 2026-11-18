@@ -27,3 +27,22 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace --features speedyspec-server/test-hooks --target ${{ matrix.target }}
       - run: test -z "$(cargo tree -i aws-lc-sys --target all 2>/dev/null)"
+
+  kubernetes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.99"
+      - uses: Swatinem/rust-cache@v2
+      # A throwaway single-node cluster in a container on the runner; nothing else is contacted.
+      - name: Start k3s
+        run: scripts/k3s.sh up
+      - name: Three replicas, the Lease, an admin switch and a server rollout
+        env:
+          SPEEDYSPEC_E2E_KUBECONFIG: ${{ github.workspace }}/.k3s/kubeconfig
+        run: cargo test -p speedyspec-server --features test-hooks --test kubernetes_e2e -- --ignored --test-threads=1
+      - name: Stop k3s
+        if: always()
+        run: scripts/k3s.sh down

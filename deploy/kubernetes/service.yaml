@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: speedyspec-server
+spec:
+  selector:
+    app: speedyspec-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

@@ -86,6 +86,7 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
         runtimes,
         Arc::new(crate::binary::ProcessInspector),
         crate::binary::TARGET.to_string(),
+        crate::cluster::build(config)?,
     )
     .map_err(|err| err.to_string())?;
 
@@ -115,6 +116,46 @@ pub fn confirmed_binary(config: &Config) -> Result<std::path::PathBuf, String> {
         .map(|(id, _)| id.clone())
         .ok_or("no server app is configured")?;
     let exe = std::env::current_exe().map_err(|err| format!("finding this executable: {err}"))?;
+    if let Some(cluster) = config
+        .cluster
+        .as_ref()
+        .filter(|c| c.leadership != crate::config::Leadership::Single)
+    {
+        // A pod never writes the shared store on its own: it runs its own confirmed binary, else the cluster's,
+        // else this executable (the leader keeps that as a release once it leads).
+        use speedyspec_server_domain::{ClusterMembers, ReleaseStore, StateStore};
+        let store = FsReleaseStore::new(data_dir);
+        let binary = |version: &semver::Version| {
+            Some(
+                store
+                    .release_dir(&server, version)
+                    .join(speedyspec_server_app::SERVER_BINARY),
+            )
+            .filter(|path| path.exists())
+        };
+        let own = speedyspec_server_infra_fs::FsClusterMembers::new(data_dir, &cluster.pod)
+            .read_all()
+            .ok()
+            .and_then(|reports| reports.into_iter().find(|r| r.pod == cluster.pod))
+            .and_then(|report| report.server.confirmed);
+        let shared_state = FsStateStore::new(data_dir, &config.run_dir).load().ok();
+        let shared = shared_state
+            .as_ref()
+            .and_then(|state| state.server.confirmed.clone());
+        // With no rollout running, every pod belongs on the cluster's confirmed binary: one that missed a rollout
+        // catches up when it starts. During a rollout a pod keeps its own confirmed one.
+        let rolling = shared_state
+            .as_ref()
+            .is_some_and(|state| state.rollout.is_some());
+        if !rolling && let Some(path) = shared.as_ref().and_then(binary) {
+            return Ok(path);
+        }
+        return Ok(own
+            .as_ref()
+            .and_then(binary)
+            .or_else(|| shared.as_ref().and_then(binary))
+            .unwrap_or(exe));
+    }
     speedyspec_server_app::register_running_binary(
         &FsReleaseStore::new(data_dir),
         &FsStateStore::new(data_dir, &config.run_dir),
@@ -155,7 +196,10 @@ pub fn spawn_auto_update(
             }
             loop {
                 let (manager, id) = (manager.clone(), app.clone());
-                if !paused.load(std::sync::atomic::Ordering::SeqCst) {
+                // Only the leader installs; a follower picks the result up from state.json.
+                if !paused.load(std::sync::atomic::Ordering::SeqCst)
+                    && manager.cluster().view().is_leader
+                {
                     let _ = tokio::task::spawn_blocking(move || update_once(&manager, &id)).await;
                 }
                 tokio::time::sleep(interval).await;

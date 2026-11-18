@@ -26,6 +26,7 @@ fn round_trips_every_message() {
             address: "127.0.0.1:1".parse().unwrap(),
             tls: None,
             http3: false,
+            probe: false,
         }]),
         ToGeneration::StartUdp,
         ToGeneration::Drain,
@@ -74,12 +75,14 @@ fn passes_listening_sockets() {
             address: tcp.local_addr().unwrap(),
             tls: None,
             http3: false,
+            probe: false,
         },
         SocketInfo {
             kind: SocketKind::Udp,
             address: udp.local_addr().unwrap(),
             tls: None,
             http3: true,
+            probe: false,
         },
     ];
     keeper

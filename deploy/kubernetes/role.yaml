@@ -1,0 +1,13 @@
+# The one Lease the pods elect their leader with: read it, create it once, renew or take it over.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: speedyspec-server-lease
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["create"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    resourceNames: ["speedyspec-server"]
+    verbs: ["get", "update"]

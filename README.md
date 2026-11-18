@@ -207,6 +207,43 @@ Run `speedyspec-server run --config …` as the container's main process, in imm
 into the image. Upgrade and roll back by rolling out a different image with the `speedyspec` CLI. On Kubernetes with a
 writable volume for `data_dir`, managed mode works as on a host.
 
+## Kubernetes: several replicas (managed)
+
+Several replicas can share one `data_dir` volume. One pod leads, elected through a `coordination.k8s.io/v1` Lease: it
+alone downloads, switches and writes `state.json`. The others follow and serve what it makes live. Add `[cluster]` to
+the config:
+
+```toml
+[cluster]
+leadership = "kubernetes"              # "single" (the default without [cluster]) is one host, always the leader
+pod = "web-0"                          # default: $POD_NAME, else the host name
+lease_name = "speedyspec-server"
+lease_duration = "15s"
+renew_deadline = "10s"                 # a leader that has not renewed by then stops writing; below lease_duration
+retry_period = "2s"
+poll_interval = "2s"                   # how often followers read state.json
+prepare_timeout = "60s"                # how long a switch waits for every live pod to prepare
+turn_timeout = "10m"                   # how long one pod's rollout turn may take before the rollout fails
+probe = "0.0.0.0:9090"                 # /livez and /readyz
+```
+
+[`deploy/kubernetes/`](deploy/kubernetes) has the ServiceAccount, the Role (`create` on Leases; `get` and `update` on
+the one Lease), the RoleBinding, the PVC, a three-replica Deployment wired to the probes and `POD_NAME`, and a Service.
+The `Dockerfile` builds the image (a static binary on an empty base).
+
+- **The volume must be ReadWriteMany** (NFS, CephFS, EFS, Azure Files, …) when pods run on several nodes. Only the
+  leader writes shared files, and no pod takes `flock` on the volume.
+- **Run release commands on the leader.** A follower refuses them, naming it
+  (`this pod is not the leader; run release commands on web-0`). `status`, `release list` and `release check` work
+  on any pod, and `status` adds a `cluster` line and one `member` line per pod. `reload` works on every pod.
+- **App switches happen in two steps.** Every pod prepares the new set, then all switch within one poll. A pod that
+  cannot prepare it keeps its old set and answers `/readyz` with 503 until a set it can prepare is active.
+- **Server upgrades roll pod by pod**, by name with the leader last, each finishing its trial before the next.
+  `release switch server@0.2.0` answers `rolling out server 0.2.0 across 3 pods (…), one at a time`. A failed trial
+  on any pod reverts the pods already upgraded and marks the version failed.
+
+See [`docs/cluster.md`](docs/cluster.md) for how leaders, followers, epochs and rollouts work.
+
 ## Development
 
 ```
@@ -214,5 +251,15 @@ cargo test --workspace --features speedyspec-server/test-hooks
 ```
 
 `test-hooks` turns on the hooks the keeper tests need (fake versions and protocols, crash and never-ready switches, a
-slow streaming route). It is never on in a release build. The tests pass on macOS arm64 and Linux musl. TLS uses
-`ring`; `cargo tree -i aws-lc-sys` prints nothing. See [`docs/handoff.md`](docs/handoff.md) for how the handoff works.
+slow streaming route, and the one-host lease file `leadership = "file"` the multi-process cluster tests use). It is
+never on in a release build. The tests pass on macOS arm64 and Linux musl. TLS uses `ring`;
+`cargo tree -i aws-lc-sys` prints nothing. See [`docs/handoff.md`](docs/handoff.md) for how the handoff works.
+
+The Kubernetes end-to-end test runs on a throwaway k3s in Docker:
+
+```
+scripts/k3s.sh up
+SPEEDYSPEC_E2E_KUBECONFIG=$(scripts/k3s.sh kubeconfig) \
+  cargo test -p speedyspec-server --features test-hooks --test kubernetes_e2e -- --ignored --test-threads=1
+scripts/k3s.sh down
+```

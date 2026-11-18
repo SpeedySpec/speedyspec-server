@@ -164,14 +164,36 @@ impl World {
     }
 
     pub fn manager(&self) -> ReleaseManager {
-        let runtime: Arc<dyn AppRuntime> = self.runtime.clone();
+        self.manager_in(
+            Arc::new(speedyspec_server_app::Cluster::single("test")),
+            self.runtime.clone(),
+        )
+    }
+
+    /// A manager for one pod of a cluster, with that pod's own runtime, over this world's shared store and state.
+    pub fn manager_in(
+        &self,
+        cluster: Arc<speedyspec_server_app::Cluster>,
+        runtime: Arc<RecordingRuntime>,
+    ) -> ReleaseManager {
+        self.manager_with_server(cluster, runtime, server_manifest())
+    }
+
+    /// As `manager_in`, for a pod running another server version.
+    pub fn manager_with_server(
+        &self,
+        cluster: Arc<speedyspec_server_app::Cluster>,
+        runtime: Arc<RecordingRuntime>,
+        server: ReleaseManifest,
+    ) -> ReleaseManager {
+        let runtime: Arc<dyn AppRuntime> = runtime;
         let runtimes: HashMap<AppKind, Arc<dyn AppRuntime>> =
             [(AppKind::Php, runtime.clone()), (AppKind::Static, runtime)]
                 .into_iter()
                 .collect();
         ReleaseManager::new(
             self.policies.clone(),
-            server_manifest(),
+            server,
             self.source.clone(),
             Arc::new(MemoryVerifier),
             Arc::new(FsReleaseStore::new(self.dir.path())),
@@ -179,6 +201,7 @@ impl World {
             runtimes,
             Arc::new(FakeInspector),
             TARGET.to_string(),
+            cluster,
         )
         .unwrap()
     }

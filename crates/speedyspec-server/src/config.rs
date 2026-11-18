@@ -92,6 +92,40 @@ pub struct Config {
     /// (`[release.static] fallback_grace`, default 1 hour).
     pub static_fallback_grace: Duration,
     pub handoff: HandoffConfig,
+    /// `[cluster]`; `None` is a single host.
+    pub cluster: Option<ClusterConfig>,
+}
+
+/// Who decides which pod leads.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Leadership {
+    /// One host, always the leader.
+    Single,
+    /// A `coordination.k8s.io/v1` Lease.
+    Kubernetes,
+    /// A lease file on one host, for the multi-process tests (only with the `test-hooks` feature).
+    File,
+}
+
+/// `[cluster]`: several pods on one shared `data_dir`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClusterConfig {
+    pub leadership: Leadership,
+    /// This pod's name (default `$POD_NAME`, else the host name).
+    pub pod: String,
+    pub lease_name: String,
+    /// Default: the service account's namespace file, read when the Lease starts.
+    pub lease_namespace: Option<String>,
+    pub lease_duration: Duration,
+    pub renew_deadline: Duration,
+    pub retry_period: Duration,
+    pub poll_interval: Duration,
+    pub prepare_timeout: Duration,
+    /// How long one pod's rollout turn may take before the rollout fails (default 10 minutes).
+    pub turn_timeout: Duration,
+    /// Where `/readyz` and `/livez` are served, if anywhere.
+    pub probe: Option<SocketAddr>,
 }
 
 /// Socket handoff timing (`[handoff]`).
@@ -139,6 +173,113 @@ struct RawConfig {
     release: RawRelease,
     #[serde(default)]
     handoff: RawHandoff,
+    cluster: Option<RawCluster>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawCluster {
+    #[serde(default = "single")]
+    leadership: Leadership,
+    pod: Option<String>,
+    lease_name: Option<String>,
+    lease_namespace: Option<String>,
+    lease_duration: Option<String>,
+    renew_deadline: Option<String>,
+    retry_period: Option<String>,
+    poll_interval: Option<String>,
+    prepare_timeout: Option<String>,
+    turn_timeout: Option<String>,
+    probe: Option<SocketAddr>,
+}
+
+fn single() -> Leadership {
+    Leadership::Single
+}
+
+/// `$POD_NAME`, else the host name.
+fn default_pod() -> String {
+    std::env::var("POD_NAME")
+        .ok()
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| {
+            rustix::system::uname()
+                .nodename()
+                .to_string_lossy()
+                .into_owned()
+        })
+}
+
+fn cluster_config(mode: Mode, raw: RawCluster) -> Result<ClusterConfig, ConfigError> {
+    if mode != Mode::Managed {
+        return Err(invalid(
+            "[cluster] needs mode = \"managed\": an immutable image has no releases to coordinate",
+        ));
+    }
+    if raw.leadership == Leadership::File && !cfg!(feature = "test-hooks") {
+        return Err(invalid(
+            "cluster.leadership = \"file\" exists only in builds with the test-hooks feature",
+        ));
+    }
+    let lease_duration = duration(
+        "cluster.lease_duration",
+        raw.lease_duration.as_deref(),
+        Duration::from_secs(15),
+    )?;
+    let renew_deadline = duration(
+        "cluster.renew_deadline",
+        raw.renew_deadline.as_deref(),
+        Duration::from_secs(10),
+    )?;
+    let retry_period = duration(
+        "cluster.retry_period",
+        raw.retry_period.as_deref(),
+        Duration::from_secs(2),
+    )?;
+    if renew_deadline >= lease_duration {
+        return Err(invalid(format!(
+            "cluster.renew_deadline ({}) must be below cluster.lease_duration ({}), so a leader stops writing before anyone else can take the lease",
+            humantime::format_duration(renew_deadline),
+            humantime::format_duration(lease_duration)
+        )));
+    }
+    if retry_period >= renew_deadline {
+        return Err(invalid(format!(
+            "cluster.retry_period ({}) must be below cluster.renew_deadline ({})",
+            humantime::format_duration(retry_period),
+            humantime::format_duration(renew_deadline)
+        )));
+    }
+    Ok(ClusterConfig {
+        leadership: raw.leadership,
+        pod: raw
+            .pod
+            .filter(|pod| !pod.is_empty())
+            .unwrap_or_else(default_pod),
+        lease_name: raw
+            .lease_name
+            .unwrap_or_else(|| "speedyspec-server".to_string()),
+        lease_namespace: raw.lease_namespace,
+        lease_duration,
+        renew_deadline,
+        retry_period,
+        poll_interval: duration(
+            "cluster.poll_interval",
+            raw.poll_interval.as_deref(),
+            Duration::from_secs(2),
+        )?,
+        prepare_timeout: duration(
+            "cluster.prepare_timeout",
+            raw.prepare_timeout.as_deref(),
+            Duration::from_secs(60),
+        )?,
+        turn_timeout: duration(
+            "cluster.turn_timeout",
+            raw.turn_timeout.as_deref(),
+            Duration::from_secs(600),
+        )?,
+        probe: raw.probe,
+    })
 }
 
 #[derive(Default, Deserialize)]
@@ -481,6 +622,10 @@ impl Config {
             static_memory: raw.limits.static_memory,
             static_fallback_grace,
             handoff,
+            cluster: raw
+                .cluster
+                .map(|c| cluster_config(raw.mode, c))
+                .transpose()?,
         })
     }
 }
@@ -965,5 +1110,82 @@ app = "blog"
             &format!("{IMMUTABLE}\n[handoff]\nready_timeout = \"10ms\"\n"),
             "handoff.ready_timeout",
         );
+    }
+
+    #[test]
+    fn cluster_defaults() {
+        assert!(
+            Config::parse(SPEC_EXAMPLE).unwrap().cluster.is_none(),
+            "no [cluster] is a single host"
+        );
+        let config = Config::parse(&format!(
+            "{SPEC_EXAMPLE}\n[cluster]\nleadership = \"kubernetes\"\n"
+        ))
+        .unwrap();
+        let cluster = config.cluster.expect("a cluster");
+        assert_eq!(cluster.leadership, Leadership::Kubernetes);
+        assert!(
+            !cluster.pod.is_empty(),
+            "the pod name defaults to $POD_NAME or the host name"
+        );
+        assert_eq!(cluster.lease_name, "speedyspec-server");
+        assert_eq!(cluster.lease_namespace, None);
+        assert_eq!(cluster.lease_duration, std::time::Duration::from_secs(15));
+        assert_eq!(cluster.renew_deadline, std::time::Duration::from_secs(10));
+        assert_eq!(cluster.retry_period, std::time::Duration::from_secs(2));
+        assert_eq!(cluster.poll_interval, std::time::Duration::from_secs(2));
+        assert_eq!(cluster.prepare_timeout, std::time::Duration::from_secs(60));
+        assert_eq!(cluster.probe, None);
+        let config = Config::parse(&format!(
+            "{SPEC_EXAMPLE}\n[cluster]\nleadership = \"kubernetes\"\npod = \"web-1\"\nprobe = \"0.0.0.0:9090\"\nprepare_timeout = \"5s\"\n"
+        ))
+        .unwrap();
+        let cluster = config.cluster.unwrap();
+        assert_eq!(cluster.pod, "web-1");
+        assert_eq!(cluster.probe, Some("0.0.0.0:9090".parse().unwrap()));
+        assert_eq!(cluster.prepare_timeout, std::time::Duration::from_secs(5));
+    }
+
+    #[test]
+    fn cluster_refused_in_immutable_mode() {
+        rejects(
+            &format!("{IMMUTABLE}\n[cluster]\nleadership = \"kubernetes\"\n"),
+            "mode = \"managed\"",
+        );
+    }
+
+    #[test]
+    fn renew_deadline_must_be_below_lease_duration() {
+        rejects(
+            &format!(
+                "{SPEC_EXAMPLE}\n[cluster]\nleadership = \"kubernetes\"\nrenew_deadline = \"15s\"\n"
+            ),
+            "cluster.renew_deadline",
+        );
+        rejects(
+            &format!(
+                "{SPEC_EXAMPLE}\n[cluster]\nleadership = \"kubernetes\"\nretry_period = \"10s\"\n"
+            ),
+            "cluster.retry_period",
+        );
+    }
+
+    #[cfg(not(feature = "test-hooks"))]
+    #[test]
+    fn file_leadership_needs_test_hooks() {
+        rejects(
+            &format!("{SPEC_EXAMPLE}\n[cluster]\nleadership = \"file\"\n"),
+            "test-hooks",
+        );
+    }
+
+    #[cfg(feature = "test-hooks")]
+    #[test]
+    fn file_leadership_allowed_with_test_hooks() {
+        let config = Config::parse(&format!(
+            "{SPEC_EXAMPLE}\n[cluster]\nleadership = \"file\"\n"
+        ))
+        .unwrap();
+        assert_eq!(config.cluster.unwrap().leadership, Leadership::File);
     }
 }

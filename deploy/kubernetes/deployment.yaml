@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: speedyspec-server
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: speedyspec-server
+  template:
+    metadata:
+      labels:
+        app: speedyspec-server
+    spec:
+      serviceAccountName: speedyspec-server
+      # The keeper drains its generation on SIGTERM (up to [handoff] drain_timeout).
+      terminationGracePeriodSeconds: 330
+      containers:
+        - name: server
+          image: speedyspec-server:latest
+          args: ["run", "--config", "/etc/speedyspec/server.toml"]
+          env:
+            # The pod's name is its member name and its Lease identity.
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: probe
+              containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: probe
+            periodSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: probe
+            periodSeconds: 10
+          volumeMounts:
+            - name: config
+              mountPath: /etc/speedyspec
+            - name: data
+              mountPath: /var/lib/speedyspec
+      volumes:
+        - name: config
+          configMap:
+            name: speedyspec-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: speedyspec-data

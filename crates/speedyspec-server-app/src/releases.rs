@@ -7,9 +7,9 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use semver::Version;
 use speedyspec_server_domain::{
-    AppId, AppKind, AppRuntime, BinaryInspector, IndexEntry, PendingGroup, ReleaseManifest,
-    ReleaseSource, ReleaseState, ReleaseStore, SignatureVerifier, SourceError, StateError,
-    StateStore, StoreError,
+    AppId, AppKind, AppRuntime, BinaryInspector, IndexEntry, MemberReport, PendingGroup, Prepared,
+    ReleaseManifest, ReleaseSource, ReleaseState, ReleaseStore, SignatureVerifier, SourceError,
+    StagedSet, StateError, StateStore, StoreError,
 };
 
 use crate::compat::{Incompatibility, check_set};
@@ -92,6 +92,13 @@ pub enum ReleaseError {
     },
     #[error("app.{0}.keep must be at least 1")]
     KeepTooSmall(AppId),
+    #[error("the cluster's member files cannot be read right now; try again shortly")]
+    MembersUnreadable,
+    #[error("{}", match .leader {
+        Some(leader) => format!("this pod is not the leader; run release commands on {leader}"),
+        None => "there is no leader right now; try again shortly".to_string(),
+    })]
+    NotLeader { leader: Option<String> },
 }
 
 /// Runs every release operation. Holds the release state in memory, saved after every change.
@@ -111,6 +118,28 @@ pub struct ReleaseManager {
     pub(crate) published: Mutex<ReleaseState>,
     pub(crate) downloads: Mutex<HashMap<AppId, Arc<Mutex<()>>>>,
     pub(crate) last_boot: Mutex<Option<BootReport>>,
+    pub(crate) cluster: Arc<crate::Cluster>,
+    /// What this pod serves and holds prepared, and the report it last published.
+    pub(crate) node: Mutex<Node>,
+    /// The Lease epoch this pod last took over at as leader; `None` while it follows.
+    pub(crate) took_over: Mutex<Option<u64>>,
+}
+
+/// This pod's own view: what it serves, what it holds prepared for a staged set, and its member report.
+#[derive(Default)]
+pub(crate) struct Node {
+    pub(crate) serving: BTreeMap<AppId, Version>,
+    pub(crate) held: Option<(u64, Vec<(AppKind, Prepared)>)>,
+    pub(crate) report: MemberReport,
+}
+
+/// What one follower step did.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FollowOutcome {
+    /// Whether `state.json` changed since the last step.
+    pub changed: bool,
+    /// Whether this pod serves the active set (the readiness probe's answer).
+    pub ready: bool,
 }
 
 impl ReleaseManager {
@@ -124,11 +153,13 @@ impl ReleaseManager {
         runtimes: HashMap<AppKind, Arc<dyn AppRuntime>>,
         inspector: Arc<dyn BinaryInspector>,
         target: String,
+        cluster: Arc<crate::Cluster>,
     ) -> Result<ReleaseManager, ReleaseError> {
         if let Some((app, _)) = apps.iter().find(|(_, policy)| policy.keep == 0) {
             return Err(ReleaseError::KeepTooSmall(app.clone()));
         }
         let state = state_store.load()?;
+        cluster.observe_epoch(state.epoch);
 
         Ok(ReleaseManager {
             apps,
@@ -144,6 +175,9 @@ impl ReleaseManager {
             downloads: Mutex::new(HashMap::new()),
             state: Mutex::new(state),
             last_boot: Mutex::new(None),
+            cluster,
+            node: Mutex::new(Node::default()),
+            took_over: Mutex::new(None),
         })
     }
 
@@ -152,6 +186,56 @@ impl ReleaseManager {
         self.state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    /// Refuses up front, before any download, when this pod does not lead.
+    pub(crate) fn leading(&self) -> Result<(), ReleaseError> {
+        let view = self.cluster.view();
+        if view.is_leader {
+            Ok(())
+        } else {
+            Err(ReleaseError::NotLeader {
+                leader: view.leader,
+            })
+        }
+    }
+
+    /// This pod's cluster.
+    pub fn cluster(&self) -> &Arc<crate::Cluster> {
+        &self.cluster
+    }
+
+    /// Reloads `state.json` written by the leader. A state stamped with an epoch older than the Lease's current
+    /// epoch, or than one already seen, is ignored: it is a deposed leader's late write, or a state the new leader has
+    /// not re-stamped yet (it does so on taking over). Returns whether the state in memory changed.
+    pub fn refresh(&self) -> Result<bool, ReleaseError> {
+        self.cluster.observe_epoch(self.cluster.view().epoch);
+        self.reload()
+    }
+
+    /// Reloads `state.json` unless it is older than an epoch already seen.
+    fn reload(&self) -> Result<bool, ReleaseError> {
+        // Read under the lock, so a write this pod commits meanwhile is never replaced by the file read before it.
+        let mut state = self.lock();
+        let loaded = self.state_store.load()?;
+        if !self.cluster.observe_epoch(loaded.epoch) {
+            tracing::warn!(
+                event = "stale_epoch_ignored",
+                epoch = loaded.epoch,
+                revision = loaded.revision
+            );
+            return Ok(false);
+        }
+        if loaded.epoch == state.epoch && loaded.revision < state.revision {
+            // Within one epoch revisions only grow: the file is older than what this pod already has.
+            return Ok(false);
+        }
+        if *state == loaded {
+            return Ok(false);
+        }
+        *state = loaded;
+        *self.published.lock().unwrap_or_else(|p| p.into_inner()) = state.clone();
+        Ok(true)
     }
 
     pub(crate) fn policy(&self, app: &AppId) -> Result<&AppPolicy, ReleaseError> {
@@ -211,6 +295,7 @@ impl ReleaseManager {
     /// candidate. A version already kept is not downloaded again. The download runs without the state lock, so
     /// `status`, `pin` and `rollback` never wait on it.
     pub fn install(&self, app: &AppId, version: Option<Version>) -> Result<Version, ReleaseError> {
+        self.leading()?;
         self.installable(app)?;
         let guard = self.download_guard(app);
         let _downloading = guard
@@ -241,6 +326,7 @@ impl ReleaseManager {
     /// One auto-update step: install the candidate and switch to it. The candidate is checked again under the lock
     /// just before the switch, so a pin or rollback issued during the download wins. Returns the version switched to.
     pub fn update(&self, app: &AppId) -> Result<Option<Version>, ReleaseError> {
+        self.leading()?;
         if self.installable(app)?.kind == AppKind::Server {
             return Err(ReleaseError::ServerSwitchViaKeeper);
         }
@@ -493,6 +579,14 @@ impl ReleaseManager {
         state: &mut ReleaseState,
         mut next: ReleaseState,
     ) -> Result<(), ReleaseError> {
+        let view = self.cluster.view();
+        if !view.is_leader {
+            return Err(ReleaseError::NotLeader {
+                leader: view.leader,
+            });
+        }
+        next.epoch = self.cluster.stamp(view.epoch);
+        self.cluster.observe_epoch(next.epoch);
         next.revision = state.revision + 1;
         self.state_store.save(&next)?;
         *state = next;
@@ -533,6 +627,7 @@ impl ReleaseManager {
     /// Switches one or several apps to kept versions, as one step: every target is checked for compatibility
     /// against the resulting set and prepared first; if any fails, none switches.
     pub fn switch(&self, targets: &[(AppId, Version)]) -> Result<(), ReleaseError> {
+        self.leading()?;
         let mut state = self.lock();
         self.switch_locked(&mut state, targets)
     }
@@ -542,6 +637,9 @@ impl ReleaseManager {
         state: &mut ReleaseState,
         targets: &[(AppId, Version)],
     ) -> Result<(), ReleaseError> {
+        if !self.cluster.is_single() {
+            return self.switch_staged(state, targets);
+        }
         for (app, version) in targets {
             let policy = self.policy(app)?;
             if policy.kind == AppKind::Server {
@@ -612,7 +710,7 @@ impl ReleaseManager {
             })
             .collect();
         for (kind, ready) in prepared {
-            self.runtime(kind).expect("prepared above").activate(ready);
+            self.go_live(kind, ready);
         }
         let mut next = state.clone();
         for (app, version) in &targets {
@@ -652,6 +750,7 @@ impl ReleaseManager {
                 let ready = runtime
                     .prepare(app, &manifest, &self.store.release_dir(app, version))
                     .ok()?;
+                self.served(&ready.app, &ready.version);
                 runtime.activate(ready);
                 Some(())
             });
@@ -666,6 +765,13 @@ impl ReleaseManager {
     fn prune(&self, state: &mut ReleaseState, apps: &[AppId]) -> Result<(), ReleaseError> {
         let mut next = state.clone();
         let mut removed = false;
+        let Some(held) = self.held_by_live_members() else {
+            tracing::warn!(
+                event = "prune_skipped",
+                "the member files cannot be read, so nothing is pruned"
+            );
+            return Ok(());
+        };
         for app in apps {
             let keep = self.policy(app)?.keep as usize;
             let current = next.app_mut(app);
@@ -677,7 +783,9 @@ impl ReleaseManager {
             };
             while counted(&current.kept) > keep {
                 let Some(index) = current.kept.iter().position(|version| {
-                    Some(version) != active.as_ref() && Some(version) != pinned.as_ref()
+                    Some(version) != active.as_ref()
+                        && Some(version) != pinned.as_ref()
+                        && !held.contains(&(app.clone(), version.clone()))
                 }) else {
                     break;
                 };
@@ -698,6 +806,7 @@ impl ReleaseManager {
     /// until `unpin`. The version rolled back from is also marked failed ("rolled back"), so it is not offered again
     /// after unpinning; an explicit switch clears that.
     pub fn rollback(&self, app: &AppId, version: Option<Version>) -> Result<Version, ReleaseError> {
+        self.leading()?;
         let mut state = self.lock();
         let current = state.apps.get(app).cloned().unwrap_or_default();
         let target = match version {
@@ -721,6 +830,7 @@ impl ReleaseManager {
 
     /// Stops auto-update for `app` while `version`, which must be kept, is pinned.
     pub fn pin(&self, app: &AppId, version: Version) -> Result<(), ReleaseError> {
+        self.leading()?;
         let mut state = self.lock();
         self.policy(app)?;
         if !state
@@ -736,6 +846,7 @@ impl ReleaseManager {
     }
 
     pub fn unpin(&self, app: &AppId) -> Result<(), ReleaseError> {
+        self.leading()?;
         let mut state = self.lock();
         self.policy(app)?;
         let mut next = state.clone();
@@ -821,6 +932,7 @@ impl ReleaseManager {
                             &manifest,
                             &self.store.release_dir(app, &version),
                         )?;
+                        self.served(&ready.app, &ready.version);
                         runtime.activate(ready);
                         Ok(())
                     });
@@ -880,6 +992,9 @@ impl ReleaseManager {
 pub struct ServerUpgrade {
     pub version: Version,
     pub binary: PathBuf,
+    /// In a cluster: the pods in the order they will upgrade. The pods upgrade themselves, turn by turn; on a
+    /// single host (`None`) the keeper upgrades now.
+    pub rollout: Option<Vec<String>>,
 }
 
 /// The file name of a kept server binary inside its release directory.
@@ -908,12 +1023,14 @@ impl ReleaseManager {
         &self,
         targets: &[(AppId, Version)],
     ) -> Result<ServerUpgrade, ReleaseError> {
+        self.leading()?;
         let mut state = self.lock();
         if let Some(trial) = state
             .server
             .trial
             .clone()
             .or_else(|| state.pending_group.as_ref().map(|g| g.server.1.clone()))
+            .or_else(|| state.rollout.as_ref().map(|r| r.target.clone()))
         {
             return Err(ReleaseError::UpgradeInProgress(trial));
         }
@@ -944,6 +1061,46 @@ impl ReleaseManager {
         let version = server_target.ok_or(ReleaseError::ServerSwitchViaKeeper)?;
         crate::compat::check_set(&manifests).map_err(ReleaseError::Incompatible)?;
 
+        let binary = self
+            .store
+            .release_dir(&server_app, &version)
+            .join(SERVER_BINARY);
+        if !self.cluster.is_single() {
+            let (_, live) = self
+                .cluster
+                .members_now()
+                .ok_or(ReleaseError::MembersUnreadable)?;
+            let order = crate::rollout::leader_last(&live, &self.cluster.pod);
+            let previous = state
+                .server
+                .confirmed
+                .clone()
+                .unwrap_or_else(|| self.server.version.clone());
+            let group = (!apps.is_empty()).then(|| PendingGroup {
+                server: (previous.clone(), version.clone()),
+                apps,
+            });
+            let mut next = state.clone();
+            next.rollout = Some(speedyspec_server_domain::Rollout {
+                id: state.revision + 1,
+                target: version.clone(),
+                previous,
+                group,
+                order: order.clone(),
+                done: Vec::new(),
+                turn: None,
+                reverting: false,
+                failure: None,
+            });
+            next.server.trial = Some(version.clone());
+            self.commit_state(&mut state, next)?;
+            tracing::info!(event = "rollout_requested", version = %version, order = ?order);
+            return Ok(ServerUpgrade {
+                version,
+                binary,
+                rollout: Some(order),
+            });
+        }
         let mut next = state.clone();
         next.pending_group = Some(PendingGroup {
             server: (self.server.version.clone(), version.clone()),
@@ -953,6 +1110,7 @@ impl ReleaseManager {
         self.commit_state(&mut state, next)?;
         tracing::info!(event = "upgrade_requested", version = %version);
         Ok(ServerUpgrade {
+            rollout: None,
             binary: self
                 .store
                 .release_dir(&server_app, &version)
@@ -964,6 +1122,9 @@ impl ReleaseManager {
     /// In a new generation's start-up: when the pending group's server target is this binary, switches the group's
     /// apps to their targets before the generation reports ready.
     pub fn apply_pending_group(&self, own_version: &Version) -> Result<(), ReleaseError> {
+        if !self.cluster.is_single() {
+            return self.apply_rollout_group(own_version);
+        }
         let mut state = self.lock();
         let Some(group) = state.pending_group.clone() else {
             return Ok(());
@@ -987,6 +1148,17 @@ impl ReleaseManager {
     /// Only the state changes: a resumed generation still serves the previous releases, and a fresh one activates
     /// what the state now says.
     pub fn revert_pending_group(&self, failed: &Version, reason: &str) -> Result<(), ReleaseError> {
+        if !self.cluster.is_single() {
+            // In a cluster the trial is this pod's own: record it in the member file; the leader reverts the rollout.
+            let (failed, reason) = (failed.clone(), reason.to_string());
+            let rollout = self.snapshot().rollout.map(|r| r.id).unwrap_or(0);
+            self.publish(|node| {
+                node.report.server.failed_in.insert(failed.clone(), rollout);
+                node.report.server.failed.insert(failed, reason);
+                node.report.server.trial = None;
+            });
+            return Ok(());
+        }
         let mut state = self.lock();
         *state = self.state_store.load()?;
         self.revert_locked(&mut state, failed, reason)
@@ -1019,6 +1191,15 @@ impl ReleaseManager {
     /// At the end of a successful trial, in the generation that passed it: confirms its version and clears the trial
     /// and the pending group, keeping this manager's state in step with `state.json`.
     pub fn confirm_server_trial(&self, version: &Version) -> Result<(), ReleaseError> {
+        if !self.cluster.is_single() {
+            let version = version.clone();
+            self.publish(|node| {
+                node.report.server.confirmed = Some(version.clone());
+                node.report.server.running = Some(version);
+                node.report.server.trial = None;
+            });
+            return Ok(());
+        }
         let mut state = self.lock();
         let mut next = state.clone();
         next.server.confirmed = Some(version.clone());
@@ -1129,5 +1310,857 @@ pub(crate) fn store_error(path: &std::path::Path, err: impl ToString) -> StoreEr
     StoreError {
         path: PathBuf::from(path),
         message: err.to_string(),
+    }
+}
+
+/// Milliseconds since the Unix epoch, for display fields.
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// Whether `report` answered (prepared or failed) the staged `revision`.
+fn answered(report: &MemberReport, revision: u64) -> bool {
+    report.prepared == Some(revision)
+        || report
+            .prepare_failed
+            .as_ref()
+            .is_some_and(|(r, _)| *r == revision)
+}
+
+impl ReleaseManager {
+    /// Records that this pod now serves `app` at `version`.
+    pub(crate) fn served(&self, app: &AppId, version: &Version) {
+        self.node
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .serving
+            .insert(app.clone(), version.clone());
+    }
+
+    /// Activates a prepared release and records it as served.
+    fn go_live(&self, kind: AppKind, ready: Prepared) {
+        self.served(&ready.app, &ready.version);
+        if let Some(runtime) = self.runtime(kind) {
+            runtime.activate(ready);
+        }
+    }
+
+    /// Publishes this pod's member report after `change`, with a new heartbeat. Failures are logged.
+    pub(crate) fn publish(&self, change: impl FnOnce(&mut Node)) {
+        let mut node = self.node.lock().unwrap_or_else(|p| p.into_inner());
+        change(&mut node);
+        let mut holds: Vec<(AppId, Version)> = node
+            .serving
+            .iter()
+            .map(|(app, version)| (app.clone(), version.clone()))
+            .collect();
+        if let Some((_, held)) = &node.held {
+            holds.extend(
+                held.iter()
+                    .map(|(_, ready)| (ready.app.clone(), ready.version.clone())),
+            );
+        }
+        holds.sort();
+        holds.dedup();
+        node.report.holds = holds;
+        node.report.pod = self.cluster.pod.clone();
+        node.report.heartbeat += 1;
+        if let Err(err) = self.cluster.members.write(&node.report) {
+            tracing::warn!(event = "member_write_failed", error = %err);
+        }
+    }
+
+    /// Publishes this pod's member report unchanged, with a new heartbeat.
+    pub fn heartbeat(&self) {
+        self.publish(|_| {});
+    }
+
+    /// Every release a live member serves or holds prepared.
+    fn held_by_live_members(&self) -> Option<std::collections::BTreeSet<(AppId, Version)>> {
+        let (reports, live) = self.cluster.members_now()?;
+        let mut held: std::collections::BTreeSet<(AppId, Version)> = reports
+            .iter()
+            .filter(|report| live.contains(&report.pod))
+            .flat_map(|report| report.holds.iter().cloned())
+            .collect();
+        let node = self.node.lock().unwrap_or_else(|p| p.into_inner());
+        held.extend(
+            node.serving
+                .iter()
+                .map(|(app, version)| (app.clone(), version.clone())),
+        );
+        Some(held)
+    }
+
+    /// Prepares every target through its runtime, without activating any.
+    fn prepare_targets(
+        &self,
+        targets: &[(AppId, Version)],
+    ) -> (Vec<(AppKind, Prepared)>, Vec<(AppId, Version, String)>) {
+        let mut prepared = Vec::new();
+        let mut failures = Vec::new();
+        for (app, version) in targets {
+            let result = self
+                .store
+                .manifest(app, version)
+                .map_err(|err| err.to_string())
+                .and_then(|manifest| match self.runtime(manifest.kind) {
+                    Some(runtime) => runtime
+                        .prepare(app, &manifest, &self.store.release_dir(app, version))
+                        .map(|ready| (manifest.kind, ready)),
+                    None => Err(format!("no runtime for kind {}", manifest.kind.as_str())),
+                });
+            match result {
+                Ok(ready) => prepared.push(ready),
+                Err(reason) => failures.push((app.clone(), version.clone(), reason)),
+            }
+        }
+        (prepared, failures)
+    }
+
+    /// The leader's two-step switch: stage the set, prepare it here, wait for every live pod to report on it (or
+    /// `prepare_timeout`), then make it active if any pod prepared it, or abandon it and mark it failed.
+    fn switch_staged(
+        &self,
+        state: &mut ReleaseState,
+        targets: &[(AppId, Version)],
+    ) -> Result<(), ReleaseError> {
+        for (app, version) in targets {
+            if self.policy(app)?.kind == AppKind::Server {
+                return Err(ReleaseError::ServerSwitchViaKeeper);
+            }
+            if !state
+                .apps
+                .get(app)
+                .is_some_and(|current| current.kept.contains(version))
+            {
+                return Err(ReleaseError::NotKept(app.clone(), version.clone()));
+            }
+        }
+        let targets: Vec<(AppId, Version)> = targets
+            .iter()
+            .filter(|(app, version)| {
+                state.apps.get(app).and_then(|c| c.active.as_ref()) != Some(version)
+            })
+            .cloned()
+            .collect();
+        if targets.is_empty() {
+            return Ok(());
+        }
+        let mut manifests = self.manifests_of(state);
+        for (app, version) in &targets {
+            manifests.insert(app.clone(), self.store.manifest(app, version)?);
+        }
+        check_set(&manifests).map_err(ReleaseError::Incompatible)?;
+
+        let revision = state.revision + 1;
+        let mut next = state.clone();
+        next.staged = Some(StagedSet {
+            revision,
+            targets: targets.clone(),
+            since_ms: now_ms(),
+        });
+        self.commit_state(state, next)?;
+        tracing::info!(event = "staged", revision, targets = ?targets.iter().map(|(a, v)| format!("{a}@{v}")).collect::<Vec<_>>());
+
+        let (prepared, failures) = self.prepare_targets(&targets);
+        let prepared_ok = failures.is_empty();
+        self.publish(|node| {
+            if prepared_ok {
+                node.held = Some((revision, prepared));
+                node.report.prepared = Some(revision);
+            } else {
+                let (app, version, reason) = &failures[0];
+                node.report.prepare_failed = Some((revision, format!("{app} {version}: {reason}")));
+            }
+        });
+        tracing::info!(event = "prepared", pod = %self.cluster.pod, revision, ok = prepared_ok);
+
+        let failure = failures.first().map(|(_, _, reason)| reason.clone());
+        self.finish_staged(state, revision, &targets, failure)
+    }
+
+    /// Waits for every live pod to report on the staged `revision` (or `prepare_timeout`), then makes the set active
+    /// if any pod prepared it, or abandons it and marks it failed. `my_failure` is this pod's own prepare failure.
+    fn finish_staged(
+        &self,
+        state: &mut ReleaseState,
+        revision: u64,
+        targets: &[(AppId, Version)],
+        my_failure: Option<String>,
+    ) -> Result<(), ReleaseError> {
+        let mine_ok = my_failure.is_none();
+        let deadline = self.cluster.now() + self.cluster.prepare_timeout;
+        let (reports, live) = loop {
+            self.leading()?;
+            let Some((reports, live)) = self.cluster.members_now() else {
+                // Who has prepared is unknown: keep waiting, up to the timeout.
+                if self.cluster.now() >= deadline {
+                    break (Vec::new(), vec![self.cluster.pod.clone()]);
+                }
+                std::thread::sleep(self.cluster.poll_interval);
+                continue;
+            };
+            let waiting: Vec<&String> = live
+                .iter()
+                .filter(|pod| **pod != self.cluster.pod)
+                .filter(|pod| {
+                    !reports
+                        .iter()
+                        .any(|r| r.pod == **pod && answered(r, revision))
+                })
+                .collect();
+            if waiting.is_empty() || self.cluster.now() >= deadline {
+                break (reports, live);
+            }
+            std::thread::sleep(self.cluster.poll_interval);
+        };
+        let mut ready_pods = Vec::new();
+        let mut failed_pods = Vec::new();
+        if mine_ok {
+            ready_pods.push(self.cluster.pod.clone());
+        } else {
+            failed_pods.push((
+                self.cluster.pod.clone(),
+                my_failure.clone().unwrap_or_default(),
+            ));
+        }
+        for report in reports
+            .iter()
+            .filter(|r| r.pod != self.cluster.pod && live.contains(&r.pod))
+        {
+            if report.prepared == Some(revision) {
+                ready_pods.push(report.pod.clone());
+            } else if let Some((r, reason)) = &report.prepare_failed
+                && *r == revision
+            {
+                failed_pods.push((report.pod.clone(), reason.clone()));
+            }
+        }
+
+        let mut next = state.clone();
+        next.staged = None;
+        if ready_pods.is_empty() {
+            let reason = failed_pods
+                .iter()
+                .map(|(pod, why)| format!("{pod}: {why}"))
+                .collect::<Vec<_>>()
+                .join("; ");
+            let reason = if reason.is_empty() {
+                "no pod prepared it in time".to_string()
+            } else {
+                reason
+            };
+            for (app, version) in targets {
+                next.app_mut(app)
+                    .failed
+                    .insert(version.clone(), reason.clone());
+            }
+            self.commit_state(state, next)?;
+            self.publish(|node| node.held = None);
+            tracing::error!(event = "switch_abandoned", revision, reason = %reason);
+            let (app, version) = targets[0].clone();
+            return Err(ReleaseError::Prepare {
+                app,
+                version,
+                reason,
+            });
+        }
+        let old: Vec<(AppId, Option<Version>)> = targets
+            .iter()
+            .map(|(app, _)| {
+                (
+                    app.clone(),
+                    state.apps.get(app).and_then(|c| c.active.clone()),
+                )
+            })
+            .collect();
+        for (app, version) in targets {
+            let current = next.app_mut(app);
+            current.previous = current.active.replace(version.clone());
+            current.failed.remove(version);
+        }
+        self.commit_state(state, next)?;
+        let held = self
+            .node
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .held
+            .take();
+        if let Some((_, held)) = held.filter(|(r, _)| *r == revision) {
+            for (kind, ready) in held {
+                self.go_live(kind, ready);
+            }
+            for (app, previous) in &old {
+                if let (Some(previous), Ok(policy)) = (previous, self.policy(app))
+                    && let Some(runtime) = self.runtime(policy.kind)
+                {
+                    runtime.retire(app, previous);
+                }
+            }
+        }
+        let serving = state.revision;
+        self.publish(|node| {
+            node.report.serving = serving;
+            node.report.ready = mine_ok;
+        });
+        tracing::info!(event = "activated", revision = serving, prepared = ?ready_pods, failed = ?failed_pods);
+        let apps: Vec<AppId> = targets.iter().map(|(app, _)| app.clone()).collect();
+        self.prune(state, &apps)?;
+        Ok(())
+    }
+
+    /// One follower step: picks up `state.json`, prepares a staged set it has not answered, and serves the active set
+    /// (keeping the old one, and reporting not ready, when the active set does not prepare).
+    pub fn follow(&self) -> Result<FollowOutcome, ReleaseError> {
+        *self.took_over.lock().unwrap_or_else(|p| p.into_inner()) = None;
+        let changed = self.refresh()?;
+        let state = self.snapshot();
+        let serving = self
+            .node
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .serving
+            .clone();
+        let differs = |targets: &[(AppId, Version)]| -> Vec<(AppId, Version)> {
+            targets
+                .iter()
+                .filter(|(app, version)| serving.get(app) != Some(version))
+                .cloned()
+                .collect()
+        };
+
+        if let Some(staged) = &state.staged {
+            let done = answered(
+                &self.node.lock().unwrap_or_else(|p| p.into_inner()).report,
+                staged.revision,
+            );
+            if !done {
+                let (prepared, failures) = self.prepare_targets(&differs(&staged.targets));
+                let revision = staged.revision;
+                self.publish(|node| match failures.first() {
+                    None => {
+                        node.held = Some((revision, prepared));
+                        node.report.prepared = Some(revision);
+                        node.report.prepare_failed = None;
+                    }
+                    Some((app, version, reason)) => {
+                        node.held = None;
+                        node.report.prepare_failed =
+                            Some((revision, format!("{app} {version}: {reason}")));
+                    }
+                });
+                tracing::info!(event = "prepared", pod = %self.cluster.pod, revision, ok = failures.is_empty());
+            }
+        }
+
+        let wanted: Vec<(AppId, Version)> = state
+            .apps
+            .iter()
+            .filter(|(app, _)| self.policy(app).is_ok_and(|p| p.kind != AppKind::Server))
+            .filter_map(|(app, current)| {
+                current.active.clone().map(|version| (app.clone(), version))
+            })
+            .collect();
+        // A pod already running the rollout's target serves the group's apps with it, until the rollout ends.
+        let wanted: Vec<(AppId, Version)> = match state.rollout.as_ref().and_then(|r| {
+            (r.target == self.server.version)
+                .then_some(r.group.as_ref())
+                .flatten()
+        }) {
+            Some(group) => wanted
+                .into_iter()
+                .map(|(app, version)| {
+                    let target = group
+                        .apps
+                        .iter()
+                        .find(|(a, _, _)| *a == app)
+                        .map(|(_, _, t)| t.clone());
+                    (app, target.unwrap_or(version))
+                })
+                .collect(),
+            None => wanted,
+        };
+        let missing = differs(&wanted);
+        let mut ready = true;
+        if !missing.is_empty() {
+            let mut held = self
+                .node
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .held
+                .take()
+                .map(|(_, h)| h)
+                .unwrap_or_default();
+            let mut go = Vec::new();
+            let mut unheld = Vec::new();
+            for (app, version) in &missing {
+                match held
+                    .iter()
+                    .position(|(_, ready)| ready.app == *app && ready.version == *version)
+                {
+                    Some(index) => go.push(held.swap_remove(index)),
+                    None => unheld.push((app.clone(), version.clone())),
+                }
+            }
+            let (prepared, failures) = self.prepare_targets(&unheld);
+            if let Some((app, version, reason)) = failures.first() {
+                ready = false;
+                tracing::error!(event = "active_set_not_prepared", pod = %self.cluster.pod, app = %app, version = %version, reason = %reason);
+            } else {
+                go.extend(prepared);
+                for (kind, ready) in go {
+                    let previous = serving.get(&ready.app).cloned();
+                    let app = ready.app.clone();
+                    self.go_live(kind, ready);
+                    if let (Some(previous), Some(runtime)) = (previous, self.runtime(kind)) {
+                        runtime.retire(&app, &previous);
+                    }
+                }
+                tracing::info!(event = "activated", pod = %self.cluster.pod, revision = state.revision);
+            }
+        }
+        let revision = state.revision;
+        self.publish(|node| {
+            if ready {
+                node.report.serving = revision;
+            }
+            node.report.ready = ready;
+        });
+        Ok(FollowOutcome { changed, ready })
+    }
+}
+
+/// What a new leader did with the state it inherited.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct TakeOver {
+    /// The staged revision it carried on and made active.
+    pub finished: Option<u64>,
+    /// The staged revision it abandoned, and why.
+    pub abandoned: Option<(u64, String)>,
+}
+
+impl ReleaseManager {
+    /// Called once when this pod becomes the leader: deletes stale partial downloads, picks up `state.json` and the
+    /// member files, and finishes a staged switch from where it stands, or abandons it when a target can no longer be
+    /// verified in the store.
+    pub fn take_over(&self) -> Result<TakeOver, ReleaseError> {
+        self.leading()?;
+        // Partials are a previous leader's leftovers, unless this pod is downloading right now (it led before and
+        // leads again): then they are its own and stay.
+        let downloading = self
+            .downloads
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .values()
+            .any(|guard| guard.try_lock().is_err());
+        let cleaned = if downloading {
+            Ok(Vec::new())
+        } else {
+            self.store.clean_partials()
+        };
+        match cleaned {
+            Ok(cleaned) if !cleaned.is_empty() => {
+                tracing::info!(event = "partials_cleaned", count = cleaned.len())
+            }
+            Ok(_) => {}
+            Err(err) => tracing::warn!(event = "clean_partials_failed", error = %err),
+        }
+        // The state the previous leader left carries its older epoch: inherit it, then re-stamp it with this
+        // leader's epoch, so followers (which ignore older epochs) take it up again.
+        self.reload()?;
+        let _ = self.cluster.live_members();
+        let mut state = self.lock();
+        // Stamp above an inherited epoch higher than the Lease's (a recreated Lease starts over at 0): followers ignore
+        // anything older than what they have seen. An equal epoch is this leader's own write.
+        let lease_epoch = self.cluster.view().epoch;
+        if state.epoch > lease_epoch {
+            self.cluster
+                .epoch_floor
+                .fetch_max(state.epoch + 1, std::sync::atomic::Ordering::SeqCst);
+        }
+        let restamped = state.clone();
+        self.commit_state(&mut state, restamped)?;
+        let mut outcome = TakeOver::default();
+        let Some(staged) = state.staged.clone() else {
+            return Ok(outcome);
+        };
+        tracing::info!(event = "take_over_staged", revision = staged.revision);
+        let unverifiable = staged
+            .targets
+            .iter()
+            .find(|(app, version)| self.store.manifest(app, version).is_err());
+        if let Some((app, version)) = unverifiable {
+            let reason = format!("the new leader could not verify {app} {version}");
+            let mut next = state.clone();
+            next.staged = None;
+            self.commit_state(&mut state, next)?;
+            tracing::error!(event = "switch_abandoned", revision = staged.revision, reason = %reason);
+            outcome.abandoned = Some((staged.revision, reason));
+            return Ok(outcome);
+        }
+        let serving = self
+            .node
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .serving
+            .clone();
+        let unserved: Vec<(AppId, Version)> = staged
+            .targets
+            .iter()
+            .filter(|(app, version)| serving.get(app) != Some(version))
+            .cloned()
+            .collect();
+        let (prepared, failures) = self.prepare_targets(&unserved);
+        let failure = failures
+            .first()
+            .map(|(app, version, reason)| format!("{app} {version}: {reason}"));
+        let revision = staged.revision;
+        self.publish(|node| match &failure {
+            None => {
+                node.held = Some((revision, prepared));
+                node.report.prepared = Some(revision);
+            }
+            Some(reason) => node.report.prepare_failed = Some((revision, reason.clone())),
+        });
+        self.finish_staged(&mut state, revision, &staged.targets, failure)?;
+        outcome.finished = Some(revision);
+        Ok(outcome)
+    }
+}
+
+impl ReleaseManager {
+    /// On the leader: rewrites `state.json` from memory when a write stamped with an older epoch (a deposed leader's,
+    /// landing late) has replaced it. Returns whether it rewrote.
+    pub fn repair(&self) -> Result<bool, ReleaseError> {
+        self.leading()?;
+        let on_disk = self.state_store.load()?;
+        let view = self.cluster.view();
+        if on_disk.epoch >= self.cluster.stamp(view.epoch) {
+            return Ok(false);
+        }
+        let mut state = self.lock();
+        tracing::warn!(
+            event = "stale_epoch_repaired",
+            found = on_disk.epoch,
+            epoch = view.epoch
+        );
+        let current = state.clone();
+        self.commit_state(&mut state, current)?;
+        Ok(true)
+    }
+}
+
+impl ReleaseManager {
+    /// Publishes this pod's own server binary state in its member report (a cluster's per-pod trial bookkeeping).
+    pub fn report_server(&self, server: speedyspec_server_domain::PodServer) {
+        self.publish(|node| node.report.server = server);
+    }
+
+    /// The leader's rollout step: decides the next step from the member reports and records it. `None` when no
+    /// rollout is running.
+    pub fn advance_rollout(&self) -> Result<Option<crate::RolloutStep>, ReleaseError> {
+        use crate::RolloutStep;
+
+        self.leading()?;
+        let mut state = self.lock();
+        let Some(rollout) = state.rollout.clone() else {
+            return Ok(None);
+        };
+        let Some((reports, live)) = self.cluster.members_now() else {
+            return Ok(Some(crate::RolloutStep::Wait));
+        };
+        let mut step = crate::rollout::next_step(&rollout, &live, &reports);
+        if let (crate::RolloutStep::Wait, Some(turn)) = (&step, rollout.turn.as_ref()) {
+            let now = self.cluster.now();
+            let mut clock = self
+                .cluster
+                .turn_clock
+                .lock()
+                .unwrap_or_else(|p| p.into_inner());
+            match clock.as_ref() {
+                Some((pod, since)) if pod == turn => {
+                    if !rollout.reverting
+                        && now.saturating_duration_since(*since) >= self.cluster.turn_timeout
+                    {
+                        step = crate::RolloutStep::Failed {
+                            pod: turn.clone(),
+                            reason: format!(
+                                "did not finish its turn within {} s",
+                                self.cluster.turn_timeout.as_secs()
+                            ),
+                        };
+                    }
+                }
+                _ => *clock = Some((turn.clone(), now)),
+            }
+        }
+        let mut next = state.clone();
+        let finished_turn = rollout.turn.clone().filter(|turn| {
+            !rollout.reverting && crate::rollout::finished(&reports, turn, &rollout.target)
+        });
+        match &step {
+            RolloutStep::Wait => return Ok(Some(step)),
+            RolloutStep::Turn(pod) => {
+                let plan = next.rollout.as_mut().expect("checked above");
+                if let Some(turn) = finished_turn
+                    && !plan.done.contains(&turn)
+                {
+                    plan.done.push(turn);
+                }
+                if !plan.order.contains(pod) {
+                    plan.order.push(pod.clone());
+                }
+                plan.turn = Some(pod.clone());
+                let reverting = plan.reverting;
+                if next == *state {
+                    return Ok(Some(step));
+                }
+                let plan = next.rollout.as_ref().expect("checked above");
+                tracing::info!(event = "rollout_step", pod = %pod, reverting, version = %if reverting { &plan.previous } else { &plan.target });
+            }
+            RolloutStep::Done => {
+                next.rollout = None;
+                next.server.confirmed = Some(rollout.target.clone());
+                next.server.trial = None;
+                next.app_mut(&self.server.app).active = Some(rollout.target.clone());
+                if let Some(group) = &rollout.group {
+                    for (app, _, target) in &group.apps {
+                        let current = next.app_mut(app);
+                        current.previous = current.active.replace(target.clone());
+                        current.failed.remove(target);
+                    }
+                }
+                tracing::info!(event = "rollout_step", done = true, version = %rollout.target);
+            }
+            RolloutStep::Failed { pod, reason } => {
+                let plan = next.rollout.as_mut().expect("checked above");
+                plan.reverting = true;
+                plan.turn = None;
+                plan.failure = Some((pod.clone(), reason.clone()));
+                tracing::error!(event = "rollout_failed", pod = %pod, version = %rollout.target, reason = %reason);
+            }
+            RolloutStep::Reverted => {
+                let (pod, reason) = rollout.failure.clone().unwrap_or_default();
+                next.rollout = None;
+                next.server.trial = None;
+                next.server
+                    .failed
+                    .insert(rollout.target.clone(), format!("{pod}: {reason}"));
+                tracing::error!(event = "rollout_reverted", version = %rollout.target, pod = %pod);
+            }
+        }
+        self.commit_state(&mut state, next)?;
+        Ok(Some(step))
+    }
+}
+
+/// One member as `status` shows it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MemberStatus {
+    pub pod: String,
+    pub live: bool,
+    pub serving: u64,
+    pub ready: bool,
+    pub server: Option<Version>,
+}
+
+/// This pod's place in the cluster, as `status` shows it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClusterStatus {
+    pub pod: String,
+    pub leader: bool,
+    pub leader_name: Option<String>,
+    pub members: Vec<MemberStatus>,
+}
+
+impl ReleaseManager {
+    /// After `boot`: this pod serves the active set it booted into, and reports itself ready.
+    pub fn booted(&self, running: &Version) {
+        let revision = self.snapshot().revision;
+        let running = running.clone();
+        let state = self.snapshot();
+        let catching_up =
+            state.rollout.is_none() && state.server.confirmed.as_ref() == Some(&running);
+        // A pod's server state outlives its generations: start from this pod's last report.
+        let previous = (!self.cluster.is_single())
+            .then(|| self.cluster.members.read_all().ok())
+            .flatten()
+            .and_then(|reports| reports.into_iter().find(|r| r.pod == self.cluster.pod));
+        self.publish(|node| {
+            if let Some(previous) = previous {
+                node.report.heartbeat = node.report.heartbeat.max(previous.heartbeat);
+                node.report.server = previous.server;
+            }
+            node.report.serving = revision;
+            node.report.ready = true;
+            let server = &mut node.report.server;
+            // A pod that starts on the cluster's confirmed version, with no rollout running, missed a rollout and
+            // has now caught up: that is its confirmed version.
+            if catching_up {
+                server.confirmed = Some(running.clone());
+            }
+            match &server.confirmed {
+                None => server.confirmed = Some(running.clone()),
+                Some(confirmed) if *confirmed != running => server.trial = Some(running.clone()),
+                Some(_) => server.trial = None,
+            }
+            server.running = Some(running);
+        });
+    }
+
+    /// Whether this pod serves the active set (the readiness probe's answer).
+    pub fn is_ready(&self) -> bool {
+        self.node
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .report
+            .ready
+    }
+
+    /// `None` on a single host.
+    pub fn cluster_status(&self) -> Option<ClusterStatus> {
+        if self.cluster.is_single() {
+            return None;
+        }
+        let view = self.cluster.view();
+        let (reports, live) = self.cluster.live_members();
+        Some(ClusterStatus {
+            pod: self.cluster.pod.clone(),
+            leader: view.is_leader,
+            leader_name: view.leader,
+            members: reports
+                .iter()
+                .map(|report| MemberStatus {
+                    pod: report.pod.clone(),
+                    live: live.contains(&report.pod),
+                    serving: report.serving,
+                    ready: report.ready,
+                    server: report.server.running.clone(),
+                })
+                .collect(),
+        })
+    }
+}
+
+impl ReleaseManager {
+    /// In a cluster, a new generation on the rollout's target serves the group's apps in memory; `state.json` makes
+    /// them active only once the whole rollout is confirmed.
+    fn apply_rollout_group(&self, own_version: &Version) -> Result<(), ReleaseError> {
+        let state = self.snapshot();
+        let Some(group) = state
+            .rollout
+            .as_ref()
+            .filter(|r| r.target == *own_version)
+            .and_then(|r| r.group.clone())
+        else {
+            return Ok(());
+        };
+        let targets: Vec<(AppId, Version)> = group
+            .apps
+            .iter()
+            .map(|(app, _, t)| (app.clone(), t.clone()))
+            .collect();
+        let (prepared, failures) = self.prepare_targets(&targets);
+        if let Some((app, version, reason)) = failures.into_iter().next() {
+            return Err(ReleaseError::Prepare {
+                app,
+                version,
+                reason,
+            });
+        }
+        for (kind, ready) in prepared {
+            self.go_live(kind, ready);
+        }
+        Ok(())
+    }
+
+    /// In a cluster: when the rollout's turn is this pod and it does not run the turn's version yet, that version and
+    /// its kept binary.
+    pub fn my_turn(&self) -> Option<(Version, PathBuf)> {
+        let state = self.snapshot();
+        let rollout = state.rollout.as_ref()?;
+        if rollout.turn.as_deref() != Some(self.cluster.pod.as_str()) {
+            return None;
+        }
+        let want = if rollout.reverting {
+            &rollout.previous
+        } else {
+            &rollout.target
+        };
+        if *want == self.server.version {
+            return None;
+        }
+        let binary = self
+            .store
+            .release_dir(&self.server.app, want)
+            .join(SERVER_BINARY);
+        if !binary.exists() {
+            tracing::error!(event = "rollout_binary_missing", version = %want, path = %binary.display());
+            return None;
+        }
+        Some((want.clone(), binary))
+    }
+
+    /// On the leader in a cluster: keeps the running executable as this version's server release (if it is not kept
+    /// yet) and makes it the confirmed one when none is, so every pod has a binary to fall back or revert to.
+    pub fn keep_running_binary(&self, exe: &std::path::Path) -> Result<(), ReleaseError> {
+        self.leading()?;
+        // The previous leader may have written since this pod last read the state.
+        self.reload()?;
+        let mut state = self.lock();
+        let version = self.server.version.clone();
+        let app = self.server.app.clone();
+        let path = self.store.release_dir(&app, &version).join(SERVER_BINARY);
+        let kept = state
+            .apps
+            .get(&app)
+            .is_some_and(|a| a.kept.contains(&version));
+        if kept && path.exists() && state.server.confirmed.is_some() {
+            return Ok(());
+        }
+        if !path.exists() {
+            let dir = self.store.release_dir(&app, &version);
+            std::fs::create_dir_all(&dir).map_err(|err| store_error(&dir, err))?;
+            std::fs::copy(exe, &path).map_err(|err| store_error(&path, err))?;
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
+                .map_err(|err| store_error(&path, err))?;
+        }
+        let mut next = state.clone();
+        let current = next.app_mut(&app);
+        if !current.kept.contains(&version) {
+            current.kept.push(version.clone());
+        }
+        current.active.get_or_insert(version.clone());
+        next.server.confirmed.get_or_insert(version.clone());
+        self.commit_state(&mut state, next)?;
+        tracing::info!(event = "server_binary_kept", version = %version);
+        Ok(())
+    }
+}
+
+impl ReleaseManager {
+    /// One leader step. On becoming leader (and again after any failure, until it succeeds): take over the
+    /// inherited state, then keep the running binary as a release. Only after that: repair a late-written state, and
+    /// advance the rollout.
+    pub fn lead(&self, exe: Option<&std::path::Path>) -> Result<(), ReleaseError> {
+        self.leading()?;
+        let epoch = self.cluster.view().epoch;
+        let current = *self.took_over.lock().unwrap_or_else(|p| p.into_inner());
+        if current != Some(epoch) {
+            let outcome = self.take_over()?;
+            tracing::info!(event = "took_over", finished = ?outcome.finished, abandoned = ?outcome.abandoned);
+            if let Some(exe) = exe {
+                self.keep_running_binary(exe)?;
+            }
+            *self.took_over.lock().unwrap_or_else(|p| p.into_inner()) = Some(epoch);
+        }
+        self.repair()?;
+        self.advance_rollout()?;
+        Ok(())
     }
 }

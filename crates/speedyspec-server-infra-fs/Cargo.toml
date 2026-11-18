@@ -8,6 +8,7 @@ license.workspace = true
 
 [dependencies]
 ruzstd = "0.8"
+serde = { version = "1", features = ["derive"] }
 semver = "1"
 serde_json = "1"
 speedyspec-server-domain = { path = "../speedyspec-server-domain" }
@@ -15,5 +16,7 @@ tar = "0.4"
 tracing = "0.1"
 
 [dev-dependencies]
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json"] }
 speedyspec-server-infra-memory = { path = "../speedyspec-server-infra-memory" }
 tempfile = "3"
