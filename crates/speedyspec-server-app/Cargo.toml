@@ -8,8 +8,13 @@ license.workspace = true
 
 [dependencies]
 semver = "1"
+sha2 = "0.10"
+thiserror = "2"
 speedyspec-server-domain = { path = "../speedyspec-server-domain" }
 tracing = "0.1"
 
 [dev-dependencies]
+speedyspec-server-infra-fs = { path = "../speedyspec-server-infra-fs" }
+speedyspec-server-infra-memory = { path = "../speedyspec-server-infra-memory" }
+tempfile = "3"
 tracing-subscriber = { version = "0.3", features = ["fmt"] }

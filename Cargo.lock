@@ -3156,7 +3156,12 @@ name = "speedyspec-server-app"
 version = "0.1.0"
 dependencies = [
  "semver",
+ "sha2 0.10.9",
  "speedyspec-server-domain",
+ "speedyspec-server-infra-fs",
+ "speedyspec-server-infra-memory",
+ "tempfile",
+ "thiserror",
  "tracing",
  "tracing-subscriber",
 ]
