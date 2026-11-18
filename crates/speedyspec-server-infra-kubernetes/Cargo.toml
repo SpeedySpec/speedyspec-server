@@ -1,0 +1,20 @@
+[package]
+name = "speedyspec-server-infra-kubernetes"
+version = "0.1.0"
+description = "SpeedySpec server leadership through a Kubernetes coordination.k8s.io/v1 Lease."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-server-domain = { path = "../speedyspec-server-domain" }
+# rustls with ring, as speedyspec-driver-kubernetes: nothing from the system, so the binary stays static.
+kube = { version = "5", default-features = false, features = ["client", "rustls-tls", "ring"] }
+k8s-openapi = { version = "0.29", features = ["latest"] }
+# Only to run the client: a current-thread runtime that never leaves this crate.
+tokio = { version = "1", features = ["rt", "time", "sync", "macros"] }
+tracing = "0.1"
+
+[dev-dependencies]
+http = "1"
+serde_json = "1"

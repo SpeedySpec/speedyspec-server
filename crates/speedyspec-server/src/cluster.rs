@@ -41,10 +41,20 @@ pub fn build(config: &Config) -> Result<Arc<Cluster>, String> {
             ))
         }
         Leadership::Kubernetes => {
-            return Err(
-                "cluster.leadership = \"kubernetes\" is not available in this build yet"
-                    .to_string(),
-            );
+            use speedyspec_server_infra_kubernetes::{
+                KubeLeadership, LeaseSettings, pod_namespace,
+            };
+            let namespace = settings
+                .lease_namespace
+                .clone()
+                .or_else(pod_namespace)
+                .ok_or("cluster.lease_namespace is not set, and this is not a pod (no service account namespace)")?;
+            Arc::new(KubeLeadership::in_cluster(LeaseSettings {
+                name: settings.lease_name.clone(),
+                namespace,
+                pod: settings.pod.clone(),
+                timings,
+            })?)
         }
         Leadership::Single => unreachable!("handled above"),
     };
