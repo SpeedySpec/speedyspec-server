@@ -2,11 +2,11 @@
 
 mod support;
 
-use std::sync::Arc;
-use std::time::Duration;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
-use speedyspec_server_app::{Cluster, ReleaseError, ReleaseManager};
-use speedyspec_server_domain::{AppKind, StateStore};
+use speedyspec_server_app::{Cluster, Liveness, ReleaseError, ReleaseManager};
+use speedyspec_server_domain::{AppKind, ClusterMembers, MemberReport, StateStore};
 use speedyspec_server_infra_memory::{MemoryLeadership, MemoryMembers, RecordingRuntime};
 use support::{World, id, v};
 
@@ -15,6 +15,8 @@ struct Pods {
     world: World,
     election: MemoryLeadership,
     members: MemoryMembers,
+    /// The clock every pod's liveness reads; tests move it forward by hand.
+    now: Arc<Mutex<Instant>>,
 }
 
 impl Pods {
@@ -23,24 +25,35 @@ impl Pods {
         world.app("blog", AppKind::Php, 3);
         world.publish("blog", "1.0.0", "");
         world.publish("blog", "2.0.0", "");
+        Pods::from(world)
+    }
+
+    fn from(world: World) -> Pods {
         Pods {
             world,
             election: MemoryLeadership::new(),
             members: MemoryMembers::new(),
+            now: Arc::new(Mutex::new(Instant::now())),
         }
     }
 
-    fn pod(&self, name: &str) -> (ReleaseManager, Arc<RecordingRuntime>) {
+    fn advance(&self, by: Duration) {
+        *self.now.lock().unwrap() += by;
+    }
+
+    fn pod(&self, name: &str) -> (Arc<ReleaseManager>, Arc<RecordingRuntime>) {
         let runtime = Arc::new(RecordingRuntime::new());
         let cluster = Cluster::new(
             name,
             Arc::new(self.election.member(name)),
             Arc::new(self.members.clone()),
-            Duration::from_millis(50),
-            Duration::from_secs(2),
+            Duration::from_millis(20),
+            Duration::from_secs(60),
         );
+        let now = self.now.clone();
+        let cluster = cluster.with_clock(Arc::new(move || *now.lock().unwrap()));
         (
-            self.world.manager_in(Arc::new(cluster), runtime.clone()),
+            Arc::new(self.world.manager_in(Arc::new(cluster), runtime.clone())),
             runtime,
         )
     }
@@ -110,15 +123,15 @@ fn leader_past_renew_deadline_refuses_the_next_write() {
     let (a, runtime) = pods.pod("a");
     pods.election.elect("a");
     a.install(&id("blog"), Some(v("1.0.0"))).unwrap();
-    let before = pods.world.saved();
     runtime.set_prepare_delay(Duration::from_millis(300));
-    let a = Arc::new(a);
     let switching = {
         let a = a.clone();
         std::thread::spawn(move || a.switch(&[(id("blog"), v("1.0.0"))]))
     };
     std::thread::sleep(Duration::from_millis(100));
     pods.election.expire();
+    // Staging was written while `a` still led; nothing may follow it.
+    let before = pods.world.saved();
     let err = switching.join().unwrap().unwrap_err();
     assert!(matches!(err, ReleaseError::NotLeader { .. }), "{err:?}");
     assert_eq!(
@@ -150,4 +163,246 @@ fn older_epoch_state_is_ignored_by_refresh() {
     pods.world.state.save(&late).unwrap();
     assert!(!c.refresh().unwrap(), "an older epoch's write is ignored");
     assert_eq!(c.status(), current);
+}
+
+/// Three pods with blog 1.0.0 active everywhere, and `a` leading.
+fn three() -> (Pods, Vec<(Arc<ReleaseManager>, Arc<RecordingRuntime>)>) {
+    let pods = Pods::new();
+    let all: Vec<_> = ["a", "b", "c"].iter().map(|p| pods.pod(p)).collect();
+    pods.election.elect("a");
+    all[0].0.install(&id("blog"), Some(v("1.0.0"))).unwrap();
+    all[0].0.install(&id("blog"), Some(v("2.0.0"))).unwrap();
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    let switching = run_switch(&all[0].0, "1.0.0");
+    staged(&pods);
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    finish(switching).unwrap();
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    for (_, runtime) in &all {
+        assert_eq!(runtime.active("blog"), Some(v("1.0.0")));
+    }
+    (pods, all)
+}
+
+/// Runs `leader.switch(blog@version)` on another thread, since it waits for the other pods.
+fn run_switch(
+    leader: &Arc<ReleaseManager>,
+    version: &str,
+) -> std::thread::JoinHandle<Result<(), ReleaseError>> {
+    let (leader, version) = (leader.clone(), v(version));
+    std::thread::spawn(move || leader.switch(&[(id("blog"), version)]))
+}
+
+fn finish(handle: std::thread::JoinHandle<Result<(), ReleaseError>>) -> Result<(), ReleaseError> {
+    handle.join().unwrap()
+}
+
+/// Waits (real time) until the leader has staged a set, and returns its revision.
+fn staged(pods: &Pods) -> u64 {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        if let Some(staged) = pods.world.saved().staged {
+            return staged.revision;
+        }
+        assert!(Instant::now() < deadline, "nothing was staged");
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
+#[test]
+fn two_step_switch_lands_on_all_three() {
+    let (pods, all) = three();
+    let switching = run_switch(&all[0].0, "2.0.0");
+    staged(&pods);
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    finish(switching).unwrap();
+    for (manager, _) in &all[1..] {
+        assert!(manager.follow().unwrap().ready);
+    }
+    for (_, runtime) in &all {
+        assert_eq!(runtime.active("blog"), Some(v("2.0.0")));
+    }
+    let saved = pods.world.saved();
+    assert_eq!(saved.staged, None);
+    assert_eq!(saved.apps[&id("blog")].active, Some(v("2.0.0")));
+}
+
+#[test]
+fn member_failing_prepare_goes_not_ready_and_others_switch() {
+    let (pods, all) = three();
+    all[2].1.fail_prepare("blog", "2.0.0", "out of memory");
+    let switching = run_switch(&all[0].0, "2.0.0");
+    staged(&pods);
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    finish(switching).unwrap();
+    assert!(all[1].0.follow().unwrap().ready);
+    let c = all[2].0.follow().unwrap();
+    assert!(!c.ready, "c could not prepare the active set");
+    assert_eq!(all[1].1.active("blog"), Some(v("2.0.0")));
+    assert_eq!(
+        all[2].1.active("blog"),
+        Some(v("1.0.0")),
+        "c keeps serving the old set"
+    );
+    let report = pods
+        .members
+        .read_all()
+        .unwrap()
+        .into_iter()
+        .find(|r| r.pod == "c")
+        .unwrap();
+    assert!(!report.ready);
+
+    let switching = run_switch(&all[0].0, "1.0.0");
+    staged(&pods);
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    finish(switching).unwrap();
+    assert!(
+        all[2].0.follow().unwrap().ready,
+        "c is ready again once a set it can prepare is active"
+    );
+}
+
+#[test]
+fn no_pod_prepares_abandons_and_marks_failed() {
+    let (pods, all) = three();
+    for (_, runtime) in &all {
+        runtime.fail_prepare("blog", "2.0.0", "broken");
+    }
+    let switching = run_switch(&all[0].0, "2.0.0");
+    staged(&pods);
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    let err = finish(switching).unwrap_err();
+    assert!(matches!(err, ReleaseError::Prepare { .. }), "{err:?}");
+    let saved = pods.world.saved();
+    assert_eq!(saved.staged, None);
+    assert_eq!(saved.apps[&id("blog")].active, Some(v("1.0.0")));
+    assert!(saved.apps[&id("blog")].failed[&v("2.0.0")].contains("broken"));
+}
+
+#[test]
+fn stale_member_is_not_waited_for() {
+    let (pods, all) = three();
+    let switching = run_switch(&all[0].0, "2.0.0");
+    staged(&pods);
+    all[1].0.follow().unwrap();
+    std::thread::sleep(Duration::from_millis(100));
+    assert!(!switching.is_finished(), "a waits for c while c is live");
+    pods.advance(Duration::from_secs(11));
+    let started = Instant::now();
+    finish(switching).unwrap();
+    assert!(
+        started.elapsed() < Duration::from_secs(1),
+        "a stopped waiting once c went stale"
+    );
+    assert_eq!(all[0].1.active("blog"), Some(v("2.0.0")));
+}
+
+#[test]
+fn report_from_before_the_staged_revision_does_not_count() {
+    let (pods, all) = three();
+    let switching = run_switch(&all[0].0, "2.0.0");
+    let revision = staged(&pods);
+    all[1].0.follow().unwrap();
+    pods.members.tamper("c", |r| {
+        r.prepared = Some(revision - 1);
+        r.heartbeat += 1;
+    });
+    std::thread::sleep(Duration::from_millis(150));
+    assert!(!switching.is_finished(), "c's older report does not count");
+    all[2].0.follow().unwrap();
+    finish(switching).unwrap();
+}
+
+#[test]
+fn prune_keeps_releases_live_members_hold() {
+    let mut world = World::new();
+    world.app("blog", AppKind::Php, 1);
+    for version in ["1.0.0", "2.0.0", "3.0.0"] {
+        world.publish("blog", version, "");
+    }
+    let pods = Pods::from(world);
+    let all: Vec<_> = ["a", "b"].iter().map(|p| pods.pod(p)).collect();
+    pods.election.elect("a");
+    let (a, b) = (&all[0].0, &all[1].0);
+    b.follow().unwrap();
+    a.install(&id("blog"), Some(v("1.0.0"))).unwrap();
+    let switching = run_switch(a, "1.0.0");
+    staged(&pods);
+    b.follow().unwrap();
+    finish(switching).unwrap();
+    b.follow().unwrap();
+    a.install(&id("blog"), Some(v("2.0.0"))).unwrap();
+    let switching = run_switch(a, "2.0.0");
+    staged(&pods);
+    b.follow().unwrap();
+    finish(switching).unwrap();
+    assert!(
+        pods.world.release_dir("blog", "1.0.0").exists(),
+        "b still serves 1.0.0, so it is kept although keep = 1"
+    );
+    b.follow().unwrap();
+    a.install(&id("blog"), Some(v("3.0.0"))).unwrap();
+    let switching = run_switch(a, "3.0.0");
+    staged(&pods);
+    b.follow().unwrap();
+    finish(switching).unwrap();
+    assert!(
+        !pods.world.release_dir("blog", "1.0.0").exists(),
+        "nobody holds 1.0.0 any more"
+    );
+}
+
+#[test]
+fn liveness_ignores_writer_clock() {
+    let start = Instant::now();
+    let mut liveness = Liveness::new();
+    let report = |heartbeat| MemberReport {
+        pod: "far".to_string(),
+        heartbeat,
+        ..Default::default()
+    };
+    assert_eq!(
+        liveness.observe(&[report(1)], start),
+        vec!["far"],
+        "a pod seen for the first time is live"
+    );
+    for tick in 2..20u64 {
+        let now = start + Duration::from_secs(2 * tick);
+        assert_eq!(
+            liveness.observe(&[report(tick)], now),
+            vec!["far"],
+            "live while its counter moves"
+        );
+    }
+    let stopped = start + Duration::from_secs(38);
+    assert_eq!(
+        liveness.observe(&[report(19)], stopped + Duration::from_secs(9)),
+        vec!["far"]
+    );
+    assert!(
+        liveness
+            .observe(&[report(19)], stopped + Duration::from_secs(11))
+            .is_empty(),
+        "stale 10 s after it stops"
+    );
+    assert_eq!(
+        liveness.observe(&[report(20)], stopped + Duration::from_secs(12)),
+        vec!["far"],
+        "live again"
+    );
 }

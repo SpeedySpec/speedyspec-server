@@ -1,6 +1,7 @@
 //! What a release manager knows about the other pods: who leads, where the member reports are, and how long to wait.
 //! A single host is a cluster of one that always leads.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
@@ -23,6 +24,48 @@ pub struct Cluster {
     pub(crate) single: bool,
     /// The newest epoch this pod has seen in `state.json`.
     pub(crate) seen_epoch: AtomicU64,
+    pub(crate) liveness: Mutex<Liveness>,
+}
+
+/// A pod counts as stale once its heartbeat counter has not changed for this long, as this pod saw it.
+pub const STALE_AFTER: Duration = Duration::from_secs(10);
+
+/// Which pods are live, judged only by when *this* pod saw each one's heartbeat counter change. The writer's clock is
+/// never read, so clock skew between pods does not matter.
+#[derive(Default)]
+pub struct Liveness {
+    seen: BTreeMap<String, (u64, Instant)>,
+    stale: BTreeSet<String>,
+}
+
+impl Liveness {
+    pub fn new() -> Liveness {
+        Liveness::default()
+    }
+
+    /// The live pods among `reports`, sorted by name. A pod seen for the first time is live.
+    pub fn observe(&mut self, reports: &[MemberReport], now: Instant) -> Vec<String> {
+        let mut live = Vec::new();
+        for report in reports {
+            let entry = self
+                .seen
+                .entry(report.pod.clone())
+                .or_insert((report.heartbeat, now));
+            if entry.0 != report.heartbeat {
+                *entry = (report.heartbeat, now);
+            }
+            if now.saturating_duration_since(entry.1) < STALE_AFTER {
+                if self.stale.remove(&report.pod) {
+                    tracing::info!(event = "member_live", pod = %report.pod);
+                }
+                live.push(report.pod.clone());
+            } else if self.stale.insert(report.pod.clone()) {
+                tracing::warn!(event = "member_stale", pod = %report.pod);
+            }
+        }
+        live.sort();
+        live
+    }
 }
 
 impl Cluster {
@@ -42,6 +85,7 @@ impl Cluster {
             clock: Arc::new(Instant::now),
             single: false,
             seen_epoch: AtomicU64::new(0),
+            liveness: Mutex::new(Liveness::new()),
         }
     }
 
@@ -93,6 +137,31 @@ impl Cluster {
 
     pub fn prepare_timeout(&self) -> Duration {
         self.prepare_timeout
+    }
+
+    pub(crate) fn now(&self) -> Instant {
+        (self.clock)()
+    }
+
+    /// Every member report, and which pods are live now. This pod always counts as live.
+    pub(crate) fn live_members(&self) -> (Vec<MemberReport>, Vec<String>) {
+        let reports = match self.members.read_all() {
+            Ok(reports) => reports,
+            Err(err) => {
+                tracing::warn!(event = "members_unreadable", error = %err);
+                Vec::new()
+            }
+        };
+        let mut live = self
+            .liveness
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .observe(&reports, self.now());
+        if !live.contains(&self.pod) {
+            live.push(self.pod.clone());
+            live.sort();
+        }
+        (reports, live)
     }
 
     /// Records an epoch seen in `state.json`; returns false when it is older than one seen before.
