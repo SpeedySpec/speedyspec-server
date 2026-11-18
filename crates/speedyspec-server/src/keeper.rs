@@ -694,8 +694,22 @@ async fn supervise(
                 }
             }
             event = current.events.recv() => {
-                if let Some(event) = event {
-                    tracing::debug!(event = "generation_event", message = ?event);
+                match event {
+                    // A pod's rollout turn: the generation asks for the switch itself.
+                    Some(GenEvent::Upgrade { version, binary }) => {
+                        tracing::info!(event = "upgrade_from_rollout", version = %version);
+                        let (reply, answer) = oneshot::channel();
+                        if let Some(commands) = keeper.commands.get() {
+                            let _ = commands.send(KeeperCommand::Upgrade { version, binary, reply });
+                        }
+                        tokio::spawn(async move {
+                            if let Ok(Err(err)) = answer.await {
+                                tracing::error!(event = "rollout_upgrade_refused", error = %err);
+                            }
+                        });
+                    }
+                    Some(event) => tracing::debug!(event = "generation_event", message = ?event),
+                    None => {}
                 }
             }
             _ = hangup.recv() => current.generation.send(&ToGeneration::ReloadCerts).await,

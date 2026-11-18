@@ -132,7 +132,19 @@ async fn serve(channel: Channel) -> Result<(), String> {
             let (manager, running) = (manager.clone(), version.clone());
             let _ = tokio::task::spawn_blocking(move || manager.booted(&running)).await;
         }
-        crate::cluster::spawn_loops(manager.clone(), draining.clone());
+        let turns = channel.clone();
+        let on_turn: crate::cluster::OnTurn = Arc::new(move |version, binary| {
+            let turns = turns.clone();
+            tokio::spawn(async move {
+                if let Err(err) = turns
+                    .send(&ToKeeper::Upgrade { version, binary }, &[])
+                    .await
+                {
+                    tracing::error!(event = "rollout_turn_not_sent", error = %err);
+                }
+            });
+        });
+        crate::cluster::spawn_loops(manager.clone(), draining.clone(), on_turn);
         let _ = readiness.manager.set(manager.clone());
         managed::spawn_fallback_sweep(live);
         let apps = config

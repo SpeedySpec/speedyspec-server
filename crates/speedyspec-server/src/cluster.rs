@@ -111,7 +111,10 @@ pub fn probe_router(readiness: Arc<Readiness>) -> Router {
 
 /// Starts the heartbeat and the role loop for a managed generation in a cluster. Both pause while `paused` is set
 /// (a server switch starting, or draining), so a draining generation never writes.
-pub fn spawn_loops(manager: Arc<ReleaseManager>, paused: Arc<AtomicBool>) {
+/// What the generation does when the rollout says it is this pod's turn: ask its keeper to switch binaries.
+pub type OnTurn = Arc<dyn Fn(semver::Version, std::path::PathBuf) + Send + Sync>;
+
+pub fn spawn_loops(manager: Arc<ReleaseManager>, paused: Arc<AtomicBool>, on_turn: OnTurn) {
     if manager.cluster().is_single() {
         return;
     }
@@ -129,6 +132,7 @@ pub fn spawn_loops(manager: Arc<ReleaseManager>, paused: Arc<AtomicBool>) {
     }
     tokio::spawn(async move {
         let mut was_leader = false;
+        let mut requested: Option<semver::Version> = None;
         let interval = manager.cluster().poll_interval();
         loop {
             tokio::time::sleep(interval).await;
@@ -145,10 +149,16 @@ pub fn spawn_loops(manager: Arc<ReleaseManager>, paused: Arc<AtomicBool>) {
             }
             let became = view.is_leader && !was_leader;
             was_leader = view.is_leader;
-            let manager = manager.clone();
+            let worker = manager.clone();
             let _ = tokio::task::spawn_blocking(move || {
+                let manager = worker;
                 if view.is_leader {
                     if became {
+                        if let Ok(exe) = std::env::current_exe()
+                            && let Err(err) = manager.keep_running_binary(&exe)
+                        {
+                            tracing::warn!(event = "keep_running_binary_failed", error = %err);
+                        }
                         match manager.take_over() {
                             Ok(outcome) => tracing::info!(event = "took_over", finished = ?outcome.finished, abandoned = ?outcome.abandoned),
                             Err(err) => tracing::error!(event = "take_over_failed", error = %err),
@@ -165,6 +175,15 @@ pub fn spawn_loops(manager: Arc<ReleaseManager>, paused: Arc<AtomicBool>) {
                 }
             })
             .await;
+            if let Some((version, binary)) = manager.my_turn() {
+                if requested.as_ref() != Some(&version) {
+                    tracing::info!(event = "rollout_turn", pod = %manager.cluster().pod(), version = %version);
+                    requested = Some(version.clone());
+                    on_turn(version, binary);
+                }
+            } else {
+                requested = None;
+            }
         }
     });
 }

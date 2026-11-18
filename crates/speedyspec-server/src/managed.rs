@@ -116,6 +116,38 @@ pub fn confirmed_binary(config: &Config) -> Result<std::path::PathBuf, String> {
         .map(|(id, _)| id.clone())
         .ok_or("no server app is configured")?;
     let exe = std::env::current_exe().map_err(|err| format!("finding this executable: {err}"))?;
+    if let Some(cluster) = config
+        .cluster
+        .as_ref()
+        .filter(|c| c.leadership != crate::config::Leadership::Single)
+    {
+        // A pod never writes the shared store on its own: it runs its own confirmed binary, else the cluster's,
+        // else this executable (the leader keeps that as a release once it leads).
+        use speedyspec_server_domain::{ClusterMembers, ReleaseStore, StateStore};
+        let store = FsReleaseStore::new(data_dir);
+        let binary = |version: &semver::Version| {
+            Some(
+                store
+                    .release_dir(&server, version)
+                    .join(speedyspec_server_app::SERVER_BINARY),
+            )
+            .filter(|path| path.exists())
+        };
+        let own = speedyspec_server_infra_fs::FsClusterMembers::new(data_dir, &cluster.pod)
+            .read_all()
+            .ok()
+            .and_then(|reports| reports.into_iter().find(|r| r.pod == cluster.pod))
+            .and_then(|report| report.server.confirmed);
+        let shared = FsStateStore::new(data_dir, &config.run_dir)
+            .load()
+            .ok()
+            .and_then(|state| state.server.confirmed);
+        return Ok(own
+            .as_ref()
+            .and_then(binary)
+            .or_else(|| shared.as_ref().and_then(binary))
+            .unwrap_or(exe));
+    }
     speedyspec_server_app::register_running_binary(
         &FsReleaseStore::new(data_dir),
         &FsStateStore::new(data_dir, &config.run_dir),

@@ -7,7 +7,8 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use support::run::{Running, command, get, start_with};
+use support::release_host::ReleaseHost;
+use support::run::{BIN, Running, command, get, start_with};
 
 /// One pod's config: its own run_dir and listener, the shared data_dir, and fast cluster timings.
 fn pod_config(dir: &Path, pod: &str, extra: &str) -> PathBuf {
@@ -104,4 +105,412 @@ fn probe_answers_livez_and_readyz() {
         "{}",
         status(&config)
     );
+}
+
+/// Pods sharing one data directory and one release host, with the admin static app and the server app.
+struct Pods {
+    dir: tempfile::TempDir,
+    host: ReleaseHost,
+    pods: Vec<Pod>,
+}
+
+struct Pod {
+    name: String,
+    keeper: Running,
+    config: PathBuf,
+    addr: SocketAddr,
+}
+
+impl Pods {
+    fn new() -> Pods {
+        let host = ReleaseHost::start();
+        host.publish_static("admin", "1.0.0");
+        Pods {
+            dir: tempfile::tempdir().unwrap(),
+            host,
+            pods: Vec::new(),
+        }
+    }
+
+    fn start(&mut self, name: &str, env: &[(&str, &str)]) {
+        let apps = format!(
+            r#"
+[handoff]
+trial_period = "2s"
+ready_timeout = "5s"
+drain_timeout = "2s"
+
+[app.admin]
+kind = "static"
+source = "{admin}"
+keys = ["{key}"]
+update = "manual"
+
+[[mount]]
+path = "/"
+app = "admin"
+"#,
+            admin = self.host.url("/admin/index.json"),
+            key = self.host.public_key(),
+        );
+        let config = pod_config(self.dir.path(), name, "");
+        let toml = std::fs::read_to_string(&config).unwrap().replace(
+            "[app.server]\nkind = \"server\"\n",
+            &format!(
+                "[app.server]\nkind = \"server\"\nsource = \"{}\"\nkeys = [\"{}\"]\n",
+                self.host.url("/server/index.json"),
+                self.host.public_key()
+            ),
+        ) + &apps;
+        let toml = toml.replacen("[handoff]", "[handoff]", 1);
+        // [cluster] is in pod_config's text; the tables appended after it are separate tables.
+        std::fs::write(&config, toml).unwrap();
+        let mut all = vec![("SPEEDYSPEC_TEST_VERSION_FROM_DIR", "1")];
+        all.extend_from_slice(env);
+        let mut keeper = start_with(&config, &all);
+        let addr = keeper.address();
+        let socket = self.dir.path().join(format!("run-{name}/keeper.sock"));
+        assert!(
+            wait_for(Duration::from_secs(10), || socket.exists()),
+            "no keeper.sock for {name}"
+        );
+        self.pods.push(Pod {
+            name: name.to_string(),
+            keeper,
+            config,
+            addr,
+        });
+    }
+
+    fn pod(&self, name: &str) -> &Pod {
+        self.pods.iter().find(|p| p.name == name).unwrap()
+    }
+
+    fn cmd(&self, name: &str, args: &[&str]) -> (i32, String, String) {
+        let config = self.pod(name).config.to_str().unwrap().to_string();
+        let mut all: Vec<&str> = args.to_vec();
+        all.extend(["--config", &config]);
+        command(&all)
+    }
+
+    fn ok(&self, name: &str, args: &[&str]) -> String {
+        let (code, out, err) = self.cmd(name, args);
+        assert_eq!(code, 0, "{args:?} on {name}: {err}\n{}", self.events());
+        out
+    }
+
+    /// Every pod's cluster events, for failure messages.
+    fn events(&self) -> String {
+        let keep = [
+            "leader_",
+            "took_over",
+            "staged",
+            "prepared",
+            "activated",
+            "switch_abandoned",
+            "member_",
+            "rollout",
+            "trial",
+            "upgrade",
+            "lease",
+            "not_leader",
+            "follow_failed",
+            "stale_epoch",
+            "installed",
+            "partials",
+            "generation_",
+        ];
+        let mut out = String::new();
+        for pod in &self.pods {
+            out.push_str(&format!(
+                "{} status:\n{}\n",
+                pod.name,
+                self.cmd(&pod.name, &["status"]).1
+            ));
+        }
+        if let Ok(entries) = std::fs::read_dir(self.dir.path().join("data/cluster/members")) {
+            for entry in entries.flatten() {
+                out.push_str(&format!(
+                    "{}: {}\n",
+                    entry.path().display(),
+                    std::fs::read_to_string(entry.path()).unwrap_or_default()
+                ));
+            }
+        }
+        out.push_str(&format!("state: {}\n", self.state()));
+        for pod in &self.pods {
+            for line in pod.keeper.log() {
+                if keep
+                    .iter()
+                    .any(|k| line.contains(&format!("\"event\":\"{k}")))
+                {
+                    out.push_str(&format!(
+                        "{}: {}\n",
+                        pod.name,
+                        line.chars().take(260).collect::<String>()
+                    ));
+                }
+            }
+        }
+        out
+    }
+
+    /// The leader as `name` sees it.
+    fn leader(&self, name: &str) -> Option<String> {
+        let out = self.cmd(name, &["status"]).1;
+        out.lines()
+            .find_map(|l| l.strip_prefix("cluster\t"))
+            .and_then(|rest| rest.split('\t').nth(2))
+            .filter(|l| *l != "-")
+            .map(str::to_string)
+    }
+
+    /// (pid, version, trial|confirmed) of `name`'s active generation.
+    fn generation(&self, name: &str) -> Option<(u32, String, String)> {
+        let out = self.cmd(name, &["status"]).1;
+        let line = out.lines().find_map(|l| l.strip_prefix("generation\t"))?;
+        let mut parts = line.split('\t');
+        Some((
+            parts.next()?.parse().ok()?,
+            parts.next()?.to_string(),
+            parts.next()?.to_string(),
+        ))
+    }
+
+    /// `state.json`, or null before the leader has written it.
+    fn state(&self) -> serde_json::Value {
+        std::fs::read_to_string(self.dir.path().join("data/state.json"))
+            .ok()
+            .and_then(|text| serde_json::from_str(&text).ok())
+            .unwrap_or(serde_json::Value::Null)
+    }
+
+    /// Installs and switches admin 1.0.0 on the leader, and waits until every pod serves it.
+    fn serve_admin(&self, leader: &str) {
+        self.ok(leader, &["release", "install", "admin", "1.0.0"]);
+        self.ok(leader, &["release", "switch", "admin@1.0.0"]);
+        for pod in &self.pods {
+            assert!(
+                wait_for(Duration::from_secs(15), || get(pod.addr, "/").1
+                    == "admin-1.0.0"),
+                "{} never served admin 1.0.0\n{}",
+                pod.name,
+                self.events()
+            );
+        }
+    }
+}
+
+/// Starts `first` alone until it leads, then the others: the leader is `first`.
+fn cluster(
+    first: &str,
+    others: &[&str],
+    env: impl Fn(&str) -> Vec<(&'static str, &'static str)>,
+) -> Pods {
+    let mut pods = Pods::new();
+    pods.start(first, &env(first));
+    assert!(
+        wait_for(Duration::from_secs(10), || pods.leader(first).as_deref()
+            == Some(first)),
+        "{first} never led"
+    );
+    for name in others {
+        pods.start(name, &env(name));
+    }
+    for pod in &pods.pods {
+        assert!(
+            wait_for(Duration::from_secs(10), || pods
+                .leader(&pod.name)
+                .as_deref()
+                == Some(first)),
+            "{} does not see {first} as leader",
+            pod.name
+        );
+    }
+    pods
+}
+
+/// Watches every pod while `body` runs: (requests that failed, the most pods on trial at once, the order pods
+/// reached `version` confirmed).
+fn watching(pods: &Pods, version: &str, body: impl FnOnce()) -> (usize, usize, Vec<String>) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    let stop = Arc::new(AtomicBool::new(false));
+    let seen = Arc::new(Mutex::new((0usize, 0usize, Vec::<String>::new())));
+    let targets: Vec<(String, SocketAddr, PathBuf)> = pods
+        .pods
+        .iter()
+        .map(|p| (p.name.clone(), p.addr, p.config.clone()))
+        .collect();
+    let monitor = {
+        let (stop, seen, version) = (stop.clone(), seen.clone(), version.to_string());
+        std::thread::spawn(move || {
+            while !stop.load(Ordering::SeqCst) {
+                let mut on_trial = 0;
+                for (name, addr, config) in &targets {
+                    let answer = std::panic::catch_unwind(|| get(*addr, "/"));
+                    if answer.ok().map(|(status, _)| status) != Some(200) {
+                        seen.lock().unwrap().0 += 1;
+                    }
+                    let out = command(&["status", "--config", config.to_str().unwrap()]).1;
+                    if let Some(line) = out.lines().find(|l| l.starts_with("generation\t")) {
+                        if line.ends_with("\ttrial") {
+                            on_trial += 1;
+                        }
+                        if line.contains(&format!("\t{version}\tconfirmed")) {
+                            let mut seen = seen.lock().unwrap();
+                            if !seen.2.contains(name) {
+                                seen.2.push(name.clone());
+                            }
+                        }
+                    }
+                }
+                let mut seen = seen.lock().unwrap();
+                seen.1 = seen.1.max(on_trial);
+            }
+        })
+    };
+    body();
+    stop.store(true, Ordering::SeqCst);
+    monitor.join().unwrap();
+    let seen = seen.lock().unwrap();
+    (seen.0, seen.1, seen.2.clone())
+}
+
+#[test]
+fn rolling_upgrade_goes_pod_by_pod() {
+    let pods = cluster("c", &["a", "b"], |_| Vec::new());
+    pods.serve_admin("c");
+    pods.host.publish_server("0.2.0", Path::new(BIN));
+    pods.ok("c", &["release", "install", "server", "0.2.0"]);
+    let (failed, most_on_trial, order) = watching(&pods, "0.2.0", || {
+        let out = pods.ok("c", &["release", "switch", "server@0.2.0"]);
+        assert!(
+            out.contains("rolling out server 0.2.0 across 3 pods"),
+            "{out}"
+        );
+        assert!(
+            wait_for(Duration::from_secs(90), || {
+                let state = pods.state();
+                state["server"]["confirmed"] == "0.2.0" && state["rollout"].is_null()
+            }),
+            "the rollout never finished: {}",
+            pods.state()
+        );
+    });
+    assert_eq!(failed, 0, "requests failed during the rollout");
+    assert!(
+        most_on_trial <= 1,
+        "{most_on_trial} pods were on trial at once"
+    );
+    assert_eq!(order, vec!["a", "b", "c"], "pods by name, the leader last");
+    for pod in &pods.pods {
+        assert_eq!(pods.generation(&pod.name).unwrap().1, "0.2.0");
+    }
+}
+
+#[test]
+fn rolling_upgrade_stops_and_reverts_on_one_failed_trial() {
+    let pods = cluster("c", &["a", "b"], |name| {
+        if name == "b" {
+            vec![
+                ("SPEEDYSPEC_TEST_EXIT_VERSION", "0.2.0"),
+                ("SPEEDYSPEC_TEST_EXIT_AFTER_READY_MS", "1000"),
+            ]
+        } else {
+            Vec::new()
+        }
+    });
+    pods.serve_admin("c");
+    pods.host.publish_server("0.2.0", Path::new(BIN));
+    pods.ok("c", &["release", "install", "server", "0.2.0"]);
+    pods.ok("c", &["release", "switch", "server@0.2.0"]);
+    assert!(
+        wait_for(Duration::from_secs(90), || {
+            let state = pods.state();
+            state["rollout"].is_null() && state["server"]["failed"]["0.2.0"].is_string()
+        }),
+        "the rollout never reverted: {}",
+        pods.state()
+    );
+    let reason = pods.state()["server"]["failed"]["0.2.0"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(reason.starts_with("b: "), "{reason}");
+    for name in ["a", "b", "c"] {
+        assert!(
+            wait_for(Duration::from_secs(20), || pods
+                .generation(name)
+                .is_some_and(|g| g.1 == "0.1.0" && g.2 == "confirmed")),
+            "{name} is not back on 0.1.0: {:?}",
+            pods.generation(name)
+        );
+    }
+    assert!(
+        !pods
+            .pod("c")
+            .keeper
+            .log()
+            .iter()
+            .any(|l| l.contains("\"generation_started\"") && l.contains("server/0.2.0")),
+        "c never upgraded"
+    );
+}
+
+#[test]
+fn follower_first_start_does_not_write_shared_store() {
+    let mut pods = Pods::new();
+    pods.start("a", &[]);
+    let kept = pods.dir.path().join("data/releases/server");
+    let listing = || -> Vec<String> {
+        let mut names: Vec<String> = walk(&kept);
+        names.sort();
+        names
+    };
+    assert!(
+        wait_for(Duration::from_secs(10), || pods.leader("a").as_deref()
+            == Some("a")
+            && pods.state()["server"]["confirmed"]
+                == env!("CARGO_PKG_VERSION")),
+        "the leader keeps its running binary as the confirmed release"
+    );
+    let (store, state) = (
+        listing(),
+        std::fs::read(pods.dir.path().join("data/state.json")).unwrap(),
+    );
+    pods.start("b", &[]);
+    assert!(wait_for(Duration::from_secs(10), || pods
+        .leader("b")
+        .as_deref()
+        == Some("a")));
+    std::thread::sleep(Duration::from_secs(2));
+    assert_eq!(
+        listing(),
+        store,
+        "the follower wrote nothing to the release store"
+    );
+    assert_eq!(
+        std::fs::read(pods.dir.path().join("data/state.json")).unwrap(),
+        state,
+        "nor to state.json"
+    );
+    assert_eq!(pods.generation("b").unwrap().1, env!("CARGO_PKG_VERSION"));
+}
+
+/// Every file under `dir`, relative.
+fn walk(dir: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                out.extend(walk(&path));
+            } else {
+                out.push(path.display().to_string());
+            }
+        }
+    }
+    out
 }
