@@ -78,9 +78,14 @@ async fn serve(channel: Channel) -> Result<(), String> {
     let config = Config::load(&config).map_err(|err| err.to_string())?;
     let mut tcp = Vec::new();
     let mut udp = Vec::new();
+    let mut probe_tcp = Vec::new();
     for (info, fd) in sockets.into_iter().zip(fds) {
         let tls = info.tls.map(|(cert, key)| TlsFiles { cert, key });
         match info.kind {
+            SocketKind::Tcp if info.probe => probe_tcp.push(BoundTcp {
+                listener: TcpListener::from(fd),
+                tls: None,
+            }),
             SocketKind::Tcp => tcp.push(BoundTcp {
                 listener: TcpListener::from(fd),
                 tls,
@@ -104,6 +109,7 @@ async fn serve(channel: Channel) -> Result<(), String> {
     // Whether `Drain` stopped the servers, so `Resume` restarts them.
     let mut drained = false;
     let mut releases = None;
+    let readiness = Arc::new(crate::cluster::Readiness::default());
     let backend: Arc<dyn ControlBackend> = if config.mode == Mode::Managed {
         let (settings, apps) = (config.clone(), live.clone());
         let applied = version.clone();
@@ -122,6 +128,12 @@ async fn serve(channel: Channel) -> Result<(), String> {
             draining.clone(),
         );
         releases = Some(manager.clone());
+        {
+            let (manager, running) = (manager.clone(), version.clone());
+            let _ = tokio::task::spawn_blocking(move || manager.booted(&running)).await;
+        }
+        crate::cluster::spawn_loops(manager.clone(), draining.clone());
+        let _ = readiness.manager.set(manager.clone());
         managed::spawn_fallback_sweep(live);
         let apps = config
             .apps
@@ -149,6 +161,20 @@ async fn serve(channel: Channel) -> Result<(), String> {
     let serving = Serving::start(tcp, udp, router, false)
         .await
         .map_err(|err| format!("{err:#}"))?;
+    let probe = if probe_tcp.is_empty() {
+        None
+    } else {
+        Some(
+            Serving::start(
+                probe_tcp,
+                Vec::new(),
+                crate::cluster::probe_router(readiness.clone()),
+                false,
+            )
+            .await
+            .map_err(|err| format!("probe listener: {err:#}"))?,
+        )
+    };
 
     if !never_ready() {
         channel
@@ -162,6 +188,9 @@ async fn serve(channel: Channel) -> Result<(), String> {
             .await
             .map_err(|err| format!("channel: {err}"))?;
         tracing::info!(event = "generation_ready", pid = std::process::id(), version = %version);
+        readiness
+            .started
+            .store(true, std::sync::atomic::Ordering::SeqCst);
     }
     if let Some(after) = exit_after_ready() {
         tokio::spawn(async move {
@@ -176,6 +205,9 @@ async fn serve(channel: Channel) -> Result<(), String> {
     loop {
         tokio::select! {
             () = &mut signals => {
+                if let Some(probe) = &probe {
+                    probe.stop_accepting().await;
+                }
                 return shutdown(&serving, &channel, config.handoff.drain_timeout).await;
             }
             message = channel.recv::<ToGeneration>() => {
@@ -183,6 +215,9 @@ async fn serve(channel: Channel) -> Result<(), String> {
                     None => {
                         tracing::warn!(event = "keeper_gone", "the keeper's channel closed; draining and exiting");
                         serving.abandon().await;
+                        if let Some(probe) = &probe {
+                            probe.abandon().await;
+                        }
                         serving.wait_idle(ORPHAN_DRAIN).await;
                         return Ok(());
                     }
@@ -195,6 +230,9 @@ async fn serve(channel: Channel) -> Result<(), String> {
                         }
                     }
                     Some((ToGeneration::Shutdown, _)) => {
+                        if let Some(probe) = &probe {
+                            probe.stop_accepting().await;
+                        }
                         return shutdown(&serving, &channel, config.handoff.drain_timeout).await;
                     }
                     Some((ToGeneration::Control(line), _)) => {
@@ -206,12 +244,18 @@ async fn serve(channel: Channel) -> Result<(), String> {
                         draining.store(true, std::sync::atomic::Ordering::SeqCst);
                         drained = true;
                         serving.stop_accepting().await;
+                        if let Some(probe) = &probe {
+                            probe.stop_accepting().await;
+                        }
                         channel.send(&ToKeeper::UdpReleased, &[]).await.map_err(|err| format!("channel: {err}"))?;
                     }
                     Some((ToGeneration::Resume { failed }, _)) => {
                         draining.store(false, std::sync::atomic::Ordering::SeqCst);
                         if std::mem::take(&mut drained) {
                             serving.resume().await.map_err(|err| format!("{err:#}"))?;
+                            if let Some(probe) = &probe {
+                                probe.resume().await.map_err(|err| format!("{err:#}"))?;
+                            }
                         }
                         if let (Some(version), Some(manager)) = (failed, releases.clone()) {
                             let reverted = tokio::task::spawn_blocking(move || {

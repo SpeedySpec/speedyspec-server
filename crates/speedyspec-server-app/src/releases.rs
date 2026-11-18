@@ -1840,3 +1840,68 @@ impl ReleaseManager {
         Ok(Some(step))
     }
 }
+
+/// One member as `status` shows it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MemberStatus {
+    pub pod: String,
+    pub live: bool,
+    pub serving: u64,
+    pub ready: bool,
+    pub server: Option<Version>,
+}
+
+/// This pod's place in the cluster, as `status` shows it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClusterStatus {
+    pub pod: String,
+    pub leader: bool,
+    pub leader_name: Option<String>,
+    pub members: Vec<MemberStatus>,
+}
+
+impl ReleaseManager {
+    /// After `boot`: this pod serves the active set it booted into, and reports itself ready.
+    pub fn booted(&self, running: &Version) {
+        let revision = self.snapshot().revision;
+        let running = running.clone();
+        self.publish(|node| {
+            node.report.serving = revision;
+            node.report.ready = true;
+            node.report.server.running = Some(running);
+        });
+    }
+
+    /// Whether this pod serves the active set (the readiness probe's answer).
+    pub fn is_ready(&self) -> bool {
+        self.node
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .report
+            .ready
+    }
+
+    /// `None` on a single host.
+    pub fn cluster_status(&self) -> Option<ClusterStatus> {
+        if self.cluster.is_single() {
+            return None;
+        }
+        let view = self.cluster.view();
+        let (reports, live) = self.cluster.live_members();
+        Some(ClusterStatus {
+            pod: self.cluster.pod.clone(),
+            leader: view.is_leader,
+            leader_name: view.leader,
+            members: reports
+                .iter()
+                .map(|report| MemberStatus {
+                    pod: report.pod.clone(),
+                    live: live.contains(&report.pod),
+                    serving: report.serving,
+                    ready: report.ready,
+                    server: report.server.running.clone(),
+                })
+                .collect(),
+        })
+    }
+}

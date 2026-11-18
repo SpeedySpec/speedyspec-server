@@ -9,7 +9,8 @@ pub mod rollout;
 pub use cluster::{Clock, Cluster, Liveness, STALE_AFTER};
 pub use compat::{Incompatibility, check_set};
 pub use releases::{
-    AppPolicy, BootReport, FollowOutcome, ReleaseError, ReleaseManager, SERVER_BINARY,
-    ServerUpgrade, Signing, TakeOver, confirm_server, register_running_binary,
+    AppPolicy, BootReport, ClusterStatus, FollowOutcome, MemberStatus, ReleaseError,
+    ReleaseManager, SERVER_BINARY, ServerUpgrade, Signing, TakeOver, confirm_server,
+    register_running_binary,
 };
 pub use rollout::{RolloutStep, leader_last, next_step};

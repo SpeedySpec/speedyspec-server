@@ -154,6 +154,15 @@ impl ControlBackend for ManagedBackend {
             let upgrade = manager
                 .begin_server_switch(targets)
                 .map_err(|err| err.to_string())?;
+            if let Some(order) = &upgrade.rollout {
+                // In a cluster the pods upgrade themselves, turn by turn; nothing happens here now.
+                return Ok(json!(format!(
+                    "rolling out server {} across {} pods ({}), one at a time",
+                    upgrade.version,
+                    order.len(),
+                    order.join(", ")
+                )));
+            }
             // Until the keeper resumes or cancels this generation, its state must not change under the new one,
             // which has already read `state.json`.
             self.draining
@@ -205,7 +214,22 @@ impl ControlBackend for ManagedBackend {
                             .collect()
                     })
                     .unwrap_or_default();
-                listing(&self.server_version, "managed", rows, incompatible)
+                let mut value = listing(&self.server_version, "managed", rows, incompatible);
+                if let Some(cluster) = manager.cluster_status() {
+                    value["cluster"] = json!({
+                        "pod": cluster.pod,
+                        "leader": cluster.leader,
+                        "leader_name": cluster.leader_name,
+                        "members": cluster.members.iter().map(|m| json!({
+                            "pod": m.pod,
+                            "live": m.live,
+                            "serving": m.serving,
+                            "ready": m.ready,
+                            "server": m.server.as_ref().map(ToString::to_string),
+                        })).collect::<Vec<_>>(),
+                    });
+                }
+                value
             }),
             ControlRequest::Check { app } => {
                 let apps: Vec<AppId> = match app {
@@ -481,6 +505,37 @@ pub fn format(request: &ControlRequest, value: &Value) -> String {
                 }
                 if let Some(keeper) = value["keeper"]["version"].as_str() {
                     out.push_str(&format!("keeper\t{keeper}\n"));
+                }
+                let cluster = &value["cluster"];
+                if cluster.is_object() {
+                    let role = if cluster["leader"].as_bool() == Some(true) {
+                        "leader"
+                    } else {
+                        "follower"
+                    };
+                    out.push_str(&format!(
+                        "cluster\t{}\t{role}\t{}\n",
+                        dash(&cluster["pod"]),
+                        dash(&cluster["leader_name"])
+                    ));
+                    for member in cluster["members"].as_array().into_iter().flatten() {
+                        out.push_str(&format!(
+                            "member\t{}\t{}\t{}\t{}\t{}\n",
+                            dash(&member["pod"]),
+                            if member["live"].as_bool() == Some(true) {
+                                "live"
+                            } else {
+                                "stale"
+                            },
+                            member["serving"].as_u64().unwrap_or(0),
+                            if member["ready"].as_bool() == Some(true) {
+                                "ready"
+                            } else {
+                                "not-ready"
+                            },
+                            dash(&member["server"]),
+                        ));
+                    }
                 }
             }
             for app in value["apps"].as_array().into_iter().flatten() {

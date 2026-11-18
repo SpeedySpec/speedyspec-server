@@ -355,3 +355,31 @@ fn reload_refused_in_immutable_mode() {
     assert_eq!(code, 1);
     assert!(stderr.contains("speedyspec CLI"), "{stderr}");
 }
+
+#[test]
+fn single_status_has_no_cluster_lines() {
+    let dir = tempfile::tempdir().unwrap();
+    let toml = format!(
+        "mode = \"managed\"\ndata_dir = \"{data}\"\nrun_dir = \"{run}\"\n[[listener]]\naddress = \"127.0.0.1:0\"\n[app.server]\nkind = \"server\"\n",
+        data = dir.path().join("data").display(),
+        run = dir.path().join("run").display(),
+    );
+    let config = dir.path().join("server.toml");
+    std::fs::write(&config, toml).unwrap();
+    let mut keeper = support::run::start(&config);
+    keeper.address();
+    let socket = dir.path().join("run/keeper.sock");
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let out = loop {
+        let out = support::run::command(&["status", "--config", config.to_str().unwrap()]).1;
+        if out.contains("generation\t") || std::time::Instant::now() > deadline {
+            break out;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    };
+    assert!(socket.exists());
+    assert!(
+        !out.contains("cluster\t") && !out.contains("member\t"),
+        "{out}"
+    );
+}

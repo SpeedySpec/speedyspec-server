@@ -41,7 +41,7 @@ salvo = { version = "1.2", default-features = false, features = ["server", "serv
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
 futures-util = "0.3"
-rustix = { version = "1", features = ["net", "fs", "process", "stdio"] }
+rustix = { version = "1", features = ["net", "fs", "process", "stdio", "system"] }
 quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-ring"] }
 
 [dev-dependencies]

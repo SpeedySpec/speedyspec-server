@@ -86,7 +86,7 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
         runtimes,
         Arc::new(crate::binary::ProcessInspector),
         crate::binary::TARGET.to_string(),
-        Arc::new(speedyspec_server_app::Cluster::single("local")),
+        crate::cluster::build(config)?,
     )
     .map_err(|err| err.to_string())?;
 
@@ -156,7 +156,10 @@ pub fn spawn_auto_update(
             }
             loop {
                 let (manager, id) = (manager.clone(), app.clone());
-                if !paused.load(std::sync::atomic::Ordering::SeqCst) {
+                // Only the leader installs; a follower picks the result up from state.json.
+                if !paused.load(std::sync::atomic::Ordering::SeqCst)
+                    && manager.cluster().view().is_leader
+                {
                     let _ = tokio::task::spawn_blocking(move || update_once(&manager, &id)).await;
                 }
                 tokio::time::sleep(interval).await;

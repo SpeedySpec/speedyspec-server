@@ -69,6 +69,9 @@ pub struct SocketInfo {
     pub tls: Option<(PathBuf, PathBuf)>,
     /// For TCP: whether HTTP/3 is served on the same port (for `Alt-Svc`).
     pub http3: bool,
+    /// The readiness probe listener (`/readyz`, `/livez` only).
+    #[serde(default)]
+    pub probe: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

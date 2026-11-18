@@ -396,6 +396,7 @@ async fn run_async(config_path: &Path) -> Result<(), String> {
             address: bound.listener.local_addr().map_err(|err| err.to_string())?,
             tls: bound.tls.as_ref().map(|t| (t.cert.clone(), t.key.clone())),
             http3: listener.http3,
+            probe: false,
         };
         list.push((info, OwnedFd::from(bound.listener)));
     }
@@ -405,8 +406,23 @@ async fn run_async(config_path: &Path) -> Result<(), String> {
             address: bound.socket.local_addr().map_err(|err| err.to_string())?,
             tls: Some((bound.tls.cert.clone(), bound.tls.key.clone())),
             http3: true,
+            probe: false,
         };
         list.push((info, OwnedFd::from(bound.socket)));
+    }
+    if let Some(probe) = config.cluster.as_ref().and_then(|cluster| cluster.probe) {
+        let listener = std::net::TcpListener::bind(probe)
+            .map_err(|err| format!("binding the probe listener {probe}: {err}"))?;
+        let address = listener.local_addr().map_err(|err| err.to_string())?;
+        tracing::info!(event = "listening", address = %address, protocol = "tcp", role = "probe");
+        let info = SocketInfo {
+            kind: SocketKind::Tcp,
+            address,
+            tls: None,
+            http3: false,
+            probe: true,
+        };
+        list.push((info, OwnedFd::from(listener)));
     }
 
     let binary = if managed {
