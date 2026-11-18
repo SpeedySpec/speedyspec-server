@@ -5,7 +5,7 @@ mod support;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use speedyspec_server_app::{Cluster, Liveness, ReleaseError, ReleaseManager};
+use speedyspec_server_app::{Cluster, Liveness, ReleaseError, ReleaseManager, RolloutStep};
 use speedyspec_server_domain::{AppKind, ClusterMembers, MemberReport, StateStore};
 use speedyspec_server_infra_memory::{MemoryLeadership, MemoryMembers, RecordingRuntime};
 use support::{World, id, v};
@@ -518,4 +518,131 @@ fn take_over_cleans_partials() {
     pods.election.elect("b");
     all[1].0.take_over().unwrap();
     assert!(!partial.exists());
+}
+
+/// Pods `a` (leader) and `b` with a kept server 4.0.0 and blog 1.0.0 active, 2.0.0 kept.
+fn rollout_pods() -> (Pods, Vec<(Arc<ReleaseManager>, Arc<RecordingRuntime>)>) {
+    let mut world = World::new();
+    world.app("server", AppKind::Server, 3);
+    world.app("blog", AppKind::Php, 3);
+    world.publish("blog", "1.0.0", "");
+    world.publish("blog", "2.0.0", "");
+    world.publish_server("4.0.0", "server", "", support::TARGET);
+    let pods = Pods::from(world);
+    let all: Vec<_> = ["a", "b"].iter().map(|p| pods.pod(p)).collect();
+    pods.election.elect("a");
+    let (a, b) = (&all[0].0, &all[1].0);
+    for (manager, version) in [(a, "4.0.0")] {
+        manager.install(&id("server"), Some(v(version))).unwrap();
+    }
+    a.install(&id("blog"), Some(v("1.0.0"))).unwrap();
+    a.install(&id("blog"), Some(v("2.0.0"))).unwrap();
+    b.follow().unwrap();
+    let switching = run_switch(a, "1.0.0");
+    staged(&pods);
+    b.follow().unwrap();
+    finish(switching).unwrap();
+    b.follow().unwrap();
+    for (manager, _) in &all {
+        manager.report_server(running(support::SERVER_VERSION));
+    }
+    (pods, all)
+}
+
+/// A pod's server state: running and confirmed on `version`.
+fn running(version: &str) -> speedyspec_server_domain::PodServer {
+    speedyspec_server_domain::PodServer {
+        running: Some(v(version)),
+        confirmed: Some(v(version)),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn rollout_goes_pod_by_pod_and_confirms() {
+    let (pods, all) = rollout_pods();
+    let (a, b) = (&all[0].0, &all[1].0);
+    let upgrade = a
+        .begin_server_switch(&[(id("server"), v("4.0.0")), (id("blog"), v("2.0.0"))])
+        .unwrap();
+    assert_eq!(
+        upgrade.rollout,
+        Some(vec!["b".to_string(), "a".to_string()])
+    );
+    let saved = pods.world.saved();
+    assert_eq!(saved.server.trial, Some(v("4.0.0")));
+    let rollout = saved.rollout.expect("a rollout");
+    assert_eq!(rollout.previous, v(support::SERVER_VERSION));
+    assert_eq!(
+        saved.pending_group, None,
+        "a cluster records the group in the rollout"
+    );
+
+    assert_eq!(
+        a.advance_rollout().unwrap(),
+        Some(RolloutStep::Turn("b".to_string()))
+    );
+    assert_eq!(
+        pods.world.saved().rollout.unwrap().turn,
+        Some("b".to_string())
+    );
+    assert_eq!(a.advance_rollout().unwrap(), Some(RolloutStep::Wait));
+    b.report_server(running("4.0.0"));
+    assert_eq!(
+        a.advance_rollout().unwrap(),
+        Some(RolloutStep::Turn("a".to_string()))
+    );
+    a.report_server(running("4.0.0"));
+    assert_eq!(a.advance_rollout().unwrap(), Some(RolloutStep::Done));
+    let saved = pods.world.saved();
+    assert_eq!(saved.server.confirmed, Some(v("4.0.0")));
+    assert_eq!(saved.server.trial, None);
+    assert_eq!(saved.rollout, None);
+    assert_eq!(
+        saved.apps[&id("blog")].active,
+        Some(v("2.0.0")),
+        "the group's apps become active"
+    );
+    assert_eq!(a.advance_rollout().unwrap(), None);
+}
+
+#[test]
+fn rollout_failure_marks_version_failed_and_keeps_group_apps() {
+    let (pods, all) = rollout_pods();
+    let (a, b) = (&all[0].0, &all[1].0);
+    a.begin_server_switch(&[(id("server"), v("4.0.0")), (id("blog"), v("2.0.0"))])
+        .unwrap();
+    a.advance_rollout().unwrap();
+    let mut failed = running(support::SERVER_VERSION);
+    failed
+        .failed
+        .insert(v("4.0.0"), "exited during its trial".to_string());
+    b.report_server(failed);
+    assert_eq!(
+        a.advance_rollout().unwrap(),
+        Some(RolloutStep::Failed {
+            pod: "b".to_string(),
+            reason: "exited during its trial".to_string()
+        })
+    );
+    assert!(pods.world.saved().rollout.unwrap().reverting);
+    assert!(
+        a.begin_server_switch(&[(id("server"), v("4.0.0"))])
+            .is_err(),
+        "one rollout at a time"
+    );
+    assert_eq!(a.advance_rollout().unwrap(), Some(RolloutStep::Reverted));
+    let saved = pods.world.saved();
+    assert_eq!(saved.rollout, None);
+    assert_eq!(saved.server.trial, None);
+    assert_eq!(
+        saved.server.confirmed, None,
+        "the confirmed server is unchanged"
+    );
+    assert!(saved.server.failed[&v("4.0.0")].contains("b: exited during its trial"));
+    assert_eq!(
+        saved.apps[&id("blog")].active,
+        Some(v("1.0.0")),
+        "the group's apps stay on their previous versions"
+    );
 }

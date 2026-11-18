@@ -976,6 +976,9 @@ impl ReleaseManager {
 pub struct ServerUpgrade {
     pub version: Version,
     pub binary: PathBuf,
+    /// In a cluster: the pods in the order they will upgrade. The pods upgrade themselves, turn by turn; on a
+    /// single host (`None`) the keeper upgrades now.
+    pub rollout: Option<Vec<String>>,
 }
 
 /// The file name of a kept server binary inside its release directory.
@@ -1011,6 +1014,7 @@ impl ReleaseManager {
             .trial
             .clone()
             .or_else(|| state.pending_group.as_ref().map(|g| g.server.1.clone()))
+            .or_else(|| state.rollout.as_ref().map(|r| r.target.clone()))
         {
             return Err(ReleaseError::UpgradeInProgress(trial));
         }
@@ -1041,6 +1045,42 @@ impl ReleaseManager {
         let version = server_target.ok_or(ReleaseError::ServerSwitchViaKeeper)?;
         crate::compat::check_set(&manifests).map_err(ReleaseError::Incompatible)?;
 
+        let binary = self
+            .store
+            .release_dir(&server_app, &version)
+            .join(SERVER_BINARY);
+        if !self.cluster.is_single() {
+            let (_, live) = self.cluster.live_members();
+            let order = crate::rollout::leader_last(&live, &self.cluster.pod);
+            let previous = state
+                .server
+                .confirmed
+                .clone()
+                .unwrap_or_else(|| self.server.version.clone());
+            let group = (!apps.is_empty()).then(|| PendingGroup {
+                server: (previous.clone(), version.clone()),
+                apps,
+            });
+            let mut next = state.clone();
+            next.rollout = Some(speedyspec_server_domain::Rollout {
+                target: version.clone(),
+                previous,
+                group,
+                order: order.clone(),
+                done: Vec::new(),
+                turn: None,
+                reverting: false,
+                failure: None,
+            });
+            next.server.trial = Some(version.clone());
+            self.commit_state(&mut state, next)?;
+            tracing::info!(event = "rollout_requested", version = %version, order = ?order);
+            return Ok(ServerUpgrade {
+                version,
+                binary,
+                rollout: Some(order),
+            });
+        }
         let mut next = state.clone();
         next.pending_group = Some(PendingGroup {
             server: (self.server.version.clone(), version.clone()),
@@ -1050,6 +1090,7 @@ impl ReleaseManager {
         self.commit_state(&mut state, next)?;
         tracing::info!(event = "upgrade_requested", version = %version);
         Ok(ServerUpgrade {
+            rollout: None,
             binary: self
                 .store
                 .release_dir(&server_app, &version)
@@ -1719,5 +1760,83 @@ impl ReleaseManager {
         let current = state.clone();
         self.commit_state(&mut state, current)?;
         Ok(true)
+    }
+}
+
+impl ReleaseManager {
+    /// Publishes this pod's own server binary state in its member report (a cluster's per-pod trial bookkeeping).
+    pub fn report_server(&self, server: speedyspec_server_domain::PodServer) {
+        self.publish(|node| node.report.server = server);
+    }
+
+    /// The leader's rollout step: decides the next step from the member reports and records it. `None` when no
+    /// rollout is running.
+    pub fn advance_rollout(&self) -> Result<Option<crate::RolloutStep>, ReleaseError> {
+        use crate::RolloutStep;
+
+        self.leading()?;
+        let mut state = self.lock();
+        let Some(rollout) = state.rollout.clone() else {
+            return Ok(None);
+        };
+        let (reports, live) = self.cluster.live_members();
+        let step = crate::rollout::next_step(&rollout, &live, &reports);
+        let mut next = state.clone();
+        let finished_turn = rollout.turn.clone().filter(|turn| {
+            !rollout.reverting && crate::rollout::finished(&reports, turn, &rollout.target)
+        });
+        match &step {
+            RolloutStep::Wait => return Ok(Some(step)),
+            RolloutStep::Turn(pod) => {
+                let plan = next.rollout.as_mut().expect("checked above");
+                if let Some(turn) = finished_turn
+                    && !plan.done.contains(&turn)
+                {
+                    plan.done.push(turn);
+                }
+                if !plan.order.contains(pod) {
+                    plan.order.push(pod.clone());
+                }
+                plan.turn = Some(pod.clone());
+                let reverting = plan.reverting;
+                if next == *state {
+                    return Ok(Some(step));
+                }
+                let plan = next.rollout.as_ref().expect("checked above");
+                tracing::info!(event = "rollout_step", pod = %pod, reverting, version = %if reverting { &plan.previous } else { &plan.target });
+            }
+            RolloutStep::Done => {
+                next.rollout = None;
+                next.server.confirmed = Some(rollout.target.clone());
+                next.server.trial = None;
+                next.app_mut(&self.server.app).active = Some(rollout.target.clone());
+                if let Some(group) = &rollout.group {
+                    for (app, _, target) in &group.apps {
+                        let current = next.app_mut(app);
+                        current.previous = current.active.replace(target.clone());
+                        current.failed.remove(target);
+                    }
+                }
+                tracing::info!(event = "rollout_step", done = true, version = %rollout.target);
+            }
+            RolloutStep::Failed { pod, reason } => {
+                let plan = next.rollout.as_mut().expect("checked above");
+                plan.reverting = true;
+                plan.turn = None;
+                plan.failure = Some((pod.clone(), reason.clone()));
+                tracing::error!(event = "rollout_failed", pod = %pod, version = %rollout.target, reason = %reason);
+            }
+            RolloutStep::Reverted => {
+                let (pod, reason) = rollout.failure.clone().unwrap_or_default();
+                next.rollout = None;
+                next.server.trial = None;
+                next.server
+                    .failed
+                    .insert(rollout.target.clone(), format!("{pod}: {reason}"));
+                tracing::error!(event = "rollout_reverted", version = %rollout.target, pod = %pod);
+            }
+        }
+        self.commit_state(&mut state, next)?;
+        Ok(Some(step))
     }
 }
