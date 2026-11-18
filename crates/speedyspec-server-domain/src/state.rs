@@ -19,6 +19,48 @@ pub struct ReleaseState {
     pub server: ServerState,
     /// A switch that includes the server, recorded before the new generation starts.
     pub pending_group: Option<PendingGroup>,
+    /// The epoch of the leader that wrote this state. Followers ignore a state older than one they have seen.
+    pub epoch: u64,
+    /// A set the leader has staged for every pod to prepare, before it becomes active.
+    pub staged: Option<StagedSet>,
+    /// A server upgrade rolling across the pods.
+    pub rollout: Option<Rollout>,
+}
+
+/// Releases staged for every pod to prepare (the first step of a cluster switch).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StagedSet {
+    /// The revision the set was staged at; prepare reports name it.
+    pub revision: u64,
+    pub targets: Vec<(AppId, Version)>,
+    /// When it was staged, in milliseconds since the Unix epoch (for display only).
+    #[serde(default)]
+    pub since_ms: u64,
+}
+
+/// A server upgrade going pod by pod.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Rollout {
+    pub target: Version,
+    pub previous: Version,
+    /// The apps switched with the server, if any.
+    #[serde(default)]
+    pub group: Option<PendingGroup>,
+    /// The pods in upgrade order.
+    #[serde(default)]
+    pub order: Vec<String>,
+    /// The pods that have finished their turn.
+    #[serde(default)]
+    pub done: Vec<String>,
+    /// The pod upgrading now.
+    #[serde(default)]
+    pub turn: Option<String>,
+    /// Set once a trial failed: the pods in `done` go back to `previous`.
+    #[serde(default)]
+    pub reverting: bool,
+    /// The pod whose trial failed, and why.
+    #[serde(default)]
+    pub failure: Option<(String, String)>,
 }
 
 /// Which server binary is confirmed, which is on trial, and which failed.
@@ -83,7 +125,7 @@ mod tests {
         assert_eq!(serde_json::from_str::<ReleaseState>(&json).unwrap(), state);
 
         let future: ReleaseState = serde_json::from_str(
-            r#"{"revision":1,"epoch":7,"apps":{"admin":{"active":"1.0.0","trial":true}}}"#,
+            r#"{"revision":1,"shards":7,"apps":{"admin":{"active":"1.0.0","trial":true}}}"#,
         )
         .unwrap();
         assert_eq!(future.apps[&admin].active, Some(Version::new(1, 0, 0)));
@@ -123,6 +165,40 @@ mod tests {
                 Some(Version::new(1, 0, 0)),
                 Version::new(2, 0, 0),
             )],
+        });
+        let json = serde_json::to_string(&state).unwrap();
+        assert_eq!(serde_json::from_str::<ReleaseState>(&json).unwrap(), state);
+    }
+
+    #[test]
+    fn cluster_fields_default_when_absent() {
+        let state: ReleaseState = serde_json::from_str(
+            r#"{"revision":9,"apps":{},"server":{"confirmed":"0.1.0"},"pending_group":null}"#,
+        )
+        .unwrap();
+        assert_eq!(state.epoch, 0);
+        assert_eq!(state.staged, None);
+        assert_eq!(state.rollout, None);
+    }
+
+    #[test]
+    fn staged_set_round_trips() {
+        let mut state = ReleaseState::default();
+        state.epoch = 3;
+        state.staged = Some(StagedSet {
+            revision: 12,
+            targets: vec![(AppId::parse("admin").unwrap(), Version::new(2, 0, 0))],
+            since_ms: 1_700_000_000_000,
+        });
+        state.rollout = Some(Rollout {
+            target: Version::new(0, 2, 0),
+            previous: Version::new(0, 1, 0),
+            group: None,
+            order: vec!["a".into(), "b".into()],
+            done: vec!["a".into()],
+            turn: Some("b".into()),
+            reverting: false,
+            failure: None,
         });
         let json = serde_json::to_string(&state).unwrap();
         assert_eq!(serde_json::from_str::<ReleaseState>(&json).unwrap(), state);
