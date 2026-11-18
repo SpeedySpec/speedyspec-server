@@ -16,7 +16,21 @@ pub struct Running {
 }
 
 pub fn start(config: &Path) -> Running {
-    let mut child = Command::new(BIN)
+    start_binary(Path::new(BIN), config, &[])
+}
+
+/// `start` with extra environment variables.
+pub fn start_with(config: &Path, env: &[(&str, &str)]) -> Running {
+    start_binary(Path::new(BIN), config, env)
+}
+
+/// Runs `<binary> run --config <config>`.
+pub fn start_binary(binary: &Path, config: &Path, env: &[(&str, &str)]) -> Running {
+    let mut command = Command::new(binary);
+    for (key, value) in env {
+        command.env(key, value);
+    }
+    let mut child = command
         .arg("run")
         .arg("--config")
         .arg(config)

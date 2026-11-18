@@ -16,6 +16,7 @@ pub struct ReleaseHost {
     stopped: Arc<AtomicBool>,
     key: minisign::KeyPair,
     published: Mutex<Vec<(String, String, String)>>,
+    servers: Mutex<Vec<(String, String)>>,
 }
 
 impl ReleaseHost {
@@ -44,6 +45,7 @@ impl ReleaseHost {
             stopped,
             key,
             published: Mutex::new(Vec::new()),
+            servers: Mutex::new(Vec::new()),
         }
     }
 
@@ -106,6 +108,46 @@ impl ReleaseHost {
         files.insert(
             format!("/{app}/index.json"),
             format!(r#"{{"app":"{app}","releases":[{}]}}"#, entries.join(",")).into_bytes(),
+        );
+    }
+
+    /// Publishes `binary` as server release `version` for this build's target triple.
+    pub fn publish_server(&self, version: &str, binary: &std::path::Path) {
+        let bytes = std::fs::read(binary).unwrap();
+        let sha: String = Sha256::digest(&bytes)
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        let signature = minisign::sign(
+            Some(&self.key.pk),
+            &self.key.sk,
+            std::io::Cursor::new(&bytes),
+            None,
+            None,
+        )
+        .unwrap();
+        let target = speedyspec_server::binary::TARGET;
+        let path = format!("/server/{target}/server-{version}");
+        let mut files = self.files.lock().unwrap();
+        files.insert(path.clone(), bytes);
+        files.insert(
+            format!("{path}.minisig"),
+            signature.into_string().into_bytes(),
+        );
+        let mut published = self.servers.lock().unwrap();
+        published.push((version.to_string(), sha));
+        let entries: Vec<String> = published
+            .iter()
+            .map(|(v, sha)| {
+                let url = self.url(&format!("/server/{target}/server-{v}"));
+                format!(
+                    r#"{{"version":"{v}","published":"x","artifacts":[{{"target":"{target}","url":"{url}","sha256":"{sha}","minisig":"{url}.minisig"}}]}}"#
+                )
+            })
+            .collect();
+        files.insert(
+            "/server/index.json".to_string(),
+            format!(r#"{{"app":"server","releases":[{}]}}"#, entries.join(",")).into_bytes(),
         );
     }
 

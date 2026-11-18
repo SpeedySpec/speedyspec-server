@@ -11,8 +11,10 @@ use speedyspec_server_domain::{AppId, AppKind, AppRuntime, ReleaseManifest, Rele
 use speedyspec_server_infra_fs::FsReleaseStore;
 use speedyspec_server_infra_memory::archive::release;
 use speedyspec_server_infra_memory::{
-    MemorySource, MemoryStateStore, MemoryVerifier, RecordingRuntime,
+    FakeInspector, MemorySource, MemoryStateStore, MemoryVerifier, RecordingRuntime,
 };
+
+pub const TARGET: &str = "test-target";
 
 pub const SERVER_VERSION: &str = "3.2.1";
 
@@ -32,6 +34,7 @@ pub struct World {
     pub policies: BTreeMap<AppId, AppPolicy>,
     /// (app, version) -> (manifest json, files)
     releases: BTreeMap<(String, String), String>,
+    server_releases: Vec<(String, String, String)>,
 }
 
 pub fn url(app: &str) -> String {
@@ -55,6 +58,7 @@ impl World {
             runtime: Arc::new(RecordingRuntime::new()),
             policies: BTreeMap::new(),
             releases: BTreeMap::new(),
+            server_releases: Vec::new(),
         }
     }
 
@@ -91,6 +95,35 @@ impl World {
         self.releases
             .insert((app.to_string(), version.to_string()), sha);
         self.write_index(app);
+    }
+
+    /// Publishes a server "binary" (its manifest as JSON) for `target`, with `kind` in its manifest.
+    pub fn publish_server(&mut self, version: &str, kind: &str, requires: &str, target: &str) {
+        let manifest = format!(
+            r#"{{"app":"server","version":"{version}","kind":"{kind}","requires":{{{requires}}}}}"#
+        );
+        let bytes = manifest.into_bytes();
+        let sha = hex(&Sha256::digest(&bytes));
+        let artifact = format!("https://releases.test/server/{target}/server-{version}");
+        self.source.add_file(&artifact, bytes);
+        self.source
+            .add_file(&format!("{artifact}.minisig"), b"good".to_vec());
+        self.server_releases
+            .push((version.to_string(), target.to_string(), sha));
+        let entries: Vec<String> = self
+            .server_releases
+            .iter()
+            .map(|(version, target, sha)| {
+                let url = format!("https://releases.test/server/{target}/server-{version}");
+                format!(
+                    r#"{{"version":"{version}","published":"x","artifacts":[{{"target":"{target}","url":"{url}","sha256":"{sha}","minisig":"{url}.minisig"}}]}}"#
+                )
+            })
+            .collect();
+        self.source.add_index(
+            &url("server"),
+            &format!(r#"{{"app":"server","releases":[{}]}}"#, entries.join(",")),
+        );
     }
 
     /// Replaces a published release's checksum in the index.
@@ -144,6 +177,8 @@ impl World {
             Arc::new(FsReleaseStore::new(self.dir.path())),
             self.state.clone(),
             runtimes,
+            Arc::new(FakeInspector),
+            TARGET.to_string(),
         )
         .unwrap()
     }
@@ -166,6 +201,7 @@ pub fn server_manifest() -> ReleaseManifest {
         requires: Default::default(),
         static_: None,
         php: None,
+        protocol: None,
     }
 }
 

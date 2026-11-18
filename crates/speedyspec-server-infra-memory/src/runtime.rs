@@ -114,6 +114,7 @@ mod tests {
             requires: Default::default(),
             static_: None,
             php: None,
+            protocol: None,
         }
     }
 

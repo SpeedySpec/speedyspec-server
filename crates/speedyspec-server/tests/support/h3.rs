@@ -38,7 +38,7 @@ pub async fn try_get(
         .map_err(|e| format!("connect: {e}"))?;
     let (mut driver, mut send) = h3::client::new(h3_quinn::Connection::new(conn))
         .await
-        .unwrap();
+        .map_err(|e| format!("h3 setup: {e:?}"))?;
     let drive = tokio::spawn(async move { std::future::poll_fn(|cx| driver.poll_close(cx)).await });
 
     let uri: http::Uri = format!("https://localhost:{}{}", addr.port(), path)
@@ -79,4 +79,22 @@ fn rustls_pemfile(pem: &[u8]) -> Vec<rustls::pki_types::CertificateDer<'static>>
     rustls::pki_types::CertificateDer::pem_slice_iter(pem)
         .map(Result::unwrap)
         .collect()
+}
+
+/// Opens an HTTP/3-capable QUIC connection to `addr` and keeps it open.
+pub async fn open(addr: SocketAddr, ca_pem: &Path) -> (quinn::Endpoint, quinn::Connection) {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let mut roots = rustls::RootCertStore::empty();
+    for cert in rustls_pemfile(&std::fs::read(ca_pem).unwrap()) {
+        roots.add(cert).unwrap();
+    }
+    let mut tls = rustls::ClientConfig::builder()
+        .with_root_certificates(roots)
+        .with_no_client_auth();
+    tls.alpn_protocols = vec![b"h3".to_vec()];
+    let quic = quinn::crypto::rustls::QuicClientConfig::try_from(tls).unwrap();
+    let mut endpoint = quinn::Endpoint::client("127.0.0.1:0".parse().unwrap()).unwrap();
+    endpoint.set_default_client_config(quinn::ClientConfig::new(Arc::new(quic)));
+    let conn = endpoint.connect(addr, "localhost").unwrap().await.unwrap();
+    (endpoint, conn)
 }

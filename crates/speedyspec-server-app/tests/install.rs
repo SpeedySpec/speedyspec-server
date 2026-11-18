@@ -226,15 +226,6 @@ fn kind_mismatch_refused() {
 }
 
 #[test]
-fn server_kind_refused() {
-    let mut w = World::new();
-    w.app("server", AppKind::Server, 3);
-    let err = w.manager().install(&id("server"), None).unwrap_err();
-    assert!(matches!(err, ReleaseError::ServerNeedsKeeper));
-    assert!(err.to_string().contains("keeper"));
-}
-
-#[test]
 fn prerelease_never_candidate_unless_enabled() {
     let mut w = World::new();
     w.app("blog", AppKind::Php, 3);
@@ -262,6 +253,8 @@ fn keep_zero_rejected() {
         )),
         w.state.clone(),
         Default::default(),
+        std::sync::Arc::new(speedyspec_server_infra_memory::FakeInspector),
+        support::TARGET.to_string(),
     )
     .err()
     .unwrap();

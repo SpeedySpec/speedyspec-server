@@ -91,6 +91,18 @@ pub struct Config {
     /// How long a static app keeps serving the previous release's immutable files after a switch
     /// (`[release.static] fallback_grace`, default 1 hour).
     pub static_fallback_grace: Duration,
+    pub handoff: HandoffConfig,
+}
+
+/// Socket handoff timing (`[handoff]`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HandoffConfig {
+    /// How long a new generation has to report ready (default 30 s).
+    pub ready_timeout: Duration,
+    /// How long a draining generation keeps open connections (default 5 minutes).
+    pub drain_timeout: Duration,
+    /// How long a new server version is on trial (default 2 minutes).
+    pub trial_period: Duration,
 }
 
 /// A configuration that could not be read or breaks a rule. Every message names the key and value.
@@ -125,6 +137,16 @@ struct RawConfig {
     limits: RawLimits,
     #[serde(default)]
     release: RawRelease,
+    #[serde(default)]
+    handoff: RawHandoff,
+}
+
+#[derive(Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawHandoff {
+    ready_timeout: Option<String>,
+    drain_timeout: Option<String>,
+    trial_period: Option<String>,
 }
 
 #[derive(Default, Deserialize)]
@@ -412,6 +434,33 @@ impl Config {
             raw.release.static_.fallback_grace.as_deref(),
             DEFAULT_FALLBACK_GRACE,
         )?;
+        let handoff_duration = |key: &str,
+                                value: &Option<String>,
+                                default: Duration|
+         -> Result<Duration, ConfigError> {
+            let found = duration(key, value.as_deref(), default)?;
+            if found < Duration::from_secs(1) {
+                return Err(invalid(format!("{key} must be at least 1s")));
+            }
+            Ok(found)
+        };
+        let handoff = HandoffConfig {
+            ready_timeout: handoff_duration(
+                "handoff.ready_timeout",
+                &raw.handoff.ready_timeout,
+                Duration::from_secs(30),
+            )?,
+            drain_timeout: handoff_duration(
+                "handoff.drain_timeout",
+                &raw.handoff.drain_timeout,
+                Duration::from_secs(300),
+            )?,
+            trial_period: handoff_duration(
+                "handoff.trial_period",
+                &raw.handoff.trial_period,
+                Duration::from_secs(120),
+            )?,
+        };
         let mounts = MountTable::new(mounts).map_err(|err| invalid(format!("mount: {err}")))?;
 
         Ok(Config {
@@ -431,6 +480,7 @@ impl Config {
             access: raw.access.implementation,
             static_memory: raw.limits.static_memory,
             static_fallback_grace,
+            handoff,
         })
     }
 }
@@ -887,6 +937,33 @@ app = "blog"
         rejects(
             &SPEC_EXAMPLE.replace("update = \"auto\"", "update = \"sometimes\""),
             "sometimes",
+        );
+    }
+
+    #[test]
+    fn handoff_defaults_and_overrides() {
+        let config = Config::parse(IMMUTABLE).unwrap();
+        assert_eq!(
+            config.handoff.ready_timeout,
+            std::time::Duration::from_secs(30)
+        );
+        assert_eq!(
+            config.handoff.drain_timeout,
+            std::time::Duration::from_secs(300)
+        );
+        assert_eq!(
+            config.handoff.trial_period,
+            std::time::Duration::from_secs(120)
+        );
+        let config =
+            Config::parse(&format!("{IMMUTABLE}\n[handoff]\ntrial_period = \"3s\"\n")).unwrap();
+        assert_eq!(
+            config.handoff.trial_period,
+            std::time::Duration::from_secs(3)
+        );
+        rejects(
+            &format!("{IMMUTABLE}\n[handoff]\nready_timeout = \"10ms\"\n"),
+            "handoff.ready_timeout",
         );
     }
 }

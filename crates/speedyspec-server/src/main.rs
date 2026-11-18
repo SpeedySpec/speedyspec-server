@@ -2,19 +2,13 @@
 
 use std::path::PathBuf;
 use std::process::ExitCode;
-use std::sync::Arc;
 
 use clap::{Parser, Subcommand};
 use semver::Version;
-use speedyspec_server::boot::{bind, immutable_manifests, prepare, server_manifest};
-use speedyspec_server::config::{Config, DEFAULT_CONFIG, Mode};
-use speedyspec_server::control::{
-    self, ControlBackend, ControlRequest, ControlResponse, ImmutableBackend, ManagedBackend,
-};
-use speedyspec_server::listeners::serve;
-use speedyspec_server::managed;
+use speedyspec_server::boot::server_manifest;
+use speedyspec_server::config::{Config, DEFAULT_CONFIG};
+use speedyspec_server::control::{self, ControlRequest, ControlResponse};
 use speedyspec_server_domain::AppId;
-use speedyspec_server_presentation::build_router;
 
 #[derive(Parser)]
 #[command(
@@ -37,10 +31,18 @@ enum Command {
     },
     /// Print this binary's release manifest as JSON.
     Manifest,
+    /// Run one generation (started only by a keeper, with its channel on fd 3).
+    #[command(hide = true)]
+    Serve,
     /// List, check, install, switch, roll back and pin releases on the running server.
     Release {
         #[command(subcommand)]
         action: ReleaseAction,
+    },
+    /// Hand off to a new generation that re-reads the configuration (listener changes need a restart).
+    Reload {
+        #[arg(long, default_value = DEFAULT_CONFIG)]
+        config: PathBuf,
     },
     /// Show the server's version and mode, and every app's releases.
     Status {
@@ -149,6 +151,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Command::Status { config } => control_command(&config, ControlRequest::Status),
+        Command::Reload { config } => control_command(&config, ControlRequest::Reload),
         Command::Release { action } => match action {
             ReleaseAction::List { app, config } => {
                 control_command(&config, ControlRequest::List { app })
@@ -178,7 +181,14 @@ fn main() -> ExitCode {
                 control_command(&config, ControlRequest::Unpin { app })
             }
         },
-        Command::Run { config } => match run(config) {
+        Command::Serve => match speedyspec_server::generation::run() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(message) => {
+                eprintln!("speedyspec-server: {message}");
+                ExitCode::FAILURE
+            }
+        },
+        Command::Run { config } => match speedyspec_server::keeper::run(&config) {
             Ok(()) => ExitCode::SUCCESS,
             Err(message) => {
                 for line in message.lines() {
@@ -188,69 +198,4 @@ fn main() -> ExitCode {
             }
         },
     }
-}
-
-fn run(path: PathBuf) -> Result<(), String> {
-    let config = Config::load(&path).map_err(|err| err.to_string())?;
-    let state = prepare(&config).map_err(|err| err.to_string())?;
-    let live = state.apps.clone();
-    let runtime =
-        tokio::runtime::Runtime::new().map_err(|err| format!("starting the runtime: {err}"))?;
-
-    runtime.block_on(async {
-        // Installed before any socket is bound (and logged as listening), so a signal sent as soon as the server
-        // reports it is listening is always handled rather than killing the process.
-        let stop = shutdown().map_err(|err| format!("installing signal handlers: {err}"))?;
-        // Bound first: a port in use fails here, before any release data or the control socket is touched.
-        let (tcp, udp) = bind(&config).map_err(|err| err.to_string())?;
-        let server_version =
-            Version::parse(env!("CARGO_PKG_VERSION")).expect("the crate version is SemVer");
-        let backend: Arc<dyn ControlBackend> = if config.mode == Mode::Managed {
-            let (settings, apps) = (config.clone(), live.clone());
-            let manager = tokio::task::spawn_blocking(move || managed::start(&settings, apps))
-                .await
-                .map_err(|err| format!("starting releases: {err}"))??;
-            managed::spawn_auto_update(manager.clone(), managed::auto_apps(&config));
-            managed::spawn_fallback_sweep(live);
-            let apps = config
-                .apps
-                .iter()
-                .map(|(id, app)| (id.clone(), app.kind))
-                .collect();
-            Arc::new(ManagedBackend {
-                manager,
-                apps,
-                server_version,
-            })
-        } else {
-            let manifests = immutable_manifests(&config).map_err(|err| err.to_string())?;
-            Arc::new(ImmutableBackend {
-                manifests,
-                server_version,
-            })
-        };
-        let socket = control::socket_path(&config.run_dir);
-        if let Err(err) = control::serve(&socket, backend, config.mode == Mode::Managed) {
-            tracing::warn!(event = "control_unavailable", path = %socket.display(), error = %err);
-        }
-        let router = Arc::new(build_router(Arc::new(state)));
-        serve(tcp, udp, router, stop)
-            .await
-            .map_err(|err| format!("{err:#}"))
-    })
-}
-
-/// Installs the `SIGTERM` and `SIGINT` handlers now and returns a future that resolves when either arrives.
-fn shutdown() -> std::io::Result<impl std::future::Future<Output = ()>> {
-    use tokio::signal::unix::{SignalKind, signal};
-
-    let mut term = signal(SignalKind::terminate())?;
-    let mut interrupt = signal(SignalKind::interrupt())?;
-    Ok(async move {
-        tokio::select! {
-            _ = term.recv() => {}
-            _ = interrupt.recv() => {}
-        }
-        tracing::info!(event = "shutting_down");
-    })
 }

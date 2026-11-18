@@ -32,11 +32,9 @@ async fn serves_all_protocols_from_prebound_sockets() {
     let secure_addr: SocketAddr = secure.local_addr().unwrap();
     let quic = UdpSocket::bind(secure_addr).unwrap();
 
-    let router = std::sync::Arc::new(
-        Router::new()
-            .goal(ok)
-            .push(Router::with_path("{**rest}").goal(ok)),
-    );
+    let router = Router::new()
+        .goal(ok)
+        .push(Router::with_path("{**rest}").goal(ok));
     let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
     let server = tokio::spawn(serve(
         vec![

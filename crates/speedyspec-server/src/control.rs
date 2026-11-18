@@ -45,6 +45,16 @@ pub enum ControlRequest {
         app: AppId,
     },
     Status,
+    /// Hand off to a new generation of the confirmed binary, re-reading the config (answered by the keeper).
+    Reload,
+    /// Internal: the keeper refused a server switch the generation recorded; undo it without marking it failed.
+    CancelServerSwitch {
+        version: Version,
+    },
+    /// Internal: the keeper confirms a server trial through the generation that passed it.
+    ConfirmServer {
+        version: Version,
+    },
 }
 
 /// `Ok` carries either a line to print (mutating commands) or the data `list`, `check` and `status` format.
@@ -85,6 +95,8 @@ fn listing(server: &Version, mode: &str, apps: Vec<Value>, incompatible: Vec<Str
 /// Managed mode: every request runs through the release manager.
 pub struct ManagedBackend {
     pub manager: Arc<ReleaseManager>,
+    /// Set while this generation drains: release commands are refused.
+    pub draining: Arc<std::sync::atomic::AtomicBool>,
     /// Every configured app and its kind.
     pub apps: BTreeMap<AppId, AppKind>,
     pub server_version: Version,
@@ -121,7 +133,64 @@ impl ManagedBackend {
 impl ControlBackend for ManagedBackend {
     fn handle(&self, request: ControlRequest) -> ControlResponse {
         let manager = &self.manager;
+        let reads = matches!(
+            request,
+            ControlRequest::List { .. } | ControlRequest::Status | ControlRequest::Check { .. }
+        );
+        if !reads
+            && !matches!(
+                request,
+                ControlRequest::ConfirmServer { .. } | ControlRequest::CancelServerSwitch { .. }
+            )
+            && self.draining.load(std::sync::atomic::Ordering::SeqCst)
+        {
+            return ControlResponse::Error(
+                "a server upgrade is in progress; try again once it has been confirmed or has failed"
+                    .to_string(),
+            );
+        }
+        let server = manager.server_app().clone();
+        let upgrade = |targets: &[(AppId, Version)]| -> Result<Value, String> {
+            let upgrade = manager
+                .begin_server_switch(targets)
+                .map_err(|err| err.to_string())?;
+            // Until the keeper resumes or cancels this generation, its state must not change under the new one,
+            // which has already read `state.json`.
+            self.draining
+                .store(true, std::sync::atomic::Ordering::SeqCst);
+            Ok(
+                json!({ "upgrade": { "version": upgrade.version.to_string(), "binary": upgrade.binary } }),
+            )
+        };
         let result: Result<Value, String> = match request {
+            ControlRequest::Switch { targets } if targets.iter().any(|(app, _)| *app == server) => {
+                upgrade(&targets)
+            }
+            ControlRequest::Rollback { app, version } if app == server => {
+                match version.or_else(|| manager.previous_server()) {
+                    Some(version) => upgrade(&[(app, version)]),
+                    None => Err(format!(
+                        "{app}: no older server binary is kept to roll back to"
+                    )),
+                }
+            }
+            ControlRequest::Reload => Err("reload is answered by the keeper".to_string()),
+            ControlRequest::CancelServerSwitch { version } => {
+                let cancelled = manager
+                    .cancel_pending_group(&version)
+                    .map(|()| json!(format!("cancelled server {version}")))
+                    .map_err(|err| err.to_string());
+                self.draining
+                    .store(false, std::sync::atomic::Ordering::SeqCst);
+                cancelled
+            }
+            ControlRequest::ConfirmServer { .. } if crate::binary::confirm_fails() => {
+                Err("test hook: confirming the trial fails".to_string())
+            }
+            ControlRequest::ConfirmServer { version } => manager
+                .confirm_server_trial(&version)
+                .map(|()| json!(format!("confirmed server {version}")))
+                .map_err(|err| err.to_string()),
             ControlRequest::List { app } => self
                 .rows(app.as_ref())
                 .map(|rows| listing(&self.server_version, "managed", rows, Vec::new())),
@@ -235,19 +304,37 @@ impl ControlBackend for ImmutableBackend {
     }
 }
 
-/// Where the control socket of a server with this `run_dir` lives.
+/// Where the keeper's control socket lives: the same path across every handoff.
 pub fn socket_path(run_dir: &Path) -> PathBuf {
-    run_dir.join("control.sock")
+    run_dir.join("keeper.sock")
 }
 
-/// Binds the control socket (replacing a stale one), makes it owner-only, and serves it until the process ends.
-/// With `create_dir` false (immutable mode, which never writes to disk) the socket's directory must already exist,
-/// for example a tmpfs or an `emptyDir` volume.
+/// Answers one raw request line through `backend`, as a raw response line (no newline).
+pub fn answer(backend: &dyn ControlBackend, line: &str) -> String {
+    let response = match serde_json::from_str::<ControlRequest>(line) {
+        Ok(request) => backend.handle(request),
+        Err(err) => ControlResponse::Error(format!("not a control request: {err}")),
+    };
+    serde_json::to_string(&response).expect("responses serialize")
+}
+
+/// Answers raw control request lines. The keeper forwards them to its active generation.
+pub trait LineHandler: Send + Sync {
+    fn handle_line(
+        &self,
+        line: String,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = String> + Send + '_>>;
+}
+
+/// Binds the control socket (replacing a stale one, refusing a live one), makes it owner-only, and serves it until
+/// the process ends, one request line and one response line per connection. With `create_dir` false (immutable
+/// mode, which never writes to disk) the socket's directory must already exist, for example a tmpfs or an `emptyDir`
+/// volume.
 pub fn serve(
     path: &Path,
-    backend: Arc<dyn ControlBackend>,
+    handler: Arc<dyn LineHandler>,
     create_dir: bool,
-) -> std::io::Result<()> {
+) -> std::io::Result<std::os::fd::OwnedFd> {
     if create_dir && let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
@@ -260,15 +347,31 @@ pub fn serve(
             ),
         ));
     }
-    let _ = std::fs::remove_file(path);
-    let listener = tokio::net::UnixListener::bind(path)?;
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
+    // Bound under a temporary name and made owner-only before it appears at `path`, so the socket is never
+    // reachable with looser permissions.
+    let staging = path.with_extension(format!("sock.{}", std::process::id()));
+    let _ = std::fs::remove_file(&staging);
+    let listener = std::os::unix::net::UnixListener::bind(&staging)?;
+    std::fs::set_permissions(&staging, std::fs::Permissions::from_mode(0o600))?;
+    std::fs::rename(&staging, path)?;
+    let copy = std::os::fd::OwnedFd::from(listener.try_clone()?);
+    serve_listener(listener, handler)?;
+    Ok(copy)
+}
+
+/// Serves an already-bound control socket (the keeper adopts its own across a re-exec).
+pub fn serve_listener(
+    listener: std::os::unix::net::UnixListener,
+    handler: Arc<dyn LineHandler>,
+) -> std::io::Result<()> {
+    listener.set_nonblocking(true)?;
+    let listener = tokio::net::UnixListener::from_std(listener)?;
     tokio::spawn(async move {
         loop {
             let Ok((stream, _)) = listener.accept().await else {
                 continue;
             };
-            let backend = backend.clone();
+            let handler = handler.clone();
             tokio::spawn(async move {
                 let (read, mut write) = stream.into_split();
                 let mut line = String::new();
@@ -279,15 +382,7 @@ pub fn serve(
                 {
                     return;
                 }
-                let response = match serde_json::from_str::<ControlRequest>(&line) {
-                    Ok(request) => tokio::task::spawn_blocking(move || backend.handle(request))
-                        .await
-                        .unwrap_or_else(|err| {
-                            ControlResponse::Error(format!("the request failed: {err}"))
-                        }),
-                    Err(err) => ControlResponse::Error(format!("not a control request: {err}")),
-                };
-                let mut out = serde_json::to_string(&response).expect("responses serialize");
+                let mut out = handler.handle_line(line.trim_end().to_string()).await;
                 out.push('\n');
                 let _ = write.write_all(out.as_bytes()).await;
             });
@@ -341,6 +436,24 @@ pub fn format(request: &ControlRequest, value: &Value) -> String {
                     dash(&server["version"]),
                     dash(&server["mode"])
                 ));
+                let generation = &value["keeper"]["generation"];
+                if !generation.is_null() {
+                    let trial = if generation["on_trial"].as_bool() == Some(true) {
+                        "trial"
+                    } else {
+                        "confirmed"
+                    };
+                    out.push_str(&format!(
+                        "generation\t{}\t{}\t{trial}\n",
+                        generation["pid"]
+                            .as_u64()
+                            .map_or_else(|| "-".to_string(), |pid| pid.to_string()),
+                        dash(&generation["version"]),
+                    ));
+                }
+                if let Some(keeper) = value["keeper"]["version"].as_str() {
+                    out.push_str(&format!("keeper\t{keeper}\n"));
+                }
             }
             for app in value["apps"].as_array().into_iter().flatten() {
                 out.push_str(&format!(

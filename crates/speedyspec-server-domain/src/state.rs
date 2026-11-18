@@ -15,6 +15,30 @@ pub struct ReleaseState {
     /// Increases on every write.
     pub revision: u64,
     pub apps: BTreeMap<AppId, AppState>,
+    /// The server binary's trial and confirmation, kept apart from `apps[server]`, whose `kept` lists the kept binaries.
+    pub server: ServerState,
+    /// A switch that includes the server, recorded before the new generation starts.
+    pub pending_group: Option<PendingGroup>,
+}
+
+/// Which server binary is confirmed, which is on trial, and which failed.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ServerState {
+    /// The binary a crashed or failed generation falls back to.
+    pub confirmed: Option<Version>,
+    pub trial: Option<Version>,
+    pub failed: BTreeMap<Version, String>,
+}
+
+/// Every member of a switch that includes the server, with its version before and its target.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PendingGroup {
+    /// (previous, target) of the server.
+    pub server: (Version, Version),
+    /// (app, previous, target) of every other member.
+    #[serde(default)]
+    pub apps: Vec<(AppId, Option<Version>, Version)>,
 }
 
 /// One app's releases.
@@ -64,5 +88,43 @@ mod tests {
         .unwrap();
         assert_eq!(future.apps[&admin].active, Some(Version::new(1, 0, 0)));
         assert!(future.apps[&admin].kept.is_empty());
+    }
+
+    #[test]
+    fn plan2_state_file_still_loads() {
+        let state: ReleaseState = serde_json::from_str(
+            r#"{"revision":4,"apps":{"admin":{"active":"1.0.0","previous":null,"kept":["1.0.0"],"failed":{},"pinned":null}}}"#,
+        )
+        .unwrap();
+        assert_eq!(state.server, ServerState::default());
+        assert_eq!(state.pending_group, None);
+    }
+
+    #[test]
+    fn server_state_round_trips() {
+        let mut state = ReleaseState::default();
+        state.server.confirmed = Some(Version::new(0, 1, 0));
+        state.server.trial = Some(Version::new(0, 2, 0));
+        state
+            .server
+            .failed
+            .insert(Version::new(0, 1, 5), "trial failed".to_string());
+        let json = serde_json::to_string(&state).unwrap();
+        assert_eq!(serde_json::from_str::<ReleaseState>(&json).unwrap(), state);
+    }
+
+    #[test]
+    fn pending_group_round_trips() {
+        let mut state = ReleaseState::default();
+        state.pending_group = Some(PendingGroup {
+            server: (Version::new(0, 1, 0), Version::new(0, 2, 0)),
+            apps: vec![(
+                AppId::parse("admin").unwrap(),
+                Some(Version::new(1, 0, 0)),
+                Version::new(2, 0, 0),
+            )],
+        });
+        let json = serde_json::to_string(&state).unwrap();
+        assert_eq!(serde_json::from_str::<ReleaseState>(&json).unwrap(), state);
     }
 }

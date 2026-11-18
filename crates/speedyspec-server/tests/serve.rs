@@ -414,3 +414,19 @@ fn manifest_and_version() {
     assert_eq!(code, 2);
     assert!(stderr.contains("Usage"), "{stderr}");
 }
+
+/// The README's example configuration parses, so the operator docs cannot drift from the config keys.
+#[test]
+fn readme_example_config_parses() {
+    let readme = include_str!("../../../README.md");
+    let toml = readme
+        .split("```toml\n")
+        .nth(1)
+        .and_then(|rest| rest.split("```").next())
+        .expect("README has a toml block");
+    let config =
+        speedyspec_server::config::Config::parse(toml).unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!(config.listeners.len(), 2);
+    assert!(config.listeners[1].http3);
+    assert_eq!(config.handoff.trial_period, Duration::from_secs(120));
+}
