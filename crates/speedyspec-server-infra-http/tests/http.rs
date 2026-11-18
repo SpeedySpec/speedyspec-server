@@ -158,4 +158,3 @@ fn status_error_names_url() {
         .to_string();
     assert!(err.contains(&target) && err.contains("404"), "{err}");
 }
-

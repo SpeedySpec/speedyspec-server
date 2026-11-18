@@ -3235,6 +3235,7 @@ dependencies = [
 name = "speedyspec-server-presentation"
 version = "0.1.0"
 dependencies = [
+ "arc-swap",
  "bytes",
  "http",
  "ipnet",

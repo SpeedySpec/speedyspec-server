@@ -1,6 +1,7 @@
 //! What answers once a request has reached an app.
 
 use std::sync::Arc;
+use std::time::Instant;
 
 use bytes::Bytes;
 use http::{HeaderMap, HeaderValue, Method, Response, StatusCode, header};
@@ -13,7 +14,7 @@ pub const RETRY_AFTER_SECONDS: &str = "30";
 #[derive(Clone, Debug)]
 pub enum AppHandle {
     /// A static release, served from memory.
-    Static(Arc<StaticSet>),
+    Static(StaticApp),
     /// An app with no release installed yet.
     NotInstalled,
     /// A PHP app, until the worker pool exists.
@@ -32,7 +33,7 @@ impl AppHandle {
         headers: &HeaderMap,
     ) -> Response<Bytes> {
         match self {
-            AppHandle::Static(set) => set.respond(method, mount_prefix, rel_path, query, headers),
+            AppHandle::Static(app) => app.respond(method, mount_prefix, rel_path, query, headers),
             AppHandle::NotInstalled | AppHandle::PhpPlaceholder => {
                 let mut response = text(StatusCode::SERVICE_UNAVAILABLE, "service unavailable");
                 response.headers_mut().insert(
@@ -43,6 +44,46 @@ impl AppHandle {
             }
             AppHandle::AdminApiPlaceholder => text(StatusCode::NOT_FOUND, "not found"),
         }
+    }
+}
+
+/// A live static release, and what is left of the one before it.
+#[derive(Clone, Debug)]
+pub struct StaticApp {
+    pub current: Arc<StaticSet>,
+    pub fallback: Option<Fallback>,
+}
+
+/// The previous release's immutable files, served for paths the current release lacks until `until`, so pages
+/// loaded before a switch can still fetch their hashed assets.
+#[derive(Clone, Debug)]
+pub struct Fallback {
+    pub set: Arc<StaticSet>,
+    pub until: Instant,
+}
+
+impl StaticApp {
+    fn respond(
+        &self,
+        method: &Method,
+        mount_prefix: &str,
+        rel_path: &str,
+        query: Option<&str>,
+        headers: &HeaderMap,
+    ) -> Response<Bytes> {
+        let response = self
+            .current
+            .respond(method, mount_prefix, rel_path, query, headers);
+        if response.status() == StatusCode::NOT_FOUND
+            && let Some(fallback) = &self.fallback
+            && Instant::now() < fallback.until
+            && fallback.set.file(rel_path).is_some()
+        {
+            return fallback
+                .set
+                .respond(method, mount_prefix, rel_path, query, headers);
+        }
+        response
     }
 }
 

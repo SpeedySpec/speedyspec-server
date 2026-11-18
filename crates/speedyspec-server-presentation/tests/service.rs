@@ -10,8 +10,19 @@ use speedyspec_server_domain::{
     Access, AccessCheck, AppId, HostMatch, Mount, MountTable, StaticSection,
 };
 use speedyspec_server_infra_access_dev::{DenySignedIn, DevAllowAll};
-use speedyspec_server_presentation::{AppHandle, ForwardedHeaders, ServeState, build_router};
+use std::time::{Duration, Instant};
+
+use speedyspec_server_presentation::{
+    AppHandle, Fallback, ForwardedHeaders, LiveApps, ServeState, StaticApp, build_router,
+};
 use speedyspec_server_static::StaticSet;
+
+fn static_app(set: Arc<StaticSet>) -> AppHandle {
+    AppHandle::Static(StaticApp {
+        current: set,
+        fallback: None,
+    })
+}
 
 const ADMIN_SECRET: &str = "admin secret page";
 
@@ -66,8 +77,8 @@ fn service(access: Arc<dyn AccessCheck>) -> (tempfile::TempDir, Service) {
     ])
     .unwrap();
     let apps = [
-        ("site", AppHandle::Static(public)),
-        ("admin", AppHandle::Static(admin)),
+        ("site", static_app(public)),
+        ("admin", static_app(admin)),
         ("server", AppHandle::AdminApiPlaceholder),
         ("blog", AppHandle::PhpPlaceholder),
     ]
@@ -76,7 +87,7 @@ fn service(access: Arc<dyn AccessCheck>) -> (tempfile::TempDir, Service) {
     .collect();
     let state = ServeState {
         mounts,
-        apps,
+        apps: LiveApps::new(apps),
         access,
         trusted_proxies: Vec::new(),
         forwarded_headers: ForwardedHeaders::XForwarded,
@@ -209,12 +220,12 @@ async fn no_mount() {
     let dir = tempfile::tempdir().unwrap();
     let admin = set(dir.path(), &[("index.html", "x")]);
     let mounts = MountTable::new(vec![mount("/admin/", "admin", Access::Public)]).unwrap();
-    let apps = [(AppId::parse("admin").unwrap(), AppHandle::Static(admin))]
+    let apps = [(AppId::parse("admin").unwrap(), static_app(admin))]
         .into_iter()
         .collect();
     let state = ServeState {
         mounts,
-        apps,
+        apps: LiveApps::new(apps),
         access: Arc::new(DenySignedIn),
         trusted_proxies: Vec::new(),
         forwarded_headers: ForwardedHeaders::XForwarded,
@@ -231,12 +242,12 @@ async fn mount_redirect_location_is_percent_encoded() {
     let dir = tempfile::tempdir().unwrap();
     let menu = set(dir.path(), &[("index.html", "x")]);
     let mounts = MountTable::new(vec![mount("/menü/", "menu", Access::Public)]).unwrap();
-    let apps = [(AppId::parse("menu").unwrap(), AppHandle::Static(menu))]
+    let apps = [(AppId::parse("menu").unwrap(), static_app(menu))]
         .into_iter()
         .collect();
     let state = ServeState {
         mounts,
-        apps,
+        apps: LiveApps::new(apps),
         access: Arc::new(DenySignedIn),
         trusted_proxies: Vec::new(),
         forwarded_headers: ForwardedHeaders::XForwarded,
@@ -245,4 +256,83 @@ async fn mount_redirect_location_is_percent_encoded() {
     let response = raw(&service, "/men%C3%BC").await;
     assert_eq!(response.status_code, Some(StatusCode::PERMANENT_REDIRECT));
     assert_eq!(response.headers().get("location").unwrap(), "/men%C3%BC/");
+}
+
+fn with_fallback(current: Arc<StaticSet>, old: Arc<StaticSet>, until: Instant) -> Service {
+    let mounts = MountTable::new(vec![mount("/", "site", Access::Public)]).unwrap();
+    let handle = AppHandle::Static(StaticApp {
+        current,
+        fallback: Some(Fallback {
+            set: Arc::new(old.immutable_only()),
+            until,
+        }),
+    });
+    let apps = [(AppId::parse("site").unwrap(), handle)]
+        .into_iter()
+        .collect();
+    let state = ServeState {
+        mounts,
+        apps: LiveApps::new(apps),
+        access: Arc::new(DenySignedIn),
+        trusted_proxies: Vec::new(),
+        forwarded_headers: ForwardedHeaders::XForwarded,
+    };
+    Service::new(build_router(Arc::new(state)))
+}
+
+fn immutable_set(dir: &Path, files: &[(&str, &str)]) -> Arc<StaticSet> {
+    for (rel, body) in files {
+        write(dir, rel, body.as_bytes());
+    }
+    let section = StaticSection {
+        root: "dist".to_string(),
+        not_found: None,
+        cache: vec![speedyspec_server_domain::CacheRule {
+            pattern: "_astro/**".to_string(),
+            cache_control: "public, max-age=31536000, immutable".to_string(),
+        }],
+    };
+    Arc::new(StaticSet::build(dir, &section, u64::MAX).unwrap())
+}
+
+#[tokio::test]
+async fn fallback_serves_old_hashed_asset_during_grace() {
+    let dir = tempfile::tempdir().unwrap();
+    let old = immutable_set(
+        &dir.path().join("a"),
+        &[("index.html", "old"), ("_astro/old.js", "old js")],
+    );
+    let new = immutable_set(
+        &dir.path().join("b"),
+        &[("index.html", "new"), ("_astro/new.js", "new js")],
+    );
+    let service = with_fallback(new, old, Instant::now() + Duration::from_secs(60));
+    let mut response = raw(&service, "/_astro/old.js").await;
+    assert_eq!(response.status_code, Some(StatusCode::OK));
+    assert_eq!(body(&mut response).await, "old js");
+    assert_eq!(body(&mut raw(&service, "/").await).await, "new");
+}
+
+#[tokio::test]
+async fn fallback_ignored_after_grace() {
+    let dir = tempfile::tempdir().unwrap();
+    let old = immutable_set(&dir.path().join("a"), &[("_astro/old.js", "old js")]);
+    let new = immutable_set(&dir.path().join("b"), &[("index.html", "new")]);
+    let service = with_fallback(new, old, Instant::now() - Duration::from_secs(1));
+    assert_eq!(
+        raw(&service, "/_astro/old.js").await.status_code,
+        Some(StatusCode::NOT_FOUND)
+    );
+}
+
+#[tokio::test]
+async fn fallback_never_serves_html() {
+    let dir = tempfile::tempdir().unwrap();
+    let old = immutable_set(&dir.path().join("a"), &[("old.html", "old page")]);
+    let new = immutable_set(&dir.path().join("b"), &[("index.html", "new")]);
+    let service = with_fallback(new, old, Instant::now() + Duration::from_secs(60));
+    assert_eq!(
+        raw(&service, "/old.html").await.status_code,
+        Some(StatusCode::NOT_FOUND)
+    );
 }

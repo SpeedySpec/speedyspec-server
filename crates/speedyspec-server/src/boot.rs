@@ -10,7 +10,7 @@ use serde::Deserialize;
 use speedyspec_server_app::{Incompatibility, check_set};
 use speedyspec_server_domain::{AccessCheck, AppId, AppKind, MANIFEST_FILE, ReleaseManifest};
 use speedyspec_server_infra_access_dev::{DenySignedIn, DevAllowAll};
-use speedyspec_server_presentation::{AppHandle, ServeState};
+use speedyspec_server_presentation::{AppHandle, LiveApps, ServeState, StaticApp};
 use speedyspec_server_static::StaticSet;
 
 use crate::config::{AccessImpl, Config};
@@ -94,7 +94,10 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
                         }
                     })?;
                 tracing::info!(event = "static_loaded", app = %id, version = %manifest.version, bytes = set.total_bytes());
-                AppHandle::Static(Arc::new(set))
+                AppHandle::Static(StaticApp {
+                    current: Arc::new(set),
+                    fallback: None,
+                })
             }
         };
         apps.insert(id.clone(), handle);
@@ -106,7 +109,7 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
 
     Ok(ServeState {
         mounts: config.mounts.clone(),
-        apps,
+        apps: LiveApps::new(apps),
         access,
         trusted_proxies: config.trusted_proxies.clone(),
         forwarded_headers: config.forwarded_headers,

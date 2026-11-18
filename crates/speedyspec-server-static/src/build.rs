@@ -114,6 +114,23 @@ impl StaticSet {
         })
     }
 
+    /// Only the files whose `Cache-Control` says `immutable` (hashed assets), and no not-found page: what is kept of
+    /// an old release for the grace period after a switch.
+    pub fn immutable_only(&self) -> StaticSet {
+        let files: HashMap<String, StaticFile> = self
+            .files
+            .iter()
+            .filter(|(_, file)| file.cache_control.contains("immutable"))
+            .map(|(rel, file)| (rel.clone(), file.clone()))
+            .collect();
+        let total_bytes = files.values().map(size).sum();
+        StaticSet {
+            files,
+            not_found: None,
+            total_bytes,
+        }
+    }
+
     /// Bytes held: every identity body and every kept compressed variant.
     pub fn total_bytes(&self) -> u64 {
         self.total_bytes

@@ -2,10 +2,12 @@
 
 pub mod forwarded;
 pub mod handlers;
+pub mod live;
 pub mod path;
 pub mod service;
 
 pub use forwarded::{ForwardedHeaders, RequestOrigin, origin};
-pub use handlers::AppHandle;
+pub use handlers::{AppHandle, Fallback, StaticApp};
+pub use live::LiveApps;
 pub use path::{PathRejection, normalize};
 pub use service::{ServeState, build_router};
