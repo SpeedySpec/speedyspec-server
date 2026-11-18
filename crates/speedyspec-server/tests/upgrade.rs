@@ -185,8 +185,14 @@ fn failed_trial_resumes_old_generation() {
     w.ok(&["release", "switch", "server@0.2.0"]);
     let mut failures = 0;
     let resumed = wait_for(Duration::from_secs(8), || {
-        if get(w.addr, "/").0 != 200 {
-            failures += 1;
+        // The trial generation crashes on purpose; a request it had just accepted is reset with it, which clients
+        // retry. A failure is one whose retry 100 ms later also fails.
+        let once = || std::panic::catch_unwind(|| get(w.addr, "/").0).ok();
+        if once() != Some(200) {
+            std::thread::sleep(Duration::from_millis(100));
+            if once() != Some(200) {
+                failures += 1;
+            }
         }
         w.generation().0 == old_pid
     });

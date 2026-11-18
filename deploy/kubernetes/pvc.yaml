@@ -1,0 +1,11 @@
+# The shared data_dir. Pods on several nodes need ReadWriteMany (NFS, CephFS, EFS, Azure Files, ...); a single-node
+# cluster can use ReadWriteOnce, which every pod on that node shares.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: speedyspec-data
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 2Gi

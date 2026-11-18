@@ -113,6 +113,11 @@ impl ReleaseHost {
 
     /// Publishes `binary` as server release `version` for this build's target triple.
     pub fn publish_server(&self, version: &str, binary: &std::path::Path) {
+        self.publish_server_for(version, binary, speedyspec_server::binary::TARGET);
+    }
+
+    /// Publishes `binary` as server release `version` for `target` (another platform's binary, for a container).
+    pub fn publish_server_for(&self, version: &str, binary: &std::path::Path, target: &str) {
         let bytes = std::fs::read(binary).unwrap();
         let sha: String = Sha256::digest(&bytes)
             .iter()
@@ -126,7 +131,6 @@ impl ReleaseHost {
             None,
         )
         .unwrap();
-        let target = speedyspec_server::binary::TARGET;
         let path = format!("/server/{target}/server-{version}");
         let mut files = self.files.lock().unwrap();
         files.insert(path.clone(), bytes);
@@ -149,6 +153,25 @@ impl ReleaseHost {
             "/server/index.json".to_string(),
             format!(r#"{{"app":"server","releases":[{}]}}"#, entries.join(",")).into_bytes(),
         );
+    }
+
+    /// Writes every published file under `dir`, with this host's URL in the indexes replaced by `base` (where
+    /// another server will serve the same files).
+    pub fn write_to(&self, dir: &std::path::Path, base: &str) {
+        let own = format!("http://{}", self.addr);
+        for (path, bytes) in self.files.lock().unwrap().iter() {
+            let target = dir.join(path.trim_start_matches('/'));
+            std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+            let bytes = if path.ends_with(".json") {
+                String::from_utf8(bytes.clone())
+                    .unwrap()
+                    .replace(&own, base)
+                    .into_bytes()
+            } else {
+                bytes.clone()
+            };
+            std::fs::write(target, bytes).unwrap();
+        }
     }
 
     /// Paths requested so far.

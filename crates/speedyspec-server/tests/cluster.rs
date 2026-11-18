@@ -27,8 +27,8 @@ kind = "server"
 leadership = "file"
 pod = "{pod}"
 probe = "127.0.0.1:0"
-lease_duration = "3s"
-renew_deadline = "2s"
+lease_duration = "6s"
+renew_deadline = "4s"
 retry_period = "500ms"
 poll_interval = "300ms"
 prepare_timeout = "10s"
@@ -40,6 +40,12 @@ prepare_timeout = "10s"
     let path = dir.join(format!("{pod}.toml"));
     std::fs::write(&path, toml).unwrap();
     path
+}
+
+/// Each test runs three keepers and three generations; run them one at a time so lease renewals are not starved.
+fn serial() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    LOCK.lock().unwrap_or_else(|p| p.into_inner())
 }
 
 fn wait_for(timeout: Duration, mut done: impl FnMut() -> bool) -> bool {
@@ -78,6 +84,7 @@ fn status(config: &Path) -> String {
 
 #[test]
 fn probe_answers_livez_and_readyz() {
+    let _serial = serial();
     let dir = tempfile::tempdir().unwrap();
     let config = pod_config(dir.path(), "a", "");
     let mut keeper = start_with(&config, &[]);
@@ -386,6 +393,7 @@ fn watching(pods: &Pods, version: &str, body: impl FnOnce()) -> (usize, usize, V
 
 #[test]
 fn rolling_upgrade_goes_pod_by_pod() {
+    let _serial = serial();
     let pods = cluster("c", &["a", "b"], |_| Vec::new());
     pods.serve_admin("c");
     pods.host.publish_server("0.2.0", Path::new(BIN));
@@ -418,6 +426,7 @@ fn rolling_upgrade_goes_pod_by_pod() {
 
 #[test]
 fn rolling_upgrade_stops_and_reverts_on_one_failed_trial() {
+    let _serial = serial();
     let pods = cluster("c", &["a", "b"], |name| {
         if name == "b" {
             vec![
@@ -467,6 +476,7 @@ fn rolling_upgrade_stops_and_reverts_on_one_failed_trial() {
 
 #[test]
 fn follower_first_start_does_not_write_shared_store() {
+    let _serial = serial();
     let mut pods = Pods::new();
     pods.start("a", &[]);
     let kept = pods.dir.path().join("data/releases/server");
@@ -544,6 +554,7 @@ fn signal(name: &str, pid: u32) {
 
 #[test]
 fn two_step_switch_lands_on_all_three_within_one_poll() {
+    let _serial = serial();
     let pods = cluster("c", &["a", "b"], |_| Vec::new());
     pods.ok("c", &["release", "install", "admin", "1.0.0"]);
     pods.ok("c", &["release", "switch", "admin@1.0.0"]);
@@ -567,6 +578,7 @@ fn two_step_switch_lands_on_all_three_within_one_poll() {
 
 #[test]
 fn member_failing_prepare_goes_not_ready_others_switch() {
+    let _serial = serial();
     let mut pods = Pods::new();
     pods.start("c", &[]);
     assert!(wait_for(Duration::from_secs(10), || pods
@@ -614,6 +626,7 @@ fn member_failing_prepare_goes_not_ready_others_switch() {
 
 #[test]
 fn killing_leader_mid_switch_hands_over() {
+    let _serial = serial();
     let pods = cluster("c", &["a", "b"], |_| Vec::new());
     pods.ok("c", &["release", "install", "admin", "1.0.0"]);
     // b stops answering, so c waits for it (up to the staleness window) with the set staged.
@@ -663,6 +676,7 @@ fn killing_leader_mid_switch_hands_over() {
 
 #[test]
 fn deposed_leader_late_write_ignored() {
+    let _serial = serial();
     let pods = cluster("c", &["a", "b"], |_| Vec::new());
     pods.serve_admin("c");
     let first_epoch = pods.state()["epoch"].as_u64().unwrap();
@@ -675,12 +689,12 @@ fn deposed_leader_late_write_ignored() {
             .find(|n| pods.leader(n).as_deref() == Some(*n))
     };
     assert!(
-        wait_for(Duration::from_secs(15), || new_leader().is_some()),
+        wait_for(Duration::from_secs(25), || new_leader().is_some()),
         "no takeover: {}",
         pods.events()
     );
     assert!(
-        stopped.elapsed() >= Duration::from_secs(2),
+        stopped.elapsed() >= Duration::from_secs(4),
         "not before c's renew deadline"
     );
     let leader = new_leader().unwrap();
@@ -711,6 +725,7 @@ fn deposed_leader_late_write_ignored() {
 
 #[test]
 fn follower_refuses_release_commands_with_leader_name() {
+    let _serial = serial();
     let pods = cluster("c", &["a"], |_| Vec::new());
     let (code, _, stderr) = pods.cmd("a", &["release", "install", "admin", "1.0.0"]);
     assert_eq!(code, 1);

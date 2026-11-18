@@ -1,0 +1,32 @@
+# An example config; replace the sources and keys with your release indexes and minisign public keys.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: speedyspec-config
+data:
+  server.toml: |
+    mode = "managed"
+    data_dir = "/var/lib/speedyspec"
+    run_dir = "/run/speedyspec"
+
+    [[listener]]
+    address = "0.0.0.0:8080"
+
+    [app.server]
+    kind = "server"
+    source = "https://releases.example.com/server/index.json"
+    keys = ["RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3"]
+
+    [app.admin]
+    kind = "static"
+    source = "https://releases.example.com/admin/index.json"
+    keys = ["RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3"]
+
+    [[mount]]
+    path = "/admin/"
+    app = "admin"
+    access = "signed-in"
+
+    [cluster]
+    leadership = "kubernetes"
+    probe = "0.0.0.0:9090"
