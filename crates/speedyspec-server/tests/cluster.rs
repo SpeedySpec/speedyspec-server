@@ -737,3 +737,54 @@ fn follower_refuses_release_commands_with_leader_name() {
     assert_eq!(code, 0, "reads work on any pod");
     assert!(out.contains("admin\t"), "{out}");
 }
+
+/// Final review I8: a pod that missed a rollout (its member file still says the old version) starts on the
+/// cluster's confirmed binary when it comes back, and reports it confirmed.
+#[test]
+fn pod_that_missed_a_rollout_catches_up_on_start() {
+    let _serial = serial();
+    let mut pods = Pods::new();
+    pods.start("a", &[]);
+    assert!(wait_for(Duration::from_secs(10), || pods
+        .leader("a")
+        .as_deref()
+        == Some("a")));
+    pods.host.publish_server("0.2.0", Path::new(BIN));
+    pods.ok("a", &["release", "install", "server", "0.2.0"]);
+    pods.ok("a", &["release", "switch", "server@0.2.0"]);
+    assert!(
+        wait_for(Duration::from_secs(60), || {
+            let state = pods.state();
+            state["server"]["confirmed"] == "0.2.0" && state["rollout"].is_null()
+        }),
+        "{}",
+        pods.events()
+    );
+    // z was away for the rollout: its member file still names 0.1.0 as its confirmed binary.
+    let members = pods.dir.path().join("data/cluster/members");
+    std::fs::write(
+        members.join("z.json"),
+        r#"{"pod":"z","heartbeat":1,"server":{"running":"0.1.0","confirmed":"0.1.0"}}"#,
+    )
+    .unwrap();
+    pods.start("z", &[]);
+    assert!(
+        wait_for(Duration::from_secs(10), || pods
+            .generation("z")
+            .is_some_and(|g| g.1 == "0.2.0" && g.2 == "confirmed")),
+        "z still runs {:?}",
+        pods.generation("z")
+    );
+    assert!(
+        wait_for(Duration::from_secs(5), || pods
+            .cmd("a", &["status"])
+            .1
+            .contains("member\tz\tlive\t")),
+        "{}",
+        pods.cmd("a", &["status"]).1
+    );
+    let report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(members.join("z.json")).unwrap()).unwrap();
+    assert_eq!(report["server"]["confirmed"], "0.2.0");
+    assert!(report["server"]["trial"].is_null());
+}

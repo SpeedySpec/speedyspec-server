@@ -70,8 +70,12 @@ pub fn next_step(rollout: &Rollout, live: &[String], members: &[MemberReport]) -
     joiners.sort();
     order.extend(joiners);
     for pod in order.iter().filter(|pod| is_live(pod)) {
+        // Only a failure recorded during this rollout counts (an earlier rollout of the same version may have
+        // failed, and its record stays in the pod's member file).
         if let Some(report) = members.iter().find(|r| r.pod == *pod)
             && let Some(reason) = report.server.failed.get(&rollout.target)
+            && (report.server.failed_in.get(&rollout.target) == Some(&rollout.id)
+                || (rollout.id == 0 && !report.server.failed_in.contains_key(&rollout.target)))
         {
             return RolloutStep::Failed {
                 pod: pod.clone(),
@@ -105,6 +109,7 @@ mod tests {
 
     fn rollout(order: &[&str]) -> Rollout {
         Rollout {
+            id: 0,
             target: v("0.2.0"),
             previous: v("0.1.0"),
             group: None,
@@ -301,5 +306,29 @@ mod tests {
             next_step(&plan, &live(&["a", "b", "e"]), &members),
             RolloutStep::Done
         );
+    }
+
+    /// Final review I7: a failure recorded in an earlier rollout of the same version does not fail this one.
+    #[test]
+    fn old_failure_does_not_fail_a_new_rollout() {
+        let mut plan = rollout(&["b", "a"]);
+        plan.id = 9;
+        let mut b = pod("b", "0.1.0", false);
+        b.server
+            .failed
+            .insert(v("0.2.0"), "an earlier rollout".to_string());
+        b.server.failed_in.insert(v("0.2.0"), 4);
+        let members = [pod("a", "0.1.0", false), b.clone()];
+        assert_eq!(
+            next_step(&plan, &live(&["a", "b"]), &members),
+            RolloutStep::Turn("b".to_string())
+        );
+        let mut b = b;
+        b.server.failed_in.insert(v("0.2.0"), 9);
+        let members = [pod("a", "0.1.0", false), b];
+        assert!(matches!(
+            next_step(&plan, &live(&["a", "b"]), &members),
+            RolloutStep::Failed { .. }
+        ));
     }
 }

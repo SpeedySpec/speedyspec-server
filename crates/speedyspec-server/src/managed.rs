@@ -138,10 +138,18 @@ pub fn confirmed_binary(config: &Config) -> Result<std::path::PathBuf, String> {
             .ok()
             .and_then(|reports| reports.into_iter().find(|r| r.pod == cluster.pod))
             .and_then(|report| report.server.confirmed);
-        let shared = FsStateStore::new(data_dir, &config.run_dir)
-            .load()
-            .ok()
-            .and_then(|state| state.server.confirmed);
+        let shared_state = FsStateStore::new(data_dir, &config.run_dir).load().ok();
+        let shared = shared_state
+            .as_ref()
+            .and_then(|state| state.server.confirmed.clone());
+        // With no rollout running, every pod belongs on the cluster's confirmed binary: one that missed a rollout
+        // catches up when it starts. During a rollout a pod keeps its own confirmed one.
+        let rolling = shared_state
+            .as_ref()
+            .is_some_and(|state| state.rollout.is_some());
+        if !rolling && let Some(path) = shared.as_ref().and_then(binary) {
+            return Ok(path);
+        }
         return Ok(own
             .as_ref()
             .and_then(binary)

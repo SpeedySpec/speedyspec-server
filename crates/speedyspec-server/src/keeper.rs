@@ -259,6 +259,7 @@ impl Keeper {
                     version,
                     binary,
                     reply: tx,
+                    from_rollout: false,
                 })
                 .map_err(|_| "the keeper is stopping".to_string())?;
             let result = rx
@@ -613,15 +614,17 @@ async fn supervise(
                 tracing::info!(event = "trial_confirmed", version = %version);
             }
             Some(command) = command_rx.recv() => {
-                let (version, binary, reload, reply) = match command {
-                    KeeperCommand::Upgrade { version, binary, reply } => (version, binary, false, reply),
+                let (version, binary, reload, from_rollout, reply) = match command {
+                    KeeperCommand::Upgrade { version, binary, reply, from_rollout } => {
+                        (version, binary, false, from_rollout, reply)
+                    }
                     KeeperCommand::Reload { reply } => {
                         let version = current.generation.version.lock().unwrap_or_else(|p| p.into_inner()).clone();
                         let Some(version) = version else {
                             let _ = reply.send(Err("the current generation has not reported its version".to_string()));
                             continue;
                         };
-                        (version, confirmed.clone(), true, reply)
+                        (version, confirmed.clone(), true, false, reply)
                     }
                 };
                 let failed = (!reload).then(|| version.clone());
@@ -638,7 +641,7 @@ async fn supervise(
                 };
                 if let Some(refusal) = refusal {
                     // The generation already recorded the switch; it is undone without marking anything failed.
-                    if !reload {
+                    if !reload && !from_rollout {
                         keeper.cancel_switch(&current, &version).await;
                     }
                     let _ = reply.send(Err(refusal));
@@ -659,7 +662,7 @@ async fn supervise(
                 }
                 match keeper.start_ready(&binary, &stopping).await {
                     Err(why) if *stopping.borrow() => {
-                        if !reload {
+                        if !reload && !from_rollout {
                             keeper.cancel_switch(&current, &version).await;
                         }
                         let _ = reply.send(Err(format!("server {version} did not start: {why}")));
@@ -700,7 +703,7 @@ async fn supervise(
                         tracing::info!(event = "upgrade_from_rollout", version = %version);
                         let (reply, answer) = oneshot::channel();
                         if let Some(commands) = keeper.commands.get() {
-                            let _ = commands.send(KeeperCommand::Upgrade { version, binary, reply });
+                            let _ = commands.send(KeeperCommand::Upgrade { version, binary, reply, from_rollout: true });
                         }
                         tokio::spawn(async move {
                             if let Ok(Err(err)) = answer.await {
@@ -781,6 +784,8 @@ pub(crate) enum KeeperCommand {
         version: Version,
         binary: PathBuf,
         reply: oneshot::Sender<Result<String, String>>,
+        /// Asked for by the generation on its rollout turn: there is no recorded switch to cancel on a refusal.
+        from_rollout: bool,
     },
     Reload {
         reply: oneshot::Sender<Result<String, String>>,

@@ -41,6 +41,31 @@ impl Pods {
         *self.now.lock().unwrap() += by;
     }
 
+    /// A pod whose binary is `server` (another version than the world's).
+    fn pod_running(
+        &self,
+        name: &str,
+        server: speedyspec_server_domain::ReleaseManifest,
+    ) -> (Arc<ReleaseManager>, Arc<RecordingRuntime>) {
+        let runtime = Arc::new(RecordingRuntime::new());
+        let cluster = Cluster::new(
+            name,
+            Arc::new(self.election.member(name)),
+            Arc::new(self.members.clone()),
+            Duration::from_millis(20),
+            Duration::from_secs(60),
+        );
+        let now = self.now.clone();
+        let cluster = cluster.with_clock(Arc::new(move || *now.lock().unwrap()));
+        (
+            Arc::new(
+                self.world
+                    .manager_with_server(Arc::new(cluster), runtime.clone(), server),
+            ),
+            runtime,
+        )
+    }
+
     fn pod(&self, name: &str) -> (Arc<ReleaseManager>, Arc<RecordingRuntime>) {
         let runtime = Arc::new(RecordingRuntime::new());
         let cluster = Cluster::new(
@@ -617,6 +642,8 @@ fn rollout_failure_marks_version_failed_and_keeps_group_apps() {
     failed
         .failed
         .insert(v("4.0.0"), "exited during its trial".to_string());
+    let rollout = pods.world.saved().rollout.unwrap().id;
+    failed.failed_in.insert(v("4.0.0"), rollout);
     b.report_server(failed);
     assert_eq!(
         a.advance_rollout().unwrap(),
@@ -645,4 +672,191 @@ fn rollout_failure_marks_version_failed_and_keeps_group_apps() {
         Some(v("1.0.0")),
         "the group's apps stay on their previous versions"
     );
+}
+
+/// Final review I2: a take-over that fails (an unreadable state.json) is tried again by the next leader step, and
+/// `repair` does not run before it has succeeded (it would write this pod's stale state over the inherited one).
+#[test]
+fn failed_take_over_is_retried_and_repair_waits_for_it() {
+    let (pods, all) = three();
+    let switching = run_switch(&all[0].0, "2.0.0");
+    let revision = staged(&pods);
+    pods.election.expire();
+    let _ = finish(switching);
+    pods.election.elect("b");
+    let before = pods.world.saved();
+    pods.world.state.fail_next_load();
+    assert!(
+        all[1].0.lead(None).is_err(),
+        "the take-over could not read the state"
+    );
+    assert_eq!(
+        pods.world.saved(),
+        before,
+        "nothing was written before a successful take-over"
+    );
+    let leading = {
+        let b = all[1].0.clone();
+        std::thread::spawn(move || b.lead(None))
+    };
+    std::thread::sleep(Duration::from_millis(60));
+    all[2].0.follow().unwrap();
+    leading.join().unwrap().unwrap();
+    let saved = pods.world.saved();
+    assert_eq!(
+        saved.staged, None,
+        "the retried take-over finished revision {revision}"
+    );
+    assert_eq!(saved.apps[&id("blog")].active, Some(v("2.0.0")));
+}
+
+/// Final review I3: a new leader keeping its running binary does not write over the previous leader's writes it had
+/// not picked up yet.
+#[test]
+fn keep_running_binary_keeps_writes_it_had_not_seen() {
+    let (pods, all) = three();
+    all[0].0.pin(&id("blog"), v("1.0.0")).unwrap();
+    pods.election.elect("b");
+    let exe = pods.world.dir.path().join("exe");
+    std::fs::write(&exe, b"binary").unwrap();
+    all[1].0.keep_running_binary(&exe).unwrap();
+    assert_eq!(
+        pods.world.saved().apps[&id("blog")].pinned,
+        Some(v("1.0.0")),
+        "a's pin survived b's first write"
+    );
+}
+
+/// Final review I4: a recreated Lease starts its epoch over at 0; the new leader still writes an epoch above every
+/// one written before, so followers follow it.
+#[test]
+fn recreated_lease_epoch_still_moves_followers() {
+    let (pods, all) = three();
+    pods.election.elect("a");
+    all[0].0.take_over().unwrap();
+    all[0].0.pin(&id("blog"), v("1.0.0")).unwrap();
+    all[2].0.follow().unwrap();
+    let old = pods.world.saved().epoch;
+    assert!(old >= 2);
+    pods.election.recreate();
+    pods.election.elect("b");
+    assert!(
+        all[1].0.cluster().view().epoch < old,
+        "the new Lease's epoch is lower"
+    );
+    all[1].0.take_over().unwrap();
+    all[1].0.unpin(&id("blog")).unwrap();
+    assert!(pods.world.saved().epoch > old);
+    all[2].0.follow().unwrap();
+    assert_eq!(
+        all[2].0.status().apps[&id("blog")].pinned,
+        None,
+        "c follows the new leader"
+    );
+    assert!(
+        !all[1].0.repair().unwrap(),
+        "the leader's own state is not seen as stale"
+    );
+}
+
+/// Final review I5: while member files cannot be read, the leader neither prunes (a follower may still serve the old
+/// release) nor stops waiting at once.
+#[test]
+fn unreadable_members_block_pruning_and_waiting() {
+    let mut world = World::new();
+    world.app("blog", AppKind::Php, 1);
+    for version in ["1.0.0", "2.0.0"] {
+        world.publish("blog", version, "");
+    }
+    let pods = Pods::from(world);
+    let all: Vec<_> = ["a", "b"].iter().map(|p| pods.pod(p)).collect();
+    pods.election.elect("a");
+    let (a, b) = (&all[0].0, &all[1].0);
+    b.follow().unwrap();
+    a.install(&id("blog"), Some(v("1.0.0"))).unwrap();
+    let switching = run_switch(a, "1.0.0");
+    staged(&pods);
+    b.follow().unwrap();
+    finish(switching).unwrap();
+    b.follow().unwrap();
+    a.install(&id("blog"), Some(v("2.0.0"))).unwrap();
+    pods.members.fail_reads(true);
+    let switching = run_switch(a, "2.0.0");
+    staged(&pods);
+    std::thread::sleep(Duration::from_millis(150));
+    assert!(
+        !switching.is_finished(),
+        "the leader keeps waiting while it cannot see the members"
+    );
+    pods.advance(Duration::from_secs(61));
+    finish(switching).unwrap();
+    assert!(
+        pods.world.release_dir("blog", "1.0.0").exists(),
+        "nothing is pruned while it cannot tell what the followers serve"
+    );
+    pods.members.fail_reads(false);
+}
+
+/// Final review I6: a turn that never finishes (the pod never upgrades) fails the rollout after the turn timeout.
+#[test]
+fn stuck_turn_fails_after_turn_timeout() {
+    let (pods, all) = rollout_pods();
+    let a = &all[0].0;
+    a.begin_server_switch(&[(id("server"), v("4.0.0"))])
+        .unwrap();
+    assert_eq!(
+        a.advance_rollout().unwrap(),
+        Some(RolloutStep::Turn("b".to_string()))
+    );
+    assert_eq!(a.advance_rollout().unwrap(), Some(RolloutStep::Wait));
+    for _ in 0..70 {
+        pods.advance(Duration::from_secs(9));
+        for (manager, _) in &all {
+            manager.heartbeat();
+        }
+    }
+    let step = a.advance_rollout().unwrap();
+    assert!(
+        matches!(step, Some(RolloutStep::Failed { ref pod, ref reason }) if pod == "b" && reason.contains("did not finish its turn")),
+        "{step:?}"
+    );
+}
+
+/// Final review I8: a pod that starts on the cluster's confirmed version (it missed the rollout) reports it
+/// confirmed, not on trial forever.
+#[test]
+fn pod_booting_on_cluster_confirmed_version_is_confirmed() {
+    let (pods, all) = rollout_pods();
+    let a = &all[0].0;
+    a.begin_server_switch(&[(id("server"), v("4.0.0"))])
+        .unwrap();
+    a.advance_rollout().unwrap();
+    all[1].0.report_server(running("4.0.0"));
+    a.advance_rollout().unwrap();
+    a.report_server(running("4.0.0"));
+    assert_eq!(a.advance_rollout().unwrap(), Some(RolloutStep::Done));
+    // A third pod whose member file still says 3.2.1 starts on the cluster's 4.0.0.
+    let mut old = running(support::SERVER_VERSION);
+    old.failed.clear();
+    pods.members
+        .write(&MemberReport {
+            pod: "c".to_string(),
+            heartbeat: 1,
+            server: old,
+            ..Default::default()
+        })
+        .unwrap();
+    let mut world_server = support::server_manifest();
+    world_server.version = v("4.0.0");
+    let (c, _) = pods.pod_running("c", world_server);
+    c.booted(&v("4.0.0"));
+    let report = pods
+        .members
+        .read_all()
+        .unwrap()
+        .into_iter()
+        .find(|r| r.pod == "c")
+        .unwrap();
+    assert_eq!(report.server.confirmed, Some(v("4.0.0")));
+    assert_eq!(report.server.trial, None);
 }

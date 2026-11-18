@@ -25,6 +25,13 @@ pub struct Cluster {
     /// The newest epoch this pod has seen in `state.json`.
     pub(crate) seen_epoch: AtomicU64,
     pub(crate) liveness: Mutex<Liveness>,
+    /// The least epoch this leader stamps: above every epoch it inherited, even if the Lease was recreated and its
+    /// own epoch started over.
+    pub(crate) epoch_floor: AtomicU64,
+    /// How long one pod's rollout turn may take before the rollout fails.
+    pub(crate) turn_timeout: Duration,
+    /// The rollout turn the leader is waiting on, and since when (its own clock).
+    pub(crate) turn_clock: Mutex<Option<(String, Instant)>>,
 }
 
 /// A pod counts as stale once its heartbeat counter has not changed for this long, as this pod saw it.
@@ -86,6 +93,9 @@ impl Cluster {
             single: false,
             seen_epoch: AtomicU64::new(0),
             liveness: Mutex::new(Liveness::new()),
+            epoch_floor: AtomicU64::new(0),
+            turn_timeout: Duration::from_secs(600),
+            turn_clock: Mutex::new(None),
         }
     }
 
@@ -103,6 +113,17 @@ impl Cluster {
         );
         cluster.single = true;
         cluster
+    }
+
+    /// Replaces how long a rollout turn may take (default 10 minutes).
+    pub fn with_turn_timeout(mut self, timeout: Duration) -> Cluster {
+        self.turn_timeout = timeout;
+        self
+    }
+
+    /// The epoch this pod stamps on a write it makes as leader with `view`.
+    pub(crate) fn stamp(&self, lease_epoch: u64) -> u64 {
+        lease_epoch.max(self.epoch_floor.load(Ordering::SeqCst))
     }
 
     /// Replaces the clock liveness is judged by.
@@ -143,13 +164,21 @@ impl Cluster {
         (self.clock)()
     }
 
-    /// Every member report, and which pods are live now. This pod always counts as live.
+    /// Every member report, and which pods are live now (this pod always is); for display, an unreadable set of
+    /// member files reads as only this pod.
     pub(crate) fn live_members(&self) -> (Vec<MemberReport>, Vec<String>) {
+        self.members_now()
+            .unwrap_or_else(|| (Vec::new(), vec![self.pod.clone()]))
+    }
+
+    /// As `live_members`, but `None` when the member files cannot all be read: callers deciding what to prune or
+    /// whom to wait for must then not act as if the other pods were gone.
+    pub(crate) fn members_now(&self) -> Option<(Vec<MemberReport>, Vec<String>)> {
         let reports = match self.members.read_all() {
             Ok(reports) => reports,
             Err(err) => {
                 tracing::warn!(event = "members_unreadable", error = %err);
-                Vec::new()
+                return None;
             }
         };
         let mut live = self
@@ -161,7 +190,7 @@ impl Cluster {
             live.push(self.pod.clone());
             live.sort();
         }
-        (reports, live)
+        Some((reports, live))
     }
 
     /// Records an epoch seen in `state.json`; returns false when it is older than one seen before.

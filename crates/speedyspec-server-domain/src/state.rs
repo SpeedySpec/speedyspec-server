@@ -41,6 +41,9 @@ pub struct StagedSet {
 /// A server upgrade going pod by pod.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Rollout {
+    /// Which rollout this is (the state revision it began at), so failures are counted only within it.
+    #[serde(default)]
+    pub id: u64,
     pub target: Version,
     pub previous: Version,
     /// The apps switched with the server, if any.
@@ -191,6 +194,7 @@ mod tests {
             since_ms: 1_700_000_000_000,
         });
         state.rollout = Some(Rollout {
+            id: 0,
             target: Version::new(0, 2, 0),
             previous: Version::new(0, 1, 0),
             group: None,

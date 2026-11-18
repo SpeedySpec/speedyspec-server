@@ -223,6 +223,7 @@ renew_deadline = "10s"                 # a leader that has not renewed by then s
 retry_period = "2s"
 poll_interval = "2s"                   # how often followers read state.json
 prepare_timeout = "60s"                # how long a switch waits for every live pod to prepare
+turn_timeout = "10m"                   # how long one pod's rollout turn may take before the rollout fails
 probe = "0.0.0.0:9090"                 # /livez and /readyz
 ```
 

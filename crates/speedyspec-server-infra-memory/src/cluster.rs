@@ -90,6 +90,14 @@ impl MemoryLeadership {
         });
     }
 
+    /// The Lease was deleted and made again: nobody leads, and its transition count starts over at 0.
+    pub fn recreate(&self) {
+        self.change(|e| {
+            e.leader = None;
+            e.epoch = 0;
+        });
+    }
+
     /// Nobody leads (a lease that ran out); the epoch stays until the next election.
     pub fn expire(&self) {
         self.change(|e| e.leader = None);
@@ -143,6 +151,7 @@ impl Leadership for MemoryMember {
 struct Members {
     reports: BTreeMap<String, MemberReport>,
     fail_next_read: bool,
+    fail_reads: bool,
 }
 
 /// Every pod's member report, shared in memory. Clones share the same reports.
@@ -159,6 +168,11 @@ impl MemoryMembers {
     /// The next `read_all` fails, as a torn or unreadable volume would.
     pub fn fail_next_read(&self) {
         self.lock().fail_next_read = true;
+    }
+
+    /// While set, every `read_all` fails (an unreachable volume).
+    pub fn fail_reads(&self, fail: bool) {
+        self.lock().fail_reads = fail;
     }
 
     /// Changes a pod's stored report in place.
@@ -188,7 +202,7 @@ impl ClusterMembers for MemoryMembers {
 
     fn read_all(&self) -> Result<Vec<MemberReport>, StateError> {
         let mut members = self.lock();
-        if std::mem::take(&mut members.fail_next_read) {
+        if std::mem::take(&mut members.fail_next_read) || members.fail_reads {
             return Err(StateError {
                 path: "memory://members".into(),
                 message: "test: read failed".to_string(),

@@ -186,3 +186,19 @@ fn step_down_releases_at_once() {
         started.elapsed()
     );
 }
+
+/// Final review I5: a member file this reader has never parsed is an error, not a missing pod, so callers fail
+/// closed (no pruning, keep waiting) instead of forgetting that pod.
+#[test]
+fn never_parsed_member_file_is_an_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = FsClusterMembers::new(dir.path(), "a");
+    a.write(&report("a", 1)).unwrap();
+    let path = dir.path().join("cluster/members/a.json");
+    let bytes = std::fs::read(&path).unwrap();
+    std::fs::write(&path, &bytes[..bytes.len() / 2]).unwrap();
+    let reader = FsClusterMembers::new(dir.path(), "reader");
+    assert!(reader.read_all().is_err(), "never parsed, so unknown");
+    a.write(&report("a", 2)).unwrap();
+    assert_eq!(reader.read_all().unwrap()[0].heartbeat, 2);
+}

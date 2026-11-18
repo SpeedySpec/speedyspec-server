@@ -122,6 +122,8 @@ pub struct ClusterConfig {
     pub retry_period: Duration,
     pub poll_interval: Duration,
     pub prepare_timeout: Duration,
+    /// How long one pod's rollout turn may take before the rollout fails (default 10 minutes).
+    pub turn_timeout: Duration,
     /// Where `/readyz` and `/livez` are served, if anywhere.
     pub probe: Option<SocketAddr>,
 }
@@ -187,6 +189,7 @@ struct RawCluster {
     retry_period: Option<String>,
     poll_interval: Option<String>,
     prepare_timeout: Option<String>,
+    turn_timeout: Option<String>,
     probe: Option<SocketAddr>,
 }
 
@@ -269,6 +272,11 @@ fn cluster_config(mode: Mode, raw: RawCluster) -> Result<ClusterConfig, ConfigEr
             "cluster.prepare_timeout",
             raw.prepare_timeout.as_deref(),
             Duration::from_secs(60),
+        )?,
+        turn_timeout: duration(
+            "cluster.turn_timeout",
+            raw.turn_timeout.as_deref(),
+            Duration::from_secs(600),
         )?,
         probe: raw.probe,
     })

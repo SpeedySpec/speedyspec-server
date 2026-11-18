@@ -89,8 +89,17 @@ impl ClusterMembers for FsClusterMembers {
                     if unreadable.insert(pod.to_string()) {
                         tracing::warn!(event = "member_unreadable", pod = %pod, error = %err, "keeping its last good report");
                     }
-                    if let Some(report) = last_good.get(pod) {
-                        reports.insert(pod.to_string(), report.clone());
+                    match last_good.get(pod) {
+                        Some(report) => {
+                            reports.insert(pod.to_string(), report.clone());
+                        }
+                        // Never parsed: this pod's state is unknown, so the caller must not act as if it were gone.
+                        None => {
+                            return Err(self.error(
+                                &entry.path(),
+                                format!("member {pod} has not been readable yet: {err}"),
+                            ));
+                        }
                     }
                 }
             }

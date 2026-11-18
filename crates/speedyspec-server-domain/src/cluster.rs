@@ -46,6 +46,8 @@ pub struct PodServer {
     pub confirmed: Option<Version>,
     pub trial: Option<Version>,
     pub failed: BTreeMap<Version, String>,
+    /// For each failed version, the rollout (its `id`) whose trial failed; an older rollout's failure does not count.
+    pub failed_in: BTreeMap<Version, u64>,
 }
 
 /// What one pod tells the others, in `<data_dir>/cluster/members/<pod>.json`.

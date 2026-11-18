@@ -18,7 +18,9 @@ Leadership is a `coordination.k8s.io/v1` Lease (`cluster.leadership = "kubernete
   are ever compared.
 - A leader that has not renewed for `renew_deadline` (10 s) stops writing **at once**, before anyone else could take
   the Lease (`renew_deadline < lease_duration` is checked at start).
-- The Lease's `leaseTransitions` is the **epoch**. It grows every time the leader changes.
+- The Lease's `leaseTransitions` is the **epoch**. It grows every time the leader changes. If the Lease is deleted
+  and made again, its count starts over at 0. A new leader therefore stamps its writes above every epoch it
+  inherited from `state.json`, so the epochs pods see keep growing.
 - The pod needs a Role allowing `create` on Leases and `get` and `update` on that one Lease
   (`deploy/kubernetes/role.yaml`).
 
@@ -32,11 +34,21 @@ Leadership is a `coordination.k8s.io/v1` Lease (`cluster.leadership = "kubernete
 Every `state.json` write carries the writing leader's epoch. A pod ignores a `state.json` whose epoch is older than
 the Lease's current epoch, or than one it has already seen (`stale_epoch_ignored`). That is how a deposed leader's
 late write is kept out. A new leader inherits the previous leader's state and re-stamps it with its own epoch at once
-(`took_over`). It also rewrites a `state.json` that a late write replaced (`stale_epoch_repaired`).
+(`took_over`); a take-over that fails (an unreadable file) is tried again on every leader step, and nothing else is
+written until it succeeds. The leader also rewrites a `state.json` that a late write replaced
+(`stale_epoch_repaired`).
+
+The fencing is not absolute. A leader checks that it still leads right before each write, and stops writing once
+`renew_deadline` has passed without a renewal. A write that started just before that, and stalls (for example a
+hard-mounted NFS write), can still land after another pod has taken over. Followers ignore it, because of its older
+epoch, and the new leader rewrites the file at its next step.
 
 `flock` is never taken on the shared volume (it is unreliable on network file systems). Files are written by
-replacing them: a temp file, fsync, rename, then fsync the directory. A reader that finds a file it cannot parse (a
-torn read) keeps its last good copy and logs `member_unreadable` once.
+replacing them: a temp file of the writer's own, fsync, rename, then fsync the directory. A reader that finds
+`state.json` or a member file it cannot parse (a torn read) keeps its last good copy and logs `state_unreadable` or
+`member_unreadable` once. A member file that a reader has never yet parsed counts as unknown, not as absent: while any
+member file is unknown or the directory cannot be read, the leader prunes nothing and keeps waiting for pods to
+prepare.
 
 ## Member files and liveness
 
@@ -91,6 +103,12 @@ rolling out server 0.2.0 across 3 pods (web-1, web-2, web-0), one at a time
 - When every live pod runs the target, confirmed, `state.json`'s confirmed server becomes the target, and any apps
   switched in the same group become active.
 - A pod that goes stale during its turn is skipped. It is not counted as upgraded.
+- A turn that does not finish within `cluster.turn_timeout` (10 minutes) fails the rollout, which then reverts. A pod
+  whose keeper refused its turn (another handoff still draining) asks again every 15 s.
+- Only a trial failure recorded during this rollout counts. A version that failed before can be rolled out again
+  once its cause is fixed.
+- A pod that missed a rollout (it was down) starts on the cluster's confirmed binary when it comes back, provided no
+  rollout is running.
 
 Each pod's fall-back binary is its own confirmed version, recorded in its member file. When a pod starts as the
 leader, it keeps its running executable as a server release, so every pod has a binary to revert to. Followers never

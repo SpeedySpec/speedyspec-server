@@ -12,6 +12,9 @@ use speedyspec_server_infra_fs::{FileLeaseLeadership, FsClusterMembers};
 
 use crate::config::{Config, Leadership};
 
+/// How long a pod waits before asking its keeper again for a rollout turn that has not started.
+const TURN_RETRY: Duration = Duration::from_secs(15);
+
 /// How often a pod rewrites its member file.
 pub const HEARTBEAT: Duration = Duration::from_secs(2);
 
@@ -58,13 +61,16 @@ pub fn build(config: &Config) -> Result<Arc<Cluster>, String> {
         }
         Leadership::Single => unreachable!("handled above"),
     };
-    Ok(Arc::new(Cluster::new(
-        &settings.pod,
-        leadership,
-        Arc::new(FsClusterMembers::new(data_dir, &settings.pod)),
-        settings.poll_interval,
-        settings.prepare_timeout,
-    )))
+    Ok(Arc::new(
+        Cluster::new(
+            &settings.pod,
+            leadership,
+            Arc::new(FsClusterMembers::new(data_dir, &settings.pod)),
+            settings.poll_interval,
+            settings.prepare_timeout,
+        )
+        .with_turn_timeout(settings.turn_timeout),
+    ))
 }
 
 /// What the readiness probe answers from.
@@ -142,7 +148,7 @@ pub fn spawn_loops(manager: Arc<ReleaseManager>, paused: Arc<AtomicBool>, on_tur
     }
     tokio::spawn(async move {
         let mut was_leader = false;
-        let mut requested: Option<semver::Version> = None;
+        let mut requested: Option<(semver::Version, std::time::Instant)> = None;
         let interval = manager.cluster().poll_interval();
         loop {
             tokio::time::sleep(interval).await;
@@ -157,28 +163,14 @@ pub fn spawn_loops(manager: Arc<ReleaseManager>, paused: Arc<AtomicBool>, on_tur
                     tracing::warn!(event = "leader_lost", pod = %manager.cluster().pod(), leader = ?view.leader);
                 }
             }
-            let became = view.is_leader && !was_leader;
             was_leader = view.is_leader;
             let worker = manager.clone();
             let _ = tokio::task::spawn_blocking(move || {
                 let manager = worker;
                 if view.is_leader {
-                    if became {
-                        if let Ok(exe) = std::env::current_exe()
-                            && let Err(err) = manager.keep_running_binary(&exe)
-                        {
-                            tracing::warn!(event = "keep_running_binary_failed", error = %err);
-                        }
-                        match manager.take_over() {
-                            Ok(outcome) => tracing::info!(event = "took_over", finished = ?outcome.finished, abandoned = ?outcome.abandoned),
-                            Err(err) => tracing::error!(event = "take_over_failed", error = %err),
-                        }
-                    }
-                    if let Err(err) = manager.repair() {
-                        tracing::warn!(event = "repair_failed", error = %err);
-                    }
-                    if let Err(err) = manager.advance_rollout() {
-                        tracing::warn!(event = "rollout_step_failed", error = %err);
+                    let exe = std::env::current_exe().ok();
+                    if let Err(err) = manager.lead(exe.as_deref()) {
+                        tracing::warn!(event = "lead_step_failed", error = %err);
                     }
                 } else if let Err(err) = manager.follow() {
                     tracing::warn!(event = "follow_failed", error = %err);
@@ -186,9 +178,13 @@ pub fn spawn_loops(manager: Arc<ReleaseManager>, paused: Arc<AtomicBool>, on_tur
             })
             .await;
             if let Some((version, binary)) = manager.my_turn() {
-                if requested.as_ref() != Some(&version) {
+                // Asked again after a while: the keeper may have refused (another handoff still draining).
+                let again = requested
+                    .as_ref()
+                    .is_none_or(|(asked, at)| *asked != version || at.elapsed() >= TURN_RETRY);
+                if again {
                     tracing::info!(event = "rollout_turn", pod = %manager.cluster().pod(), version = %version);
-                    requested = Some(version.clone());
+                    requested = Some((version.clone(), std::time::Instant::now()));
                     on_turn(version, binary);
                 }
             } else {

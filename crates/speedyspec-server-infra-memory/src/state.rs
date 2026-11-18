@@ -9,6 +9,7 @@ use speedyspec_server_domain::{ReleaseState, StateError, StateStore};
 #[derive(Default)]
 pub struct MemoryStateStore {
     inner: Mutex<(ReleaseState, bool, usize)>,
+    fail_load: std::sync::atomic::AtomicBool,
 }
 
 impl MemoryStateStore {
@@ -20,7 +21,14 @@ impl MemoryStateStore {
     pub fn with(state: ReleaseState) -> MemoryStateStore {
         MemoryStateStore {
             inner: Mutex::new((state, false, 0)),
+            fail_load: std::sync::atomic::AtomicBool::new(false),
         }
+    }
+
+    /// The next `load` fails, as an unreadable file would.
+    pub fn fail_next_load(&self) {
+        self.fail_load
+            .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
     pub fn fail_next_save(&self) {
@@ -35,6 +43,15 @@ impl MemoryStateStore {
 
 impl StateStore for MemoryStateStore {
     fn load(&self) -> Result<ReleaseState, StateError> {
+        if self
+            .fail_load
+            .swap(false, std::sync::atomic::Ordering::SeqCst)
+        {
+            return Err(StateError {
+                path: "memory://state".into(),
+                message: "test: load failed".to_string(),
+            });
+        }
         Ok(self.inner.lock().unwrap().0.clone())
     }
 
