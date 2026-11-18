@@ -57,16 +57,35 @@ impl BinaryInspector for ProcessInspector {
     }
 }
 
-/// This binary's version. With the `test-hooks` feature, a file `<exe>.test-version` next to the executable
-/// overrides it, so tests can run several "versions" of one build.
+/// This binary's version. With the `test-hooks` feature: a file `<exe>.test-version` next to the executable
+/// overrides it; or, with `SPEEDYSPEC_TEST_VERSION_FROM_DIR` set, the name of the executable's directory does when it
+/// is a version (kept server binaries live in `releases/server/<version>/`).
 pub fn own_version() -> semver::Version {
     #[cfg(feature = "test-hooks")]
-    if let Some(text) = hook("test-version")
-        && let Ok(version) = semver::Version::parse(text.trim())
-    {
+    if let Some(version) = test_version() {
         return version;
     }
     semver::Version::parse(env!("CARGO_PKG_VERSION")).expect("the crate version is SemVer")
+}
+
+#[cfg(feature = "test-hooks")]
+fn test_version() -> Option<semver::Version> {
+    if let Some(text) = hook("test-version") {
+        return semver::Version::parse(text.trim()).ok();
+    }
+    if std::env::var_os("SPEEDYSPEC_TEST_VERSION_FROM_DIR").is_some() {
+        let exe = std::env::current_exe().ok()?;
+        let dir = exe.parent()?.file_name()?.to_str()?;
+        return semver::Version::parse(dir).ok();
+    }
+    None
+}
+
+/// Under `test-hooks`: whether `SPEEDYSPEC_TEST_<NAME>_VERSION` names this binary's version.
+#[cfg(feature = "test-hooks")]
+fn env_hook_applies(name: &str) -> bool {
+    std::env::var(format!("SPEEDYSPEC_TEST_{name}_VERSION"))
+        .is_ok_and(|v| v.trim() == own_version().to_string())
 }
 
 /// The keeper protocol this binary speaks (`<exe>.test-protocol` overrides it under `test-hooks`).
@@ -80,19 +99,40 @@ pub fn own_protocol() -> u32 {
     speedyspec_server_handoff::PROTOCOL
 }
 
-/// Under `test-hooks`: how long after `Ready` a generation exits on its own (`<exe>.test-exit-after-ready-ms`).
+/// Under `test-hooks`: how long after `Ready` a generation exits on its own (`<exe>.test-exit-after-ready-ms`, or
+/// `SPEEDYSPEC_TEST_EXIT_AFTER_READY_MS` when `SPEEDYSPEC_TEST_EXIT_VERSION` is this version).
 pub fn exit_after_ready() -> Option<Duration> {
     #[cfg(feature = "test-hooks")]
-    if let Some(text) = hook("test-exit-after-ready-ms") {
-        return text.trim().parse().ok().map(Duration::from_millis);
+    {
+        if let Some(text) = hook("test-exit-after-ready-ms") {
+            return text.trim().parse().ok().map(Duration::from_millis);
+        }
+        if env_hook_applies("EXIT") {
+            let ms = std::env::var("SPEEDYSPEC_TEST_EXIT_AFTER_READY_MS")
+                .ok()?
+                .trim()
+                .parse()
+                .ok()?;
+            return Some(Duration::from_millis(ms));
+        }
     }
     None
 }
 
-/// Under `test-hooks`: a generation that never reports ready (`<exe>.test-never-ready`).
+/// Under `test-hooks`: a generation that never reports ready (`<exe>.test-never-ready`, or
+/// `SPEEDYSPEC_TEST_NEVER_READY_VERSION`).
 pub fn never_ready() -> bool {
     #[cfg(feature = "test-hooks")]
-    if hook("test-never-ready").is_some() {
+    if hook("test-never-ready").is_some() || env_hook_applies("NEVER_READY") {
+        return true;
+    }
+    false
+}
+
+/// Under `test-hooks`: a generation that exits before reporting ready (`SPEEDYSPEC_TEST_CRASH_VERSION`).
+pub fn crash_before_ready() -> bool {
+    #[cfg(feature = "test-hooks")]
+    if env_hook_applies("CRASH") {
         return true;
     }
     false

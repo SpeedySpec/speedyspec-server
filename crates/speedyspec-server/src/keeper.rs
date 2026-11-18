@@ -43,6 +43,8 @@ pub(crate) struct Generation {
     pub(crate) pid: u32,
     pub(crate) version: std::sync::Mutex<Option<Version>>,
     pub(crate) on_trial: std::sync::atomic::AtomicBool,
+    /// Set when the channel closes, before pending replies are failed.
+    closed: Arc<std::sync::atomic::AtomicBool>,
     channel: Arc<AsyncChannel>,
     replies: Arc<std::sync::Mutex<HashMap<u64, oneshot::Sender<String>>>>,
     pub(crate) child: Mutex<tokio::process::Child>,
@@ -70,6 +72,7 @@ pub(crate) struct Keeper {
     /// Woken whenever a generation becomes active.
     pub(crate) activated: tokio::sync::Notify,
     next_id: AtomicU64,
+    commands: std::sync::OnceLock<mpsc::UnboundedSender<KeeperCommand>>,
 }
 
 impl Keeper {
@@ -128,9 +131,10 @@ impl Keeper {
             .map_err(|err| format!("handing sockets to generation {pid}: {err}"))?;
 
         let replies: Arc<std::sync::Mutex<HashMap<u64, oneshot::Sender<String>>>> = Arc::default();
+        let closed = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let (events, receiver) = mpsc::unbounded_channel();
         {
-            let (channel, replies) = (channel.clone(), replies.clone());
+            let (channel, replies, closed) = (channel.clone(), replies.clone(), closed.clone());
             tokio::spawn(async move {
                 loop {
                     let event = match channel.recv::<ToKeeper>().await {
@@ -154,6 +158,7 @@ impl Keeper {
                             continue;
                         }
                         Ok(None) | Err(_) => {
+                            closed.store(true, Ordering::SeqCst);
                             // Dropping the waiting senders fails every request still in flight.
                             replies.lock().unwrap_or_else(|p| p.into_inner()).clear();
                             let _ = events.send(GenEvent::Closed);
@@ -171,6 +176,7 @@ impl Keeper {
             pid,
             version: std::sync::Mutex::new(None),
             on_trial: std::sync::atomic::AtomicBool::new(false),
+            closed,
             channel,
             replies,
             child: Mutex::new(child),
@@ -192,9 +198,12 @@ impl Keeper {
         }
     }
 
-    /// Sends one control line to the active generation and waits for its answer.
-    async fn forward(&self, line: &str) -> Result<String, String> {
-        let generation = self.wait_for_active().await?;
+    /// Sends one control line to `generation` and waits for its raw answer.
+    pub(crate) async fn forward_to(
+        &self,
+        generation: &Generation,
+        line: &str,
+    ) -> Result<String, String> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = oneshot::channel();
         generation
@@ -202,12 +211,56 @@ impl Keeper {
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .insert(id, tx);
+        if generation.closed.load(Ordering::SeqCst) {
+            generation
+                .replies
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .remove(&id);
+            return Err("the generation exited before answering".to_string());
+        }
         generation
             .send(&ToGeneration::Control(format!("{id}\t{line}")))
             .await;
-        let reply = rx
-            .await
-            .map_err(|_| "the generation exited before answering".to_string())?;
+        rx.await
+            .map_err(|_| "the generation exited before answering".to_string())
+    }
+
+    /// Sends one control line to the active generation. A reply asking for a server upgrade is carried out here, and
+    /// the client gets the upgrade's result.
+    async fn forward(&self, line: &str) -> Result<String, String> {
+        let generation = self.wait_for_active().await?;
+        let reply = self.forward_to(&generation, line).await?;
+        if let Ok(value) = serde_json::from_str::<Value>(&reply)
+            && let Some(upgrade) = value.get("Ok").and_then(|ok| ok.get("upgrade"))
+        {
+            let version: Version = upgrade["version"]
+                .as_str()
+                .and_then(|v| v.parse().ok())
+                .ok_or("the generation asked for an upgrade without a version")?;
+            let binary = PathBuf::from(
+                upgrade["binary"]
+                    .as_str()
+                    .ok_or("the upgrade has no binary")?,
+            );
+            let (tx, rx) = oneshot::channel();
+            let commands = self.commands.get().ok_or("the keeper is still starting")?;
+            commands
+                .send(KeeperCommand::Upgrade {
+                    version,
+                    binary,
+                    reply: tx,
+                })
+                .map_err(|_| "the keeper is stopping".to_string())?;
+            let result = rx
+                .await
+                .map_err(|_| "the keeper stopped during the upgrade".to_string())?;
+            let response = match result {
+                Ok(message) => control::ControlResponse::Ok(Value::String(message)),
+                Err(message) => control::ControlResponse::Error(message),
+            };
+            return Ok(serde_json::to_string(&response).expect("serializes"));
+        }
         Ok(self.with_keeper_status(line, reply, &generation))
     }
 
@@ -340,6 +393,7 @@ async fn run_async(config_path: &Path) -> Result<(), String> {
         sockets: Sockets { list },
         active: Mutex::new(None),
         activated: tokio::sync::Notify::new(),
+        commands: std::sync::OnceLock::new(),
         next_id: AtomicU64::new(1),
     });
     let socket = control::socket_path(&keeper.config.run_dir);
@@ -350,97 +404,276 @@ async fn run_async(config_path: &Path) -> Result<(), String> {
         tracing::warn!(event = "control_unavailable", path = %socket.display(), error = %err);
     }
 
-    let mut backoff = BACKOFF_START;
-    let mut notified = false;
-    loop {
-        let (generation, mut events) = keeper.spawn(&binary).await?;
-        let started = Instant::now();
-        let ready = tokio::time::timeout(keeper.config.handoff.ready_timeout, async {
-            while let Some(event) = events.recv().await {
-                match event {
-                    GenEvent::Ready(version) => return Some(version),
-                    GenEvent::Closed => return None,
-                    _ => {}
-                }
-            }
-            None
-        })
-        .await;
-        match ready {
-            Ok(Some(version)) => {
-                *generation.version.lock().unwrap_or_else(|p| p.into_inner()) =
-                    Some(version.clone());
-                generation.send(&ToGeneration::StartUdp).await;
-                *keeper.active.lock().await = Some(generation.clone());
-                keeper.activated.notify_waiters();
-                tracing::info!(event = "generation_active", pid = generation.pid, version = %version);
-                if !notified {
-                    crate::notify::ready();
-                    notified = true;
-                }
-            }
-            _ => {
-                tracing::error!(event = "generation_not_ready", pid = generation.pid);
-                let mut child = generation.child.lock().await;
-                // A generation that closed its channel is exiting on its own; let it print why before killing it.
-                if tokio::time::timeout(Duration::from_secs(2), child.wait())
-                    .await
-                    .is_err()
-                {
-                    let _ = child.start_kill();
-                }
-                if !notified {
-                    // The very first generation never became ready: a start-up error (its reasons are already on
-                    // stderr), not a crash to restart.
-                    let _ = child.wait().await;
-                    return Err("the server did not start; see the errors above".to_string());
-                }
-            }
-        }
+    let (commands, mut command_rx) = mpsc::unbounded_channel();
+    let _ = keeper.commands.set(commands);
+    let mut confirmed = binary;
 
-        // Supervise until the generation exits or the keeper is told to stop.
-        let stop = loop {
-            let mut child = generation.child.lock().await;
-            tokio::select! {
-                status = child.wait() => {
-                    drop(child);
-                    tracing::warn!(event = "generation_exited", pid = generation.pid, status = ?status.ok());
-                    break false;
+    // The first generation: one that never becomes ready is a start-up error, not a crash to restart.
+    let mut current = match keeper.start_ready(&confirmed).await {
+        Ok(live) => live,
+        Err(why) => {
+            return Err(format!(
+                "the server did not start ({why}); see the errors above"
+            ));
+        }
+    };
+    keeper.activate(&current).await;
+    crate::notify::ready();
+
+    let mut old: Option<Live> = None;
+    let mut trial: Option<(Version, PathBuf, tokio::time::Instant)> = None;
+    let mut backoff = BACKOFF_START;
+    let mut started = Instant::now();
+    loop {
+        let trial_end = trial.as_ref().map(|(_, _, at)| *at);
+        tokio::select! {
+            status = exited(&current.generation) => {
+                tracing::warn!(event = "generation_exited", pid = current.generation.pid, status = ?status);
+                *keeper.active.lock().await = None;
+                if let Some((version, _, _)) = trial.take() {
+                    tracing::error!(event = "trial_failed", version = %version);
+                    match old.take() {
+                        Some(previous) => {
+                            previous.generation.send(&ToGeneration::Resume { failed: Some(version) }).await;
+                            current = previous;
+                        }
+                        None => {
+                            current = keeper.restart(&confirmed, &mut backoff, &mut started).await?;
+                        }
+                    }
+                    keeper.activate(&current).await;
+                } else {
+                    *keeper.active.lock().await = None;
+                    if started.elapsed() >= BACKOFF_MAX {
+                        backoff = BACKOFF_START;
+                    }
+                    current = keeper.restart(&confirmed, &mut backoff, &mut started).await?;
+                    keeper.activate(&current).await;
                 }
-                _ = term.recv() => break true,
-                _ = interrupt.recv() => break true,
-                _ = hangup.recv() => {
-                    drop(child);
-                    generation.send(&ToGeneration::ReloadCerts).await;
+            }
+            status = maybe_exited(old.as_ref()) => {
+                tracing::info!(event = "old_generation_exited", status = ?status);
+                old = None;
+            }
+            () = sleep_until(trial_end) => {
+                let (version, binary, _) = trial.take().expect("only armed during a trial");
+                let line = serde_json::to_string(&control::ControlRequest::ConfirmServer { version: version.clone() })
+                    .expect("serializes");
+                if let Err(err) = keeper.forward_to(&current.generation, &line).await {
+                    tracing::error!(event = "confirm_failed", version = %version, error = %err);
                 }
-                event = events.recv() => {
-                    drop(child);
-                    if let Some(event) = event {
-                        tracing::info!(event = "generation_event", pid = generation.pid, message = ?event);
+                current.generation.on_trial.store(false, Ordering::SeqCst);
+                confirmed = binary;
+                if let Some(previous) = old.take() {
+                    previous.generation.send(&ToGeneration::Shutdown).await;
+                    tokio::spawn(async move {
+                        let _ = exited(&previous.generation).await;
+                    });
+                }
+                tracing::info!(event = "trial_confirmed", version = %version);
+            }
+            Some(command) = command_rx.recv() => {
+                let KeeperCommand::Upgrade { version, binary, reply } = command;
+                if let Some((on_trial, _, _)) = &trial {
+                    let _ = reply.send(Err(format!("an upgrade to server {on_trial} is on trial; wait for it to be confirmed or to fail")));
+                    continue;
+                }
+                if old.is_some() {
+                    let _ = reply.send(Err("the previous generation is still draining; try again shortly".to_string()));
+                    continue;
+                }
+                match keeper.start_ready(&binary).await {
+                    Err(why) => {
+                        tracing::error!(event = "upgrade_failed", version = %version, error = %why);
+                        current.generation.send(&ToGeneration::Resume { failed: Some(version.clone()) }).await;
+                        let _ = reply.send(Err(format!("server {version} did not become ready: {why}")));
+                    }
+                    Ok(next) => {
+                        current.generation.send(&ToGeneration::Drain).await;
+                        if !current.wait_for(|event| matches!(event, GenEvent::UdpReleased), Duration::from_secs(15)).await {
+                            tracing::warn!(event = "udp_release_slow", pid = current.generation.pid);
+                        }
+                        next.generation.send(&ToGeneration::StartUdp).await;
+                        next.generation.on_trial.store(true, Ordering::SeqCst);
+                        let trial_period = keeper.config.handoff.trial_period;
+                        old = Some(std::mem::replace(&mut current, next));
+                        keeper.activate(&current).await;
+                        trial = Some((version.clone(), binary, tokio::time::Instant::now() + trial_period));
+                        tracing::info!(event = "upgrade_on_trial", version = %version, pid = current.generation.pid);
+                        let _ = reply.send(Ok(format!(
+                            "switched server {version} (on trial for {})",
+                            humantime::format_duration(trial_period)
+                        )));
                     }
                 }
             }
-        };
-        if stop {
-            tracing::info!(event = "keeper_stopping", pid = generation.pid);
-            generation.send(&ToGeneration::Shutdown).await;
-            let deadline = keeper.config.handoff.drain_timeout + Duration::from_secs(5);
-            let mut child = generation.child.lock().await;
-            if tokio::time::timeout(deadline, child.wait()).await.is_err() {
-                let _ = child.kill().await;
+            event = current.events.recv() => {
+                if let Some(event) = event {
+                    tracing::debug!(event = "generation_event", message = ?event);
+                }
             }
-            return Ok(());
+            _ = hangup.recv() => current.generation.send(&ToGeneration::ReloadCerts).await,
+            _ = term.recv() => return keeper.stop(current, old).await,
+            _ = interrupt.recv() => return keeper.stop(current, old).await,
         }
-        *keeper.active.lock().await = None;
-        if started.elapsed() >= BACKOFF_MAX {
-            backoff = BACKOFF_START;
+    }
+}
+
+/// A generation and its event stream.
+pub(crate) struct Live {
+    pub(crate) generation: Arc<Generation>,
+    events: mpsc::UnboundedReceiver<GenEvent>,
+}
+
+impl Live {
+    /// Waits for an event matching `wanted`, up to `timeout`.
+    async fn wait_for(&mut self, wanted: impl Fn(&GenEvent) -> bool, timeout: Duration) -> bool {
+        tokio::time::timeout(timeout, async {
+            while let Some(event) = self.events.recv().await {
+                if wanted(&event) {
+                    return true;
+                }
+                if matches!(event, GenEvent::Closed) {
+                    return false;
+                }
+            }
+            false
+        })
+        .await
+        .unwrap_or(false)
+    }
+}
+
+/// What the control handler asks the supervisor to do.
+pub(crate) enum KeeperCommand {
+    Upgrade {
+        version: Version,
+        binary: PathBuf,
+        reply: oneshot::Sender<Result<String, String>>,
+    },
+}
+
+async fn exited(generation: &Generation) -> Option<std::process::ExitStatus> {
+    generation.child.lock().await.wait().await.ok()
+}
+
+async fn maybe_exited(live: Option<&Live>) -> Option<std::process::ExitStatus> {
+    match live {
+        Some(live) => exited(&live.generation).await,
+        None => std::future::pending().await,
+    }
+}
+
+async fn sleep_until(at: Option<tokio::time::Instant>) {
+    match at {
+        Some(at) => tokio::time::sleep_until(at).await,
+        None => std::future::pending().await,
+    }
+}
+
+fn kill(pid: u32) {
+    // SAFETY: sending a signal to a child PID this keeper started.
+    unsafe {
+        libc::kill(pid as libc::pid_t, libc::SIGKILL);
+    }
+}
+
+impl Keeper {
+    /// Starts a generation of `binary` and waits for it to be ready; kills it (after a moment to say why) if not.
+    async fn start_ready(&self, binary: &Path) -> Result<Live, String> {
+        let (generation, events) = self.spawn(binary).await?;
+        let mut live = Live { generation, events };
+        let ready = tokio::time::timeout(self.config.handoff.ready_timeout, async {
+            while let Some(event) = live.events.recv().await {
+                match event {
+                    GenEvent::Ready(version) => return Ok(version),
+                    GenEvent::Closed => return Err("it exited before becoming ready".to_string()),
+                    _ => {}
+                }
+            }
+            Err("it exited before becoming ready".to_string())
+        })
+        .await
+        .unwrap_or_else(|_| {
+            Err(format!(
+                "it was not ready within {}",
+                humantime::format_duration(self.config.handoff.ready_timeout)
+            ))
+        });
+        match ready {
+            Ok(version) => {
+                *live
+                    .generation
+                    .version
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner()) = Some(version);
+                Ok(live)
+            }
+            Err(why) => {
+                tracing::error!(event = "generation_not_ready", pid = live.generation.pid, error = %why);
+                if tokio::time::timeout(Duration::from_secs(2), exited(&live.generation))
+                    .await
+                    .is_err()
+                {
+                    kill(live.generation.pid);
+                    let _ = exited(&live.generation).await;
+                }
+                Err(why)
+            }
         }
-        tracing::info!(event = "generation_restarting", after = ?backoff);
-        tokio::select! {
-            () = tokio::time::sleep(backoff) => {}
-            _ = term.recv() => return Ok(()),
-            _ = interrupt.recv() => return Ok(()),
+    }
+
+    /// Makes `live` the generation control requests go to, and lets it read UDP.
+    async fn activate(&self, live: &Live) {
+        live.generation.send(&ToGeneration::StartUdp).await;
+        *self.active.lock().await = Some(live.generation.clone());
+        self.activated.notify_waiters();
+        let version = live
+            .generation
+            .version
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone();
+        tracing::info!(event = "generation_active", pid = live.generation.pid, version = ?version.map(|v| v.to_string()));
+    }
+
+    /// A crash restart from `binary`, after the back-off, retrying until a generation is ready.
+    async fn restart(
+        &self,
+        binary: &Path,
+        backoff: &mut Duration,
+        started: &mut Instant,
+    ) -> Result<Live, String> {
+        loop {
+            tracing::info!(event = "generation_restarting", after = ?*backoff);
+            tokio::time::sleep(*backoff).await;
+            *backoff = (*backoff * 2).min(BACKOFF_MAX);
+            *started = Instant::now();
+            match self.start_ready(binary).await {
+                Ok(live) => return Ok(live),
+                Err(why) => tracing::error!(event = "restart_failed", error = %why),
+            }
         }
-        backoff = (backoff * 2).min(BACKOFF_MAX);
+    }
+
+    /// Drains every generation and exits.
+    async fn stop(&self, current: Live, old: Option<Live>) -> Result<(), String> {
+        tracing::info!(event = "keeper_stopping", pid = current.generation.pid);
+        let deadline = self.config.handoff.drain_timeout + Duration::from_secs(5);
+        let mut all = vec![current];
+        all.extend(old);
+        for live in &all {
+            live.generation.send(&ToGeneration::Shutdown).await;
+        }
+        for live in &all {
+            if tokio::time::timeout(deadline, exited(&live.generation))
+                .await
+                .is_err()
+            {
+                kill(live.generation.pid);
+                let _ = exited(&live.generation).await;
+            }
+        }
+        Ok(())
     }
 }

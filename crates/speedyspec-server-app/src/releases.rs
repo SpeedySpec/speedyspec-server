@@ -992,6 +992,38 @@ impl ReleaseManager {
         self.revert_locked(&mut state, failed, reason)
     }
 
+    /// At the end of a successful trial, in the generation that passed it: confirms its version and clears the trial
+    /// and the pending group, keeping this manager's state in step with `state.json`.
+    pub fn confirm_server_trial(&self, version: &Version) -> Result<(), ReleaseError> {
+        let mut state = self.lock();
+        let mut next = state.clone();
+        next.server.confirmed = Some(version.clone());
+        next.server.trial = None;
+        next.pending_group = None;
+        next.app_mut(&self.server.app).active = Some(version.clone());
+        self.commit_state(&mut state, next)?;
+        tracing::info!(event = "server_confirmed", version = %version);
+        Ok(())
+    }
+
+    /// The newest kept server binary older than the running one: the default target of `rollback server`.
+    pub fn previous_server(&self) -> Option<Version> {
+        let state = self.snapshot();
+        state
+            .apps
+            .get(&self.server.app)?
+            .kept
+            .iter()
+            .filter(|version| **version < self.server.version)
+            .max()
+            .cloned()
+    }
+
+    /// The server app's id.
+    pub fn server_app(&self) -> &AppId {
+        &self.server.app
+    }
+
     fn revert_locked(
         &self,
         state: &mut ReleaseState,

@@ -45,6 +45,10 @@ pub enum ControlRequest {
         app: AppId,
     },
     Status,
+    /// Internal: the keeper confirms a server trial through the generation that passed it.
+    ConfirmServer {
+        version: Version,
+    },
 }
 
 /// `Ok` carries either a line to print (mutating commands) or the data `list`, `check` and `status` format.
@@ -85,6 +89,8 @@ fn listing(server: &Version, mode: &str, apps: Vec<Value>, incompatible: Vec<Str
 /// Managed mode: every request runs through the release manager.
 pub struct ManagedBackend {
     pub manager: Arc<ReleaseManager>,
+    /// Set while this generation drains: release commands are refused.
+    pub draining: Arc<std::sync::atomic::AtomicBool>,
     /// Every configured app and its kind.
     pub apps: BTreeMap<AppId, AppKind>,
     pub server_version: Version,
@@ -121,7 +127,44 @@ impl ManagedBackend {
 impl ControlBackend for ManagedBackend {
     fn handle(&self, request: ControlRequest) -> ControlResponse {
         let manager = &self.manager;
+        let reads = matches!(
+            request,
+            ControlRequest::List { .. } | ControlRequest::Status | ControlRequest::Check { .. }
+        );
+        if !reads
+            && !matches!(request, ControlRequest::ConfirmServer { .. })
+            && self.draining.load(std::sync::atomic::Ordering::SeqCst)
+        {
+            return ControlResponse::Error(
+                "this generation is draining after an upgrade; release commands go to the new one"
+                    .to_string(),
+            );
+        }
+        let server = manager.server_app().clone();
+        let upgrade = |targets: &[(AppId, Version)]| -> Result<Value, String> {
+            let upgrade = manager
+                .begin_server_switch(targets)
+                .map_err(|err| err.to_string())?;
+            Ok(
+                json!({ "upgrade": { "version": upgrade.version.to_string(), "binary": upgrade.binary } }),
+            )
+        };
         let result: Result<Value, String> = match request {
+            ControlRequest::Switch { targets } if targets.iter().any(|(app, _)| *app == server) => {
+                upgrade(&targets)
+            }
+            ControlRequest::Rollback { app, version } if app == server => {
+                match version.or_else(|| manager.previous_server()) {
+                    Some(version) => upgrade(&[(app, version)]),
+                    None => Err(format!(
+                        "{app}: no older server binary is kept to roll back to"
+                    )),
+                }
+            }
+            ControlRequest::ConfirmServer { version } => manager
+                .confirm_server_trial(&version)
+                .map(|()| json!(format!("confirmed server {version}")))
+                .map_err(|err| err.to_string()),
             ControlRequest::List { app } => self
                 .rows(app.as_ref())
                 .map(|rows| listing(&self.server_version, "managed", rows, Vec::new())),

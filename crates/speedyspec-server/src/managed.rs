@@ -137,9 +137,13 @@ pub fn auto_apps(config: &Config) -> Vec<(AppId, Duration)> {
 
 /// Spawns one auto-update loop per app: right away for an app with nothing active, otherwise after one interval,
 /// then every interval. Failures are logged and never stop the loop.
-pub fn spawn_auto_update(manager: Arc<ReleaseManager>, apps: Vec<(AppId, Duration)>) {
+pub fn spawn_auto_update(
+    manager: Arc<ReleaseManager>,
+    apps: Vec<(AppId, Duration)>,
+    paused: Arc<std::sync::atomic::AtomicBool>,
+) {
     for (app, interval) in apps {
-        let manager = manager.clone();
+        let (manager, paused) = (manager.clone(), paused.clone());
         tokio::spawn(async move {
             let installed = manager
                 .status()
@@ -151,7 +155,9 @@ pub fn spawn_auto_update(manager: Arc<ReleaseManager>, apps: Vec<(AppId, Duratio
             }
             loop {
                 let (manager, id) = (manager.clone(), app.clone());
-                let _ = tokio::task::spawn_blocking(move || update_once(&manager, &id)).await;
+                if !paused.load(std::sync::atomic::Ordering::SeqCst) {
+                    let _ = tokio::task::spawn_blocking(move || update_once(&manager, &id)).await;
+                }
                 tokio::time::sleep(interval).await;
             }
         });

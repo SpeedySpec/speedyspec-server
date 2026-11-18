@@ -70,6 +70,9 @@ async fn serve(channel: Channel) -> Result<(), String> {
             fds.len()
         ));
     }
+    if crate::binary::crash_before_ready() {
+        return Err("test hook: exiting before ready".to_string());
+    }
     let config = Config::load(&config).map_err(|err| err.to_string())?;
     let mut tcp = Vec::new();
     let mut udp = Vec::new();
@@ -94,6 +97,8 @@ async fn serve(channel: Channel) -> Result<(), String> {
     let state = prepare(&config).map_err(|err| err.to_string())?;
     let live = state.apps.clone();
     let version = own_version();
+    let draining = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let mut releases = None;
     let backend: Arc<dyn ControlBackend> = if config.mode == Mode::Managed {
         let (settings, apps) = (config.clone(), live.clone());
         let applied = version.clone();
@@ -106,7 +111,12 @@ async fn serve(channel: Channel) -> Result<(), String> {
         })
         .await
         .map_err(|err| format!("starting releases: {err}"))??;
-        managed::spawn_auto_update(manager.clone(), managed::auto_apps(&config));
+        managed::spawn_auto_update(
+            manager.clone(),
+            managed::auto_apps(&config),
+            draining.clone(),
+        );
+        releases = Some(manager.clone());
         managed::spawn_fallback_sweep(live);
         let apps = config
             .apps
@@ -115,6 +125,7 @@ async fn serve(channel: Channel) -> Result<(), String> {
             .collect();
         Arc::new(ManagedBackend {
             manager,
+            draining: draining.clone(),
             apps,
             server_version: version.clone(),
         })
@@ -179,6 +190,28 @@ async fn serve(channel: Channel) -> Result<(), String> {
                     Some((ToGeneration::Control(line), _)) => {
                         let (backend, channel) = (backend.clone(), channel.clone());
                         tokio::spawn(async move { reply(&*channel, backend, line).await });
+                    }
+                    Some((ToGeneration::Drain, _)) => {
+                        tracing::info!(event = "generation_draining", pid = std::process::id());
+                        draining.store(true, std::sync::atomic::Ordering::SeqCst);
+                        serving.stop_accepting().await;
+                        channel.send(&ToKeeper::UdpReleased, &[]).await.map_err(|err| format!("channel: {err}"))?;
+                    }
+                    Some((ToGeneration::Resume { failed }, _)) => {
+                        if draining.swap(false, std::sync::atomic::Ordering::SeqCst) {
+                            serving.resume().await.map_err(|err| format!("{err:#}"))?;
+                        }
+                        if let (Some(version), Some(manager)) = (failed, releases.clone()) {
+                            let reverted = tokio::task::spawn_blocking(move || {
+                                manager.revert_pending_group(&version, "trial failed").map_err(|err| err.to_string())
+                            })
+                            .await
+                            .unwrap_or_else(|err| Err(err.to_string()));
+                            if let Err(err) = reverted {
+                                tracing::error!(event = "trial_revert_failed", error = %err);
+                            }
+                        }
+                        tracing::info!(event = "generation_resumed", pid = std::process::id());
                     }
                     Some((other, _)) => tracing::info!(event = "handoff_message_ignored", message = ?other),
                 }
