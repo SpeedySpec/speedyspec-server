@@ -52,6 +52,14 @@ impl ReleaseIndex {
                     entry.version
                 )));
             }
+            if entry.version.pre.as_str() == "partial"
+                || entry.version.pre.as_str().ends_with(".partial")
+            {
+                return Err(DomainError::BadIndex(format!(
+                    "version {} ends in `.partial`, which is reserved for downloads in progress",
+                    entry.version
+                )));
+            }
             if !seen.insert(&entry.version) {
                 return Err(DomainError::BadIndex(format!(
                     "version {} is listed twice",
@@ -153,6 +161,7 @@ mod tests {
             r#"{"app":"admin","releases":[{"version":"1.0.0","published":"x","artifacts":[]},{"version":"1.0.0","published":"y","artifacts":[]}]}"#,
             r#"{"app":"admin","releases":[{"version":"1.0.0+abc","published":"x","artifacts":[]}]}"#,
             r#"{"app":"Admin","releases":[]}"#,
+            r#"{"app":"admin","releases":[{"version":"1.0.0-a.partial","published":"x","artifacts":[]}]}"#,
             r#"{"app":"admin","releases":[{"version":"1.0.0","published":"x","artifacts":[{"target":"any","url":"u","sha256":"ABC"}]}]}"#,
         ];
         for json in bad {

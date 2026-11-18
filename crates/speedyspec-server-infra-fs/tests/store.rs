@@ -114,6 +114,7 @@ fn rejects_with(s: Setup, entries: &[Entry], needle: &str) {
         Entry::HardLink(a, b) => Entry::HardLink(a, b),
         Entry::Fifo(a) => Entry::Fifo(a),
         Entry::RawPath(a, b) => Entry::RawPath(a, b),
+        Entry::PaxGlobal => Entry::PaxGlobal,
     }));
     let err = s.unpack(&build(&all)).unwrap_err();
     assert!(err.contains(needle), "error {err:?} must name {needle:?}");
@@ -204,4 +205,31 @@ fn remove_deletes_release() {
 fn discard_partial_is_quiet_when_missing() {
     let s = setup();
     s.store.discard_partial(&admin(), &v1());
+}
+
+#[test]
+fn rejects_symlink_escaping_through_another_symlink() {
+    let entries = [
+        Entry::Dir("a/b/c"),
+        Entry::Symlink("a/b/c/up", "../../.."),
+        Entry::Symlink("esc", "a/b/c/up/../../../.."),
+    ];
+    rejects(&entries, "esc");
+    let reversed = [
+        Entry::Dir("a/b/c"),
+        Entry::Symlink("esc", "a/b/c/up/../../../.."),
+        Entry::Symlink("a/b/c/up", "../../.."),
+    ];
+    rejects(&reversed, "esc");
+}
+
+#[test]
+fn accepts_pax_global_header() {
+    let s = setup();
+    s.unpack(&build(&[
+        Entry::PaxGlobal,
+        Entry::File("speedyspec-release.json", MANIFEST.as_bytes()),
+        Entry::File("dist/index.html", b"x"),
+    ]))
+    .unwrap();
 }

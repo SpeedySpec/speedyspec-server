@@ -297,3 +297,42 @@ fn immutable_refuses_changes() {
         assert!(stderr.contains("speedyspec CLI"), "{args:?}: {stderr}");
     }
 }
+
+#[test]
+fn second_instance_refuses_and_leaves_the_first_working() {
+    let m = managed("update = \"manual\"", &["1.0.0"]);
+    m.ok(&["release", "install", "admin", "1.0.0"]);
+    let partial = m.dir.path().join("data/releases/admin/9.9.9.partial");
+    std::fs::create_dir_all(&partial).unwrap();
+    let mut second = std::process::Command::new(support::run::BIN)
+        .args(["run", "--config", m.config.to_str().unwrap()])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    let status = loop {
+        if let Some(status) = second.try_wait().unwrap() {
+            break status;
+        }
+        if std::time::Instant::now() > deadline {
+            let _ = second.kill();
+            let _ = second.wait();
+            panic!("the second instance kept running");
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    };
+    assert_eq!(status.code(), Some(1));
+    let mut stderr = String::new();
+    std::io::Read::read_to_string(&mut second.stderr.take().unwrap(), &mut stderr).unwrap();
+    assert!(stderr.contains("already running"), "{stderr}");
+    assert!(
+        partial.exists(),
+        "the second instance must not touch the first one's data"
+    );
+    assert_eq!(
+        m.ok(&["release", "list"]),
+        "admin\tstatic\t-\t1.0.0\t-\t-\n",
+        "the first server still answers"
+    );
+}

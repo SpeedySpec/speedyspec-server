@@ -87,6 +87,7 @@ app = "admin"
         0
     );
 
+    let begun = Instant::now();
     let stop = Arc::new(AtomicBool::new(false));
     let failures: Arc<Mutex<Vec<String>>> = Arc::default();
     let counts: Arc<Mutex<[usize; 4]>> = Arc::default();
@@ -151,8 +152,15 @@ app = "admin"
         tasks.push(tokio::spawn(async move {
             while !stop.load(Ordering::SeqCst) {
                 for path in ["/", "/_astro/app.js"] {
-                    let (status, _, body) = support::h3::get(quic, &ca, path).await;
-                    check("h3", status, &String::from_utf8_lossy(&body), &failures);
+                    match support::h3::try_get(quic, &ca, path).await {
+                        Ok((status, _, body)) => {
+                            check("h3", status, &String::from_utf8_lossy(&body), &failures)
+                        }
+                        Err(err) => failures
+                            .lock()
+                            .unwrap()
+                            .push(format!("h3 {path} at {:?}: {err}", begun.elapsed())),
+                    }
                     counts.lock().unwrap()[3] += 1;
                 }
             }
@@ -187,6 +195,18 @@ app = "admin"
     }
 
     let failures = failures.lock().unwrap();
+    if !failures.is_empty() {
+        for line in server.log().iter().filter(|l| {
+            let l = l.to_ascii_lowercase();
+            l.contains("quinn")
+                || l.contains("h3")
+                || l.contains("connection")
+                || l.contains("warn")
+                || l.contains("error")
+        }) {
+            eprintln!("server: {line}");
+        }
+    }
     assert!(
         failures.is_empty(),
         "{} failed requests, first: {:?}",

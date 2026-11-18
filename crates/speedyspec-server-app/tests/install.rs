@@ -95,7 +95,53 @@ fn checksum_mismatch_keeps_nothing() {
     }
     assert!(!w.dir.path().join("releases/blog/1.1.0.partial").exists());
     assert!(!w.release_dir("blog", "1.1.0").exists());
-    assert_eq!(w.saved(), before);
+    let mut after = w.saved();
+    assert!(after.apps[&id("blog")].failed[&v("1.1.0")].contains("checksum"));
+    after.apps.get_mut(&id("blog")).unwrap().failed.clear();
+    after.revision = before.revision;
+    assert_eq!(
+        after.apps[&id("blog")].kept,
+        before
+            .apps
+            .get(&id("blog"))
+            .map(|a| a.kept.clone())
+            .unwrap_or_default()
+    );
+}
+
+#[test]
+fn failed_install_is_not_offered_again() {
+    let mut w = world();
+    w.corrupt_checksum("blog", "1.1.0");
+    let manager = w.manager();
+    assert!(manager.install(&id("blog"), None).is_err());
+    assert_eq!(
+        manager.check(&id("blog")).unwrap(),
+        Some(v("1.0.0")),
+        "the failed 1.1.0 is skipped"
+    );
+    let downloads = w.source.downloads().len();
+    manager.install(&id("blog"), None).unwrap();
+    assert!(
+        !w.source.downloads()[downloads..]
+            .iter()
+            .any(|u| u.contains("1.1.0")),
+        "1.1.0 is not downloaded again"
+    );
+}
+
+#[test]
+fn network_failures_are_not_recorded() {
+    let w = world();
+    w.source
+        .fail_next_download(&w.artifact_url("blog", "1.1.0"), 10);
+    let manager = w.manager();
+    assert!(manager.install(&id("blog"), None).is_err());
+    assert_eq!(
+        manager.check(&id("blog")).unwrap(),
+        Some(v("1.1.0")),
+        "a dropped connection is retried"
+    );
 }
 
 #[test]

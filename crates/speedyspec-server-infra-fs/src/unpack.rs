@@ -70,11 +70,93 @@ pub(crate) fn unpack(archive: &Path, dest: &Path, limit: u64) -> Result<(), Stri
                 std::os::unix::fs::symlink(&link, &target).map_err(|err| fail(&err.to_string()))?;
             }
             EntryType::Link => return Err(fail("hard links are not allowed")),
+            // Metadata for the whole archive (`git archive` writes one first); nothing to unpack.
+            EntryType::XGlobalHeader => {}
             other => return Err(fail(&format!("entries of type {other:?} are not allowed"))),
         }
     }
 
+    // A symlink can only be judged once every symlink it may pass through exists, in any order in the archive.
+    check_symlinks(dest, Path::new(""))?;
+
     Ok(())
+}
+
+/// Most symlinks followed while resolving one target.
+const MAX_HOPS: usize = 40;
+
+/// Refuses any symlink under `root/rel` that resolves, following other symlinks inside the release, outside it.
+fn check_symlinks(root: &Path, rel: &Path) -> Result<(), String> {
+    let dir = root.join(rel);
+    let entries =
+        std::fs::read_dir(&dir).map_err(|err| format!("reading {}: {err}", dir.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|err| format!("reading {}: {err}", dir.display()))?;
+        let child = rel.join(entry.file_name());
+        let kind = entry
+            .file_type()
+            .map_err(|err| format!("reading {}: {err}", child.display()))?;
+        if kind.is_symlink() {
+            if !resolves_inside(root, &child) {
+                return Err(format!(
+                    "entry {}: symlink resolves outside the release",
+                    child.display()
+                ));
+            }
+        } else if kind.is_dir() {
+            check_symlinks(root, &child)?;
+        }
+    }
+    Ok(())
+}
+
+/// Resolves the symlink at `root/link`, component by component, following symlinks inside `root`; `false` as soon
+/// as the path leaves `root`, is absolute, or loops.
+fn resolves_inside(root: &Path, link: &Path) -> bool {
+    use std::collections::VecDeque;
+
+    let mut stack: Vec<std::ffi::OsString> = link
+        .parent()
+        .map(|p| p.iter().map(ToOwned::to_owned).collect())
+        .unwrap_or_default();
+    let Ok(target) = std::fs::read_link(root.join(link)) else {
+        return false;
+    };
+    let mut pending: VecDeque<std::ffi::OsString> = VecDeque::new();
+    if target.is_absolute() {
+        return false;
+    }
+    pending.extend(target.iter().map(ToOwned::to_owned));
+    let mut hops = 0;
+    while let Some(part) = pending.pop_front() {
+        match part.to_str() {
+            Some(".") => {}
+            Some("..") => {
+                if stack.pop().is_none() {
+                    return false;
+                }
+            }
+            _ => {
+                stack.push(part);
+                let here: PathBuf = root.join(stack.iter().collect::<PathBuf>());
+                if std::fs::symlink_metadata(&here).is_ok_and(|meta| meta.file_type().is_symlink())
+                {
+                    hops += 1;
+                    let Ok(next) = std::fs::read_link(&here) else {
+                        return false;
+                    };
+                    if hops > MAX_HOPS || next.is_absolute() {
+                        return false;
+                    }
+                    stack.pop();
+                    for component in next.iter().rev() {
+                        pending.push_front(component.to_owned());
+                    }
+                }
+            }
+        }
+    }
+    true
 }
 
 /// The entry's path relative to the release, or `None` if it is absolute or uses `..`.

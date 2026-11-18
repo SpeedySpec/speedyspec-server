@@ -12,6 +12,8 @@ pub enum Entry<'a> {
     Fifo(&'a str),
     /// A regular file whose name is written raw (`../x`, `/etc/x`).
     RawPath(&'a str, &'a [u8]),
+    /// A pax global header, as `git archive` writes first.
+    PaxGlobal,
 }
 
 /// Builds a tar archive of `entries`, compressed with zstd.
@@ -26,6 +28,12 @@ pub fn build(entries: &[Entry]) -> Vec<u8> {
             Entry::Symlink(name, target) => (name, EntryType::Symlink, Some(target), b""),
             Entry::HardLink(name, target) => (name, EntryType::Link, Some(target), b""),
             Entry::Fifo(name) => (name, EntryType::Fifo, None, b""),
+            Entry::PaxGlobal => (
+                "pax_global_header",
+                EntryType::XGlobalHeader,
+                None,
+                b"16 comment=abcd\n",
+            ),
         };
         let mut header = Header::new_gnu();
         header.set_entry_type(kind);

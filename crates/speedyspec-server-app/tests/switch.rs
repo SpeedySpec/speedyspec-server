@@ -161,6 +161,11 @@ fn rollback_to_previous() {
     assert_eq!(manager.rollback(&id("blog"), None).unwrap(), v("1.0.0"));
     assert_eq!(w.runtime.active("blog"), Some(v("1.0.0")));
     assert_eq!(w.saved().apps[&id("blog")].previous, Some(v("1.1.0")));
+    assert_eq!(
+        w.saved().apps[&id("blog")].pinned,
+        Some(v("1.0.0")),
+        "a rollback pins, so auto-update leaves it"
+    );
 }
 
 #[test]
@@ -170,6 +175,7 @@ fn rollback_stops_auto_reupgrade() {
     install_and_switch(&manager, "1.2.0");
     install_and_switch(&manager, "1.3.0");
     manager.rollback(&id("blog"), None).unwrap();
+    manager.unpin(&id("blog")).unwrap();
     assert_eq!(
         manager.check(&id("blog")).unwrap(),
         None,

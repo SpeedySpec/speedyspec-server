@@ -19,6 +19,7 @@ struct Inner {
     files: HashMap<String, Vec<u8>>,
     fail_after: HashMap<String, usize>,
     downloads: Vec<String>,
+    delay: std::time::Duration,
 }
 
 fn error(url: &str, message: &str) -> SourceError {
@@ -58,6 +59,11 @@ impl MemorySource {
             .insert(url.to_string(), after_bytes);
     }
 
+    /// Every download sleeps this long first, without holding any lock.
+    pub fn set_download_delay(&self, delay: std::time::Duration) {
+        self.inner.lock().unwrap().delay = delay;
+    }
+
     /// Every URL downloaded so far, in order.
     pub fn downloads(&self) -> Vec<String> {
         self.inner.lock().unwrap().downloads.clone()
@@ -75,6 +81,8 @@ impl ReleaseSource for MemorySource {
     }
 
     fn download(&self, url: &str, dest: &Path) -> Result<(), SourceError> {
+        let delay = self.inner.lock().unwrap().delay;
+        std::thread::sleep(delay);
         let mut inner = self.inner.lock().unwrap();
         inner.downloads.push(url.to_string());
         let bytes = inner

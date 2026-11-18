@@ -89,6 +89,18 @@ impl Running {
         })
     }
 
+    /// Waits up to `timeout` for a log event.
+    pub fn wait_for_event(&self, event: &str, timeout: Duration) -> bool {
+        let deadline = Instant::now() + timeout;
+        while Instant::now() < deadline {
+            if self.has_event(event) {
+                return true;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        self.has_event(event)
+    }
+
     pub fn term(&mut self) {
         let _ = Command::new("kill")
             .arg("-TERM")

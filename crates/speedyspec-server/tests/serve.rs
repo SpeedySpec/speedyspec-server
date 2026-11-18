@@ -369,6 +369,8 @@ async fn writes_nothing() {
     let response = reqwest::get(format!("http://{plain}/")).await.unwrap();
     assert_eq!(response.status(), 200);
     let status = server.term();
+    let rest: Vec<String> = server.lines.try_iter().collect();
+    server.log.extend(rest);
     assert!(
         server
             .log

@@ -201,6 +201,8 @@ fn run(path: PathBuf) -> Result<(), String> {
         // Installed before any socket is bound (and logged as listening), so a signal sent as soon as the server
         // reports it is listening is always handled rather than killing the process.
         let stop = shutdown().map_err(|err| format!("installing signal handlers: {err}"))?;
+        // Bound first: a port in use fails here, before any release data or the control socket is touched.
+        let (tcp, udp) = bind(&config).map_err(|err| err.to_string())?;
         let server_version =
             Version::parse(env!("CARGO_PKG_VERSION")).expect("the crate version is SemVer");
         let backend: Arc<dyn ControlBackend> = if config.mode == Mode::Managed {
@@ -231,7 +233,6 @@ fn run(path: PathBuf) -> Result<(), String> {
         if let Err(err) = control::serve(&socket, backend, config.mode == Mode::Managed) {
             tracing::warn!(event = "control_unavailable", path = %socket.display(), error = %err);
         }
-        let (tcp, udp) = bind(&config).map_err(|err| err.to_string())?;
         let router = Arc::new(build_router(Arc::new(state)));
         serve(tcp, udp, router, stop)
             .await

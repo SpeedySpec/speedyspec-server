@@ -139,7 +139,11 @@ fn unsigned_warning_logged() {
         "allow_unsigned = true\nupdate = \"manual\"",
     ));
     server.address();
-    assert!(server.has_event("unsigned"), "{:?}", server.log());
+    assert!(
+        server.wait_for_event("unsigned", Duration::from_secs(5)),
+        "{:?}",
+        server.log()
+    );
 }
 
 #[test]
@@ -156,5 +160,9 @@ fn bad_signature_is_refused_and_logged() {
     let addr = server.address();
     std::thread::sleep(Duration::from_millis(1500));
     assert_eq!(get(addr, "/").0, 503);
-    assert!(server.has_event("auto_update_failed"), "{:?}", server.log());
+    assert!(
+        server.wait_for_event("auto_update_failed", Duration::from_secs(5)),
+        "{:?}",
+        server.log()
+    );
 }

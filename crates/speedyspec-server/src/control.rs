@@ -251,6 +251,15 @@ pub fn serve(
     if create_dir && let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
+    if std::os::unix::net::UnixStream::connect(path).is_ok() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::AddrInUse,
+            format!(
+                "another speedyspec-server is already running on {}",
+                path.display()
+            ),
+        ));
+    }
     let _ = std::fs::remove_file(path);
     let listener = tokio::net::UnixListener::bind(path)?;
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;

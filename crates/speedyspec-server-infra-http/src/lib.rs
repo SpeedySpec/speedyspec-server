@@ -30,6 +30,8 @@ impl HttpSource {
         let agent = Agent::config_builder()
             .timeout_connect(Some(Duration::from_secs(10)))
             .timeout_per_read(Some(Duration::from_secs(60)))
+            // A source that trickles bytes must not hold an install open for ever.
+            .timeout_global(Some(Duration::from_secs(30 * 60)))
             .http_status_as_error(false)
             .build()
             .new_agent();

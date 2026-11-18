@@ -26,6 +26,7 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
         .data_dir
         .as_ref()
         .ok_or("mode = \"managed\" needs data_dir")?;
+    hold_server_lock(&config.run_dir)?;
     std::fs::create_dir_all(data_dir.join("releases"))
         .map_err(|err| format!("creating {}: {err}", data_dir.join("releases").display()))?;
 
@@ -99,6 +100,32 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
     Ok(Arc::new(manager))
 }
 
+/// Takes `<run_dir>/server.lock` for the life of the process, so a second server on the same directories refuses to
+/// start before it touches the first one's data, socket or downloads.
+fn hold_server_lock(run_dir: &std::path::Path) -> Result<(), String> {
+    std::fs::create_dir_all(run_dir)
+        .map_err(|err| format!("creating {}: {err}", run_dir.display()))?;
+    let path = run_dir.join("server.lock");
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(&path)
+        .map_err(|err| format!("opening {}: {err}", path.display()))?;
+    match file.try_lock() {
+        Ok(()) => {
+            // Released when the process exits.
+            Box::leak(Box::new(file));
+            Ok(())
+        }
+        Err(std::fs::TryLockError::WouldBlock) => Err(format!(
+            "another speedyspec-server is already running with run_dir {}",
+            run_dir.display()
+        )),
+        Err(std::fs::TryLockError::Error(err)) => Err(format!("locking {}: {err}", path.display())),
+    }
+}
+
 /// The `auto` apps (never the server) and their check intervals.
 pub fn auto_apps(config: &Config) -> Vec<(AppId, Duration)> {
     config
@@ -132,16 +159,9 @@ pub fn spawn_auto_update(manager: Arc<ReleaseManager>, apps: Vec<(AppId, Duratio
     }
 }
 
-/// One check: install and switch to the candidate, if there is one.
+/// One check: install and switch to the candidate, if there is one and nothing changed during the download.
 fn update_once(manager: &ReleaseManager, app: &AppId) {
-    let result = manager.check(app).and_then(|candidate| match candidate {
-        None => Ok(()),
-        Some(version) => {
-            let version = manager.install(app, Some(version))?;
-            manager.switch(&[(app.clone(), version)])
-        }
-    });
-    if let Err(err) = result {
+    if let Err(err) = manager.update(app) {
         tracing::warn!(event = "auto_update_failed", app = %app, error = %err);
     }
 }

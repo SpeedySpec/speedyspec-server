@@ -97,6 +97,9 @@ pub struct ReleaseManager {
     pub(crate) state_store: Arc<dyn StateStore>,
     pub(crate) runtimes: HashMap<AppKind, Arc<dyn AppRuntime>>,
     pub(crate) state: Mutex<ReleaseState>,
+    /// A copy of the last saved state, read by `status` and `check` without waiting for operations.
+    pub(crate) published: Mutex<ReleaseState>,
+    pub(crate) downloads: Mutex<HashMap<AppId, Arc<Mutex<()>>>>,
     pub(crate) last_boot: Mutex<Option<BootReport>>,
 }
 
@@ -123,6 +126,8 @@ impl ReleaseManager {
             store,
             state_store,
             runtimes,
+            published: Mutex::new(state.clone()),
+            downloads: Mutex::new(HashMap::new()),
             state: Mutex::new(state),
             last_boot: Mutex::new(None),
         })
@@ -151,8 +156,7 @@ impl ReleaseManager {
     /// The newest version worth installing: newer than the active one, allowed by `prerelease`, not failed. `None`
     /// when pinned or up to date.
     pub fn check(&self, app: &AppId) -> Result<Option<Version>, ReleaseError> {
-        let state = self.lock();
-        let candidate = self.candidate(&state, app)?;
+        let candidate = self.candidate(&self.snapshot(), app)?;
         Ok(candidate.map(|entry| entry.version))
     }
 
@@ -190,48 +194,123 @@ impl ReleaseManager {
     }
 
     /// Downloads, verifies, unpacks and keeps a release, without switching to it. With `None`, installs `check`'s
-    /// candidate. A version already kept is not downloaded again.
+    /// candidate. A version already kept is not downloaded again. The download runs without the state lock, so
+    /// `status`, `pin` and `rollback` never wait on it.
     pub fn install(&self, app: &AppId, version: Option<Version>) -> Result<Version, ReleaseError> {
+        self.installable(app)?;
+        let guard = self.download_guard(app);
+        let _downloading = guard
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let entry = match version {
+            Some(version) => {
+                if self
+                    .snapshot()
+                    .apps
+                    .get(app)
+                    .is_some_and(|current| current.kept.contains(&version))
+                {
+                    return Ok(version);
+                }
+                self.index_entry(app, &version)?
+            }
+            None => self
+                .candidate(&self.snapshot(), app)?
+                .ok_or_else(|| ReleaseError::NothingNewer(app.clone()))?,
+        };
+        let version = self.fetch(app, &entry)?;
         let mut state = self.lock();
-        let policy = self.policy(app)?.clone();
+        self.unpack_and_keep(&mut state, app, &version)?;
+        Ok(version)
+    }
+
+    /// One auto-update step: install the candidate and switch to it. The candidate is checked again under the lock
+    /// just before the switch, so a pin or rollback issued during the download wins. Returns the version switched to.
+    pub fn update(&self, app: &AppId) -> Result<Option<Version>, ReleaseError> {
+        self.installable(app)?;
+        let guard = self.download_guard(app);
+        let _downloading = guard
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let Some(entry) = self.candidate(&self.snapshot(), app)? else {
+            return Ok(None);
+        };
+        let version = self.fetch(app, &entry)?;
+        let mut state = self.lock();
+        self.unpack_and_keep(&mut state, app, &version)?;
+        let current = state.apps.get(app).cloned().unwrap_or_default();
+        let still_wanted = current.pinned.is_none()
+            && !current.failed.contains_key(&version)
+            && current
+                .active
+                .as_ref()
+                .is_none_or(|active| version > *active);
+        if !still_wanted {
+            tracing::info!(event = "auto_update_skipped", app = %app, version = %version, "the app changed during the download");
+            return Ok(None);
+        }
+        self.switch_locked(&mut state, &[(app.clone(), version.clone())])?;
+        Ok(Some(version))
+    }
+
+    fn index_entry(&self, app: &AppId, version: &Version) -> Result<IndexEntry, ReleaseError> {
+        let url = self.index_url(app)?;
+        let index = self.source.index(url)?;
+        if index.app != *app {
+            return Err(SourceError {
+                url: url.to_string(),
+                message: format!("the index is for {}, not {app}", index.app),
+            }
+            .into());
+        }
+        index
+            .entry(version)
+            .cloned()
+            .ok_or_else(|| ReleaseError::NotInIndex(app.clone(), version.clone()))
+    }
+
+    /// The app's policy, if releases can be installed for it at all.
+    fn installable(&self, app: &AppId) -> Result<&AppPolicy, ReleaseError> {
+        let policy = self.policy(app)?;
         if policy.kind == AppKind::Server {
             return Err(ReleaseError::ServerNeedsKeeper);
         }
         if policy.signing == Signing::NoKeys {
             return Err(ReleaseError::Unsigned(app.clone()));
         }
-        if let Some(version) = &version
-            && state
-                .apps
-                .get(app)
-                .is_some_and(|current| current.kept.contains(version))
-        {
-            return Ok(version.clone());
-        }
-        let url = self.index_url(app)?.to_string();
-        let entry = match version {
-            Some(version) => {
-                let index = self.source.index(&url)?;
-                if index.app != *app {
-                    return Err(SourceError {
-                        url,
-                        message: format!("the index is for {}, not {app}", index.app),
-                    }
-                    .into());
-                }
-                index
-                    .entry(&version)
-                    .cloned()
-                    .ok_or_else(|| ReleaseError::NotInIndex(app.clone(), version))?
-            }
-            None => self
-                .candidate(&state, app)?
-                .ok_or_else(|| ReleaseError::NothingNewer(app.clone()))?,
-        };
+        Ok(policy)
+    }
+
+    /// The per-app guard that keeps two downloads of one app apart.
+    fn download_guard(&self, app: &AppId) -> Arc<Mutex<()>> {
+        let mut guards = self
+            .downloads
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        guards.entry(app.clone()).or_default().clone()
+    }
+
+    /// Downloads and verifies an entry's artifact into its partial directory, without the state lock. A release that
+    /// fails verification is recorded as failed, so it is not offered again; a network failure is not, so the next
+    /// attempt resumes.
+    fn fetch(&self, app: &AppId, entry: &IndexEntry) -> Result<Version, ReleaseError> {
+        let policy = self.installable(app)?.clone();
         let version = entry.version.clone();
-        let artifact = entry
-            .artifact_for("any")
-            .ok_or_else(|| ReleaseError::NoArtifact(app.clone(), version.clone()))?;
+        if self
+            .snapshot()
+            .apps
+            .get(app)
+            .is_some_and(|current| current.kept.contains(&version))
+        {
+            return Ok(version);
+        }
+        let Some(artifact) = entry.artifact_for("any") else {
+            return Err(self.reject(
+                app,
+                &version,
+                ReleaseError::NoArtifact(app.clone(), version.clone()),
+            ));
+        };
 
         let partial = self.store.partial_dir(app, &version);
         std::fs::create_dir_all(&partial).map_err(|err| store_error(&partial, err))?;
@@ -239,36 +318,27 @@ impl ReleaseManager {
         self.source.download(&artifact.url, &archive)?;
         let actual = sha256_file(&archive).map_err(|err| store_error(&archive, err))?;
         if actual != artifact.sha256 {
-            self.store.discard_partial(app, &version);
-            return Err(ReleaseError::Checksum {
+            let err = ReleaseError::Checksum {
                 app: app.clone(),
-                version,
+                version: version.clone(),
                 expected: artifact.sha256.clone(),
                 actual,
-            });
+            };
+            return Err(self.reject(app, &version, err));
         }
         match policy.signing {
             Signing::Verify => {
                 let Some(signature_url) = &artifact.minisig else {
-                    self.store.discard_partial(app, &version);
-                    return Err(ReleaseError::Signature(format!(
+                    let err = ReleaseError::Signature(format!(
                         "{app} {version}: the index lists no signature"
-                    )));
+                    ));
+                    return Err(self.reject(app, &version, err));
                 };
                 let signature = partial.join("artifact.minisig");
                 let _ = std::fs::remove_file(&signature);
-                let verified = self
-                    .source
-                    .download(signature_url, &signature)
-                    .map_err(ReleaseError::from)
-                    .and_then(|()| {
-                        self.verifier
-                            .verify(app, &archive, &signature)
-                            .map_err(|err| ReleaseError::Signature(err.0))
-                    });
-                if let Err(err) = verified {
-                    self.store.discard_partial(app, &version);
-                    return Err(err);
+                self.source.download(signature_url, &signature)?;
+                if let Err(err) = self.verifier.verify(app, &archive, &signature) {
+                    return Err(self.reject(app, &version, ReleaseError::Signature(err.0)));
                 }
             }
             Signing::AllowUnsigned => {
@@ -277,30 +347,85 @@ impl ReleaseManager {
             Signing::NoKeys => unreachable!("refused above"),
         }
 
-        let manifest = self.store.unpack(app, &version, &archive)?;
+        Ok(version)
+    }
+
+    /// Unpacks a fetched release and keeps it. Refused archives and kind mismatches are recorded as failed.
+    fn unpack_and_keep(
+        &self,
+        state: &mut ReleaseState,
+        app: &AppId,
+        version: &Version,
+    ) -> Result<(), ReleaseError> {
+        if state
+            .apps
+            .get(app)
+            .is_some_and(|current| current.kept.contains(version))
+        {
+            return Ok(());
+        }
+        let policy = self.policy(app)?.clone();
+        let partial = self.store.partial_dir(app, version);
+        let archive = partial.join("artifact");
+        let manifest = match self.store.unpack(app, version, &archive) {
+            Ok(manifest) => manifest,
+            Err(err) => return Err(self.reject_locked(state, app, version, err.into())),
+        };
         if manifest.kind != policy.kind {
-            self.store.discard_partial(app, &version);
-            return Err(store_error(
+            self.store.discard_partial(app, version);
+            let err = store_error(
                 &partial,
                 format!(
                     "release kind is {}, but app.{app}.kind is {}",
                     manifest.kind.as_str(),
                     policy.kind.as_str()
                 ),
-            )
-            .into());
+            );
+            return Err(self.reject_locked(state, app, version, err.into()));
         }
-        self.store.commit(app, &version)?;
+        self.store.commit(app, version)?;
 
         let mut next = state.clone();
         let current = next.app_mut(app);
-        current.kept.retain(|kept| *kept != version);
+        current.kept.retain(|kept| kept != version);
         current.kept.push(version.clone());
-        current.failed.remove(&version);
-        self.commit_state(&mut state, next)?;
+        current.failed.remove(version);
+        self.commit_state(state, next)?;
         tracing::info!(event = "installed", app = %app, version = %version);
+        Ok(())
+    }
 
-        Ok(version)
+    /// Discards a release's partial download, records it as failed with the error, and returns the error.
+    fn reject(&self, app: &AppId, version: &Version, err: ReleaseError) -> ReleaseError {
+        let mut state = self.lock();
+        self.reject_locked(&mut state, app, version, err)
+    }
+
+    fn reject_locked(
+        &self,
+        state: &mut ReleaseState,
+        app: &AppId,
+        version: &Version,
+        err: ReleaseError,
+    ) -> ReleaseError {
+        self.store.discard_partial(app, version);
+        let mut next = state.clone();
+        next.app_mut(app)
+            .failed
+            .insert(version.clone(), err.to_string());
+        if let Err(save) = self.commit_state(state, next) {
+            tracing::error!(event = "failure_not_recorded", app = %app, version = %version, error = %save);
+        }
+        tracing::warn!(event = "release_refused", app = %app, version = %version, error = %err);
+        err
+    }
+
+    /// The last saved state, without waiting for a running operation.
+    pub(crate) fn snapshot(&self) -> ReleaseState {
+        self.published
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone()
     }
 }
 
@@ -314,6 +439,10 @@ impl ReleaseManager {
         next.revision = state.revision + 1;
         self.state_store.save(&next)?;
         *state = next;
+        *self
+            .published
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = state.clone();
         Ok(())
     }
 
@@ -323,8 +452,7 @@ impl ReleaseManager {
 
     /// The manifest of every active release, the server's included.
     pub fn active_manifests(&self) -> BTreeMap<AppId, ReleaseManifest> {
-        let state = self.lock();
-        self.manifests_of(&state)
+        self.manifests_of(&self.snapshot())
     }
 
     pub(crate) fn manifests_of(&self, state: &ReleaseState) -> BTreeMap<AppId, ReleaseManifest> {
@@ -342,7 +470,7 @@ impl ReleaseManager {
 
     /// A copy of the release state.
     pub fn status(&self) -> ReleaseState {
-        self.lock().clone()
+        self.snapshot()
     }
 
     /// Switches one or several apps to kept versions, as one step: every target is checked for compatibility
@@ -509,8 +637,9 @@ impl ReleaseManager {
         Ok(())
     }
 
-    /// Switches back to `version`, or to the previous release. The version rolled back from is marked failed
-    /// ("rolled back"), so auto-update does not offer it again; an explicit switch clears that.
+    /// Switches back to `version`, or to the previous release, and pins it there: auto-update leaves the app alone
+    /// until `unpin`. The version rolled back from is also marked failed ("rolled back"), so it is not offered again
+    /// after unpinning; an explicit switch clears that.
     pub fn rollback(&self, app: &AppId, version: Option<Version>) -> Result<Version, ReleaseError> {
         let mut state = self.lock();
         let current = state.apps.get(app).cloned().unwrap_or_default();
@@ -523,13 +652,13 @@ impl ReleaseManager {
                 .ok_or_else(|| ReleaseError::NoPrevious(app.clone()))?,
         };
         self.switch_locked(&mut state, &[(app.clone(), target.clone())])?;
+        let mut next = state.clone();
+        let entry = next.app_mut(app);
+        entry.pinned = Some(target.clone());
         if let Some(from) = current.active.filter(|from| *from != target) {
-            let mut next = state.clone();
-            next.app_mut(app)
-                .failed
-                .insert(from, "rolled back".to_string());
-            self.commit_state(&mut state, next)?;
+            entry.failed.insert(from, "rolled back".to_string());
         }
+        self.commit_state(&mut state, next)?;
         Ok(target)
     }
 
