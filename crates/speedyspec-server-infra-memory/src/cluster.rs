@@ -128,7 +128,7 @@ impl Leadership for MemoryMember {
     }
 
     fn step_down(&self) {
-        let mut election = self.election.lock().unwrap_or_else(|p| p.into_inner());
+        let election = self.election.lock().unwrap_or_else(|p| p.into_inner());
         if election.leader.as_deref() == Some(self.pod.as_str()) {
             drop(election);
             MemoryLeadership {

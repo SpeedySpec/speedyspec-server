@@ -28,6 +28,14 @@ pub trait Leadership: Send + Sync {
     fn step_down(&self);
 }
 
+/// How a lease is held: how long it lasts, by when the holder must have renewed it, and how often it tries.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LeaseTimings {
+    pub lease: std::time::Duration,
+    pub renew_deadline: std::time::Duration,
+    pub retry: std::time::Duration,
+}
+
 /// One pod's own server binary state, in a cluster (a single host keeps it in `state.json`).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]

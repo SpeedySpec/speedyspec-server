@@ -12,7 +12,7 @@ pub mod state;
 
 pub use access::{AccessCheck, AccessDecision, AccessRequest, Identity};
 pub use app::{AppId, AppKind};
-pub use cluster::{ClusterMembers, LeaderView, Leadership, MemberReport, PodServer};
+pub use cluster::{ClusterMembers, LeaderView, Leadership, LeaseTimings, MemberReport, PodServer};
 pub use contracts::{
     AppRuntime, BinaryInspector, Prepared, ReleaseSource, ReleaseStore, SignatureVerifier,
     SourceError, StateError, StateStore, StoreError, VerifyError,
