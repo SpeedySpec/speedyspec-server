@@ -260,9 +260,13 @@ pub fn serve(
             ),
         ));
     }
-    let _ = std::fs::remove_file(path);
-    let listener = tokio::net::UnixListener::bind(path)?;
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
+    // Bound under a temporary name and made owner-only before it appears at `path`, so the socket is never
+    // reachable with looser permissions.
+    let staging = path.with_extension(format!("sock.{}", std::process::id()));
+    let _ = std::fs::remove_file(&staging);
+    let listener = tokio::net::UnixListener::bind(&staging)?;
+    std::fs::set_permissions(&staging, std::fs::Permissions::from_mode(0o600))?;
+    std::fs::rename(&staging, path)?;
     tokio::spawn(async move {
         loop {
             let Ok((stream, _)) = listener.accept().await else {
