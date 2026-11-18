@@ -5,20 +5,17 @@ use http::{HeaderMap, HeaderValue, Method, Response, StatusCode, header};
 use speedyspec_server_domain::StaticSection;
 use speedyspec_server_static::StaticSet;
 
-fn write(release: &Path, rel: &str, bytes: &[u8])
-{
+fn write(release: &Path, rel: &str, bytes: &[u8]) {
     let path = release.join("dist").join(rel);
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(path, bytes).unwrap();
 }
 
-fn text(len: usize) -> Vec<u8>
-{
+fn text(len: usize) -> Vec<u8> {
     (0..len).map(|i| b"abcdefghij"[i % 10]).collect()
 }
 
-fn build(not_found: Option<&str>) -> (tempfile::TempDir, StaticSet)
-{
+fn build(not_found: Option<&str>) -> (tempfile::TempDir, StaticSet) {
     let dir = tempfile::tempdir().unwrap();
     write(dir.path(), "index.html", b"root index");
     write(dir.path(), "docs/index.html", b"docs index");
@@ -28,14 +25,16 @@ fn build(not_found: Option<&str>) -> (tempfile::TempDir, StaticSet)
     write(dir.path(), "logo.png", &text(4096));
     write(dir.path(), "über menü.html", b"umlaut");
     write(dir.path(), "a+b.css", b"plus");
-    let section =
-        StaticSection { root: "dist".to_string(), not_found: not_found.map(str::to_string), cache: Vec::new() };
+    let section = StaticSection {
+        root: "dist".to_string(),
+        not_found: not_found.map(str::to_string),
+        cache: Vec::new(),
+    };
     let set = StaticSet::build(dir.path(), &section, u64::MAX).unwrap();
     (dir, set)
 }
 
-fn get(set: &StaticSet, rel: &str, headers: &[(&'static str, &str)]) -> Response<bytes::Bytes>
-{
+fn get(set: &StaticSet, rel: &str, headers: &[(&'static str, &str)]) -> Response<bytes::Bytes> {
     request(set, Method::GET, rel, None, headers)
 }
 
@@ -45,24 +44,20 @@ fn request(
     rel: &str,
     query: Option<&str>,
     headers: &[(&'static str, &str)],
-) -> Response<bytes::Bytes>
-{
+) -> Response<bytes::Bytes> {
     let mut map = HeaderMap::new();
-    for (name, value) in headers
-    {
+    for (name, value) in headers {
         map.append(*name, HeaderValue::from_str(value).unwrap());
     }
     set.respond(&method, "/admin/", rel, query, &map)
 }
 
-fn header<'a>(response: &'a Response<bytes::Bytes>, name: header::HeaderName) -> Option<&'a str>
-{
+fn header<'a>(response: &'a Response<bytes::Bytes>, name: header::HeaderName) -> Option<&'a str> {
     response.headers().get(name).map(|v| v.to_str().unwrap())
 }
 
 #[test]
-fn resolves_exact_index_and_html()
-{
+fn resolves_exact_index_and_html() {
     let (_dir, set) = build(None);
     assert_eq!(&get(&set, "", &[]).body()[..], b"root index");
     assert_eq!(&get(&set, "docs/", &[]).body()[..], b"docs index");
@@ -71,17 +66,18 @@ fn resolves_exact_index_and_html()
 }
 
 #[test]
-fn redirects_directory_without_slash()
-{
+fn redirects_directory_without_slash() {
     let (_dir, set) = build(None);
     let response = request(&set, Method::GET, "docs", Some("a=1"), &[]);
     assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
-    assert_eq!(header(&response, header::LOCATION), Some("/admin/docs/?a=1"));
+    assert_eq!(
+        header(&response, header::LOCATION),
+        Some("/admin/docs/?a=1")
+    );
 }
 
 #[test]
-fn not_found_uses_configured_page()
-{
+fn not_found_uses_configured_page() {
     let (_dir, set) = build(Some("404.html"));
     let response = get(&set, "missing", &[]);
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
@@ -90,18 +86,20 @@ fn not_found_uses_configured_page()
 }
 
 #[test]
-fn not_found_plain()
-{
+fn not_found_plain() {
     let (_dir, set) = build(None);
     let response = get(&set, "missing", &[]);
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
     assert_eq!(&response.body()[..], b"not found");
-    assert!(header(&response, header::CONTENT_TYPE).unwrap().starts_with("text/plain"));
+    assert!(
+        header(&response, header::CONTENT_TYPE)
+            .unwrap()
+            .starts_with("text/plain")
+    );
 }
 
 #[test]
-fn method_not_allowed()
-{
+fn method_not_allowed() {
     let (_dir, set) = build(None);
     let response = request(&set, Method::POST, "", None, &[]);
     assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
@@ -109,8 +107,7 @@ fn method_not_allowed()
 }
 
 #[test]
-fn head_has_length_no_body()
-{
+fn head_has_length_no_body() {
     let (_dir, set) = build(None);
     let response = request(&set, Method::HEAD, "about.html", None, &[]);
     assert_eq!(response.status(), StatusCode::OK);
@@ -119,20 +116,24 @@ fn head_has_length_no_body()
 }
 
 #[test]
-fn file_headers()
-{
+fn file_headers() {
     let (_dir, set) = build(None);
     let response = get(&set, "about.html", &[]);
-    assert_eq!(header(&response, header::CONTENT_TYPE), Some("text/html; charset=utf-8"));
+    assert_eq!(
+        header(&response, header::CONTENT_TYPE),
+        Some("text/html; charset=utf-8")
+    );
     assert_eq!(header(&response, header::CONTENT_LENGTH), Some("10"));
     assert_eq!(header(&response, header::ACCEPT_RANGES), Some("bytes"));
     assert_eq!(header(&response, header::CACHE_CONTROL), Some("no-cache"));
-    assert_eq!(header(&response, header::ETAG), Some(set.file("about.html").unwrap().etag.as_str()));
+    assert_eq!(
+        header(&response, header::ETAG),
+        Some(set.file("about.html").unwrap().etag.as_str())
+    );
 }
 
 #[test]
-fn conditional_304()
-{
+fn conditional_304() {
     let (_dir, set) = build(None);
     let etag = set.file("big.txt").unwrap().etag.clone();
     let listed = format!("W/\"x\", {etag}");
@@ -142,14 +143,22 @@ fn conditional_304()
     assert_eq!(header(&response, header::ETAG), Some(etag.as_str()));
     assert_eq!(header(&response, header::VARY), Some("Accept-Encoding"));
     let weak = format!("W/{etag}");
-    assert_eq!(get(&set, "big.txt", &[("if-none-match", &weak)]).status(), StatusCode::NOT_MODIFIED);
-    assert_eq!(get(&set, "big.txt", &[("if-none-match", "*")]).status(), StatusCode::NOT_MODIFIED);
-    assert_eq!(get(&set, "big.txt", &[("if-none-match", "\"other\"")]).status(), StatusCode::OK);
+    assert_eq!(
+        get(&set, "big.txt", &[("if-none-match", &weak)]).status(),
+        StatusCode::NOT_MODIFIED
+    );
+    assert_eq!(
+        get(&set, "big.txt", &[("if-none-match", "*")]).status(),
+        StatusCode::NOT_MODIFIED
+    );
+    assert_eq!(
+        get(&set, "big.txt", &[("if-none-match", "\"other\"")]).status(),
+        StatusCode::OK
+    );
 }
 
 #[test]
-fn accept_encoding_weights()
-{
+fn accept_encoding_weights() {
     let (_dir, set) = build(None);
     let file = set.file("big.txt").unwrap();
     assert!(file.br.is_some() && file.gzip.is_some());
@@ -161,12 +170,19 @@ fn accept_encoding_weights()
     let both = get(&set, "big.txt", &[("accept-encoding", "gzip, br")]);
     assert_eq!(header(&both, header::CONTENT_ENCODING), Some("br"));
     assert_eq!(&both.body()[..], &file.br.as_ref().unwrap()[..]);
-    assert_eq!(header(&both, header::CONTENT_LENGTH).unwrap(), file.br.as_ref().unwrap().len().to_string());
+    assert_eq!(
+        header(&both, header::CONTENT_LENGTH).unwrap(),
+        file.br.as_ref().unwrap().len().to_string()
+    );
 
     let no_br = get(&set, "big.txt", &[("accept-encoding", "br;q=0, gzip")]);
     assert_eq!(header(&no_br, header::CONTENT_ENCODING), Some("gzip"));
 
-    let weighted = get(&set, "big.txt", &[("accept-encoding", "gzip;q=0.9, br;q=0.4")]);
+    let weighted = get(
+        &set,
+        "big.txt",
+        &[("accept-encoding", "gzip;q=0.9, br;q=0.4")],
+    );
     assert_eq!(header(&weighted, header::CONTENT_ENCODING), Some("gzip"));
 
     let star = get(&set, "big.txt", &[("accept-encoding", "*;q=0.5")]);
@@ -181,29 +197,41 @@ fn accept_encoding_weights()
 }
 
 #[test]
-fn range_cases()
-{
+fn range_cases() {
     let (_dir, set) = build(None);
     let full = text(10_000);
 
-    let first = get(&set, "big.txt", &[("range", "bytes=0-99"), ("accept-encoding", "br")]);
+    let first = get(
+        &set,
+        "big.txt",
+        &[("range", "bytes=0-99"), ("accept-encoding", "br")],
+    );
     assert_eq!(first.status(), StatusCode::PARTIAL_CONTENT);
     assert_eq!(&first.body()[..], &full[..100]);
-    assert_eq!(header(&first, header::CONTENT_RANGE), Some("bytes 0-99/10000"));
+    assert_eq!(
+        header(&first, header::CONTENT_RANGE),
+        Some("bytes 0-99/10000")
+    );
     assert_eq!(header(&first, header::CONTENT_LENGTH), Some("100"));
     assert_eq!(header(&first, header::CONTENT_ENCODING), None);
 
     let suffix = get(&set, "big.txt", &[("range", "bytes=-500")]);
     assert_eq!(suffix.status(), StatusCode::PARTIAL_CONTENT);
     assert_eq!(&suffix.body()[..], &full[9500..]);
-    assert_eq!(header(&suffix, header::CONTENT_RANGE), Some("bytes 9500-9999/10000"));
+    assert_eq!(
+        header(&suffix, header::CONTENT_RANGE),
+        Some("bytes 9500-9999/10000")
+    );
 
     let open = get(&set, "big.txt", &[("range", "bytes=9990-")]);
     assert_eq!(&open.body()[..], &full[9990..]);
 
     let beyond = get(&set, "big.txt", &[("range", "bytes=9999999-")]);
     assert_eq!(beyond.status(), StatusCode::RANGE_NOT_SATISFIABLE);
-    assert_eq!(header(&beyond, header::CONTENT_RANGE), Some("bytes */10000"));
+    assert_eq!(
+        header(&beyond, header::CONTENT_RANGE),
+        Some("bytes */10000")
+    );
 
     let multiple = get(&set, "big.txt", &[("range", "bytes=0-1,4-5")]);
     assert_eq!(multiple.status(), StatusCode::OK);
@@ -213,16 +241,23 @@ fn range_cases()
     assert_eq!(malformed.status(), StatusCode::OK);
 
     let etag = set.file("big.txt").unwrap().etag.clone();
-    let matching = get(&set, "big.txt", &[("if-range", &etag), ("range", "bytes=0-9")]);
+    let matching = get(
+        &set,
+        "big.txt",
+        &[("if-range", &etag), ("range", "bytes=0-9")],
+    );
     assert_eq!(matching.status(), StatusCode::PARTIAL_CONTENT);
-    let stale = get(&set, "big.txt", &[("if-range", "\"other\""), ("range", "bytes=0-9")]);
+    let stale = get(
+        &set,
+        "big.txt",
+        &[("if-range", "\"other\""), ("range", "bytes=0-9")],
+    );
     assert_eq!(stale.status(), StatusCode::OK);
     assert_eq!(stale.body().len(), 10_000);
 }
 
 #[test]
-fn serves_encoded_names()
-{
+fn serves_encoded_names() {
     let (_dir, set) = build(None);
     assert_eq!(&get(&set, "über menü.html", &[]).body()[..], b"umlaut");
     assert_eq!(&get(&set, "a+b.css", &[]).body()[..], b"plus");

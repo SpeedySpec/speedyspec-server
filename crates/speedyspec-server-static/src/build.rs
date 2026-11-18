@@ -16,8 +16,7 @@ const COMPRESS_MIN_BYTES: usize = 1024;
 
 /// One file, ready to serve.
 #[derive(Clone, Debug)]
-pub struct StaticFile
-{
+pub struct StaticFile {
     pub content_type: String,
     /// A strong ETag, quotes included.
     pub etag: String,
@@ -30,8 +29,7 @@ pub struct StaticFile
 /// Every file of one static release, keyed by its `/`-separated path relative to the release's root. Immutable once
 /// built.
 #[derive(Clone, Debug)]
-pub struct StaticSet
-{
+pub struct StaticSet {
     pub(crate) files: HashMap<String, StaticFile>,
     /// Every directory that holds a file, as `/`-separated paths without a trailing slash.
     pub(crate) dirs: HashSet<String>,
@@ -41,18 +39,13 @@ pub struct StaticSet
 
 /// Why a static release could not be loaded.
 #[derive(Debug, thiserror::Error)]
-pub enum StaticBuildError
-{
+pub enum StaticBuildError {
     #[error("static root {0} does not exist or is not a directory")]
     RootMissing(PathBuf),
     #[error("static.not_found file {0:?} is not in the release")]
     NotFoundMissing(String),
     #[error("static files need {needed} bytes in memory, over the limit of {limit}")]
-    LimitExceeded
-    {
-        limit: u64,
-        needed: u64,
-    },
+    LimitExceeded { limit: u64, needed: u64 },
     #[error("cache rule pattern {0:?} is not a valid glob")]
     BadPattern(String),
     #[error("reading {0}: {1}")]
@@ -61,14 +54,15 @@ pub enum StaticBuildError
     UnsupportedFile(PathBuf),
 }
 
-impl StaticSet
-{
+impl StaticSet {
     /// Reads every file under `release_dir/<section.root>` into memory, refusing to need more than `limit_bytes`.
-    pub fn build(release_dir: &Path, section: &StaticSection, limit_bytes: u64) -> Result<StaticSet, StaticBuildError>
-    {
+    pub fn build(
+        release_dir: &Path,
+        section: &StaticSection,
+        limit_bytes: u64,
+    ) -> Result<StaticSet, StaticBuildError> {
         let root = release_dir.join(&section.root);
-        if !root.is_dir()
-        {
+        if !root.is_dir() {
             return Err(StaticBuildError::RootMissing(root));
         }
         let rules = section
@@ -88,13 +82,14 @@ impl StaticSet
 
         let mut files = HashMap::with_capacity(paths.len());
         let mut total_bytes = 0u64;
-        for (rel, path) in paths
-        {
+        for (rel, path) in paths {
             let file = load(&path, &rel, &rules)?;
             total_bytes += size(&file);
-            if total_bytes > limit_bytes
-            {
-                return Err(StaticBuildError::LimitExceeded { limit: limit_bytes, needed: total_bytes });
+            if total_bytes > limit_bytes {
+                return Err(StaticBuildError::LimitExceeded {
+                    limit: limit_bytes,
+                    needed: total_bytes,
+                });
             }
             files.insert(rel, file);
         }
@@ -106,56 +101,60 @@ impl StaticSet
 
         let dirs = files
             .keys()
-            .flat_map(|rel| rel.match_indices('/').map(move |(index, _)| rel[..index].to_string()))
+            .flat_map(|rel| {
+                rel.match_indices('/')
+                    .map(move |(index, _)| rel[..index].to_string())
+            })
             .collect();
 
-        Ok(StaticSet { files, dirs, not_found: section.not_found.clone(), total_bytes })
+        Ok(StaticSet {
+            files,
+            dirs,
+            not_found: section.not_found.clone(),
+            total_bytes,
+        })
     }
 
     /// Bytes held: every identity body and every kept compressed variant.
-    pub fn total_bytes(&self) -> u64
-    {
+    pub fn total_bytes(&self) -> u64 {
         self.total_bytes
     }
 
     /// The file at a `/`-separated path relative to the root, without a leading slash.
-    pub fn file(&self, rel: &str) -> Option<&StaticFile>
-    {
+    pub fn file(&self, rel: &str) -> Option<&StaticFile> {
         self.files.get(rel)
     }
 }
 
-fn size(file: &StaticFile) -> u64
-{
-    let variants = file.br.as_ref().map_or(0, Bytes::len) + file.gzip.as_ref().map_or(0, Bytes::len);
+fn size(file: &StaticFile) -> u64 {
+    let variants =
+        file.br.as_ref().map_or(0, Bytes::len) + file.gzip.as_ref().map_or(0, Bytes::len);
     (file.identity.len() + variants) as u64
 }
 
 /// Walks `dir` without following symlinks, collecting `(relative path, full path)` for every regular file.
-fn collect(dir: &Path, prefix: &str, out: &mut Vec<(String, PathBuf)>) -> Result<(), StaticBuildError>
-{
-    let entries = std::fs::read_dir(dir).map_err(|err| StaticBuildError::Io(dir.to_path_buf(), err))?;
-    for entry in entries
-    {
+fn collect(
+    dir: &Path,
+    prefix: &str,
+    out: &mut Vec<(String, PathBuf)>,
+) -> Result<(), StaticBuildError> {
+    let entries =
+        std::fs::read_dir(dir).map_err(|err| StaticBuildError::Io(dir.to_path_buf(), err))?;
+    for entry in entries {
         let entry = entry.map_err(|err| StaticBuildError::Io(dir.to_path_buf(), err))?;
         let path = entry.path();
-        let kind = entry.file_type().map_err(|err| StaticBuildError::Io(path.clone(), err))?;
-        let Some(name) = entry.file_name().to_str().map(str::to_string)
-        else
-        {
+        let kind = entry
+            .file_type()
+            .map_err(|err| StaticBuildError::Io(path.clone(), err))?;
+        let Some(name) = entry.file_name().to_str().map(str::to_string) else {
             return Err(StaticBuildError::UnsupportedFile(path));
         };
         let rel = format!("{prefix}{name}");
-        if kind.is_dir()
-        {
+        if kind.is_dir() {
             collect(&path, &format!("{rel}/"), out)?;
-        }
-        else if kind.is_file()
-        {
+        } else if kind.is_file() {
             out.push((rel, path));
-        }
-        else
-        {
+        } else {
             return Err(StaticBuildError::UnsupportedFile(path));
         }
     }
@@ -163,12 +162,20 @@ fn collect(dir: &Path, prefix: &str, out: &mut Vec<(String, PathBuf)>) -> Result
     Ok(())
 }
 
-fn load(path: &Path, rel: &str, rules: &[(GlobMatcher, String)]) -> Result<StaticFile, StaticBuildError>
-{
-    let identity = std::fs::read(path).map_err(|err| StaticBuildError::Io(path.to_path_buf(), err))?;
+fn load(
+    path: &Path,
+    rel: &str,
+    rules: &[(GlobMatcher, String)],
+) -> Result<StaticFile, StaticBuildError> {
+    let identity =
+        std::fs::read(path).map_err(|err| StaticBuildError::Io(path.to_path_buf(), err))?;
     let mime = mime_guess::from_path(rel).first_or_octet_stream();
     let essence = mime.essence_str().to_string();
-    let content_type = if has_charset(&essence) { format!("{essence}; charset=utf-8") } else { essence.clone() };
+    let content_type = if has_charset(&essence) {
+        format!("{essence}; charset=utf-8")
+    } else {
+        essence.clone()
+    };
     let hash = blake3::hash(&identity);
     let etag = format!("\"{}\"", hex(&hash.as_bytes()[..16]));
     let cache_control = rules
@@ -176,25 +183,34 @@ fn load(path: &Path, rel: &str, rules: &[(GlobMatcher, String)]) -> Result<Stati
         .find(|(glob, _)| glob.is_match(rel))
         .map_or_else(|| "no-cache".to_string(), |(_, value)| value.clone());
 
-    let (br, gzip) = if compressible(&essence) && identity.len() > COMPRESS_MIN_BYTES
-    {
-        (smaller(brotli(&identity), identity.len()), smaller(gzip(&identity), identity.len()))
-    }
-    else
-    {
+    let (br, gzip) = if compressible(&essence) && identity.len() > COMPRESS_MIN_BYTES {
+        (
+            smaller(brotli(&identity), identity.len()),
+            smaller(gzip(&identity), identity.len()),
+        )
+    } else {
         (None, None)
     };
 
-    Ok(StaticFile { content_type, etag, cache_control, identity: Bytes::from(identity), br, gzip })
+    Ok(StaticFile {
+        content_type,
+        etag,
+        cache_control,
+        identity: Bytes::from(identity),
+        br,
+        gzip,
+    })
 }
 
-fn has_charset(essence: &str) -> bool
-{
-    essence.starts_with("text/") || matches!(essence, "application/javascript" | "application/json" | "image/svg+xml")
+fn has_charset(essence: &str) -> bool {
+    essence.starts_with("text/")
+        || matches!(
+            essence,
+            "application/javascript" | "application/json" | "image/svg+xml"
+        )
 }
 
-fn compressible(essence: &str) -> bool
-{
+fn compressible(essence: &str) -> bool {
     essence.starts_with("text/")
         || matches!(
             essence,
@@ -207,13 +223,11 @@ fn compressible(essence: &str) -> bool
         )
 }
 
-fn smaller(compressed: Vec<u8>, original: usize) -> Option<Bytes>
-{
+fn smaller(compressed: Vec<u8>, original: usize) -> Option<Bytes> {
     (compressed.len() < original).then(|| Bytes::from(compressed))
 }
 
-fn brotli(input: &[u8]) -> Vec<u8>
-{
+fn brotli(input: &[u8]) -> Vec<u8> {
     let mut out = Vec::new();
     {
         let mut writer = brotli::CompressorWriter::new(&mut out, 4096, 11, 22);
@@ -222,14 +236,12 @@ fn brotli(input: &[u8]) -> Vec<u8>
     out
 }
 
-fn gzip(input: &[u8]) -> Vec<u8>
-{
+fn gzip(input: &[u8]) -> Vec<u8> {
     let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::new(9));
     encoder.write_all(input).expect("writing to memory");
     encoder.finish().expect("writing to memory")
 }
 
-fn hex(bytes: &[u8]) -> String
-{
+fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }

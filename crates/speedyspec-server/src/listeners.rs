@@ -24,24 +24,21 @@ pub const GRACEFUL_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// A certificate chain and private key, both PEM files.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TlsFiles
-{
+pub struct TlsFiles {
     pub cert: PathBuf,
     pub key: PathBuf,
 }
 
 /// A bound TCP listener; with `tls` it serves HTTPS, without it cleartext HTTP/1.1 and h2c.
 #[derive(Debug)]
-pub struct BoundTcp
-{
+pub struct BoundTcp {
     pub listener: std::net::TcpListener,
     pub tls: Option<TlsFiles>,
 }
 
 /// A bound UDP socket that serves HTTP/3. HTTP/3 always needs TLS.
 #[derive(Debug)]
-pub struct BoundUdp
-{
+pub struct BoundUdp {
     pub socket: std::net::UdpSocket,
     pub tls: TlsFiles,
 }
@@ -49,12 +46,10 @@ pub struct BoundUdp
 /// A Salvo `Listener` over a TCP listener that is already bound.
 struct Prebound(std::net::TcpListener);
 
-impl Listener for Prebound
-{
+impl Listener for Prebound {
     type Acceptor = TcpAcceptor;
 
-    async fn try_bind(self) -> salvo::Result<TcpAcceptor>
-    {
+    async fn try_bind(self) -> salvo::Result<TcpAcceptor> {
         self.0.set_nonblocking(true)?;
         let listener = tokio::net::TcpListener::from_std(self.0)?;
 
@@ -62,8 +57,7 @@ impl Listener for Prebound
     }
 }
 
-fn rustls_config(files: &TlsFiles) -> anyhow::Result<RustlsConfig>
-{
+fn rustls_config(files: &TlsFiles) -> anyhow::Result<RustlsConfig> {
     let keycert = Keycert::new()
         .cert_from_path(&files.cert)
         .with_context(|| format!("reading certificate {}", files.cert.display()))?
@@ -73,9 +67,10 @@ fn rustls_config(files: &TlsFiles) -> anyhow::Result<RustlsConfig>
     Ok(RustlsConfig::new(keycert))
 }
 
-fn quinn_acceptor(bound: BoundUdp) -> anyhow::Result<QuinnAcceptor>
-{
-    let config: QuinnServerConfig = rustls_config(&bound.tls)?.try_into().context("building the HTTP/3 TLS config")?;
+fn quinn_acceptor(bound: BoundUdp) -> anyhow::Result<QuinnAcceptor> {
+    let config: QuinnServerConfig = rustls_config(&bound.tls)?
+        .try_into()
+        .context("building the HTTP/3 TLS config")?;
     bound.socket.set_nonblocking(true)?;
     let endpoint = quinn::Endpoint::new(
         quinn::EndpointConfig::default(),
@@ -85,11 +80,19 @@ fn quinn_acceptor(bound: BoundUdp) -> anyhow::Result<QuinnAcceptor>
     )?;
     let local = endpoint.local_addr()?;
 
-    Ok(QuinnAcceptor::new(endpoint, local, CancellationToken::new()))
+    Ok(QuinnAcceptor::new(
+        endpoint,
+        local,
+        CancellationToken::new(),
+    ))
 }
 
-fn spawn<A>(tasks: &mut JoinSet<std::io::Result<()>>, handles: &mut Vec<ServerHandle>, acceptor: A, service: Service)
-where
+fn spawn<A>(
+    tasks: &mut JoinSet<std::io::Result<()>>,
+    handles: &mut Vec<ServerHandle>,
+    acceptor: A,
+    service: Service,
+) where
     A: Acceptor + Send + 'static,
 {
     let server = Server::new(acceptor);
@@ -104,26 +107,39 @@ pub async fn serve(
     udp: Vec<BoundUdp>,
     router: Arc<Router>,
     shutdown: impl Future<Output = ()>,
-) -> anyhow::Result<()>
-{
+) -> anyhow::Result<()> {
     let mut tasks = JoinSet::new();
     let mut handles = Vec::new();
 
-    for bound in tcp
-    {
-        match bound.tls
-        {
-            None => spawn(&mut tasks, &mut handles, Prebound(bound.listener).try_bind().await?, Service::new(router.clone())),
-            Some(files) =>
-            {
-                let acceptor = RustlsListener::new(rustls_config(&files)?, Prebound(bound.listener)).try_bind().await?;
-                spawn(&mut tasks, &mut handles, acceptor, Service::new(router.clone()));
+    for bound in tcp {
+        match bound.tls {
+            None => spawn(
+                &mut tasks,
+                &mut handles,
+                Prebound(bound.listener).try_bind().await?,
+                Service::new(router.clone()),
+            ),
+            Some(files) => {
+                let acceptor =
+                    RustlsListener::new(rustls_config(&files)?, Prebound(bound.listener))
+                        .try_bind()
+                        .await?;
+                spawn(
+                    &mut tasks,
+                    &mut handles,
+                    acceptor,
+                    Service::new(router.clone()),
+                );
             }
         }
     }
-    for bound in udp
-    {
-        spawn(&mut tasks, &mut handles, quinn_acceptor(bound)?, Service::new(router.clone()));
+    for bound in udp {
+        spawn(
+            &mut tasks,
+            &mut handles,
+            quinn_acceptor(bound)?,
+            Service::new(router.clone()),
+        );
     }
 
     tokio::select! {
@@ -132,13 +148,13 @@ pub async fn serve(
             result.context("server task panicked")?.context("server stopped")?;
         }
     }
-    for handle in &handles
-    {
+    for handle in &handles {
         handle.stop_graceful(GRACEFUL_TIMEOUT);
     }
-    while let Some(result) = tasks.join_next().await
-    {
-        result.context("server task panicked")?.context("server stopped with an error")?;
+    while let Some(result) = tasks.join_next().await {
+        result
+            .context("server task panicked")?
+            .context("server stopped with an error")?;
     }
 
     Ok(())

@@ -10,20 +10,19 @@ use salvo::prelude::*;
 use speedyspec_server::listeners::{BoundTcp, BoundUdp, serve};
 
 #[handler]
-async fn ok(res: &mut Response)
-{
+async fn ok(res: &mut Response) {
     res.render(Text::Plain("ok"));
 }
 
-fn client(ca: &std::path::Path) -> reqwest::ClientBuilder
-{
+fn client(ca: &std::path::Path) -> reqwest::ClientBuilder {
     let ca = reqwest::Certificate::from_pem(&std::fs::read(ca).unwrap()).unwrap();
-    reqwest::Client::builder().add_root_certificate(ca).timeout(Duration::from_secs(10))
+    reqwest::Client::builder()
+        .add_root_certificate(ca)
+        .timeout(Duration::from_secs(10))
 }
 
 #[tokio::test]
-async fn serves_all_protocols_from_prebound_sockets()
-{
+async fn serves_all_protocols_from_prebound_sockets() {
     let dir = tempfile::tempdir().unwrap();
     let certs = support::certs::generate(dir.path());
 
@@ -33,14 +32,27 @@ async fn serves_all_protocols_from_prebound_sockets()
     let secure_addr: SocketAddr = secure.local_addr().unwrap();
     let quic = UdpSocket::bind(secure_addr).unwrap();
 
-    let router = std::sync::Arc::new(Router::new().goal(ok).push(Router::with_path("{**rest}").goal(ok)));
+    let router = std::sync::Arc::new(
+        Router::new()
+            .goal(ok)
+            .push(Router::with_path("{**rest}").goal(ok)),
+    );
     let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
     let server = tokio::spawn(serve(
         vec![
-            BoundTcp { listener: plain, tls: None },
-            BoundTcp { listener: secure, tls: Some(certs.tls.clone()) },
+            BoundTcp {
+                listener: plain,
+                tls: None,
+            },
+            BoundTcp {
+                listener: secure,
+                tls: Some(certs.tls.clone()),
+            },
         ],
-        vec![BoundUdp { socket: quic, tls: certs.tls.clone() }],
+        vec![BoundUdp {
+            socket: quic,
+            tls: certs.tls.clone(),
+        }],
         router,
         async move {
             let _ = stop_rx.await;
@@ -48,18 +60,33 @@ async fn serves_all_protocols_from_prebound_sockets()
     ));
 
     let h1 = reqwest::Client::builder().http1_only().build().unwrap();
-    let response = h1.get(format!("http://{plain_addr}/")).send().await.unwrap();
+    let response = h1
+        .get(format!("http://{plain_addr}/"))
+        .send()
+        .await
+        .unwrap();
     assert_eq!(response.status(), 200);
     assert_eq!(response.version(), reqwest::Version::HTTP_11);
     assert_eq!(response.text().await.unwrap(), "ok");
 
-    let h2c = reqwest::Client::builder().http2_prior_knowledge().build().unwrap();
-    let response = h2c.get(format!("http://{plain_addr}/")).send().await.unwrap();
+    let h2c = reqwest::Client::builder()
+        .http2_prior_knowledge()
+        .build()
+        .unwrap();
+    let response = h2c
+        .get(format!("http://{plain_addr}/"))
+        .send()
+        .await
+        .unwrap();
     assert_eq!(response.status(), 200);
     assert_eq!(response.version(), reqwest::Version::HTTP_2);
 
     let https = client(&certs.ca).build().unwrap();
-    let response = https.get(format!("https://localhost:{}/", secure_addr.port())).send().await.unwrap();
+    let response = https
+        .get(format!("https://localhost:{}/", secure_addr.port()))
+        .send()
+        .await
+        .unwrap();
     assert_eq!(response.status(), 200);
     assert_eq!(response.version(), reqwest::Version::HTTP_2);
 
@@ -68,6 +95,8 @@ async fn serves_all_protocols_from_prebound_sockets()
     assert_eq!(body, b"ok");
 
     stop_tx.send(()).unwrap();
-    let result = tokio::time::timeout(Duration::from_secs(5), server).await.expect("serve returns within 5 s");
+    let result = tokio::time::timeout(Duration::from_secs(5), server)
+        .await
+        .expect("serve returns within 5 s");
     result.unwrap().unwrap();
 }
