@@ -178,6 +178,26 @@ impl Keeper {
         }
     }
 
+    /// The generation that becomes active in place of `dead`, waiting up to `ready_timeout`; `None` if none does.
+    async fn wait_for_replacement(&self, dead: &Arc<Generation>) -> Option<Arc<Generation>> {
+        let deadline = tokio::time::Instant::now() + self.config.handoff.ready_timeout;
+        loop {
+            let notified = self.activated.notified();
+            if let Some(generation) = self.active.lock().await.clone()
+                && !Arc::ptr_eq(&generation, dead)
+                && !generation.closed.load(Ordering::SeqCst)
+            {
+                return Some(generation);
+            }
+            // The keeper clears or replaces the active generation as soon as it sees the exit; poll as a backstop.
+            let wait = tokio::time::timeout(Duration::from_millis(50), notified);
+            if tokio::time::Instant::now() >= deadline {
+                return None;
+            }
+            let _ = wait.await;
+        }
+    }
+
     /// Sends one control line to `generation` and waits for its raw answer.
     pub(crate) async fn forward_to(
         &self,
@@ -209,8 +229,17 @@ impl Keeper {
     /// Sends one control line to the active generation. A reply asking for a server upgrade is carried out here, and
     /// the client gets the upgrade's result.
     async fn forward(&self, line: &str) -> Result<String, String> {
-        let generation = self.wait_for_active().await?;
-        let reply = self.forward_to(&generation, line).await?;
+        let mut generation = self.wait_for_active().await?;
+        let reply = match self.forward_to(&generation, line).await {
+            Ok(reply) => reply,
+            // A read-only request that met a dying generation (a crash, a failed trial) is asked again of the
+            // generation the keeper resumes or restarts in its place. Requests that change anything are never retried.
+            Err(err) if is_read_only(line) => {
+                generation = self.wait_for_replacement(&generation).await.ok_or(err)?;
+                self.forward_to(&generation, line).await?
+            }
+            Err(err) => return Err(err),
+        };
         if let Ok(value) = serde_json::from_str::<Value>(&reply)
             && let Some(upgrade) = value.get("Ok").and_then(|ok| ok.get("upgrade"))
         {
@@ -630,6 +659,16 @@ pub(crate) enum KeeperCommand {
     Reload {
         reply: oneshot::Sender<Result<String, String>>,
     },
+}
+
+/// `status`, `release list` and `release check`: safe to ask a second generation.
+fn is_read_only(line: &str) -> bool {
+    matches!(
+        serde_json::from_str::<control::ControlRequest>(line),
+        Ok(control::ControlRequest::Status
+            | control::ControlRequest::List { .. }
+            | control::ControlRequest::Check { .. })
+    )
 }
 
 /// Clears close-on-exec, so `fd` survives the keeper's `execve`.
