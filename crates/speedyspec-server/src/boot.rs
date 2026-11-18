@@ -109,6 +109,7 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
         apps,
         access,
         trusted_proxies: config.trusted_proxies.clone(),
+        forwarded_headers: config.forwarded_headers,
     })
 }
 

@@ -5,7 +5,7 @@ pub mod handlers;
 pub mod path;
 pub mod service;
 
-pub use forwarded::{RequestOrigin, origin};
+pub use forwarded::{ForwardedHeaders, RequestOrigin, origin};
 pub use handlers::AppHandle;
 pub use path::{PathRejection, normalize};
 pub use service::{ServeState, build_router};

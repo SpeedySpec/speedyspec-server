@@ -8,6 +8,7 @@ use serde::Deserialize;
 use speedyspec_server_domain::{Access, AppId, AppKind, HostMatch, Mount, MountTable};
 
 use crate::listeners::TlsFiles;
+use speedyspec_server_presentation::ForwardedHeaders;
 
 /// Where `run` looks for the configuration without `--config`.
 pub const DEFAULT_CONFIG: &str = "/etc/speedyspec/server.toml";
@@ -74,6 +75,8 @@ pub struct Config {
     pub run_dir: PathBuf,
     pub listeners: Vec<ListenerConfig>,
     pub trusted_proxies: Vec<ipnet::IpNet>,
+    /// Which proxy headers the trusted proxies set (`proxy.headers`, default `x-forwarded`).
+    pub forwarded_headers: ForwardedHeaders,
     pub apps: BTreeMap<AppId, AppConfig>,
     pub mounts: MountTable,
     pub access: AccessImpl,
@@ -137,6 +140,16 @@ struct RawTls {
 struct RawProxy {
     #[serde(default)]
     trusted: Vec<ipnet::IpNet>,
+    #[serde(default)]
+    headers: RawForwardedHeaders,
+}
+
+#[derive(Clone, Copy, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+enum RawForwardedHeaders {
+    #[default]
+    XForwarded,
+    Forwarded,
 }
 
 #[derive(Deserialize)]
@@ -311,9 +324,9 @@ impl Config {
                 }
                 Some(_) => {}
             }
-            if mount.host == "*" && mount.path == ADMIN_API_PATH {
+            if mount.path == ADMIN_API_PATH {
                 return Err(invalid(format!(
-                    "mount.path {ADMIN_API_PATH:?} on host * is reserved for the admin API"
+                    "mount.path {ADMIN_API_PATH:?} is reserved for the admin API on every host"
                 )));
             }
             let host = if mount.host == "*" {
@@ -328,12 +341,22 @@ impl Config {
                 access: mount.access,
             });
         }
-        mounts.push(Mount {
-            host: HostMatch::Any,
-            path: ADMIN_API_PATH.to_string(),
-            app: server,
-            access: Access::SignedIn,
-        });
+        // The admin API answers on every host. An exact-host mount beats every `*` mount on its host, so the built-in
+        // mount is added once for `*` and once for each exact host that has mounts of its own.
+        let mut hosts: Vec<HostMatch> = vec![HostMatch::Any];
+        for mount in &mounts {
+            if !hosts.contains(&mount.host) {
+                hosts.push(mount.host.clone());
+            }
+        }
+        for host in hosts {
+            mounts.push(Mount {
+                host,
+                path: ADMIN_API_PATH.to_string(),
+                app: server.clone(),
+                access: Access::SignedIn,
+            });
+        }
         let mounts = MountTable::new(mounts).map_err(|err| invalid(format!("mount: {err}")))?;
 
         Ok(Config {
@@ -344,6 +367,10 @@ impl Config {
                 .unwrap_or_else(|| PathBuf::from(DEFAULT_RUN_DIR)),
             listeners,
             trusted_proxies: raw.proxy.trusted,
+            forwarded_headers: match raw.proxy.headers {
+                RawForwardedHeaders::XForwarded => ForwardedHeaders::XForwarded,
+                RawForwardedHeaders::Forwarded => ForwardedHeaders::Forwarded,
+            },
             apps,
             mounts,
             access: raw.access.implementation,
@@ -539,6 +566,43 @@ app = "blog"
             Access::SignedIn
         );
         assert_eq!(config.mounts.resolve("other.org", "/x"), None);
+    }
+
+    #[test]
+    fn admin_api_reachable_on_exact_hosts() {
+        let config = Config::parse(IMMUTABLE).unwrap();
+        let api = config
+            .mounts
+            .resolve("example.com", "/admin/api/x")
+            .unwrap();
+        assert_eq!((api.app.as_str(), api.access), ("server", Access::SignedIn));
+    }
+
+    #[test]
+    fn rejects_exact_host_admin_api_mount() {
+        rejects(
+            &format!(
+                "{IMMUTABLE}\n[[mount]]\nhost = \"example.com\"\npath = \"/admin/api/\"\napp = \"blog\"\n"
+            ),
+            "/admin/api/",
+        );
+    }
+
+    #[test]
+    fn forwarded_headers_family() {
+        assert_eq!(
+            Config::parse(IMMUTABLE).unwrap().forwarded_headers,
+            ForwardedHeaders::XForwarded
+        );
+        let toml = format!("{IMMUTABLE}\n[proxy]\nheaders = \"forwarded\"\n");
+        assert_eq!(
+            Config::parse(&toml).unwrap().forwarded_headers,
+            ForwardedHeaders::Forwarded
+        );
+        rejects(
+            &format!("{IMMUTABLE}\n[proxy]\nheaders = \"both\"\n"),
+            "both",
+        );
     }
 
     #[test]

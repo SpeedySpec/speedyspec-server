@@ -10,7 +10,7 @@ use speedyspec_server_domain::{
     Access, AccessCheck, AppId, HostMatch, Mount, MountTable, StaticSection,
 };
 use speedyspec_server_infra_access_dev::{DenySignedIn, DevAllowAll};
-use speedyspec_server_presentation::{AppHandle, ServeState, build_router};
+use speedyspec_server_presentation::{AppHandle, ForwardedHeaders, ServeState, build_router};
 use speedyspec_server_static::StaticSet;
 
 const ADMIN_SECRET: &str = "admin secret page";
@@ -79,6 +79,7 @@ fn service(access: Arc<dyn AccessCheck>) -> (tempfile::TempDir, Service) {
         apps,
         access,
         trusted_proxies: Vec::new(),
+        forwarded_headers: ForwardedHeaders::XForwarded,
     };
     (dir, Service::new(build_router(Arc::new(state))))
 }
@@ -216,10 +217,32 @@ async fn no_mount() {
         apps,
         access: Arc::new(DenySignedIn),
         trusted_proxies: Vec::new(),
+        forwarded_headers: ForwardedHeaders::XForwarded,
     };
     let service = Service::new(build_router(Arc::new(state)));
     assert_eq!(
         raw(&service, "/x").await.status_code,
         Some(StatusCode::NOT_FOUND)
     );
+}
+
+#[tokio::test]
+async fn mount_redirect_location_is_percent_encoded() {
+    let dir = tempfile::tempdir().unwrap();
+    let menu = set(dir.path(), &[("index.html", "x")]);
+    let mounts = MountTable::new(vec![mount("/menü/", "menu", Access::Public)]).unwrap();
+    let apps = [(AppId::parse("menu").unwrap(), AppHandle::Static(menu))]
+        .into_iter()
+        .collect();
+    let state = ServeState {
+        mounts,
+        apps,
+        access: Arc::new(DenySignedIn),
+        trusted_proxies: Vec::new(),
+        forwarded_headers: ForwardedHeaders::XForwarded,
+    };
+    let service = Service::new(build_router(Arc::new(state)));
+    let response = raw(&service, "/men%C3%BC").await;
+    assert_eq!(response.status_code, Some(StatusCode::PERMANENT_REDIRECT));
+    assert_eq!(response.headers().get("location").unwrap(), "/men%C3%BC/");
 }

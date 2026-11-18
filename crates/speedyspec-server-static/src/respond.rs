@@ -5,7 +5,7 @@ use http::{HeaderMap, HeaderValue, Method, Response, StatusCode, header};
 
 use crate::encoding::{Encoding, choose};
 use crate::range::{RangeOutcome, parse};
-use crate::{StaticFile, StaticSet};
+use crate::{StaticFile, StaticSet, encode_path};
 
 impl StaticSet {
     /// Answers `method` for `rel_path`: the already-normalized, percent-decoded path after the mount prefix, without a
@@ -28,10 +28,13 @@ impl StaticSet {
             self.files.get(&format!("{rel_path}index.html"))
         } else if let Some(file) = self.files.get(rel_path) {
             Some(file)
-        } else if self.dirs.contains(rel_path) {
+        } else if self.files.contains_key(&format!("{rel_path}/index.html")) {
+            // A directory with an index: redirect to the slash form so its relative links resolve. A directory
+            // without one falls through to `<rel>.html` below.
+            let path = encode_path(&format!("{mount_prefix}{rel_path}/"));
             let location = match query {
-                Some(query) => format!("{mount_prefix}{rel_path}/?{query}"),
-                None => format!("{mount_prefix}{rel_path}/"),
+                Some(query) => format!("{path}?{query}"),
+                None => path,
             };
             return plain(StatusCode::PERMANENT_REDIRECT, "moved")
                 .with_header(header::LOCATION, &location);
@@ -64,51 +67,57 @@ impl StaticSet {
 
 fn serve(file: &StaticFile, headers: &HeaderMap, head: bool) -> Response<Bytes> {
     let varies = file.br.is_some() || file.gzip.is_some();
+    let len = file.identity.len() as u64;
+
+    // A satisfiable or unsatisfiable range selects the identity body; anything else negotiates a coding.
+    let range = headers
+        .get(header::RANGE)
+        .filter(|_| if_range_holds(headers, &file.etag))
+        .map(|value| parse(value, len))
+        .filter(|outcome| *outcome != RangeOutcome::Full);
+    let encoding = match range {
+        Some(_) => Encoding::Identity,
+        None => choose(
+            headers.get(header::ACCEPT_ENCODING),
+            file.br.is_some(),
+            file.gzip.is_some(),
+        ),
+    };
+    let etag = etag_for(file, encoding);
+
     if let Some(value) = headers.get(header::IF_NONE_MATCH)
-        && none_match(value, &file.etag)
+        && none_match(value, &etag)
     {
         let mut response = empty(StatusCode::NOT_MODIFIED);
-        common(&mut response, file, varies);
+        common(&mut response, file, &etag, varies);
         return response;
     }
 
-    let range = headers
-        .get(header::RANGE)
-        .filter(|_| if_range_holds(headers, &file.etag));
-    if let Some(range) = range {
-        let len = file.identity.len() as u64;
-        match parse(range, len) {
-            RangeOutcome::Partial(start, end) => {
-                let slice = file.identity.slice(start as usize..=end as usize);
-                let mut response =
-                    body(StatusCode::PARTIAL_CONTENT, &file.content_type, slice, head);
-                common(&mut response, file, varies);
-                set(
-                    &mut response,
-                    header::CONTENT_RANGE,
-                    &format!("bytes {start}-{end}/{len}"),
-                );
-                return response;
-            }
-            RangeOutcome::Unsatisfiable => {
-                let mut response =
-                    plain(StatusCode::RANGE_NOT_SATISFIABLE, "range not satisfiable");
-                set(
-                    &mut response,
-                    header::CONTENT_RANGE,
-                    &format!("bytes */{len}"),
-                );
-                return response;
-            }
-            RangeOutcome::Full => {}
+    match range {
+        Some(RangeOutcome::Partial(start, end)) => {
+            let slice = file.identity.slice(start as usize..=end as usize);
+            let mut response = body(StatusCode::PARTIAL_CONTENT, &file.content_type, slice, head);
+            common(&mut response, file, &etag, varies);
+            set(
+                &mut response,
+                header::CONTENT_RANGE,
+                &format!("bytes {start}-{end}/{len}"),
+            );
+            return response;
         }
+        Some(_) => {
+            let mut response = plain(StatusCode::RANGE_NOT_SATISFIABLE, "range not satisfiable");
+            set(
+                &mut response,
+                header::CONTENT_RANGE,
+                &format!("bytes */{len}"),
+            );
+            return response;
+        }
+        None => {}
     }
 
-    let (bytes, coding) = match choose(
-        headers.get(header::ACCEPT_ENCODING),
-        file.br.is_some(),
-        file.gzip.is_some(),
-    ) {
+    let (bytes, coding) = match encoding {
         Encoding::Br => (
             file.br.clone().expect("chosen only when present"),
             Some("br"),
@@ -120,12 +129,24 @@ fn serve(file: &StaticFile, headers: &HeaderMap, head: bool) -> Response<Bytes> 
         Encoding::Identity => (file.identity.clone(), None),
     };
     let mut response = body(StatusCode::OK, &file.content_type, bytes, head);
-    common(&mut response, file, varies);
+    common(&mut response, file, &etag, varies);
     if let Some(coding) = coding {
         set(&mut response, header::CONTENT_ENCODING, coding);
     }
 
     response
+}
+
+/// Each coding is its own representation, so it gets its own strong ETag: the identity tag with `-br` or `-gz` added
+/// inside the quotes. Ranges and `If-Range` only ever use the identity tag.
+fn etag_for(file: &StaticFile, encoding: Encoding) -> String {
+    let suffix = match encoding {
+        Encoding::Identity => return file.etag.clone(),
+        Encoding::Br => "-br",
+        Encoding::Gzip => "-gz",
+    };
+    let inner = file.etag.trim_end_matches('"');
+    format!("{inner}{suffix}\"")
 }
 
 /// `If-None-Match` uses the weak comparison: `W/` prefixes are ignored.
@@ -147,8 +168,8 @@ fn if_range_holds(headers: &HeaderMap, etag: &str) -> bool {
     }
 }
 
-fn common(response: &mut Response<Bytes>, file: &StaticFile, varies: bool) {
-    set(response, header::ETAG, &file.etag);
+fn common(response: &mut Response<Bytes>, file: &StaticFile, etag: &str, varies: bool) {
+    set(response, header::ETAG, etag);
     set(response, header::CACHE_CONTROL, &file.cache_control);
     if varies {
         set(response, header::VARY, "Accept-Encoding");

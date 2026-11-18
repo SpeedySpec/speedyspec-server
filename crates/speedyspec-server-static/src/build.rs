@@ -1,6 +1,6 @@
 //! Reading a static release into memory: content types, ETags, compressed variants and cache rules.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
@@ -31,8 +31,6 @@ pub struct StaticFile {
 #[derive(Clone, Debug)]
 pub struct StaticSet {
     pub(crate) files: HashMap<String, StaticFile>,
-    /// Every directory that holds a file, as `/`-separated paths without a trailing slash.
-    pub(crate) dirs: HashSet<String>,
     pub(crate) not_found: Option<String>,
     total_bytes: u64,
 }
@@ -83,6 +81,16 @@ impl StaticSet {
         let mut files = HashMap::with_capacity(paths.len());
         let mut total_bytes = 0u64;
         for (rel, path) in paths {
+            // Check the size on disk first, so a file far over the limit is never read into memory.
+            let on_disk = std::fs::metadata(&path)
+                .map_err(|err| StaticBuildError::Io(path.clone(), err))?
+                .len();
+            if total_bytes + on_disk > limit_bytes {
+                return Err(StaticBuildError::LimitExceeded {
+                    limit: limit_bytes,
+                    needed: total_bytes + on_disk,
+                });
+            }
             let file = load(&path, &rel, &rules)?;
             total_bytes += size(&file);
             if total_bytes > limit_bytes {
@@ -99,17 +107,8 @@ impl StaticSet {
             return Err(StaticBuildError::NotFoundMissing(name.clone()));
         }
 
-        let dirs = files
-            .keys()
-            .flat_map(|rel| {
-                rel.match_indices('/')
-                    .map(move |(index, _)| rel[..index].to_string())
-            })
-            .collect();
-
         Ok(StaticSet {
             files,
-            dirs,
             not_found: section.not_found.clone(),
             total_bytes,
         })

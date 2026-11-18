@@ -160,3 +160,22 @@ fn keeps_unicode_names() {
     assert_eq!(&set.file("über menü.html").unwrap().identity[..], b"umlaut");
     assert_eq!(&set.file("a+b.css").unwrap().identity[..], b"plus");
 }
+
+#[test]
+fn limit_checked_before_reading() {
+    // An unreadable file over the limit: checking its size first gives LimitExceeded; reading first would fail with Io.
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "huge.bin", &css(4096));
+    let path = dir.path().join("dist/huge.bin");
+    std::fs::set_permissions(&path, std::os::unix::fs::PermissionsExt::from_mode(0o000)).unwrap();
+    let result = StaticSet::build(dir.path(), &spec_rules(), 100);
+    std::fs::set_permissions(&path, std::os::unix::fs::PermissionsExt::from_mode(0o644)).unwrap();
+    assert!(
+        matches!(
+            result,
+            Err(StaticBuildError::LimitExceeded { limit: 100, .. })
+        ),
+        "{:?}",
+        result.err()
+    );
+}

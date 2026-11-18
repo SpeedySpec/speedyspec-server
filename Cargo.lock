@@ -3086,6 +3086,7 @@ dependencies = [
  "globset",
  "http",
  "mime_guess",
+ "percent-encoding",
  "speedyspec-server-domain",
  "tempfile",
  "thiserror",

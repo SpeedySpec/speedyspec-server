@@ -262,3 +262,73 @@ fn serves_encoded_names() {
     assert_eq!(&get(&set, "über menü.html", &[]).body()[..], b"umlaut");
     assert_eq!(&get(&set, "a+b.css", &[]).body()[..], b"plus");
 }
+
+#[test]
+fn directory_without_index_falls_back_to_html() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "docs.html", b"docs page");
+    write(dir.path(), "docs/intro.html", b"intro");
+    let section = StaticSection {
+        root: "dist".to_string(),
+        not_found: None,
+        cache: Vec::new(),
+    };
+    let set = StaticSet::build(dir.path(), &section, u64::MAX).unwrap();
+    let response = get(&set, "docs", &[]);
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(&response.body()[..], b"docs page");
+}
+
+#[test]
+fn redirect_location_is_percent_encoded() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "über menü/index.html", b"x");
+    write(dir.path(), "c#/index.html", b"x");
+    write(dir.path(), "a\u{1b}b/index.html", b"x");
+    let section = StaticSection {
+        root: "dist".to_string(),
+        not_found: None,
+        cache: Vec::new(),
+    };
+    let set = StaticSet::build(dir.path(), &section, u64::MAX).unwrap();
+    let location = |rel: &str| header(&get(&set, rel, &[]), header::LOCATION).map(str::to_string);
+    assert_eq!(
+        location("über menü").as_deref(),
+        Some("/admin/%C3%BCber%20men%C3%BC/")
+    );
+    assert_eq!(location("c#").as_deref(), Some("/admin/c%23/"));
+    assert_eq!(location("a\u{1b}b").as_deref(), Some("/admin/a%1Bb/"));
+}
+
+#[test]
+fn each_coding_has_its_own_etag() {
+    let (_dir, set) = build(None);
+    let identity = get(&set, "big.txt", &[]);
+    let br = get(&set, "big.txt", &[("accept-encoding", "br")]);
+    let gzip = get(&set, "big.txt", &[("accept-encoding", "gzip")]);
+    let tags = [
+        identity.headers()[header::ETAG].clone(),
+        br.headers()[header::ETAG].clone(),
+        gzip.headers()[header::ETAG].clone(),
+    ];
+    assert_ne!(tags[0], tags[1]);
+    assert_ne!(tags[0], tags[2]);
+    assert_ne!(tags[1], tags[2]);
+
+    let br_tag = tags[1].to_str().unwrap().to_string();
+    let revalidated = get(
+        &set,
+        "big.txt",
+        &[("accept-encoding", "br"), ("if-none-match", &br_tag)],
+    );
+    assert_eq!(revalidated.status(), StatusCode::NOT_MODIFIED);
+    assert_eq!(revalidated.headers()[header::ETAG], tags[1]);
+
+    // A range resumed with the brotli body's ETag must not get identity bytes spliced onto it.
+    let resumed = get(
+        &set,
+        "big.txt",
+        &[("if-range", &br_tag), ("range", "bytes=0-9")],
+    );
+    assert_eq!(resumed.status(), StatusCode::OK);
+}

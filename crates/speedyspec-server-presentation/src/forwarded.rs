@@ -15,9 +15,27 @@ pub struct RequestOrigin {
     pub https: bool,
 }
 
-/// Reads the origin of a request from `peer`. Only when `peer` is in `trusted` are `Forwarded` (preferred) or
-/// `X-Forwarded-For` / `-Host` / `-Proto` applied.
-pub fn origin(peer: IpAddr, headers: &HeaderMap, tls: bool, trusted: &[IpNet]) -> RequestOrigin {
+/// Which proxy headers a trusted proxy sets. Only that family is read; the other is ignored even from a trusted peer,
+/// because common proxies pass a client's own header of the other family through untouched.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ForwardedHeaders {
+    /// `X-Forwarded-For`, `-Host` and `-Proto`, as nginx, Caddy and Traefik send by default.
+    #[default]
+    XForwarded,
+    /// RFC 7239 `Forwarded`.
+    Forwarded,
+}
+
+/// Reads the origin of a request from `peer`. Only when `peer` is in `trusted` are the proxy headers of `family`
+/// applied. IPv4-mapped IPv6 addresses (a dual-stack listener's view of an IPv4 peer) are treated as IPv4.
+pub fn origin(
+    peer: IpAddr,
+    headers: &HeaderMap,
+    tls: bool,
+    trusted: &[IpNet],
+    family: ForwardedHeaders,
+) -> RequestOrigin {
+    let peer = peer.to_canonical();
     let host = headers
         .get(HOST)
         .and_then(|v| v.to_str().ok())
@@ -32,33 +50,46 @@ pub fn origin(peer: IpAddr, headers: &HeaderMap, tls: bool, trusted: &[IpNet]) -
         return seen;
     }
 
-    if let Some(value) = joined(headers, FORWARDED.as_str()) {
-        let elements: Vec<Vec<(String, String)>> = value.split(',').map(pairs).collect();
-        let mut chosen = None;
-        for element in elements.iter().rev() {
-            if let Some(ip) = find(element, "for").and_then(parse_node) {
-                chosen = Some(ip);
-                if !is_trusted(ip, trusted) {
-                    break;
-                }
-            }
-        }
-        if let Some(ip) = chosen {
-            seen.client = ip;
-        }
-        if let Some(host) = elements.iter().rev().find_map(|e| find(e, "host")) {
-            seen.host = normalize_host(&host);
-        }
-        if let Some(proto) = elements.iter().rev().find_map(|e| find(e, "proto")) {
-            seen.https = proto.eq_ignore_ascii_case("https");
-        }
-        return seen;
+    match family {
+        ForwardedHeaders::Forwarded => apply_forwarded(&mut seen, headers, trusted),
+        ForwardedHeaders::XForwarded => apply_x_forwarded(&mut seen, headers, trusted),
     }
 
+    seen
+}
+
+fn apply_forwarded(seen: &mut RequestOrigin, headers: &HeaderMap, trusted: &[IpNet]) {
+    let Some(value) = joined(headers, FORWARDED.as_str()) else {
+        return;
+    };
+    let elements: Vec<Vec<(String, String)>> = value.split(',').map(pairs).collect();
+    let mut chosen = None;
+    for element in elements.iter().rev() {
+        if let Some(ip) = find(element, "for").and_then(parse_node) {
+            let ip = ip.to_canonical();
+            chosen = Some(ip);
+            if !is_trusted(ip, trusted) {
+                break;
+            }
+        }
+    }
+    if let Some(ip) = chosen {
+        seen.client = ip;
+    }
+    if let Some(host) = elements.iter().rev().find_map(|e| find(e, "host")) {
+        seen.host = normalize_host(&host);
+    }
+    if let Some(proto) = elements.iter().rev().find_map(|e| find(e, "proto")) {
+        seen.https = proto.eq_ignore_ascii_case("https");
+    }
+}
+
+fn apply_x_forwarded(seen: &mut RequestOrigin, headers: &HeaderMap, trusted: &[IpNet]) {
     if let Some(value) = joined(headers, "x-forwarded-for") {
         let addresses: Vec<IpAddr> = value
             .split(',')
-            .filter_map(|a| a.trim().parse().ok())
+            .filter_map(|a| a.trim().parse::<IpAddr>().ok())
+            .map(|ip| ip.to_canonical())
             .collect();
         if let Some(ip) = addresses
             .iter()
@@ -79,8 +110,6 @@ pub fn origin(peer: IpAddr, headers: &HeaderMap, tls: bool, trusted: &[IpNet]) -
     {
         seen.https = first.trim().eq_ignore_ascii_case("https");
     }
-
-    seen
 }
 
 fn is_trusted(ip: IpAddr, trusted: &[IpNet]) -> bool {
@@ -179,24 +208,56 @@ mod tests {
                 STRANGER,
                 &headers(&[("host", "Example.COM:443")]),
                 false,
-                &[]
+                &[],
+                ForwardedHeaders::XForwarded
             )
             .host,
             "example.com"
         );
         assert_eq!(
-            origin(STRANGER, &headers(&[("host", "example.com.")]), false, &[]).host,
+            origin(
+                STRANGER,
+                &headers(&[("host", "example.com.")]),
+                false,
+                &[],
+                ForwardedHeaders::XForwarded
+            )
+            .host,
             "example.com"
         );
         assert_eq!(
-            origin(STRANGER, &headers(&[("host", "[::1]:8080")]), false, &[]).host,
+            origin(
+                STRANGER,
+                &headers(&[("host", "[::1]:8080")]),
+                false,
+                &[],
+                ForwardedHeaders::XForwarded
+            )
+            .host,
             "::1"
         );
         assert_eq!(
-            origin(STRANGER, &headers(&[("host", "[::1]")]), false, &[]).host,
+            origin(
+                STRANGER,
+                &headers(&[("host", "[::1]")]),
+                false,
+                &[],
+                ForwardedHeaders::XForwarded
+            )
+            .host,
             "::1"
         );
-        assert_eq!(origin(STRANGER, &headers(&[]), false, &[]).host, "");
+        assert_eq!(
+            origin(
+                STRANGER,
+                &headers(&[]),
+                false,
+                &[],
+                ForwardedHeaders::XForwarded
+            )
+            .host,
+            ""
+        );
     }
 
     #[test]
@@ -208,7 +269,13 @@ mod tests {
             ("x-forwarded-proto", "https"),
             ("forwarded", "for=198.51.100.7;host=a.example;proto=https"),
         ]);
-        let seen = origin(STRANGER, &map, false, &trusted());
+        let seen = origin(
+            STRANGER,
+            &map,
+            false,
+            &trusted(),
+            ForwardedHeaders::XForwarded,
+        );
         assert_eq!(
             seen,
             RequestOrigin {
@@ -227,7 +294,7 @@ mod tests {
             ("x-forwarded-for", "203.0.113.9, 10.0.0.7"),
             ("x-forwarded-proto", "https"),
         ]);
-        let seen = origin(PEER, &map, false, &trusted());
+        let seen = origin(PEER, &map, false, &trusted(), ForwardedHeaders::XForwarded);
         assert_eq!(seen.client, "203.0.113.9".parse::<IpAddr>().unwrap());
         assert_eq!(seen.host, "admin.example.com");
         assert!(seen.https);
@@ -240,10 +307,58 @@ mod tests {
             ("forwarded", "for=198.51.100.7;host=a.example;proto=https"),
             ("x-forwarded-for", "203.0.113.9"),
         ]);
-        let seen = origin(PEER, &map, false, &trusted());
+        let seen = origin(PEER, &map, false, &trusted(), ForwardedHeaders::Forwarded);
         assert_eq!(seen.client, "198.51.100.7".parse::<IpAddr>().unwrap());
         assert_eq!(seen.host, "a.example");
         assert!(seen.https);
+    }
+
+    #[test]
+    fn ipv4_mapped_peer_is_trusted() {
+        let mapped: IpAddr = "::ffff:10.0.0.5".parse().unwrap();
+        let map = headers(&[
+            ("host", "internal"),
+            ("x-forwarded-host", "example.com"),
+            ("x-forwarded-for", "203.0.113.9"),
+        ]);
+        let seen = origin(
+            mapped,
+            &map,
+            false,
+            &trusted(),
+            ForwardedHeaders::XForwarded,
+        );
+        assert_eq!(seen.host, "example.com");
+        assert_eq!(seen.client, "203.0.113.9".parse::<IpAddr>().unwrap());
+        let untrusted: IpAddr = "::ffff:192.0.2.1".parse().unwrap();
+        let alone = origin(
+            untrusted,
+            &headers(&[("host", "a")]),
+            false,
+            &trusted(),
+            ForwardedHeaders::XForwarded,
+        );
+        assert_eq!(alone.client, "192.0.2.1".parse::<IpAddr>().unwrap());
+    }
+
+    #[test]
+    fn only_the_configured_family_is_read() {
+        let map = headers(&[
+            ("host", "internal"),
+            ("forwarded", "for=10.1.2.3;host=admin.internal"),
+            ("x-forwarded-for", "203.0.113.9"),
+            ("x-forwarded-host", "example.com"),
+        ]);
+        let x = origin(PEER, &map, false, &trusted(), ForwardedHeaders::XForwarded);
+        assert_eq!(
+            (x.client, x.host.as_str()),
+            ("203.0.113.9".parse().unwrap(), "example.com")
+        );
+        let f = origin(PEER, &map, false, &trusted(), ForwardedHeaders::Forwarded);
+        assert_eq!(
+            (f.client, f.host.as_str()),
+            ("10.1.2.3".parse().unwrap(), "admin.internal")
+        );
     }
 
     #[test]
@@ -252,7 +367,7 @@ mod tests {
             ("forwarded", "for=\"[2001:db8::1]:4711\""),
             ("host", "example.com"),
         ]);
-        let seen = origin(PEER, &map, true, &trusted());
+        let seen = origin(PEER, &map, true, &trusted(), ForwardedHeaders::Forwarded);
         assert_eq!(seen.client, "2001:db8::1".parse::<IpAddr>().unwrap());
         assert!(seen.https);
     }

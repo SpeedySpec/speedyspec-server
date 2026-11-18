@@ -15,9 +15,10 @@ use speedyspec_server_domain::{
     Access, AccessCheck, AccessDecision, AccessRequest, AppId, MountTable,
 };
 
-use crate::forwarded::origin;
+use crate::forwarded::{ForwardedHeaders, origin};
 use crate::handlers::{AppHandle, text};
 use crate::path::normalize;
+use speedyspec_server_static::encode_path;
 
 /// Everything a request needs to be answered.
 pub struct ServeState {
@@ -25,6 +26,8 @@ pub struct ServeState {
     pub apps: HashMap<AppId, AppHandle>,
     pub access: Arc<dyn AccessCheck>,
     pub trusted_proxies: Vec<IpNet>,
+    /// Which proxy headers trusted proxies set.
+    pub forwarded_headers: ForwardedHeaders,
 }
 
 impl ServeState {
@@ -85,9 +88,21 @@ impl Gate {
                 if let Ok(value) = HeaderValue::from_str(authority.as_str()) {
                     headers.insert(HOST, value);
                 }
-                origin(peer, &headers, tls, &state.trusted_proxies)
+                origin(
+                    peer,
+                    &headers,
+                    tls,
+                    &state.trusted_proxies,
+                    state.forwarded_headers,
+                )
             }
-            _ => origin(peer, req.headers(), tls, &state.trusted_proxies),
+            _ => origin(
+                peer,
+                req.headers(),
+                tls,
+                &state.trusted_proxies,
+                state.forwarded_headers,
+            ),
         };
         let query = req.uri().query();
 
@@ -99,13 +114,14 @@ impl Gate {
                 .is_some_and(|mount| mount.path == with_slash)
             {
                 let location = match query {
-                    Some(query) => format!("{with_slash}?{query}"),
-                    None => with_slash,
+                    Some(query) => format!("{}?{query}", encode_path(&with_slash)),
+                    None => encode_path(&with_slash),
                 };
                 let mut response = text(StatusCode::PERMANENT_REDIRECT, "moved");
                 response.headers_mut().insert(
                     LOCATION,
-                    HeaderValue::from_str(&location).expect("ASCII after encoding"),
+                    HeaderValue::from_str(&location)
+                        .expect("percent-encoded path and a query from a valid URI"),
                 );
                 return response;
             }
