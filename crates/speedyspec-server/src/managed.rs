@@ -86,6 +86,7 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
         runtimes,
         Arc::new(crate::binary::ProcessInspector),
         crate::binary::TARGET.to_string(),
+        Arc::new(speedyspec_server_app::Cluster::single("local")),
     )
     .map_err(|err| err.to_string())?;
 

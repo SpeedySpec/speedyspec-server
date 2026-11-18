@@ -255,6 +255,7 @@ fn keep_zero_rejected() {
         Default::default(),
         std::sync::Arc::new(speedyspec_server_infra_memory::FakeInspector),
         support::TARGET.to_string(),
+        std::sync::Arc::new(speedyspec_server_app::Cluster::single("test")),
     )
     .err()
     .unwrap();

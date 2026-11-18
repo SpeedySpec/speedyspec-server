@@ -92,6 +92,11 @@ pub enum ReleaseError {
     },
     #[error("app.{0}.keep must be at least 1")]
     KeepTooSmall(AppId),
+    #[error("{}", match .leader {
+        Some(leader) => format!("this pod is not the leader; run release commands on {leader}"),
+        None => "there is no leader right now; try again shortly".to_string(),
+    })]
+    NotLeader { leader: Option<String> },
 }
 
 /// Runs every release operation. Holds the release state in memory, saved after every change.
@@ -111,6 +116,7 @@ pub struct ReleaseManager {
     pub(crate) published: Mutex<ReleaseState>,
     pub(crate) downloads: Mutex<HashMap<AppId, Arc<Mutex<()>>>>,
     pub(crate) last_boot: Mutex<Option<BootReport>>,
+    pub(crate) cluster: Arc<crate::Cluster>,
 }
 
 impl ReleaseManager {
@@ -124,11 +130,13 @@ impl ReleaseManager {
         runtimes: HashMap<AppKind, Arc<dyn AppRuntime>>,
         inspector: Arc<dyn BinaryInspector>,
         target: String,
+        cluster: Arc<crate::Cluster>,
     ) -> Result<ReleaseManager, ReleaseError> {
         if let Some((app, _)) = apps.iter().find(|(_, policy)| policy.keep == 0) {
             return Err(ReleaseError::KeepTooSmall(app.clone()));
         }
         let state = state_store.load()?;
+        cluster.observe_epoch(state.epoch);
 
         Ok(ReleaseManager {
             apps,
@@ -144,6 +152,7 @@ impl ReleaseManager {
             downloads: Mutex::new(HashMap::new()),
             state: Mutex::new(state),
             last_boot: Mutex::new(None),
+            cluster,
         })
     }
 
@@ -152,6 +161,44 @@ impl ReleaseManager {
         self.state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    /// Refuses up front, before any download, when this pod does not lead.
+    pub(crate) fn leading(&self) -> Result<(), ReleaseError> {
+        let view = self.cluster.view();
+        if view.is_leader {
+            Ok(())
+        } else {
+            Err(ReleaseError::NotLeader {
+                leader: view.leader,
+            })
+        }
+    }
+
+    /// This pod's cluster.
+    pub fn cluster(&self) -> &Arc<crate::Cluster> {
+        &self.cluster
+    }
+
+    /// Reloads `state.json` written by the leader. A state stamped with an epoch older than one already seen (a
+    /// deposed leader's late write) is ignored. Returns whether the state in memory changed.
+    pub fn refresh(&self) -> Result<bool, ReleaseError> {
+        let loaded = self.state_store.load()?;
+        if !self.cluster.observe_epoch(loaded.epoch) {
+            tracing::warn!(
+                event = "stale_epoch_ignored",
+                epoch = loaded.epoch,
+                revision = loaded.revision
+            );
+            return Ok(false);
+        }
+        let mut state = self.lock();
+        if *state == loaded {
+            return Ok(false);
+        }
+        *state = loaded;
+        *self.published.lock().unwrap_or_else(|p| p.into_inner()) = state.clone();
+        Ok(true)
     }
 
     pub(crate) fn policy(&self, app: &AppId) -> Result<&AppPolicy, ReleaseError> {
@@ -211,6 +258,7 @@ impl ReleaseManager {
     /// candidate. A version already kept is not downloaded again. The download runs without the state lock, so
     /// `status`, `pin` and `rollback` never wait on it.
     pub fn install(&self, app: &AppId, version: Option<Version>) -> Result<Version, ReleaseError> {
+        self.leading()?;
         self.installable(app)?;
         let guard = self.download_guard(app);
         let _downloading = guard
@@ -241,6 +289,7 @@ impl ReleaseManager {
     /// One auto-update step: install the candidate and switch to it. The candidate is checked again under the lock
     /// just before the switch, so a pin or rollback issued during the download wins. Returns the version switched to.
     pub fn update(&self, app: &AppId) -> Result<Option<Version>, ReleaseError> {
+        self.leading()?;
         if self.installable(app)?.kind == AppKind::Server {
             return Err(ReleaseError::ServerSwitchViaKeeper);
         }
@@ -493,6 +542,14 @@ impl ReleaseManager {
         state: &mut ReleaseState,
         mut next: ReleaseState,
     ) -> Result<(), ReleaseError> {
+        let view = self.cluster.view();
+        if !view.is_leader {
+            return Err(ReleaseError::NotLeader {
+                leader: view.leader,
+            });
+        }
+        next.epoch = view.epoch;
+        self.cluster.observe_epoch(view.epoch);
         next.revision = state.revision + 1;
         self.state_store.save(&next)?;
         *state = next;
@@ -533,6 +590,7 @@ impl ReleaseManager {
     /// Switches one or several apps to kept versions, as one step: every target is checked for compatibility
     /// against the resulting set and prepared first; if any fails, none switches.
     pub fn switch(&self, targets: &[(AppId, Version)]) -> Result<(), ReleaseError> {
+        self.leading()?;
         let mut state = self.lock();
         self.switch_locked(&mut state, targets)
     }
@@ -698,6 +756,7 @@ impl ReleaseManager {
     /// until `unpin`. The version rolled back from is also marked failed ("rolled back"), so it is not offered again
     /// after unpinning; an explicit switch clears that.
     pub fn rollback(&self, app: &AppId, version: Option<Version>) -> Result<Version, ReleaseError> {
+        self.leading()?;
         let mut state = self.lock();
         let current = state.apps.get(app).cloned().unwrap_or_default();
         let target = match version {
@@ -721,6 +780,7 @@ impl ReleaseManager {
 
     /// Stops auto-update for `app` while `version`, which must be kept, is pinned.
     pub fn pin(&self, app: &AppId, version: Version) -> Result<(), ReleaseError> {
+        self.leading()?;
         let mut state = self.lock();
         self.policy(app)?;
         if !state
@@ -736,6 +796,7 @@ impl ReleaseManager {
     }
 
     pub fn unpin(&self, app: &AppId) -> Result<(), ReleaseError> {
+        self.leading()?;
         let mut state = self.lock();
         self.policy(app)?;
         let mut next = state.clone();
@@ -908,6 +969,7 @@ impl ReleaseManager {
         &self,
         targets: &[(AppId, Version)],
     ) -> Result<ServerUpgrade, ReleaseError> {
+        self.leading()?;
         let mut state = self.lock();
         if let Some(trial) = state
             .server
