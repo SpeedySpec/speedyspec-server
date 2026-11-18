@@ -59,8 +59,13 @@ impl ReleaseHost {
     /// Publishes a signed static release of `app` whose `dist/index.html` and `dist/_astro/app.js` both read
     /// `<app>-<version>`, and rewrites the app's index.
     pub fn publish_static(&self, app: &str, version: &str) {
+        self.publish_static_requiring(app, version, "");
+    }
+
+    /// Like `publish_static`, with `requires` as the inside of the manifest's `requires` object.
+    pub fn publish_static_requiring(&self, app: &str, version: &str, requires: &str) {
         let manifest = format!(
-            r#"{{"app":"{app}","version":"{version}","kind":"static","static":{{"root":"dist","cache":[{{"match":"_astro/**","cache_control":"public, max-age=31536000, immutable"}}]}}}}"#
+            r#"{{"app":"{app}","version":"{version}","kind":"static","requires":{{{requires}}},"static":{{"root":"dist","cache":[{{"match":"_astro/**","cache_control":"public, max-age=31536000, immutable"}}]}}}}"#
         );
         let stamp = format!("{app}-{version}");
         let bytes = release(

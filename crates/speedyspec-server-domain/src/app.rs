@@ -28,6 +28,14 @@ impl AppId {
     }
 }
 
+impl std::str::FromStr for AppId {
+    type Err = DomainError;
+
+    fn from_str(value: &str) -> Result<AppId, DomainError> {
+        AppId::parse(value)
+    }
+}
+
 impl fmt::Display for AppId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.0)

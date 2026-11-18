@@ -56,6 +56,28 @@ impl Running {
         }
     }
 
+    /// Waits for `count` `listening` events: (protocol, address).
+    pub fn listening(&mut self, count: usize) -> Vec<(String, SocketAddr)> {
+        let deadline = Instant::now() + Duration::from_secs(20);
+        let mut found = Vec::new();
+        while found.len() < count {
+            let left = deadline.saturating_duration_since(Instant::now());
+            let line = self
+                .lines
+                .recv_timeout(left)
+                .unwrap_or_else(|_| panic!("no listening lines: {:?}", self.log()));
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(&line)
+                && value["event"] == "listening"
+            {
+                found.push((
+                    value["protocol"].as_str().unwrap().to_string(),
+                    value["address"].as_str().unwrap().parse().unwrap(),
+                ));
+            }
+        }
+        found
+    }
+
     pub fn log(&self) -> Vec<String> {
         self.log.lock().unwrap().clone()
     }
@@ -127,4 +149,14 @@ pub fn get(addr: SocketAddr, path: &str) -> (u16, String) {
         .map(|(_, body)| body.to_string())
         .unwrap_or_default();
     (status, body)
+}
+
+/// Runs `speedyspec-server <args>` to completion: (exit code, stdout, stderr).
+pub fn command(args: &[&str]) -> (i32, String, String) {
+    let output = Command::new(BIN).args(args).output().unwrap();
+    (
+        output.status.code().unwrap_or(-1),
+        String::from_utf8(output.stdout).unwrap(),
+        String::from_utf8(output.stderr).unwrap(),
+    )
 }

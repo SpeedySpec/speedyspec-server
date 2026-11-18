@@ -137,6 +137,20 @@ fn serve_state(config: &Config, apps: HashMap<AppId, AppHandle>) -> ServeState {
     }
 }
 
+/// Every baked-in release's manifest in immutable mode, the server's included.
+pub fn immutable_manifests(config: &Config) -> Result<BTreeMap<AppId, ReleaseManifest>, BootError> {
+    let mut manifests = BTreeMap::new();
+    for (id, app) in &config.apps {
+        let manifest = match &app.path {
+            _ if app.kind == AppKind::Server => server_manifest(id.clone()),
+            Some(path) => read_manifest(path, id, app.kind)?,
+            None => continue,
+        };
+        manifests.insert(id.clone(), manifest);
+    }
+    Ok(manifests)
+}
+
 fn read_manifest(dir: &Path, id: &AppId, kind: AppKind) -> Result<ReleaseManifest, BootError> {
     let path = dir.join(MANIFEST_FILE);
     let bytes = std::fs::read(&path).map_err(|err| BootError::Io(path.clone(), err))?;

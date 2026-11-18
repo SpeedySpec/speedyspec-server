@@ -354,6 +354,12 @@ async fn writes_nothing() {
     copy_dir(&fixture("admin-a"), &admin);
     let cwd = tempfile::tempdir().unwrap();
     let setup = setup("public", None, "", Some(&admin));
+    let run_dir = cwd.path().join("run");
+    let toml = std::fs::read_to_string(&setup.config).unwrap().replace(
+        "mode = \"immutable\"",
+        &format!("mode = \"immutable\"\nrun_dir = \"{}\"", run_dir.display()),
+    );
+    std::fs::write(&setup.config, toml).unwrap();
     let before = (listing(apps.path()), listing(cwd.path()));
     chmod(apps.path(), "a-w");
     chmod(cwd.path(), "a-w");
@@ -363,6 +369,14 @@ async fn writes_nothing() {
     let response = reqwest::get(format!("http://{plain}/")).await.unwrap();
     assert_eq!(response.status(), 200);
     let status = server.term();
+    assert!(
+        server
+            .log
+            .iter()
+            .any(|line| line.contains("\"event\":\"control_unavailable\"")),
+        "{:?}",
+        server.log
+    );
 
     chmod(apps.path(), "u+w");
     chmod(cwd.path(), "u+w");
