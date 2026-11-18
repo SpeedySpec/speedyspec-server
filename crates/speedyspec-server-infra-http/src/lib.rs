@@ -1,7 +1,6 @@
 //! The release source over HTTPS: the release index, and downloads that resume.
 
 use std::fs::OpenOptions;
-use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
 
