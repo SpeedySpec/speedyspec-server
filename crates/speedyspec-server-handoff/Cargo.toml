@@ -1,0 +1,18 @@
+[package]
+name = "speedyspec-server-handoff"
+version = "0.1.0"
+description = "The SpeedySpec server's keeper–generation protocol: JSON lines over a socketpair, with sockets passed alongside."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+rustix = { version = "1", features = ["net", "fs"] }
+semver = { version = "1", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["net", "sync"] }
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }

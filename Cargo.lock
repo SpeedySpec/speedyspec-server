@@ -3193,6 +3193,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-server-handoff"
+version = "0.1.0"
+dependencies = [
+ "rustix",
+ "semver",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "speedyspec-server-infra-access-dev"
 version = "0.1.0"
 dependencies = [
