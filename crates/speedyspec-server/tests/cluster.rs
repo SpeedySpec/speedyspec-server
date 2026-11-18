@@ -133,6 +133,11 @@ impl Pods {
     }
 
     fn start(&mut self, name: &str, env: &[(&str, &str)]) {
+        self.start_extra(name, env, "");
+    }
+
+    /// Starts a pod with `extra` TOML appended to its config (after every table).
+    fn start_extra(&mut self, name: &str, env: &[(&str, &str)], extra: &str) {
         let apps = format!(
             r#"
 [handoff]
@@ -161,7 +166,8 @@ app = "admin"
                 self.host.url("/server/index.json"),
                 self.host.public_key()
             ),
-        ) + &apps;
+        ) + &apps
+            + extra;
         let toml = toml.replacen("[handoff]", "[handoff]", 1);
         // [cluster] is in pod_config's text; the tables appended after it are separate tables.
         std::fs::write(&config, toml).unwrap();
@@ -476,6 +482,15 @@ fn follower_first_start_does_not_write_shared_store() {
                 == env!("CARGO_PKG_VERSION")),
         "the leader keeps its running binary as the confirmed release"
     );
+    assert!(
+        wait_for(Duration::from_secs(10), || pods
+            .pod("a")
+            .keeper
+            .log()
+            .iter()
+            .any(|l| l.contains("\"event\":\"took_over\""))),
+        "the leader finishes taking over before the snapshot"
+    );
     let (store, state) = (
         listing(),
         std::fs::read(pods.dir.path().join("data/state.json")).unwrap(),
@@ -513,4 +528,197 @@ fn walk(dir: &Path) -> Vec<String> {
         }
     }
     out
+}
+
+/// The pod with this name's keeper and its generation's PID.
+fn generation_pid(pods: &Pods, name: &str) -> u32 {
+    pods.generation(name).expect("a generation").0
+}
+
+fn signal(name: &str, pid: u32) {
+    std::process::Command::new("kill")
+        .args([&format!("-{name}"), &pid.to_string()])
+        .status()
+        .unwrap();
+}
+
+#[test]
+fn two_step_switch_lands_on_all_three_within_one_poll() {
+    let pods = cluster("c", &["a", "b"], |_| Vec::new());
+    pods.ok("c", &["release", "install", "admin", "1.0.0"]);
+    pods.ok("c", &["release", "switch", "admin@1.0.0"]);
+    let switched = Instant::now();
+    for pod in &pods.pods {
+        assert!(
+            wait_for(Duration::from_secs(2), || get(pod.addr, "/").1
+                == "admin-1.0.0"),
+            "{} did not serve the new set: {}",
+            pod.name,
+            pods.events()
+        );
+    }
+    // poll_interval is 300 ms; allow scheduling slack on top of one poll.
+    assert!(
+        switched.elapsed() < Duration::from_millis(1500),
+        "{:?}",
+        switched.elapsed()
+    );
+}
+
+#[test]
+fn member_failing_prepare_goes_not_ready_others_switch() {
+    let mut pods = Pods::new();
+    pods.start("c", &[]);
+    assert!(wait_for(Duration::from_secs(10), || pods
+        .leader("c")
+        .as_deref()
+        == Some("c")));
+    pods.start("a", &[]);
+    pods.start_extra("b", &[], "\n[limits]\nstatic_memory = 10\n");
+    for name in ["a", "b"] {
+        assert!(wait_for(Duration::from_secs(10), || pods
+            .leader(name)
+            .as_deref()
+            == Some("c")));
+    }
+    let probe_b = probe_address(&pods.pod("b").keeper);
+    assert!(wait_for(Duration::from_secs(10), || get(
+        probe_b, "/readyz"
+    )
+    .0 == 200));
+    pods.ok("c", &["release", "install", "admin", "1.0.0"]);
+    pods.ok("c", &["release", "switch", "admin@1.0.0"]);
+    for name in ["a", "c"] {
+        let addr = pods.pod(name).addr;
+        assert!(
+            wait_for(Duration::from_secs(5), || get(addr, "/").1 == "admin-1.0.0"),
+            "{name}: {}",
+            pods.events()
+        );
+    }
+    assert!(
+        wait_for(Duration::from_secs(5), || get(probe_b, "/readyz").0 == 503),
+        "b cannot hold the release in memory, so it reports not ready: {:?}",
+        get(probe_b, "/readyz")
+    );
+    assert_ne!(
+        get(pods.pod("b").addr, "/").1,
+        "admin-1.0.0",
+        "b keeps its old set"
+    );
+    assert!(
+        pods.cmd("c", &["status"]).1.contains("member\tb\tlive\t"),
+        "b is still a live member"
+    );
+}
+
+#[test]
+fn killing_leader_mid_switch_hands_over() {
+    let pods = cluster("c", &["a", "b"], |_| Vec::new());
+    pods.ok("c", &["release", "install", "admin", "1.0.0"]);
+    // b stops answering, so c waits for it (up to the staleness window) with the set staged.
+    let b = generation_pid(&pods, "b");
+    signal("STOP", b);
+    let config = pods.pod("c").config.to_str().unwrap().to_string();
+    let switching = std::thread::spawn(move || {
+        command(&["release", "switch", "admin@1.0.0", "--config", &config])
+    });
+    assert!(
+        wait_for(Duration::from_secs(5), || pods.state()["staged"]
+            .is_object()),
+        "nothing was staged: {}",
+        pods.state()
+    );
+    signal("KILL", pods.pod("c").keeper.child.id());
+    let killed = Instant::now();
+    signal("CONT", b);
+    let _ = switching.join();
+    assert!(
+        wait_for(Duration::from_secs(15), || matches!(
+            pods.leader("a").as_deref(),
+            Some("a") | Some("b")
+        )),
+        "no new leader: {}",
+        pods.events()
+    );
+    assert!(killed.elapsed() < Duration::from_secs(15));
+    assert!(
+        wait_for(Duration::from_secs(20), || {
+            let state = pods.state();
+            state["staged"].is_null() && state["apps"]["admin"]["active"] == "1.0.0"
+        }),
+        "the new leader did not finish the switch: {}\n{}",
+        pods.state(),
+        pods.events()
+    );
+    for name in ["a", "b"] {
+        let addr = pods.pod(name).addr;
+        assert!(
+            wait_for(Duration::from_secs(10), || get(addr, "/").1
+                == "admin-1.0.0"),
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn deposed_leader_late_write_ignored() {
+    let pods = cluster("c", &["a", "b"], |_| Vec::new());
+    pods.serve_admin("c");
+    let first_epoch = pods.state()["epoch"].as_u64().unwrap();
+    let c = generation_pid(&pods, "c");
+    signal("STOP", c);
+    let stopped = Instant::now();
+    let new_leader = || {
+        ["a", "b"]
+            .into_iter()
+            .find(|n| pods.leader(n).as_deref() == Some(*n))
+    };
+    assert!(
+        wait_for(Duration::from_secs(15), || new_leader().is_some()),
+        "no takeover: {}",
+        pods.events()
+    );
+    assert!(
+        stopped.elapsed() >= Duration::from_secs(2),
+        "not before c's renew deadline"
+    );
+    let leader = new_leader().unwrap();
+    pods.ok(leader, &["release", "pin", "admin", "1.0.0"]);
+    let after = pods.state();
+    assert!(after["epoch"].as_u64().unwrap() > first_epoch);
+    signal("CONT", c);
+    assert!(
+        wait_for(Duration::from_secs(10), || pods.leader("c").as_deref()
+            == Some(leader)),
+        "c sees it is no longer the leader: {}",
+        pods.cmd("c", &["status"]).1
+    );
+    let (code, _, stderr) = pods.cmd("c", &["release", "unpin", "admin"]);
+    assert_eq!(code, 1, "the deposed leader's writes are refused");
+    assert!(
+        stderr.contains(&format!("run release commands on {leader}")),
+        "{stderr}"
+    );
+    std::thread::sleep(Duration::from_secs(2));
+    let now = pods.state();
+    assert_eq!(
+        now["epoch"], after["epoch"],
+        "nothing c wrote replaced the new leader's state"
+    );
+    assert_eq!(now["apps"]["admin"]["pinned"], "1.0.0");
+}
+
+#[test]
+fn follower_refuses_release_commands_with_leader_name() {
+    let pods = cluster("c", &["a"], |_| Vec::new());
+    let (code, _, stderr) = pods.cmd("a", &["release", "install", "admin", "1.0.0"]);
+    assert_eq!(code, 1);
+    assert!(
+        stderr.contains("this pod is not the leader; run release commands on c"),
+        "{stderr}"
+    );
+    let (code, out, _) = pods.cmd("a", &["release", "list"]);
+    assert_eq!(code, 0, "reads work on any pod");
+    assert!(out.contains("admin\t"), "{out}");
 }
