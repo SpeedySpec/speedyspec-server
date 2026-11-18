@@ -415,18 +415,29 @@ fn manifest_and_version() {
     assert!(stderr.contains("Usage"), "{stderr}");
 }
 
-/// The README's example configuration parses, so the operator docs cannot drift from the config keys.
+/// The README's example configurations parse, so the operator docs cannot drift from the config keys: the main
+/// example, and the main example with the `[cluster]` example added.
 #[test]
 fn readme_example_config_parses() {
     let readme = include_str!("../../../README.md");
-    let toml = readme
+    let blocks: Vec<&str> = readme
         .split("```toml\n")
-        .nth(1)
-        .and_then(|rest| rest.split("```").next())
-        .expect("README has a toml block");
+        .skip(1)
+        .filter_map(|rest| rest.split("```").next())
+        .collect();
+    assert_eq!(
+        blocks.len(),
+        2,
+        "the main example and the [cluster] example"
+    );
     let config =
-        speedyspec_server::config::Config::parse(toml).unwrap_or_else(|err| panic!("{err}"));
+        speedyspec_server::config::Config::parse(blocks[0]).unwrap_or_else(|err| panic!("{err}"));
     assert_eq!(config.listeners.len(), 2);
     assert!(config.listeners[1].http3);
     assert_eq!(config.handoff.trial_period, Duration::from_secs(120));
+    let config = speedyspec_server::config::Config::parse(&format!("{}\n{}", blocks[0], blocks[1]))
+        .unwrap_or_else(|err| panic!("{err}"));
+    let cluster = config.cluster.expect("the [cluster] example");
+    assert_eq!(cluster.pod, "web-0");
+    assert_eq!(cluster.probe, Some("0.0.0.0:9090".parse().unwrap()));
 }

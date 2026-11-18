@@ -119,3 +119,8 @@ never notices. Before the re-exec, a binary that needs a newer protocol than the
 
 **Control requests that meet a dying generation:** `status`, `release list` and `release check` are asked again of
 the generation the keeper resumes or restarts in its place. Requests that change anything are never retried.
+
+**In a cluster** (see [`cluster.md`](cluster.md)): the same handoff runs on each pod in turn, started by the pod's own
+generation (`ToKeeper::Upgrade`) when the leader's rollout gives it the turn. The trial's outcome is recorded in the
+pod's member file, not in `state.json`. The leader advances or reverts the rollout from the member files. The Lease is
+held under the pod's name, so a handoff inside the leader pod keeps leadership where it is.
