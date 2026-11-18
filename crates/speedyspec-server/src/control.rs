@@ -393,6 +393,30 @@ pub fn serve_listener(
 
 /// Sends one request to the server's control socket and waits for the answer.
 pub fn request(path: &Path, request: &ControlRequest) -> Result<ControlResponse, String> {
+    let read_only = matches!(
+        request,
+        ControlRequest::Status | ControlRequest::List { .. } | ControlRequest::Check { .. }
+    );
+    match request_once(path, request) {
+        // The keeper closed the connection without answering: it re-executed itself (same socket) or a generation
+        // was replaced. A read-only request is asked once more; anything else may already have happened.
+        Ok(None) if read_only => {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            request_once(path, request)?.ok_or_else(|| {
+                "the server closed the connection without answering; try again".to_string()
+            })
+        }
+        Ok(None) => Err(
+            "the server closed the connection without answering; check `status` before retrying"
+                .to_string(),
+        ),
+        Ok(Some(response)) => Ok(response),
+        Err(err) => Err(err),
+    }
+}
+
+/// One request; `Ok(None)` when the connection closed before an answer.
+fn request_once(path: &Path, request: &ControlRequest) -> Result<Option<ControlResponse>, String> {
     let unreachable = |err: std::io::Error| {
         format!(
             "cannot reach the server at {}: {err}; is it running?",
@@ -407,7 +431,11 @@ pub fn request(path: &Path, request: &ControlRequest) -> Result<ControlResponse,
     BufReader::new(stream)
         .read_line(&mut answer)
         .map_err(unreachable)?;
+    if answer.trim().is_empty() {
+        return Ok(None);
+    }
     serde_json::from_str(&answer)
+        .map(Some)
         .map_err(|err| format!("the server sent an unreadable answer: {err}"))
 }
 
