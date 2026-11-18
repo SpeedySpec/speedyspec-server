@@ -87,7 +87,7 @@ fn service(access: Arc<dyn AccessCheck>) -> (tempfile::TempDir, Service) {
     .collect();
     let state = ServeState {
         mounts,
-        apps: LiveApps::new(apps),
+        apps: Arc::new(LiveApps::new(apps)),
         access,
         trusted_proxies: Vec::new(),
         forwarded_headers: ForwardedHeaders::XForwarded,
@@ -225,7 +225,7 @@ async fn no_mount() {
         .collect();
     let state = ServeState {
         mounts,
-        apps: LiveApps::new(apps),
+        apps: Arc::new(LiveApps::new(apps)),
         access: Arc::new(DenySignedIn),
         trusted_proxies: Vec::new(),
         forwarded_headers: ForwardedHeaders::XForwarded,
@@ -247,7 +247,7 @@ async fn mount_redirect_location_is_percent_encoded() {
         .collect();
     let state = ServeState {
         mounts,
-        apps: LiveApps::new(apps),
+        apps: Arc::new(LiveApps::new(apps)),
         access: Arc::new(DenySignedIn),
         trusted_proxies: Vec::new(),
         forwarded_headers: ForwardedHeaders::XForwarded,
@@ -272,7 +272,7 @@ fn with_fallback(current: Arc<StaticSet>, old: Arc<StaticSet>, until: Instant) -
         .collect();
     let state = ServeState {
         mounts,
-        apps: LiveApps::new(apps),
+        apps: Arc::new(LiveApps::new(apps)),
         access: Arc::new(DenySignedIn),
         trusted_proxies: Vec::new(),
         forwarded_headers: ForwardedHeaders::XForwarded,

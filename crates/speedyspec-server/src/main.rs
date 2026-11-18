@@ -8,6 +8,7 @@ use clap::{Parser, Subcommand};
 use speedyspec_server::boot::{bind, prepare, server_manifest};
 use speedyspec_server::config::{Config, DEFAULT_CONFIG, Mode};
 use speedyspec_server::listeners::serve;
+use speedyspec_server::managed;
 use speedyspec_server_domain::AppId;
 use speedyspec_server_presentation::build_router;
 
@@ -67,12 +68,8 @@ fn main() -> ExitCode {
 
 fn run(path: PathBuf) -> Result<(), String> {
     let config = Config::load(&path).map_err(|err| err.to_string())?;
-    if config.mode == Mode::Managed {
-        return Err(
-            "managed mode is not available in this build yet; use mode = \"immutable\"".to_string(),
-        );
-    }
     let state = prepare(&config).map_err(|err| err.to_string())?;
+    let live = state.apps.clone();
     let runtime =
         tokio::runtime::Runtime::new().map_err(|err| format!("starting the runtime: {err}"))?;
 
@@ -80,6 +77,14 @@ fn run(path: PathBuf) -> Result<(), String> {
         // Installed before any socket is bound (and logged as listening), so a signal sent as soon as the server
         // reports it is listening is always handled rather than killing the process.
         let stop = shutdown().map_err(|err| format!("installing signal handlers: {err}"))?;
+        if config.mode == Mode::Managed {
+            let (settings, apps) = (config.clone(), live.clone());
+            let manager = tokio::task::spawn_blocking(move || managed::start(&settings, apps))
+                .await
+                .map_err(|err| format!("starting releases: {err}"))??;
+            managed::spawn_auto_update(manager, managed::auto_apps(&config));
+            managed::spawn_fallback_sweep(live);
+        }
         let (tcp, udp) = bind(&config).map_err(|err| err.to_string())?;
         let router = Arc::new(build_router(Arc::new(state)));
         serve(tcp, udp, router, stop)

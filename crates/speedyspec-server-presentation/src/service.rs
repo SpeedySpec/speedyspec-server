@@ -23,7 +23,8 @@ use speedyspec_server_static::encode_path;
 /// Everything a request needs to be answered.
 pub struct ServeState {
     pub mounts: MountTable,
-    pub apps: LiveApps,
+    /// Shared with the release runtimes, which swap handles when a release goes live.
+    pub apps: Arc<LiveApps>,
     pub access: Arc<dyn AccessCheck>,
     pub trusted_proxies: Vec<IpNet>,
     /// Which proxy headers trusted proxies set.

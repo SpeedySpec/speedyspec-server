@@ -322,23 +322,6 @@ fn refuses_dev_allow_all_on_public_address() {
     assert!(stderr.contains("loopback"), "{stderr}");
 }
 
-#[test]
-fn refuses_managed_for_now() {
-    let setup = setup("public", None, "", None);
-    let toml = std::fs::read_to_string(&setup.config)
-        .unwrap()
-        .replace(
-            "mode = \"immutable\"",
-            "mode = \"managed\"\ndata_dir = \"/nonexistent\"",
-        )
-        .replace(&format!("path = \"{}\"", fixture("admin-a").display()), "")
-        .replace(&format!("path = \"{}\"", fixture("blog").display()), "");
-    std::fs::write(&setup.config, toml).unwrap();
-    let (code, _, stderr) = run_to_end(&["run", "--config", setup.config.to_str().unwrap()]);
-    assert_eq!(code, 1, "{stderr}");
-    assert!(stderr.contains("managed mode is not available"), "{stderr}");
-}
-
 fn listing(dir: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     for entry in std::fs::read_dir(dir).unwrap() {
