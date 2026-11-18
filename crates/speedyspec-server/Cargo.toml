@@ -1,0 +1,28 @@
+[package]
+name = "speedyspec-server"
+version = "0.1.0"
+description = "The SpeedySpec web server."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "speedyspec-server"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+salvo = { version = "1.2", default-features = false, features = ["server", "server-handle", "http1", "http2", "http2-cleartext", "quinn", "rustls", "ring"] }
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-ring"] }
+
+[dev-dependencies]
+bytes = "1"
+h3 = "0.0.8"
+h3-quinn = "0.0.10"
+http = "1"
+rcgen = "0.14"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+tempfile = "3"
