@@ -1,0 +1,15 @@
+[package]
+name = "speedyspec-server-app"
+version = "0.1.0"
+description = "Use cases of the SpeedySpec server: the compatibility check and, later, the release lifecycle."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+semver = "1"
+speedyspec-server-domain = { path = "../speedyspec-server-domain" }
+tracing = "0.1"
+
+[dev-dependencies]
+tracing-subscriber = { version = "0.3", features = ["fmt"] }
