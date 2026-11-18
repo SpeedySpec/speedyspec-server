@@ -10,10 +10,10 @@ use serde::Deserialize;
 use speedyspec_server_app::{Incompatibility, check_set};
 use speedyspec_server_domain::{AccessCheck, AppId, AppKind, MANIFEST_FILE, ReleaseManifest};
 use speedyspec_server_infra_access_dev::{DenySignedIn, DevAllowAll};
-use speedyspec_server_presentation::{AppHandle, ServeState};
+use speedyspec_server_presentation::{AppHandle, LiveApps, ServeState, StaticApp};
 use speedyspec_server_static::StaticSet;
 
-use crate::config::{AccessImpl, Config};
+use crate::config::{AccessImpl, Config, Mode};
 use crate::listeners::{BoundTcp, BoundUdp};
 
 /// What `src/release.json` holds: the server's requirements on other apps.
@@ -58,8 +58,25 @@ pub fn server_manifest(app: AppId) -> ReleaseManifest {
     }
 }
 
-/// Reads every baked-in release, checks that they work together, and loads static ones into memory.
+/// Builds the serving state. Immutable mode reads every baked-in release, checks that they work together, and loads
+/// static ones into memory. Managed mode starts every app as not installed; the release manager's start-up recovery
+/// then activates what is kept.
 pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
+    if config.mode == Mode::Managed {
+        let apps = config
+            .apps
+            .iter()
+            .map(|(id, app)| {
+                let handle = if app.kind == AppKind::Server {
+                    AppHandle::AdminApiPlaceholder
+                } else {
+                    AppHandle::NotInstalled
+                };
+                (id.clone(), handle)
+            })
+            .collect();
+        return Ok(serve_state(config, apps));
+    }
     let mut manifests = BTreeMap::new();
     let mut paths = HashMap::new();
     for (id, app) in &config.apps {
@@ -94,23 +111,44 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
                         }
                     })?;
                 tracing::info!(event = "static_loaded", app = %id, version = %manifest.version, bytes = set.total_bytes());
-                AppHandle::Static(Arc::new(set))
+                AppHandle::Static(StaticApp {
+                    current: Arc::new(set),
+                    fallback: None,
+                })
             }
         };
         apps.insert(id.clone(), handle);
     }
+    Ok(serve_state(config, apps))
+}
+
+fn serve_state(config: &Config, apps: HashMap<AppId, AppHandle>) -> ServeState {
     let access: Arc<dyn AccessCheck> = match config.access {
         AccessImpl::Deny => Arc::new(DenySignedIn),
         AccessImpl::DevAllowAll => Arc::new(DevAllowAll),
     };
 
-    Ok(ServeState {
+    ServeState {
         mounts: config.mounts.clone(),
-        apps,
+        apps: Arc::new(LiveApps::new(apps)),
         access,
         trusted_proxies: config.trusted_proxies.clone(),
         forwarded_headers: config.forwarded_headers,
-    })
+    }
+}
+
+/// Every baked-in release's manifest in immutable mode, the server's included.
+pub fn immutable_manifests(config: &Config) -> Result<BTreeMap<AppId, ReleaseManifest>, BootError> {
+    let mut manifests = BTreeMap::new();
+    for (id, app) in &config.apps {
+        let manifest = match &app.path {
+            _ if app.kind == AppKind::Server => server_manifest(id.clone()),
+            Some(path) => read_manifest(path, id, app.kind)?,
+            None => continue,
+        };
+        manifests.insert(id.clone(), manifest);
+    }
+    Ok(manifests)
 }
 
 fn read_manifest(dir: &Path, id: &AppId, kind: AppKind) -> Result<ReleaseManifest, BootError> {

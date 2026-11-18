@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use serde::Deserialize;
 use speedyspec_server_domain::{Access, AppId, AppKind, HostMatch, Mount, MountTable};
@@ -18,6 +19,9 @@ pub const ADMIN_API_PATH: &str = "/admin/api/";
 
 const DEFAULT_RUN_DIR: &str = "/run/speedyspec";
 const DEFAULT_STATIC_MEMORY: u64 = 512 * 1024 * 1024;
+const DEFAULT_KEEP: u32 = 3;
+const DEFAULT_CHECK_INTERVAL: Duration = Duration::from_secs(15 * 60);
+const DEFAULT_FALLBACK_GRACE: Duration = Duration::from_secs(60 * 60);
 
 /// How releases reach the server.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
@@ -61,9 +65,12 @@ pub struct AppConfig {
     /// Managed mode: the release index URL.
     pub source: Option<String>,
     pub keys: Vec<String>,
-    pub keep: Option<u32>,
-    pub update: Option<UpdatePolicy>,
-    pub check_interval: Option<String>,
+    /// Kept releases, at least 1 (default 3).
+    pub keep: u32,
+    /// Default `manual` for the server, `auto` for other apps.
+    pub update: UpdatePolicy,
+    /// How often an `auto` app checks for releases (default 15 minutes).
+    pub check_interval: Duration,
     pub prerelease: bool,
     pub allow_unsigned: bool,
 }
@@ -81,6 +88,9 @@ pub struct Config {
     pub mounts: MountTable,
     pub access: AccessImpl,
     pub static_memory: u64,
+    /// How long a static app keeps serving the previous release's immutable files after a switch
+    /// (`[release.static] fallback_grace`, default 1 hour).
+    pub static_fallback_grace: Duration,
 }
 
 /// A configuration that could not be read or breaks a rule. Every message names the key and value.
@@ -113,6 +123,33 @@ struct RawConfig {
     access: RawAccess,
     #[serde(default)]
     limits: RawLimits,
+    #[serde(default)]
+    release: RawRelease,
+}
+
+#[derive(Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawRelease {
+    #[serde(rename = "static", default)]
+    static_: RawReleaseStatic,
+}
+
+#[derive(Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawReleaseStatic {
+    fallback_grace: Option<String>,
+}
+
+/// A humantime duration (`15m`, `1h`, `30s`), or `default` when absent. The error names the key and the value.
+fn duration(key: &str, value: Option<&str>, default: Duration) -> Result<Duration, ConfigError> {
+    match value {
+        None => Ok(default),
+        Some(text) => humantime::parse_duration(text).map_err(|err| {
+            invalid(format!(
+                "{key} = {text:?} is not a duration like \"15m\" or \"1h\": {err}"
+            ))
+        }),
+    }
 }
 
 fn managed() -> Mode {
@@ -274,6 +311,19 @@ impl Config {
         for (name, app) in raw.app {
             let id = AppId::parse(&name).map_err(|err| invalid(format!("[app.{name}]: {err}")))?;
             check_app(raw.mode, &id, &app)?;
+            if app.keep == Some(0) {
+                return Err(invalid(format!("app.{id}.keep must be at least 1")));
+            }
+            let check_interval = duration(
+                &format!("app.{id}.check_interval"),
+                app.check_interval.as_deref(),
+                DEFAULT_CHECK_INTERVAL,
+            )?;
+            let default_update = if app.kind == AppKind::Server {
+                UpdatePolicy::Manual
+            } else {
+                UpdatePolicy::Auto
+            };
             apps.insert(
                 id,
                 AppConfig {
@@ -281,9 +331,9 @@ impl Config {
                     path: app.path,
                     source: app.source,
                     keys: app.keys,
-                    keep: app.keep,
-                    update: app.update,
-                    check_interval: app.check_interval,
+                    keep: app.keep.unwrap_or(DEFAULT_KEEP),
+                    update: app.update.unwrap_or(default_update),
+                    check_interval,
                     prerelease: app.prerelease,
                     allow_unsigned: app.allow_unsigned,
                 },
@@ -357,6 +407,11 @@ impl Config {
                 access: Access::SignedIn,
             });
         }
+        let static_fallback_grace = duration(
+            "release.static.fallback_grace",
+            raw.release.static_.fallback_grace.as_deref(),
+            DEFAULT_FALLBACK_GRACE,
+        )?;
         let mounts = MountTable::new(mounts).map_err(|err| invalid(format!("mount: {err}")))?;
 
         Ok(Config {
@@ -375,6 +430,7 @@ impl Config {
             mounts,
             access: raw.access.implementation,
             static_memory: raw.limits.static_memory,
+            static_fallback_grace,
         })
     }
 }
@@ -404,6 +460,11 @@ fn check_app(mode: Mode, id: &AppId, app: &RawApp) -> Result<(), ConfigError> {
             }
         }
         Mode::Managed => {
+            if app.source.is_none() {
+                return Err(invalid(format!(
+                    "app.{id}.source is required with mode = \"managed\": it is the release index URL"
+                )));
+            }
             if app.path.is_some() {
                 return Err(invalid(format!(
                     "app.{id}.path is not allowed with mode = \"managed\"; use source"
@@ -747,6 +808,78 @@ app = "blog"
     #[test]
     fn rejects_unknown_key() {
         rejects(&format!("colour = \"blue\"\n{IMMUTABLE}"), "colour");
+    }
+
+    #[test]
+    fn parses_release_keys_and_defaults() {
+        let config = Config::parse(SPEC_EXAMPLE).unwrap();
+        let admin = &config.apps[&id("admin")];
+        assert_eq!(admin.keep, 3);
+        assert_eq!(admin.update, UpdatePolicy::Auto);
+        assert_eq!(
+            admin.check_interval,
+            std::time::Duration::from_secs(15 * 60)
+        );
+        assert_eq!(admin.keys, ["RWQ..."]);
+        assert_eq!(config.apps[&id("server")].update, UpdatePolicy::Manual);
+        assert_eq!(
+            config.static_fallback_grace,
+            std::time::Duration::from_secs(3600)
+        );
+
+        let bare = SPEC_EXAMPLE
+            .replace("keep = 3\nupdate = \"auto\"", "")
+            .replace("keep = 3\nupdate = \"manual\"", "");
+        let config = Config::parse(&bare).unwrap();
+        assert_eq!(config.apps[&id("admin")].keep, 3);
+        assert_eq!(config.apps[&id("admin")].update, UpdatePolicy::Auto);
+        assert_eq!(config.apps[&id("server")].update, UpdatePolicy::Manual);
+    }
+
+    #[test]
+    fn rejects_keep_zero() {
+        rejects(
+            &SPEC_EXAMPLE.replace("keep = 3\nupdate = \"auto\"", "keep = 0\nupdate = \"auto\""),
+            "app.admin.keep",
+        );
+    }
+
+    #[test]
+    fn rejects_bad_interval() {
+        rejects(
+            &SPEC_EXAMPLE.replace(
+                "update = \"auto\"",
+                "update = \"auto\"\ncheck_interval = \"often\"",
+            ),
+            "often",
+        );
+    }
+
+    #[test]
+    fn rejects_managed_without_source() {
+        rejects(
+            &SPEC_EXAMPLE.replace(
+                "source = \"https://releases.example.com/admin/index.json\"\n",
+                "",
+            ),
+            "app.admin.source",
+        );
+    }
+
+    #[test]
+    fn parses_fallback_grace() {
+        let config = Config::parse(&format!(
+            "{SPEC_EXAMPLE}\n[release.static]\nfallback_grace = \"10m\"\n"
+        ))
+        .unwrap();
+        assert_eq!(
+            config.static_fallback_grace,
+            std::time::Duration::from_secs(600)
+        );
+        rejects(
+            &format!("{SPEC_EXAMPLE}\n[release.static]\nfallback_grace = \"soon\"\n"),
+            "soon",
+        );
     }
 
     #[test]

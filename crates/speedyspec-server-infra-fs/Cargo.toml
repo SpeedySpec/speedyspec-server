@@ -1,0 +1,19 @@
+[package]
+name = "speedyspec-server-infra-fs"
+version = "0.1.0"
+description = "The SpeedySpec server's state file and release store on disk."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+ruzstd = "0.8"
+semver = "1"
+serde_json = "1"
+speedyspec-server-domain = { path = "../speedyspec-server-domain" }
+tar = "0.4"
+tracing = "0.1"
+
+[dev-dependencies]
+speedyspec-server-infra-memory = { path = "../speedyspec-server-infra-memory" }
+tempfile = "3"

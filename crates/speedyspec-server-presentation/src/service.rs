@@ -1,6 +1,5 @@
 //! The one Salvo handler every request goes through: normalize, find the mount, check access, dispatch.
 
-use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
 
@@ -17,13 +16,15 @@ use speedyspec_server_domain::{
 
 use crate::forwarded::{ForwardedHeaders, origin};
 use crate::handlers::{AppHandle, text};
+use crate::live::LiveApps;
 use crate::path::normalize;
 use speedyspec_server_static::encode_path;
 
 /// Everything a request needs to be answered.
 pub struct ServeState {
     pub mounts: MountTable,
-    pub apps: HashMap<AppId, AppHandle>,
+    /// Shared with the release runtimes, which swap handles when a release goes live.
+    pub apps: Arc<LiveApps>,
     pub access: Arc<dyn AccessCheck>,
     pub trusted_proxies: Vec<IpNet>,
     /// Which proxy headers trusted proxies set.
@@ -32,7 +33,7 @@ pub struct ServeState {
 
 impl ServeState {
     /// The live handle of an app. Kept behind one function so swappable handles stay a local change.
-    pub fn handle(&self, app: &AppId) -> Option<&AppHandle> {
+    pub fn handle(&self, app: &AppId) -> Option<Arc<AppHandle>> {
         self.apps.get(app)
     }
 }

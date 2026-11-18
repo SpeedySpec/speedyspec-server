@@ -322,23 +322,6 @@ fn refuses_dev_allow_all_on_public_address() {
     assert!(stderr.contains("loopback"), "{stderr}");
 }
 
-#[test]
-fn refuses_managed_for_now() {
-    let setup = setup("public", None, "", None);
-    let toml = std::fs::read_to_string(&setup.config)
-        .unwrap()
-        .replace(
-            "mode = \"immutable\"",
-            "mode = \"managed\"\ndata_dir = \"/nonexistent\"",
-        )
-        .replace(&format!("path = \"{}\"", fixture("admin-a").display()), "")
-        .replace(&format!("path = \"{}\"", fixture("blog").display()), "");
-    std::fs::write(&setup.config, toml).unwrap();
-    let (code, _, stderr) = run_to_end(&["run", "--config", setup.config.to_str().unwrap()]);
-    assert_eq!(code, 1, "{stderr}");
-    assert!(stderr.contains("managed mode is not available"), "{stderr}");
-}
-
 fn listing(dir: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     for entry in std::fs::read_dir(dir).unwrap() {
@@ -371,6 +354,12 @@ async fn writes_nothing() {
     copy_dir(&fixture("admin-a"), &admin);
     let cwd = tempfile::tempdir().unwrap();
     let setup = setup("public", None, "", Some(&admin));
+    let run_dir = cwd.path().join("run");
+    let toml = std::fs::read_to_string(&setup.config).unwrap().replace(
+        "mode = \"immutable\"",
+        &format!("mode = \"immutable\"\nrun_dir = \"{}\"", run_dir.display()),
+    );
+    std::fs::write(&setup.config, toml).unwrap();
     let before = (listing(apps.path()), listing(cwd.path()));
     chmod(apps.path(), "a-w");
     chmod(cwd.path(), "a-w");
@@ -380,6 +369,16 @@ async fn writes_nothing() {
     let response = reqwest::get(format!("http://{plain}/")).await.unwrap();
     assert_eq!(response.status(), 200);
     let status = server.term();
+    let rest: Vec<String> = server.lines.try_iter().collect();
+    server.log.extend(rest);
+    assert!(
+        server
+            .log
+            .iter()
+            .any(|line| line.contains("\"event\":\"control_unavailable\"")),
+        "{:?}",
+        server.log
+    );
 
     chmod(apps.path(), "u+w");
     chmod(cwd.path(), "u+w");

@@ -179,3 +179,18 @@ fn limit_checked_before_reading() {
         result.err()
     );
 }
+
+#[test]
+fn immutable_only_keeps_immutable_files() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "index.html", b"<p>x</p>");
+    write(dir.path(), "_astro/app.4f2a.js", b"js");
+    write(dir.path(), "404.html", b"nf");
+    let mut rules = spec_rules();
+    rules.not_found = Some("404.html".to_string());
+    let set = StaticSet::build(dir.path(), &rules, u64::MAX).unwrap();
+    let only = set.immutable_only();
+    assert!(only.file("_astro/app.4f2a.js").is_some());
+    assert!(only.file("index.html").is_none() && only.file("404.html").is_none());
+    assert!(only.total_bytes() < set.total_bytes());
+}
