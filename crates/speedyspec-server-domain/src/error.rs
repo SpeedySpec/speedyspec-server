@@ -7,6 +7,8 @@ pub enum DomainError {
         "app id {0:?} must start with a lowercase letter and contain only lowercase letters, digits and hyphens"
     )]
     BadAppId(String),
+    #[error("release index is not valid: {0}")]
+    BadIndex(String),
     #[error("release manifest is not valid: {0}")]
     BadManifest(String),
     #[error("a {kind} release must have a `{section}` section")]

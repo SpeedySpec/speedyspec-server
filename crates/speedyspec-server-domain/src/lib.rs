@@ -2,12 +2,21 @@
 
 pub mod access;
 pub mod app;
+pub mod contracts;
 pub mod error;
 pub mod manifest;
 pub mod mount;
+pub mod release;
+pub mod state;
 
 pub use access::{AccessCheck, AccessDecision, AccessRequest, Identity};
 pub use app::{AppId, AppKind};
+pub use contracts::{
+    AppRuntime, Prepared, ReleaseSource, ReleaseStore, SignatureVerifier, SourceError, StateError,
+    StateStore, StoreError, VerifyError,
+};
 pub use error::DomainError;
 pub use manifest::{CacheRule, MANIFEST_FILE, ReleaseManifest, StaticSection};
 pub use mount::{Access, HostMatch, Mount, MountTable};
+pub use release::{Artifact, IndexEntry, ReleaseIndex};
+pub use state::{AppState, ReleaseState};
