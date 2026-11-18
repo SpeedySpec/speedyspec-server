@@ -345,3 +345,13 @@ fn second_instance_refuses_and_leaves_the_first_working() {
         "the first server still answers"
     );
 }
+
+#[test]
+fn reload_refused_in_immutable_mode() {
+    let run = tempfile::tempdir().unwrap();
+    let (_dir, config, _server) = immutable(run.path());
+    wait_for_socket(&run.path().join("keeper.sock"));
+    let (code, _, stderr) = command(&["reload", "--config", config.to_str().unwrap()]);
+    assert_eq!(code, 1);
+    assert!(stderr.contains("speedyspec CLI"), "{stderr}");
+}

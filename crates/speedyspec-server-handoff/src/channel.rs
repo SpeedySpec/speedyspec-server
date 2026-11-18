@@ -179,6 +179,12 @@ pub struct AsyncChannel {
     send: tokio::sync::Mutex<()>,
 }
 
+impl std::os::fd::AsRawFd for AsyncChannel {
+    fn as_raw_fd(&self) -> std::os::fd::RawFd {
+        self.stream.as_raw_fd()
+    }
+}
+
 impl AsyncChannel {
     pub async fn send(&self, message: &impl Serialize, fds: &[BorrowedFd<'_>]) -> io::Result<()> {
         let _one_at_a_time = self.send.lock().await;

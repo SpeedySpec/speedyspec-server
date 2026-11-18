@@ -45,6 +45,8 @@ pub enum ControlRequest {
         app: AppId,
     },
     Status,
+    /// Hand off to a new generation of the confirmed binary, re-reading the config (answered by the keeper).
+    Reload,
     /// Internal: the keeper confirms a server trial through the generation that passed it.
     ConfirmServer {
         version: Version,
@@ -161,6 +163,7 @@ impl ControlBackend for ManagedBackend {
                     )),
                 }
             }
+            ControlRequest::Reload => Err("reload is answered by the keeper".to_string()),
             ControlRequest::ConfirmServer { version } => manager
                 .confirm_server_trial(&version)
                 .map(|()| json!(format!("confirmed server {version}")))
@@ -304,7 +307,11 @@ pub trait LineHandler: Send + Sync {
 /// the process ends, one request line and one response line per connection. With `create_dir` false (immutable
 /// mode, which never writes to disk) the socket's directory must already exist, for example a tmpfs or an `emptyDir`
 /// volume.
-pub fn serve(path: &Path, handler: Arc<dyn LineHandler>, create_dir: bool) -> std::io::Result<()> {
+pub fn serve(
+    path: &Path,
+    handler: Arc<dyn LineHandler>,
+    create_dir: bool,
+) -> std::io::Result<std::os::fd::OwnedFd> {
     if create_dir && let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
@@ -321,9 +328,21 @@ pub fn serve(path: &Path, handler: Arc<dyn LineHandler>, create_dir: bool) -> st
     // reachable with looser permissions.
     let staging = path.with_extension(format!("sock.{}", std::process::id()));
     let _ = std::fs::remove_file(&staging);
-    let listener = tokio::net::UnixListener::bind(&staging)?;
+    let listener = std::os::unix::net::UnixListener::bind(&staging)?;
     std::fs::set_permissions(&staging, std::fs::Permissions::from_mode(0o600))?;
     std::fs::rename(&staging, path)?;
+    let copy = std::os::fd::OwnedFd::from(listener.try_clone()?);
+    serve_listener(listener, handler)?;
+    Ok(copy)
+}
+
+/// Serves an already-bound control socket (the keeper adopts its own across a re-exec).
+pub fn serve_listener(
+    listener: std::os::unix::net::UnixListener,
+    handler: Arc<dyn LineHandler>,
+) -> std::io::Result<()> {
+    listener.set_nonblocking(true)?;
+    let listener = tokio::net::UnixListener::from_std(listener)?;
     tokio::spawn(async move {
         loop {
             let Ok((stream, _)) = listener.accept().await else {

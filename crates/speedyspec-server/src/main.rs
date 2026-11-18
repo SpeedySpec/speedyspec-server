@@ -39,6 +39,11 @@ enum Command {
         #[command(subcommand)]
         action: ReleaseAction,
     },
+    /// Hand off to a new generation that re-reads the configuration (listener changes need a restart).
+    Reload {
+        #[arg(long, default_value = DEFAULT_CONFIG)]
+        config: PathBuf,
+    },
     /// Show the server's version and mode, and every app's releases.
     Status {
         #[arg(long, default_value = DEFAULT_CONFIG)]
@@ -146,6 +151,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Command::Status { config } => control_command(&config, ControlRequest::Status),
+        Command::Reload { config } => control_command(&config, ControlRequest::Reload),
         Command::Release { action } => match action {
             ReleaseAction::List { app, config } => {
                 control_command(&config, ControlRequest::List { app })

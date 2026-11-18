@@ -535,3 +535,162 @@ async fn handoff_under_load() {
         "served by {pids:?}, first generation {first_pid}"
     );
 }
+
+/// The `keeper` line of `status`.
+fn keeper_version(w: &World) -> String {
+    let out = w.ok(&["status"]);
+    out.lines()
+        .find_map(|l| l.strip_prefix("keeper\t"))
+        .unwrap_or_else(|| panic!("{out}"))
+        .to_string()
+}
+
+#[test]
+fn reload_picks_up_new_mount() {
+    let w = world(&[], FAST);
+    let (old_pid, _, _) = w.generation();
+    let toml = std::fs::read_to_string(&w.config).unwrap().replace(
+        "path = \"/\"\napp = \"admin\"",
+        "path = \"/site/\"\napp = \"admin\"",
+    );
+    std::fs::write(&w.config, toml).unwrap();
+    assert!(
+        w.ok(&["reload"]).starts_with("reloaded"),
+        "the reload reports"
+    );
+    assert_eq!(
+        poll(w.addr, "/site/", Duration::from_secs(5), |s, _| s == 200).1,
+        "admin-1.0.0"
+    );
+    assert_ne!(w.generation().0, old_pid);
+    assert!(wait_for(Duration::from_secs(8), || w.generation().2 == "confirmed"));
+    assert!(
+        w.state()["server"]["failed"]
+            .as_object()
+            .is_none_or(|f| f.is_empty())
+    );
+}
+
+#[test]
+fn reload_refuses_listener_change() {
+    let w = world(&[], FAST);
+    let toml = std::fs::read_to_string(&w.config).unwrap().replace(
+        "address = \"127.0.0.1:0\"",
+        "address = \"127.0.0.1:0\"\nhttp3 = false\n[[listener]]\naddress = \"127.0.0.1:0\"",
+    );
+    std::fs::write(&w.config, toml).unwrap();
+    let (code, _, stderr) = w.cmd(&["reload"]);
+    assert_eq!(code, 1);
+    assert!(
+        stderr.contains("listener changes need a full restart"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn keeper_reexecs_after_upgrade() {
+    let w = world(&[], FAST);
+    let keeper_pid = w.keeper.child.id();
+    assert_eq!(keeper_version(&w), BASE);
+    publish_and_install(&w, "0.2.0");
+    w.ok(&["release", "switch", "server@0.2.0"]);
+    let mut failures = 0;
+    let reexecuted = wait_for(Duration::from_secs(15), || {
+        if get(w.addr, "/").0 != 200 {
+            failures += 1;
+        }
+        command(&["status", "--config", w.config.to_str().unwrap()])
+            .1
+            .contains("keeper\t0.2.0")
+    });
+    assert!(reexecuted, "log: {:?}", w.keeper.log());
+    assert_eq!(failures, 0);
+    assert!(alive(keeper_pid), "the keeper keeps its PID");
+    assert!(
+        w.keeper
+            .wait_for_event("keeper_reexecuted", Duration::from_secs(2))
+    );
+    assert_eq!(get(w.addr, "/").1, "admin-1.0.0");
+    assert_eq!(w.generation().1, "0.2.0");
+}
+
+#[test]
+fn newer_protocol_binary_refused() {
+    let w = world(&[], FAST);
+    publish_and_install(&w, "0.2.0");
+    let kept = w
+        .dir
+        .path()
+        .join("data/releases/server/0.2.0/speedyspec-server.test-protocol");
+    std::fs::write(kept, "99").unwrap();
+    let (code, _, stderr) = w.cmd(&["release", "switch", "server@0.2.0"]);
+    assert_eq!(code, 1);
+    assert!(stderr.contains("protocol 99"), "{stderr}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn keeper_reexec_keeps_listeners_and_socket() {
+    let certs_dir = tempfile::tempdir().unwrap();
+    let certs = support::certs::generate(certs_dir.path());
+    let tls = format!(
+        "\n[[listener]]\naddress = \"127.0.0.1:0\"\ntls = {{ cert = \"{}\", key = \"{}\" }}\nhttp3 = true\n",
+        certs.tls.cert.display(),
+        certs.tls.key.display()
+    );
+    let w = tokio::task::spawn_blocking(move || {
+        let w = world_with(&[], FAST, &tls);
+        publish_and_install(&w, "0.2.0");
+        w.ok(&["release", "switch", "server@0.2.0"]);
+        assert!(
+            wait_for(Duration::from_secs(15), || keeper_version(&w) == "0.2.0"),
+            "log: {:?}",
+            w.keeper.log()
+        );
+        w
+    })
+    .await
+    .unwrap();
+    let (mut secure, mut quic) = (None, None);
+    for line in w.keeper.log() {
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&line)
+            && value["event"] == "listening"
+        {
+            let addr: std::net::SocketAddr = value["address"].as_str().unwrap().parse().unwrap();
+            if value["protocol"] == "tcp" {
+                if addr != w.addr {
+                    secure = Some(addr);
+                }
+            } else {
+                quic = Some(addr);
+            }
+        }
+    }
+    let (secure, quic) = (
+        secure.expect("a TLS listener"),
+        quic.expect("an h3 listener"),
+    );
+    let ca = reqwest::Certificate::from_pem(&std::fs::read(&certs.ca).unwrap()).unwrap();
+    let client = reqwest::Client::builder()
+        .add_root_certificate(ca)
+        .build()
+        .unwrap();
+    let response = client
+        .get(format!("https://localhost:{}/", secure.port()))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let (status, _, _) = support::h3::try_get(quic, &certs.ca, "/").await.unwrap();
+    assert_eq!(status, 200);
+    let w = tokio::task::spawn_blocking(move || {
+        assert_eq!(get(w.addr, "/").0, 200);
+        assert!(
+            w.ok(&["status"]).contains("generation\t"),
+            "keeper.sock answers"
+        );
+        w
+    })
+    .await
+    .unwrap();
+    drop(w);
+}
