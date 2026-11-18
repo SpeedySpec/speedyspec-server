@@ -166,6 +166,7 @@ pub fn server_manifest() -> ReleaseManifest {
         requires: Default::default(),
         static_: None,
         php: None,
+        protocol: None,
     }
 }
 

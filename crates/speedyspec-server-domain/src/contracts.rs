@@ -88,6 +88,11 @@ pub struct Prepared {
     pub payload: Box<dyn Any + Send>,
 }
 
+/// Reads a server binary's release manifest (by running it).
+pub trait BinaryInspector: Send + Sync {
+    fn manifest(&self, binary: &Path) -> Result<ReleaseManifest, String>;
+}
+
 /// What an app kind does when one of its releases goes live.
 pub trait AppRuntime: Send + Sync {
     /// Loads a release so that activating it is instant. Failing here leaves the current release live.

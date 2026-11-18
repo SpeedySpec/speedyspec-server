@@ -25,6 +25,9 @@ pub struct ReleaseManifest {
     /// Defined by the PHP worker project; stored unread here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub php: Option<serde_json::Value>,
+    /// The keeper protocol a server binary speaks. Only for kind `server`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<u32>,
 }
 
 /// How a static release is served.
@@ -77,6 +80,12 @@ impl ReleaseManifest {
                 });
             }
             _ => {}
+        }
+        if self.kind != AppKind::Server && self.protocol.is_some() {
+            return Err(DomainError::UnexpectedSection {
+                kind,
+                section: "protocol",
+            });
         }
         if self.kind != AppKind::Php && self.php.is_some() {
             return Err(DomainError::UnexpectedSection {
@@ -170,4 +179,21 @@ mod tests {
         assert_eq!(manifest.php.unwrap()["entry"], "index.php");
         assert!(manifest.requires.is_empty());
     }
+
+    #[test]
+    fn protocol_only_on_server_manifests() {
+        let server = ReleaseManifest::parse(
+            br#"{"app":"server","version":"0.2.0","kind":"server","protocol":1}"#,
+        )
+        .unwrap();
+        assert_eq!(server.protocol, Some(1));
+        assert!(ReleaseManifest::parse(br#"{"app":"admin","version":"1.0.0","kind":"static","static":{"root":"d"},"protocol":1}"#).is_err());
+        let json = serde_json::to_string(
+            &ReleaseManifest::parse(MANIFEST_NO_PROTOCOL.as_bytes()).unwrap(),
+        )
+        .unwrap();
+        assert!(!json.contains("protocol"), "{json}");
+    }
+
+    const MANIFEST_NO_PROTOCOL: &str = r#"{"app":"server","version":"0.1.0","kind":"server"}"#;
 }

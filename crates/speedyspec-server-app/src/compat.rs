@@ -81,6 +81,7 @@ mod tests {
                 .collect(),
             static_: None,
             php: None,
+            protocol: None,
         }
     }
 

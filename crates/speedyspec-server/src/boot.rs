@@ -55,6 +55,7 @@ pub fn server_manifest(app: AppId) -> ReleaseManifest {
         requires: release.requires,
         static_: None,
         php: None,
+        protocol: None,
     }
 }
 
