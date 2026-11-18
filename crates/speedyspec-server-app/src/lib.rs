@@ -9,5 +9,5 @@ pub use cluster::{Clock, Cluster, Liveness, STALE_AFTER};
 pub use compat::{Incompatibility, check_set};
 pub use releases::{
     AppPolicy, BootReport, FollowOutcome, ReleaseError, ReleaseManager, SERVER_BINARY,
-    ServerUpgrade, Signing, confirm_server, register_running_binary,
+    ServerUpgrade, Signing, TakeOver, confirm_server, register_running_binary,
 };

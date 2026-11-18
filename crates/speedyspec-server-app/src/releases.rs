@@ -200,9 +200,16 @@ impl ReleaseManager {
         &self.cluster
     }
 
-    /// Reloads `state.json` written by the leader. A state stamped with an epoch older than one already seen (a
-    /// deposed leader's late write) is ignored. Returns whether the state in memory changed.
+    /// Reloads `state.json` written by the leader. A state stamped with an epoch older than the Lease's current
+    /// epoch, or than one already seen, is ignored: it is a deposed leader's late write, or a state the new leader has
+    /// not re-stamped yet (it does so on taking over). Returns whether the state in memory changed.
     pub fn refresh(&self) -> Result<bool, ReleaseError> {
+        self.cluster.observe_epoch(self.cluster.view().epoch);
+        self.reload()
+    }
+
+    /// Reloads `state.json` unless it is older than an epoch already seen.
+    fn reload(&self) -> Result<bool, ReleaseError> {
         let loaded = self.state_store.load()?;
         if !self.cluster.observe_epoch(loaded.epoch) {
             tracing::warn!(
@@ -1376,9 +1383,9 @@ impl ReleaseManager {
         tracing::info!(event = "staged", revision, targets = ?targets.iter().map(|(a, v)| format!("{a}@{v}")).collect::<Vec<_>>());
 
         let (prepared, failures) = self.prepare_targets(&targets);
-        let mine_ok = failures.is_empty();
+        let prepared_ok = failures.is_empty();
         self.publish(|node| {
-            if mine_ok {
+            if prepared_ok {
                 node.held = Some((revision, prepared));
                 node.report.prepared = Some(revision);
             } else {
@@ -1386,10 +1393,25 @@ impl ReleaseManager {
                 node.report.prepare_failed = Some((revision, format!("{app} {version}: {reason}")));
             }
         });
-        tracing::info!(event = "prepared", pod = %self.cluster.pod, revision, ok = mine_ok);
+        tracing::info!(event = "prepared", pod = %self.cluster.pod, revision, ok = prepared_ok);
 
+        let failure = failures.first().map(|(_, _, reason)| reason.clone());
+        self.finish_staged(state, revision, &targets, failure)
+    }
+
+    /// Waits for every live pod to report on the staged `revision` (or `prepare_timeout`), then makes the set active
+    /// if any pod prepared it, or abandons it and marks it failed. `my_failure` is this pod's own prepare failure.
+    fn finish_staged(
+        &self,
+        state: &mut ReleaseState,
+        revision: u64,
+        targets: &[(AppId, Version)],
+        my_failure: Option<String>,
+    ) -> Result<(), ReleaseError> {
+        let mine_ok = my_failure.is_none();
         let deadline = self.cluster.now() + self.cluster.prepare_timeout;
         let (reports, live) = loop {
+            self.leading()?;
             let (reports, live) = self.cluster.live_members();
             let waiting: Vec<&String> = live
                 .iter()
@@ -1410,7 +1432,10 @@ impl ReleaseManager {
         if mine_ok {
             ready_pods.push(self.cluster.pod.clone());
         } else {
-            failed_pods.push((self.cluster.pod.clone(), failures[0].2.clone()));
+            failed_pods.push((
+                self.cluster.pod.clone(),
+                my_failure.clone().unwrap_or_default(),
+            ));
         }
         for report in reports
             .iter()
@@ -1438,7 +1463,7 @@ impl ReleaseManager {
             } else {
                 reason
             };
-            for (app, version) in &targets {
+            for (app, version) in targets {
                 next.app_mut(app)
                     .failed
                     .insert(version.clone(), reason.clone());
@@ -1462,7 +1487,7 @@ impl ReleaseManager {
                 )
             })
             .collect();
-        for (app, version) in &targets {
+        for (app, version) in targets {
             let current = next.app_mut(app);
             current.previous = current.active.replace(version.clone());
             current.failed.remove(version);
@@ -1595,5 +1620,104 @@ impl ReleaseManager {
             node.report.ready = ready;
         });
         Ok(FollowOutcome { changed, ready })
+    }
+}
+
+/// What a new leader did with the state it inherited.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct TakeOver {
+    /// The staged revision it carried on and made active.
+    pub finished: Option<u64>,
+    /// The staged revision it abandoned, and why.
+    pub abandoned: Option<(u64, String)>,
+}
+
+impl ReleaseManager {
+    /// Called once when this pod becomes the leader: deletes stale partial downloads, picks up `state.json` and the
+    /// member files, and finishes a staged switch from where it stands, or abandons it when a target can no longer be
+    /// verified in the store.
+    pub fn take_over(&self) -> Result<TakeOver, ReleaseError> {
+        self.leading()?;
+        match self.store.clean_partials() {
+            Ok(cleaned) if !cleaned.is_empty() => {
+                tracing::info!(event = "partials_cleaned", count = cleaned.len())
+            }
+            Ok(_) => {}
+            Err(err) => tracing::warn!(event = "clean_partials_failed", error = %err),
+        }
+        // The state the previous leader left carries its older epoch: inherit it, then re-stamp it with this
+        // leader's epoch, so followers (which ignore older epochs) take it up again.
+        self.reload()?;
+        let _ = self.cluster.live_members();
+        let mut state = self.lock();
+        let restamped = state.clone();
+        self.commit_state(&mut state, restamped)?;
+        let mut outcome = TakeOver::default();
+        let Some(staged) = state.staged.clone() else {
+            return Ok(outcome);
+        };
+        tracing::info!(event = "take_over_staged", revision = staged.revision);
+        let unverifiable = staged
+            .targets
+            .iter()
+            .find(|(app, version)| self.store.manifest(app, version).is_err());
+        if let Some((app, version)) = unverifiable {
+            let reason = format!("the new leader could not verify {app} {version}");
+            let mut next = state.clone();
+            next.staged = None;
+            self.commit_state(&mut state, next)?;
+            tracing::error!(event = "switch_abandoned", revision = staged.revision, reason = %reason);
+            outcome.abandoned = Some((staged.revision, reason));
+            return Ok(outcome);
+        }
+        let serving = self
+            .node
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .serving
+            .clone();
+        let unserved: Vec<(AppId, Version)> = staged
+            .targets
+            .iter()
+            .filter(|(app, version)| serving.get(app) != Some(version))
+            .cloned()
+            .collect();
+        let (prepared, failures) = self.prepare_targets(&unserved);
+        let failure = failures
+            .first()
+            .map(|(app, version, reason)| format!("{app} {version}: {reason}"));
+        let revision = staged.revision;
+        self.publish(|node| match &failure {
+            None => {
+                node.held = Some((revision, prepared));
+                node.report.prepared = Some(revision);
+            }
+            Some(reason) => node.report.prepare_failed = Some((revision, reason.clone())),
+        });
+        self.finish_staged(&mut state, revision, &staged.targets, failure)?;
+        outcome.finished = Some(revision);
+        Ok(outcome)
+    }
+}
+
+impl ReleaseManager {
+    /// On the leader: rewrites `state.json` from memory when a write stamped with an older epoch (a deposed leader's,
+    /// landing late) has replaced it. Returns whether it rewrote.
+    pub fn repair(&self) -> Result<bool, ReleaseError> {
+        self.leading()?;
+        let on_disk = self.state_store.load()?;
+        let view = self.cluster.view();
+        if on_disk.epoch >= view.epoch {
+            return Ok(false);
+        }
+        let mut state = self.lock();
+        tracing::warn!(
+            event = "stale_epoch_repaired",
+            found = on_disk.epoch,
+            epoch = view.epoch
+        );
+        let current = state.clone();
+        self.commit_state(&mut state, current)?;
+        Ok(true)
     }
 }

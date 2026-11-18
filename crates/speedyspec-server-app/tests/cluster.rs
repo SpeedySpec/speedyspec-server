@@ -106,7 +106,7 @@ fn writes_carry_the_leader_epoch() {
     a.install(&id("blog"), Some(v("1.0.0"))).unwrap();
     assert_eq!(pods.world.saved().epoch, 1);
     pods.election.elect("b");
-    b.refresh().unwrap();
+    b.take_over().unwrap();
     b.install(&id("blog"), Some(v("2.0.0"))).unwrap();
     let saved = pods.world.saved();
     assert_eq!(saved.epoch, 2);
@@ -150,7 +150,7 @@ fn older_epoch_state_is_ignored_by_refresh() {
     pods.election.elect("a");
     a.install(&id("blog"), Some(v("1.0.0"))).unwrap();
     pods.election.elect("b");
-    b.refresh().unwrap();
+    b.take_over().unwrap();
     b.pin(&id("blog"), v("1.0.0")).unwrap();
     assert!(c.refresh().unwrap(), "c picks up b's state");
     let current = c.status();
@@ -405,4 +405,117 @@ fn liveness_ignores_writer_clock() {
         vec!["far"],
         "live again"
     );
+}
+
+/// Runs `manager.take_over()` on another thread, since it waits for the other pods like a switch does.
+fn run_take_over(
+    manager: &Arc<ReleaseManager>,
+) -> std::thread::JoinHandle<Result<speedyspec_server_app::TakeOver, ReleaseError>> {
+    let manager = manager.clone();
+    std::thread::spawn(move || manager.take_over())
+}
+
+#[test]
+fn leader_killed_mid_switch_new_leader_finishes() {
+    let (pods, all) = three();
+    let switching = run_switch(&all[0].0, "2.0.0");
+    let revision = staged(&pods);
+    std::thread::sleep(Duration::from_millis(60));
+    pods.election.expire();
+    let err = finish(switching).unwrap_err();
+    assert!(
+        matches!(err, ReleaseError::NotLeader { .. }),
+        "the old leader gives up: {err:?}"
+    );
+    assert_eq!(
+        pods.world.saved().staged.map(|s| s.revision),
+        Some(revision),
+        "the staged set is still there"
+    );
+
+    pods.election.elect("b");
+    let taking = run_take_over(&all[1].0);
+    std::thread::sleep(Duration::from_millis(60));
+    all[2].0.follow().unwrap();
+    let outcome = taking.join().unwrap().unwrap();
+    assert_eq!(outcome.finished, Some(revision));
+    assert_eq!(
+        pods.world.saved().apps[&id("blog")].active,
+        Some(v("2.0.0"))
+    );
+    all[2].0.follow().unwrap();
+    assert_eq!(all[1].1.active("blog"), Some(v("2.0.0")));
+    assert_eq!(all[2].1.active("blog"), Some(v("2.0.0")));
+}
+
+#[test]
+fn new_leader_abandons_unverifiable_switch() {
+    let (pods, all) = three();
+    let switching = run_switch(&all[0].0, "2.0.0");
+    let revision = staged(&pods);
+    pods.election.expire();
+    let _ = finish(switching);
+    std::fs::remove_dir_all(pods.world.release_dir("blog", "2.0.0")).unwrap();
+    pods.election.elect("b");
+    let outcome = all[1].0.take_over().unwrap();
+    let (abandoned, reason) = outcome.abandoned.expect("abandoned");
+    assert_eq!(abandoned, revision);
+    assert!(reason.contains("could not verify blog 2.0.0"), "{reason}");
+    let saved = pods.world.saved();
+    assert_eq!(saved.staged, None);
+    assert_eq!(saved.apps[&id("blog")].active, Some(v("1.0.0")));
+}
+
+#[test]
+fn deposed_leader_late_write_is_ignored() {
+    let (pods, all) = three();
+    let switching = run_switch(&all[0].0, "2.0.0");
+    staged(&pods);
+    pods.election.expire();
+    let _ = finish(switching);
+    pods.election.elect("b");
+    let taking = run_take_over(&all[1].0);
+    std::thread::sleep(Duration::from_millis(60));
+    all[2].0.follow().unwrap();
+    taking.join().unwrap().unwrap();
+    let current = pods.world.saved();
+    assert_eq!(current.epoch, 2);
+
+    // `a`'s write from before it lost the lease lands late, stamped with its older epoch.
+    let mut late = current.clone();
+    late.epoch = 1;
+    late.revision += 5;
+    late.apps.get_mut(&id("blog")).unwrap().active = Some(v("1.0.0"));
+    late.apps.get_mut(&id("blog")).unwrap().pinned = Some(v("1.0.0"));
+    pods.world.state.save(&late).unwrap();
+    all[2].0.follow().unwrap();
+    assert_eq!(
+        all[2].0.status().apps[&id("blog")].pinned,
+        None,
+        "c ignores the older epoch's write"
+    );
+    assert!(
+        all[1].0.repair().unwrap(),
+        "the leader rewrites the state the late write replaced"
+    );
+    let repaired = pods.world.saved();
+    assert_eq!(repaired.epoch, 2);
+    assert_eq!(repaired.apps[&id("blog")].active, Some(v("2.0.0")));
+    assert!(!all[1].0.repair().unwrap());
+    all[2].0.follow().unwrap();
+    assert_eq!(
+        all[2].1.active("blog"),
+        Some(v("2.0.0")),
+        "c serves the leader's set"
+    );
+}
+
+#[test]
+fn take_over_cleans_partials() {
+    let (pods, all) = three();
+    let partial = pods.world.dir.path().join("releases/blog/3.0.0.partial");
+    std::fs::create_dir_all(&partial).unwrap();
+    pods.election.elect("b");
+    all[1].0.take_over().unwrap();
+    assert!(!partial.exists());
 }
