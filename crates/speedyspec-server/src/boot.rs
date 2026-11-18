@@ -49,13 +49,12 @@ pub fn server_manifest(app: AppId) -> ReleaseManifest {
 
     ReleaseManifest {
         app,
-        version: semver::Version::parse(env!("CARGO_PKG_VERSION"))
-            .expect("the crate version is SemVer"),
+        version: crate::binary::own_version(),
         kind: AppKind::Server,
         requires: release.requires,
         static_: None,
         php: None,
-        protocol: None,
+        protocol: Some(crate::binary::own_protocol()),
     }
 }
 

@@ -72,7 +72,7 @@ app = "admin"
     std::fs::write(&config, toml).unwrap();
     let mut server = start(&config);
     let addr = server.address();
-    wait_for_socket(&dir.path().join("run/control.sock"));
+    wait_for_socket(&dir.path().join("run/keeper.sock"));
     Managed {
         dir,
         host,
@@ -80,6 +80,14 @@ app = "admin"
         _server: server,
         addr,
     }
+}
+
+/// `status` without the keeper's own `generation` and `keeper` lines, whose PIDs change.
+fn without_keeper_lines(out: String) -> String {
+    out.lines()
+        .filter(|l| !l.starts_with("generation\t") && !l.starts_with("keeper\t"))
+        .map(|l| format!("{l}\n"))
+        .collect()
 }
 
 fn wait_for_socket(path: &Path) {
@@ -135,7 +143,7 @@ fn list_check_and_status_output() {
     );
     assert_eq!(m.ok(&["release", "check", "admin"]), "admin\t1.1.0\n");
     assert_eq!(
-        m.ok(&["status"]),
+        without_keeper_lines(m.ok(&["status"])),
         format!("server\t{VERSION}\tmanaged\nadmin\tstatic\t1.0.0\t1.0.0\t-\t-\n")
     );
 }
@@ -182,7 +190,7 @@ fn pin_stops_auto_update() {
 #[test]
 fn socket_is_owner_only() {
     let m = managed("update = \"manual\"", &[]);
-    let mode = std::fs::metadata(m.dir.path().join("run/control.sock"))
+    let mode = std::fs::metadata(m.dir.path().join("run/keeper.sock"))
         .unwrap()
         .permissions()
         .mode();
@@ -265,12 +273,13 @@ fn immutable(run: &Path) -> (tempfile::TempDir, PathBuf, Running) {
 fn immutable_list_reports_baked_versions() {
     let run = tempfile::tempdir().unwrap();
     let (_dir, config, _server) = immutable(run.path());
-    wait_for_socket(&run.path().join("control.sock"));
+    wait_for_socket(&run.path().join("keeper.sock"));
     let (code, stdout, stderr) =
         command(&["release", "list", "--config", config.to_str().unwrap()]);
     assert_eq!(code, 0, "{stderr}");
     assert_eq!(stdout, "admin\tstatic\t1.0.0\t1.0.0\t-\t-\n");
     let (_, status, _) = command(&["status", "--config", config.to_str().unwrap()]);
+    let status = without_keeper_lines(status);
     assert!(
         status.starts_with(&format!("server\t{VERSION}\timmutable\n")),
         "{status}"
@@ -281,7 +290,7 @@ fn immutable_list_reports_baked_versions() {
 fn immutable_refuses_changes() {
     let run = tempfile::tempdir().unwrap();
     let (_dir, config, _server) = immutable(run.path());
-    wait_for_socket(&run.path().join("control.sock"));
+    wait_for_socket(&run.path().join("keeper.sock"));
     for args in [
         vec!["release", "install", "admin"],
         vec!["release", "switch", "admin@1.0.0"],

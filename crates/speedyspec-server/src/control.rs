@@ -235,19 +235,33 @@ impl ControlBackend for ImmutableBackend {
     }
 }
 
-/// Where the control socket of a server with this `run_dir` lives.
+/// Where the keeper's control socket lives: the same path across every handoff.
 pub fn socket_path(run_dir: &Path) -> PathBuf {
-    run_dir.join("control.sock")
+    run_dir.join("keeper.sock")
 }
 
-/// Binds the control socket (replacing a stale one), makes it owner-only, and serves it until the process ends.
-/// With `create_dir` false (immutable mode, which never writes to disk) the socket's directory must already exist,
-/// for example a tmpfs or an `emptyDir` volume.
-pub fn serve(
-    path: &Path,
-    backend: Arc<dyn ControlBackend>,
-    create_dir: bool,
-) -> std::io::Result<()> {
+/// Answers one raw request line through `backend`, as a raw response line (no newline).
+pub fn answer(backend: &dyn ControlBackend, line: &str) -> String {
+    let response = match serde_json::from_str::<ControlRequest>(line) {
+        Ok(request) => backend.handle(request),
+        Err(err) => ControlResponse::Error(format!("not a control request: {err}")),
+    };
+    serde_json::to_string(&response).expect("responses serialize")
+}
+
+/// Answers raw control request lines. The keeper forwards them to its active generation.
+pub trait LineHandler: Send + Sync {
+    fn handle_line(
+        &self,
+        line: String,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = String> + Send + '_>>;
+}
+
+/// Binds the control socket (replacing a stale one, refusing a live one), makes it owner-only, and serves it until
+/// the process ends, one request line and one response line per connection. With `create_dir` false (immutable
+/// mode, which never writes to disk) the socket's directory must already exist, for example a tmpfs or an `emptyDir`
+/// volume.
+pub fn serve(path: &Path, handler: Arc<dyn LineHandler>, create_dir: bool) -> std::io::Result<()> {
     if create_dir && let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
@@ -272,7 +286,7 @@ pub fn serve(
             let Ok((stream, _)) = listener.accept().await else {
                 continue;
             };
-            let backend = backend.clone();
+            let handler = handler.clone();
             tokio::spawn(async move {
                 let (read, mut write) = stream.into_split();
                 let mut line = String::new();
@@ -283,15 +297,7 @@ pub fn serve(
                 {
                     return;
                 }
-                let response = match serde_json::from_str::<ControlRequest>(&line) {
-                    Ok(request) => tokio::task::spawn_blocking(move || backend.handle(request))
-                        .await
-                        .unwrap_or_else(|err| {
-                            ControlResponse::Error(format!("the request failed: {err}"))
-                        }),
-                    Err(err) => ControlResponse::Error(format!("not a control request: {err}")),
-                };
-                let mut out = serde_json::to_string(&response).expect("responses serialize");
+                let mut out = handler.handle_line(line.trim_end().to_string()).await;
                 out.push('\n');
                 let _ = write.write_all(out.as_bytes()).await;
             });
@@ -345,6 +351,24 @@ pub fn format(request: &ControlRequest, value: &Value) -> String {
                     dash(&server["version"]),
                     dash(&server["mode"])
                 ));
+                let generation = &value["keeper"]["generation"];
+                if !generation.is_null() {
+                    let trial = if generation["on_trial"].as_bool() == Some(true) {
+                        "trial"
+                    } else {
+                        "confirmed"
+                    };
+                    out.push_str(&format!(
+                        "generation\t{}\t{}\t{trial}\n",
+                        generation["pid"]
+                            .as_u64()
+                            .map_or_else(|| "-".to_string(), |pid| pid.to_string()),
+                        dash(&generation["version"]),
+                    ));
+                }
+                if let Some(keeper) = value["keeper"]["version"].as_str() {
+                    out.push_str(&format!("keeper\t{keeper}\n"));
+                }
             }
             for app in value["apps"].as_array().into_iter().flatten() {
                 out.push_str(&format!(

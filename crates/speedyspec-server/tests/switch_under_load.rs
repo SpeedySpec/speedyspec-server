@@ -68,7 +68,7 @@ app = "admin"
         .collect();
     let quic = found.iter().find(|(p, _)| p == "udp").unwrap().1;
     let (plain, secure) = (tcp[0], tcp[1]);
-    let socket = dir.path().join("run/control.sock");
+    let socket = dir.path().join("run/keeper.sock");
     let cfg = config.to_str().unwrap();
     for version in ["1.0.0", "1.1.0"] {
         let deadline = Instant::now() + Duration::from_secs(10);

@@ -26,7 +26,6 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
         .data_dir
         .as_ref()
         .ok_or("mode = \"managed\" needs data_dir")?;
-    hold_server_lock(&config.run_dir)?;
     std::fs::create_dir_all(data_dir.join("releases"))
         .map_err(|err| format!("creating {}: {err}", data_dir.join("releases").display()))?;
 
@@ -102,30 +101,28 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
     Ok(Arc::new(manager))
 }
 
-/// Takes `<run_dir>/server.lock` for the life of the process, so a second server on the same directories refuses to
-/// start before it touches the first one's data, socket or downloads.
-fn hold_server_lock(run_dir: &std::path::Path) -> Result<(), String> {
-    std::fs::create_dir_all(run_dir)
-        .map_err(|err| format!("creating {}: {err}", run_dir.display()))?;
-    let path = run_dir.join("server.lock");
-    let file = std::fs::OpenOptions::new()
-        .create(true)
-        .truncate(false)
-        .write(true)
-        .open(&path)
-        .map_err(|err| format!("opening {}: {err}", path.display()))?;
-    match file.try_lock() {
-        Ok(()) => {
-            // Released when the process exits.
-            Box::leak(Box::new(file));
-            Ok(())
-        }
-        Err(std::fs::TryLockError::WouldBlock) => Err(format!(
-            "another speedyspec-server is already running with run_dir {}",
-            run_dir.display()
-        )),
-        Err(std::fs::TryLockError::Error(err)) => Err(format!("locking {}: {err}", path.display())),
-    }
+/// The server binary the keeper runs in managed mode: on first start the running executable is kept and
+/// confirmed as the first server release; afterwards the confirmed binary in the data directory.
+pub fn confirmed_binary(config: &Config) -> Result<std::path::PathBuf, String> {
+    let data_dir = config
+        .data_dir
+        .as_ref()
+        .ok_or("mode = \"managed\" needs data_dir")?;
+    let server = config
+        .apps
+        .iter()
+        .find(|(_, app)| app.kind == AppKind::Server)
+        .map(|(id, _)| id.clone())
+        .ok_or("no server app is configured")?;
+    let exe = std::env::current_exe().map_err(|err| format!("finding this executable: {err}"))?;
+    speedyspec_server_app::register_running_binary(
+        &FsReleaseStore::new(data_dir),
+        &FsStateStore::new(data_dir, &config.run_dir),
+        &server,
+        &crate::binary::own_version(),
+        &exe,
+    )
+    .map_err(|err| err.to_string())
 }
 
 /// The `auto` apps (never the server) and their check intervals.

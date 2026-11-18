@@ -6,12 +6,18 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[features]
+# Hooks for tests only: files next to the executable override its version or make a generation misbehave.
+test-hooks = []
+
 [[bin]]
 name = "speedyspec-server"
 path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"
+libc = "0.2"
+speedyspec-server-handoff = { path = "../speedyspec-server-handoff" }
 humantime = "2"
 clap = { version = "4", features = ["derive"] }
 semver = "1"
@@ -38,6 +44,7 @@ rustix = { version = "1", features = ["net", "fs", "process", "stdio"] }
 quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-ring"] }
 
 [dev-dependencies]
+speedyspec-server-handoff = { path = "../speedyspec-server-handoff" }
 libc = "0.2"
 minisign = "0.7"
 sha2 = "0.10"
@@ -48,7 +55,7 @@ h3 = "0.0.8"
 h3-quinn = "0.0.10"
 http = "1"
 rcgen = "0.14"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "blocking"] }
 tokio = { version = "1", features = ["full"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 tempfile = "3"

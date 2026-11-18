@@ -56,3 +56,52 @@ impl BinaryInspector for ProcessInspector {
         ReleaseManifest::parse(&out).map_err(|err| format!("{} manifest: {err}", binary.display()))
     }
 }
+
+/// This binary's version. With the `test-hooks` feature, a file `<exe>.test-version` next to the executable
+/// overrides it, so tests can run several "versions" of one build.
+pub fn own_version() -> semver::Version {
+    #[cfg(feature = "test-hooks")]
+    if let Some(text) = hook("test-version")
+        && let Ok(version) = semver::Version::parse(text.trim())
+    {
+        return version;
+    }
+    semver::Version::parse(env!("CARGO_PKG_VERSION")).expect("the crate version is SemVer")
+}
+
+/// The keeper protocol this binary speaks (`<exe>.test-protocol` overrides it under `test-hooks`).
+pub fn own_protocol() -> u32 {
+    #[cfg(feature = "test-hooks")]
+    if let Some(text) = hook("test-protocol")
+        && let Ok(protocol) = text.trim().parse()
+    {
+        return protocol;
+    }
+    speedyspec_server_handoff::PROTOCOL
+}
+
+/// Under `test-hooks`: how long after `Ready` a generation exits on its own (`<exe>.test-exit-after-ready-ms`).
+pub fn exit_after_ready() -> Option<Duration> {
+    #[cfg(feature = "test-hooks")]
+    if let Some(text) = hook("test-exit-after-ready-ms") {
+        return text.trim().parse().ok().map(Duration::from_millis);
+    }
+    None
+}
+
+/// Under `test-hooks`: a generation that never reports ready (`<exe>.test-never-ready`).
+pub fn never_ready() -> bool {
+    #[cfg(feature = "test-hooks")]
+    if hook("test-never-ready").is_some() {
+        return true;
+    }
+    false
+}
+
+#[cfg(feature = "test-hooks")]
+fn hook(name: &str) -> Option<String> {
+    let exe = std::env::current_exe().ok()?;
+    let mut path = exe.into_os_string();
+    path.push(format!(".{name}"));
+    std::fs::read_to_string(std::path::PathBuf::from(path)).ok()
+}
