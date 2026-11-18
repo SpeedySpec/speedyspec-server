@@ -96,3 +96,19 @@ Keeper K, old generation N, new generation N+1 (`speedyspec-server-handoff`, pro
 - Otherwise: K starts a fresh generation from the confirmed binary.
 
 **Keeper killed:** the generation sees EOF on fd 3, stops accepting, waits idle (up to 30 s), and exits.
+
+**Reload (`speedyspec-server reload`):** the keeper answers it itself. It re-reads the config; if the listeners
+(address, TLS on or off, `http3`) differ from the running ones, it refuses, since only a restart can rebind. Otherwise
+it runs the upgrade above with the confirmed binary as N+1, trial included. A failed reload trial resumes N with
+`Resume { failed: None }`: nothing is marked failed or reverted.
+
+**The keeper re-executing itself:** when a trial is confirmed for a version newer than the keeper's own, the keeper
+waits until N has been reaped (after `execve` nothing could reap it), then clears close-on-exec on the listening
+sockets, `keeper.sock`'s listener, `server.lock` and N+1's channel, and `execve`s the confirmed binary as
+`run --config <same>`, with those fd numbers, N+1's PID and version, and the confirmed binary's path as JSON in
+`SPEEDYSPEC_KEEPER_STATE`. The new keeper adopts them (it sets close-on-exec again so generations do not inherit them),
+waits on N+1 by PID from a thread (it is still the parent, so `waitpid` works), and logs `keeper_reexecuted`. N+1
+never notices. Before the re-exec, a binary that needs a newer protocol than the keeper speaks is refused.
+
+**Control requests that meet a dying generation:** `status`, `release list` and `release check` are asked again of
+the generation the keeper resumes or restarts in its place. Requests that change anything are never retried.
