@@ -5,4 +5,4 @@ pub mod download;
 pub mod releases;
 
 pub use compat::{Incompatibility, check_set};
-pub use releases::{AppPolicy, ReleaseError, ReleaseManager, Signing};
+pub use releases::{AppPolicy, BootReport, ReleaseError, ReleaseManager, Signing};

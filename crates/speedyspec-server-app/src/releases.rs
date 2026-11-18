@@ -97,6 +97,7 @@ pub struct ReleaseManager {
     pub(crate) state_store: Arc<dyn StateStore>,
     pub(crate) runtimes: HashMap<AppKind, Arc<dyn AppRuntime>>,
     pub(crate) state: Mutex<ReleaseState>,
+    pub(crate) last_boot: Mutex<Option<BootReport>>,
 }
 
 impl ReleaseManager {
@@ -123,6 +124,7 @@ impl ReleaseManager {
             state_store,
             runtimes,
             state: Mutex::new(state),
+            last_boot: Mutex::new(None),
         })
     }
 
@@ -553,6 +555,131 @@ impl ReleaseManager {
         let mut next = state.clone();
         next.app_mut(app).pinned = None;
         self.commit_state(&mut state, next)
+    }
+}
+
+/// What start-up recovery found and did.
+#[derive(Clone, Debug, Default)]
+pub struct BootReport {
+    /// Partial downloads that were deleted.
+    pub cleaned: Vec<PathBuf>,
+    /// (app, the version the state named, the version now active) for every app that could not start on its active
+    /// release.
+    pub fallbacks: Vec<(AppId, Option<Version>, Option<Version>)>,
+    /// Apps with no release that loads.
+    pub not_installed: Vec<AppId>,
+    /// Requirements the active set does not meet. The server serves anyway, so it can be fixed through it.
+    pub incompatible: Vec<Incompatibility>,
+}
+
+impl ReleaseManager {
+    /// Recovers at start-up: deletes partial downloads, drops kept releases that no longer load, activates every
+    /// app's active release, and when that fails falls back to the newest kept release older than it (never a newer
+    /// one, which nobody switched to). Saves only if something changed.
+    pub fn boot(&self) -> BootReport {
+        let mut state = self.lock();
+        let mut report = BootReport::default();
+        match self.store.clean_partials() {
+            Ok(cleaned) => report.cleaned = cleaned,
+            Err(err) => tracing::warn!(event = "clean_partials_failed", error = %err),
+        }
+
+        let mut next = state.clone();
+        for (app, policy) in &self.apps {
+            if policy.kind == AppKind::Server {
+                continue;
+            }
+            let current = next.app_mut(app);
+            let loadable: Vec<Version> = current
+                .kept
+                .iter()
+                .filter(|version| self.store.manifest(app, version).is_ok())
+                .cloned()
+                .collect();
+            current.kept.retain(|version| loadable.contains(version));
+            let Some(named) = current.active.clone() else {
+                report.not_installed.push(app.clone());
+                continue;
+            };
+
+            let mut candidates: Vec<Version> = Vec::new();
+            if loadable.contains(&named) {
+                candidates.push(named.clone());
+            }
+            let mut older: Vec<Version> = loadable
+                .iter()
+                .filter(|version| **version < named)
+                .cloned()
+                .collect();
+            older.sort_by(|a, b| b.cmp(a));
+            candidates.extend(older);
+
+            let mut chosen = None;
+            for version in candidates {
+                let prepared = self
+                    .store
+                    .manifest(app, &version)
+                    .map_err(|err| err.to_string())
+                    .and_then(|manifest| {
+                        let runtime = self.runtime(policy.kind).ok_or_else(|| {
+                            format!("no runtime for kind {}", policy.kind.as_str())
+                        })?;
+                        let ready = runtime.prepare(
+                            app,
+                            &manifest,
+                            &self.store.release_dir(app, &version),
+                        )?;
+                        runtime.activate(ready);
+                        Ok(())
+                    });
+                match prepared {
+                    Ok(()) => {
+                        chosen = Some(version);
+                        break;
+                    }
+                    Err(reason) => {
+                        current.failed.insert(version.clone(), reason);
+                    }
+                }
+            }
+            if chosen.as_ref() != Some(&named) {
+                tracing::warn!(event = "active_fallback", app = %app, was = %named, now = ?chosen.as_ref().map(ToString::to_string));
+                report
+                    .fallbacks
+                    .push((app.clone(), Some(named.clone()), chosen.clone()));
+                if chosen.is_none() {
+                    report.not_installed.push(app.clone());
+                }
+                current.previous = None;
+                current.active = chosen;
+            }
+        }
+        if next != *state
+            && let Err(err) = self.commit_state(&mut state, next)
+        {
+            tracing::error!(event = "boot_state_not_saved", error = %err);
+        }
+
+        if let Err(incompatible) = check_set(&self.manifests_of(&state)) {
+            for item in &incompatible {
+                tracing::error!(event = "incompatible_set", message = %item);
+            }
+            report.incompatible = incompatible;
+        }
+        *self
+            .last_boot
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(report.clone());
+
+        report
+    }
+
+    /// The report of the last `boot`, if it ran.
+    pub fn last_boot(&self) -> Option<BootReport> {
+        self.last_boot
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone()
     }
 }
 
