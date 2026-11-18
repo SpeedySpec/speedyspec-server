@@ -3078,6 +3078,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-server-infra-fs"
+version = "0.1.0"
+dependencies = [
+ "ruzstd",
+ "semver",
+ "serde_json",
+ "speedyspec-server-domain",
+ "speedyspec-server-infra-memory",
+ "tar",
+ "tempfile",
+ "tracing",
+]
+
+[[package]]
 name = "speedyspec-server-infra-memory"
 version = "0.1.0"
 dependencies = [
