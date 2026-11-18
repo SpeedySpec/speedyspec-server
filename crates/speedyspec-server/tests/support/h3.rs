@@ -38,7 +38,7 @@ pub async fn try_get(
         .map_err(|e| format!("connect: {e}"))?;
     let (mut driver, mut send) = h3::client::new(h3_quinn::Connection::new(conn))
         .await
-        .unwrap();
+        .map_err(|e| format!("h3 setup: {e:?}"))?;
     let drive = tokio::spawn(async move { std::future::poll_fn(|cx| driver.poll_close(cx)).await });
 
     let uri: http::Uri = format!("https://localhost:{}{}", addr.port(), path)

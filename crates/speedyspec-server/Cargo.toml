@@ -16,6 +16,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"
+bytes = "1"
 libc = "0.2"
 speedyspec-server-handoff = { path = "../speedyspec-server-handoff" }
 humantime = "2"

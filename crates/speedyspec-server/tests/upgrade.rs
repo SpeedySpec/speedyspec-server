@@ -59,6 +59,10 @@ impl World {
 }
 
 fn world(env: &[(&str, &str)], handoff: &str) -> World {
+    world_with(env, handoff, "")
+}
+
+fn world_with(env: &[(&str, &str)], handoff: &str, extra_listener: &str) -> World {
     let dir = tempfile::tempdir().unwrap();
     let host = ReleaseHost::start();
     host.publish_static("admin", "1.0.0");
@@ -72,7 +76,7 @@ run_dir = "{run}"
 
 [[listener]]
 address = "127.0.0.1:0"
-
+{extra_listener}
 [app.server]
 kind = "server"
 source = "{server_source}"
@@ -344,4 +348,190 @@ fn sigterm_during_upgrade_exits_cleanly() {
     w.keeper.term();
     assert!(wait_for(Duration::from_secs(10), || !alive(old_pid)
         && !alive(new_pid)));
+}
+
+/// Spec "Testing": handoff under load. TCP requests never fail; HTTP/3 requests fail only with the upgrade close and
+/// succeed on an immediate retry; a slow response opened before the first upgrade finishes on the old generation.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn handoff_under_load() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    let certs_dir = tempfile::tempdir().unwrap();
+    let certs = support::certs::generate(certs_dir.path());
+    let tls = format!(
+        "\n[[listener]]\naddress = \"127.0.0.1:0\"\ntls = {{ cert = \"{}\", key = \"{}\" }}\nhttp3 = true\n",
+        certs.tls.cert.display(),
+        certs.tls.key.display()
+    );
+    let w = tokio::task::spawn_blocking(move || {
+        world_with(
+            &[],
+            "trial_period = \"1s\"\nready_timeout = \"5s\"\ndrain_timeout = \"10s\"",
+            &tls,
+        )
+    })
+    .await
+    .unwrap();
+    let found = {
+        let out = w.keeper.log();
+        let mut tcp = Vec::new();
+        let mut udp = None;
+        for line in out {
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(&line)
+                && value["event"] == "listening"
+            {
+                let addr: std::net::SocketAddr =
+                    value["address"].as_str().unwrap().parse().unwrap();
+                if value["protocol"] == "tcp" {
+                    tcp.push(addr)
+                } else {
+                    udp = Some(addr)
+                }
+            }
+        }
+        (tcp, udp.expect("an h3 listener"))
+    };
+    let (plain, secure, quic) = (found.0[0], found.0[1], found.1);
+    for version in ["0.2.0", "0.3.0"] {
+        w.host.publish_server(version, Path::new(BIN));
+        w.ok(&["release", "install", "server", version]);
+    }
+    let (first_pid, _, _) = w.generation();
+
+    let slow = tokio::spawn(async move {
+        let client = reqwest::Client::builder().http1_only().build().unwrap();
+        client
+            .get(format!("http://{plain}/__speedyspec_test/slow?seconds=6"))
+            .send()
+            .await?
+            .text()
+            .await
+    });
+    tokio::time::sleep(Duration::from_millis(300)).await;
+
+    let stop = Arc::new(AtomicBool::new(false));
+    let failures: Arc<Mutex<Vec<String>>> = Arc::default();
+    let ca = reqwest::Certificate::from_pem(&std::fs::read(&certs.ca).unwrap()).unwrap();
+    let clients = [
+        (
+            "h1",
+            format!("http://{plain}/"),
+            reqwest::Client::builder().http1_only().build().unwrap(),
+        ),
+        (
+            "h2c",
+            format!("http://{plain}/"),
+            reqwest::Client::builder()
+                .http2_prior_knowledge()
+                .build()
+                .unwrap(),
+        ),
+        (
+            "h2",
+            format!("https://localhost:{}/", secure.port()),
+            reqwest::Client::builder()
+                .add_root_certificate(ca)
+                .build()
+                .unwrap(),
+        ),
+    ];
+    let mut tasks = Vec::new();
+    for (name, url, client) in clients {
+        let (stop, failures) = (stop.clone(), failures.clone());
+        tasks.push(tokio::spawn(async move {
+            let mut served = 0;
+            while !stop.load(Ordering::SeqCst) {
+                match client.get(&url).send().await {
+                    Ok(response) if response.status() == 200 => served += 1,
+                    Ok(response) => failures
+                        .lock()
+                        .unwrap()
+                        .push(format!("{name}: {}", response.status())),
+                    Err(err) => failures.lock().unwrap().push(format!("{name}: {err}")),
+                }
+            }
+            served
+        }));
+    }
+    {
+        let (stop, failures, ca) = (stop.clone(), failures.clone(), certs.ca.clone());
+        tasks.push(tokio::spawn(async move {
+            let mut served = 0;
+            while !stop.load(Ordering::SeqCst) {
+                match support::h3::try_get(quic, &ca, "/").await {
+                    Ok((200, _, _)) => served += 1,
+                    Ok((status, _, _)) => failures.lock().unwrap().push(format!("h3: {status}")),
+                    // The upgrade close is expected; a retry must succeed at once.
+                    // A connection still in its handshake can only get a bare transport close (RFC 9000 §10.2.3).
+                    Err(err)
+                        if err.contains("21331")
+                            || err.contains("0x5353")
+                            || err.contains("APPLICATION_ERROR")
+                            || err.contains("closed during the handshake") =>
+                    {
+                        tokio::time::sleep(Duration::from_millis(100)).await;
+                        if support::h3::try_get(quic, &ca, "/").await.is_err() {
+                            failures
+                                .lock()
+                                .unwrap()
+                                .push(format!("h3 retry after upgrade close: {err}"));
+                        }
+                    }
+                    Err(err) => failures.lock().unwrap().push(format!("h3: {err}")),
+                }
+            }
+            served
+        }));
+    }
+
+    let config = w.config.to_str().unwrap().to_string();
+    let switch = |target: &'static str, config: String| {
+        tokio::task::spawn_blocking(move || {
+            command(&["release", "switch", "--config", &config, target])
+        })
+    };
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    let (code, _, stderr) = switch("server@0.2.0", config.clone()).await.unwrap();
+    assert_eq!(code, 0, "{stderr}");
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    let (code, _, stderr) = switch("server@0.3.0", config.clone()).await.unwrap();
+    assert_eq!(code, 0, "{stderr}");
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    stop.store(true, Ordering::SeqCst);
+    let mut served = Vec::new();
+    for task in tasks {
+        served.push(task.await.unwrap());
+    }
+
+    let failures = failures.lock().unwrap().clone();
+    if !failures.is_empty() {
+        let mut kinds: std::collections::BTreeMap<String, usize> = Default::default();
+        for failure in &failures {
+            *kinds.entry(failure.chars().take(90).collect()).or_default() += 1;
+        }
+        eprintln!("failure kinds: {kinds:#?}");
+        for line in w
+            .keeper
+            .log()
+            .iter()
+            .filter(|l| l.contains("\"event\":\"") && !l.contains("listening"))
+        {
+            eprintln!("log: {}", line.chars().take(200).collect::<String>());
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "{} failures, first: {:?}",
+        failures.len(),
+        &failures[..failures.len().min(5)]
+    );
+    assert!(served.iter().all(|n| *n > 0), "{served:?}");
+    let body = slow.await.unwrap().expect("the slow response completes");
+    let pids: Vec<&str> = body.lines().collect();
+    assert_eq!(pids.len(), 6, "{body:?}");
+    assert!(
+        pids.iter().all(|pid| *pid == first_pid.to_string()),
+        "served by {pids:?}, first generation {first_pid}"
+    );
 }

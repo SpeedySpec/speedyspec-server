@@ -136,7 +136,12 @@ async fn serve(channel: Channel) -> Result<(), String> {
             server_version: version.clone(),
         })
     };
-    let serving = Serving::start(tcp, udp, build_router(Arc::new(state)), false)
+    let router = build_router(Arc::new(state));
+    #[cfg(feature = "test-hooks")]
+    let router = salvo::Router::new()
+        .push(salvo::Router::with_path("__speedyspec_test/slow").get(test_slow))
+        .push(router);
+    let serving = Serving::start(tcp, udp, router, false)
         .await
         .map_err(|err| format!("{err:#}"))?;
 
@@ -265,4 +270,26 @@ fn signals() -> std::io::Result<impl std::future::Future<Output = ()>> {
 /// The config path as the keeper passes it: absolute, so the generation's working directory does not matter.
 pub fn absolute(path: &std::path::Path) -> PathBuf {
     std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
+/// Under `test-hooks`: `GET /__speedyspec_test/slow?seconds=N` streams N lines, one a second, each holding this
+/// generation's PID, to show which generation serves a long-lived response across a handoff.
+#[cfg(feature = "test-hooks")]
+#[salvo::handler]
+async fn test_slow(req: &mut salvo::Request, res: &mut salvo::Response) {
+    let seconds: u64 = req.query("seconds").unwrap_or(3);
+    let pid = std::process::id();
+    let chunks = futures_util::stream::unfold(0u64, move |sent| async move {
+        if sent == seconds {
+            return None;
+        }
+        if sent > 0 {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+        Some((
+            Ok::<_, std::io::Error>(bytes::Bytes::from(format!("{pid}\n"))),
+            sent + 1,
+        ))
+    });
+    res.stream(chunks);
 }

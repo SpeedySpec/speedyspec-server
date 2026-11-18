@@ -40,6 +40,26 @@ test passes on macOS arm64 and Linux musl.
   5. only then report `UdpReleased`.
   With that order, the child's first HTTP/3 request succeeds, five times out of five, with no retry.
 
+## Releasing UDP under load (`handoff_under_load`, plan 3 Task 8)
+
+Waiting for the old endpoint to go idle, as above, is correct but too slow under load. A closed endpoint keeps
+reading the shared socket for 3 × PTO (about 3 s for connections without RTT samples), and it **refuses** every new
+handshake it sees in that time: 4,733 refused HTTP/3 requests in one upgrade. `Serving::stop_accepting` therefore
+releases UDP in this order:
+
+1. `Endpoint::set_server_config(None)`. A handshake that arrives now is dropped, not refused. The client retransmits
+   it, and the next generation answers.
+2. `Endpoint::close(0x5353, …)` for every open connection.
+3. Wait 50 ms (`CLOSE_FLUSH`). `close` only queues the close packets, and they must leave from the shared socket: if
+   they go out from another address, clients ignore them and the connection hangs until its idle timeout.
+4. `Endpoint::rebind(throwaway local socket)`. The old endpoint stops reading the shared socket at once, and finishes
+   closing on its own.
+5. Stop the Salvo server and drop the endpoint (its `wait_idle` runs in the background).
+
+HTTP/1.1 keep-alive connections race a graceful close: a client may send a request on a connection just as the
+server closes it. So while draining, the old generation answers HTTP/1.x with `Connection: close`, and stops
+accepting TCP only after `TCP_GRACE` (1 s). Busy clients leave cleanly within that time; HTTP/2 gets `GOAWAY`.
+
 ## Rebuilding a QUIC endpoint in the same process (`quic_endpoint_resumes`)
 
 The same order as above (close, stop, `wait_idle`, drop) followed by a new endpoint on another `try_clone` of the

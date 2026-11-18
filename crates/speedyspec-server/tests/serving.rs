@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use salvo::prelude::*;
 use speedyspec_server::listeners::{BoundTcp, BoundUdp};
-use speedyspec_server::serving::{Serving, UPGRADE_CLOSE_CODE};
+use speedyspec_server::serving::{Serving, TCP_GRACE, UPGRADE_CLOSE_CODE};
 
 #[handler]
 async fn ok(res: &mut Response) {
@@ -130,6 +130,8 @@ async fn stop_then_resume_serves_again() {
     assert_eq!(support::h3::get(s.secure, &s.certs.ca, "/").await.2, b"ok");
 
     s.serving.stop_accepting().await;
+    // TCP keeps being accepted (with `Connection: close`) for TCP_GRACE, then stops.
+    tokio::time::sleep(TCP_GRACE + Duration::from_millis(200)).await;
     let plain = s.plain;
     let during = tokio::spawn(async move { h1(plain, "/").await });
     tokio::time::sleep(Duration::from_millis(300)).await;
@@ -208,9 +210,9 @@ async fn wait_idle_forces_close_after_timeout() {
     tokio::time::sleep(Duration::from_millis(200)).await;
     s.serving.stop_accepting().await;
     let started = Instant::now();
-    s.serving.wait_idle(Duration::from_millis(300)).await;
+    s.serving.wait_idle(Duration::from_millis(1)).await;
     assert!(
-        started.elapsed() < Duration::from_millis(1200),
+        started.elapsed() < TCP_GRACE + Duration::from_millis(1200),
         "{:?}",
         started.elapsed()
     );
@@ -292,4 +294,17 @@ async fn alt_svc_on_tls_with_http3_only() {
         .await
         .unwrap();
     assert!(response.headers().get("alt-svc").is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn draining_answers_http1_with_connection_close() {
+    let s = setup(true, false).await;
+    s.serving.stop_accepting().await;
+    let client = reqwest::Client::builder().http1_only().build().unwrap();
+    let response = client
+        .get(format!("http://{}/", s.plain))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.headers()["connection"], "close");
 }

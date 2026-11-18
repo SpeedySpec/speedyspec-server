@@ -28,6 +28,9 @@ use crate::listeners::{BoundTcp, BoundUdp, TlsFiles};
 /// The QUIC application close code a draining generation sends: "server upgrading, reconnect".
 pub const UPGRADE_CLOSE_CODE: u32 = 0x5353;
 
+/// How long a releasing QUIC endpoint gets to send its close packets before it moves off the shared socket.
+const CLOSE_FLUSH: Duration = Duration::from_millis(50);
+
 /// One running Salvo server and its task.
 struct Running {
     handle: ServerHandle,
@@ -54,12 +57,47 @@ struct Inner {
     udp: Vec<UdpSlot>,
     /// Servers stopped by `stop_accepting` and not yet idle.
     draining: Vec<Running>,
+    /// The deferred TCP stop scheduled by `stop_accepting`.
+    pending_tcp_stop: Option<JoinHandle<()>>,
 }
 
 /// The sockets a generation serves on, and what it can do with them.
 pub struct Serving {
     router: Arc<Router>,
-    inner: Mutex<Inner>,
+    inner: Arc<Mutex<Inner>>,
+    /// Set while draining: HTTP/1.x responses carry `Connection: close`.
+    closing: Arc<std::sync::atomic::AtomicBool>,
+}
+
+/// How long a draining generation keeps accepting TCP (answering HTTP/1.1 with `Connection: close`) before it stops:
+/// long enough for busy keep-alive clients to leave cleanly instead of racing the close.
+pub const TCP_GRACE: Duration = Duration::from_secs(1);
+
+/// Adds `Connection: close` to HTTP/1.x responses while the generation drains.
+struct CloseWhileDraining(Arc<std::sync::atomic::AtomicBool>);
+
+#[async_trait]
+impl Handler for CloseWhileDraining {
+    async fn handle(
+        &self,
+        req: &mut Request,
+        depot: &mut Depot,
+        res: &mut Response,
+        ctrl: &mut FlowCtrl,
+    ) {
+        ctrl.call_next(req, depot, res).await;
+        if self.0.load(std::sync::atomic::Ordering::SeqCst)
+            && matches!(
+                req.version(),
+                salvo::http::Version::HTTP_10 | salvo::http::Version::HTTP_11
+            )
+        {
+            res.headers_mut().insert(
+                salvo::http::header::CONNECTION,
+                HeaderValue::from_static("close"),
+            );
+        }
+    }
 }
 
 fn rustls_config(files: &TlsFiles) -> anyhow::Result<RustlsConfig> {
@@ -180,14 +218,36 @@ impl UdpSlot {
     }
 
     /// Releases the socket: nothing in this process reads it afterwards.
+    /// Releases the socket at once: closes every connection with [`UPGRADE_CLOSE_CODE`], then moves the endpoint
+    /// onto a throwaway local socket, so it stops reading the shared one while its connections finish closing (a
+    /// closed endpoint refuses every new connection it sees, for as long as 3 × PTO).
     async fn release(&mut self) {
         if let Some(endpoint) = self.endpoint.take() {
+            // Without a server config, a handshake arriving now is dropped (the client retransmits it, and the next
+            // generation answers) instead of refused.
+            endpoint.set_server_config(None);
             endpoint.close(UPGRADE_CLOSE_CODE.into(), b"server upgrading, reconnect");
+            // `close` only queues the close packets; they must leave from the shared socket before the rebind, or
+            // clients ignore them (wrong address) and their connections hang until the idle timeout.
+            tokio::time::sleep(CLOSE_FLUSH).await;
+            let local = self.socket.local_addr().ok();
+            let throwaway = if local.is_some_and(|a| a.is_ipv6()) {
+                "[::1]:0"
+            } else {
+                "127.0.0.1:0"
+            };
+            match std::net::UdpSocket::bind(throwaway).and_then(|socket| endpoint.rebind(socket)) {
+                Ok(()) => {}
+                Err(err) => {
+                    tracing::warn!(event = "quic_rebind_failed", error = %err, "waiting for the endpoint to go idle instead");
+                    endpoint.wait_idle().await;
+                }
+            }
             if let Some(running) = self.running.take() {
                 running.handle.stop_graceful(Some(Duration::from_secs(1)));
                 let _ = running.task.await;
             }
-            endpoint.wait_idle().await;
+            tokio::spawn(async move { endpoint.wait_idle().await });
         }
     }
 }
@@ -219,7 +279,13 @@ impl Serving {
                 )
             })
             .collect();
-        let router = Arc::new(Router::new().hoop(AltSvc { ports }).push(router));
+        let closing = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let router = Arc::new(
+            Router::new()
+                .hoop(AltSvc { ports })
+                .hoop(CloseWhileDraining(closing.clone()))
+                .push(router),
+        );
 
         let mut inner = Inner {
             tcp: tcp
@@ -241,6 +307,7 @@ impl Serving {
                 })
                 .collect(),
             draining: Vec::new(),
+            pending_tcp_stop: None,
         };
         for slot in &mut inner.tcp {
             slot.start(&router).await?;
@@ -252,7 +319,8 @@ impl Serving {
         }
         Ok(Serving {
             router,
-            inner: Mutex::new(inner),
+            inner: Arc::new(Mutex::new(inner)),
+            closing,
         })
     }
 
@@ -265,28 +333,43 @@ impl Serving {
         Ok(())
     }
 
-    /// Stops accepting TCP (sending HTTP/2 and HTTP/1.1 connections `GOAWAY` / close), and releases UDP: closes every
-    /// QUIC connection with [`UPGRADE_CLOSE_CODE`] and waits until nothing reads the sockets. Open TCP connections
-    /// keep being served.
+    /// Starts draining: releases UDP at once (every QUIC connection gets [`UPGRADE_CLOSE_CODE`]), answers HTTP/1.1
+    /// with `Connection: close`, and after [`TCP_GRACE`] stops accepting TCP (HTTP/2 gets `GOAWAY`). Open TCP
+    /// connections keep being served.
     pub async fn stop_accepting(&self) {
+        self.closing
+            .store(true, std::sync::atomic::Ordering::SeqCst);
         let mut inner = self.inner.lock().await;
-        let mut stopped = Vec::new();
-        for slot in &mut inner.tcp {
-            if let Some(running) = slot.running.take() {
-                running.handle.stop_graceful(None);
-                stopped.push(running);
-            }
-            slot.configs = None;
-        }
         for slot in &mut inner.udp {
             slot.release().await;
         }
-        inner.draining.extend(stopped);
+        if inner.pending_tcp_stop.is_none() {
+            let shared = self.inner.clone();
+            inner.pending_tcp_stop = Some(tokio::spawn(async move {
+                tokio::time::sleep(TCP_GRACE).await;
+                let mut inner = shared.lock().await;
+                let mut stopped = Vec::new();
+                for slot in &mut inner.tcp {
+                    if let Some(running) = slot.running.take() {
+                        running.handle.stop_graceful(None);
+                        stopped.push(running);
+                    }
+                    slot.configs = None;
+                }
+                inner.draining.extend(stopped);
+            }));
+        }
     }
 
-    /// Serves again after `stop_accepting`: fresh servers on fresh clones of the same sockets.
+    /// Serves again after `stop_accepting`: cancels a TCP stop that has not happened yet, and starts fresh servers on
+    /// fresh clones of the sockets that were stopped.
     pub async fn resume(&self) -> anyhow::Result<()> {
         let mut inner = self.inner.lock().await;
+        if let Some(pending) = inner.pending_tcp_stop.take() {
+            pending.abort();
+        }
+        self.closing
+            .store(false, std::sync::atomic::Ordering::SeqCst);
         for slot in &mut inner.tcp {
             if slot.running.is_none() {
                 slot.start(&self.router).await?;
@@ -328,6 +411,10 @@ impl Serving {
     /// Waits for the servers stopped by `stop_accepting` to finish their connections, up to `timeout`, then closes
     /// what remains.
     pub async fn wait_idle(&self, timeout: Duration) {
+        let pending = self.inner.lock().await.pending_tcp_stop.take();
+        if let Some(pending) = pending {
+            let _ = pending.await;
+        }
         let draining: Vec<Running> = std::mem::take(&mut self.inner.lock().await.draining);
         let handles: Vec<ServerHandle> = draining
             .iter()
