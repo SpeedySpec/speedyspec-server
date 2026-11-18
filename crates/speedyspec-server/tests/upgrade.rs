@@ -464,8 +464,10 @@ async fn handoff_under_load() {
                     Ok((status, _, _)) => failures.lock().unwrap().push(format!("h3: {status}")),
                     // The upgrade close is expected; a retry must succeed at once.
                     // A connection still in its handshake can only get a bare transport close (RFC 9000 §10.2.3).
+                    // A graceful H3_NO_ERROR termination is a server going away, which clients retry (RFC 9114 §5.2).
                     Err(err)
                         if err.contains("21331")
+                            || err.contains("H3_NO_ERROR")
                             || err.contains("0x5353")
                             || err.contains("APPLICATION_ERROR")
                             || err.contains("closed during the handshake") =>
@@ -495,7 +497,15 @@ async fn handoff_under_load() {
     let (code, _, stderr) = switch("server@0.2.0", config.clone()).await.unwrap();
     assert_eq!(code, 0, "{stderr}");
     tokio::time::sleep(Duration::from_secs(3)).await;
-    let (code, _, stderr) = switch("server@0.3.0", config.clone()).await.unwrap();
+    // The first generation may still be draining the slow response; the keeper refuses until it is gone.
+    let deadline = Instant::now() + Duration::from_secs(15);
+    let (code, _, stderr) = loop {
+        let result = switch("server@0.3.0", config.clone()).await.unwrap();
+        if result.0 == 0 || !result.2.contains("still draining") || Instant::now() > deadline {
+            break result;
+        }
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    };
     assert_eq!(code, 0, "{stderr}");
     tokio::time::sleep(Duration::from_secs(3)).await;
     stop.store(true, Ordering::SeqCst);
@@ -693,4 +703,150 @@ async fn keeper_reexec_keeps_listeners_and_socket() {
     .await
     .unwrap();
     drop(w);
+}
+
+/// Waits for the keeper to exit, up to `timeout`.
+fn keeper_exits(w: &mut World, timeout: Duration) -> Option<std::process::ExitStatus> {
+    let deadline = Instant::now() + timeout;
+    while Instant::now() < deadline {
+        if let Some(status) = w.keeper.child.try_wait().unwrap() {
+            return Some(status);
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    None
+}
+
+/// Opens `/__speedyspec_test/slow` and keeps reading it on a thread, so the generation serving it stays busy.
+fn hold_slow_request(addr: std::net::SocketAddr, seconds: u32) -> std::thread::JoinHandle<()> {
+    use std::io::{Read, Write};
+
+    let mut stream = std::net::TcpStream::connect(addr).unwrap();
+    write!(
+        stream,
+        "GET /__speedyspec_test/slow?seconds={seconds} HTTP/1.1\r\nHost: x\r\n\r\n"
+    )
+    .unwrap();
+    let mut first = [0u8; 12];
+    stream.read_exact(&mut first).unwrap();
+    std::thread::spawn(move || {
+        let mut sink = Vec::new();
+        let _ = stream.read_to_end(&mut sink);
+    })
+}
+
+#[test]
+fn sigterm_during_crash_restarts_exits() {
+    let mut w = world(&[], FAST);
+    let (pid, _, _) = w.generation();
+    let binary = w.dir.path().join(format!(
+        "data/releases/server/{BASE}/speedyspec-server.test-never-ready"
+    ));
+    std::fs::write(binary, "1").unwrap();
+    Command::new("kill")
+        .args(["-KILL", &pid.to_string()])
+        .status()
+        .unwrap();
+    std::thread::sleep(Duration::from_millis(1500));
+    Command::new("kill")
+        .args(["-TERM", &w.keeper.child.id().to_string()])
+        .status()
+        .unwrap();
+    let status = keeper_exits(&mut w, Duration::from_secs(5));
+    assert!(
+        status.is_some_and(|s| s.success()),
+        "the keeper ignored SIGTERM while restarting: {status:?}"
+    );
+}
+
+#[test]
+fn retiring_generation_blocks_upgrades_and_is_stopped() {
+    let mut w = world(
+        &[],
+        "trial_period = \"2s\"\nready_timeout = \"5s\"\ndrain_timeout = \"20s\"",
+    );
+    publish_and_install(&w, "0.2.0");
+    publish_and_install(&w, "0.3.0");
+    let (old_pid, _, _) = w.generation();
+    let _slow = hold_slow_request(w.addr, 30);
+    w.ok(&["release", "switch", "server@0.2.0"]);
+    assert!(wait_for(Duration::from_secs(8), || w.generation().2 == "confirmed"));
+    assert!(
+        alive(old_pid),
+        "the old generation drains its open response"
+    );
+    let (code, _, stderr) = w.cmd(&["release", "switch", "server@0.3.0"]);
+    assert_eq!(
+        code, 1,
+        "an upgrade during the previous generation's drain is refused"
+    );
+    assert!(stderr.contains("still draining"), "{stderr}");
+    assert_eq!(
+        w.state()["server"]["trial"],
+        serde_json::Value::Null,
+        "the refused switch left no trial"
+    );
+    Command::new("kill")
+        .args(["-TERM", &w.keeper.child.id().to_string()])
+        .status()
+        .unwrap();
+    assert!(keeper_exits(&mut w, Duration::from_secs(30)).is_some());
+    assert!(
+        !alive(old_pid),
+        "the draining generation outlived its keeper"
+    );
+}
+
+#[test]
+fn switch_refused_during_reload_trial_leaves_no_trial() {
+    let w = world(&[], FAST);
+    publish_and_install(&w, "0.2.0");
+    w.ok(&["reload"]);
+    let (code, _, stderr) = w.cmd(&["release", "switch", "server@0.2.0"]);
+    assert_eq!(code, 1);
+    assert!(stderr.contains("a reload is on trial"), "{stderr}");
+    let state = w.state();
+    assert_eq!(state["server"]["trial"], serde_json::Value::Null, "{state}");
+    assert_eq!(state["pending_group"], serde_json::Value::Null, "{state}");
+}
+
+#[test]
+fn release_commands_refused_while_a_server_switch_starts() {
+    let w = world(&[("SPEEDYSPEC_TEST_NEVER_READY_VERSION", "0.2.0")], FAST);
+    publish_and_install(&w, "0.2.0");
+    let config = w.config.to_str().unwrap().to_string();
+    let switch = std::thread::spawn(move || {
+        command(&["release", "switch", "server@0.2.0", "--config", &config])
+    });
+    std::thread::sleep(Duration::from_millis(1500));
+    let (code, _, stderr) = w.cmd(&["release", "pin", "admin", "1.0.0"]);
+    assert_eq!(
+        code, 1,
+        "a release command while the new generation starts is refused"
+    );
+    assert!(stderr.contains("server upgrade is in progress"), "{stderr}");
+    assert_eq!(
+        switch.join().unwrap().0,
+        1,
+        "the never-ready binary is refused"
+    );
+    w.ok(&["release", "pin", "admin", "1.0.0"]);
+}
+
+#[test]
+fn failed_confirm_fails_the_trial() {
+    let w = world(&[("SPEEDYSPEC_TEST_CONFIRM_FAIL_VERSION", "0.2.0")], FAST);
+    let (old_pid, _, _) = w.generation();
+    publish_and_install(&w, "0.2.0");
+    w.ok(&["release", "switch", "server@0.2.0"]);
+    assert!(
+        wait_for(Duration::from_secs(10), || w.generation().0 == old_pid),
+        "the old generation took over again; log: {:?}",
+        w.keeper.log()
+    );
+    let state = w.state();
+    assert_eq!(state["server"]["confirmed"], BASE, "{state}");
+    assert!(state["server"]["failed"]["0.2.0"].is_string(), "{state}");
+    assert_eq!(state["server"]["trial"], serde_json::Value::Null, "{state}");
+    assert_eq!(keeper_version(&w), BASE);
 }

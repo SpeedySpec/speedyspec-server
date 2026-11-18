@@ -88,14 +88,21 @@ Keeper K, old generation N, new generation N+1 (`speedyspec-server-handoff`, pro
 6. The trial starts.
 7. N keeps its in-memory state, and its open connections, until the trial ends.
 
-**Trial ends:** K confirms the version in `state.json`, then → N `Shutdown`.
+**Trial ends:** K asks N+1 to confirm the version in `state.json` (`ConfirmServer`), then → N `Shutdown`. If the
+confirm fails, the trial fails: N+1 drains, N resumes and reverts the group, N+1 shuts down.
+
+**A switch the keeper refuses** (during a trial or while the previous generation drains): K asks the generation to
+undo it (`CancelServerSwitch`, nothing is marked failed) before the client gets the refusal. From recording a server
+switch until it is resumed, cancelled or drained, a generation refuses release commands and pauses auto-update, so
+two generations never write `state.json` at once.
 
 **N+1 exits during the trial:**
 - If N is alive: K → N `Resume { failed }`. N builds new `Server`s on fresh clones and new endpoints, and reverts the
   pending group.
 - Otherwise: K starts a fresh generation from the confirmed binary.
 
-**Keeper killed:** the generation sees EOF on fd 3, stops accepting, waits idle (up to 30 s), and exits.
+**Keeper killed:** the generation sees EOF on fd 3, stops accepting and closes every listening socket at once (so a
+restarted keeper can bind them), lets open connections run for up to 1.5 s, and exits.
 
 **Reload (`speedyspec-server reload`):** the keeper answers it itself. It re-reads the config; if the listeners
 (address, TLS on or off, `http3`) differ from the running ones, it refuses, since only a restart can rebind. Otherwise

@@ -146,7 +146,9 @@ minisign signature and one of the app's `keys`.
   left as failed, and **pins** the app there, so auto-update does not bring the bad release back. `release unpin`
   lets auto-update run again.
 - On first start the running binary is registered as the first confirmed server release, copied to
-  `<data_dir>/releases/server/<version>/`. From then on the keeper runs the confirmed binary from there.
+  `<data_dir>/releases/server/<version>/`. From then on the keeper runs the confirmed binary from there. A later
+  start from a binary newer than the confirmed one (a package upgraded in place) adopts it the same way, unless that
+  version has failed before; an older one runs the confirmed binary instead.
 
 ## Upgrading the server, and the trial
 
@@ -169,7 +171,9 @@ $ speedyspec-server release switch server@0.2.0
 switched server 0.2.0 (on trial for 2m)
 ```
 
-One upgrade at a time: another is refused while a trial runs or the previous generation is still draining. A binary
+One upgrade at a time: another is refused while a trial runs or the previous generation is still draining, and
+other release commands are refused while the new generation starts. If the keeper is stopped (`SIGTERM`) at any point,
+every generation drains and the keeper exits. A binary
 that needs a newer keeper protocol than the running keeper speaks is refused before any handoff. `release rollback
 server` is an upgrade to an older kept binary, with the same trial.
 

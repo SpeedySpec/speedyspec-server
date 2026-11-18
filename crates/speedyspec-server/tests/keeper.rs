@@ -333,3 +333,79 @@ fn crash_loop_backs_off() {
         keeper.log()
     );
 }
+
+/// Review Focus 1: a generation whose keeper was SIGKILLed lets go of its ports within 2 s, even with a response in
+/// flight, so a restarted keeper can bind them at once.
+#[cfg(feature = "test-hooks")]
+#[test]
+fn orphaned_generation_frees_its_ports_within_two_seconds() {
+    use std::io::{Read, Write};
+
+    let dir = tempfile::tempdir().unwrap();
+    let config = immutable_config(dir.path(), "");
+    let mut keeper = start(&config);
+    let addr = keeper.address();
+    poll(addr, "/", Duration::from_secs(10), |s, _| s == 200);
+    let generation = generation_pid(&config);
+    let mut slow = std::net::TcpStream::connect(addr).unwrap();
+    slow.write_all(b"GET /__speedyspec_test/slow?seconds=20 HTTP/1.1\r\nHost: x\r\n\r\n")
+        .unwrap();
+    let mut first = [0u8; 12];
+    slow.read_exact(&mut first).unwrap();
+    kill("KILL", keeper.child.id());
+    let _ = keeper.child.wait();
+    assert!(
+        wait_for(Duration::from_millis(2500), || !alive(generation)),
+        "the orphaned generation was still running 2.5 s after its keeper died"
+    );
+    std::net::TcpListener::bind(addr).expect("a new keeper can bind the port at once");
+}
+
+/// A server package upgraded in place (a newer binary at the path systemd starts) is adopted at the next start, not
+/// ignored in favour of the older confirmed binary in data_dir.
+#[cfg(feature = "test-hooks")]
+#[test]
+fn newer_running_binary_is_adopted_at_start() {
+    let dir = tempfile::tempdir().unwrap();
+    let toml = format!(
+        "mode = \"managed\"\ndata_dir = \"{data}\"\nrun_dir = \"{run}\"\n[[listener]]\naddress = \"127.0.0.1:0\"\n[app.server]\nkind = \"server\"\n",
+        data = dir.path().join("data").display(),
+        run = dir.path().join("run").display(),
+    );
+    let config = dir.path().join("server.toml");
+    std::fs::write(&config, toml).unwrap();
+    let state_file = dir.path().join("data/state.json");
+    let confirmed = |version: &str| {
+        std::fs::read_to_string(&state_file)
+            .ok()
+            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+            .is_some_and(|state| state["server"]["confirmed"] == version)
+    };
+    let mut first = start(&config);
+    first.address();
+    assert!(wait_for(Duration::from_secs(10), || confirmed(env!(
+        "CARGO_PKG_VERSION"
+    ))));
+    kill("TERM", first.child.id());
+    let _ = first.child.wait();
+
+    let upgraded = dir.path().join("pkg/0.3.0/speedyspec-server");
+    std::fs::create_dir_all(upgraded.parent().unwrap()).unwrap();
+    std::fs::copy(BIN, &upgraded).unwrap();
+    let mut second = support::run::start_binary(
+        &upgraded,
+        &config,
+        &[("SPEEDYSPEC_TEST_VERSION_FROM_DIR", "1")],
+    );
+    second.address();
+    assert!(
+        wait_for(Duration::from_secs(10), || confirmed("0.3.0")),
+        "the newer binary was not adopted; log: {:?}",
+        second.log()
+    );
+    assert!(
+        status(&config).contains("\t0.3.0\tconfirmed"),
+        "{}",
+        status(&config)
+    );
+}

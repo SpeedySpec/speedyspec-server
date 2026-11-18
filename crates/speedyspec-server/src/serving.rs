@@ -361,6 +361,30 @@ impl Serving {
         }
     }
 
+    /// The keeper is gone: stops accepting on every socket at once and lets go of them all, so a new keeper can bind
+    /// the same addresses. Connections already open keep being served until [`Serving::wait_idle`].
+    pub async fn abandon(&self) {
+        self.closing
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        let mut inner = self.inner.lock().await;
+        if let Some(pending) = inner.pending_tcp_stop.take() {
+            pending.abort();
+        }
+        for slot in &mut inner.udp {
+            slot.release().await;
+        }
+        let mut stopped = Vec::new();
+        for slot in &mut inner.tcp {
+            if let Some(running) = slot.running.take() {
+                running.handle.stop_graceful(None);
+                stopped.push(running);
+            }
+        }
+        inner.draining.extend(stopped);
+        inner.tcp.clear();
+        inner.udp.clear();
+    }
+
     /// Serves again after `stop_accepting`: cancels a TCP stop that has not happened yet, and starts fresh servers on
     /// fresh clones of the sockets that were stopped.
     pub async fn resume(&self) -> anyhow::Result<()> {

@@ -47,6 +47,10 @@ pub enum ControlRequest {
     Status,
     /// Hand off to a new generation of the confirmed binary, re-reading the config (answered by the keeper).
     Reload,
+    /// Internal: the keeper refused a server switch the generation recorded; undo it without marking it failed.
+    CancelServerSwitch {
+        version: Version,
+    },
     /// Internal: the keeper confirms a server trial through the generation that passed it.
     ConfirmServer {
         version: Version,
@@ -134,11 +138,14 @@ impl ControlBackend for ManagedBackend {
             ControlRequest::List { .. } | ControlRequest::Status | ControlRequest::Check { .. }
         );
         if !reads
-            && !matches!(request, ControlRequest::ConfirmServer { .. })
+            && !matches!(
+                request,
+                ControlRequest::ConfirmServer { .. } | ControlRequest::CancelServerSwitch { .. }
+            )
             && self.draining.load(std::sync::atomic::Ordering::SeqCst)
         {
             return ControlResponse::Error(
-                "this generation is draining after an upgrade; release commands go to the new one"
+                "a server upgrade is in progress; try again once it has been confirmed or has failed"
                     .to_string(),
             );
         }
@@ -147,6 +154,10 @@ impl ControlBackend for ManagedBackend {
             let upgrade = manager
                 .begin_server_switch(targets)
                 .map_err(|err| err.to_string())?;
+            // Until the keeper resumes or cancels this generation, its state must not change under the new one,
+            // which has already read `state.json`.
+            self.draining
+                .store(true, std::sync::atomic::Ordering::SeqCst);
             Ok(
                 json!({ "upgrade": { "version": upgrade.version.to_string(), "binary": upgrade.binary } }),
             )
@@ -164,6 +175,18 @@ impl ControlBackend for ManagedBackend {
                 }
             }
             ControlRequest::Reload => Err("reload is answered by the keeper".to_string()),
+            ControlRequest::CancelServerSwitch { version } => {
+                let cancelled = manager
+                    .cancel_pending_group(&version)
+                    .map(|()| json!(format!("cancelled server {version}")))
+                    .map_err(|err| err.to_string());
+                self.draining
+                    .store(false, std::sync::atomic::Ordering::SeqCst);
+                cancelled
+            }
+            ControlRequest::ConfirmServer { .. } if crate::binary::confirm_fails() => {
+                Err("test hook: confirming the trial fails".to_string())
+            }
             ControlRequest::ConfirmServer { version } => manager
                 .confirm_server_trial(&version)
                 .map(|()| json!(format!("confirmed server {version}")))

@@ -992,6 +992,30 @@ impl ReleaseManager {
         self.revert_locked(&mut state, failed, reason)
     }
 
+    /// The keeper refused a server switch this generation recorded: clears the trial and the pending group for
+    /// `version` without recording a failure. Nothing was activated, so nothing else changes.
+    pub fn cancel_pending_group(&self, version: &Version) -> Result<(), ReleaseError> {
+        let mut state = self.lock();
+        *state = self.state_store.load()?;
+        let mut next = state.clone();
+        if next
+            .pending_group
+            .as_ref()
+            .is_some_and(|g| g.server.1 == *version)
+        {
+            next.pending_group = None;
+        }
+        if next.server.trial.as_ref() == Some(version) {
+            next.server.trial = None;
+        }
+        if next == *state {
+            return Ok(());
+        }
+        self.commit_state(&mut state, next)?;
+        tracing::info!(event = "upgrade_cancelled", version = %version);
+        Ok(())
+    }
+
     /// At the end of a successful trial, in the generation that passed it: confirms its version and clears the trial
     /// and the pending group, keeping this manager's state in step with `state.json`.
     pub fn confirm_server_trial(&self, version: &Version) -> Result<(), ReleaseError> {
@@ -1063,8 +1087,9 @@ pub fn confirm_server(
     state_store.save(&state)
 }
 
-/// First start in managed mode: keeps the running executable as the first server release and confirms it. Does
-/// nothing when a confirmed binary exists. Returns the confirmed binary's path.
+/// Start-up in managed mode: keeps the running executable as a server release and confirms it on first start, or
+/// when it is newer than the confirmed binary and has not failed (a package upgraded in place). Otherwise does
+/// nothing. Returns the confirmed binary's path.
 pub fn register_running_binary(
     store: &dyn ReleaseStore,
     state_store: &dyn StateStore,
@@ -1075,7 +1100,8 @@ pub fn register_running_binary(
     let mut state = state_store.load()?;
     if let Some(confirmed) = &state.server.confirmed {
         let path = store.release_dir(app, confirmed).join(SERVER_BINARY);
-        if path.exists() {
+        let adopt = version > confirmed && !state.server.failed.contains_key(version);
+        if path.exists() && !adopt {
             return Ok(path);
         }
     }

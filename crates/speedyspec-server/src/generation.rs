@@ -19,8 +19,10 @@ use crate::listeners::{BoundTcp, BoundUdp, TlsFiles};
 use crate::managed;
 use crate::serving::Serving;
 
-/// How long a generation whose keeper vanished keeps serving open connections before it exits.
-const ORPHAN_DRAIN: Duration = Duration::from_secs(30);
+/// How long a generation whose keeper vanished keeps serving the connections already open before it exits. Its
+/// sockets are released at once; this stays short so a restarted keeper (or systemd, waiting for the cgroup to
+/// empty) is not held up.
+const ORPHAN_DRAIN: Duration = Duration::from_millis(1500);
 
 /// Runs a generation on the channel at fd `SPEEDYSPEC_CHANNEL_FD` (3).
 pub fn run() -> Result<(), String> {
@@ -97,7 +99,10 @@ async fn serve(channel: Channel) -> Result<(), String> {
     let state = prepare(&config).map_err(|err| err.to_string())?;
     let live = state.apps.clone();
     let version = own_version();
+    // Release commands and auto-update pause while set: from a server switch beginning, and while draining.
     let draining = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    // Whether `Drain` stopped the servers, so `Resume` restarts them.
+    let mut drained = false;
     let mut releases = None;
     let backend: Arc<dyn ControlBackend> = if config.mode == Mode::Managed {
         let (settings, apps) = (config.clone(), live.clone());
@@ -177,7 +182,7 @@ async fn serve(channel: Channel) -> Result<(), String> {
                 match message.map_err(|err| format!("channel: {err}"))? {
                     None => {
                         tracing::warn!(event = "keeper_gone", "the keeper's channel closed; draining and exiting");
-                        serving.stop_accepting().await;
+                        serving.abandon().await;
                         serving.wait_idle(ORPHAN_DRAIN).await;
                         return Ok(());
                     }
@@ -199,11 +204,13 @@ async fn serve(channel: Channel) -> Result<(), String> {
                     Some((ToGeneration::Drain, _)) => {
                         tracing::info!(event = "generation_draining", pid = std::process::id());
                         draining.store(true, std::sync::atomic::Ordering::SeqCst);
+                        drained = true;
                         serving.stop_accepting().await;
                         channel.send(&ToKeeper::UdpReleased, &[]).await.map_err(|err| format!("channel: {err}"))?;
                     }
                     Some((ToGeneration::Resume { failed }, _)) => {
-                        if draining.swap(false, std::sync::atomic::Ordering::SeqCst) {
+                        draining.store(false, std::sync::atomic::Ordering::SeqCst);
+                        if std::mem::take(&mut drained) {
                             serving.resume().await.map_err(|err| format!("{err:#}"))?;
                         }
                         if let (Some(version), Some(manager)) = (failed, releases.clone()) {

@@ -14,7 +14,7 @@ use serde_json::Value;
 use speedyspec_server_handoff::{
     AsyncChannel, Channel, GenerationRole, PROTOCOL, SocketInfo, SocketKind, ToGeneration, ToKeeper,
 };
-use tokio::sync::{Mutex, mpsc, oneshot};
+use tokio::sync::{Mutex, mpsc, oneshot, watch};
 
 use crate::binary::own_version;
 use crate::boot::bind;
@@ -436,7 +436,8 @@ async fn run_async(config_path: &Path) -> Result<(), String> {
     let confirmed = binary;
 
     // The first generation: one that never becomes ready is a start-up error, not a crash to restart.
-    let current = match keeper.start_ready(&confirmed).await {
+    let (_no_stop, never) = watch::channel(false);
+    let current = match keeper.start_ready(&confirmed, &never).await {
         Ok(live) => live,
         Err(why) => {
             return Err(format!(
@@ -482,13 +483,23 @@ async fn supervise(
 ) -> Result<(), String> {
     let (commands, mut command_rx) = mpsc::unbounded_channel();
     let _ = keeper.commands.set(commands);
+    // SIGTERM/SIGINT become a flag every long step (a crash restart, a new generation starting) watches, so a stop is
+    // never stuck behind one.
+    let (stop_tx, stopping) = watch::channel(false);
+    tokio::spawn(async move {
+        tokio::select! {
+            _ = term.recv() => {}
+            _ = interrupt.recv() => {}
+        }
+        let _ = stop_tx.send(true);
+    });
     let mut old: Option<Live> = None;
     // (version, binary, ends at, whether it is a reload)
     let mut trial: Option<(Version, PathBuf, tokio::time::Instant, bool)> = None;
     let mut reexec_pending = false;
-    // The confirmed trial's previous generation, draining after its Shutdown; reaped before any re-exec, since a new
-    // keeper image could not reap it.
-    let mut retiring: Option<tokio::task::JoinHandle<()>> = None;
+    // A generation shutting down after a trial ended: reaped before any re-exec (a new keeper image could not reap
+    // it), stopped with the keeper, and blocking new upgrades until it is gone.
+    let mut retiring: Option<Live> = None;
     let mut backoff = BACKOFF_START;
     let mut started = Instant::now();
     loop {
@@ -502,29 +513,36 @@ async fn supervise(
             status = exited(&current.generation) => {
                 tracing::warn!(event = "generation_exited", pid = current.generation.pid, status = ?status);
                 *keeper.active.lock().await = None;
-                if let Some((version, _, _, reload)) = trial.take() {
-                    tracing::error!(event = "trial_failed", version = %version);
-                    match old.take() {
-                        Some(previous) => {
-                            let failed = (!reload).then_some(version);
-                            previous.generation.send(&ToGeneration::Resume { failed }).await;
-                            current = previous;
-                        }
-                        None => {
-                            current = keeper.restart(&confirmed, &mut backoff, &mut started).await?;
+                let resumed = match trial.take() {
+                    Some((version, _, _, reload)) => {
+                        tracing::error!(event = "trial_failed", version = %version);
+                        match old.take() {
+                            Some(previous) => {
+                                let failed = (!reload).then_some(version);
+                                previous.generation.send(&ToGeneration::Resume { failed }).await;
+                                Some(previous)
+                            }
+                            None => None,
                         }
                     }
-                    keeper.activate(&current).await;
-                } else {
-                    *keeper.active.lock().await = None;
-                    if started.elapsed() >= BACKOFF_MAX {
-                        backoff = BACKOFF_START;
+                    None => {
+                        if started.elapsed() >= BACKOFF_MAX {
+                            backoff = BACKOFF_START;
+                        }
+                        None
                     }
-                    current = keeper.restart(&confirmed, &mut backoff, &mut started).await?;
-                    keeper.activate(&current).await;
-                }
+                };
+                current = match resumed {
+                    Some(previous) => previous,
+                    None => match keeper.restart(&confirmed, &mut backoff, &mut started, &stopping).await {
+                        Some(live) => live,
+                        None => return keeper.stop(retiring.into_iter().collect()).await,
+                    },
+                };
+                keeper.activate(&current).await;
             }
-            _ = async { retiring.as_mut().expect("guarded").await }, if retiring.is_some() => {
+            status = maybe_exited(retiring.as_ref()) => {
+                tracing::info!(event = "retired_generation_exited", status = ?status);
                 retiring = None;
             }
             status = maybe_exited(old.as_ref()) => {
@@ -535,8 +553,37 @@ async fn supervise(
                 let (version, binary, _, reload) = trial.take().expect("only armed during a trial");
                 let line = serde_json::to_string(&control::ControlRequest::ConfirmServer { version: version.clone() })
                     .expect("serializes");
-                if let Err(err) = keeper.forward_to(&current.generation, &line).await {
+                let confirmation = match keeper.forward_to(&current.generation, &line).await {
+                    Ok(reply) => match serde_json::from_str::<control::ControlResponse>(&reply) {
+                        Ok(control::ControlResponse::Ok(_)) => Ok(()),
+                        Ok(control::ControlResponse::Error(err)) => Err(err),
+                        Err(err) => Err(format!("unreadable reply {reply:?}: {err}")),
+                    },
+                    Err(err) => Err(err),
+                };
+                if let Err(err) = confirmation {
+                    // Not confirmed on disk, so not confirmed at all: the trial fails, and the previous generation
+                    // serves again if it can.
                     tracing::error!(event = "confirm_failed", version = %version, error = %err);
+                    match old.take() {
+                        Some(previous) => {
+                            current.generation.send(&ToGeneration::Drain).await;
+                            if !current.wait_for(|event| matches!(event, GenEvent::UdpReleased), Duration::from_secs(15)).await {
+                                tracing::warn!(event = "udp_release_slow", pid = current.generation.pid);
+                            }
+                            let failed = (!reload).then(|| version.clone());
+                            previous.generation.send(&ToGeneration::Resume { failed }).await;
+                            let failing = std::mem::replace(&mut current, previous);
+                            failing.generation.send(&ToGeneration::Shutdown).await;
+                            retiring = Some(failing);
+                            keeper.activate(&current).await;
+                        }
+                        None => {
+                            current.generation.on_trial.store(false, Ordering::SeqCst);
+                            tracing::error!(event = "trial_unconfirmed", version = %version, "the previous generation is gone; the next start reverts the trial");
+                        }
+                    }
+                    continue;
                 }
                 current.generation.on_trial.store(false, Ordering::SeqCst);
                 confirmed = binary;
@@ -545,9 +592,7 @@ async fn supervise(
                 }
                 if let Some(previous) = old.take() {
                     previous.generation.send(&ToGeneration::Shutdown).await;
-                    retiring = Some(tokio::spawn(async move {
-                        let _ = exited(&previous.generation).await;
-                    }));
+                    retiring = Some(previous);
                 }
                 tracing::info!(event = "trial_confirmed", version = %version);
             }
@@ -564,12 +609,23 @@ async fn supervise(
                     }
                 };
                 let failed = (!reload).then(|| version.clone());
-                if let Some((on_trial, _, _, _)) = &trial {
-                    let _ = reply.send(Err(format!("an upgrade to server {on_trial} is on trial; wait for it to be confirmed or to fail")));
-                    continue;
-                }
-                if old.is_some() {
-                    let _ = reply.send(Err("the previous generation is still draining; try again shortly".to_string()));
+                let refusal = if let Some((on_trial, _, _, trial_reload)) = &trial {
+                    Some(if *trial_reload {
+                        "a reload is on trial; wait for it to be confirmed or to fail".to_string()
+                    } else {
+                        format!("an upgrade to server {on_trial} is on trial; wait for it to be confirmed or to fail")
+                    })
+                } else if old.is_some() || retiring.is_some() {
+                    Some("the previous generation is still draining; try again shortly".to_string())
+                } else {
+                    None
+                };
+                if let Some(refusal) = refusal {
+                    // The generation already recorded the switch; it is undone without marking anything failed.
+                    if !reload {
+                        keeper.cancel_switch(&current, &version).await;
+                    }
+                    let _ = reply.send(Err(refusal));
                     continue;
                 }
                 if !reload {
@@ -585,7 +641,16 @@ async fn supervise(
                         continue;
                     }
                 }
-                match keeper.start_ready(&binary).await {
+                match keeper.start_ready(&binary, &stopping).await {
+                    Err(why) if *stopping.borrow() => {
+                        if !reload {
+                            keeper.cancel_switch(&current, &version).await;
+                        }
+                        let _ = reply.send(Err(format!("server {version} did not start: {why}")));
+                        let mut all = vec![current];
+                        all.extend(retiring);
+                        return keeper.stop(all).await;
+                    }
                     Err(why) => {
                         tracing::error!(event = "upgrade_failed", version = %version, error = %why);
                         current.generation.send(&ToGeneration::Resume { failed: failed.clone() }).await;
@@ -618,9 +683,40 @@ async fn supervise(
                 }
             }
             _ = hangup.recv() => current.generation.send(&ToGeneration::ReloadCerts).await,
-            _ = term.recv() => return keeper.stop(current, old).await,
-            _ = interrupt.recv() => return keeper.stop(current, old).await,
+            () = stop_requested(&stopping) => {
+                let mut all = vec![current];
+                all.extend(old);
+                all.extend(retiring);
+                return keeper.stop(all).await;
+            }
         }
+    }
+}
+
+impl Keeper {
+    /// Undoes a server switch the generation recorded and the keeper then refused, before the client hears of it.
+    async fn cancel_switch(&self, current: &Live, version: &Version) {
+        let line = serde_json::to_string(&control::ControlRequest::CancelServerSwitch {
+            version: version.clone(),
+        })
+        .expect("serializes");
+        match self.forward_to(&current.generation, &line).await {
+            Ok(reply) if reply.contains("\"Error\"") => {
+                tracing::error!(event = "switch_cancel_failed", version = %version, reply = %reply)
+            }
+            Ok(_) => {}
+            Err(err) => {
+                tracing::error!(event = "switch_cancel_failed", version = %version, error = %err)
+            }
+        }
+    }
+}
+
+/// Resolves once SIGTERM or SIGINT has arrived; never, if nothing can send it.
+async fn stop_requested(stopping: &watch::Receiver<bool>) {
+    let mut stopping = stopping.clone();
+    if stopping.wait_for(|stop| *stop).await.is_err() {
+        std::future::pending::<()>().await;
     }
 }
 
@@ -916,10 +1012,15 @@ fn kill(pid: u32) {
 
 impl Keeper {
     /// Starts a generation of `binary` and waits for it to be ready; kills it (after a moment to say why) if not.
-    async fn start_ready(&self, binary: &Path) -> Result<Live, String> {
+    /// Gives up early, with an error, once `stopping` is set.
+    async fn start_ready(
+        &self,
+        binary: &Path,
+        stopping: &watch::Receiver<bool>,
+    ) -> Result<Live, String> {
         let (generation, events) = self.spawn(binary).await?;
         let mut live = Live { generation, events };
-        let ready = tokio::time::timeout(self.config.handoff.ready_timeout, async {
+        let waiting = tokio::time::timeout(self.config.handoff.ready_timeout, async {
             while let Some(event) = live.events.recv().await {
                 match event {
                     GenEvent::Ready(version) => return Ok(version),
@@ -928,14 +1029,16 @@ impl Keeper {
                 }
             }
             Err("it exited before becoming ready".to_string())
-        })
-        .await
-        .unwrap_or_else(|_| {
-            Err(format!(
-                "it was not ready within {}",
-                humantime::format_duration(self.config.handoff.ready_timeout)
-            ))
         });
+        let ready = tokio::select! {
+            waited = waiting => waited.unwrap_or_else(|_| {
+                Err(format!(
+                    "it was not ready within {}",
+                    humantime::format_duration(self.config.handoff.ready_timeout)
+                ))
+            }),
+            () = stop_requested(stopping) => Err("the keeper is stopping".to_string()),
+        };
         match ready {
             Ok(version) => {
                 *live
@@ -973,31 +1076,35 @@ impl Keeper {
         tracing::info!(event = "generation_active", pid = live.generation.pid, version = ?version.map(|v| v.to_string()));
     }
 
-    /// A crash restart from `binary`, after the back-off, retrying until a generation is ready.
+    /// A crash restart from `binary`, after the back-off, retrying until a generation is ready. `None` once the keeper
+    /// is told to stop.
     async fn restart(
         &self,
         binary: &Path,
         backoff: &mut Duration,
         started: &mut Instant,
-    ) -> Result<Live, String> {
+        stopping: &watch::Receiver<bool>,
+    ) -> Option<Live> {
         loop {
             tracing::info!(event = "generation_restarting", after = ?*backoff);
-            tokio::time::sleep(*backoff).await;
+            tokio::select! {
+                () = tokio::time::sleep(*backoff) => {}
+                () = stop_requested(stopping) => return None,
+            }
             *backoff = (*backoff * 2).min(BACKOFF_MAX);
             *started = Instant::now();
-            match self.start_ready(binary).await {
-                Ok(live) => return Ok(live),
+            match self.start_ready(binary, stopping).await {
+                Ok(live) => return Some(live),
+                Err(_) if *stopping.borrow() => return None,
                 Err(why) => tracing::error!(event = "restart_failed", error = %why),
             }
         }
     }
 
-    /// Drains every generation and exits.
-    async fn stop(&self, current: Live, old: Option<Live>) -> Result<(), String> {
-        tracing::info!(event = "keeper_stopping", pid = current.generation.pid);
+    /// Drains every generation in `all` and exits.
+    async fn stop(&self, all: Vec<Live>) -> Result<(), String> {
+        tracing::info!(event = "keeper_stopping", generations = ?all.iter().map(|l| l.generation.pid).collect::<Vec<_>>());
         let deadline = self.config.handoff.drain_timeout + Duration::from_secs(5);
-        let mut all = vec![current];
-        all.extend(old);
         for live in &all {
             live.generation.send(&ToGeneration::Shutdown).await;
         }

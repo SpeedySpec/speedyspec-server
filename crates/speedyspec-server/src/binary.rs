@@ -88,6 +88,15 @@ fn env_hook_applies(name: &str) -> bool {
         .is_ok_and(|v| v.trim() == own_version().to_string())
 }
 
+/// Under `test-hooks`: confirming this binary's trial fails (`SPEEDYSPEC_TEST_CONFIRM_FAIL_VERSION`).
+pub fn confirm_fails() -> bool {
+    #[cfg(feature = "test-hooks")]
+    if env_hook_applies("CONFIRM_FAIL") {
+        return true;
+    }
+    false
+}
+
 /// The keeper protocol this binary speaks (`<exe>.test-protocol` overrides it under `test-hooks`).
 pub fn own_protocol() -> u32 {
     #[cfg(feature = "test-hooks")]
