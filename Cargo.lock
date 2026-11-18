@@ -3131,6 +3131,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "clap",
+ "futures-util",
  "h3",
  "h3-quinn",
  "http",

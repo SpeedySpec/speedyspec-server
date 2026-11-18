@@ -233,7 +233,7 @@ fn run(path: PathBuf) -> Result<(), String> {
         if let Err(err) = control::serve(&socket, backend, config.mode == Mode::Managed) {
             tracing::warn!(event = "control_unavailable", path = %socket.display(), error = %err);
         }
-        let router = Arc::new(build_router(Arc::new(state)));
+        let router = build_router(Arc::new(state));
         serve(tcp, udp, router, stop)
             .await
             .map_err(|err| format!("{err:#}"))
