@@ -77,21 +77,28 @@ fn run(path: PathBuf) -> Result<(), String> {
         tokio::runtime::Runtime::new().map_err(|err| format!("starting the runtime: {err}"))?;
 
     runtime.block_on(async {
+        // Installed before any socket is bound (and logged as listening), so a signal sent as soon as the server
+        // reports it is listening is always handled rather than killing the process.
+        let stop = shutdown().map_err(|err| format!("installing signal handlers: {err}"))?;
         let (tcp, udp) = bind(&config).map_err(|err| err.to_string())?;
         let router = Arc::new(build_router(Arc::new(state)));
-        serve(tcp, udp, router, shutdown())
+        serve(tcp, udp, router, stop)
             .await
             .map_err(|err| format!("{err:#}"))
     })
 }
 
-/// Resolves on `SIGTERM` or `SIGINT`.
-async fn shutdown() {
-    let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-        .expect("installing SIGTERM");
-    tokio::select! {
-        _ = term.recv() => {}
-        _ = tokio::signal::ctrl_c() => {}
-    }
-    tracing::info!(event = "shutting_down");
+/// Installs the `SIGTERM` and `SIGINT` handlers now and returns a future that resolves when either arrives.
+fn shutdown() -> std::io::Result<impl std::future::Future<Output = ()>> {
+    use tokio::signal::unix::{SignalKind, signal};
+
+    let mut term = signal(SignalKind::terminate())?;
+    let mut interrupt = signal(SignalKind::interrupt())?;
+    Ok(async move {
+        tokio::select! {
+            _ = term.recv() => {}
+            _ = interrupt.recv() => {}
+        }
+        tracing::info!(event = "shutting_down");
+    })
 }
