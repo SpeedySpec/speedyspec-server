@@ -1,0 +1,10 @@
+{
+    "app": "admin",
+    "version": "1.0.0",
+    "kind": "static",
+    "requires": { "server": ">=0.1" },
+    "static": {
+        "root": "dist",
+        "cache": [{ "match": "_astro/**", "cache_control": "public, max-age=31536000, immutable" }]
+    }
+}
