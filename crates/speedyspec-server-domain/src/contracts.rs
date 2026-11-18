@@ -67,6 +67,14 @@ pub trait ReleaseStore: Send + Sync {
     /// Makes an unpacked release kept, and returns its directory.
     fn commit(&self, app: &AppId, version: &Version) -> Result<PathBuf, StoreError>;
     fn release_dir(&self, app: &AppId, version: &Version) -> PathBuf;
+    /// Keeps a verified binary artifact as `<release dir>/speedyspec-server`, mode 0755, and deletes the partial
+    /// directory. Returns the binary's path.
+    fn commit_binary(
+        &self,
+        app: &AppId,
+        version: &Version,
+        artifact: &Path,
+    ) -> Result<PathBuf, StoreError>;
     fn manifest(&self, app: &AppId, version: &Version) -> Result<ReleaseManifest, StoreError>;
     /// Deletes a release's partial directory, if any.
     fn discard_partial(&self, app: &AppId, version: &Version);

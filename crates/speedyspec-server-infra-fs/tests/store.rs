@@ -233,3 +233,25 @@ fn accepts_pax_global_header() {
     ]))
     .unwrap();
 }
+
+#[test]
+fn commit_binary_sets_executable() {
+    use std::os::unix::fs::PermissionsExt;
+    let s = setup();
+    let partial = s.store.partial_dir(&admin(), &v1());
+    std::fs::create_dir_all(&partial).unwrap();
+    std::fs::write(partial.join("artifact"), b"bin").unwrap();
+    let path = s
+        .store
+        .commit_binary(&admin(), &v1(), &partial.join("artifact"))
+        .unwrap();
+    assert_eq!(
+        path,
+        s.data().join("releases/admin/1.0.0/speedyspec-server")
+    );
+    assert_eq!(
+        std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+        0o755
+    );
+    assert!(!partial.exists());
+}

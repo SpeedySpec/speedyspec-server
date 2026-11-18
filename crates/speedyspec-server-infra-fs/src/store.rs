@@ -96,6 +96,27 @@ impl ReleaseStore for FsReleaseStore {
         Ok(target)
     }
 
+    fn commit_binary(
+        &self,
+        app: &AppId,
+        version: &Version,
+        artifact: &Path,
+    ) -> Result<PathBuf, StoreError> {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = self.release_dir(app, version);
+        if dir.exists() {
+            std::fs::remove_dir_all(&dir).map_err(|err| error(&dir, err))?;
+        }
+        std::fs::create_dir_all(&dir).map_err(|err| error(&dir, err))?;
+        let path = dir.join("speedyspec-server");
+        std::fs::rename(artifact, &path).map_err(|err| error(&path, err))?;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
+            .map_err(|err| error(&path, err))?;
+        self.discard_partial(app, version);
+        Ok(path)
+    }
+
     fn release_dir(&self, app: &AppId, version: &Version) -> PathBuf {
         self.releases.join(app.as_str()).join(version.to_string())
     }

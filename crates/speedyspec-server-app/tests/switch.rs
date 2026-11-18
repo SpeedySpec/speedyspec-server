@@ -149,7 +149,7 @@ fn group_switch_with_server_needs_keeper() {
     let err = manager
         .switch(&[(id("blog"), v("1.0.0")), (id("server"), v("4.0.0"))])
         .unwrap_err();
-    assert!(matches!(err, ReleaseError::ServerNeedsKeeper));
+    assert!(matches!(err, ReleaseError::ServerSwitchViaKeeper));
 }
 
 #[test]

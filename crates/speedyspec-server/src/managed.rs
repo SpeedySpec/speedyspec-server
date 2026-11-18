@@ -85,6 +85,8 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
         Arc::new(FsReleaseStore::new(data_dir)),
         Arc::new(FsStateStore::new(data_dir, &config.run_dir)),
         runtimes,
+        Arc::new(crate::binary::ProcessInspector),
+        crate::binary::TARGET.to_string(),
     )
     .map_err(|err| err.to_string())?;
 
