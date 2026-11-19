@@ -3884,6 +3884,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-container"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "speedyspec-hooks"
 version = "0.1.0"
 dependencies = [
