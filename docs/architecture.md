@@ -108,3 +108,16 @@ store no longer sees, and `$wp_filter[$name]` holds only `WP_Hook` objects. `$wp
 `$wp_filters` are proxy objects over the store (reading, indexing, iterating, counting and appending work as in
 WordPress; passing one to an array function does not). `$wp_current_filter` is a real PHP array, kept equal to the
 store wherever PHP can see it.
+
+## Two binaries
+
+`speedyspec-server` holds no PHP: it serves static apps from memory, routes requests, gates the admin, and passes PHP
+requests over FastCGI to `speedyspec-php-runtime`'s workers, which it starts, supervises and upgrades like any release.
+The runtime is where the Rust WordPress API grows, area by area, behind the embedded PHP; it releases often, the server
+rarely. `scripts/check-no-php-in-server.sh` keeps it that way.
+
+- `speedyspec-runtime-contract`: what the two binaries share (the worker spec, the per-request report, the contract
+  major).
+- `speedyspec-php-runtime`: the runtime binary (`worker`, `manifest`).
+- `speedyspec-server-gate`: the admin gate, health and maintenance, framework-neutral, over the `GateCalls` port the
+  server implements over FastCGI.

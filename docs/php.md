@@ -1,8 +1,27 @@
 # PHP apps
 
-A `kind = "php"` app is served by a pool of `php-worker` processes per release. Each worker embeds PHP once and answers
-FastCGI on its own Unix socket, one request at a time. Build the server with the `php` feature; without it, a PHP app
-answers 503.
+A `kind = "php"` app is served by a pool of worker processes per release. The workers are the PHP runtime,
+`speedyspec-php-runtime worker`: each embeds PHP once and answers FastCGI on its own Unix socket, one request at a time.
+The server holds no PHP; it starts, supervises and upgrades the runtime's processes.
+
+## The PHP runtime
+
+The runtime is a separate binary, released as an app of its own with `kind = "runtime"`: one binary per target
+triple, like the server's, kept as `<release>/speedyspec-php-runtime` (in immutable mode, `path` is that release
+directory). `speedyspec-php-runtime manifest` prints `{ "version", "contracts", "php" }`. Every php app runs on one
+runtime app (`app.<id>.runtime`, or the only one configured), and a php release can require its versions with
+`"php": { "runtime": "^1.4" }`.
+
+- **The contract.** The server and the runtime share `speedyspec-runtime-contract`: the worker's start
+  (`worker --spec <json>`), FastCGI on the worker's 0600 socket, and the per-request report (an `FCGI_STDERR` record
+  starting `\0speedyspec:`). Its major is 1. The server refuses a runtime whose `contracts` lack it, and a worker
+  refuses a spec of another major; adding a field is a minor change the other side ignores.
+- **Switching the runtime** starts every php app on it again from the new binary, swaps them all at once, and drains
+  the old pools. A runtime is switched on its own, never in the same step as an app on it.
+- **The trial.** A new runtime release is on trial for `runtime.trial_period` (2 minutes). If a php app on it turns
+  unhealthy during the trial, the runtime switches back and the new release is marked failed (auto-update never offers
+  it again). In cluster mode one replica's report rolls back every replica; independent replicas each roll back
+  themselves.
 
 ## The PHP build
 
@@ -91,8 +110,12 @@ Each event is a log line: `php_pool_started`, `php_worker_started`, `php_worker_
 
 `site_dir` holds what an app writes: uploads, caches, `wp-content`, and its secrets. Workers define `WP_CONTENT_DIR`
 as `site_dir/wp-content` (WordPress derives `WP_CONTENT_URL` from `siteurl`). Only `site_dir/wp-content` is served,
-before the release's own `wp-content`. `site_dir/.env`, if present, is read as `KEY=value` lines (nothing is evaluated) into the
-workers' environment, for `getenv()`.
+before the release's own `wp-content`.
+
+A worker's environment is merged by the server when a pool starts, a later source winning for a key:
+`site_dir/.env` (`KEY=value` lines, nothing evaluated), then `app.<id>.php.env_file`, then `app.<id>.php.env`. That is
+how each app gets its own credentials: the admin API a database user that can write, the front-end API and the blog
+only what they need.
 
 ## `php.bindings`
 
@@ -100,3 +123,70 @@ A port such as the hook store can be implemented in PHP: a class implementing th
 the hook store `SpeedySpec\WpHooks\HookStorage`), bound under the port's key. Ports that hold state for a request can
 only be overridden before their first use in it, so bind them here, where they are installed at the start of every
 request. A Rust caller of a port with no PHP binding never enters PHP.
+
+## The server's own calls
+
+Each pool keeps one worker beyond `workers.max` for the server's own calls: health probes, the gate's questions and
+migrations. A pool full of visitors never starves them. These calls are internal requests to the app's first mount,
+with no client address; their paths (the release's probes, the gate's revocation feed, the migration) answer 404 to
+visitors and never reach PHP.
+
+## Health and maintenance
+
+A php release may name its probes: `"php": { "health": { "live": "/healthz", "ready": "/readyz" } }`. The server calls
+both every `health.interval`; `health.fail_after` failed rounds in a row (a non-200 answer, or none within
+`health.timeout`) put the app in maintenance, `health.pass_after` passed rounds end it. An unhealthy app makes `/readyz`
+answer 503, so a load balancer stops sending this replica traffic.
+
+Maintenance is per app, on while any of these is: the admin API's site state (for `gate.maintenance_apps`, or every
+app), a switch to a release that migrates (or one whose migration failed), an operator's
+`speedyspec-server maintenance on [app...]` (`off`, and `clear` to end a failed migration's too; in the state file, so
+it survives restarts), or failing health. While the gate app fails its health checks, every gated mount is in
+maintenance. An app in maintenance answers 503 with `Retry-After`: the maintenance page of the static app it names
+(`app.<id>.maintenance_page`; that release's `"static": { "maintenance_page": "maintenance.html" }`, one self-contained
+file held in memory), or a small JSON body.
+
+## The admin gate
+
+`access.implementation = "gate"` checks every request to a `signed-in` mount. The live release's access rules decide
+first (`"static"` or `"php"` section, `"access": [...]`, the first match winning):
+
+```json
+"access": [
+  { "match": "", "public": "always" },
+  { "match": "signin/**", "public": "always" },
+  { "match": "install/**", "public": "not-installed" },
+  { "match": "components/{page}/**", "page": "{page}" }
+]
+```
+
+A pattern is a glob over the path below the mount (`**` across `/`, `*` within a segment, `{page}` a page id,
+`<namespace>/<name>`). `public` is `always`, `not-installed` (only while the site is not installed) or `maintenance`
+(only while the app is in maintenance); a conditional entry whose condition does not hold answers 404 to everyone.
+Anything no rule matches needs sign-in.
+
+Then the gate app (`[gate] app`, the admin API) is asked, at the paths its release names
+(`"php": { "gate": { "version": 1, "site": ..., "session": ..., "changes": ... } }`; a gate-app release without it, or
+of another version, is refused):
+
+- `GET site` → `{ "installed": bool, "maintenance": bool }`, remembered for `gate.site_ttl`.
+- `GET session`, with only the visitor's `Cookie` → `200 { "user": { "id": n }, "pages": ["core/general", ...] }`, or
+  `401`. Anything else is not signed in. Signed-in answers are remembered for `gate.session_ttl`, keyed by a hash of
+  the whole `Cookie` header; concurrent checks share one call; beyond `gate.max_pending` uncached checks a request gets
+  503.
+- `GET changes?since=<cursor>` → `{ "cursor": "...", "users": [ids] }` or `{ "cursor": "...", "reset": true }`, polled
+  every `gate.poll`: the users named are asked again. While the feed fails, nothing is remembered.
+
+Not signed in is 401, signed in without a page 403, a disabled entry 404, and every gated response is
+`Cache-Control: private, no-store`. A gate-app response that clears a cookie its request sent (a sign-out) forgets that
+answer before the client hears of it.
+
+## Migrations
+
+`"php": { "switch": { "maintenance": "self", "migrate": "/migrate.php" } }` (or `"site"`) migrates on switch: the server
+prepares the new release, turns maintenance on, `POST`s the migrate path to the prepared release (up to
+`switch.migrate_timeout`, 2xx is success), then switches and ends maintenance. A failed migration keeps the old release
+live and maintenance on until `speedyspec-server release retry-migration <app>` or `maintenance clear <app>`. In cluster
+mode the leader migrates once, before any replica switches; on independent replicas each replica migrates, so a
+migration must be safe to run more than once and at the same time (a database lock in the app). A release that migrates
+must leave the database usable by the release before it, so a rollback stays instant.
