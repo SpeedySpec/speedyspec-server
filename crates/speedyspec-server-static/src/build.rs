@@ -32,6 +32,8 @@ pub struct StaticFile {
 pub struct StaticSet {
     pub(crate) files: HashMap<String, StaticFile>,
     pub(crate) not_found: Option<String>,
+    /// The release's maintenance page, when it names one.
+    maintenance: Option<Bytes>,
     total_bytes: u64,
 }
 
@@ -42,6 +44,8 @@ pub enum StaticBuildError {
     RootMissing(PathBuf),
     #[error("static.not_found file {0:?} is not in the release")]
     NotFoundMissing(String),
+    #[error("static.maintenance_page file {0:?} is not in the release")]
+    MaintenancePageMissing(String),
     #[error("static files need {needed} bytes in memory, over the limit of {limit}")]
     LimitExceeded { limit: u64, needed: u64 },
     #[error("cache rule pattern {0:?} is not a valid glob")]
@@ -107,9 +111,20 @@ impl StaticSet {
             return Err(StaticBuildError::NotFoundMissing(name.clone()));
         }
 
+        let maintenance = match &section.maintenance_page {
+            None => None,
+            Some(name) => Some(
+                files
+                    .get(name)
+                    .map(|file| file.identity.clone())
+                    .ok_or_else(|| StaticBuildError::MaintenancePageMissing(name.clone()))?,
+            ),
+        };
+
         Ok(StaticSet {
             files,
             not_found: section.not_found.clone(),
+            maintenance,
             total_bytes,
         })
     }
@@ -127,8 +142,14 @@ impl StaticSet {
         StaticSet {
             files,
             not_found: None,
+            maintenance: None,
             total_bytes,
         }
+    }
+
+    /// The release's maintenance page, held in memory.
+    pub fn maintenance_page(&self) -> Option<&Bytes> {
+        self.maintenance.as_ref()
     }
 
     /// Bytes held: every identity body and every kept compressed variant.

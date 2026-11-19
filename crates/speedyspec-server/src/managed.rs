@@ -21,7 +21,12 @@ const SWEEP_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Builds the release manager over `data_dir`, warns about unsigned apps, and runs start-up recovery, which
 /// activates every app's last active release into `live`.
-pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>, String> {
+pub fn start(
+    config: &Config,
+    live: Arc<LiveApps>,
+    php: Arc<crate::php::PhpRuntime>,
+    binaries: Arc<crate::php::runtime_kind::RuntimeBinaries>,
+) -> Result<Arc<ReleaseManager>, String> {
     let data_dir = config
         .data_dir
         .as_ref()
@@ -69,7 +74,7 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
         )) as Arc<dyn AppRuntime>,
     )]
     .into_iter()
-    .chain(php_runtime(config, live))
+    .chain(php_runtimes(php, binaries))
     .collect();
     let manager = ReleaseManager::new(
         policies,
@@ -223,18 +228,10 @@ pub fn spawn_fallback_sweep(live: Arc<LiveApps>) {
 }
 
 /// PHP releases: worker pools. The runtime kind's releases move the php apps on them to new pools.
-fn php_runtime(
-    config: &Config,
-    live: Arc<speedyspec_server_presentation::LiveApps>,
+fn php_runtimes(
+    php: Arc<crate::php::PhpRuntime>,
+    binaries: Arc<crate::php::runtime_kind::RuntimeBinaries>,
 ) -> Vec<(AppKind, Arc<dyn AppRuntime>)> {
-    let binaries = Arc::new(crate::php::runtime_kind::RuntimeBinaries::default());
-    let php = Arc::new(crate::php::PhpRuntime::new(
-        live,
-        binaries.clone(),
-        config.run_dir.clone(),
-        crate::php::php_configs(config),
-        config.php_runtimes().into_iter().collect(),
-    ));
     let kind = Arc::new(crate::php::runtime_kind::RuntimeKindRuntime::new(
         php.clone(),
         binaries,

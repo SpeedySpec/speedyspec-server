@@ -37,6 +37,7 @@ ipnet = { version = "2", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 speedyspec-server-domain = { path = "../speedyspec-server-domain" }
 speedyspec-runtime-contract = { path = "../speedyspec-runtime-contract" }
+speedyspec-server-gate = { path = "../speedyspec-server-gate" }
 thiserror = "2"
 toml = "0.9"
 salvo = { version = "1.2", default-features = false, features = ["server", "server-handle", "http1", "http2", "http2-cleartext", "quinn", "rustls", "ring"] }

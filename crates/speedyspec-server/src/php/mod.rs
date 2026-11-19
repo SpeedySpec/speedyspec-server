@@ -1,6 +1,7 @@
 //! PHP apps: each release gets a pool of `php-worker` processes, each embedding PHP once and answering FastCGI on
 //! its own socket; the server's [`PhpRequestHandler`] maps each request to a script and streams it through a worker.
 
+pub mod calls;
 pub mod handler;
 pub mod pool;
 pub mod runtime;

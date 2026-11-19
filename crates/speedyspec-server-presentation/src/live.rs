@@ -1,7 +1,7 @@
 //! The live handle of every app, each swappable in one step.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
 use arc_swap::ArcSwap;
@@ -13,6 +13,8 @@ use crate::handlers::{AppHandle, StaticApp};
 /// switch never mixes two releases in one response.
 pub struct LiveApps {
     apps: HashMap<AppId, ArcSwap<AppHandle>>,
+    /// Each app's internal paths (its live release's health probes, the gate's own calls): never served to visitors.
+    internal: RwLock<HashMap<AppId, Arc<[String]>>>,
 }
 
 impl LiveApps {
@@ -23,7 +25,26 @@ impl LiveApps {
                 .into_iter()
                 .map(|(app, handle)| (app, ArcSwap::from_pointee(handle)))
                 .collect(),
+            internal: RwLock::new(HashMap::new()),
         }
+    }
+
+    /// The paths of `app` only the server may call.
+    pub fn internal_paths(&self, app: &AppId) -> Arc<[String]> {
+        self.internal
+            .read()
+            .unwrap()
+            .get(app)
+            .cloned()
+            .unwrap_or_else(|| Arc::from(Vec::new()))
+    }
+
+    /// Replaces `app`'s internal paths (as its live release changes).
+    pub fn set_internal_paths(&self, app: &AppId, paths: Vec<String>) {
+        self.internal
+            .write()
+            .unwrap()
+            .insert(app.clone(), Arc::from(paths));
     }
 
     pub fn get(&self, app: &AppId) -> Option<Arc<AppHandle>> {
@@ -109,6 +130,7 @@ mod tests {
         std::fs::create_dir_all(dir.path().join("dist")).unwrap();
         let section = StaticSection {
             root: "dist".to_string(),
+            maintenance_page: None,
             not_found: None,
             cache: Vec::new(),
         };

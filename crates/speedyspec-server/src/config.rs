@@ -78,7 +78,27 @@ pub struct AppConfig {
     /// The `runtime` app a `php` app's workers run (`app.<id>.runtime`, or the only runtime app); `None` for other
     /// kinds.
     pub runtime: Option<AppId>,
+    /// The static app whose maintenance page this app shows while in maintenance (`app.<id>.maintenance_page`).
+    pub maintenance_page: Option<AppId>,
 }
+
+/// `[health]`: how often and how patiently each PHP app's health probes are called.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HealthConfig {
+    pub interval: Duration,
+    pub timeout: Duration,
+    /// Failed rounds in a row that turn maintenance on.
+    pub fail_after: u32,
+    /// Passed rounds in a row that turn it off again.
+    pub pass_after: u32,
+}
+
+pub const DEFAULT_HEALTH: HealthConfig = HealthConfig {
+    interval: Duration::from_secs(2),
+    timeout: Duration::from_secs(1),
+    fail_after: 3,
+    pass_after: 3,
+};
 
 /// How many workers a php app's pool keeps: `min` always, up to `max` on demand.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -166,6 +186,8 @@ pub struct Config {
     pub handoff: HandoffConfig,
     /// `[cluster]`; `None` is a single host.
     pub cluster: Option<ClusterConfig>,
+    /// `[health]`.
+    pub health: HealthConfig,
 }
 
 /// Who decides which pod leads.
@@ -246,6 +268,8 @@ struct RawConfig {
     #[serde(default)]
     handoff: RawHandoff,
     cluster: Option<RawCluster>,
+    #[serde(default)]
+    health: RawHealth,
 }
 
 #[derive(Deserialize)]
@@ -441,6 +465,16 @@ struct RawApp {
     allow_unsigned: bool,
     php: Option<RawPhp>,
     runtime: Option<String>,
+    maintenance_page: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct RawHealth {
+    interval: Option<String>,
+    timeout: Option<String>,
+    fail_after: Option<u32>,
+    pass_after: Option<u32>,
 }
 
 #[derive(Deserialize, Default)]
@@ -683,6 +717,15 @@ impl Config {
                 AppKind::Php => Some(php_config(raw.mode, &id, app.php)?),
                 _ => None,
             };
+            let maintenance_page = app
+                .maintenance_page
+                .as_deref()
+                .map(|name| {
+                    AppId::parse(name).map_err(|err| {
+                        invalid(format!("app.{id}.maintenance_page {name:?}: {err}"))
+                    })
+                })
+                .transpose()?;
             let runtime = match (&app.runtime, app.kind) {
                 (None, _) => None,
                 (Some(name), AppKind::Php) => Some(
@@ -709,10 +752,44 @@ impl Config {
                     prerelease: app.prerelease,
                     allow_unsigned: app.allow_unsigned,
                     runtime,
+                    maintenance_page,
                 },
             );
         }
         resolve_runtimes(&mut apps)?;
+        for (id, app) in &apps {
+            if let Some(page) = &app.maintenance_page
+                && apps
+                    .get(page)
+                    .is_none_or(|other| other.kind != AppKind::Static)
+            {
+                return Err(invalid(format!(
+                    "app.{id}.maintenance_page {page:?} is not a configured app with kind = \"static\""
+                )));
+            }
+        }
+        let health = HealthConfig {
+            interval: duration(
+                "health.interval",
+                raw.health.interval.as_deref(),
+                DEFAULT_HEALTH.interval,
+            )?,
+            timeout: duration(
+                "health.timeout",
+                raw.health.timeout.as_deref(),
+                DEFAULT_HEALTH.timeout,
+            )?,
+            fail_after: raw
+                .health
+                .fail_after
+                .unwrap_or(DEFAULT_HEALTH.fail_after)
+                .max(1),
+            pass_after: raw
+                .health
+                .pass_after
+                .unwrap_or(DEFAULT_HEALTH.pass_after)
+                .max(1),
+        };
         let servers: Vec<&AppId> = apps
             .iter()
             .filter(|(_, app)| app.kind == AppKind::Server)
@@ -833,6 +910,7 @@ impl Config {
             static_memory: raw.limits.static_memory,
             static_fallback_grace,
             handoff,
+            health,
             cluster: raw
                 .cluster
                 .map(|c| cluster_config(raw.mode, c))

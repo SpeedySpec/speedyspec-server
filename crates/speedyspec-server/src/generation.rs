@@ -101,7 +101,9 @@ async fn serve(channel: Channel) -> Result<(), String> {
         }
     }
 
-    let state = prepare(&config).map_err(|err| err.to_string())?;
+    let booted = prepare(&config).map_err(|err| err.to_string())?;
+    let state = booted.state;
+    let (php, binaries) = (booted.php, booted.binaries);
     let live = state.apps.clone();
     let version = own_version();
     // Release commands and auto-update pause while set: from a server switch beginning, and while draining.
@@ -110,11 +112,14 @@ async fn serve(channel: Channel) -> Result<(), String> {
     let mut drained = false;
     let mut releases = None;
     let readiness = Arc::new(crate::cluster::Readiness::default());
+    let _ = readiness.maintenance.set(state.maintenance.clone());
+    crate::health::spawn(&config, php.clone(), state.maintenance.clone());
     let backend: Arc<dyn ControlBackend> = if config.mode == Mode::Managed {
-        let (settings, apps) = (config.clone(), live.clone());
+        let (settings, apps, php, binaries) =
+            (config.clone(), live.clone(), php.clone(), binaries.clone());
         let applied = version.clone();
         let manager = tokio::task::spawn_blocking(move || {
-            let manager = managed::start(&settings, apps)?;
+            let manager = managed::start(&settings, apps, php, binaries)?;
             manager
                 .apply_pending_group(&applied)
                 .map_err(|err| err.to_string())?;

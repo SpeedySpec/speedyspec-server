@@ -1,0 +1,17 @@
+[package]
+name = "speedyspec-server-gate"
+version = "0.1.0"
+description = "The admin gate, health and maintenance: framework-neutral, over ports the server's adapters implement."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-server-domain = { path = "../speedyspec-server-domain" }
+http = "1"
+semver = "1"
+tokio = { version = "1", features = ["time", "sync", "rt", "macros"] }
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }

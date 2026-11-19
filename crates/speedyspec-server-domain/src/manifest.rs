@@ -45,6 +45,9 @@ pub struct StaticSection {
     /// `Cache-Control` rules; the first match wins.
     #[serde(default)]
     pub cache: Vec<CacheRule>,
+    /// A self-contained HTML file under `root` shown, from memory, by every app in maintenance that names this app.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub maintenance_page: Option<String>,
 }
 
 /// How a php release is served.
@@ -63,6 +66,17 @@ pub struct PhpSection {
     /// The versions of the runtime this app is configured to run on that this release works with.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub runtime: Option<semver::VersionReq>,
+    /// The app's health probes, which the server calls internally.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub health: Option<HealthSection>,
+}
+
+/// A php app's health probes: paths of the app (starting with `/`) that answer 200 while it is live and ready.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HealthSection {
+    pub live: String,
+    pub ready: String,
 }
 
 impl PhpSection {
@@ -82,6 +96,7 @@ impl Default for PhpSection {
             entry: Self::default_entry(),
             ini: BTreeMap::new(),
             runtime: None,
+            health: None,
         }
     }
 }
@@ -172,6 +187,28 @@ impl ReleaseManifest {
                     });
                 }
             }
+        }
+        if let Some(health) = self.php.as_ref().and_then(|php| php.health.as_ref()) {
+            for (field, path) in [
+                ("health.live", &health.live),
+                ("health.ready", &health.ready),
+            ] {
+                if !path.starts_with('/') {
+                    return Err(DomainError::BadManifest(format!(
+                        "php.{field} {path:?} must be a path starting with `/`"
+                    )));
+                }
+            }
+        }
+        if let Some(page) = self
+            .static_
+            .as_ref()
+            .and_then(|s| s.maintenance_page.as_ref())
+            && !inside(page)
+        {
+            return Err(DomainError::BadManifest(format!(
+                "static.maintenance_page {page:?} must be a relative path without `..`"
+            )));
         }
         if let Some(section) = &self.static_ {
             let root = Path::new(&section.root);
@@ -351,6 +388,33 @@ mod tests {
         assert_eq!(
             manifest.php_section().unwrap().runtime,
             Some(semver::VersionReq::parse("^1.4").unwrap())
+        );
+    }
+
+    #[test]
+    fn health_and_maintenance_page_parse_and_are_checked() {
+        let php = r#"{"app":"blog","version":"1.0.0","kind":"php","php":{"health":{"live":"/healthz","ready":"/readyz"}}}"#;
+        let health = ReleaseManifest::parse(php.as_bytes())
+            .unwrap()
+            .php_section()
+            .unwrap()
+            .health
+            .unwrap();
+        assert_eq!(
+            (health.live.as_str(), health.ready.as_str()),
+            ("/healthz", "/readyz")
+        );
+        let bad = php.replace("\"/healthz\"", "\"healthz\"");
+        assert!(ReleaseManifest::parse(bad.as_bytes()).is_err());
+        let page = r#"{"app":"admin","version":"1.0.0","kind":"static","static":{"root":"dist","maintenance_page":"maintenance.html"}}"#;
+        let manifest = ReleaseManifest::parse(page.as_bytes()).unwrap();
+        assert_eq!(
+            manifest.static_.unwrap().maintenance_page.as_deref(),
+            Some("maintenance.html")
+        );
+        assert!(
+            ReleaseManifest::parse(page.replace("maintenance.html", "../x.html").as_bytes())
+                .is_err()
         );
     }
 }

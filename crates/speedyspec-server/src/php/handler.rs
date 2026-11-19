@@ -8,7 +8,6 @@
 
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use bytes::Bytes;
 use futures_util::StreamExt;
@@ -739,10 +738,6 @@ fn tokio_stream_from(
         rx.recv().await.map(|item| (item, rx))
     })
     .boxed()
-}
-
-pub(crate) fn arc(handler: PhpRequestHandler) -> Arc<dyn PhpEndpoint> {
-    Arc::new(handler)
 }
 
 #[cfg(test)]

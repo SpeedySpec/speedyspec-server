@@ -38,6 +38,7 @@ fn set(dir: &Path, files: &[(&str, &str)]) -> Arc<StaticSet> {
     }
     let section = StaticSection {
         root: "dist".to_string(),
+        maintenance_page: None,
         not_found: None,
         cache: Vec::new(),
     };
@@ -91,6 +92,8 @@ fn service(access: Arc<dyn AccessCheck>) -> (tempfile::TempDir, Service) {
         access,
         trusted_proxies: Vec::new(),
         forwarded_headers: ForwardedHeaders::XForwarded,
+        maintenance: Default::default(),
+        maintenance_pages: Default::default(),
     };
     (dir, Service::new(build_router(Arc::new(state))))
 }
@@ -229,6 +232,8 @@ async fn no_mount() {
         access: Arc::new(DenySignedIn),
         trusted_proxies: Vec::new(),
         forwarded_headers: ForwardedHeaders::XForwarded,
+        maintenance: Default::default(),
+        maintenance_pages: Default::default(),
     };
     let service = Service::new(build_router(Arc::new(state)));
     assert_eq!(
@@ -251,6 +256,8 @@ async fn mount_redirect_location_is_percent_encoded() {
         access: Arc::new(DenySignedIn),
         trusted_proxies: Vec::new(),
         forwarded_headers: ForwardedHeaders::XForwarded,
+        maintenance: Default::default(),
+        maintenance_pages: Default::default(),
     };
     let service = Service::new(build_router(Arc::new(state)));
     let response = raw(&service, "/men%C3%BC").await;
@@ -276,6 +283,8 @@ fn with_fallback(current: Arc<StaticSet>, old: Arc<StaticSet>, until: Instant) -
         access: Arc::new(DenySignedIn),
         trusted_proxies: Vec::new(),
         forwarded_headers: ForwardedHeaders::XForwarded,
+        maintenance: Default::default(),
+        maintenance_pages: Default::default(),
     };
     Service::new(build_router(Arc::new(state)))
 }
@@ -286,6 +295,7 @@ fn immutable_set(dir: &Path, files: &[(&str, &str)]) -> Arc<StaticSet> {
     }
     let section = StaticSection {
         root: "dist".to_string(),
+        maintenance_page: None,
         not_found: None,
         cache: vec![speedyspec_server_domain::CacheRule {
             pattern: "_astro/**".to_string(),

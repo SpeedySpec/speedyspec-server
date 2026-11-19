@@ -80,6 +80,32 @@ pub struct Readiness {
     pub started: AtomicBool,
     /// Managed mode: whether this pod serves the active set.
     pub manager: OnceLock<Arc<ReleaseManager>>,
+    /// Every app's maintenance: an app failing its health probes makes this pod not ready.
+    pub maintenance: OnceLock<Arc<speedyspec_server_gate::MaintenanceSet>>,
+}
+
+impl Readiness {
+    /// Why this pod is not ready, or `None` when it is.
+    pub fn not_ready(&self) -> Option<String> {
+        if !self.started.load(Ordering::SeqCst) {
+            return Some("starting".to_string());
+        }
+        if self
+            .manager
+            .get()
+            .is_some_and(|manager| !manager.is_ready())
+        {
+            return Some("this pod could not prepare the active release set".to_string());
+        }
+        let unhealthy = self.maintenance.get().map_or_else(Vec::new, |set| {
+            set.in_maintenance_by(speedyspec_server_gate::MaintenanceSource::Health)
+        });
+        if !unhealthy.is_empty() {
+            let names: Vec<&str> = unhealthy.iter().map(|app| app.as_str()).collect();
+            return Some(format!("unhealthy: {}", names.join(", ")));
+        }
+        None
+    }
 }
 
 struct Livez;
@@ -96,19 +122,7 @@ struct Readyz(Arc<Readiness>);
 #[async_trait]
 impl Handler for Readyz {
     async fn handle(&self, _: &mut Request, _: &mut Depot, res: &mut Response, _: &mut FlowCtrl) {
-        let reason = if !self.0.started.load(Ordering::SeqCst) {
-            Some("starting")
-        } else if self
-            .0
-            .manager
-            .get()
-            .is_some_and(|manager| !manager.is_ready())
-        {
-            Some("this pod could not prepare the active release set")
-        } else {
-            None
-        };
-        match reason {
+        match self.0.not_ready() {
             None => res.render("ready\n"),
             Some(reason) => {
                 res.status_code(StatusCode::SERVICE_UNAVAILABLE);
@@ -192,4 +206,29 @@ pub fn spawn_loops(manager: Arc<ReleaseManager>, paused: Arc<AtomicBool>, on_tur
             }
         }
     });
+}
+
+#[cfg(test)]
+mod readiness_tests {
+    use super::*;
+    use speedyspec_server_domain::AppId;
+    use speedyspec_server_gate::{MaintenanceSet, MaintenanceSource};
+
+    #[test]
+    fn an_unhealthy_app_makes_the_pod_not_ready() {
+        let readiness = Readiness::default();
+        readiness.started.store(true, Ordering::SeqCst);
+        let set = Arc::new(MaintenanceSet::default());
+        let _ = readiness.maintenance.set(set.clone());
+        assert_eq!(readiness.not_ready(), None);
+        let blog = AppId::parse("blog").unwrap();
+        set.set(&blog, MaintenanceSource::Operator, true);
+        assert_eq!(
+            readiness.not_ready(),
+            None,
+            "only health maintenance makes a pod not ready"
+        );
+        set.set(&blog, MaintenanceSource::Health, true);
+        assert_eq!(readiness.not_ready().as_deref(), Some("unhealthy: blog"));
+    }
 }

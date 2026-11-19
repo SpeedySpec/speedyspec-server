@@ -27,6 +27,7 @@ fn build(not_found: Option<&str>) -> (tempfile::TempDir, StaticSet) {
     write(dir.path(), "a+b.css", b"plus");
     let section = StaticSection {
         root: "dist".to_string(),
+        maintenance_page: None,
         not_found: not_found.map(str::to_string),
         cache: Vec::new(),
     };
@@ -270,6 +271,7 @@ fn directory_without_index_falls_back_to_html() {
     write(dir.path(), "docs/intro.html", b"intro");
     let section = StaticSection {
         root: "dist".to_string(),
+        maintenance_page: None,
         not_found: None,
         cache: Vec::new(),
     };
@@ -287,6 +289,7 @@ fn redirect_location_is_percent_encoded() {
     write(dir.path(), "a\u{1b}b/index.html", b"x");
     let section = StaticSection {
         root: "dist".to_string(),
+        maintenance_page: None,
         not_found: None,
         cache: Vec::new(),
     };

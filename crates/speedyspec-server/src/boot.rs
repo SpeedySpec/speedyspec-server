@@ -8,7 +8,9 @@ use std::sync::Arc;
 
 use serde::Deserialize;
 use speedyspec_server_app::{Incompatibility, check_set};
-use speedyspec_server_domain::{AccessCheck, AppId, AppKind, MANIFEST_FILE, ReleaseManifest};
+use speedyspec_server_domain::{
+    AccessCheck, AppId, AppKind, AppRuntime, MANIFEST_FILE, ReleaseManifest,
+};
 use speedyspec_server_infra_access_dev::{DenySignedIn, DevAllowAll};
 use speedyspec_server_presentation::{AppHandle, LiveApps, ServeState, StaticApp};
 use speedyspec_server_static::StaticSet;
@@ -61,24 +63,45 @@ pub fn server_manifest(app: AppId) -> ReleaseManifest {
     }
 }
 
-/// Builds the serving state. Immutable mode reads every baked-in release, checks that they work together, and loads
-/// static ones into memory. Managed mode starts every app as not installed; the release manager's start-up recovery
-/// then activates what is kept.
-pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
+/// What booting gives a generation: the serving state, and the PHP runtime its php apps run on (shared with the
+/// release manager in managed mode, and with the server's own calls to the apps).
+pub struct Booted {
+    pub state: ServeState,
+    pub php: Arc<crate::php::PhpRuntime>,
+    pub binaries: Arc<crate::php::runtime_kind::RuntimeBinaries>,
+}
+
+/// Builds the serving state. Every app starts as not installed. Immutable mode then reads every baked-in release,
+/// checks that they work together, loads static ones into memory and starts php ones' pools; managed mode leaves that
+/// to the release manager's start-up recovery.
+pub fn prepare(config: &Config) -> Result<Booted, BootError> {
+    let apps = config
+        .apps
+        .iter()
+        .map(|(id, app)| {
+            let handle = if app.kind == AppKind::Server {
+                AppHandle::AdminApiPlaceholder
+            } else {
+                AppHandle::NotInstalled
+            };
+            (id.clone(), handle)
+        })
+        .collect();
+    let live = Arc::new(LiveApps::new(apps));
+    let binaries = Arc::new(crate::php::runtime_kind::RuntimeBinaries::default());
+    let php = Arc::new(crate::php::PhpRuntime::new(
+        live.clone(),
+        binaries.clone(),
+        config.run_dir.clone(),
+        crate::php::php_configs(config),
+        config.php_runtimes().into_iter().collect(),
+    ));
     if config.mode == Mode::Managed {
-        let apps = config
-            .apps
-            .iter()
-            .map(|(id, app)| {
-                let handle = if app.kind == AppKind::Server {
-                    AppHandle::AdminApiPlaceholder
-                } else {
-                    AppHandle::NotInstalled
-                };
-                (id.clone(), handle)
-            })
-            .collect();
-        return Ok(serve_state(config, apps));
+        return Ok(Booted {
+            state: serve_state(config, live),
+            php,
+            binaries,
+        });
     }
     let mut manifests = BTreeMap::new();
     let mut paths = HashMap::new();
@@ -96,27 +119,28 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
     }
     check_set(&manifests, &config.php_runtimes()).map_err(BootError::Incompatible)?;
 
-    let binaries = {
-        let binaries = Arc::new(crate::php::runtime_kind::RuntimeBinaries::default());
-        for (id, manifest) in manifests.iter().filter(|(_, m)| m.kind == AppKind::Runtime) {
-            let binary = paths[id].join(AppKind::Runtime.binary_name().expect("a binary kind"));
-            binaries.set(
-                id,
-                manifest.version.clone(),
-                binary,
-                manifest.contracts.clone(),
-            );
-        }
-        binaries
-    };
-
-    let mut apps = HashMap::new();
+    // Runtimes first: the php apps' pools run their binaries.
+    for (id, manifest) in manifests.iter().filter(|(_, m)| m.kind == AppKind::Runtime) {
+        let binary = paths[id].join(AppKind::Runtime.binary_name().expect("a binary kind"));
+        binaries.set(
+            id,
+            manifest.version.clone(),
+            binary,
+            manifest.contracts.clone(),
+        );
+    }
     for (id, manifest) in &manifests {
-        let handle = match manifest.kind {
-            AppKind::Server => AppHandle::AdminApiPlaceholder,
-            // A runtime is never mounted: the php apps on it run its binary.
-            AppKind::Runtime => AppHandle::NotInstalled,
-            AppKind::Php => php_handle(config, &binaries, id, manifest, &paths[id])?,
+        match manifest.kind {
+            AppKind::Server | AppKind::Runtime => {}
+            AppKind::Php => {
+                let prepared =
+                    php.prepare(id, manifest, &paths[id])
+                        .map_err(|message| BootError::Php {
+                            app: id.clone(),
+                            message,
+                        })?;
+                php.activate(prepared);
+            }
             AppKind::Static => {
                 let section = manifest
                     .static_
@@ -130,41 +154,24 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
                         }
                     })?;
                 tracing::info!(event = "static_loaded", app = %id, version = %manifest.version, bytes = set.total_bytes());
-                AppHandle::Static(StaticApp {
-                    current: Arc::new(set),
-                    fallback: None,
-                })
+                live.swap(
+                    id,
+                    AppHandle::Static(StaticApp {
+                        current: Arc::new(set),
+                        fallback: None,
+                    }),
+                );
             }
-        };
-        apps.insert(id.clone(), handle);
+        }
     }
-    Ok(serve_state(config, apps))
+    Ok(Booted {
+        state: serve_state(config, live),
+        php,
+        binaries,
+    })
 }
 
-/// A php app's handle in immutable mode: its release's worker pool, started now.
-fn php_handle(
-    config: &Config,
-    binaries: &Arc<crate::php::runtime_kind::RuntimeBinaries>,
-    id: &AppId,
-    manifest: &ReleaseManifest,
-    dir: &Path,
-) -> Result<AppHandle, BootError> {
-    let runtime = crate::php::PhpRuntime::new(
-        Arc::new(LiveApps::new(HashMap::new())),
-        binaries.clone(),
-        config.run_dir.clone(),
-        crate::php::php_configs(config),
-        config.php_runtimes().into_iter().collect(),
-    );
-    runtime
-        .start(id, manifest, dir)
-        .map_err(|message| BootError::Php {
-            app: id.clone(),
-            message,
-        })
-}
-
-fn serve_state(config: &Config, apps: HashMap<AppId, AppHandle>) -> ServeState {
+fn serve_state(config: &Config, live: Arc<LiveApps>) -> ServeState {
     let access: Arc<dyn AccessCheck> = match config.access {
         AccessImpl::Deny => Arc::new(DenySignedIn),
         AccessImpl::DevAllowAll => Arc::new(DevAllowAll),
@@ -172,10 +179,16 @@ fn serve_state(config: &Config, apps: HashMap<AppId, AppHandle>) -> ServeState {
 
     ServeState {
         mounts: config.mounts.clone(),
-        apps: Arc::new(LiveApps::new(apps)),
+        apps: live,
         access,
         trusted_proxies: config.trusted_proxies.clone(),
         forwarded_headers: config.forwarded_headers,
+        maintenance: Arc::new(speedyspec_server_gate::MaintenanceSet::default()),
+        maintenance_pages: config
+            .apps
+            .iter()
+            .filter_map(|(id, app)| app.maintenance_page.clone().map(|page| (id.clone(), page)))
+            .collect(),
     }
 }
 

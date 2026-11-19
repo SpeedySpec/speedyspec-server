@@ -67,6 +67,11 @@ impl MountTable {
         Ok(MountTable { mounts })
     }
 
+    /// Every mount, in configuration order.
+    pub fn mounts(&self) -> &[Mount] {
+        &self.mounts
+    }
+
     /// The mount for an already-normalized host and path: among mounts for exactly this host, the longest matching
     /// prefix; only when none matches, the longest matching prefix among `*` mounts.
     pub fn resolve(&self, host: &str, path: &str) -> Option<&Mount> {

@@ -8,7 +8,7 @@ use semver::Version;
 use speedyspec_server_domain::{AppId, AppRuntime, Prepared, ReleaseManifest};
 use speedyspec_server_presentation::{AppHandle, LiveApps};
 
-use super::handler::{self, PhpRequestHandler};
+use super::handler::PhpRequestHandler;
 use super::pool::{EmbeddedPhpPool, PoolSettings, prepare_socket_dir};
 use super::runtime_kind::{RuntimeBinaries, check_contracts};
 use crate::config::PhpConfig;
@@ -29,6 +29,18 @@ pub struct PhpRuntime {
     pools: Mutex<HashMap<(AppId, Version), EmbeddedPhpPool>>,
     /// Each app's live release, so a runtime switch can start it again on the new binary.
     releases: Mutex<HashMap<AppId, (ReleaseManifest, PathBuf)>>,
+    /// Each app's live handler, for the server's own calls to it.
+    handlers: Mutex<HashMap<AppId, Arc<PhpRequestHandler>>>,
+}
+
+/// The paths of a php release only the server calls: its health probes.
+fn internal_paths(manifest: &ReleaseManifest) -> Vec<String> {
+    let section = manifest.php_section().unwrap_or_default();
+    section
+        .health
+        .iter()
+        .flat_map(|health| [health.live.clone(), health.ready.clone()])
+        .collect()
 }
 
 pub(crate) struct Ready {
@@ -54,7 +66,29 @@ impl PhpRuntime {
             runtimes,
             pools: Mutex::new(HashMap::new()),
             releases: Mutex::new(HashMap::new()),
+            handlers: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// `app`'s live handler.
+    pub fn live_handler(&self, app: &AppId) -> Option<Arc<PhpRequestHandler>> {
+        self.handlers.lock().unwrap().get(app).cloned()
+    }
+
+    /// Every app with a live release that names health probes, with them.
+    pub fn health_targets(&self) -> Vec<(AppId, speedyspec_server_domain::HealthSection)> {
+        let releases = self.releases.lock().unwrap();
+        let mut targets: Vec<_> = releases
+            .iter()
+            .filter_map(|(app, (manifest, _))| {
+                manifest
+                    .php_section()?
+                    .health
+                    .map(|health| (app.clone(), health))
+            })
+            .collect();
+        targets.sort_by(|a, b| a.0.cmp(&b.0));
+        targets
     }
 
     /// The php apps on runtime `runtime` that have a live release, with that release.
@@ -111,27 +145,6 @@ impl PhpRuntime {
             env: Vec::new(),
             env_file: None,
         })
-    }
-
-    /// Starts `app`'s pool for the release in `dir` and builds its handler (immutable mode calls this directly).
-    pub fn start(
-        &self,
-        app: &AppId,
-        manifest: &ReleaseManifest,
-        dir: &Path,
-    ) -> Result<AppHandle, String> {
-        let binary = self.binary_for(app)?;
-        let ready = self.ready(app, manifest, dir, &binary)?;
-        let handle = AppHandle::Php(handler::arc(ready.handler));
-        if let Some(old) = self
-            .pools
-            .lock()
-            .unwrap()
-            .insert((app.clone(), manifest.version.clone()), ready.pool)
-        {
-            old.drain();
-        }
-        Ok(handle)
     }
 
     fn ready(
@@ -219,12 +232,18 @@ impl AppRuntime for PhpRuntime {
         if let Some(old) = replaced {
             old.drain();
         }
+        self.live
+            .set_internal_paths(&prepared.app, internal_paths(&ready.manifest));
         self.releases
             .lock()
             .unwrap()
             .insert(prepared.app.clone(), (ready.manifest, ready.dir));
-        self.live
-            .swap(&prepared.app, AppHandle::Php(handler::arc(ready.handler)));
+        let handler = Arc::new(ready.handler);
+        self.handlers
+            .lock()
+            .unwrap()
+            .insert(prepared.app.clone(), handler.clone());
+        self.live.swap(&prepared.app, AppHandle::Php(handler));
     }
 
     fn retire(&self, app: &AppId, version: &Version) {
