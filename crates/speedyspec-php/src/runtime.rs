@@ -400,6 +400,64 @@ pub fn call(callable: &Value, args: &[Value]) -> Result<Value, PhpError> {
     }
 }
 
+/// A PHP call that failed: the error, and the thrown object when PHP threw one (a `Value::Opaque`), so a native
+/// function can rethrow the original exception.
+#[derive(Debug)]
+pub struct CallFailure {
+    pub error: PhpError,
+    pub exception: Option<Value>,
+}
+
+/// As [`call`], keeping the exception object a failed call threw.
+pub fn call_catching(callable: &Value, args: &[Value]) -> Result<Value, CallFailure> {
+    let plain = |error: PhpError| CallFailure {
+        error,
+        exception: None,
+    };
+    if !crate::boundary::alive() {
+        return Err(plain(PhpError::Boot("no PHP request is open".to_owned())));
+    }
+    settle_stray();
+    let mut target = ManuallyDrop::new(Zval::new());
+    let target_ptr: *mut zval = &raw mut *target;
+    let written = guard(|| {
+        // SAFETY: `target` is fresh zval storage owned by this frame.
+        unsafe { convert::write_value(target_ptr, callable) }
+    });
+    let outcome = match written {
+        Ok(Ok(())) => call_php(target_ptr, args),
+        Ok(Err(why)) => Err(CallError::Convert(why.to_string())),
+        Err(interrupted) => Err(CallError::Interrupted(interrupted)),
+    };
+    release_later(target);
+    settle_stray();
+    outcome.map_err(|err| match err {
+        CallError::Thrown(crate::boundary::Thrown::Exception {
+            object,
+            class,
+            message,
+            file,
+            line,
+        }) => CallFailure {
+            error: PhpError::Exception {
+                class,
+                message,
+                file,
+                line,
+            },
+            exception: Some(Value::Opaque(std::rc::Rc::new(object))),
+        },
+        other => plain(other.into_php_error()),
+    })
+}
+
+/// `spl_object_id($value)` for a PHP object held as a `Value::Opaque`.
+pub fn object_id(value: &Value) -> Option<u64> {
+    let object = convert::handle_of(value)?.object()?;
+    // SAFETY: the handle holds a reference to the object, so it is live.
+    Some(u64::from(unsafe { (*object).handle }))
+}
+
 impl Php {
     /// Creates a PHP object: `new $class(...$args)`. An unknown class or a
     /// constructor that throws is the exception PHP raised.

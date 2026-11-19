@@ -16,7 +16,9 @@ mod sapi;
 pub use area::NativeArea;
 /// ext-php-rs, for areas building their functions and classes.
 pub use ext_php_rs;
-pub use runtime::{BootOptions, Output, Php, PhpError, call, eval};
+pub use runtime::{
+    BootOptions, CallFailure, Output, Php, PhpError, call, call_catching, eval, object_id,
+};
 
 /// The PHP version linked into this binary, from the repository's
 /// `php-version` file.

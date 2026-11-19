@@ -36,8 +36,9 @@ pub struct Entry {
     pub partition: Partition,
 }
 
-/// The callbacks of one priority, by id, in registration order.
-pub type PrioritySlice = IndexMap<String, Entry>;
+/// The callbacks of one priority, by id (an array key: ids are strings, but `offsetSet()` can store any key), in
+/// registration order.
+pub type PrioritySlice = IndexMap<ArrayKey, Entry>;
 
 /// A running iteration's copy of the priority list and its internal pointer (`None`: past the end).
 #[derive(Clone, Debug, Default)]
@@ -197,6 +198,11 @@ impl WpHook {
         WpHook::default()
     }
 
+    /// The hook's identity (the same for every handle to it).
+    pub fn addr(&self) -> usize {
+        Rc::as_ptr(&self.0) as *const () as usize
+    }
+
     pub fn state(&self) -> std::cell::Ref<'_, HookState> {
         self.0.borrow()
     }
@@ -209,7 +215,7 @@ impl WpHook {
         partition: Partition,
     ) -> Result<(), HookError> {
         let priority = priority_or_zero(priority);
-        let Some(id) = callback.id().map(str::to_string) else {
+        let Some(id) = callback.id().map(ArrayKey::from_str_key) else {
             return Ok(());
         };
         let key = ArrayKey::from_value(&priority)?;
@@ -244,7 +250,7 @@ impl WpHook {
         let Some(slice) = state.callbacks.get_mut(&key) else {
             return Ok(false);
         };
-        if slice.shift_remove(id).is_none() {
+        if slice.shift_remove(&ArrayKey::from_str_key(id)).is_none() {
             return Ok(false);
         }
         if slice.is_empty() {
@@ -271,7 +277,11 @@ impl WpHook {
                 HasFilterResult::No
             };
         };
-        let Some(id) = id.as_deref().filter(|id| !id.is_empty() && *id != "0") else {
+        let Some(id) = id
+            .as_deref()
+            .filter(|id| !id.is_empty() && *id != "0")
+            .map(ArrayKey::from_str_key)
+        else {
             return HasFilterResult::No;
         };
         let state = self.0.borrow();
@@ -279,7 +289,7 @@ impl WpHook {
             let found = state
                 .callbacks
                 .get(&ArrayKey::Int(priority))
-                .is_some_and(|slice| slice.contains_key(id));
+                .is_some_and(|slice| slice.contains_key(&id));
             return if found {
                 HasFilterResult::Any
             } else {
@@ -287,7 +297,7 @@ impl WpHook {
             };
         }
         for (priority, slice) in &state.callbacks {
-            if slice.contains_key(id) {
+            if slice.contains_key(&id) {
                 return HasFilterResult::At(priority.clone());
             }
         }

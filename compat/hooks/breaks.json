@@ -1,0 +1,35 @@
+{
+  "breaks": [
+    {
+      "scenario": "wp_filter_replace_wholesale",
+      "why": "Replacing $wp_filter wholesale: the global becomes a plain PHP array, no longer the proxy over the Rust hook store, which does not see it."
+    },
+    {
+      "scenario": "wp_hook_build_preinitialized_hooks",
+      "why": "Replacing $wp_filter wholesale (with the result of build_preinitialized_hooks): the Rust hook store does not see it. Hooks set before the request's PHP code runs are imported."
+    },
+    {
+      "scenario": "wp_filter_set_plain_array",
+      "why": "$wp_filter holds only WP_Hook objects: assigning anything else to $wp_filter[$name] throws a TypeError."
+    },
+    {
+      "scenario": "wp_filters_read_and_write",
+      "step": 5,
+      "why": "Replacing $wp_filters wholesale (step 4): the Rust hook store keeps counting."
+    },
+    {
+      "scenario": "wp_filters_read_and_write",
+      "step": 6,
+      "why": "Replacing $wp_filters wholesale (step 4): the Rust hook store keeps counting."
+    },
+    {
+      "scenario": "wp_filters_read_and_write",
+      "step": 7,
+      "why": "Replacing $wp_filters wholesale (step 4): the Rust hook store keeps counting."
+    },
+    {
+      "scenario": "wp_current_filter_replace",
+      "why": "Replacing $wp_current_filter wholesale: the global becomes a plain PHP array, not the proxy over the Rust hook store."
+    }
+  ]
+}

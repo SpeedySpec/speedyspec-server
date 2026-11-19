@@ -149,7 +149,7 @@ impl NativeArea for ContainerArea {
     }
 }
 
-/// Binds each `(key, class)` for this request (built by autowiring `class`), as PHP bindings. Runs no PHP code, so it
+/// Binds each `(key, class)` for this request, shared (built once, by autowiring `class`), as PHP bindings. Runs no PHP code, so it
 /// can run before any.
 pub fn install_php_bindings(bindings: &[(String, String)]) {
     let Ok(state) = state() else {
@@ -158,7 +158,7 @@ pub fn install_php_bindings(bindings: &[(String, String)]) {
     let container = &state.container;
     let _request = container.registering(Lifetime::Request);
     for (key, class) in bindings {
-        container.bind_foreign(key, class_factory(key, class));
+        container.singleton_foreign(key, class_factory(key, class));
     }
 }
 

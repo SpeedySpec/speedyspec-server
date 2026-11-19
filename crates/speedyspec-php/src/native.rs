@@ -25,10 +25,12 @@ use crate::boundary;
 use crate::convert;
 
 /// How a native function fails in PHP.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum NativeError {
     /// Throws `new $class($message)`; `\Exception` when the class is not declared.
     Throw { class: String, message: String },
+    /// Rethrows a PHP exception object (a `Value::Opaque` from [`crate::call_catching`]).
+    Rethrow(Value),
     /// PHP is unwinding (a bailout or `exit()`); throw nothing.
     Silent,
 }
@@ -135,8 +137,17 @@ fn frame(ex: &ExecuteData) -> (String, usize) {
 }
 
 fn throw(err: NativeError) {
-    let NativeError::Throw { class, message } = err else {
-        return;
+    let (class, message) = match err {
+        NativeError::Throw { class, message } => (class, message),
+        NativeError::Rethrow(object) => {
+            if let Some(handle) = convert::handle_of(&object) {
+                // SAFETY: a live handle; the copy takes its own reference, which the engine takes over.
+                let copy = unsafe { convert::ZvalHandle::copy_of(handle.as_ptr()) };
+                boundary::rethrow(copy);
+            }
+            return;
+        }
+        NativeError::Silent => return,
     };
     if !boundary::can_enter() {
         return;

@@ -284,7 +284,8 @@ final class SpeedySpecCompat
         if (is_float($value)) {
             return is_finite($value) ? ['float' => $value] : ['float' => (string) $value];
         }
-        if (is_array($value)) {
+        if (is_array($value) || $value instanceof \SpeedySpec\WpHooks\HookGlobal) {
+            // A hook global is an array in WordPress and a proxy over the Rust store in the port.
             $pairs = [];
             foreach ($value as $key => $item) {
                 $pairs[] = [self::key($key), self::normalise($item)];
