@@ -48,6 +48,44 @@ pub struct StaticSection {
     /// A self-contained HTML file under `root` shown, from memory, by every app in maintenance that names this app.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub maintenance_page: Option<String>,
+    /// Which paths are public behind a gated mount, and which are a page's own files; the rest need sign-in.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub access: Vec<AccessRule>,
+}
+
+/// One access rule: a glob over the path relative to the mount, either public (under a condition) or one page's
+/// files. The first matching rule wins; a path no rule matches needs sign-in.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccessRule {
+    #[serde(rename = "match")]
+    pub pattern: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public: Option<PublicWhen>,
+    /// `"{page}"`: the page id the pattern's `{page}` captures.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page: Option<String>,
+}
+
+/// When a public rule's paths are public.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PublicWhen {
+    Always,
+    /// Only while the site is not installed; otherwise disabled for everyone.
+    NotInstalled,
+    /// Only while the app is in maintenance; otherwise disabled for everyone.
+    Maintenance,
+}
+
+/// The gate app's endpoints the server calls (paths of the app, starting with `/`), and the gate contract's version.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GateSection {
+    pub version: u32,
+    pub site: String,
+    pub session: String,
+    pub changes: String,
 }
 
 /// How a php release is served.
@@ -69,6 +107,12 @@ pub struct PhpSection {
     /// The app's health probes, which the server calls internally.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub health: Option<HealthSection>,
+    /// Which paths are public behind a gated mount (see [`StaticSection::access`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub access: Vec<AccessRule>,
+    /// The endpoints of a gate app.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gate: Option<GateSection>,
 }
 
 /// A php app's health probes: paths of the app (starting with `/`) that answer 200 while it is live and ready.
@@ -97,6 +141,8 @@ impl Default for PhpSection {
             ini: BTreeMap::new(),
             runtime: None,
             health: None,
+            access: Vec::new(),
+            gate: None,
         }
     }
 }
@@ -185,6 +231,32 @@ impl ReleaseManifest {
                         field,
                         path: value.clone(),
                     });
+                }
+            }
+        }
+        let rules = self
+            .static_
+            .iter()
+            .flat_map(|s| s.access.iter())
+            .chain(self.php.iter().flat_map(|p| p.access.iter()));
+        for rule in rules {
+            if rule.public.is_some() == rule.page.is_some() {
+                return Err(DomainError::BadManifest(format!(
+                    "access rule {:?} must have exactly one of `public` or `page`",
+                    rule.pattern
+                )));
+            }
+        }
+        if let Some(gate) = self.php.as_ref().and_then(|php| php.gate.as_ref()) {
+            for (field, path) in [
+                ("site", &gate.site),
+                ("session", &gate.session),
+                ("changes", &gate.changes),
+            ] {
+                if !path.starts_with('/') {
+                    return Err(DomainError::BadManifest(format!(
+                        "php.gate.{field} {path:?} must be a path starting with `/`"
+                    )));
                 }
             }
         }
@@ -416,5 +488,37 @@ mod tests {
             ReleaseManifest::parse(page.replace("maintenance.html", "../x.html").as_bytes())
                 .is_err()
         );
+    }
+
+    #[test]
+    fn access_rule_needs_public_or_page() {
+        let ok = r#"{"app":"admin","version":"1.0.0","kind":"static","static":{"root":".","access":[{"match":"","public":"always"},{"match":"components/{page}/**","page":"{page}"}]}}"#;
+        let manifest = ReleaseManifest::parse(ok.as_bytes()).unwrap();
+        let access = &manifest.static_.unwrap().access;
+        assert_eq!(access[0].public, Some(PublicWhen::Always));
+        assert_eq!(access[1].page.as_deref(), Some("{page}"));
+        for bad in [
+            r#"[{"match":"x"}]"#,
+            r#"[{"match":"x","public":"always","page":"{page}"}]"#,
+            r#"[{"match":"x","public":"sometimes"}]"#,
+        ] {
+            let json = ok.replace(r#"[{"match":"","public":"always"},{"match":"components/{page}/**","page":"{page}"}]"#, bad);
+            assert!(ReleaseManifest::parse(json.as_bytes()).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn gate_section_parses() {
+        let json = r#"{"app":"admin-api","version":"1.0.0","kind":"php","php":{"gate":{"version":1,"site":"/v1/gate/site","session":"/v1/gate/session","changes":"/v1/gate/changes"},"access":[{"match":"v1/session/**","public":"always"}]}}"#;
+        let php = ReleaseManifest::parse(json.as_bytes())
+            .unwrap()
+            .php_section()
+            .unwrap();
+        let gate = php.gate.unwrap();
+        assert_eq!(
+            (gate.version, gate.site.as_str(), gate.changes.as_str()),
+            (1, "/v1/gate/site", "/v1/gate/changes")
+        );
+        assert_eq!(php.access.len(), 1);
     }
 }

@@ -90,6 +90,7 @@ mod tests {
             static_: Some(StaticSection {
                 root: "dist".to_string(),
                 maintenance_page: None,
+                access: Vec::new(),
                 not_found: None,
                 cache: vec![speedyspec_server_domain::CacheRule {
                     pattern: "_astro/**".to_string(),

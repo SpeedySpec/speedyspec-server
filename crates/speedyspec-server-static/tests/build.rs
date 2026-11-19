@@ -8,6 +8,7 @@ fn section(not_found: Option<&str>, rules: &[(&str, &str)]) -> StaticSection {
     StaticSection {
         root: "dist".to_string(),
         maintenance_page: None,
+        access: Vec::new(),
         not_found: not_found.map(str::to_string),
         cache: rules
             .iter()

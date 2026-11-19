@@ -131,6 +131,7 @@ mod tests {
         let section = StaticSection {
             root: "dist".to_string(),
             maintenance_page: None,
+            access: Vec::new(),
             not_found: None,
             cache: Vec::new(),
         };

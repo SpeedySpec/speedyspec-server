@@ -30,6 +30,13 @@ impl std::fmt::Display for CallError {
     }
 }
 
+/// The gate app's site state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SiteState {
+    pub installed: bool,
+    pub maintenance: bool,
+}
+
 /// The server's own calls to PHP apps.
 pub trait GateCalls: Send + Sync {
     /// `GET <path>` on `app`: the answer's status.
