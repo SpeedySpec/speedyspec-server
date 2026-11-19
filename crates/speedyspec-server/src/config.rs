@@ -193,6 +193,8 @@ pub struct Config {
     pub gate: Option<speedyspec_server_gate::GateSettings>,
     /// `[switch] migrate_timeout`: how long a release's migration may run (default 30 minutes).
     pub migrate_timeout: Duration,
+    /// `[runtime] trial_period`: how long a new runtime release is on trial (default 2 minutes).
+    pub runtime_trial_period: Duration,
 }
 
 /// Who decides which pod leads.
@@ -278,6 +280,14 @@ struct RawConfig {
     gate: Option<RawGate>,
     #[serde(default, rename = "switch")]
     switch_: RawSwitch,
+    #[serde(default)]
+    runtime: RawRuntime,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct RawRuntime {
+    trial_period: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -929,6 +939,11 @@ impl Config {
                 "switch.migrate_timeout",
                 raw.switch_.migrate_timeout.as_deref(),
                 Duration::from_secs(30 * 60),
+            )?,
+            runtime_trial_period: duration(
+                "runtime.trial_period",
+                raw.runtime.trial_period.as_deref(),
+                Duration::from_secs(120),
             )?,
             cluster: raw
                 .cluster

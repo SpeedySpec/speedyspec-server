@@ -103,7 +103,8 @@ pub fn start(
             .and_then(|gate| gate.maintenance_apps.clone())
             .unwrap_or_default(),
     )
-    .with_migrate_timeout(config.migrate_timeout);
+    .with_migrate_timeout(config.migrate_timeout)
+    .with_runtime_trial_period(config.runtime_trial_period);
 
     let report = manager.boot();
     tracing::info!(

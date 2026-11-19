@@ -137,6 +137,8 @@ pub struct ReleaseManager {
     pub(crate) site_apps: Vec<AppId>,
     /// How long a migration may run.
     pub(crate) migrate_timeout: std::time::Duration,
+    /// How long a new runtime release is on trial (`runtime.trial_period`).
+    pub(crate) runtime_trial_period: std::time::Duration,
     /// The Rust target triple whose server artifacts this build installs.
     pub(crate) target: String,
     pub(crate) state: Mutex<ReleaseState>,
@@ -217,6 +219,7 @@ impl ReleaseManager {
             maintenance_sink: None,
             site_apps: Vec::new(),
             migrate_timeout: std::time::Duration::from_secs(30 * 60),
+            runtime_trial_period: std::time::Duration::from_secs(120),
             target,
             published: Mutex::new(state.clone()),
             downloads: Mutex::new(HashMap::new()),
@@ -249,6 +252,12 @@ impl ReleaseManager {
     ) -> ReleaseManager {
         self.maintenance_sink = Some(sink);
         self.site_apps = site_apps;
+        self
+    }
+
+    /// How long a new runtime release is on trial (`runtime.trial_period`).
+    pub fn with_runtime_trial_period(mut self, period: std::time::Duration) -> ReleaseManager {
+        self.runtime_trial_period = period;
         self
     }
 
@@ -833,6 +842,7 @@ impl ReleaseManager {
             return Err(err);
         }
         self.finish_migrations(state, &scopes)?;
+        self.record_runtime_trials(state, &old)?;
         for (app, previous) in &old {
             if let Some(previous) = previous {
                 let kind = self.policy(app)?.kind;
@@ -845,6 +855,117 @@ impl ReleaseManager {
         let apps: Vec<AppId> = targets.iter().map(|(app, _)| app.clone()).collect();
         self.prune(state, &apps)?;
 
+        Ok(())
+    }
+
+    /// Puts every runtime app this switch moved off an earlier release on trial.
+    fn record_runtime_trials(
+        &self,
+        state: &mut ReleaseState,
+        old: &[(AppId, Option<Version>)],
+    ) -> Result<(), ReleaseError> {
+        let mut next = state.clone();
+        let mut changed = false;
+        for (app, previous) in old {
+            if !self.policy(app).is_ok_and(|p| p.kind == AppKind::Runtime) {
+                continue;
+            }
+            let (Some(previous), Some(version)) =
+                (previous, next.apps.get(app).and_then(|c| c.active.clone()))
+            else {
+                continue;
+            };
+            next.runtime_trials.insert(
+                app.clone(),
+                speedyspec_server_domain::RuntimeTrial {
+                    version,
+                    previous: previous.clone(),
+                    until_ms: now_ms() + self.runtime_trial_period.as_millis() as u64,
+                },
+            );
+            changed = true;
+        }
+        if changed {
+            self.commit_state(state, next)?;
+        }
+        Ok(())
+    }
+
+    /// A php app turned unhealthy: if its runtime's new release is still on trial, switch the runtime back to the
+    /// release before it and mark the new one failed. Returns whether it rolled back. A follower does nothing here
+    /// (it reports the app in its member file; the leader acts).
+    pub fn runtime_unhealthy(&self, php_app: &AppId) -> Result<bool, ReleaseError> {
+        if !self.cluster.view().is_leader {
+            return Ok(false);
+        }
+        let Some(runtime) = self.php_runtimes.get(php_app).cloned() else {
+            return Ok(false);
+        };
+        let mut state = self.lock();
+        let Some(trial) = state.runtime_trials.get(&runtime).cloned() else {
+            return Ok(false);
+        };
+        if now_ms() > trial.until_ms {
+            return Ok(false);
+        }
+        tracing::warn!(event = "runtime_trial_failed", runtime = %runtime, version = %trial.version, app = %php_app);
+        self.switch_locked(&mut state, &[(runtime.clone(), trial.previous.clone())])?;
+        let mut next = state.clone();
+        next.runtime_trials.remove(&runtime);
+        next.app_mut(&runtime).failed.insert(
+            trial.version.clone(),
+            format!("unhealthy during trial: {php_app}"),
+        );
+        self.commit_state(&mut state, next)?;
+        Ok(true)
+    }
+
+    /// Confirms every runtime trial whose period has passed.
+    pub fn confirm_runtime_trials(&self) -> Result<(), ReleaseError> {
+        if !self.cluster.view().is_leader {
+            return Ok(());
+        }
+        let mut state = self.lock();
+        let now = now_ms();
+        if !state
+            .runtime_trials
+            .values()
+            .any(|trial| now > trial.until_ms)
+        {
+            return Ok(());
+        }
+        let mut next = state.clone();
+        next.runtime_trials.retain(|runtime, trial| {
+            let keep = now <= trial.until_ms;
+            if !keep {
+                tracing::info!(event = "runtime_trial_confirmed", runtime = %runtime, version = %trial.version);
+            }
+            keep
+        });
+        self.commit_state(&mut state, next)
+    }
+
+    /// The apps this pod holds in maintenance because their health probes fail (published in its member report).
+    pub fn set_unhealthy(&self, apps: Vec<AppId>) {
+        self.publish(|node| node.report.unhealthy = apps);
+    }
+
+    /// Leader only: rolls a runtime on trial back when any live member reports a php app on it unhealthy.
+    pub fn check_member_health(&self) -> Result<(), ReleaseError> {
+        if self.cluster.is_single() || !self.cluster.view().is_leader {
+            return Ok(());
+        }
+        let Some((reports, live)) = self.cluster.members_now() else {
+            return Ok(());
+        };
+        let unhealthy: std::collections::BTreeSet<AppId> = reports
+            .iter()
+            .filter(|report| live.contains(&report.pod))
+            .flat_map(|report| report.unhealthy.iter().cloned())
+            .collect();
+        for app in unhealthy {
+            self.runtime_unhealthy(&app)?;
+        }
         Ok(())
     }
 
@@ -1991,6 +2112,7 @@ impl ReleaseManager {
         });
         tracing::info!(event = "activated", revision = serving, prepared = ?ready_pods, failed = ?failed_pods);
         self.finish_migrations(state, &scopes)?;
+        self.record_runtime_trials(state, &old)?;
         let apps: Vec<AppId> = targets.iter().map(|(app, _)| app.clone()).collect();
         self.prune(state, &apps)?;
         Ok(())
@@ -2532,6 +2654,9 @@ impl ReleaseManager {
     /// advance the rollout.
     pub fn lead(&self, exe: Option<&std::path::Path>) -> Result<(), ReleaseError> {
         self.leading()?;
+        if let Err(err) = self.check_member_health() {
+            tracing::warn!(event = "member_health_check_failed", error = %err);
+        }
         let epoch = self.cluster.view().epoch;
         let current = *self.took_over.lock().unwrap_or_else(|p| p.into_inner());
         if current != Some(epoch) {

@@ -36,8 +36,11 @@ fn release_cmd(config: &str, args: &[&str]) {
 }
 
 fn publish_app(host: &ReleaseHost, app: &str, version: &str) {
-    let manifest =
-        format!(r#"{{"app":"{app}","version":"{version}","kind":"php","php":{{"runtime":"^1"}}}}"#);
+    let manifest = format!(
+        r#"{{"app":"{app}","version":"{version}","kind":"php","php":{{"runtime":"^1","health":{{"live":"/health.php","ready":"/health.php"}}}}}}"#
+    );
+    // The health probe fails on runtime 1.9.0 (a release a test uses as a bad runtime).
+    let health = "<?php if (getenv('SPEEDYSPEC_RUNTIME_LABEL') === '1.9.0') { http_response_code(500); } echo 'ok';";
     let index = std::fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/runtime-app/index.php"),
     )
@@ -49,6 +52,7 @@ fn publish_app(host: &ReleaseHost, app: &str, version: &str) {
         &[
             ("index.php", &index),
             ("app.txt", &format!("{app}@{version}")),
+            ("health.php", health),
         ],
     );
 }
@@ -80,7 +84,7 @@ fn site() -> Site {
         }
     }
     let toml = format!(
-        "mode = \"managed\"\ndata_dir = \"{data}\"\nrun_dir = \"{run}\"\n\n[[listener]]\naddress = \"127.0.0.1:0\"\n\n[app.server]\nkind = \"server\"\n\n{apps}\n[[mount]]\npath = \"/blog/\"\napp = \"blog\"\n\n[[mount]]\npath = \"/api/\"\napp = \"frontend-api\"\n",
+        "mode = \"managed\"\ndata_dir = \"{data}\"\nrun_dir = \"{run}\"\n\n[[listener]]\naddress = \"127.0.0.1:0\"\n\n[health]\ninterval = \"200ms\"\n\n[runtime]\ntrial_period = \"30s\"\n\n[app.server]\nkind = \"server\"\n\n{apps}\n[[mount]]\npath = \"/blog/\"\napp = \"blog\"\n\n[[mount]]\npath = \"/api/\"\napp = \"frontend-api\"\n",
         data = dir.path().join("data").display(),
         run = dir.path().join("run").display(),
     );
@@ -190,4 +194,32 @@ fn runtime_that_fails_to_prepare_switches_nothing() {
         .find(|line| line.starts_with("rt\t"))
         .and_then(|line| line.split('\t').last());
     assert_eq!(failed, Some("1.2.0"), "1.2.0 is listed as failed: {list}");
+}
+
+#[test]
+fn bad_runtime_rolls_back_on_its_own() {
+    let mut site = site();
+    let addr = site.server.address();
+    wait_for(addr, "/blog/", "1.0.0 blog@1.0.0");
+    site.host
+        .publish_binary("rt", "1.9.0", script("1.9.0", Workers::Real).as_bytes());
+    release_cmd(&site.config, &["install", "rt", "1.9.0"]);
+    release_cmd(&site.config, &["switch", "rt@1.9.0"]);
+    // The blog's probes fail on 1.9.0: within a few rounds the runtime goes back to 1.0.0 on its own.
+    wait_for(addr, "/blog/", "1.0.0 blog@1.0.0");
+    let (_, list, _) = command(&["release", "list", "rt", "--config", &site.config]);
+    let row = list
+        .lines()
+        .find(|line| line.starts_with("rt\t"))
+        .unwrap_or_default()
+        .to_string();
+    assert!(
+        row.split('\t').nth(2) == Some("1.0.0") && row.ends_with("1.9.0"),
+        "active 1.0.0, 1.9.0 failed: {list}"
+    );
+    assert!(
+        site.server.has_event("runtime_trial_failed"),
+        "{:?}",
+        site.server.log()
+    );
 }

@@ -27,6 +27,16 @@ pub struct ReleaseState {
     pub rollout: Option<Rollout>,
     /// Apps held in maintenance by an operator or a failed migration.
     pub maintenance: BTreeMap<AppId, MaintenanceRecord>,
+    /// Runtime apps whose new release is on trial: rolled back on their own if a php app on them turns unhealthy.
+    pub runtime_trials: BTreeMap<AppId, RuntimeTrial>,
+}
+
+/// A runtime release on trial, the release it replaced, and when the trial ends (milliseconds since the Unix epoch).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuntimeTrial {
+    pub version: Version,
+    pub previous: Version,
+    pub until_ms: u64,
 }
 
 /// Why an app is held in maintenance, as recorded in the state file.

@@ -93,3 +93,83 @@ fn runtime_and_its_php_app_cannot_switch_together() {
     manager.switch(&[(id("rt"), v("1.0.0"))]).unwrap();
     manager.switch(&[(id("blog"), v("1.0.0"))]).unwrap();
 }
+
+/// rt 1.0.0 then 1.1.0 kept, blog on rt, the runtime switched to 1.0.0 then to 1.1.0 (on trial for `trial`).
+fn on_trial(trial: std::time::Duration) -> (World, speedyspec_server_app::ReleaseManager) {
+    let mut w = world();
+    w.app("blog", AppKind::Php, 3);
+    w.publish_binary("rt", "1.0.0", &runtime_manifest("1.0.0"), TARGET);
+    w.publish_binary("rt", "1.1.0", &runtime_manifest("1.1.0"), TARGET);
+    let manager = w
+        .manager()
+        .with_php_runtimes([(id("blog"), id("rt"))].into())
+        .with_runtime_trial_period(trial);
+    for version in ["1.0.0", "1.1.0"] {
+        manager.install(&id("rt"), Some(v(version))).unwrap();
+    }
+    manager.switch(&[(id("rt"), v("1.0.0"))]).unwrap();
+    assert!(
+        w.saved().runtime_trials.is_empty(),
+        "a first runtime has nothing to fall back to"
+    );
+    manager.switch(&[(id("rt"), v("1.1.0"))]).unwrap();
+    let trial_record = &w.saved().runtime_trials[&id("rt")];
+    assert_eq!(
+        (trial_record.version.clone(), trial_record.previous.clone()),
+        (v("1.1.0"), v("1.0.0"))
+    );
+    (w, manager)
+}
+
+#[test]
+fn unhealthy_during_trial_rolls_back_and_marks_failed() {
+    let (w, manager) = on_trial(std::time::Duration::from_secs(60));
+    assert!(manager.runtime_unhealthy(&id("blog")).unwrap());
+    let saved = w.saved();
+    assert_eq!(saved.apps[&id("rt")].active, Some(v("1.0.0")));
+    assert!(saved.apps[&id("rt")].failed[&v("1.1.0")].contains("unhealthy during trial: blog"));
+    assert!(saved.runtime_trials.is_empty());
+}
+
+#[test]
+fn unhealthy_after_trial_does_not_roll_back() {
+    let (w, manager) = on_trial(std::time::Duration::from_millis(100));
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    assert!(!manager.runtime_unhealthy(&id("blog")).unwrap());
+    assert_eq!(w.saved().apps[&id("rt")].active, Some(v("1.1.0")));
+}
+
+#[test]
+fn trial_is_confirmed_after_the_period() {
+    let (w, manager) = on_trial(std::time::Duration::from_millis(100));
+    manager.confirm_runtime_trials().unwrap();
+    assert!(!w.saved().runtime_trials.is_empty(), "still on trial");
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    manager.confirm_runtime_trials().unwrap();
+    assert!(w.saved().runtime_trials.is_empty(), "confirmed");
+}
+
+#[test]
+fn a_failed_runtime_is_not_auto_updated_again() {
+    let (w, manager) = on_trial(std::time::Duration::from_secs(60));
+    manager.runtime_unhealthy(&id("blog")).unwrap();
+    assert!(w.saved().apps[&id("rt")].failed.contains_key(&v("1.1.0")));
+    assert_eq!(
+        manager.check(&id("rt")).unwrap(),
+        None,
+        "the failed version is not offered again"
+    );
+}
+
+#[test]
+fn independent_replica_rolls_back_only_itself() {
+    let (w1, one) = on_trial(std::time::Duration::from_secs(60));
+    let (w2, _two) = on_trial(std::time::Duration::from_secs(60));
+    one.runtime_unhealthy(&id("blog")).unwrap();
+    assert_eq!(w1.saved().apps[&id("rt")].active, Some(v("1.0.0")));
+    assert_eq!(
+        w2.saved().apps[&id("rt")].active,
+        Some(v("1.1.0")),
+        "the other replica has its own state"
+    );
+}

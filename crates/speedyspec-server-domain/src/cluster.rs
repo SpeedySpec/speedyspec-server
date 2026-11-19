@@ -67,6 +67,9 @@ pub struct MemberReport {
     pub holds: Vec<(AppId, Version)>,
     /// What the readiness probe answers.
     pub ready: bool,
+    /// The apps this pod holds in maintenance because their health probes fail.
+    #[serde(default)]
+    pub unhealthy: Vec<AppId>,
     pub server: PodServer,
 }
 

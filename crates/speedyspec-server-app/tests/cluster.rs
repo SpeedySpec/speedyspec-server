@@ -1006,3 +1006,56 @@ fn failed_cluster_migration_leaves_everyone_on_the_old_release() {
         "every replica keeps maintenance on"
     );
 }
+
+#[test]
+fn one_members_unhealthy_report_rolls_every_member_back() {
+    let mut world = World::new();
+    world.app("rt", AppKind::Runtime, 3);
+    world.app("blog", AppKind::Php, 3);
+    for version in ["1.0.0", "1.1.0"] {
+        world.publish_binary(
+            "rt",
+            version,
+            &format!(r#"{{"app":"rt","version":"{version}","kind":"runtime","contracts":[1]}}"#),
+            support::TARGET,
+        );
+    }
+    let pods = Pods::from(world);
+    let build = |m: ReleaseManager| m.with_php_runtimes([(id("blog"), id("rt"))].into());
+    let all: Vec<_> = ["a", "b"].iter().map(|p| pods.pod_with(p, build)).collect();
+    pods.election.elect("a");
+    for version in ["1.0.0", "1.1.0"] {
+        all[0].0.install(&id("rt"), Some(v(version))).unwrap();
+    }
+    // b reports in, so the leader waits for it to prepare each set.
+    all[1].0.follow().unwrap();
+    for target in ["1.0.0", "1.1.0"] {
+        let leader = all[0].0.clone();
+        let switching = std::thread::spawn(move || leader.switch(&[(id("rt"), v(target))]));
+        staged(&pods);
+        all[1].0.follow().unwrap();
+        switching.join().unwrap().unwrap();
+        all[1].0.follow().unwrap();
+    }
+    assert!(pods.world.saved().runtime_trials.contains_key(&id("rt")));
+    // b's blog turns unhealthy: it says so in its member report, and the leader rolls the runtime back.
+    all[1].0.set_unhealthy(vec![id("blog")]);
+    let leader = all[0].0.clone();
+    let checking = std::thread::spawn(move || leader.check_member_health());
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while pods.world.saved().staged.is_none() && !checking.is_finished() {
+        assert!(Instant::now() < deadline, "no rollback was staged");
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    all[1].0.follow().unwrap();
+    checking.join().unwrap().unwrap();
+    all[1].0.follow().unwrap();
+    for (_, runtime) in &all {
+        assert_eq!(runtime.active("rt"), Some(v("1.0.0")));
+    }
+    assert!(
+        pods.world.saved().apps[&id("rt")]
+            .failed
+            .contains_key(&v("1.1.0"))
+    );
+}
