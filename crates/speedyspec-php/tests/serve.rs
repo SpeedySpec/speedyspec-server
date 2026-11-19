@@ -114,6 +114,18 @@ fn case_serve_web_request(php: &Php) -> Result<(), String> {
             served.result, failed.status
         ));
     }
+    // Each request starts at 200: PHP itself never resets the status code.
+    let plain = fixture("web_plain.php");
+    let mut after = web_request(&plain);
+    php.serve(&mut after, &plain)
+        .result
+        .map_err(|e| e.to_string())?;
+    if after.status != Some(200) {
+        return Err(format!(
+            "the request after a 500 answered {:?}",
+            after.status
+        ));
+    }
     // A request can be opened again afterwards.
     php.restart_request().map_err(|e| e.to_string())?;
     let value = php.eval("t", "return 1 + 1;").map_err(|e| e.to_string())?;

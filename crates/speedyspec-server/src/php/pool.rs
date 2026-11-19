@@ -161,6 +161,25 @@ pub fn socket_dir(run_dir: &Path, app: &str, version: &str) -> PathBuf {
     ))
 }
 
+/// Creates the release's socket directory: [`socket_dir`], or a private directory under `/tmp` when `run_dir`
+/// cannot be used (the server already runs without its lock and control socket then, with a warning).
+pub fn prepare_socket_dir(run_dir: &Path, app: &str, version: &str) -> Result<PathBuf, String> {
+    let dir = socket_dir(run_dir, app, version);
+    match std::fs::create_dir_all(&dir) {
+        Ok(()) => Ok(dir),
+        Err(err) => {
+            let fallback = PathBuf::from(format!(
+                "/tmp/speedyspec-php-{}-{app}-{version}",
+                std::process::id()
+            ));
+            tracing::warn!(event = "php_socket_dir_fallback", wanted = %dir.display(), error = %err, used = %fallback.display());
+            std::fs::create_dir_all(&fallback)
+                .map_err(|err| format!("{}: {err}", fallback.display()))?;
+            Ok(fallback)
+        }
+    }
+}
+
 impl EmbeddedPhpPool {
     /// Starts the pool's `min` workers (at least one) and waits for them to answer.
     pub fn start(
@@ -544,5 +563,26 @@ fn reap(weak: Weak<Inner>) {
         }
         drop(inner);
         std::thread::sleep(tick);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn socket_dir_falls_back_when_run_dir_is_unusable() {
+        let dir = tempfile::tempdir().unwrap();
+        let usable = prepare_socket_dir(dir.path(), "blog", "1.0.0").unwrap();
+        assert!(usable.starts_with(dir.path()) && usable.is_dir());
+        let blocked = dir.path().join("file");
+        std::fs::write(&blocked, "not a directory").unwrap();
+        let fallback = prepare_socket_dir(&blocked, "blog", "2.0.0").unwrap();
+        assert!(
+            fallback.starts_with("/tmp") && fallback.is_dir(),
+            "{}",
+            fallback.display()
+        );
+        let _ = std::fs::remove_dir_all(&fallback);
     }
 }

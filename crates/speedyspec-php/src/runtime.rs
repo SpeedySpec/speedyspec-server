@@ -360,6 +360,8 @@ impl Php {
             (*sg).request_info.content_length = content_length;
             (*sg).request_info.path_translated = ptr_of(&script_c);
             (*sg).request_info.proto_num = 1001;
+            // PHP never resets the status between requests; a SAPI does, as php-fpm does.
+            (*sg).sapi_headers.http_response_code = 200;
         }
         let started = self.start_request();
         let mut served = Served {

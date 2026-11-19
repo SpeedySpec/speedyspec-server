@@ -81,8 +81,16 @@ impl WebRequest for FastCgiRequest<'_> {
         &self.params
     }
 
+    /// Fills `buf` unless the body ends first: PHP takes a short read as the end of the body.
     fn read_body(&mut self, buf: &mut [u8]) -> usize {
-        self.responder.read_stdin(buf).unwrap_or(0)
+        let mut filled = 0;
+        while filled < buf.len() {
+            match self.responder.read_stdin(&mut buf[filled..]) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => filled += n,
+            }
+        }
+        filled
     }
 
     fn send_headers(&mut self, status: u16, headers: &[String]) -> bool {

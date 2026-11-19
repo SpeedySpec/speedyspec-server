@@ -70,10 +70,23 @@ impl ReleaseHost {
             r#"{{"app":"{app}","version":"{version}","kind":"static","requires":{{{requires}}},"static":{{"root":"dist","cache":[{{"match":"_astro/**","cache_control":"public, max-age=31536000, immutable"}}]}}}}"#
         );
         let stamp = format!("{app}-{version}");
-        let bytes = release(
+        self.publish_release(
+            app,
+            version,
             &manifest,
             &[("dist/index.html", &stamp), ("dist/_astro/app.js", &stamp)],
         );
+    }
+
+    /// Publishes a signed release of `app` with `manifest` and `files`, and rewrites the app's index.
+    pub fn publish_release(
+        &self,
+        app: &str,
+        version: &str,
+        manifest: &str,
+        files: &[(&str, &str)],
+    ) {
+        let bytes = release(manifest, files);
         let sha: String = Sha256::digest(&bytes)
             .iter()
             .map(|b| format!("{b:02x}"))

@@ -9,7 +9,7 @@ use speedyspec_server_domain::{AppId, AppRuntime, Prepared, ReleaseManifest};
 use speedyspec_server_presentation::{AppHandle, LiveApps};
 
 use super::handler::{self, PhpRequestHandler};
-use super::pool::{EmbeddedPhpPool, PoolSettings, socket_dir};
+use super::pool::{EmbeddedPhpPool, PoolSettings, prepare_socket_dir};
 use super::worker::WorkerSpec;
 use crate::config::PhpConfig;
 
@@ -95,7 +95,7 @@ impl PhpRuntime {
             bindings: config.bindings.clone(),
         };
         let version = manifest.version.to_string();
-        let dir = socket_dir(&self.run_dir, app.as_str(), &version);
+        let dir = prepare_socket_dir(&self.run_dir, app.as_str(), &version)?;
         let pool = EmbeddedPhpPool::start(
             self.exe.clone(),
             spec,
