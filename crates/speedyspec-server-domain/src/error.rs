@@ -23,6 +23,8 @@ pub enum DomainError {
     },
     #[error("static.root {0:?} must be a relative path without `..`")]
     BadStaticRoot(String),
+    #[error("php.{field} {path:?} must be a relative path without `..`")]
+    BadPhpPath { field: &'static str, path: String },
     #[error("mount path {0:?} must start and end with `/`")]
     BadMountPath(String),
     #[error("mount host {0:?} must be lowercase")]

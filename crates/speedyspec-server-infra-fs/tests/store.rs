@@ -255,3 +255,25 @@ fn commit_binary_sets_executable() {
     );
     assert!(!partial.exists());
 }
+
+#[test]
+fn unpack_refuses_a_php_release_without_its_entry() {
+    let blog = AppId::parse("blog").unwrap();
+    let manifest = r#"{"app":"blog","version":"1.0.0","kind":"php","php":{"document_root":"public","entry":"index.php"}}"#;
+    let s = setup();
+    let unpack = |files: &[(&str, &str)]| {
+        let partial = s.store.partial_dir(&blog, &v1());
+        std::fs::create_dir_all(&partial).unwrap();
+        let artifact = partial.join("artifact");
+        std::fs::write(&artifact, release(manifest, files)).unwrap();
+        s.store
+            .unpack(&blog, &v1(), &artifact)
+            .map_err(|err| err.to_string())
+    };
+    let err = unpack(&[("index.php", "<?php")]).unwrap_err();
+    assert!(
+        err.contains("public/index.php"),
+        "the refusal names the entry: {err}"
+    );
+    assert!(unpack(&[("public/index.php", "<?php")]).is_ok());
+}

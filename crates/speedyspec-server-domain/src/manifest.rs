@@ -22,9 +22,9 @@ pub struct ReleaseManifest {
     pub requires: BTreeMap<AppId, semver::VersionReq>,
     #[serde(rename = "static", default, skip_serializing_if = "Option::is_none")]
     pub static_: Option<StaticSection>,
-    /// Defined by the PHP worker project; stored unread here.
+    /// How a php release is served; a php release without one gets the defaults.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub php: Option<serde_json::Value>,
+    pub php: Option<PhpSection>,
     /// The keeper protocol a server binary speaks. Only for kind `server`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub protocol: Option<u32>,
@@ -42,6 +42,49 @@ pub struct StaticSection {
     /// `Cache-Control` rules; the first match wins.
     #[serde(default)]
     pub cache: Vec<CacheRule>,
+}
+
+/// How a php release is served.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PhpSection {
+    /// The directory, relative to the release root, that URLs map into.
+    #[serde(default = "PhpSection::default_document_root")]
+    pub document_root: String,
+    /// The front controller under `document_root`, which gets every path that is not an existing file.
+    #[serde(default = "PhpSection::default_entry")]
+    pub entry: String,
+    /// INI settings for the release's workers.
+    #[serde(default)]
+    pub ini: BTreeMap<String, String>,
+}
+
+impl PhpSection {
+    fn default_document_root() -> String {
+        ".".to_string()
+    }
+
+    fn default_entry() -> String {
+        "index.php".to_string()
+    }
+}
+
+impl Default for PhpSection {
+    fn default() -> Self {
+        PhpSection {
+            document_root: Self::default_document_root(),
+            entry: Self::default_entry(),
+            ini: BTreeMap::new(),
+        }
+    }
+}
+
+/// A relative path with no `..`, absolute or empty part.
+fn inside(path: &str) -> bool {
+    !path.is_empty()
+        && Path::new(path)
+            .components()
+            .all(|c| matches!(c, Component::Normal(_) | Component::CurDir))
 }
 
 /// A `Cache-Control` value for the files a glob matches.
@@ -62,6 +105,11 @@ impl ReleaseManifest {
         manifest.check()?;
 
         Ok(manifest)
+    }
+
+    /// The php section of a php release (the defaults when it has none); `None` for other kinds.
+    pub fn php_section(&self) -> Option<PhpSection> {
+        (self.kind == AppKind::Php).then(|| self.php.clone().unwrap_or_default())
     }
 
     fn check(&self) -> Result<(), DomainError> {
@@ -92,6 +140,16 @@ impl ReleaseManifest {
                 kind,
                 section: "php",
             });
+        }
+        if let Some(php) = &self.php {
+            for (field, value) in [("document_root", &php.document_root), ("entry", &php.entry)] {
+                if !inside(value) {
+                    return Err(DomainError::BadPhpPath {
+                        field,
+                        path: value.clone(),
+                    });
+                }
+            }
         }
         if let Some(section) = &self.static_ {
             let root = Path::new(&section.root);
@@ -171,13 +229,51 @@ mod tests {
     }
 
     #[test]
-    fn php_section_is_kept_unread() {
+    fn php_section_parses_with_defaults() {
         let manifest = ReleaseManifest::parse(
-            br#"{"app":"blog","version":"1.0.0","kind":"php","php":{"entry":"index.php"}}"#,
+            br#"{"app":"blog","version":"1.0.0","kind":"php","php":{"entry":"index.php","ini":{"memory_limit":"64M"}}}"#,
         )
         .unwrap();
-        assert_eq!(manifest.php.unwrap()["entry"], "index.php");
+        let php = manifest.php_section().unwrap();
+        assert_eq!(
+            (php.document_root.as_str(), php.entry.as_str()),
+            (".", "index.php")
+        );
+        assert_eq!(php.ini["memory_limit"], "64M");
+        let bare =
+            ReleaseManifest::parse(br#"{"app":"blog","version":"1.0.0","kind":"php"}"#).unwrap();
+        let php = bare.php_section().unwrap();
+        assert_eq!(
+            (php.document_root.as_str(), php.entry.as_str()),
+            (".", "index.php")
+        );
         assert!(manifest.requires.is_empty());
+        let static_ = ReleaseManifest::parse(SPEC_EXAMPLE.as_bytes()).unwrap();
+        assert!(
+            static_.php_section().is_none(),
+            "only php releases have one"
+        );
+    }
+
+    #[test]
+    fn php_section_paths_stay_inside_the_release() {
+        for bad in [
+            r#"{"document_root":"../up"}"#,
+            r#"{"entry":"/etc/passwd"}"#,
+            r#"{"entry":"a/../../b.php"}"#,
+            r#"{"entry":""}"#,
+        ] {
+            let json = format!(r#"{{"app":"blog","version":"1.0.0","kind":"php","php":{bad}}}"#);
+            let err = ReleaseManifest::parse(json.as_bytes())
+                .unwrap_err()
+                .to_string();
+            assert!(err.contains("php"), "{bad}: {err}");
+        }
+        let unknown = br#"{"app":"blog","version":"1.0.0","kind":"php","php":{"entri":"x.php"}}"#;
+        assert!(
+            ReleaseManifest::parse(unknown).is_err(),
+            "unknown fields are refused"
+        );
     }
 
     #[test]

@@ -77,6 +77,15 @@ impl ReleaseStore for FsReleaseStore {
                     format!("version is {}, expected {version}", manifest.version),
                 ));
             }
+            if let Some(php) = manifest.php_section() {
+                let entry = Path::new(&php.document_root).join(&php.entry);
+                if !dest.join(&entry).is_file() {
+                    return Err(error(
+                        &dest.join(MANIFEST_FILE),
+                        format!("the php entry {} is not in the release", entry.display()),
+                    ));
+                }
+            }
             Ok(manifest)
         })();
         if result.is_err() {
