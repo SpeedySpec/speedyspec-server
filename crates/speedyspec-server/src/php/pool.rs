@@ -165,7 +165,16 @@ pub fn socket_dir(run_dir: &Path, app: &str, version: &str) -> PathBuf {
 /// cannot be used (the server already runs without its lock and control socket then, with a warning).
 pub fn prepare_socket_dir(run_dir: &Path, app: &str, version: &str) -> Result<PathBuf, String> {
     let dir = socket_dir(run_dir, app, version);
-    match std::fs::create_dir_all(&dir) {
+    // The server never creates run_dir itself (immutable mode writes nothing); it uses one that exists.
+    let usable = if dir.starts_with(run_dir) && !run_dir.is_dir() {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("{} does not exist", run_dir.display()),
+        ))
+    } else {
+        std::fs::create_dir_all(&dir)
+    };
+    match usable {
         Ok(()) => Ok(dir),
         Err(err) => {
             let fallback = PathBuf::from(format!(
@@ -572,7 +581,11 @@ mod tests {
 
     #[test]
     fn socket_dir_falls_back_when_run_dir_is_unusable() {
-        let dir = tempfile::tempdir().unwrap();
+        // Short enough that run_dir itself is usable for sockets.
+        let dir = tempfile::Builder::new()
+            .prefix("ss")
+            .tempdir_in("/tmp")
+            .unwrap();
         let usable = prepare_socket_dir(dir.path(), "blog", "1.0.0").unwrap();
         assert!(usable.starts_with(dir.path()) && usable.is_dir());
         let blocked = dir.path().join("file");
@@ -580,6 +593,17 @@ mod tests {
         let fallback = prepare_socket_dir(&blocked, "blog", "2.0.0").unwrap();
         assert!(
             fallback.starts_with("/tmp") && fallback.is_dir(),
+            "{}",
+            fallback.display()
+        );
+        let _ = std::fs::remove_dir_all(&fallback);
+        let missing = dir.path().join("no-such-run-dir");
+        let fallback = prepare_socket_dir(&missing, "blog", "3.0.0").unwrap();
+        assert!(!missing.exists(), "the server never creates run_dir");
+        assert!(
+            fallback
+                .to_string_lossy()
+                .starts_with("/tmp/speedyspec-php-"),
             "{}",
             fallback.display()
         );

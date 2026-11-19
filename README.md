@@ -105,6 +105,19 @@ check_interval = "15m"
 prerelease = false
 allow_unsigned = false
 
+[app.blog]
+kind = "php"
+source = "https://releases.example.com/blog/index.json"
+
+[app.blog.php]                         # php apps only; see docs/php.md
+workers = { min = 1, max = 4 }         # start min, grow to max on demand
+max_requests = 1000                    # requests before a worker is recycled
+request_timeout = "60s"                # a longer request is a 504
+memory_limit = "256MiB"                # a worker past this after a request is recycled
+idle_timeout = "10s"                   # idle workers above min exit after this
+site_dir = "/var/lib/speedyspec/sites/blog"  # the app's writable directory; required in managed mode
+bindings = {}                          # PHP classes bound to ports for every request
+
 [[mount]]
 host = "*"                             # or an exact host, which beats "*" on that host
 path = "/admin/"
@@ -244,11 +257,27 @@ The `Dockerfile` builds the image (a static binary on an empty base).
 
 See [`docs/cluster.md`](docs/cluster.md) for how leaders, followers, epochs and rollouts work.
 
+## PHP apps
+
+An app with `kind = "php"` runs on a pool of supervised PHP workers (an embedded, static PHP with every extension
+WordPress needs), per release, over FastCGI. WordPress's hook functions, `WP_Hook` and a service container
+(`SpeedySpec\Container\Container`) are native, in Rust. Build the server with the `php` feature; without it a PHP app
+answers 503.
+
+Its settings are under `[app.<id>.php]`, as in the example configuration above.
+
+See [`docs/php.md`](docs/php.md) for the build, the release's `php` section, the pool settings, the site directory and
+`php.bindings`, and [`docs/architecture.md`](docs/architecture.md) for how WordPress is being ported.
+
 ## Development
 
 ```
-cargo test --workspace --features speedyspec-server/test-hooks
+scripts/build-php.sh                                   # once: the static PHP, into .php-build/
+cargo test --workspace --features speedyspec-server/test-hooks,speedyspec-server/php
 ```
+
+On Linux musl, `scripts/linux-php.sh scripts/build-php.sh` and `scripts/linux-php.sh cargo test …`. Without the static
+PHP, leave `php` off and `--exclude` the PHP crates (as the CI's `test` job does).
 
 `test-hooks` turns on the hooks the keeper tests need (fake versions and protocols, crash and never-ready switches, a
 slow streaming route, and the one-host lease file `leadership = "file"` the multi-process cluster tests use). It is
