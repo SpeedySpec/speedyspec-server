@@ -75,6 +75,9 @@ pub struct AppConfig {
     pub allow_unsigned: bool,
     /// The worker pool of a `php` app (`app.<id>.php`); `None` for other kinds.
     pub php: Option<PhpConfig>,
+    /// The `runtime` app a `php` app's workers run (`app.<id>.runtime`, or the only runtime app); `None` for other
+    /// kinds, and for a php app while no runtime app is configured.
+    pub runtime: Option<AppId>,
 }
 
 /// How many workers a php app's pool keeps: `min` always, up to `max` on demand.
@@ -401,6 +404,7 @@ struct RawApp {
     #[serde(default)]
     allow_unsigned: bool,
     php: Option<RawPhp>,
+    runtime: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -638,6 +642,18 @@ impl Config {
                 AppKind::Php => Some(php_config(raw.mode, &id, app.php)?),
                 _ => None,
             };
+            let runtime = match (&app.runtime, app.kind) {
+                (None, _) => None,
+                (Some(name), AppKind::Php) => Some(
+                    AppId::parse(name)
+                        .map_err(|err| invalid(format!("app.{id}.runtime {name:?}: {err}")))?,
+                ),
+                (Some(_), _) => {
+                    return Err(invalid(format!(
+                        "app.{id}.runtime is only for apps with kind = \"php\""
+                    )));
+                }
+            };
             apps.insert(
                 id,
                 AppConfig {
@@ -651,9 +667,11 @@ impl Config {
                     check_interval,
                     prerelease: app.prerelease,
                     allow_unsigned: app.allow_unsigned,
+                    runtime,
                 },
             );
         }
+        resolve_runtimes(&mut apps)?;
         let servers: Vec<&AppId> = apps
             .iter()
             .filter(|(_, app)| app.kind == AppKind::Server)
@@ -784,6 +802,48 @@ impl Config {
 
 /// The per-app rules: a mode mixes nothing, and the server app has neither `path` nor (until managed mode) anything
 /// to mount.
+/// Gives every php app its runtime app: the one it names, which must be a `runtime` app, or the only runtime app
+/// configured. A php app with several to choose from must name one.
+fn resolve_runtimes(apps: &mut BTreeMap<AppId, AppConfig>) -> Result<(), ConfigError> {
+    let runtimes: Vec<AppId> = apps
+        .iter()
+        .filter(|(_, app)| app.kind == AppKind::Runtime)
+        .map(|(id, _)| id.clone())
+        .collect();
+    for (id, app) in apps.iter_mut().filter(|(_, app)| app.kind == AppKind::Php) {
+        match (&app.runtime, runtimes.as_slice()) {
+            (Some(named), _) if !runtimes.contains(named) => {
+                return Err(invalid(format!(
+                    "app.{id}.runtime {named:?} is not a configured app with kind = \"runtime\""
+                )));
+            }
+            (Some(_), _) | (None, []) => {}
+            (None, [only]) => app.runtime = Some(only.clone()),
+            (None, _) => {
+                return Err(invalid(format!(
+                    "app.{id}.runtime must name one of the runtime apps {}",
+                    runtimes
+                        .iter()
+                        .map(AppId::as_str)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+impl Config {
+    /// Each php app's runtime app.
+    pub fn php_runtimes(&self) -> BTreeMap<AppId, AppId> {
+        self.apps
+            .iter()
+            .filter_map(|(id, app)| app.runtime.clone().map(|runtime| (id.clone(), runtime)))
+            .collect()
+    }
+}
+
 fn check_app(mode: Mode, id: &AppId, app: &RawApp) -> Result<(), ConfigError> {
     if app.kind == AppKind::Server {
         if app.path.is_some() {
@@ -1415,5 +1475,62 @@ app = "blog"
             ),
             "app.admin.php",
         );
+    }
+
+    const RUNTIME: &str =
+        "\n[app.rt]\nkind = \"runtime\"\nsource = \"https://releases.example.com/rt/index.json\"\n";
+    const BLOG_SITE: &str = "[app.blog.php]\nsite_dir = \"/s\"\n";
+
+    #[test]
+    fn php_app_defaults_to_the_only_runtime() {
+        let config =
+            Config::parse(&format!("{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}{BLOG_SITE}")).unwrap();
+        assert_eq!(config.apps[&id("blog")].runtime, Some(id("rt")));
+        assert_eq!(config.apps[&id("rt")].kind, AppKind::Runtime);
+        assert_eq!(config.apps[&id("rt")].runtime, None);
+    }
+
+    #[test]
+    fn php_app_with_two_runtimes_must_name_one() {
+        let second = "\n[app.rt2]\nkind = \"runtime\"\nsource = \"https://releases.example.com/rt2/index.json\"\n";
+        rejects(
+            &format!("{SPEC_EXAMPLE}{RUNTIME}{second}{MANAGED_BLOG}{BLOG_SITE}"),
+            "app.blog.runtime",
+        );
+        let named = MANAGED_BLOG.replace("kind = \"php\"", "kind = \"php\"\nruntime = \"rt2\"");
+        let config = Config::parse(&format!(
+            "{SPEC_EXAMPLE}{RUNTIME}{second}{named}{BLOG_SITE}"
+        ))
+        .unwrap();
+        assert_eq!(config.apps[&id("blog")].runtime, Some(id("rt2")));
+    }
+
+    #[test]
+    fn runtime_must_name_a_runtime_app() {
+        let named = MANAGED_BLOG.replace("kind = \"php\"", "kind = \"php\"\nruntime = \"admin\"");
+        rejects(
+            &format!("{SPEC_EXAMPLE}{RUNTIME}{named}{BLOG_SITE}"),
+            "app.blog.runtime",
+        );
+        rejects(
+            &format!(
+                "{SPEC_EXAMPLE}{}",
+                RUNTIME.replace("kind = \"runtime\"", "kind = \"runtime\"\nruntime = \"rt\"")
+            ),
+            "app.rt.runtime",
+        );
+    }
+
+    #[test]
+    fn immutable_runtime_from_path() {
+        let config = Config::parse(&format!(
+            "{IMMUTABLE}\n[app.rt]\nkind = \"runtime\"\npath = \"/opt/rt/1.0.0\"\n"
+        ))
+        .unwrap();
+        assert_eq!(
+            config.apps[&id("rt")].path.as_deref(),
+            Some(std::path::Path::new("/opt/rt/1.0.0"))
+        );
+        assert_eq!(config.apps[&id("blog")].runtime, Some(id("rt")));
     }
 }

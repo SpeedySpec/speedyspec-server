@@ -115,6 +115,7 @@ mod tests {
             static_: None,
             php: None,
             protocol: None,
+            contracts: Vec::new(),
         }
     }
 

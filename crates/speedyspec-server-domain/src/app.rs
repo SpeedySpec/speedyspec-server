@@ -65,6 +65,8 @@ pub enum AppKind {
     Static,
     /// A PHP application run by the worker pool.
     Php,
+    /// The PHP runtime binary the PHP apps' workers run; goes live by moving every PHP app on it to new pools.
+    Runtime,
 }
 
 impl AppKind {
@@ -73,6 +75,21 @@ impl AppKind {
             AppKind::Server => "server",
             AppKind::Static => "static",
             AppKind::Php => "php",
+            AppKind::Runtime => "runtime",
+        }
+    }
+
+    /// Whether a release is one binary per target platform (rather than an archive for any).
+    pub fn is_binary(self) -> bool {
+        matches!(self, AppKind::Server | AppKind::Runtime)
+    }
+
+    /// The file name a binary kind's release keeps its binary under.
+    pub fn binary_name(self) -> Option<&'static str> {
+        match self {
+            AppKind::Server => Some("speedyspec-server"),
+            AppKind::Runtime => Some("speedyspec-php-runtime"),
+            AppKind::Static | AppKind::Php => None,
         }
     }
 }
@@ -104,6 +121,21 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<AppKind>("\"php\"").unwrap(),
             AppKind::Php
+        );
+    }
+
+    #[test]
+    fn binary_kinds() {
+        assert!(AppKind::Server.is_binary() && AppKind::Runtime.is_binary());
+        assert!(!AppKind::Static.is_binary() && !AppKind::Php.is_binary());
+        assert_eq!(
+            AppKind::Runtime.binary_name(),
+            Some("speedyspec-php-runtime")
+        );
+        assert_eq!(AppKind::Server.binary_name(), Some("speedyspec-server"));
+        assert_eq!(
+            serde_json::to_string(&AppKind::Runtime).unwrap(),
+            "\"runtime\""
         );
     }
 }

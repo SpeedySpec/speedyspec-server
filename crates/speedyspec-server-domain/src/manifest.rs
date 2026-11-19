@@ -28,6 +28,9 @@ pub struct ReleaseManifest {
     /// The keeper protocol a server binary speaks. Only for kind `server`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub protocol: Option<u32>,
+    /// The worker contract majors a runtime binary speaks. Required for kind `runtime`, and only there.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub contracts: Vec<u32>,
 }
 
 /// How a static release is served.
@@ -57,6 +60,9 @@ pub struct PhpSection {
     /// INI settings for the release's workers.
     #[serde(default)]
     pub ini: BTreeMap<String, String>,
+    /// The versions of the runtime this app is configured to run on that this release works with.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime: Option<semver::VersionReq>,
 }
 
 impl PhpSection {
@@ -75,6 +81,7 @@ impl Default for PhpSection {
             document_root: Self::default_document_root(),
             entry: Self::default_entry(),
             ini: BTreeMap::new(),
+            runtime: None,
         }
     }
 }
@@ -121,10 +128,25 @@ impl ReleaseManifest {
                     section: "static",
                 });
             }
-            (AppKind::Server | AppKind::Php, Some(_)) => {
+            (AppKind::Server | AppKind::Php | AppKind::Runtime, Some(_)) => {
                 return Err(DomainError::UnexpectedSection {
                     kind,
                     section: "static",
+                });
+            }
+            _ => {}
+        }
+        match (self.kind, self.contracts.is_empty()) {
+            (AppKind::Runtime, true) => {
+                return Err(DomainError::MissingSection {
+                    kind,
+                    section: "contracts",
+                });
+            }
+            (AppKind::Server | AppKind::Static | AppKind::Php, false) => {
+                return Err(DomainError::UnexpectedSection {
+                    kind,
+                    section: "contracts",
                 });
             }
             _ => {}
@@ -292,4 +314,43 @@ mod tests {
     }
 
     const MANIFEST_NO_PROTOCOL: &str = r#"{"app":"server","version":"0.1.0","kind":"server"}"#;
+
+    #[test]
+    fn runtime_manifest_requires_contracts() {
+        let json = r#"{"app":"rt","version":"1.0.0","kind":"runtime"}"#;
+        assert_eq!(
+            ReleaseManifest::parse(json.as_bytes()).unwrap_err(),
+            DomainError::MissingSection {
+                kind: "runtime",
+                section: "contracts"
+            }
+        );
+        let json = r#"{"app":"rt","version":"1.0.0","kind":"runtime","contracts":[1]}"#;
+        assert_eq!(
+            ReleaseManifest::parse(json.as_bytes()).unwrap().contracts,
+            vec![1]
+        );
+    }
+
+    #[test]
+    fn contracts_only_on_runtime() {
+        let json = r#"{"app":"blog","version":"1.0.0","kind":"php","contracts":[1]}"#;
+        assert_eq!(
+            ReleaseManifest::parse(json.as_bytes()).unwrap_err(),
+            DomainError::UnexpectedSection {
+                kind: "php",
+                section: "contracts"
+            }
+        );
+    }
+
+    #[test]
+    fn php_section_parses_runtime_requirement() {
+        let json = r#"{"app":"blog","version":"1.0.0","kind":"php","php":{"runtime":"^1.4"}}"#;
+        let manifest = ReleaseManifest::parse(json.as_bytes()).unwrap();
+        assert_eq!(
+            manifest.php_section().unwrap().runtime,
+            Some(semver::VersionReq::parse("^1.4").unwrap())
+        );
+    }
 }

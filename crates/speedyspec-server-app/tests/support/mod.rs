@@ -34,7 +34,8 @@ pub struct World {
     pub policies: BTreeMap<AppId, AppPolicy>,
     /// (app, version) -> (manifest json, files)
     releases: BTreeMap<(String, String), String>,
-    server_releases: Vec<(String, String, String)>,
+    /// (app, version, target, sha256) of every published binary release.
+    binary_releases: Vec<(String, String, String, String)>,
 }
 
 pub fn url(app: &str) -> String {
@@ -58,7 +59,7 @@ impl World {
             runtime: Arc::new(RecordingRuntime::new()),
             policies: BTreeMap::new(),
             releases: BTreeMap::new(),
-            server_releases: Vec::new(),
+            binary_releases: Vec::new(),
         }
     }
 
@@ -102,27 +103,37 @@ impl World {
         let manifest = format!(
             r#"{{"app":"server","version":"{version}","kind":"{kind}","requires":{{{requires}}}}}"#
         );
-        let bytes = manifest.into_bytes();
+        self.publish_binary("server", version, &manifest, target);
+    }
+
+    /// Publishes a binary release of `app` for `target`: the "binary" holds `manifest`, which the fake inspector reads.
+    pub fn publish_binary(&mut self, app: &str, version: &str, manifest: &str, target: &str) {
+        let bytes = manifest.as_bytes().to_vec();
         let sha = hex(&Sha256::digest(&bytes));
-        let artifact = format!("https://releases.test/server/{target}/server-{version}");
+        let artifact = format!("https://releases.test/{app}/{target}/{app}-{version}");
         self.source.add_file(&artifact, bytes);
         self.source
             .add_file(&format!("{artifact}.minisig"), b"good".to_vec());
-        self.server_releases
-            .push((version.to_string(), target.to_string(), sha));
+        self.binary_releases.push((
+            app.to_string(),
+            version.to_string(),
+            target.to_string(),
+            sha,
+        ));
         let entries: Vec<String> = self
-            .server_releases
+            .binary_releases
             .iter()
-            .map(|(version, target, sha)| {
-                let url = format!("https://releases.test/server/{target}/server-{version}");
+            .filter(|(a, ..)| a == app)
+            .map(|(_, version, target, sha)| {
+                let url = format!("https://releases.test/{app}/{target}/{app}-{version}");
                 format!(
                     r#"{{"version":"{version}","published":"x","artifacts":[{{"target":"{target}","url":"{url}","sha256":"{sha}","minisig":"{url}.minisig"}}]}}"#
                 )
             })
             .collect();
         self.source.add_index(
-            &url("server"),
-            &format!(r#"{{"app":"server","releases":[{}]}}"#, entries.join(",")),
+            &url(app),
+            &format!(r#"{{"app":"{app}","releases":[{}]}}"#, entries.join(",")),
         );
     }
 
@@ -225,6 +236,7 @@ pub fn server_manifest() -> ReleaseManifest {
         static_: None,
         php: None,
         protocol: None,
+        contracts: Vec::new(),
     }
 }
 

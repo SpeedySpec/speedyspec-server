@@ -110,6 +110,7 @@ impl ReleaseStore for FsReleaseStore {
         app: &AppId,
         version: &Version,
         artifact: &Path,
+        name: &str,
     ) -> Result<PathBuf, StoreError> {
         use std::os::unix::fs::PermissionsExt;
 
@@ -118,12 +119,23 @@ impl ReleaseStore for FsReleaseStore {
             std::fs::remove_dir_all(&dir).map_err(|err| error(&dir, err))?;
         }
         std::fs::create_dir_all(&dir).map_err(|err| error(&dir, err))?;
-        let path = dir.join("speedyspec-server");
+        let path = dir.join(name);
         std::fs::rename(artifact, &path).map_err(|err| error(&path, err))?;
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
             .map_err(|err| error(&path, err))?;
         self.discard_partial(app, version);
         Ok(path)
+    }
+
+    fn write_manifest(
+        &self,
+        app: &AppId,
+        version: &Version,
+        manifest: &ReleaseManifest,
+    ) -> Result<(), StoreError> {
+        let path = self.release_dir(app, version).join(MANIFEST_FILE);
+        let json = serde_json::to_vec_pretty(manifest).expect("a manifest serializes");
+        std::fs::write(&path, json).map_err(|err| error(&path, err))
     }
 
     fn release_dir(&self, app: &AppId, version: &Version) -> PathBuf {

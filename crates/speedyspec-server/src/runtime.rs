@@ -129,6 +129,7 @@ mod tests {
             }),
             php: None,
             protocol: None,
+            contracts: Vec::new(),
         }
     }
 

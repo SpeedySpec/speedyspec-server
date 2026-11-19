@@ -57,6 +57,7 @@ pub fn server_manifest(app: AppId) -> ReleaseManifest {
         static_: None,
         php: None,
         protocol: Some(crate::binary::own_protocol()),
+        contracts: Vec::new(),
     }
 }
 
@@ -84,6 +85,20 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
     for (id, app) in &config.apps {
         let manifest = match (app.kind, &app.path) {
             (AppKind::Server, _) => server_manifest(id.clone()),
+            (AppKind::Runtime, Some(path)) => {
+                let binary = path.join(AppKind::Runtime.binary_name().expect("a binary kind"));
+                let mut manifest = speedyspec_server_domain::BinaryInspector::manifest(
+                    &crate::binary::RuntimeInspector,
+                    &binary,
+                )
+                .map_err(|message| BootError::Manifest {
+                    path: binary.clone(),
+                    message,
+                })?;
+                manifest.app = id.clone();
+                paths.insert(id.clone(), path.clone());
+                manifest
+            }
             (_, Some(path)) => {
                 let manifest = read_manifest(path, id, app.kind)?;
                 paths.insert(id.clone(), path.clone());
@@ -93,12 +108,14 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
         };
         manifests.insert(id.clone(), manifest);
     }
-    check_set(&manifests).map_err(BootError::Incompatible)?;
+    check_set(&manifests, &config.php_runtimes()).map_err(BootError::Incompatible)?;
 
     let mut apps = HashMap::new();
     for (id, manifest) in &manifests {
         let handle = match manifest.kind {
             AppKind::Server => AppHandle::AdminApiPlaceholder,
+            // A runtime is never mounted: the php apps on it run its binary.
+            AppKind::Runtime => AppHandle::NotInstalled,
             AppKind::Php => php_handle(config, id, manifest, &paths[id])?,
             AppKind::Static => {
                 let section = manifest

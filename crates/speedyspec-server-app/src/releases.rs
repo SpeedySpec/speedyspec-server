@@ -111,6 +111,10 @@ pub struct ReleaseManager {
     pub(crate) state_store: Arc<dyn StateStore>,
     pub(crate) runtimes: HashMap<AppKind, Arc<dyn AppRuntime>>,
     pub(crate) inspector: Arc<dyn BinaryInspector>,
+    /// Reads runtime binaries' manifests; the server's inspector when none is set.
+    pub(crate) runtime_inspector: Option<Arc<dyn BinaryInspector>>,
+    /// Each php app's runtime app, for the runtime requirement in the set check.
+    pub(crate) php_runtimes: BTreeMap<AppId, AppId>,
     /// The Rust target triple whose server artifacts this build installs.
     pub(crate) target: String,
     pub(crate) state: Mutex<ReleaseState>,
@@ -170,6 +174,8 @@ impl ReleaseManager {
             state_store,
             runtimes,
             inspector,
+            runtime_inspector: None,
+            php_runtimes: BTreeMap::new(),
             target,
             published: Mutex::new(state.clone()),
             downloads: Mutex::new(HashMap::new()),
@@ -179,6 +185,26 @@ impl ReleaseManager {
             node: Mutex::new(Node::default()),
             took_over: Mutex::new(None),
         })
+    }
+
+    /// Reads runtime binaries' manifests with `inspector` (they run as `<binary> manifest`, as the server does, but
+    /// print a different manifest).
+    pub fn with_runtime_inspector(mut self, inspector: Arc<dyn BinaryInspector>) -> ReleaseManager {
+        self.runtime_inspector = Some(inspector);
+        self
+    }
+
+    /// Each php app's runtime app: a php release's `php.runtime` is checked against it.
+    pub fn with_php_runtimes(mut self, runtimes: BTreeMap<AppId, AppId>) -> ReleaseManager {
+        self.php_runtimes = runtimes;
+        self
+    }
+
+    fn binary_inspector(&self, kind: AppKind) -> &Arc<dyn BinaryInspector> {
+        match (kind, &self.runtime_inspector) {
+            (AppKind::Runtime, Some(inspector)) => inspector,
+            _ => &self.inspector,
+        }
     }
 
     /// Takes the operation lock. A panic in an earlier operation does not poison it for later ones.
@@ -403,13 +429,13 @@ impl ReleaseManager {
         {
             return Ok(version);
         }
-        let target = if policy.kind == AppKind::Server {
+        let target = if policy.kind.is_binary() {
             self.target.as_str()
         } else {
             "any"
         };
         let Some(artifact) = entry.artifact_for(target) else {
-            let err = if policy.kind == AppKind::Server {
+            let err = if policy.kind.is_binary() {
                 ReleaseError::NoArtifactForTarget(app.clone(), version.clone(), target.to_string())
             } else {
                 ReleaseError::NoArtifact(app.clone(), version.clone())
@@ -469,7 +495,7 @@ impl ReleaseManager {
         {
             return Ok(());
         }
-        if self.policy(app)?.kind == AppKind::Server {
+        if self.policy(app)?.kind.is_binary() {
             return self.keep_binary(state, app, version);
         }
         let policy = self.policy(app)?.clone();
@@ -503,27 +529,44 @@ impl ReleaseManager {
         Ok(())
     }
 
-    /// Keeps a verified server binary: moves it into place, then reads its manifest by running it.
+    /// Keeps a verified binary (the server's or a runtime's): moves it into place, then reads its manifest by running
+    /// it. A runtime's manifest is kept beside it, with this app's id, so switches can read it.
     fn keep_binary(
         &self,
         state: &mut ReleaseState,
         app: &AppId,
         version: &Version,
     ) -> Result<(), ReleaseError> {
+        let kind = self.policy(app)?.kind;
+        let name = kind.binary_name().expect("a binary kind");
         let archive = self.store.partial_dir(app, version).join("artifact");
-        let path = self.store.commit_binary(app, version, &archive)?;
-        let checked = self.inspector.manifest(&path).and_then(|manifest| {
-            if manifest.kind != AppKind::Server || manifest.version != *version {
-                Err(format!(
-                    "{} reports kind {} version {}, expected a server binary of version {version}",
-                    path.display(),
-                    manifest.kind.as_str(),
-                    manifest.version
-                ))
-            } else {
-                Ok(())
+        let path = self.store.commit_binary(app, version, &archive, name)?;
+        let checked = self
+            .binary_inspector(kind)
+            .manifest(&path)
+            .and_then(|manifest| {
+                if manifest.kind != kind || manifest.version != *version {
+                    Err(format!(
+                        "{} reports kind {} version {}, expected a {} binary of version {version}",
+                        path.display(),
+                        manifest.kind.as_str(),
+                        manifest.version,
+                        kind.as_str()
+                    ))
+                } else {
+                    Ok(manifest)
+                }
+            });
+        let checked = match checked {
+            Ok(mut manifest) if kind == AppKind::Runtime => {
+                manifest.app = app.clone();
+                self.store
+                    .write_manifest(app, version, &manifest)
+                    .map_err(|err| err.to_string())
             }
-        });
+            Ok(_) => Ok(()),
+            Err(reason) => Err(reason),
+        };
         if let Err(reason) = checked {
             let _ = self.store.remove(app, version);
             return Err(self.reject_locked(state, app, version, ReleaseError::Inspect(reason)));
@@ -670,7 +713,7 @@ impl ReleaseManager {
             manifests.insert(app.clone(), manifest.clone());
             incoming.push((app.clone(), version.clone(), manifest));
         }
-        check_set(&manifests).map_err(ReleaseError::Incompatible)?;
+        check_set(&manifests, &self.php_runtimes).map_err(ReleaseError::Incompatible)?;
 
         let mut prepared = Vec::with_capacity(incoming.len());
         let mut failures = Vec::new();
@@ -964,7 +1007,7 @@ impl ReleaseManager {
             tracing::error!(event = "boot_state_not_saved", error = %err);
         }
 
-        if let Err(incompatible) = check_set(&self.manifests_of(&state)) {
+        if let Err(incompatible) = check_set(&self.manifests_of(&state), &self.php_runtimes) {
             for item in &incompatible {
                 tracing::error!(event = "incompatible_set", message = %item);
             }
@@ -1059,7 +1102,8 @@ impl ReleaseManager {
             }
         }
         let version = server_target.ok_or(ReleaseError::ServerSwitchViaKeeper)?;
-        crate::compat::check_set(&manifests).map_err(ReleaseError::Incompatible)?;
+        crate::compat::check_set(&manifests, &self.php_runtimes)
+            .map_err(ReleaseError::Incompatible)?;
 
         let binary = self
             .store
@@ -1454,7 +1498,7 @@ impl ReleaseManager {
         for (app, version) in &targets {
             manifests.insert(app.clone(), self.store.manifest(app, version)?);
         }
-        check_set(&manifests).map_err(ReleaseError::Incompatible)?;
+        check_set(&manifests, &self.php_runtimes).map_err(ReleaseError::Incompatible)?;
 
         let revision = state.revision + 1;
         let mut next = state.clone();

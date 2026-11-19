@@ -85,7 +85,9 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
         crate::binary::TARGET.to_string(),
         crate::cluster::build(config)?,
     )
-    .map_err(|err| err.to_string())?;
+    .map_err(|err| err.to_string())?
+    .with_runtime_inspector(Arc::new(crate::binary::RuntimeInspector))
+    .with_php_runtimes(config.php_runtimes());
 
     let report = manager.boot();
     tracing::info!(

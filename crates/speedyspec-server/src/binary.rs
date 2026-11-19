@@ -18,42 +18,78 @@ pub struct ProcessInspector;
 
 impl BinaryInspector for ProcessInspector {
     fn manifest(&self, binary: &Path) -> Result<ReleaseManifest, String> {
-        let mut child = Command::new(binary)
-            .arg("manifest")
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .map_err(|err| format!("running {} manifest: {err}", binary.display()))?;
-        let deadline = Instant::now() + INSPECT_TIMEOUT;
-        let status = loop {
-            if let Some(status) = child.try_wait().map_err(|err| err.to_string())? {
-                break status;
-            }
-            if Instant::now() > deadline {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(format!(
-                    "{} manifest did not finish within {INSPECT_TIMEOUT:?}",
-                    binary.display()
-                ));
-            }
-            std::thread::sleep(Duration::from_millis(20));
-        };
-        let mut out = Vec::new();
-        child
-            .stdout
-            .take()
-            .expect("piped")
-            .read_to_end(&mut out)
-            .map_err(|err| err.to_string())?;
-        if !status.success() {
+        let out = run_manifest(binary)?;
+        ReleaseManifest::parse(&out).map_err(|err| format!("{} manifest: {err}", binary.display()))
+    }
+}
+
+/// Runs `<binary> manifest` and returns what it printed, within [`INSPECT_TIMEOUT`].
+fn run_manifest(binary: &Path) -> Result<Vec<u8>, String> {
+    let mut child = Command::new(binary)
+        .arg("manifest")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|err| format!("running {} manifest: {err}", binary.display()))?;
+    let deadline = Instant::now() + INSPECT_TIMEOUT;
+    let status = loop {
+        if let Some(status) = child.try_wait().map_err(|err| err.to_string())? {
+            break status;
+        }
+        if Instant::now() > deadline {
+            let _ = child.kill();
+            let _ = child.wait();
             return Err(format!(
-                "{} manifest exited with {status}",
+                "{} manifest did not finish within {INSPECT_TIMEOUT:?}",
                 binary.display()
             ));
         }
-        ReleaseManifest::parse(&out).map_err(|err| format!("{} manifest: {err}", binary.display()))
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    let mut out = Vec::new();
+    child
+        .stdout
+        .take()
+        .expect("piped")
+        .read_to_end(&mut out)
+        .map_err(|err| err.to_string())?;
+    if !status.success() {
+        return Err(format!(
+            "{} manifest exited with {status}",
+            binary.display()
+        ));
+    }
+    Ok(out)
+}
+
+/// Reads a PHP runtime binary's manifest: `<binary> manifest` prints a [`RuntimeManifest`], which this maps to a
+/// release manifest of kind `runtime` (its app id is filled in by whoever keeps it).
+///
+/// [`RuntimeManifest`]: speedyspec_runtime_contract::RuntimeManifest
+pub struct RuntimeInspector;
+
+/// The app id a runtime binary's manifest is given before the release manager sets the real one.
+pub const RUNTIME_PLACEHOLDER_APP: &str = "runtime";
+
+impl BinaryInspector for RuntimeInspector {
+    fn manifest(&self, binary: &Path) -> Result<ReleaseManifest, String> {
+        let output = run_manifest(binary)?;
+        let runtime: speedyspec_runtime_contract::RuntimeManifest = serde_json::from_slice(&output)
+            .map_err(|err| format!("{} manifest: {err}", binary.display()))?;
+        let manifest = ReleaseManifest {
+            app: speedyspec_server_domain::AppId::parse(RUNTIME_PLACEHOLDER_APP)
+                .expect("a valid id"),
+            version: runtime.version,
+            kind: speedyspec_server_domain::AppKind::Runtime,
+            requires: Default::default(),
+            static_: None,
+            php: None,
+            protocol: None,
+            contracts: runtime.contracts,
+        };
+        let json = serde_json::to_vec(&manifest).expect("a manifest serializes");
+        ReleaseManifest::parse(&json).map_err(|err| format!("{} manifest: {err}", binary.display()))
     }
 }
 
