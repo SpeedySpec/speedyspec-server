@@ -7,7 +7,7 @@ pub mod path;
 pub mod service;
 
 pub use forwarded::{ForwardedHeaders, RequestOrigin, origin};
-pub use handlers::{AppHandle, Fallback, StaticApp};
+pub use handlers::{AppHandle, Fallback, PhpCall, PhpEndpoint, StaticApp};
 pub use live::LiveApps;
 pub use path::{PathRejection, normalize};
 pub use service::{ServeState, build_router};

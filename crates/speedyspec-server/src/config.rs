@@ -73,7 +73,40 @@ pub struct AppConfig {
     pub check_interval: Duration,
     pub prerelease: bool,
     pub allow_unsigned: bool,
+    /// The worker pool of a `php` app (`app.<id>.php`); `None` for other kinds.
+    pub php: Option<PhpConfig>,
 }
+
+/// How many workers a php app's pool keeps: `min` always, up to `max` on demand.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct WorkerRange {
+    pub min: u32,
+    pub max: u32,
+}
+
+/// `app.<id>.php`: a php app's worker pool.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PhpConfig {
+    pub workers: WorkerRange,
+    /// Requests before a worker is recycled.
+    pub max_requests: u64,
+    /// A request running longer is killed with its worker (504).
+    pub request_timeout: Duration,
+    /// A worker whose memory passes this after a request is recycled, in bytes.
+    pub memory_limit: u64,
+    /// An idle worker above `min` exits after this.
+    pub idle_timeout: Duration,
+    /// The app's writable directory (uploads, `wp-content`, `.env`); required in managed mode.
+    pub site_dir: Option<PathBuf>,
+    /// `(port key, PHP class)` bindings installed at the start of every request.
+    pub bindings: Vec<(String, String)>,
+}
+
+pub const DEFAULT_PHP_WORKERS: WorkerRange = WorkerRange { min: 1, max: 4 };
+pub const DEFAULT_PHP_MAX_REQUESTS: u64 = 1000;
+pub const DEFAULT_PHP_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+pub const DEFAULT_PHP_MEMORY_LIMIT: u64 = 256 * 1024 * 1024;
+pub const DEFAULT_PHP_IDLE_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -367,6 +400,115 @@ struct RawApp {
     prerelease: bool,
     #[serde(default)]
     allow_unsigned: bool,
+    php: Option<RawPhp>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct RawPhp {
+    workers: Option<RawWorkers>,
+    max_requests: Option<u64>,
+    request_timeout: Option<String>,
+    memory_limit: Option<RawBytes>,
+    idle_timeout: Option<String>,
+    site_dir: Option<PathBuf>,
+    #[serde(default)]
+    bindings: BTreeMap<String, String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawWorkers {
+    min: u32,
+    max: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum RawBytes {
+    Count(u64),
+    Text(String),
+}
+
+/// A size: bytes, or a number with K, M, G (or KiB, MiB, GiB), all powers of 1024.
+fn bytes(key: &str, value: &RawBytes) -> Result<u64, ConfigError> {
+    let text = match value {
+        RawBytes::Count(n) => return Ok(*n),
+        RawBytes::Text(text) => text.trim(),
+    };
+    let split = text
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(text.len());
+    let (digits, unit) = text.split_at(split);
+    let scale: u64 = match unit.trim() {
+        "" | "B" => 1,
+        "K" | "KiB" => 1024,
+        "M" | "MiB" => 1024 * 1024,
+        "G" | "GiB" => 1024 * 1024 * 1024,
+        _ => 0,
+    };
+    match digits
+        .parse::<u64>()
+        .ok()
+        .and_then(|n| n.checked_mul(scale))
+        .filter(|_| scale > 0)
+    {
+        Some(n) => Ok(n),
+        None => Err(invalid(format!(
+            "{key} = {text:?} is not a size like \"256MiB\""
+        ))),
+    }
+}
+
+fn php_config(mode: Mode, id: &AppId, raw: Option<RawPhp>) -> Result<PhpConfig, ConfigError> {
+    let raw = raw.unwrap_or_default();
+    let key = |field: &str| format!("app.{id}.php.{field}");
+    let workers = match raw.workers {
+        None => DEFAULT_PHP_WORKERS,
+        Some(RawWorkers { min, max }) => {
+            if max == 0 || min > max {
+                return Err(invalid(format!(
+                    "{} = {{ min = {min}, max = {max} }}: max must be at least 1 and at least min",
+                    key("workers")
+                )));
+            }
+            WorkerRange { min, max }
+        }
+    };
+    let max_requests = raw.max_requests.unwrap_or(DEFAULT_PHP_MAX_REQUESTS);
+    if max_requests == 0 {
+        return Err(invalid(format!(
+            "{} must be at least 1",
+            key("max_requests")
+        )));
+    }
+    let memory_limit = match &raw.memory_limit {
+        None => DEFAULT_PHP_MEMORY_LIMIT,
+        Some(value) => bytes(&key("memory_limit"), value)?,
+    };
+    if mode == Mode::Managed && raw.site_dir.is_none() {
+        return Err(invalid(format!(
+            "{} is required with mode = \"managed\": it is the app's writable directory",
+            key("site_dir")
+        )));
+    }
+    Ok(PhpConfig {
+        workers,
+        max_requests,
+        request_timeout: duration(
+            &key("request_timeout"),
+            raw.request_timeout.as_deref(),
+            DEFAULT_PHP_REQUEST_TIMEOUT,
+        )?,
+        memory_limit,
+        idle_timeout: duration(
+            &key("idle_timeout"),
+            raw.idle_timeout.as_deref(),
+            DEFAULT_PHP_IDLE_TIMEOUT,
+        )?,
+        site_dir: raw.site_dir,
+        bindings: raw.bindings.into_iter().collect(),
+    })
 }
 
 #[derive(Deserialize)]
@@ -487,10 +629,20 @@ impl Config {
             } else {
                 UpdatePolicy::Auto
             };
+            if app.kind != AppKind::Php && app.php.is_some() {
+                return Err(invalid(format!(
+                    "app.{id}.php is only for apps with kind = \"php\""
+                )));
+            }
+            let php = match app.kind {
+                AppKind::Php => Some(php_config(raw.mode, &id, app.php)?),
+                _ => None,
+            };
             apps.insert(
                 id,
                 AppConfig {
                     kind: app.kind,
+                    php,
                     path: app.path,
                     source: app.source,
                     keys: app.keys,
@@ -1187,5 +1339,81 @@ app = "blog"
         ))
         .unwrap();
         assert_eq!(config.cluster.unwrap().leadership, Leadership::File);
+    }
+
+    const MANAGED_BLOG: &str =
+        "\n[app.blog]\nkind = \"php\"\nsource = \"https://releases.example.com/blog/index.json\"\n";
+
+    #[test]
+    fn php_app_gets_the_pool_defaults() {
+        let config = Config::parse(IMMUTABLE).unwrap();
+        let php = config.apps[&id("blog")]
+            .php
+            .clone()
+            .expect("a php app has pool settings");
+        assert_eq!((php.workers.min, php.workers.max), (1, 4));
+        assert_eq!(php.max_requests, 1000);
+        assert_eq!(php.request_timeout, std::time::Duration::from_secs(60));
+        assert_eq!(php.memory_limit, 256 * 1024 * 1024);
+        assert_eq!(php.idle_timeout, std::time::Duration::from_secs(10));
+        assert!(php.site_dir.is_none() && php.bindings.is_empty());
+        assert!(config.apps[&id("admin")].php.is_none());
+    }
+
+    #[test]
+    fn php_settings_parse() {
+        let config = Config::parse(&format!(
+            "{SPEC_EXAMPLE}{MANAGED_BLOG}[app.blog.php]\nworkers = {{ min = 2, max = 8 }}\nmax_requests = 50\nrequest_timeout = \"5s\"\nmemory_limit = \"64MiB\"\nidle_timeout = \"1m\"\nsite_dir = \"/srv/blog-site\"\nbindings = {{ \"SpeedySpec\\\\WpHooks\\\\HookStore\" = \"App\\\\Store\" }}\n"
+        ))
+        .unwrap();
+        let php = config.apps[&id("blog")].php.clone().unwrap();
+        assert_eq!((php.workers.min, php.workers.max), (2, 8));
+        assert_eq!(php.max_requests, 50);
+        assert_eq!(php.request_timeout, std::time::Duration::from_secs(5));
+        assert_eq!(php.memory_limit, 64 * 1024 * 1024);
+        assert_eq!(php.idle_timeout, std::time::Duration::from_secs(60));
+        assert_eq!(
+            php.site_dir.as_deref(),
+            Some(std::path::Path::new("/srv/blog-site"))
+        );
+        assert_eq!(
+            php.bindings,
+            vec![(
+                "SpeedySpec\\WpHooks\\HookStore".to_string(),
+                "App\\Store".to_string()
+            )]
+        );
+        let bytes = Config::parse(&format!("{SPEC_EXAMPLE}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nmemory_limit = 1048576\n")).unwrap();
+        assert_eq!(
+            bytes.apps[&id("blog")].php.clone().unwrap().memory_limit,
+            1_048_576
+        );
+    }
+
+    #[test]
+    fn php_settings_are_checked() {
+        rejects(
+            &format!("{SPEC_EXAMPLE}{MANAGED_BLOG}"),
+            "app.blog.php.site_dir",
+        );
+        rejects(
+            &format!(
+                "{SPEC_EXAMPLE}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nworkers = {{ min = 3, max = 2 }}\n"
+            ),
+            "app.blog.php.workers",
+        );
+        rejects(
+            &format!(
+                "{SPEC_EXAMPLE}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nmemory_limit = \"lots\"\n"
+            ),
+            "app.blog.php.memory_limit",
+        );
+        rejects(
+            &IMMUTABLE.replace(
+                "kind = \"static\"\npath = \"/srv/admin\"",
+                "kind = \"static\"\npath = \"/srv/admin\"\n[app.admin.php]\nmax_requests = 5",
+            ),
+            "app.admin.php",
+        );
     }
 }

@@ -1,0 +1,12 @@
+[package]
+name = "speedyspec-hooks-memory"
+version = "0.1.0"
+description = "In-memory backend for the speedyspec hook contract."
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+
+[dev-dependencies]
+speedyspec-hooks = { path = "../speedyspec-hooks", features = ["conformance"] }

@@ -1,0 +1,15 @@
+[package]
+name = "speedyspec-php-port-macros"
+version = "0.1.0"
+description = "#[php_port]: generates a Rust port trait's PHP twin interface and its PHP adapter."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }

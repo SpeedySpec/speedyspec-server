@@ -2,3 +2,6 @@ target/
 target-linux/
 .superpowers/
 /.k3s/
+/.php-build/
+/.php-build-linux*/
+/craft.yml

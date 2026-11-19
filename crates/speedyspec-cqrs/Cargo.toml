@@ -1,0 +1,14 @@
+[package]
+name = "speedyspec-cqrs"
+version = "0.1.0"
+description = "Command and query buses: handlers resolved from the service container by key, middleware, and direct dispatch."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
+thiserror = "2"
+
+[dev-dependencies]
+trybuild = "1"

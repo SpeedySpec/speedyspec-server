@@ -8,5 +8,7 @@ pub mod keeper;
 pub mod listeners;
 pub mod managed;
 pub mod notify;
+#[cfg(feature = "php")]
+pub mod php;
 pub mod runtime;
 pub mod serving;

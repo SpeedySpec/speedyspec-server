@@ -1,0 +1,39 @@
+[package]
+name = "speedyspec-wp-hooks-php"
+version = "0.1.0"
+description = "WordPress's hook functions, WP_Hook and the hook globals in PHP, native over the Rust Hook API."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+
+[dev-dependencies]
+serde_json = "1"
+sha2 = "0.10"
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+ureq = "3"
+
+[[test]]
+name = "php"
+harness = false
+
+[[test]]
+name = "php_store"
+harness = false
+
+[[test]]
+name = "wordpress"
+harness = false
+
+[[test]]
+name = "without_legacy"
+harness = false

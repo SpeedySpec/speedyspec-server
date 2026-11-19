@@ -1,0 +1,10 @@
+[package]
+name = "speedyspec-container"
+version = "0.1.0"
+description = "A service container with the functionality of Laravel's: bindings, singletons, scoped instances, aliases, extenders, contextual bindings, tags and resolving callbacks, with worker and request lifetimes."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+thiserror = "2"

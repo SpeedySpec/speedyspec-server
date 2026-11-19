@@ -25,8 +25,64 @@ jobs:
       - if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y musl-tools
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace --features speedyspec-server/test-hooks --target ${{ matrix.target }}
+      # Without the static PHP: every crate that needs it is left out here and tested in the php job.
+      - run: >-
+          cargo test --workspace --features speedyspec-server/test-hooks --target ${{ matrix.target }}
+          --exclude speedyspec-php --exclude speedyspec-php-ext --exclude speedyspec-container-php
+          --exclude speedyspec-cqrs-php --exclude speedyspec-compat --exclude speedyspec-wp-hooks-php
       - run: test -z "$(cargo tree -i aws-lc-sys --target all 2>/dev/null)"
+
+  # The static PHP (scripts/build-php.sh) and everything that embeds it, with PHP apps on.
+  php:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-aarch64
+            os: macos-15
+            run: ""
+            platform: ""
+            php-build: .php-build
+          - name: linux-x86_64
+            os: ubuntu-latest
+            run: scripts/linux-php.sh
+            platform: linux/amd64
+            php-build: .php-build-linux
+          - name: linux-aarch64
+            os: ubuntu-24.04-arm
+            run: scripts/linux-php.sh
+            platform: linux/arm64
+            php-build: .php-build-linux-arm64
+    name: php (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    env:
+      # Which container platform scripts/linux-php.sh runs (Linux rows only).
+      SPEEDYSPEC_LINUX_PLATFORM: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        if: matrix.run == ''
+        with:
+          toolchain: "1.99"
+      - name: Cache static PHP
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ matrix.php-build }}/spc
+            ${{ matrix.php-build }}/buildroot
+          key: php-${{ matrix.name }}-${{ hashFiles('php-version', 'scripts/build-php.sh') }}
+      - name: Build static PHP
+        env:
+          # Runners are throwaway, so spc may install missing build tools.
+          SPEEDYSPEC_ALLOW_HOST_INSTALL: "1"
+          # spc looks up source releases through the GitHub API; the read-only token avoids rate limits.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ${{ matrix.run }} scripts/build-php.sh
+      # Every extension WordPress needs: a missing one fails here, by name.
+      - name: Extensions
+        run: ${{ matrix.run }} cargo test -p speedyspec-php --test extensions
+      - name: Test with php
+        run: ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks,speedyspec-server/php
 
   kubernetes:
     runs-on: ubuntu-latest

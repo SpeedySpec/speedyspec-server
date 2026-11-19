@@ -17,8 +17,10 @@ pub enum AppHandle {
     Static(StaticApp),
     /// An app with no release installed yet.
     NotInstalled,
-    /// A PHP app, until the worker pool exists.
+    /// A PHP app whose server was built without PHP (503).
     PhpPlaceholder,
+    /// A PHP app's live release: its endpoint answers the whole request.
+    Php(Arc<dyn PhpEndpoint>),
     /// The admin API, until it has endpoints.
     AdminApiPlaceholder,
 }
@@ -34,7 +36,8 @@ impl AppHandle {
     ) -> Response<Bytes> {
         match self {
             AppHandle::Static(app) => app.respond(method, mount_prefix, rel_path, query, headers),
-            AppHandle::NotInstalled | AppHandle::PhpPlaceholder => {
+            // The gate hands PHP requests to the endpoint; nothing else reaches here for one.
+            AppHandle::NotInstalled | AppHandle::PhpPlaceholder | AppHandle::Php(_) => {
                 let mut response = text(StatusCode::SERVICE_UNAVAILABLE, "service unavailable");
                 response.headers_mut().insert(
                     header::RETRY_AFTER,
@@ -45,6 +48,23 @@ impl AppHandle {
             AppHandle::AdminApiPlaceholder => text(StatusCode::NOT_FOUND, "not found"),
         }
     }
+}
+
+/// What a PHP app's live release answers with. It gets the request itself, so the request and response bodies
+/// stream instead of being buffered.
+#[salvo::async_trait]
+pub trait PhpEndpoint: Send + Sync + std::fmt::Debug {
+    async fn serve(&self, call: PhpCall, req: &mut salvo::Request, res: &mut salvo::Response);
+}
+
+/// Where a PHP request is going, as the gate resolved it.
+#[derive(Clone, Debug)]
+pub struct PhpCall {
+    /// The mount's path (`/` or `/blog/`).
+    pub mount_prefix: String,
+    /// The normalized path below the mount, without its leading `/`.
+    pub rel_path: String,
+    pub origin: crate::RequestOrigin,
 }
 
 /// A live static release, and what is left of the one before it.
