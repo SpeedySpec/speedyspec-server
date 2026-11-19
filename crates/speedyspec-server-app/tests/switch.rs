@@ -315,8 +315,8 @@ fn off_keeps_a_failed_migration_and_clear_ends_it() {
     seeded.maintenance.insert(
         id("blog"),
         speedyspec_server_domain::MaintenanceRecord {
-            operator: false,
             migration_failed: Some("500: boom".into()),
+            ..Default::default()
         },
     );
     speedyspec_server_domain::StateStore::save(&*w.state, &seeded).unwrap();

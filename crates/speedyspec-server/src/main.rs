@@ -114,6 +114,12 @@ enum ReleaseAction {
         #[arg(long, default_value = DEFAULT_CONFIG)]
         config: PathBuf,
     },
+    /// Switch an app again to the release whose migration failed, running the migration again.
+    RetryMigration {
+        app: AppId,
+        #[arg(long, default_value = DEFAULT_CONFIG)]
+        config: PathBuf,
+    },
 }
 
 /// `<app>@<version>`.
@@ -206,6 +212,9 @@ fn main() -> ExitCode {
             } => control_command(&config, ControlRequest::Pin { app, version }),
             ReleaseAction::Unpin { app, config } => {
                 control_command(&config, ControlRequest::Unpin { app })
+            }
+            ReleaseAction::RetryMigration { app, config } => {
+                control_command(&config, ControlRequest::RetryMigration { app })
             }
         },
         Command::Serve => match speedyspec_server::generation::run() {

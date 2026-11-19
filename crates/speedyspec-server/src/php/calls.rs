@@ -17,9 +17,26 @@ use super::runtime::PhpRuntime;
 /// Where an app's internal requests are addressed: its first mount's path, and that mount's host (`localhost` for
 /// `*`).
 #[derive(Clone, Debug)]
-struct Addressed {
+pub(crate) struct Addressed {
     mount: String,
     host: String,
+}
+
+/// Each mounted app's address for internal requests.
+fn address_apps(mounts: &MountTable) -> HashMap<AppId, Addressed> {
+    let mut addressed = HashMap::new();
+    for mount in mounts.mounts() {
+        addressed
+            .entry(mount.app.clone())
+            .or_insert_with(|| Addressed {
+                mount: mount.path.clone(),
+                host: match &mount.host {
+                    HostMatch::Any => "localhost".to_string(),
+                    HostMatch::Exact(host) => host.clone(),
+                },
+            });
+    }
+    addressed
 }
 
 /// Sends the gate's and the health checks' calls to the live php releases.
@@ -32,18 +49,7 @@ pub struct FastCgiGateCalls {
 impl FastCgiGateCalls {
     /// `timeout` bounds every call.
     pub fn new(php: Arc<PhpRuntime>, mounts: &MountTable, timeout: Duration) -> FastCgiGateCalls {
-        let mut addressed = HashMap::new();
-        for mount in mounts.mounts() {
-            addressed
-                .entry(mount.app.clone())
-                .or_insert_with(|| Addressed {
-                    mount: mount.path.clone(),
-                    host: match &mount.host {
-                        HostMatch::Any => "localhost".to_string(),
-                        HostMatch::Exact(host) => host.clone(),
-                    },
-                });
-        }
+        let addressed = address_apps(mounts);
         FastCgiGateCalls {
             php,
             addressed,
@@ -318,5 +324,87 @@ mod tests {
             },
             "a user with a malformed page list gets no pages"
         );
+    }
+}
+
+/// Runs a release's migration: an internal `POST` to its prepared (not yet live) release, on that release's
+/// internal worker. 2xx is success.
+pub struct PhpMigrator {
+    addressed: HashMap<AppId, Addressed>,
+}
+
+impl PhpMigrator {
+    pub fn new(mounts: &MountTable) -> PhpMigrator {
+        PhpMigrator {
+            addressed: address_apps(mounts),
+        }
+    }
+}
+
+impl speedyspec_server_app::Migrator for PhpMigrator {
+    fn migrate(
+        &self,
+        prepared: &speedyspec_server_domain::Prepared,
+        path: &str,
+        timeout: Duration,
+    ) -> Result<(), String> {
+        let ready = prepared
+            .payload
+            .downcast_ref::<super::runtime::Ready>()
+            .ok_or("the release is not a prepared php release")?;
+        let addressed = self
+            .addressed
+            .get(&prepared.app)
+            .cloned()
+            .unwrap_or(Addressed {
+                mount: "/".to_string(),
+                host: "localhost".to_string(),
+            });
+        // The release manager runs on blocking threads: the call gets a runtime of its own.
+        let answer = std::thread::scope(|scope| {
+            scope
+                .spawn(|| {
+                    let runtime = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .map_err(|err| err.to_string())?;
+                    runtime
+                        .block_on(ready.handler.internal(
+                            &addressed.mount,
+                            &addressed.host,
+                            Method::POST,
+                            path,
+                            HeaderMap::new(),
+                            Bytes::new(),
+                            timeout,
+                        ))
+                        .map_err(|err| match err {
+                            InternalError::Timeout => {
+                                format!("timed out after {}", humantime::format_duration(timeout))
+                            }
+                            InternalError::Unavailable(why) => why,
+                        })
+                })
+                .join()
+                .map_err(|_| "the migration call panicked".to_string())?
+        })?;
+        if answer.status().is_success() {
+            return Ok(());
+        }
+        let body =
+            String::from_utf8_lossy(&answer.body()[..answer.body().len().min(200)]).into_owned();
+        Err(format!("{}: {}", answer.status().as_u16(), body.trim()))
+    }
+}
+
+/// Upgrade maintenance, here at once.
+pub struct UpgradeMaintenance(pub Arc<speedyspec_server_gate::MaintenanceSet>);
+
+impl speedyspec_server_app::MaintenanceSink for UpgradeMaintenance {
+    fn upgrade(&self, apps: &[AppId], on: bool) {
+        for app in apps {
+            self.0
+                .set(app, speedyspec_server_gate::MaintenanceSource::Upgrade, on);
+        }
     }
 }

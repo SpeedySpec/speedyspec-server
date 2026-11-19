@@ -118,11 +118,16 @@ async fn serve(channel: Channel) -> Result<(), String> {
     let _ = readiness.maintenance.set(state.maintenance.clone());
     crate::health::spawn(&config, php.clone(), state.maintenance.clone());
     let backend: Arc<dyn ControlBackend> = if config.mode == Mode::Managed {
-        let (settings, apps, php, binaries) =
-            (config.clone(), live.clone(), php.clone(), binaries.clone());
+        let (settings, apps, php, binaries, maintenance) = (
+            config.clone(),
+            live.clone(),
+            php.clone(),
+            binaries.clone(),
+            state.maintenance.clone(),
+        );
         let applied = version.clone();
         let manager = tokio::task::spawn_blocking(move || {
-            let manager = managed::start(&settings, apps, php, binaries)?;
+            let manager = managed::start(&settings, apps, php, binaries, maintenance)?;
             manager
                 .apply_pending_group(&applied)
                 .map_err(|err| err.to_string())?;

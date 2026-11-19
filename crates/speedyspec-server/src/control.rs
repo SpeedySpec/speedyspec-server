@@ -45,6 +45,10 @@ pub enum ControlRequest {
         app: AppId,
     },
     Status,
+    /// Switch an app again to the release whose migration failed.
+    RetryMigration {
+        app: AppId,
+    },
     /// Turn an operator's maintenance on or off, or clear every recorded maintenance (a failed migration's too).
     Maintenance {
         action: MaintenanceAction,
@@ -291,6 +295,10 @@ impl ControlBackend for ManagedBackend {
             ControlRequest::Unpin { app } => manager
                 .unpin(&app)
                 .map(|()| json!(format!("unpinned {app}")))
+                .map_err(|err| err.to_string()),
+            ControlRequest::RetryMigration { app } => manager
+                .retry_migration(&app)
+                .map(|()| json!(format!("migrated and switched {app}")))
                 .map_err(|err| err.to_string()),
             ControlRequest::Maintenance { action, apps } => {
                 let done = match action {

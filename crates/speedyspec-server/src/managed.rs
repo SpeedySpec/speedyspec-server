@@ -26,6 +26,7 @@ pub fn start(
     live: Arc<LiveApps>,
     php: Arc<crate::php::PhpRuntime>,
     binaries: Arc<crate::php::runtime_kind::RuntimeBinaries>,
+    maintenance: Arc<speedyspec_server_gate::MaintenanceSet>,
 ) -> Result<Arc<ReleaseManager>, String> {
     let data_dir = config
         .data_dir
@@ -90,7 +91,19 @@ pub fn start(
     )
     .map_err(|err| err.to_string())?
     .with_runtime_inspector(Arc::new(crate::binary::RuntimeInspector))
-    .with_php_runtimes(config.php_runtimes());
+    .with_php_runtimes(config.php_runtimes())
+    .with_migrator(Arc::new(crate::php::calls::PhpMigrator::new(
+        &config.mounts,
+    )))
+    .with_maintenance(
+        Arc::new(crate::php::calls::UpgradeMaintenance(maintenance)),
+        config
+            .gate
+            .as_ref()
+            .and_then(|gate| gate.maintenance_apps.clone())
+            .unwrap_or_default(),
+    )
+    .with_migrate_timeout(config.migrate_timeout);
 
     let report = manager.boot();
     tracing::info!(
@@ -258,7 +271,7 @@ pub fn spawn_maintenance_sync(
                 maintenance.set(
                     app,
                     MaintenanceSource::Upgrade,
-                    record.migration_failed.is_some(),
+                    record.migrating || record.migration_failed.is_some(),
                 );
             }
         }

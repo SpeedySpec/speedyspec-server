@@ -37,11 +37,15 @@ pub struct MaintenanceRecord {
     pub operator: bool,
     /// A migration that failed, and why: maintenance stays on until it is retried or cleared.
     pub migration_failed: Option<String>,
+    /// The release whose migration failed (what `release retry-migration` switches to).
+    pub migration_version: Option<semver::Version>,
+    /// A migration is running (the leader records it so every replica shows the maintenance page).
+    pub migrating: bool,
 }
 
 impl MaintenanceRecord {
     pub fn is_empty(&self) -> bool {
-        !self.operator && self.migration_failed.is_none()
+        !self.operator && self.migration_failed.is_none() && !self.migrating
     }
 }
 

@@ -45,12 +45,13 @@ fn internal_paths(manifest: &ReleaseManifest) -> Vec<String> {
         .iter()
         .flat_map(|health| [health.live.clone(), health.ready.clone()])
         .chain(section.gate.iter().map(|gate| gate.changes.clone()))
+        .chain(section.switch_.iter().map(|switch| switch.migrate.clone()))
         .collect()
 }
 
 pub(crate) struct Ready {
     pub(crate) pool: EmbeddedPhpPool,
-    handler: PhpRequestHandler,
+    pub(crate) handler: PhpRequestHandler,
     manifest: ReleaseManifest,
     dir: PathBuf,
 }

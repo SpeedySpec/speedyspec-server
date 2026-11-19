@@ -191,6 +191,8 @@ pub struct Config {
     pub health: HealthConfig,
     /// `[gate]`, required with `access.implementation = "gate"`.
     pub gate: Option<speedyspec_server_gate::GateSettings>,
+    /// `[switch] migrate_timeout`: how long a release's migration may run (default 30 minutes).
+    pub migrate_timeout: Duration,
 }
 
 /// Who decides which pod leads.
@@ -274,6 +276,14 @@ struct RawConfig {
     #[serde(default)]
     health: RawHealth,
     gate: Option<RawGate>,
+    #[serde(default, rename = "switch")]
+    switch_: RawSwitch,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct RawSwitch {
+    migrate_timeout: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -915,6 +925,11 @@ impl Config {
             handoff,
             health,
             gate,
+            migrate_timeout: duration(
+                "switch.migrate_timeout",
+                raw.switch_.migrate_timeout.as_deref(),
+                Duration::from_secs(30 * 60),
+            )?,
             cluster: raw
                 .cluster
                 .map(|c| cluster_config(raw.mode, c))

@@ -113,6 +113,29 @@ pub struct PhpSection {
     /// The endpoints of a gate app.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gate: Option<GateSection>,
+    /// Switching to this release migrates first, under maintenance.
+    #[serde(default, rename = "switch", skip_serializing_if = "Option::is_none")]
+    pub switch_: Option<SwitchSection>,
+}
+
+/// A release that migrates when switched to: its `migrate` path (internal, `POST`) runs on the new release before it
+/// goes live, with `maintenance` on.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SwitchSection {
+    pub maintenance: MaintenanceScope,
+    pub migrate: String,
+}
+
+/// Which apps are in maintenance while a release migrates.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MaintenanceScope {
+    /// The site's: the gate's maintenance apps, or every app.
+    Site,
+    /// Only this app.
+    #[serde(rename = "self")]
+    SelfOnly,
 }
 
 /// A php app's health probes: paths of the app (starting with `/`) that answer 200 while it is live and ready.
@@ -143,6 +166,7 @@ impl Default for PhpSection {
             health: None,
             access: Vec::new(),
             gate: None,
+            switch_: None,
         }
     }
 }
