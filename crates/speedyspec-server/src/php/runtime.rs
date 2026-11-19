@@ -33,6 +33,8 @@ pub struct PhpRuntime {
     handlers: Mutex<HashMap<AppId, Arc<PhpRequestHandler>>>,
     /// The gate app, whose releases must name the gate endpoints this server speaks.
     gate_app: Option<AppId>,
+    /// What the gate app's handlers tell of each response head (sign-outs), once the gate exists.
+    sign_out: Arc<std::sync::OnceLock<super::handler::HeadHook>>,
 }
 
 /// The paths of a php release only the server calls: its health probes, and a gate app's revocation feed.
@@ -71,7 +73,13 @@ impl PhpRuntime {
             releases: Mutex::new(HashMap::new()),
             handlers: Mutex::new(HashMap::new()),
             gate_app: None,
+            sign_out: Arc::new(std::sync::OnceLock::new()),
         }
+    }
+
+    /// What the gate app's handlers call with each response head (set once, when the gate is built).
+    pub fn set_sign_out(&self, hook: super::handler::HeadHook) {
+        let _ = self.sign_out.set(hook);
     }
 
     /// Names the gate app: a release of it without a `php.gate` section of this server's gate version is refused.
@@ -233,6 +241,16 @@ impl PhpRuntime {
             config.site_dir.clone(),
         )
         .map_err(|err| format!("{}: {err}", document_root.display()))?;
+        let handler = if self.gate_app.as_ref() == Some(app) {
+            let sign_out = self.sign_out.clone();
+            handler.with_on_head(Arc::new(move |headers, set_cookies| {
+                if let Some(hook) = sign_out.get() {
+                    hook(headers, set_cookies);
+                }
+            }))
+        } else {
+            handler
+        };
         Ok(Ready {
             pool,
             handler,

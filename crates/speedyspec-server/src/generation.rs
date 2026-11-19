@@ -104,6 +104,9 @@ async fn serve(channel: Channel) -> Result<(), String> {
     let booted = prepare(&config).map_err(|err| err.to_string())?;
     let state = booted.state;
     let (php, binaries) = (booted.php, booted.binaries);
+    if let Some(revocation) = booted.revocation {
+        revocation.spawn(php.clone());
+    }
     let live = state.apps.clone();
     let version = own_version();
     // Release commands and auto-update pause while set: from a server switch beginning, and while draining.

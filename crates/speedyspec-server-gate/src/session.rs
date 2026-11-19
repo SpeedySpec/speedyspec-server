@@ -40,6 +40,8 @@ pub struct SessionCache {
     max_pending: usize,
     entries: Mutex<HashMap<Key, Entry>>,
     pending: Mutex<HashMap<Key, Arc<OnceCell<CacheOutcome>>>>,
+    /// While set (the revocation feed is failing), every lookup asks and nothing is remembered.
+    bypass: std::sync::atomic::AtomicBool,
 }
 
 fn key(cookie: &HeaderValue) -> Key {
@@ -53,7 +55,17 @@ impl SessionCache {
             max_pending: max_pending.max(1),
             entries: Mutex::new(HashMap::new()),
             pending: Mutex::new(HashMap::new()),
+            bypass: std::sync::atomic::AtomicBool::new(false),
         }
+    }
+
+    /// Stops (or starts again) remembering answers; while stopped, every lookup asks.
+    pub fn set_bypass(&self, on: bool) {
+        self.bypass.store(on, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    fn bypassed(&self) -> bool {
+        self.bypass.load(std::sync::atomic::Ordering::SeqCst)
     }
 
     /// The remembered answer for `cookie`, or `ask`'s (shared with every concurrent lookup of the same cookie). A
@@ -64,7 +76,8 @@ impl SessionCache {
         ask: impl Future<Output = Result<SessionAnswer, CallError>>,
     ) -> CacheOutcome {
         let key = key(cookie);
-        if let Some(entry) = self.entries.lock().unwrap().get(&key)
+        if !self.bypassed()
+            && let Some(entry) = self.entries.lock().unwrap().get(&key)
             && Instant::now() < entry.until
         {
             return CacheOutcome::SignedIn {
@@ -89,14 +102,16 @@ impl SessionCache {
                 let outcome = match ask.await {
                     Ok(SessionAnswer::SignedIn { user, pages }) => {
                         let pages = Arc::new(pages);
-                        self.entries.lock().unwrap().insert(
-                            key,
-                            Entry {
-                                user,
-                                pages: pages.clone(),
-                                until: Instant::now() + self.ttl,
-                            },
-                        );
+                        if !self.bypassed() {
+                            self.entries.lock().unwrap().insert(
+                                key,
+                                Entry {
+                                    user,
+                                    pages: pages.clone(),
+                                    until: Instant::now() + self.ttl,
+                                },
+                            );
+                        }
                         CacheOutcome::SignedIn { user, pages }
                     }
                     Ok(SessionAnswer::SignedOut) | Err(_) => CacheOutcome::SignedOut,

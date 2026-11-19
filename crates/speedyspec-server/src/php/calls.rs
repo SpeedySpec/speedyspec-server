@@ -7,7 +7,9 @@ use std::time::Duration;
 use bytes::Bytes;
 use http::{HeaderMap, Method};
 use speedyspec_server_domain::{AppId, HostMatch, MountTable};
-use speedyspec_server_gate::{BoxFuture, CallError, GateCalls, SessionAnswer, SiteState};
+use speedyspec_server_gate::{
+    BoxFuture, CallError, ChangeSet, Changes, GateCalls, SessionAnswer, SiteState,
+};
 
 use super::handler::InternalError;
 use super::runtime::PhpRuntime;
@@ -199,6 +201,78 @@ impl GateCalls for FastCgiGateCalls {
             Ok(read_session(&response))
         })
     }
+
+    fn changes<'a>(
+        &'a self,
+        app: &'a AppId,
+        path: &'a str,
+        since: &'a str,
+    ) -> BoxFuture<'a, Result<Changes, CallError>> {
+        Box::pin(async move {
+            let encoded: String = url_encode(since);
+            let path = format!("{path}?since={encoded}");
+            let response = self
+                .call(
+                    app,
+                    Method::GET,
+                    &path,
+                    HeaderMap::new(),
+                    Bytes::new(),
+                    self.timeout,
+                )
+                .await?;
+            if response.status() != http::StatusCode::OK {
+                return Err(CallError::Malformed(format!(
+                    "changes answered {}",
+                    response.status()
+                )));
+            }
+            read_changes(response.body())
+        })
+    }
+}
+
+/// Percent-encodes a cursor for a query string.
+fn url_encode(value: &str) -> String {
+    value
+        .bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                (b as char).to_string()
+            }
+            other => format!("%{other:02X}"),
+        })
+        .collect()
+}
+
+/// Reads the revocation feed: `{"cursor": "...", "users": [ids]}` or `{"cursor": "...", "reset": true}`.
+fn read_changes(body: &[u8]) -> Result<Changes, CallError> {
+    let value: serde_json::Value = serde_json::from_slice(body)
+        .map_err(|err| CallError::Malformed(format!("changes: {err}")))?;
+    let cursor = value["cursor"]
+        .as_str()
+        .ok_or_else(|| CallError::Malformed("changes needs a string cursor".into()))?
+        .to_string();
+    if value["reset"].as_bool() == Some(true) {
+        return Ok(Changes {
+            cursor,
+            change: ChangeSet::Reset,
+        });
+    }
+    let users = value["users"]
+        .as_array()
+        .and_then(|list| {
+            list.iter()
+                .map(serde_json::Value::as_u64)
+                .collect::<Option<Vec<u64>>>()
+        })
+        .ok_or_else(|| {
+            CallError::Malformed("changes needs users, a list of ids, or reset".into())
+        })?;
+    Ok(Changes {
+        cursor,
+        change: ChangeSet::Users(users),
+    })
 }
 
 #[cfg(test)]

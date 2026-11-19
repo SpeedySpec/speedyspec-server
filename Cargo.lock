@@ -4103,6 +4103,7 @@ name = "speedyspec-server-gate"
 version = "0.1.0"
 dependencies = [
  "http",
+ "httpdate",
  "regex",
  "semver",
  "serde_json",

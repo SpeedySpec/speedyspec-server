@@ -237,3 +237,53 @@ fn no_gate_release_fails_closed() {
     assert_eq!(get(addr, "/admin/kit/frame.js", Some(ALICE)).0, 401);
     assert_eq!(get(addr, "/admin/", None).0, 401);
 }
+
+#[test]
+fn signout_takes_effect_at_once() {
+    let site = site();
+    assert_eq!(get(site.addr, "/admin/kit/frame.js", Some(ALICE)).0, 200);
+    let calls = site.session_calls();
+    let (status, body) = get(site.addr, "/admin-api/v1/session/signout.php", Some(ALICE));
+    assert_eq!((status, body.as_str()), (200, "bye"));
+    // The very next request with the old cookie is asked about again, and refused.
+    assert_eq!(get(site.addr, "/admin/kit/frame.js", Some(ALICE)).0, 401);
+    // The sign-out request itself used the remembered answer; the refusal came from a fresh check (without the
+    // sign-out forgetting it, the answer would be remembered for session_ttl, 60 s).
+    assert_eq!(
+        site.session_calls(),
+        calls + 1,
+        "exactly one fresh check, after the sign-out"
+    );
+}
+
+#[test]
+fn a_change_takes_effect_within_a_second() {
+    let site = site();
+    assert_eq!(get(site.addr, "/admin/kit/frame.js", Some(ALICE)).0, 200);
+    // The gate app now refuses alice, and its feed names her: the remembered answer must not outlive the next poll.
+    std::fs::write(site.api_content().join("deny"), "1").unwrap();
+    std::fs::write(
+        site.api_content().join("changes.json"),
+        r#"{"cursor":"7","users":[5]}"#,
+    )
+    .unwrap();
+    let started = Instant::now();
+    while get(site.addr, "/admin/kit/frame.js", Some(ALICE)).0 != 401 {
+        assert!(
+            started.elapsed() < Duration::from_millis(1500),
+            "still allowed after {:?}",
+            started.elapsed()
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
+#[test]
+fn changes_path_is_not_reachable_by_visitors() {
+    let site = site();
+    assert_eq!(
+        get(site.addr, "/admin-api/gate/changes.php", Some(ALICE)).0,
+        404
+    );
+    assert_eq!(get(site.addr, "/admin-api/gate/changes.php", None).0, 404);
+}

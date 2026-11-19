@@ -62,7 +62,6 @@ struct Facts<'a> {
 }
 
 /// See the module docs.
-#[derive(Debug)]
 pub struct PhpRequestHandler {
     pool: EmbeddedPhpPool,
     /// The release's document root, canonical.
@@ -70,7 +69,24 @@ pub struct PhpRequestHandler {
     /// The front controller, under the document root.
     entry: PathBuf,
     site_dir: Option<PathBuf>,
+    /// Told every response's `Set-Cookie` values, with its request's headers, before the head goes to the client.
+    on_head: Option<HeadHook>,
 }
+
+impl std::fmt::Debug for PhpRequestHandler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PhpRequestHandler")
+            .field("pool", &self.pool)
+            .field("document_root", &self.document_root)
+            .field("entry", &self.entry)
+            .field("site_dir", &self.site_dir)
+            .field("on_head", &self.on_head.is_some())
+            .finish()
+    }
+}
+
+/// See [`PhpRequestHandler::with_on_head`].
+pub type HeadHook = std::sync::Arc<dyn Fn(&http::HeaderMap, &[HeaderValue]) + Send + Sync>;
 
 /// Where a request goes.
 #[derive(Debug, PartialEq, Eq)]
@@ -104,7 +120,15 @@ impl PhpRequestHandler {
             document_root,
             entry,
             site_dir,
+            on_head: None,
         })
+    }
+
+    /// Calls `hook` with each response's request headers and `Set-Cookie` values before the response head is sent
+    /// (the gate app's handler: a sign-out forgets its remembered answer before the client hears of it).
+    pub fn with_on_head(mut self, hook: HeadHook) -> PhpRequestHandler {
+        self.on_head = Some(hook);
+        self
     }
 
     pub fn pool(&self) -> &EmbeddedPhpPool {
@@ -717,6 +741,14 @@ impl PhpEndpoint for PhpRequestHandler {
         ));
         match head_rx.await {
             Ok(Ok((status, headers, _))) => {
+                if let Some(hook) = &self.on_head {
+                    let set_cookies: Vec<HeaderValue> = headers
+                        .iter()
+                        .filter(|(name, _)| *name == salvo::http::header::SET_COOKIE)
+                        .map(|(_, value)| value.clone())
+                        .collect();
+                    hook(req.headers(), &set_cookies);
+                }
                 res.status_code(status);
                 for (name, value) in headers {
                     res.headers_mut().append(name, value);

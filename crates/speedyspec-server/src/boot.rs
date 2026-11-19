@@ -69,6 +69,32 @@ pub struct Booted {
     pub state: ServeState,
     pub php: Arc<crate::php::PhpRuntime>,
     pub binaries: Arc<crate::php::runtime_kind::RuntimeBinaries>,
+    /// With the gate: what its revocation poll needs.
+    pub revocation: Option<Revocation>,
+}
+
+/// What the gate's revocation poll needs (started by the generation, on its runtime).
+pub struct Revocation {
+    pub app: AppId,
+    pub every: std::time::Duration,
+    pub calls: Arc<dyn speedyspec_server_gate::GateCalls>,
+    pub sessions: Arc<speedyspec_server_gate::SessionCache>,
+}
+
+impl Revocation {
+    /// Polls the gate app's live release's revocation feed.
+    pub fn spawn(self, php: Arc<crate::php::PhpRuntime>) {
+        let app = self.app.clone();
+        let path: speedyspec_server_gate::ChangesPath =
+            Arc::new(move || Some(php.live_manifest(&app)?.php_section()?.gate?.changes));
+        speedyspec_server_gate::RevocationPoll::spawn(
+            self.app,
+            path,
+            self.every,
+            self.calls,
+            self.sessions,
+        );
+    }
 }
 
 /// Builds the serving state. Every app starts as not installed. Immutable mode then reads every baked-in release,
@@ -93,10 +119,12 @@ pub fn prepare(config: &Config) -> Result<Booted, BootError> {
         .with_gate_app(config.gate.as_ref().map(|gate| gate.app.clone())),
     );
     if config.mode == Mode::Managed {
+        let (state, revocation) = serve_state(config, live, &php);
         return Ok(Booted {
-            state: serve_state(config, live, &php),
+            state,
             php,
             binaries,
+            revocation,
         });
     }
     let mut manifests = BTreeMap::new();
@@ -167,10 +195,12 @@ pub fn prepare(config: &Config) -> Result<Booted, BootError> {
             }
         }
     }
+    let (state, revocation) = serve_state(config, live, &php);
     Ok(Booted {
-        state: serve_state(config, live, &php),
+        state,
         php,
         binaries,
+        revocation,
     })
 }
 
@@ -196,8 +226,9 @@ fn serve_state(
     config: &Config,
     live: Arc<LiveApps>,
     php: &Arc<crate::php::PhpRuntime>,
-) -> ServeState {
+) -> (ServeState, Option<Revocation>) {
     let maintenance = Arc::new(speedyspec_server_gate::MaintenanceSet::default());
+    let mut revocation = None;
     let access: Arc<dyn AccessCheck> = match (config.access, &config.gate) {
         (AccessImpl::Deny, _) => Arc::new(DenySignedIn),
         (AccessImpl::DevAllowAll, _) => Arc::new(DevAllowAll),
@@ -208,21 +239,40 @@ fn serve_state(
                 live: live.clone(),
                 gate_app: settings.app.clone(),
             });
-            let calls = Arc::new(crate::php::calls::FastCgiGateCalls::new(
-                php.clone(),
-                &config.mounts,
-                settings.timeout,
-            ));
-            Arc::new(speedyspec_server_gate::GateAccess::new(
-                settings,
+            let calls: Arc<dyn speedyspec_server_gate::GateCalls> =
+                Arc::new(crate::php::calls::FastCgiGateCalls::new(
+                    php.clone(),
+                    &config.mounts,
+                    settings.timeout,
+                ));
+            let gate = Arc::new(speedyspec_server_gate::GateAccess::new(
+                settings.clone(),
                 view,
-                calls,
+                calls.clone(),
                 maintenance.clone(),
-            ))
+            ));
+            let sessions = gate.sessions().clone();
+            {
+                let sessions = sessions.clone();
+                php.set_sign_out(Arc::new(move |headers, set_cookies| {
+                    if let Some(cookie) = speedyspec_server_gate::cookie_header(headers)
+                        && speedyspec_server_gate::clears_a_sent_cookie(&cookie, set_cookies)
+                    {
+                        sessions.forget_header(&cookie);
+                    }
+                }));
+            }
+            revocation = Some(Revocation {
+                app: settings.app.clone(),
+                every: settings.poll,
+                calls,
+                sessions,
+            });
+            gate
         }
     };
 
-    ServeState {
+    let state = ServeState {
         mounts: config.mounts.clone(),
         apps: live,
         access,
@@ -234,7 +284,8 @@ fn serve_state(
             .iter()
             .filter_map(|(id, app)| app.maintenance_page.clone().map(|page| (id.clone(), page)))
             .collect(),
-    }
+    };
+    (state, revocation)
 }
 
 /// Every baked-in release's manifest in immutable mode, the server's included.

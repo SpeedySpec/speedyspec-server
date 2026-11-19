@@ -41,6 +41,21 @@ pub enum SessionAnswer {
     SignedOut,
 }
 
+/// Which users' access changed since a cursor.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ChangeSet {
+    Users(Vec<u64>),
+    /// The gate app cannot say which: every remembered answer is dropped.
+    Reset,
+}
+
+/// The gate app's revocation feed, from one cursor to the next.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Changes {
+    pub cursor: String,
+    pub change: ChangeSet,
+}
+
 /// The gate app's site state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SiteState {
@@ -68,4 +83,12 @@ pub trait GateCalls: Send + Sync {
         path: &'a str,
         cookie: &'a http::HeaderValue,
     ) -> BoxFuture<'a, Result<SessionAnswer, CallError>>;
+
+    /// `GET <path>?since=<cursor>` on the gate app: whose access changed since `since` (`""` for the current cursor).
+    fn changes<'a>(
+        &'a self,
+        app: &'a AppId,
+        path: &'a str,
+        since: &'a str,
+    ) -> BoxFuture<'a, Result<Changes, CallError>>;
 }

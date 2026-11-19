@@ -6,13 +6,15 @@ pub mod gate;
 pub mod health;
 pub mod internal;
 pub mod maintenance;
+pub mod revocation;
 pub mod rules;
 pub mod session;
 
-pub use calls::{BoxFuture, CallError, GateCalls, SessionAnswer, SiteState};
+pub use calls::{BoxFuture, CallError, ChangeSet, Changes, GateCalls, SessionAnswer, SiteState};
 pub use gate::{GATE_VERSION, GateAccess, GateSettings, GateView, cookie_header};
 pub use health::{HealthCounter, HealthMonitor, HealthSettings, HealthTargets, OnHealthChange};
 pub use internal::is_internal;
 pub use maintenance::{MaintenanceSet, MaintenanceSource};
+pub use revocation::{ChangesPath, RevocationPoll, clears_a_sent_cookie};
 pub use rules::{AccessRules, RuleOutcome};
 pub use session::{CacheOutcome, SessionCache};
