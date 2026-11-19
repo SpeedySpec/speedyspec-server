@@ -460,7 +460,14 @@ impl Container {
                 .entry(key.clone())
                 .or_default()
                 .push((extender.clone(), lifetime));
-            inner.shared.get(&key).cloned()
+            let generation = inner.generation.entry(key.clone()).or_insert(0);
+            *generation += 1;
+            let generation = *generation;
+            inner
+                .shared
+                .get(&key)
+                .cloned()
+                .map(|(_, value)| (generation, value))
         };
         if let Some((generation, value)) = shared
             && let Ok(extended) = extender(value, self)
@@ -558,6 +565,18 @@ impl Container {
     /// The same as [`Container::has`] (Laravel's `bound`).
     pub fn bound(&self, key: &str) -> bool {
         self.has(key)
+    }
+
+    /// Changes whenever what `key` (or what it aliases) resolves to may change: a binding, instance, extender or
+    /// forgetting. A cache of a resolved value is current while this is unchanged.
+    pub fn generation(&self, key: &str) -> u64 {
+        let key = self.get_alias(key);
+        self.inner
+            .borrow()
+            .generation
+            .get(&key)
+            .copied()
+            .unwrap_or(0)
     }
 
     /// Whether `key` has been resolved at least once.

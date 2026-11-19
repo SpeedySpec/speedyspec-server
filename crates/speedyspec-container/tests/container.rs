@@ -375,3 +375,25 @@ fn resolved_in_request_resets_at_request_edges() {
         "resolved() is for the life of the container"
     );
 }
+
+#[test]
+fn generation_changes_when_a_key_is_rebound_or_extended() {
+    let c = Container::new();
+    c.singleton("svc", |_, _| Ok(Rc::new(1_i64) as Resolved));
+    c.alias("svc", "alias");
+    let first = c.generation("alias");
+    c.make("svc").unwrap();
+    assert_eq!(c.generation("svc"), first, "resolving changes nothing");
+    c.extend("svc", |v, _| {
+        Ok(Rc::new(*v.downcast_ref::<i64>().unwrap() + 1) as Resolved)
+    });
+    let extended = c.generation("svc");
+    assert_ne!(extended, first);
+    assert_eq!(
+        *c.make("svc").unwrap().downcast_ref::<i64>().unwrap(),
+        2,
+        "the shared value was extended once"
+    );
+    c.singleton("svc", |_, _| Ok(Rc::new(5_i64) as Resolved));
+    assert_ne!(c.generation("svc"), extended);
+}

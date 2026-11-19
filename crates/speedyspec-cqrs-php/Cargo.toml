@@ -1,0 +1,21 @@
+[package]
+name = "speedyspec-cqrs-php"
+version = "0.1.0"
+description = "The command and query buses from PHP, and PHP classes as handlers that override Rust ones."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+
+[dev-dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+
+[[test]]
+name = "php"
+harness = false
