@@ -70,16 +70,39 @@ impl Handler for Gate {
     ) {
         match self.answer(req).await {
             Answer::Done(answer) => write(res, answer),
-            Answer::Php(endpoint, call) => endpoint.serve(call, req, res).await,
+            Answer::Php(endpoint, call, gated) => {
+                endpoint.serve(call, req, res).await;
+                if gated {
+                    res.headers_mut()
+                        .insert(CACHE_CONTROL, HeaderValue::from_static(PRIVATE));
+                }
+            }
         }
         ctrl.skip_rest();
     }
 }
 
-/// What the gate decided.
+/// What the gate decided. A PHP answer says whether its mount is gated (its response is then private).
 enum Answer {
     Done(http::Response<Bytes>),
-    Php(Arc<dyn PhpEndpoint>, PhpCall),
+    Php(Arc<dyn PhpEndpoint>, PhpCall, bool),
+}
+
+/// `Cache-Control` of every gated response: no shared cache may keep it.
+const PRIVATE: &str = "private, no-store";
+
+/// A gated refusal: the same answer whether or not the path exists.
+fn refusal(status: StatusCode, body: &'static str) -> http::Response<Bytes> {
+    let mut response = text(status, body);
+    response
+        .headers_mut()
+        .insert(CACHE_CONTROL, HeaderValue::from_static(PRIVATE));
+    if status == StatusCode::SERVICE_UNAVAILABLE {
+        response
+            .headers_mut()
+            .insert(http::header::RETRY_AFTER, HeaderValue::from_static("1"));
+    }
+    response
 }
 
 impl From<http::Response<Bytes>> for Answer {
@@ -162,18 +185,29 @@ impl Gate {
         if state.maintenance.is_on(&mount.app) {
             return maintenance_answer(state, &mount.app).into();
         }
-        if mount.access == Access::SignedIn {
+        let gated = mount.access == Access::SignedIn;
+        if gated {
             let request = AccessRequest {
                 access: mount.access,
+                app: &mount.app,
+                rel_path,
                 headers: req.headers(),
                 client: seen.client,
             };
-            if state.access.check(request).await == AccessDecision::Denied {
-                let mut response = text(StatusCode::UNAUTHORIZED, "sign-in required");
-                response
-                    .headers_mut()
-                    .insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
-                return response.into();
+            match state.access.check(request).await {
+                AccessDecision::Allowed(_) => {}
+                AccessDecision::Denied => {
+                    return refusal(StatusCode::UNAUTHORIZED, "sign-in required").into();
+                }
+                AccessDecision::Forbidden => {
+                    return refusal(StatusCode::FORBIDDEN, "forbidden").into();
+                }
+                AccessDecision::Disabled => {
+                    return refusal(StatusCode::NOT_FOUND, "not found").into();
+                }
+                AccessDecision::Busy => {
+                    return refusal(StatusCode::SERVICE_UNAVAILABLE, "try again shortly").into();
+                }
             }
         }
         let Some(handle) = state.handle(&mount.app) else {
@@ -186,11 +220,16 @@ impl Gate {
                 rel_path: rel_path.to_string(),
                 origin: seen,
             };
-            return Answer::Php(endpoint.clone(), call);
+            return Answer::Php(endpoint.clone(), call, gated);
         }
-        handle
-            .respond(req.method(), &mount.path, rel_path, query, req.headers())
-            .into()
+        let mut response =
+            handle.respond(req.method(), &mount.path, rel_path, query, req.headers());
+        if gated {
+            response
+                .headers_mut()
+                .insert(CACHE_CONTROL, HeaderValue::from_static(PRIVATE));
+        }
+        response.into()
     }
 }
 

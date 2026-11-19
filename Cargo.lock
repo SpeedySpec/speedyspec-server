@@ -4106,6 +4106,7 @@ dependencies = [
  "regex",
  "semver",
  "serde_json",
+ "sha2 0.10.9",
  "speedyspec-server-domain",
  "tokio",
  "tracing",

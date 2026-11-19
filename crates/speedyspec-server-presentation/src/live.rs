@@ -15,6 +15,8 @@ pub struct LiveApps {
     apps: HashMap<AppId, ArcSwap<AppHandle>>,
     /// Each app's internal paths (its live release's health probes, the gate's own calls): never served to visitors.
     internal: RwLock<HashMap<AppId, Arc<[String]>>>,
+    /// Each app's live release's access rules, compiled.
+    rules: RwLock<HashMap<AppId, Arc<speedyspec_server_gate::AccessRules>>>,
 }
 
 impl LiveApps {
@@ -26,7 +28,21 @@ impl LiveApps {
                 .map(|(app, handle)| (app, ArcSwap::from_pointee(handle)))
                 .collect(),
             internal: RwLock::new(HashMap::new()),
+            rules: RwLock::new(HashMap::new()),
         }
+    }
+
+    /// `app`'s live release's access rules.
+    pub fn rules(&self, app: &AppId) -> Option<Arc<speedyspec_server_gate::AccessRules>> {
+        self.rules.read().unwrap().get(app).cloned()
+    }
+
+    /// Replaces `app`'s access rules (as its live release changes).
+    pub fn set_rules(&self, app: &AppId, rules: speedyspec_server_gate::AccessRules) {
+        self.rules
+            .write()
+            .unwrap()
+            .insert(app.clone(), Arc::new(rules));
     }
 
     /// The paths of `app` only the server may call.
@@ -104,16 +120,12 @@ mod tests {
                 .collect(),
         );
         let held = live.get(&app).unwrap();
-        let old = live.swap(&app, AppHandle::AdminApiPlaceholder).unwrap();
-        assert!(matches!(*old, AppHandle::NotInstalled));
+        let old = live.swap(&app, AppHandle::NotInstalled).unwrap();
+        assert!(Arc::ptr_eq(&old, &held), "the old handle is returned");
         assert!(
-            matches!(*held, AppHandle::NotInstalled),
-            "a request already holding the old handle keeps it"
+            !Arc::ptr_eq(&held, &live.get(&app).unwrap()),
+            "new requests get the new handle; one already holding the old keeps it"
         );
-        assert!(matches!(
-            *live.get(&app).unwrap(),
-            AppHandle::AdminApiPlaceholder
-        ));
         assert!(live.get(&AppId::parse("other").unwrap()).is_none());
     }
 

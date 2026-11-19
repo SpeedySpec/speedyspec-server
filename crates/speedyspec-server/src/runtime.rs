@@ -33,20 +33,22 @@ impl AppRuntime for StaticRuntime {
             .static_
             .as_ref()
             .ok_or("the release has no static section")?;
+        let rules = speedyspec_server_gate::AccessRules::compile(&section.access)?;
         let set = StaticSet::build(dir, section, self.limit).map_err(|err| err.to_string())?;
         tracing::info!(event = "static_loaded", app = %app, version = %manifest.version, bytes = set.total_bytes());
         Ok(Prepared {
             app: app.clone(),
             version: manifest.version.clone(),
-            payload: Box::new(set),
+            payload: Box::new((set, rules)),
         })
     }
 
     fn activate(&self, prepared: Prepared) {
-        let set = *prepared
+        let (set, rules) = *prepared
             .payload
-            .downcast::<StaticSet>()
+            .downcast::<(StaticSet, speedyspec_server_gate::AccessRules)>()
             .expect("prepared by StaticRuntime");
+        self.live.set_rules(&prepared.app, rules);
         let fallback = match self.live.get(&prepared.app).as_deref() {
             Some(AppHandle::Static(old)) => Some(Fallback {
                 set: Arc::new(old.current.immutable_only()),
@@ -63,8 +65,6 @@ impl AppRuntime for StaticRuntime {
         );
     }
 }
-
-/// PHP releases until the worker pool exists: prepare checks the release is on disk; activate puts the placeholder
 
 #[cfg(test)]
 mod tests {

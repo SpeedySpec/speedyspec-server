@@ -31,15 +31,18 @@ pub struct PhpRuntime {
     releases: Mutex<HashMap<AppId, (ReleaseManifest, PathBuf)>>,
     /// Each app's live handler, for the server's own calls to it.
     handlers: Mutex<HashMap<AppId, Arc<PhpRequestHandler>>>,
+    /// The gate app, whose releases must name the gate endpoints this server speaks.
+    gate_app: Option<AppId>,
 }
 
-/// The paths of a php release only the server calls: its health probes.
+/// The paths of a php release only the server calls: its health probes, and a gate app's revocation feed.
 fn internal_paths(manifest: &ReleaseManifest) -> Vec<String> {
     let section = manifest.php_section().unwrap_or_default();
     section
         .health
         .iter()
         .flat_map(|health| [health.live.clone(), health.ready.clone()])
+        .chain(section.gate.iter().map(|gate| gate.changes.clone()))
         .collect()
 }
 
@@ -67,6 +70,42 @@ impl PhpRuntime {
             pools: Mutex::new(HashMap::new()),
             releases: Mutex::new(HashMap::new()),
             handlers: Mutex::new(HashMap::new()),
+            gate_app: None,
+        }
+    }
+
+    /// Names the gate app: a release of it without a `php.gate` section of this server's gate version is refused.
+    pub fn with_gate_app(mut self, gate_app: Option<AppId>) -> PhpRuntime {
+        self.gate_app = gate_app;
+        self
+    }
+
+    /// `app`'s live release's manifest.
+    pub fn live_manifest(&self, app: &AppId) -> Option<ReleaseManifest> {
+        self.releases
+            .lock()
+            .unwrap()
+            .get(app)
+            .map(|(manifest, _)| manifest.clone())
+    }
+
+    /// Refuses a release this server cannot gate with, or whose access rules do not compile.
+    fn check_release(&self, app: &AppId, manifest: &ReleaseManifest) -> Result<(), String> {
+        let section = manifest
+            .php_section()
+            .ok_or("the release is not a php release")?;
+        speedyspec_server_gate::AccessRules::compile(&section.access)?;
+        let version = speedyspec_server_gate::GATE_VERSION;
+        match (&section.gate, self.gate_app.as_ref() == Some(app)) {
+            (Some(gate), _) if gate.version != version => Err(format!(
+                "{app} {}: gate version {}, this server speaks gate version {version}",
+                manifest.version, gate.version
+            )),
+            (None, true) => Err(format!(
+                "{app} {}: the gate app's release names no php.gate endpoints (gate version {version})",
+                manifest.version
+            )),
+            _ => Ok(()),
         }
     }
 
@@ -154,6 +193,7 @@ impl PhpRuntime {
         dir: &Path,
         binary: &Path,
     ) -> Result<Ready, String> {
+        self.check_release(app, manifest)?;
         let section = manifest
             .php_section()
             .ok_or("the release is not a php release")?;
@@ -230,6 +270,10 @@ impl AppRuntime for PhpRuntime {
             .insert((prepared.app.clone(), prepared.version.clone()), ready.pool);
         self.live
             .set_internal_paths(&prepared.app, internal_paths(&ready.manifest));
+        let access = ready.manifest.php_section().unwrap_or_default().access;
+        if let Ok(rules) = speedyspec_server_gate::AccessRules::compile(&access) {
+            self.live.set_rules(&prepared.app, rules);
+        }
         self.releases
             .lock()
             .unwrap()

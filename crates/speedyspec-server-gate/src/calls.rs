@@ -30,6 +30,17 @@ impl std::fmt::Display for CallError {
     }
 }
 
+/// The gate app's answer for a cookie.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SessionAnswer {
+    /// Signed in as `user`, who may load these pages' files.
+    SignedIn {
+        user: u64,
+        pages: std::collections::BTreeSet<String>,
+    },
+    SignedOut,
+}
+
 /// The gate app's site state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SiteState {
@@ -41,4 +52,20 @@ pub struct SiteState {
 pub trait GateCalls: Send + Sync {
     /// `GET <path>` on `app`: the answer's status.
     fn probe<'a>(&'a self, app: &'a AppId, path: &'a str) -> BoxFuture<'a, Result<u16, CallError>>;
+
+    /// `GET <path>` on the gate app: its site state.
+    fn site<'a>(
+        &'a self,
+        app: &'a AppId,
+        path: &'a str,
+    ) -> BoxFuture<'a, Result<SiteState, CallError>>;
+
+    /// `GET <path>` on the gate app with only the visitor's `Cookie` header: who that is, and which pages they may
+    /// load.
+    fn session<'a>(
+        &'a self,
+        app: &'a AppId,
+        path: &'a str,
+        cookie: &'a http::HeaderValue,
+    ) -> BoxFuture<'a, Result<SessionAnswer, CallError>>;
 }

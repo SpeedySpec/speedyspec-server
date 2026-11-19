@@ -19,8 +19,6 @@ pub enum AppHandle {
     NotInstalled,
     /// A PHP app's live release: its endpoint answers the whole request.
     Php(Arc<dyn PhpEndpoint>),
-    /// The admin API, until it has endpoints.
-    AdminApiPlaceholder,
 }
 
 impl AppHandle {
@@ -43,7 +41,6 @@ impl AppHandle {
                 );
                 response
             }
-            AppHandle::AdminApiPlaceholder => text(StatusCode::NOT_FOUND, "not found"),
         }
     }
 }

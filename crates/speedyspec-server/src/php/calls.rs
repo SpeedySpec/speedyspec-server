@@ -7,7 +7,7 @@ use std::time::Duration;
 use bytes::Bytes;
 use http::{HeaderMap, Method};
 use speedyspec_server_domain::{AppId, HostMatch, MountTable};
-use speedyspec_server_gate::{BoxFuture, CallError, GateCalls};
+use speedyspec_server_gate::{BoxFuture, CallError, GateCalls, SessionAnswer, SiteState};
 
 use super::handler::InternalError;
 use super::runtime::PhpRuntime;
@@ -84,6 +84,52 @@ impl FastCgiGateCalls {
     }
 }
 
+/// The most a session answer may be.
+const SESSION_MAX_BYTES: usize = 256 * 1024;
+/// More pages than this in one answer is not trusted: the user gets none.
+const PAGES_MAX: usize = 2000;
+/// The longest page id kept.
+const PAGE_ID_MAX: usize = 128;
+
+/// A page id as the admin site names its files: two segments of lowercase letters, digits and hyphens, neither
+/// starting with a hyphen.
+fn page_id(id: &str) -> bool {
+    let segment = |s: &str| {
+        !s.is_empty()
+            && !s.starts_with('-')
+            && s.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+    };
+    id.len() <= PAGE_ID_MAX
+        && matches!(id.split_once('/'), Some((a, b)) if segment(a) && segment(b))
+}
+
+/// Reads the gate app's session answer. Signed in only for a 200 whose body is a JSON object naming the user by a
+/// positive integer id; anything else is signed out. A valid user whose `pages` is not a list of page ids gets no
+/// pages, so page files fail closed.
+fn read_session(response: &http::Response<Bytes>) -> SessionAnswer {
+    if response.status() != http::StatusCode::OK || response.body().len() > SESSION_MAX_BYTES {
+        return SessionAnswer::SignedOut;
+    }
+    let Ok(body) = serde_json::from_slice::<serde_json::Value>(response.body()) else {
+        return SessionAnswer::SignedOut;
+    };
+    let Some(user) = body["user"]["id"].as_u64().filter(|id| *id > 0) else {
+        return SessionAnswer::SignedOut;
+    };
+    let pages = match body["pages"].as_array() {
+        Some(list) if list.len() <= PAGES_MAX && list.iter().all(serde_json::Value::is_string) => {
+            list.iter()
+                .filter_map(serde_json::Value::as_str)
+                .filter(|id| page_id(id))
+                .map(str::to_string)
+                .collect()
+        }
+        _ => Default::default(),
+    };
+    SessionAnswer::SignedIn { user, pages }
+}
+
 impl GateCalls for FastCgiGateCalls {
     fn probe<'a>(&'a self, app: &'a AppId, path: &'a str) -> BoxFuture<'a, Result<u16, CallError>> {
         Box::pin(async move {
@@ -99,5 +145,104 @@ impl GateCalls for FastCgiGateCalls {
                 .await?;
             Ok(response.status().as_u16())
         })
+    }
+
+    fn site<'a>(
+        &'a self,
+        app: &'a AppId,
+        path: &'a str,
+    ) -> BoxFuture<'a, Result<SiteState, CallError>> {
+        Box::pin(async move {
+            let response = self
+                .call(
+                    app,
+                    Method::GET,
+                    path,
+                    HeaderMap::new(),
+                    Bytes::new(),
+                    self.timeout,
+                )
+                .await?;
+            if response.status() != http::StatusCode::OK {
+                return Err(CallError::Malformed(format!(
+                    "site state answered {}",
+                    response.status()
+                )));
+            }
+            let body: serde_json::Value = serde_json::from_slice(response.body())
+                .map_err(|err| CallError::Malformed(format!("site state: {err}")))?;
+            match (body["installed"].as_bool(), body["maintenance"].as_bool()) {
+                (Some(installed), Some(maintenance)) => Ok(SiteState {
+                    installed,
+                    maintenance,
+                }),
+                _ => Err(CallError::Malformed(
+                    "site state needs boolean installed and maintenance".into(),
+                )),
+            }
+        })
+    }
+
+    fn session<'a>(
+        &'a self,
+        app: &'a AppId,
+        path: &'a str,
+        cookie: &'a http::HeaderValue,
+    ) -> BoxFuture<'a, Result<SessionAnswer, CallError>> {
+        Box::pin(async move {
+            // Only the visitor's cookie: never their Origin, Referer, nonce or Authorization.
+            let mut headers = HeaderMap::new();
+            headers.insert(http::header::COOKIE, cookie.clone());
+            let response = self
+                .call(app, Method::GET, path, headers, Bytes::new(), self.timeout)
+                .await?;
+            Ok(read_session(&response))
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn answer(status: u16, body: &str) -> http::Response<Bytes> {
+        let mut response = http::Response::new(Bytes::from(body.to_string()));
+        *response.status_mut() = http::StatusCode::from_u16(status).unwrap();
+        response
+    }
+
+    #[test]
+    fn session_answers_fail_closed() {
+        let signed_in = read_session(&answer(
+            200,
+            r#"{"user":{"id":5},"pages":["core/general","Bad/x","a/b/c"]}"#,
+        ));
+        assert_eq!(
+            signed_in,
+            SessionAnswer::SignedIn {
+                user: 5,
+                pages: ["core/general".to_string()].into()
+            }
+        );
+        for (status, body) in [
+            (401, r#"{"user":{"id":5}}"#),
+            (200, r#"{"user":{"id":0}}"#),
+            (200, r#"{"user":{"id":"5"}}"#),
+            (200, "not json"),
+        ] {
+            assert_eq!(
+                read_session(&answer(status, body)),
+                SessionAnswer::SignedOut,
+                "{status} {body}"
+            );
+        }
+        assert_eq!(
+            read_session(&answer(200, r#"{"user":{"id":9},"pages":"all"}"#)),
+            SessionAnswer::SignedIn {
+                user: 9,
+                pages: Default::default()
+            },
+            "a user with a malformed page list gets no pages"
+        );
     }
 }

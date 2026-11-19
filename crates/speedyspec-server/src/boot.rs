@@ -78,27 +78,23 @@ pub fn prepare(config: &Config) -> Result<Booted, BootError> {
     let apps = config
         .apps
         .iter()
-        .map(|(id, app)| {
-            let handle = if app.kind == AppKind::Server {
-                AppHandle::AdminApiPlaceholder
-            } else {
-                AppHandle::NotInstalled
-            };
-            (id.clone(), handle)
-        })
+        .map(|(id, _)| (id.clone(), AppHandle::NotInstalled))
         .collect();
     let live = Arc::new(LiveApps::new(apps));
     let binaries = Arc::new(crate::php::runtime_kind::RuntimeBinaries::default());
-    let php = Arc::new(crate::php::PhpRuntime::new(
-        live.clone(),
-        binaries.clone(),
-        config.run_dir.clone(),
-        crate::php::php_configs(config),
-        config.php_runtimes().into_iter().collect(),
-    ));
+    let php = Arc::new(
+        crate::php::PhpRuntime::new(
+            live.clone(),
+            binaries.clone(),
+            config.run_dir.clone(),
+            crate::php::php_configs(config),
+            config.php_runtimes().into_iter().collect(),
+        )
+        .with_gate_app(config.gate.as_ref().map(|gate| gate.app.clone())),
+    );
     if config.mode == Mode::Managed {
         return Ok(Booted {
-            state: serve_state(config, live),
+            state: serve_state(config, live, &php),
             php,
             binaries,
         });
@@ -154,6 +150,13 @@ pub fn prepare(config: &Config) -> Result<Booted, BootError> {
                         }
                     })?;
                 tracing::info!(event = "static_loaded", app = %id, version = %manifest.version, bytes = set.total_bytes());
+                let rules = speedyspec_server_gate::AccessRules::compile(&section.access).map_err(
+                    |message| BootError::Static {
+                        app: id.clone(),
+                        message,
+                    },
+                )?;
+                live.set_rules(id, rules);
                 live.swap(
                     id,
                     AppHandle::Static(StaticApp {
@@ -165,16 +168,58 @@ pub fn prepare(config: &Config) -> Result<Booted, BootError> {
         }
     }
     Ok(Booted {
-        state: serve_state(config, live),
+        state: serve_state(config, live, &php),
         php,
         binaries,
     })
 }
 
-fn serve_state(config: &Config, live: Arc<LiveApps>) -> ServeState {
-    let access: Arc<dyn AccessCheck> = match config.access {
-        AccessImpl::Deny => Arc::new(DenySignedIn),
-        AccessImpl::DevAllowAll => Arc::new(DevAllowAll),
+/// What the gate reads of the live releases: the gate app's endpoints from its live php release, and every app's
+/// access rules from the live table.
+struct LiveGateView {
+    php: Arc<crate::php::PhpRuntime>,
+    live: Arc<LiveApps>,
+    gate_app: AppId,
+}
+
+impl speedyspec_server_gate::GateView for LiveGateView {
+    fn gate(&self) -> Option<speedyspec_server_domain::GateSection> {
+        self.php.live_manifest(&self.gate_app)?.php_section()?.gate
+    }
+
+    fn rules(&self, app: &AppId) -> Option<Arc<speedyspec_server_gate::AccessRules>> {
+        self.live.rules(app)
+    }
+}
+
+fn serve_state(
+    config: &Config,
+    live: Arc<LiveApps>,
+    php: &Arc<crate::php::PhpRuntime>,
+) -> ServeState {
+    let maintenance = Arc::new(speedyspec_server_gate::MaintenanceSet::default());
+    let access: Arc<dyn AccessCheck> = match (config.access, &config.gate) {
+        (AccessImpl::Deny, _) => Arc::new(DenySignedIn),
+        (AccessImpl::DevAllowAll, _) => Arc::new(DevAllowAll),
+        (AccessImpl::Gate, gate) => {
+            let settings = gate.clone().expect("the config check requires [gate]");
+            let view = Arc::new(LiveGateView {
+                php: php.clone(),
+                live: live.clone(),
+                gate_app: settings.app.clone(),
+            });
+            let calls = Arc::new(crate::php::calls::FastCgiGateCalls::new(
+                php.clone(),
+                &config.mounts,
+                settings.timeout,
+            ));
+            Arc::new(speedyspec_server_gate::GateAccess::new(
+                settings,
+                view,
+                calls,
+                maintenance.clone(),
+            ))
+        }
     };
 
     ServeState {
@@ -183,7 +228,7 @@ fn serve_state(config: &Config, live: Arc<LiveApps>) -> ServeState {
         access,
         trusted_proxies: config.trusted_proxies.clone(),
         forwarded_headers: config.forwarded_headers,
-        maintenance: Arc::new(speedyspec_server_gate::MaintenanceSet::default()),
+        maintenance,
         maintenance_pages: config
             .apps
             .iter()

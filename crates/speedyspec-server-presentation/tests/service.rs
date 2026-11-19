@@ -74,22 +74,27 @@ fn service(access: Arc<dyn AccessCheck>) -> (tempfile::TempDir, Service) {
     let mounts = MountTable::new(vec![
         mount("/", "site", Access::Public),
         mount("/admin/", "admin", Access::SignedIn),
-        mount("/admin/api/", "server", Access::SignedIn),
+        mount("/admin/api/", "admin-api", Access::SignedIn),
         mount("/blog/", "blog", Access::Public),
     ])
     .unwrap();
     let apps = [
         ("site", static_app(public)),
         ("admin", static_app(admin)),
-        ("server", AppHandle::AdminApiPlaceholder),
+        ("admin-api", AppHandle::NotInstalled),
         ("blog", AppHandle::NotInstalled),
     ]
     .into_iter()
     .map(|(id, handle)| (AppId::parse(id).unwrap(), handle))
     .collect();
+    let live = Arc::new(LiveApps::new(apps));
+    live.set_internal_paths(
+        &AppId::parse("admin-api").unwrap(),
+        vec!["/v1/gate/changes".to_string()],
+    );
     let state = ServeState {
         mounts,
-        apps: Arc::new(LiveApps::new(apps)),
+        apps: live,
         access,
         trusted_proxies: Vec::new(),
         forwarded_headers: ForwardedHeaders::XForwarded,
@@ -133,7 +138,10 @@ async fn signed_in_denied() {
             Some(StatusCode::UNAUTHORIZED),
             "{path}"
         );
-        assert_eq!(response.headers().get("cache-control").unwrap(), "no-store");
+        assert_eq!(
+            response.headers().get("cache-control").unwrap(),
+            "private, no-store"
+        );
         let text = body(&mut response).await;
         assert!(!text.contains(ADMIN_SECRET), "{path}: {text}");
         assert_eq!(text, "sign-in required");
@@ -191,15 +199,6 @@ async fn php_placeholder() {
     let response = raw(&service, "/blog/").await;
     assert_eq!(response.status_code, Some(StatusCode::SERVICE_UNAVAILABLE));
     assert_eq!(response.headers().get("retry-after").unwrap(), "30");
-}
-
-#[tokio::test]
-async fn admin_api_placeholder() {
-    let (_dir, service) = service(Arc::new(DevAllowAll));
-    assert_eq!(
-        raw(&service, "/admin/api/anything").await.status_code,
-        Some(StatusCode::NOT_FOUND)
-    );
 }
 
 #[tokio::test]
@@ -347,4 +346,99 @@ async fn fallback_never_serves_html() {
         raw(&service, "/old.html").await.status_code,
         Some(StatusCode::NOT_FOUND)
     );
+}
+
+/// An access check that always answers `decision`, counting its calls.
+struct Fixed(
+    speedyspec_server_domain::AccessDecision,
+    std::sync::atomic::AtomicUsize,
+);
+
+impl AccessCheck for Fixed {
+    fn check<'a>(
+        &'a self,
+        _request: speedyspec_server_domain::AccessRequest<'a>,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = speedyspec_server_domain::AccessDecision> + Send + 'a>,
+    > {
+        self.1.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let decision = self.0.clone();
+        Box::pin(async move { decision })
+    }
+}
+
+fn fixed(decision: speedyspec_server_domain::AccessDecision) -> Arc<Fixed> {
+    Arc::new(Fixed(decision, Default::default()))
+}
+
+#[tokio::test]
+async fn decisions_map_to_status_codes() {
+    use speedyspec_server_domain::AccessDecision;
+    for (decision, status) in [
+        (AccessDecision::Denied, StatusCode::UNAUTHORIZED),
+        (AccessDecision::Forbidden, StatusCode::FORBIDDEN),
+        (AccessDecision::Disabled, StatusCode::NOT_FOUND),
+        (AccessDecision::Busy, StatusCode::SERVICE_UNAVAILABLE),
+    ] {
+        let (_dir, service) = service(fixed(decision.clone()));
+        let response = raw(&service, "/admin/").await;
+        assert_eq!(response.status_code, Some(status), "{decision:?}");
+        assert_eq!(
+            response.headers().get("cache-control").unwrap(),
+            "private, no-store"
+        );
+        if status == StatusCode::SERVICE_UNAVAILABLE {
+            assert_eq!(response.headers().get("retry-after").unwrap(), "1");
+        }
+    }
+}
+
+#[tokio::test]
+async fn gated_success_is_not_cacheable() {
+    let allowed = speedyspec_server_domain::AccessDecision::Allowed(
+        speedyspec_server_domain::Identity::anonymous(),
+    );
+    let (_dir, service) = service(fixed(allowed));
+    let mut response = raw(&service, "/admin/_astro/app.js").await;
+    assert_eq!(response.status_code, Some(StatusCode::OK));
+    assert_eq!(
+        response.headers().get("cache-control").unwrap(),
+        "private, no-store"
+    );
+    assert_eq!(body(&mut response).await, ADMIN_SECRET);
+}
+
+#[tokio::test]
+async fn internal_path_variants_get_404() {
+    let check = fixed(speedyspec_server_domain::AccessDecision::Allowed(
+        speedyspec_server_domain::Identity::anonymous(),
+    ));
+    let (_dir, service) = service(check.clone());
+    for path in [
+        "/admin/api/v1/gate/changes",
+        "/admin/api/v1/gate//changes",
+        "/admin/api/v1/gate/%63hanges",
+        "/admin/api/v1/gate/./changes",
+        "/admin/api/v1/gate/changes/",
+    ] {
+        assert_eq!(
+            raw(&service, path).await.status_code,
+            Some(StatusCode::NOT_FOUND),
+            "{path}"
+        );
+    }
+    assert_eq!(
+        check.1.load(std::sync::atomic::Ordering::SeqCst),
+        0,
+        "the access check was never asked"
+    );
+}
+
+#[tokio::test]
+async fn missing_and_existing_paths_get_the_same_401() {
+    let (_dir, service) = service(Arc::new(DenySignedIn));
+    let mut existing = raw(&service, "/admin/_astro/app.js").await;
+    let mut missing = raw(&service, "/admin/_astro/missing.js").await;
+    assert_eq!(existing.status_code, missing.status_code);
+    assert_eq!(body(&mut existing).await, body(&mut missing).await);
 }

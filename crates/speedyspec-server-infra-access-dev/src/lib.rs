@@ -42,9 +42,12 @@ mod tests {
 
     async fn decide(check: &dyn AccessCheck, access: Access) -> AccessDecision {
         let headers = http::HeaderMap::new();
+        let app = speedyspec_server_domain::AppId::parse("admin").unwrap();
         check
             .check(AccessRequest {
                 access,
+                app: &app,
+                rel_path: "",
                 headers: &headers,
                 client: [127, 0, 0, 1].into(),
             })

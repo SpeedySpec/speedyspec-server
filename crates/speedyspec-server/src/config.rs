@@ -15,7 +15,6 @@ use speedyspec_server_presentation::ForwardedHeaders;
 pub const DEFAULT_CONFIG: &str = "/etc/speedyspec/server.toml";
 
 /// The built-in mount of the server app: the admin API, for any host, signed-in only.
-pub const ADMIN_API_PATH: &str = "/admin/api/";
 
 const DEFAULT_RUN_DIR: &str = "/run/speedyspec";
 const DEFAULT_STATIC_MEMORY: u64 = 512 * 1024 * 1024;
@@ -39,6 +38,8 @@ pub enum Mode {
 pub enum AccessImpl {
     Deny,
     DevAllowAll,
+    /// The admin gate: release access rules and the gate app's answers (`[gate]`).
+    Gate,
 }
 
 /// When a managed app checks for and installs new releases.
@@ -188,6 +189,8 @@ pub struct Config {
     pub cluster: Option<ClusterConfig>,
     /// `[health]`.
     pub health: HealthConfig,
+    /// `[gate]`, required with `access.implementation = "gate"`.
+    pub gate: Option<speedyspec_server_gate::GateSettings>,
 }
 
 /// Who decides which pod leads.
@@ -270,6 +273,19 @@ struct RawConfig {
     cluster: Option<RawCluster>,
     #[serde(default)]
     health: RawHealth,
+    gate: Option<RawGate>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawGate {
+    app: Option<String>,
+    session_ttl: Option<String>,
+    timeout: Option<String>,
+    site_ttl: Option<String>,
+    poll: Option<String>,
+    max_pending: Option<usize>,
+    maintenance_apps: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -768,6 +784,15 @@ impl Config {
                 )));
             }
         }
+        let gate = match raw.gate {
+            None if raw.access.implementation == AccessImpl::Gate => {
+                return Err(invalid(
+                    "access.implementation = \"gate\" needs [gate] with gate.app naming the admin API app",
+                ));
+            }
+            None => None,
+            Some(raw_gate) => Some(gate_settings(raw_gate, &apps)?),
+        };
         let health = HealthConfig {
             interval: duration(
                 "health.interval",
@@ -795,13 +820,12 @@ impl Config {
             .filter(|(_, app)| app.kind == AppKind::Server)
             .map(|(id, _)| id)
             .collect();
-        let [server] = servers.as_slice() else {
+        if servers.len() != 1 {
             return Err(invalid(format!(
                 "exactly one app must have kind = \"server\", found {}",
                 servers.len()
             )));
-        };
-        let server = (*server).clone();
+        }
         if raw.mode == Mode::Managed && raw.data_dir.is_none() {
             return Err(invalid("mode = \"managed\" needs data_dir"));
         }
@@ -819,16 +843,11 @@ impl Config {
                 }
                 Some(config) if config.kind == AppKind::Server => {
                     return Err(invalid(format!(
-                        "mount.app {:?} is the server app, whose only mount is the built-in {ADMIN_API_PATH}",
+                        "mount.app {:?} is the server app, which has no mounts",
                         mount.app
                     )));
                 }
                 Some(_) => {}
-            }
-            if mount.path == ADMIN_API_PATH {
-                return Err(invalid(format!(
-                    "mount.path {ADMIN_API_PATH:?} is reserved for the admin API on every host"
-                )));
             }
             let host = if mount.host == "*" {
                 HostMatch::Any
@@ -840,22 +859,6 @@ impl Config {
                 path: mount.path,
                 app,
                 access: mount.access,
-            });
-        }
-        // The admin API answers on every host. An exact-host mount beats every `*` mount on its host, so the built-in
-        // mount is added once for `*` and once for each exact host that has mounts of its own.
-        let mut hosts: Vec<HostMatch> = vec![HostMatch::Any];
-        for mount in &mounts {
-            if !hosts.contains(&mount.host) {
-                hosts.push(mount.host.clone());
-            }
-        }
-        for host in hosts {
-            mounts.push(Mount {
-                host,
-                path: ADMIN_API_PATH.to_string(),
-                app: server.clone(),
-                access: Access::SignedIn,
             });
         }
         let static_fallback_grace = duration(
@@ -911,6 +914,7 @@ impl Config {
             static_fallback_grace,
             handoff,
             health,
+            gate,
             cluster: raw
                 .cluster
                 .map(|c| cluster_config(raw.mode, c))
@@ -921,6 +925,60 @@ impl Config {
 
 /// The per-app rules: a mode mixes nothing, and the server app has neither `path` nor (until managed mode) anything
 /// to mount.
+/// `[gate]`: its app must be a configured php app.
+fn gate_settings(
+    raw: RawGate,
+    apps: &BTreeMap<AppId, AppConfig>,
+) -> Result<speedyspec_server_gate::GateSettings, ConfigError> {
+    let name = raw
+        .app
+        .ok_or_else(|| invalid("gate.app is required: the admin API app the gate asks"))?;
+    let app = AppId::parse(&name).map_err(|err| invalid(format!("gate.app {name:?}: {err}")))?;
+    if apps
+        .get(&app)
+        .is_none_or(|config| config.kind != AppKind::Php)
+    {
+        return Err(invalid(format!(
+            "gate.app {name:?} is not a configured app with kind = \"php\""
+        )));
+    }
+    let maintenance_apps = raw
+        .maintenance_apps
+        .map(|names| {
+            names
+                .iter()
+                .map(|name| match AppId::parse(name) {
+                    Ok(id) if apps.contains_key(&id) => Ok(id),
+                    _ => Err(invalid(format!(
+                        "gate.maintenance_apps: {name:?} is not a configured app"
+                    ))),
+                })
+                .collect::<Result<Vec<_>, _>>()
+        })
+        .transpose()?;
+    Ok(speedyspec_server_gate::GateSettings {
+        app,
+        session_ttl: duration(
+            "gate.session_ttl",
+            raw.session_ttl.as_deref(),
+            Duration::from_secs(60),
+        )?,
+        timeout: duration(
+            "gate.timeout",
+            raw.timeout.as_deref(),
+            Duration::from_secs(5),
+        )?,
+        site_ttl: duration(
+            "gate.site_ttl",
+            raw.site_ttl.as_deref(),
+            Duration::from_secs(2),
+        )?,
+        poll: duration("gate.poll", raw.poll.as_deref(), Duration::from_secs(1))?,
+        max_pending: raw.max_pending.unwrap_or(16).max(1),
+        maintenance_apps,
+    })
+}
+
 /// Gives every php app its runtime app: the one it names, which must be a `runtime` app, or the only runtime app
 /// configured. A php app with several to choose from must name one.
 fn resolve_runtimes(apps: &mut BTreeMap<AppId, AppConfig>) -> Result<(), ConfigError> {
@@ -1123,11 +1181,13 @@ app = "blog"
             (admin.app.as_str(), admin.access),
             ("admin", Access::SignedIn)
         );
-        let api = config
-            .mounts
-            .resolve("example.com", "/admin/api/x")
-            .unwrap();
-        assert_eq!((api.app.as_str(), api.access), ("server", Access::SignedIn));
+        assert!(
+            config
+                .mounts
+                .mounts()
+                .iter()
+                .all(|m| m.app.as_str() != "server")
+        );
     }
 
     fn speedyspec_server_static_limit() -> u64 {
@@ -1162,26 +1222,6 @@ app = "blog"
             Access::SignedIn
         );
         assert_eq!(config.mounts.resolve("other.org", "/x"), None);
-    }
-
-    #[test]
-    fn admin_api_reachable_on_exact_hosts() {
-        let config = Config::parse(IMMUTABLE).unwrap();
-        let api = config
-            .mounts
-            .resolve("example.com", "/admin/api/x")
-            .unwrap();
-        assert_eq!((api.app.as_str(), api.access), ("server", Access::SignedIn));
-    }
-
-    #[test]
-    fn rejects_exact_host_admin_api_mount() {
-        rejects(
-            &format!(
-                "{IMMUTABLE}\n[[mount]]\nhost = \"example.com\"\npath = \"/admin/api/\"\napp = \"blog\"\n"
-            ),
-            "/admin/api/",
-        );
     }
 
     #[test]
@@ -1292,14 +1332,6 @@ app = "blog"
         rejects(
             &format!("{IMMUTABLE}\n[[mount]]\npath = \"/x/\"\napp = \"nope\"\n"),
             "nope",
-        );
-    }
-
-    #[test]
-    fn rejects_admin_api_duplicate() {
-        rejects(
-            &format!("{IMMUTABLE}\n[[mount]]\npath = \"/admin/api/\"\napp = \"blog\"\n"),
-            "/admin/api/",
         );
     }
 
@@ -1693,5 +1725,54 @@ app = "blog"
         std::fs::remove_file(&file).unwrap();
         let err = php.worker_env().unwrap_err();
         assert!(err.contains("blog.env"), "{err}");
+    }
+
+    #[test]
+    fn the_server_app_has_no_mounts() {
+        rejects(
+            &format!("{IMMUTABLE}\n[[mount]]\npath = \"/srv/\"\napp = \"server\"\n"),
+            "the server app, which has no mounts",
+        );
+        let config = Config::parse(&format!(
+            "{IMMUTABLE}\n[[mount]]\npath = \"/admin/api/\"\napp = \"blog\"\naccess = \"signed-in\"\n"
+        ))
+        .unwrap();
+        let api = config.mounts.resolve("other.org", "/admin/api/x").unwrap();
+        assert_eq!(
+            api.app.as_str(),
+            "blog",
+            "/admin/api/ is an ordinary path now"
+        );
+    }
+
+    #[test]
+    fn gate_settings_parse() {
+        let config = Config::parse(&format!(
+            "{IMMUTABLE}\n[access]\nimplementation = \"gate\"\n\n[gate]\napp = \"blog\"\nsession_ttl = \"30s\"\nmax_pending = 4\nmaintenance_apps = [\"blog\"]\n"
+        ))
+        .unwrap();
+        assert_eq!(config.access, AccessImpl::Gate);
+        let gate = config.gate.unwrap();
+        assert_eq!(gate.app, id("blog"));
+        assert_eq!(gate.session_ttl, Duration::from_secs(30));
+        assert_eq!(gate.timeout, Duration::from_secs(5));
+        assert_eq!(gate.site_ttl, Duration::from_secs(2));
+        assert_eq!(gate.poll, Duration::from_secs(1));
+        assert_eq!(gate.max_pending, 4);
+        assert_eq!(gate.maintenance_apps, Some(vec![id("blog")]));
+    }
+
+    #[test]
+    fn gate_needs_a_php_gate_app() {
+        rejects(
+            &format!("{IMMUTABLE}\n[access]\nimplementation = \"gate\"\n"),
+            "gate.app",
+        );
+        rejects(
+            &format!(
+                "{IMMUTABLE}\n[access]\nimplementation = \"gate\"\n\n[gate]\napp = \"admin\"\n"
+            ),
+            "gate.app",
+        );
     }
 }
