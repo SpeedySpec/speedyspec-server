@@ -1,0 +1,16 @@
+[package]
+name = "speedyspec-hooks"
+version = "0.1.0"
+description = "Hook contract for speedyspec: the Hooks trait, the Value type and a backend conformance suite. No storage."
+edition.workspace = true
+rust-version.workspace = true
+
+[features]
+# Exposes `conformance`, the suite every backend must pass.
+conformance = []
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"

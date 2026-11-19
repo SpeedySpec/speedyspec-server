@@ -1,0 +1,10 @@
+# ext-php-rs's build script finds PHP through these variables before it looks
+# on PATH. Point them at the static build so the system PHP is never used.
+# A variable already set in the environment wins (scripts/linux.sh and CI rely
+# on the defaults; set all three together if you move the build).
+[env]
+PHP = { value = ".php-build/buildroot/bin/php", relative = true }
+PHP_CONFIG = { value = ".php-build/buildroot/bin/php-config", relative = true }
+# The oldest macOS the binary runs on: what the static PHP is built for too
+# (scripts/build-php.sh), so nothing linked in demands a newer one. Ignored off macOS.
+MACOSX_DEPLOYMENT_TARGET = "12.0"
