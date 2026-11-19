@@ -6,7 +6,7 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_php_ext::{Key, PhpObject, Value, php_port};
 use speedyspec_wp_hooks::{
-    ArrayKey, Count, DeprecatedHooks, HookError, HookStore, HookValue, Partition, WpHook,
+    ArrayKey, Count, DeprecatedHooks, HookError, HookKey, HookStore, HookValue, Partition, WpHook,
 };
 
 use crate::registry;
@@ -36,8 +36,11 @@ impl ResolvedHookStore {
 }
 
 impl HookStore for ResolvedHookStore {
-    fn hook(&self, name: &ArrayKey) -> Option<WpHook> {
+    fn hook(&self, name: &HookKey) -> Option<WpHook> {
         self.current().hook(name)
+    }
+    fn has_hook(&self, name: &HookKey) -> bool {
+        self.current().has_hook(name)
     }
     fn hooks(&self) -> Vec<(ArrayKey, WpHook)> {
         self.current().hooks()
@@ -45,7 +48,7 @@ impl HookStore for ResolvedHookStore {
     fn counts(&self, kind: Count) -> Vec<(ArrayKey, i64)> {
         self.current().counts(kind)
     }
-    fn count(&self, kind: Count, name: &ArrayKey) -> Option<i64> {
+    fn count(&self, kind: Count, name: &HookKey) -> Option<i64> {
         self.current().count(kind, name)
     }
     fn current_stack(&self) -> Vec<HookValue> {
@@ -54,10 +57,10 @@ impl HookStore for ResolvedHookStore {
     fn partition(&self) -> Partition {
         self.current().partition()
     }
-    fn insert(&self, name: ArrayKey, hook: WpHook) {
+    fn insert(&self, name: HookKey, hook: WpHook) {
         self.current().insert(name, hook)
     }
-    fn remove(&self, name: &ArrayKey) {
+    fn remove(&self, name: &HookKey) {
         self.current().remove(name)
     }
     fn clear(&self) {
@@ -72,10 +75,10 @@ impl HookStore for ResolvedHookStore {
     fn set_current_stack(&self, stack: Vec<HookValue>) {
         self.current().set_current_stack(stack)
     }
-    fn increment_did(&self, kind: Count, name: &ArrayKey) {
+    fn increment_did(&self, kind: Count, name: &HookKey) {
         self.current().increment_did(kind, name)
     }
-    fn set_count(&self, kind: Count, name: &ArrayKey, value: Option<i64>) {
+    fn set_count(&self, kind: Count, name: &HookKey, value: Option<i64>) {
         self.current().set_count(kind, name, value)
     }
 }
@@ -130,8 +133,8 @@ fn entries(value: Value) -> Vec<(Key, Value)> {
 }
 
 impl HookStore for PhpHookStore {
-    fn hook(&self, name: &ArrayKey) -> Option<WpHook> {
-        registry::hook_of(&self.0.hook(name.to_value()))
+    fn hook(&self, name: &HookKey) -> Option<WpHook> {
+        registry::hook_of(&self.0.hook(name.key().to_value()))
     }
     fn hooks(&self) -> Vec<(ArrayKey, WpHook)> {
         entries(self.0.hooks())
@@ -148,10 +151,10 @@ impl HookStore for PhpHookStore {
             })
             .collect()
     }
-    fn count(&self, kind: Count, name: &ArrayKey) -> Option<i64> {
+    fn count(&self, kind: Count, name: &HookKey) -> Option<i64> {
         self.counts(kind)
             .into_iter()
-            .find(|(k, _)| k == name)
+            .find(|(k, _)| k == name.key())
             .map(|(_, n)| n)
     }
     fn current_stack(&self) -> Vec<HookValue> {
@@ -163,13 +166,13 @@ impl HookStore for PhpHookStore {
     fn partition(&self) -> Partition {
         Partition::Request
     }
-    fn insert(&self, name: ArrayKey, hook: WpHook) {
+    fn insert(&self, name: HookKey, hook: WpHook) {
         if let Ok(object) = registry::object_for(&hook) {
-            self.0.insert(name.to_value(), object);
+            self.0.insert(name.key().to_value(), object);
         }
     }
-    fn remove(&self, name: &ArrayKey) {
-        self.0.remove(name.to_value())
+    fn remove(&self, name: &HookKey) {
+        self.0.remove(name.key().to_value())
     }
     fn clear(&self) {
         self.0.clear()
@@ -192,15 +195,15 @@ impl HookStore for PhpHookStore {
             .collect();
         self.0.set_current_stack(Value::Array(list))
     }
-    fn increment_did(&self, kind: Count, name: &ArrayKey) {
+    fn increment_did(&self, kind: Count, name: &HookKey) {
         let next = self.count(kind, name).unwrap_or(0) + 1;
         self.0
-            .set_count(kind_name(kind), name.to_value(), Value::Int(next))
+            .set_count(kind_name(kind), name.key().to_value(), Value::Int(next))
     }
-    fn set_count(&self, kind: Count, name: &ArrayKey, value: Option<i64>) {
+    fn set_count(&self, kind: Count, name: &HookKey, value: Option<i64>) {
         self.0.set_count(
             kind_name(kind),
-            name.to_value(),
+            name.key().to_value(),
             value.map_or(Value::Null, Value::Int),
         )
     }

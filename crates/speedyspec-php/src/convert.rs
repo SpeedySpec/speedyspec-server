@@ -7,6 +7,12 @@
 //! reference to the very same PHP value, so the object that comes out of a
 //! hook is the object that went in. Converting back reverses each rule.
 //!
+//! [`pass_through`] reads a value without converting it: a string or an array
+//! becomes `Value::Opaque` holding a [`ZvalHandle`] too, so a value Rust only
+//! carries (a hook's argument, a filter's result) goes back to PHP as the
+//! very same zval, with no copy either way. [`read_opaque`] converts such a
+//! handle when Rust code reads it ([`Value::read`]).
+//!
 //! Reading a `zval` ([`to_value`]) never allocates PHP memory and never runs
 //! PHP code. Writing one ([`write_value`]) allocates PHP memory. In this PHP
 //! that does not bail out: an allocation that crosses `memory_limit`
@@ -127,6 +133,16 @@ impl ZvalHandle {
         &raw const *self.zv
     }
 
+    /// Wraps a value the caller owns (one reference, moved into the handle).
+    ///
+    /// # Safety
+    ///
+    /// `zv` is a live, initialised zval, not a reference or indirect slot,
+    /// whose reference the caller owns and gives up.
+    pub(crate) unsafe fn adopt(zv: ManuallyDrop<Zval>) -> Self {
+        Self { zv }
+    }
+
     /// The object, if this handle holds one.
     pub(crate) fn object(&self) -> Option<*mut zend_object> {
         // SAFETY: the handle always holds an initialised zval.
@@ -150,6 +166,106 @@ impl Drop for ZvalHandle {
         let zv = unsafe { ManuallyDrop::take(&mut self.zv) };
         boundary::release_later(ManuallyDrop::new(zv));
     }
+}
+
+/// Reads a PHP value for Rust to carry, not to look into: null, bool, int
+/// and float are converted (they are copied anyway); a string, an array, an
+/// object or a resource becomes a `Value::Opaque` holding one reference to
+/// the very same zval. Nothing is copied, and the value written back to PHP
+/// is the one that came in.
+///
+/// # Safety
+///
+/// `zv` points to a live zval, on the engine's thread.
+pub(crate) unsafe fn pass_through(zv: *const zval) -> Value {
+    // SAFETY: the caller guarantees `zv` is live; each branch reads the union
+    // member that matches the zval's type.
+    unsafe {
+        let zv = deref(zv);
+        match u32::from(type_of(zv)) {
+            IS_LONG => Value::Int((*zv).value.lval),
+            IS_DOUBLE => Value::Float((*zv).value.dval),
+            IS_FALSE => Value::Bool(false),
+            IS_TRUE => Value::Bool(true),
+            IS_STRING | IS_ARRAY | IS_OBJECT | IS_RESOURCE => {
+                Value::Opaque(Rc::new(ZvalHandle::copy_of(zv)))
+            }
+            _ => Value::Null,
+        }
+    }
+}
+
+/// Like [`pass_through`], for a value the caller owns (a call's result): its
+/// reference moves into the handle.
+///
+/// # Safety
+///
+/// As [`ZvalHandle::adopt`].
+pub(crate) unsafe fn pass_through_owned(zv: ManuallyDrop<Zval>) -> Value {
+    // SAFETY: forwarded from the caller; a scalar owns no reference.
+    unsafe {
+        match u32::from(type_of(&raw const *zv)) {
+            IS_STRING | IS_ARRAY | IS_OBJECT | IS_RESOURCE => {
+                Value::Opaque(Rc::new(ZvalHandle::adopt(zv)))
+            }
+            IS_REFERENCE => {
+                let value = pass_through(&raw const *zv);
+                boundary::release_later(zv);
+                value
+            }
+            _ => pass_through(&raw const *zv),
+        }
+    }
+}
+
+/// True when `any` is a carried string or array, which [`read_opaque`]
+/// converts; objects and resources stay opaque.
+pub(crate) fn readable_opaque(any: &dyn std::any::Any) -> bool {
+    any.downcast_ref::<ZvalHandle>().is_some_and(|handle| {
+        // SAFETY: the handle holds an initialised zval.
+        let ty = u32::from(unsafe { type_of(handle.as_ptr()) });
+        ty == IS_STRING || ty == IS_ARRAY
+    })
+}
+
+/// The value a carried string or array holds, converted; `None` for anything
+/// else (an object stays opaque, as [`to_value`] leaves it).
+pub(crate) fn read_opaque(any: &dyn std::any::Any) -> Option<Value> {
+    if !readable_opaque(any) {
+        return None;
+    }
+    let handle = any.downcast_ref::<ZvalHandle>()?;
+    // SAFETY: the handle keeps the value alive; reading runs no PHP code.
+    unsafe { to_value(handle.as_ptr()).ok() }
+}
+
+/// The hash of a string zval (`ZSTR_H`, computed and cached in the string if
+/// PHP had not yet). `None` for anything else.
+///
+/// # Safety
+///
+/// `zv` points to a live zval, on the engine's thread.
+pub(crate) unsafe fn string_hash(zv: *const zval) -> Option<u64> {
+    // SAFETY: the caller guarantees `zv` is live; a string zval's `str_`
+    // points to its live zend string. Hashing runs no PHP code and does not
+    // allocate: it fills in the string's own `h`, as PHP itself does on first
+    // use as a key.
+    unsafe {
+        let zv = deref(zv);
+        if u32::from(type_of(zv)) != IS_STRING {
+            return None;
+        }
+        let s = (*zv).value.str_;
+        let h = (*s).h;
+        Some(if h != 0 { h } else { zend_string_hash_func(s) })
+    }
+}
+
+// `ZEND_API zend_ulong ZEND_FASTCALL zend_string_hash_func(zend_string *str)`,
+// a symbol of the linked libphp. ZEND_FASTCALL is a plain C call on x86_64
+// and aarch64.
+unsafe extern "C" {
+    fn zend_string_hash_func(s: *mut zend_string) -> zend_ulong;
 }
 
 /// The handle inside a `Value::Opaque`, if it wraps a PHP value.
@@ -313,6 +429,81 @@ unsafe fn read_array(
     Ok(Value::Array(items))
 }
 
+/// The value slots of an array, in order, holes skipped (PHP's `foreach`).
+///
+/// # Safety
+///
+/// `ht` points to a live array, which must outlive the returned pointers.
+pub(crate) unsafe fn array_values(ht: *const zend_array) -> Vec<*const zval> {
+    // SAFETY: as in `read_array`.
+    unsafe {
+        let used = (*ht).nNumUsed as usize;
+        let mut slots = Vec::with_capacity((*ht).nNumOfElements as usize);
+        if (*ht).u.flags & HASH_FLAG_PACKED != 0 {
+            let packed = (*ht).__bindgen_anon_1.arPacked;
+            for i in 0..used {
+                let slot = packed.add(i).cast_const();
+                if !is_hole(slot) {
+                    slots.push(slot);
+                }
+            }
+        } else {
+            let data: *const Bucket = (*ht).__bindgen_anon_1.arData;
+            for i in 0..used {
+                let slot = &raw const (*data.add(i)).val;
+                if !is_hole(slot) {
+                    slots.push(slot);
+                }
+            }
+        }
+        slots
+    }
+}
+
+/// `array_pop()` on `ht`: deletes its last element and, when that was the
+/// last integer key, lowers the next free index, as `array_pop()` does.
+///
+/// # Safety
+///
+/// `ht` is a live array only the caller holds; inside a guard (the deleted
+/// value is released).
+pub(crate) unsafe fn pop_last(ht: *mut zend_array) {
+    // SAFETY: as in `read_array`; the key found is deleted through the hash API.
+    unsafe {
+        let used = (*ht).nNumUsed as usize;
+        if (*ht).u.flags & HASH_FLAG_PACKED != 0 {
+            let packed = (*ht).__bindgen_anon_1.arPacked;
+            let Some(i) = (0..used).rev().find(|&i| !is_hole(packed.add(i))) else {
+                return;
+            };
+            ext_php_rs::ffi::zend_hash_index_del(ht, i as zend_ulong);
+            if i as i64 == (*ht).nNextFreeElement - 1 {
+                (*ht).nNextFreeElement -= 1;
+            }
+        } else {
+            let data: *mut Bucket = (*ht).__bindgen_anon_1.arData;
+            let Some(i) = (0..used)
+                .rev()
+                .find(|&i| !is_hole(&raw const (*data.add(i)).val))
+            else {
+                return;
+            };
+            let bucket = data.add(i);
+            if (*bucket).key.is_null() {
+                let h = (*bucket).h;
+                ext_php_rs::ffi::zend_hash_index_del(ht, h);
+                if h as i64 == (*ht).nNextFreeElement - 1 {
+                    (*ht).nNextFreeElement -= 1;
+                }
+            } else {
+                ext_php_rs::ffi::zend_hash_del(ht, (*bucket).key);
+            }
+        }
+        // array_pop() leaves the internal pointer at the start.
+        (*ht).nInternalPointer = 0;
+    }
+}
+
 /// True for a deleted slot, or an indirect slot (a declared property or a
 /// global) whose target is unset, such as an uninitialised typed property.
 ///
@@ -343,6 +534,36 @@ unsafe fn is_hole(slot: *const zval) -> bool {
 pub(crate) unsafe fn write_value(out: *mut zval, value: &Value) -> Result<(), Unconvertible> {
     // SAFETY: forwarded from the caller.
     unsafe { write(out, value, 0) }
+}
+
+/// Writes `value` into `out` when that needs nothing from the engine: a
+/// scalar, or a value passed through (a copy of the zval and one more
+/// reference). Allocates nothing and runs no PHP code, so it needs no guard.
+/// False, and `out` untouched, for anything else.
+///
+/// # Safety
+///
+/// As [`write_value`].
+pub(crate) unsafe fn write_without_engine(out: *mut zval, value: &Value) -> bool {
+    match value {
+        Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) => {
+            // SAFETY: forwarded from the caller; scalars allocate nothing.
+            unsafe { write(out, value, 0) }.is_ok()
+        }
+        Value::Opaque(_) => match handle_of(value) {
+            Some(handle) => {
+                // SAFETY: `out` is writable; the handle's zval is live, and
+                // the copy takes its own reference (ZVAL_COPY).
+                unsafe {
+                    ptr::copy_nonoverlapping(handle.as_ptr(), out, 1);
+                    add_ref(out);
+                }
+                true
+            }
+            None => false,
+        },
+        _ => false,
+    }
 }
 
 /// # Safety

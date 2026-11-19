@@ -68,6 +68,137 @@ impl ArrayKey {
     }
 }
 
+/// A hook name as the hook store keys it: the array key and its hash, PHP's own (`zend_string`'s `h`, or the integer
+/// itself for an integer key).
+///
+/// A name that comes from PHP carries the hash PHP already computed ([`HookKey::prehashed`]); only a name made in
+/// Rust is hashed here ([`HookKey::new`], the same DJBX33A PHP uses), so both look a hook up in the same table.
+#[derive(Clone, Debug)]
+pub struct HookKey {
+    key: ArrayKey,
+    hash: u64,
+}
+
+impl HookKey {
+    /// Hashes `key` as PHP does.
+    pub fn new(key: ArrayKey) -> HookKey {
+        let hash = match &key {
+            ArrayKey::Int(n) => *n as u64,
+            ArrayKey::Str(s) => php_string_hash(s.as_bytes()),
+        };
+        HookKey { key, hash }
+    }
+
+    /// A key whose hash PHP already computed. `hash` must be PHP's hash of `key` (for an integer key, the integer).
+    pub fn prehashed(key: ArrayKey, hash: u64) -> HookKey {
+        HookKey { key, hash }
+    }
+
+    pub fn key(&self) -> &ArrayKey {
+        &self.key
+    }
+
+    pub fn into_key(self) -> ArrayKey {
+        self.key
+    }
+
+    pub fn hash(&self) -> u64 {
+        self.hash
+    }
+}
+
+impl PartialEq for HookKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.hash == other.hash && self.key == other.key
+    }
+}
+
+impl Eq for HookKey {}
+
+impl std::hash::Hash for HookKey {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.hash);
+    }
+}
+
+/// `zend_inline_hash_func()`: DJBX33A, with the high bit set so a string's hash is never 0.
+pub fn php_string_hash(bytes: &[u8]) -> u64 {
+    let mut hash: u64 = 5381;
+    for &b in bytes {
+        hash = hash.wrapping_mul(33).wrapping_add(u64::from(b));
+    }
+    hash | 0x8000_0000_0000_0000
+}
+
+/// A hasher that takes a [`HookKey`]'s hash as it is, so a lookup never hashes the name again.
+#[derive(Default)]
+pub struct PrehashedHasher(u64);
+
+impl std::hash::Hasher for PrehashedHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        // Only `write_u64` is expected; anything else is folded in so the hasher stays correct.
+        for &b in bytes {
+            self.0 = self.0.wrapping_mul(33).wrapping_add(u64::from(b));
+        }
+    }
+
+    fn write_u64(&mut self, n: u64) {
+        self.0 = n;
+    }
+}
+
+/// The build hasher of maps keyed by [`HookKey`].
+pub type Prehashed = std::hash::BuildHasherDefault<PrehashedHasher>;
+
+/// A hook name as the Hook API gets it: the value WordPress passed (pushed on `$wp_current_filter`, shown to
+/// deprecation notices) and its store key, or the error PHP would raise using it as an array key.
+#[derive(Clone, Debug)]
+pub struct HookName {
+    value: HookValue,
+    key: Result<HookKey, HookError>,
+}
+
+impl HookName {
+    /// A name made in Rust: its key is hashed here.
+    pub fn new(value: HookValue) -> HookName {
+        let key = ArrayKey::from_value(&value).map(HookKey::new);
+        HookName { value, key }
+    }
+
+    /// A name whose key (and hash) PHP already computed.
+    pub fn prehashed(value: HookValue, key: HookKey) -> HookName {
+        HookName {
+            value,
+            key: Ok(key),
+        }
+    }
+
+    pub fn value(&self) -> &HookValue {
+        &self.value
+    }
+
+    /// The store key, or PHP's error for a name that cannot be an array key.
+    pub fn key(&self) -> Result<&HookKey, HookError> {
+        self.key.as_ref().map_err(Clone::clone)
+    }
+}
+
+impl From<HookValue> for HookName {
+    fn from(value: HookValue) -> HookName {
+        HookName::new(value)
+    }
+}
+
+impl From<&str> for HookName {
+    fn from(name: &str) -> HookName {
+        HookName::new(HookValue::Str(name.to_owned()))
+    }
+}
+
 /// PHP's float-to-integer key conversion: truncation, and 0 when out of range or not finite.
 fn float_to_key(f: f64) -> i64 {
     const LIMIT: f64 = 9_223_372_036_854_775_808.0;
@@ -272,6 +403,23 @@ mod tests {
             ArrayKey::from_value(&HookValue::Bool(true)).unwrap(),
             ArrayKey::Int(1)
         );
+    }
+
+    #[test]
+    fn hook_keys_hash_as_php_does() {
+        // zend_inline_hash_func(""), as PHP 8 computes it on 64-bit. That Rust-made keys find hooks PHP names (and
+        // the other way round) is shown end to end by the PHP tests.
+        assert_eq!(php_string_hash(b""), 5381 | 0x8000_0000_0000_0000);
+        assert_eq!(
+            php_string_hash(b"a"),
+            (5381 * 33 + 97) | 0x8000_0000_0000_0000
+        );
+        assert_eq!(HookKey::new(ArrayKey::Int(7)).hash(), 7);
+        assert_eq!(
+            HookKey::new(k("init")),
+            HookKey::prehashed(k("init"), php_string_hash(b"init"))
+        );
+        assert!(HookName::new(HookValue::Array(Vec::new())).key().is_err());
     }
 
     #[test]

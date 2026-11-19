@@ -44,21 +44,41 @@ pub fn sync_in(store: &dyn HookStore) {
     }
 }
 
-/// The store's stack, into the array.
+/// The store's stack, into the array. A hook starting or ending is one push or pop on the array, made in place as
+/// WordPress makes it (one entry into PHP); any other change writes the whole array.
 pub fn sync_out(store: &dyn HookStore) {
     if !active() {
         return;
     }
     let stack = store.current_stack();
-    let changed = MIRRORED.with(|m| m.borrow().as_ref() != Some(&stack));
-    if changed {
+    let step = MIRRORED.with(|m| match m.borrow().as_ref() {
+        Some(old) if *old == stack => Step::Same,
+        Some(old) if stack.len() == old.len() + 1 && stack[..old.len()] == old[..] => Step::Push,
+        Some(old) if stack.len() + 1 == old.len() && old[..stack.len()] == stack[..] => Step::Pop,
+        _ => Step::Write,
+    });
+    let done = match step {
+        Step::Same => return,
+        Step::Push => speedyspec_php::global_push(GLOBAL, &stack[stack.len() - 1]).unwrap_or(false),
+        Step::Pop => speedyspec_php::global_pop(GLOBAL).unwrap_or(false),
+        Step::Write => false,
+    };
+    if !done {
         let list = stack
             .iter()
             .enumerate()
             .map(|(i, v)| (Key::Int(i as i64), v.clone()))
             .collect();
-        if speedyspec_php::set_global(GLOBAL, &Value::Array(list)).is_ok() {
-            MIRRORED.with(|m| *m.borrow_mut() = Some(stack));
+        if speedyspec_php::set_global(GLOBAL, &Value::Array(list)).is_err() {
+            return;
         }
     }
+    MIRRORED.with(|m| *m.borrow_mut() = Some(stack));
+}
+
+enum Step {
+    Same,
+    Push,
+    Pop,
+    Write,
 }

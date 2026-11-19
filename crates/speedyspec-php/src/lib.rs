@@ -7,6 +7,7 @@
 
 mod area;
 mod boundary;
+mod callable;
 mod convert;
 mod hook_class;
 pub mod native;
@@ -15,11 +16,12 @@ mod sapi;
 mod web;
 
 pub use area::NativeArea;
+pub use callable::Callable;
 /// ext-php-rs, for areas building their functions and classes.
 pub use ext_php_rs;
 pub use runtime::{
     BootOptions, CallFailure, Output, Php, PhpError, Served, call, call_catching, eval, global,
-    object_id, set_global, set_ini,
+    global_pop, global_push, object_id, set_global, set_ini,
 };
 pub use web::WebRequest;
 

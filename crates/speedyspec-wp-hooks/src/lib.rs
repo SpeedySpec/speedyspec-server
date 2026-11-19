@@ -22,7 +22,9 @@ pub use callback::{
 pub use hook::{
     Entry, HasFilterResult, HookIteration, HookState, Partition, PrioritySlice, WpHook,
 };
-pub use key::{ArrayKey, PriorityOrder};
+pub use key::{
+    ArrayKey, HookKey, HookName, Prehashed, PrehashedHasher, PriorityOrder, php_string_hash,
+};
 pub use messages::*;
 pub use store::{Count, HookStore};
 

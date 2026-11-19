@@ -43,6 +43,27 @@ message's `KEY` and runs the bus's middleware around it, in registration order. 
 `HandlerRef<C>` (and `QueryRef<Q>`) resolves the handler once, calls it with no middleware, and resolves it again only
 when its binding changes. WordPress's PHP functions call their handlers through `HandlerRef`s.
 
+## Hot paths across the boundary
+
+A function PHP calls often (WordPress's `apply_filters()`, `do_action()`, `add_filter()`) must cost less than the PHP
+it replaces. The Hook API's functions are the model:
+
+- **PHP values stay PHP values.** A hot native function reads its arguments itself (`native::raw_function`) and
+  converts only what Rust reads: the hook name, the priority, the accepted-args count, a callback's identity. Everything
+  else passes through as the zval PHP gave (`Value::Opaque`, one more reference, no copy) and goes back to PHP as the
+  same zval. A Rust callback reads such a value only when it runs (`Value::read`).
+- **Nothing to do returns early.** A hook with no callbacks (and no `all` hook) counts the run and hands the value
+  straight back, before any argument list is built (`HookApi::skip_if_empty`).
+- **PHP's hash is the hash.** A hook name from PHP keeps the hash its `zend_string` carries (`HookKey::prehashed`);
+  the store hashes nothing again. A name made in Rust is hashed the same way PHP would.
+- **Sort when adding, walk when firing.** Priorities are kept in `ksort(SORT_NUMERIC)` order as callbacks are added
+  and removed; a run shares the sorted lists and copies one only if a callback changes it mid-run.
+- **Resolve a callback once.** A PHP callback is resolved per request into a `zend_fcall_info_cache` and called
+  with `zend_call_function()` (`speedyspec_php::Callable`), not through `call_user_func_array()` on every call.
+- **Count the crossings.** `boundary_crossings()` is the measure: an empty hook costs none, a PHP callback one (plus
+  one push and one pop of `$wp_current_filter` per run). A change that adds crossings on a hot path is a regression,
+  and the area's tests assert the counts.
+
 ## The service container
 
 `speedyspec-container` has the functionality of Laravel's container (no Laravel compatibility is promised): `bind`,

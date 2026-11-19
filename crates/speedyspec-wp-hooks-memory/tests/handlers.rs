@@ -7,11 +7,11 @@ use speedyspec_container::Container;
 use speedyspec_cqrs::{CommandBus, QueryBus};
 use speedyspec_wp_hooks::{
     AddAction, AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray, ArrayKey,
-    Callback, CallbackId, CallbackIdentity, CallbackShape, CurrentAction, CurrentFilter,
+    Callback, CallbackId, CallbackIdentity, CallbackShape, Count, CurrentAction, CurrentFilter,
     CurrentPriority, DeprecatedHooks, DidAction, DidFilter, DoAction, DoActionDeprecated,
     DoActionRefArray, DoingAction, DoingFilter, HasAction, HasFilter, HasFilterResult, HookApi,
-    HookError, HookStore, HookValue, RemoveAction, RemoveAllActions, RemoveAllFilters,
-    RemoveFilter, register_hook_handlers,
+    HookError, HookKey, HookName, HookStore, HookValue, RemoveAction, RemoveAllActions,
+    RemoveAllFilters, RemoveFilter, register_hook_handlers,
 };
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 
@@ -87,7 +87,7 @@ fn id(callback: &Callback) -> CallbackId {
 impl World {
     fn add(&self, hook: &str, callback: &Callback, priority: i64) {
         let added = self.commands.dispatch(AddFilter {
-            hook: s(hook),
+            hook: s(hook).into(),
             callback: callback.clone(),
             priority: int(priority),
             accepted_args: 1,
@@ -98,7 +98,7 @@ impl World {
     fn apply(&self, hook: &str, value: &str) -> HookValue {
         self.commands
             .dispatch(ApplyFilters {
-                hook: s(hook),
+                hook: s(hook).into(),
                 value: s(value),
                 args: vec![],
             })
@@ -123,19 +123,28 @@ fn add_and_apply_filters_in_priority_order() {
     assert_eq!(w.apply("f", "x"), s("x-b-c-d-a"));
     assert_eq!(w.apply("none", "v"), s("v"));
     assert_eq!(
-        w.queries.ask(DidFilter { hook: s("f") }).unwrap().unwrap(),
-        1
-    );
-    assert_eq!(
         w.queries
-            .ask(DidFilter { hook: s("none") })
+            .ask(DidFilter {
+                hook: s("f").into()
+            })
             .unwrap()
             .unwrap(),
         1
     );
     assert_eq!(
         w.queries
-            .ask(DidFilter { hook: s("never") })
+            .ask(DidFilter {
+                hook: s("none").into()
+            })
+            .unwrap()
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        w.queries
+            .ask(DidFilter {
+                hook: s("never").into()
+            })
             .unwrap()
             .unwrap(),
         0
@@ -149,7 +158,7 @@ fn string_numeric_priorities_sort_numerically() {
     for (cb, p) in [(&a, s("5")), (&b, int(10)), (&c, s(" 7"))] {
         w.commands
             .dispatch(AddFilter {
-                hook: s("f"),
+                hook: s("f").into(),
                 callback: cb.clone(),
                 priority: p,
                 accepted_args: 1,
@@ -165,7 +174,7 @@ fn string_numeric_priorities_sort_numerically() {
     let has = w
         .queries
         .ask(HasFilter {
-            hook: s("f"),
+            hook: s("f").into(),
             callback: Some(id(&a)),
             priority: None,
         })
@@ -179,7 +188,7 @@ fn string_numeric_priorities_sort_numerically() {
     let has = w
         .queries
         .ask(HasFilter {
-            hook: s("f"),
+            hook: s("f").into(),
             callback: Some(id(&c)),
             priority: None,
         })
@@ -208,7 +217,7 @@ fn add_action_and_do_action() {
     });
     w.commands
         .dispatch(AddAction {
-            hook: s("a"),
+            hook: s("a").into(),
             callback: counter.clone(),
             priority: int(10),
             accepted_args: 2,
@@ -217,21 +226,21 @@ fn add_action_and_do_action() {
         .unwrap();
     w.commands
         .dispatch(DoAction {
-            hook: s("a"),
+            hook: s("a").into(),
             args: vec![int(1), int(2)],
         })
         .unwrap()
         .unwrap();
     w.commands
         .dispatch(DoAction {
-            hook: s("a"),
+            hook: s("a").into(),
             args: vec![],
         })
         .unwrap()
         .unwrap();
     w.commands
         .dispatch(DoActionRefArray {
-            hook: s("a"),
+            hook: s("a").into(),
             args: vec![int(3)],
         })
         .unwrap()
@@ -241,12 +250,19 @@ fn add_action_and_do_action() {
         vec!["[Int(1), Int(2)]", "[Str(\"\")]", "[Int(3)]"]
     );
     assert_eq!(
-        w.queries.ask(DidAction { hook: s("a") }).unwrap().unwrap(),
+        w.queries
+            .ask(DidAction {
+                hook: s("a").into()
+            })
+            .unwrap()
+            .unwrap(),
         3
     );
     assert_eq!(
         w.queries
-            .ask(DidAction { hook: s("never") })
+            .ask(DidAction {
+                hook: s("never").into()
+            })
             .unwrap()
             .unwrap(),
         0
@@ -260,7 +276,7 @@ fn has_filter_variants() {
     let ask = |callback: Option<CallbackId>, priority: Option<i64>| {
         w.queries
             .ask(HasFilter {
-                hook: s("f"),
+                hook: s("f").into(),
                 callback,
                 priority,
             })
@@ -285,7 +301,7 @@ fn has_filter_variants() {
     let action = w
         .queries
         .ask(HasAction {
-            hook: s("f"),
+            hook: s("f").into(),
             callback: Some(id(&a)),
             priority: None,
         })
@@ -303,7 +319,7 @@ fn remove_filter_and_remove_all() {
     let remove = |cb: &Callback, p: i64| {
         w.commands
             .dispatch(RemoveFilter {
-                hook: s("f"),
+                hook: s("f").into(),
                 callback: id(cb),
                 priority: int(p),
             })
@@ -316,7 +332,7 @@ fn remove_filter_and_remove_all() {
     assert_eq!(w.apply("f", "x"), s("x-b"));
     assert!(remove(&b, 10));
     assert!(
-        !w.store.has_hook(&ArrayKey::Str("f".into())),
+        !w.store.has_hook(&HookKey::new(ArrayKey::Str("f".into()))),
         "an emptied hook leaves $wp_filter"
     );
     w.add("f", &a, 1);
@@ -325,7 +341,7 @@ fn remove_filter_and_remove_all() {
     let all = w
         .commands
         .dispatch(RemoveAllFilters {
-            hook: s("f"),
+            hook: s("f").into(),
             priority: Some(int(2)),
         })
         .unwrap()
@@ -335,18 +351,18 @@ fn remove_filter_and_remove_all() {
     assert!(
         w.commands
             .dispatch(RemoveAllFilters {
-                hook: s("f"),
+                hook: s("f").into(),
                 priority: None
             })
             .unwrap()
             .unwrap()
     );
-    assert!(!w.store.has_hook(&ArrayKey::Str("f".into())));
+    assert!(!w.store.has_hook(&HookKey::new(ArrayKey::Str("f".into()))));
     w.add("a", &a, 3);
     assert!(
         w.commands
             .dispatch(RemoveAction {
-                hook: s("a"),
+                hook: s("a").into(),
                 callback: id(&a),
                 priority: int(3)
             })
@@ -357,13 +373,13 @@ fn remove_filter_and_remove_all() {
     assert!(
         w.commands
             .dispatch(RemoveAllActions {
-                hook: s("a"),
+                hook: s("a").into(),
                 priority: None
             })
             .unwrap()
             .unwrap()
     );
-    assert!(!w.store.has_hook(&ArrayKey::Str("a".into())));
+    assert!(!w.store.has_hook(&HookKey::new(ArrayKey::Str("a".into()))));
 }
 
 #[test]
@@ -382,7 +398,7 @@ fn ref_array_variants() {
     let filtered = w
         .commands
         .dispatch(ApplyFiltersRefArray {
-            hook: s("f"),
+            hook: s("f").into(),
             args: vec![s("x"), s("y")],
         })
         .unwrap();
@@ -393,7 +409,7 @@ fn ref_array_variants() {
 fn deprecated_variants_notify_only_with_callbacks() {
     let w = world();
     let deprecated = |hook: &str| ApplyFiltersDeprecated {
-        hook: s(hook),
+        hook: s(hook).into(),
         args: vec![s("v")],
         version: s("1.0"),
         replacement: s("new"),
@@ -411,7 +427,7 @@ fn deprecated_variants_notify_only_with_callbacks() {
     );
     assert_eq!(w.deprecated.borrow().len(), 1);
     let action = DoActionDeprecated {
-        hook: s("olda"),
+        hook: s("olda").into(),
         args: vec![int(1)],
         version: s("1.0"),
         replacement: s(""),
@@ -421,7 +437,9 @@ fn deprecated_variants_notify_only_with_callbacks() {
     assert_eq!(w.deprecated.borrow().len(), 1, "no callbacks, no notice");
     assert_eq!(
         w.queries
-            .ask(DidAction { hook: s("olda") })
+            .ask(DidAction {
+                hook: s("olda").into()
+            })
             .unwrap()
             .unwrap(),
         0
@@ -444,14 +462,14 @@ fn current_and_doing() {
             api.current_filter(),
             api.doing_filter(None),
             api.doing_filter(Some(&HookValue::Str("a".into()))),
-            api.current_priority(&HookValue::Str("a".into())).unwrap()
+            api.current_priority(&HookName::from("a")).unwrap()
         ));
         Ok(args.first().cloned().unwrap_or(HookValue::Null))
     });
     w.add("a", &probe, 4);
     w.commands
         .dispatch(DoAction {
-            hook: s("a"),
+            hook: s("a").into(),
             args: vec![],
         })
         .unwrap()
@@ -462,7 +480,9 @@ fn current_and_doing() {
     );
     let outside = w
         .queries
-        .ask(CurrentPriority { hook: s("a") })
+        .ask(CurrentPriority {
+            hook: s("a").into(),
+        })
         .unwrap()
         .unwrap();
     assert_eq!(outside, None);
@@ -479,7 +499,7 @@ fn exception_leaves_the_current_filter_as_wordpress_does() {
     let err = w
         .commands
         .dispatch(ApplyFilters {
-            hook: s("f"),
+            hook: s("f").into(),
             value: s("x"),
             args: vec![],
         })
@@ -501,7 +521,7 @@ fn adder(w: &World, priority: i64, added: Callback) -> Callback {
     Callback::rust(&format!("adder-{priority}"), move |args: &[HookValue]| {
         if !done.replace(true) {
             api.add_filter(
-                &HookValue::Str("f".into()),
+                &HookName::from("f"),
                 added.clone(),
                 &HookValue::Int(priority),
                 1,
@@ -516,7 +536,7 @@ fn remover(w: &World, priority: i64, removed: &Callback, label: &str) -> Callbac
     let (api, removed) = (w.api(), id(removed));
     Callback::rust(label, move |args: &[HookValue]| {
         api.remove_filter(
-            &HookValue::Str("f".into()),
+            &HookName::from("f"),
             removed.clone(),
             &HookValue::Int(priority),
         )
@@ -590,7 +610,7 @@ fn remove_self_mid_run() {
     let mine = me.clone();
     let once = Callback::rust("once", move |args: &[HookValue]| {
         let id = mine.borrow().clone().unwrap();
-        api.remove_filter(&HookValue::Str("f".into()), id, &HookValue::Int(10))
+        api.remove_filter(&HookName::from("f"), id, &HookValue::Int(10))
             .unwrap();
         Ok(HookValue::Str(format!("{:?}-once", args[0])))
     });
@@ -611,7 +631,7 @@ fn recursive_do_action_keeps_outer_position() {
         log.borrow_mut().push("again".into());
         if *depth.borrow() < 1 {
             *depth.borrow_mut() += 1;
-            api.do_action(&HookValue::Str("a".into()), vec![]).unwrap();
+            api.do_action(&HookName::from("a"), vec![]).unwrap();
         }
         Ok(HookValue::Null)
     });
@@ -620,7 +640,7 @@ fn recursive_do_action_keeps_outer_position() {
     w.add("a", &append(&w, "last"), 15);
     w.commands
         .dispatch(DoAction {
-            hook: s("a"),
+            hook: s("a").into(),
             args: vec![],
         })
         .unwrap()
@@ -630,7 +650,12 @@ fn recursive_do_action_keeps_outer_position() {
         vec!["first", "again", "first", "again", "last", "last"]
     );
     assert_eq!(
-        w.queries.ask(DidAction { hook: s("a") }).unwrap().unwrap(),
+        w.queries
+            .ask(DidAction {
+                hook: s("a").into()
+            })
+            .unwrap()
+            .unwrap(),
         2
     );
 }
@@ -645,7 +670,7 @@ fn recursive_filter_matches_the_fixture() {
         if *depth.borrow() < 2 {
             *depth.borrow_mut() += 1;
             let out = api
-                .apply_filters(&HookValue::Str("f".into()), value, vec![])
+                .apply_filters(&HookName::from("f"), value, vec![])
                 .unwrap();
             *depth.borrow_mut() -= 1;
             return Ok(out);
@@ -675,7 +700,7 @@ fn all_hook_sees_every_hook() {
     });
     w.commands
         .dispatch(AddAction {
-            hook: s("all"),
+            hook: s("all").into(),
             callback: all,
             priority: int(10),
             accepted_args: 1,
@@ -685,14 +710,14 @@ fn all_hook_sees_every_hook() {
     w.add("a", &append(&w, "a"), 10);
     w.commands
         .dispatch(DoAction {
-            hook: s("a"),
+            hook: s("a").into(),
             args: vec![int(1), int(2)],
         })
         .unwrap()
         .unwrap();
     w.commands
         .dispatch(ApplyFilters {
-            hook: s("f"),
+            hook: s("f").into(),
             value: s("v"),
             args: vec![int(3)],
         })
@@ -700,7 +725,7 @@ fn all_hook_sees_every_hook() {
         .unwrap();
     w.commands
         .dispatch(DoActionRefArray {
-            hook: s("r"),
+            hook: s("r").into(),
             args: vec![int(4)],
         })
         .unwrap()
@@ -733,7 +758,7 @@ fn accepted_args_truncates() {
         });
         w.commands
             .dispatch(AddFilter {
-                hook: s("f"),
+                hook: s("f").into(),
                 callback: cb,
                 priority: int(10),
                 accepted_args: accepted,
@@ -743,7 +768,7 @@ fn accepted_args_truncates() {
     }
     w.commands
         .dispatch(ApplyFilters {
-            hook: s("f"),
+            hook: s("f").into(),
             value: s("v"),
             args: vec![int(1), int(2)],
         })
@@ -823,10 +848,113 @@ fn request_partition_cleared_keeps_worker_callbacks() {
     assert_eq!(w.apply("f", "x"), s("x-request-worker"));
     w.store.end_request();
     assert_eq!(w.apply("f", "x"), s("x-worker"));
-    assert!(!w.store.has_hook(&ArrayKey::Str("g".into())));
+    assert!(!w.store.has_hook(&HookKey::new(ArrayKey::Str("g".into()))));
     assert_eq!(
-        w.queries.ask(DidFilter { hook: s("f") }).unwrap().unwrap(),
+        w.queries
+            .ask(DidFilter {
+                hook: s("f").into()
+            })
+            .unwrap()
+            .unwrap(),
         1,
         "counts are per request"
+    );
+}
+
+// ----- kept sorted when added, walked when fired
+
+#[test]
+fn priorities_are_sorted_when_added_as_ksort_would() {
+    let w = world();
+    // Integers, numeric strings and non-numeric strings, added out of order.
+    for (label, priority) in [
+        ("p20", int(20)),
+        ("pm5", int(-5)),
+        ("s7", s(" 7")),
+        ("p10", int(10)),
+        ("abc", s("abc")),
+        ("p0", int(0)),
+        ("s15x", s("15x")),
+    ] {
+        w.api()
+            .add_filter(&HookName::from("f"), append(&w, label), &priority, 1)
+            .unwrap();
+    }
+    let hook = w
+        .store
+        .hook(&HookKey::new(ArrayKey::Str("f".into())))
+        .unwrap();
+    let sorted: Vec<ArrayKey> = hook.state().callbacks.keys().cloned().collect();
+    // The order a full stable `ksort(SORT_NUMERIC)` gives the same keys in insertion order.
+    let mut by_ksort = vec![
+        ArrayKey::Int(20),
+        ArrayKey::Int(-5),
+        ArrayKey::Str(" 7".into()),
+        ArrayKey::Int(10),
+        ArrayKey::Str("abc".into()),
+        ArrayKey::Int(0),
+        ArrayKey::Str("15x".into()),
+    ];
+    by_ksort.sort_by(speedyspec_wp_hooks::PriorityOrder::compare);
+    assert_eq!(sorted, by_ksort);
+    assert_eq!(w.apply("f", "x"), s("x-pm5-abc-p0-s7-p10-s15x-p20"));
+}
+
+#[test]
+fn offset_set_order_is_kept_until_a_new_priority_sorts_it() {
+    let w = world();
+    w.add("f", &append(&w, "a"), 10);
+    let hook = w
+        .store
+        .hook(&HookKey::new(ArrayKey::Str("f".into())))
+        .unwrap();
+    // `$hook[1] = [...]` appends priority 1 after 10, as a PHP array assignment does.
+    let slice = hook.state().callbacks[&ArrayKey::Int(10)].as_ref().clone();
+    hook.set_priority(Some(ArrayKey::Int(1)), slice);
+    let keys = |hook: &speedyspec_wp_hooks::WpHook| -> Vec<ArrayKey> {
+        hook.state().callbacks.keys().cloned().collect()
+    };
+    assert_eq!(keys(&hook), [ArrayKey::Int(10), ArrayKey::Int(1)]);
+    // A callback at an existing priority sorts nothing.
+    w.add("f", &append(&w, "b"), 10);
+    assert_eq!(keys(&hook), [ArrayKey::Int(10), ArrayKey::Int(1)]);
+    // A new priority sorts the whole list, as WordPress's ksort() does.
+    w.add("f", &append(&w, "c"), 5);
+    assert_eq!(
+        keys(&hook),
+        [ArrayKey::Int(1), ArrayKey::Int(5), ArrayKey::Int(10)]
+    );
+}
+
+#[test]
+fn empty_hooks_are_counted_and_skipped() {
+    let w = world();
+    let api = w.api();
+    let none = HookName::from("none");
+    assert!(api.skip_if_empty(&none, Count::Filters).unwrap());
+    assert!(api.skip_if_empty(&none, Count::Actions).unwrap());
+    assert_eq!(
+        api.did_filter(&none).unwrap(),
+        1,
+        "the skipped run is counted"
+    );
+    assert_eq!(api.did_action(&none).unwrap(), 1);
+    w.add("f", &append(&w, "a"), 10);
+    assert!(
+        !api.skip_if_empty(&HookName::from("f"), Count::Filters)
+            .unwrap()
+    );
+    assert_eq!(
+        api.did_filter(&HookName::from("f")).unwrap(),
+        0,
+        "not skipped: not counted here"
+    );
+    // An `all` hook runs for every hook, so nothing is skipped.
+    w.add("all", &append(&w, "all"), 10);
+    assert!(!api.skip_if_empty(&none, Count::Filters).unwrap());
+    assert!(
+        api.skip_if_empty(&HookName::new(HookValue::Array(vec![])), Count::Filters)
+            .is_err(),
+        "an array is not a hook name"
     );
 }
