@@ -76,7 +76,7 @@ pub struct AppConfig {
     /// The worker pool of a `php` app (`app.<id>.php`); `None` for other kinds.
     pub php: Option<PhpConfig>,
     /// The `runtime` app a `php` app's workers run (`app.<id>.runtime`, or the only runtime app); `None` for other
-    /// kinds, and for a php app while no runtime app is configured.
+    /// kinds.
     pub runtime: Option<AppId>,
 }
 
@@ -817,7 +817,12 @@ fn resolve_runtimes(apps: &mut BTreeMap<AppId, AppConfig>) -> Result<(), ConfigE
                     "app.{id}.runtime {named:?} is not a configured app with kind = \"runtime\""
                 )));
             }
-            (Some(_), _) | (None, []) => {}
+            (Some(_), _) => {}
+            (None, []) => {
+                return Err(invalid(format!(
+                    "app.{id}.runtime: a php app needs an app with kind = \"runtime\" to run on, and none is configured"
+                )));
+            }
             (None, [only]) => app.runtime = Some(only.clone()),
             (None, _) => {
                 return Err(invalid(format!(
@@ -938,6 +943,10 @@ path = "/srv/admin"
 [app.blog]
 kind = "php"
 path = "/srv/blog"
+
+[app.rt]
+kind = "runtime"
+path = "/opt/rt/1.0.0"
 
 [[mount]]
 path = "/admin/"
@@ -1423,7 +1432,7 @@ app = "blog"
     #[test]
     fn php_settings_parse() {
         let config = Config::parse(&format!(
-            "{SPEC_EXAMPLE}{MANAGED_BLOG}[app.blog.php]\nworkers = {{ min = 2, max = 8 }}\nmax_requests = 50\nrequest_timeout = \"5s\"\nmemory_limit = \"64MiB\"\nidle_timeout = \"1m\"\nsite_dir = \"/srv/blog-site\"\nbindings = {{ \"SpeedySpec\\\\WpHooks\\\\HookStore\" = \"App\\\\Store\" }}\n"
+            "{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nworkers = {{ min = 2, max = 8 }}\nmax_requests = 50\nrequest_timeout = \"5s\"\nmemory_limit = \"64MiB\"\nidle_timeout = \"1m\"\nsite_dir = \"/srv/blog-site\"\nbindings = {{ \"SpeedySpec\\\\WpHooks\\\\HookStore\" = \"App\\\\Store\" }}\n"
         ))
         .unwrap();
         let php = config.apps[&id("blog")].php.clone().unwrap();
@@ -1443,7 +1452,7 @@ app = "blog"
                 "App\\Store".to_string()
             )]
         );
-        let bytes = Config::parse(&format!("{SPEC_EXAMPLE}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nmemory_limit = 1048576\n")).unwrap();
+        let bytes = Config::parse(&format!("{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nmemory_limit = 1048576\n")).unwrap();
         assert_eq!(
             bytes.apps[&id("blog")].php.clone().unwrap().memory_limit,
             1_048_576
@@ -1453,18 +1462,18 @@ app = "blog"
     #[test]
     fn php_settings_are_checked() {
         rejects(
-            &format!("{SPEC_EXAMPLE}{MANAGED_BLOG}"),
+            &format!("{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}"),
             "app.blog.php.site_dir",
         );
         rejects(
             &format!(
-                "{SPEC_EXAMPLE}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nworkers = {{ min = 3, max = 2 }}\n"
+                "{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nworkers = {{ min = 3, max = 2 }}\n"
             ),
             "app.blog.php.workers",
         );
         rejects(
             &format!(
-                "{SPEC_EXAMPLE}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nmemory_limit = \"lots\"\n"
+                "{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nmemory_limit = \"lots\"\n"
             ),
             "app.blog.php.memory_limit",
         );
@@ -1523,14 +1532,19 @@ app = "blog"
 
     #[test]
     fn immutable_runtime_from_path() {
-        let config = Config::parse(&format!(
-            "{IMMUTABLE}\n[app.rt]\nkind = \"runtime\"\npath = \"/opt/rt/1.0.0\"\n"
-        ))
-        .unwrap();
+        let config = Config::parse(IMMUTABLE).unwrap();
         assert_eq!(
             config.apps[&id("rt")].path.as_deref(),
             Some(std::path::Path::new("/opt/rt/1.0.0"))
         );
         assert_eq!(config.apps[&id("blog")].runtime, Some(id("rt")));
+    }
+
+    #[test]
+    fn php_app_with_no_runtime_is_an_error() {
+        rejects(
+            &format!("{SPEC_EXAMPLE}{MANAGED_BLOG}{BLOG_SITE}"),
+            "app.blog.runtime",
+        );
     }
 }

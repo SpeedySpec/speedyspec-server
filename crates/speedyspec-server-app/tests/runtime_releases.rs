@@ -67,3 +67,29 @@ fn runtime_artifact_whose_manifest_differs_is_refused() {
     assert!(!w.release_dir("rt", "1.0.0").exists());
     assert!(w.saved().apps[&id("rt")].failed.contains_key(&v("1.0.0")));
 }
+
+#[test]
+fn runtime_and_its_php_app_cannot_switch_together() {
+    let mut w = world();
+    w.app("blog", AppKind::Php, 3);
+    w.publish_binary("rt", "1.0.0", &runtime_manifest("1.0.0"), TARGET);
+    w.publish("blog", "1.0.0", "");
+    let manager = w
+        .manager()
+        .with_php_runtimes([(id("blog"), id("rt"))].into());
+    manager.install(&id("rt"), Some(v("1.0.0"))).unwrap();
+    manager.install(&id("blog"), Some(v("1.0.0"))).unwrap();
+    let err = manager
+        .switch(&[(id("rt"), v("1.0.0")), (id("blog"), v("1.0.0"))])
+        .unwrap_err();
+    assert!(
+        matches!(err, ReleaseError::RuntimeWithItsApps { .. }),
+        "{err}"
+    );
+    assert!(
+        err.to_string().contains("rt") && err.to_string().contains("blog"),
+        "{err}"
+    );
+    manager.switch(&[(id("rt"), v("1.0.0"))]).unwrap();
+    manager.switch(&[(id("blog"), v("1.0.0"))]).unwrap();
+}

@@ -47,6 +47,10 @@ pub enum ReleaseError {
     NoSource(AppId),
     #[error("switching the server is done by the keeper; use `release switch server@<version>`")]
     ServerSwitchViaKeeper,
+    #[error(
+        "switch runtime {runtime} on its own: {apps} run on it, and a runtime switch moves them by itself"
+    )]
+    RuntimeWithItsApps { runtime: AppId, apps: String },
     #[error("an upgrade to server {0} is on trial; wait for it to be confirmed or to fail")]
     UpgradeInProgress(Version),
     #[error("{0}")]
@@ -680,6 +684,7 @@ impl ReleaseManager {
         state: &mut ReleaseState,
         targets: &[(AppId, Version)],
     ) -> Result<(), ReleaseError> {
+        self.check_runtime_alone(targets)?;
         if !self.cluster.is_single() {
             return self.switch_staged(state, targets);
         }
@@ -777,6 +782,30 @@ impl ReleaseManager {
         let apps: Vec<AppId> = targets.iter().map(|(app, _)| app.clone()).collect();
         self.prune(state, &apps)?;
 
+        Ok(())
+    }
+
+    /// Refuses a switch that names a runtime app together with php apps on it: the runtime's switch starts those apps
+    /// again on the new binary, so their own switch in the same step would race it.
+    fn check_runtime_alone(&self, targets: &[(AppId, Version)]) -> Result<(), ReleaseError> {
+        for (runtime, _) in targets {
+            if self
+                .policy(runtime)
+                .is_ok_and(|p| p.kind == AppKind::Runtime)
+            {
+                let apps: Vec<&str> = targets
+                    .iter()
+                    .filter(|(app, _)| self.php_runtimes.get(app) == Some(runtime))
+                    .map(|(app, _)| app.as_str())
+                    .collect();
+                if !apps.is_empty() {
+                    return Err(ReleaseError::RuntimeWithItsApps {
+                        runtime: runtime.clone(),
+                        apps: apps.join(", "),
+                    });
+                }
+            }
+        }
         Ok(())
     }
 
@@ -931,7 +960,14 @@ impl ReleaseManager {
         }
 
         let mut next = state.clone();
-        for (app, policy) in &self.apps {
+        // Runtimes go live before the php apps that run their binary.
+        let mut order: Vec<(&AppId, &AppPolicy)> = self.apps.iter().collect();
+        order.sort_by_key(|(_, policy)| match policy.kind {
+            AppKind::Server | AppKind::Static => 0,
+            AppKind::Runtime => 1,
+            AppKind::Php => 2,
+        });
+        for (app, policy) in order {
             if policy.kind == AppKind::Server {
                 continue;
             }

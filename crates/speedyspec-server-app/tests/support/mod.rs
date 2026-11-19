@@ -198,10 +198,13 @@ impl World {
         server: ReleaseManifest,
     ) -> ReleaseManager {
         let runtime: Arc<dyn AppRuntime> = runtime;
-        let runtimes: HashMap<AppKind, Arc<dyn AppRuntime>> =
-            [(AppKind::Php, runtime.clone()), (AppKind::Static, runtime)]
-                .into_iter()
-                .collect();
+        let runtimes: HashMap<AppKind, Arc<dyn AppRuntime>> = [
+            (AppKind::Php, runtime.clone()),
+            (AppKind::Runtime, runtime.clone()),
+            (AppKind::Static, runtime),
+        ]
+        .into_iter()
+        .collect();
         ReleaseManager::new(
             self.policies.clone(),
             server,

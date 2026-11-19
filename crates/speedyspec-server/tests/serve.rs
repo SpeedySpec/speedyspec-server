@@ -144,6 +144,10 @@ path = "{admin}"
 kind = "php"
 path = "{blog}"
 
+[app.rt]
+kind = "runtime"
+path = "{runtime}"
+
 [[mount]]
 path = "/blog/"
 app = "blog"
@@ -156,6 +160,12 @@ access = "{admin_access}"
 {access}"#,
         admin = admin.display(),
         blog = fixture("blog").display(),
+        runtime = support::runtime::release(
+            &dir.path().join("rt"),
+            "1.0.0",
+            support::runtime::Workers::Real
+        )
+        .display(),
     );
     let config = dir.path().join("server.toml");
     std::fs::write(&config, toml).unwrap();

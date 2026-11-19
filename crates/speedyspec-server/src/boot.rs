@@ -85,22 +85,8 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
     for (id, app) in &config.apps {
         let manifest = match (app.kind, &app.path) {
             (AppKind::Server, _) => server_manifest(id.clone()),
-            (AppKind::Runtime, Some(path)) => {
-                let binary = path.join(AppKind::Runtime.binary_name().expect("a binary kind"));
-                let mut manifest = speedyspec_server_domain::BinaryInspector::manifest(
-                    &crate::binary::RuntimeInspector,
-                    &binary,
-                )
-                .map_err(|message| BootError::Manifest {
-                    path: binary.clone(),
-                    message,
-                })?;
-                manifest.app = id.clone();
-                paths.insert(id.clone(), path.clone());
-                manifest
-            }
             (_, Some(path)) => {
-                let manifest = read_manifest(path, id, app.kind)?;
+                let manifest = baked_in_manifest(path, id, app.kind)?;
                 paths.insert(id.clone(), path.clone());
                 manifest
             }
@@ -110,13 +96,30 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
     }
     check_set(&manifests, &config.php_runtimes()).map_err(BootError::Incompatible)?;
 
+    #[cfg(feature = "php")]
+    let binaries = {
+        let binaries = Arc::new(crate::php::runtime_kind::RuntimeBinaries::default());
+        for (id, manifest) in manifests.iter().filter(|(_, m)| m.kind == AppKind::Runtime) {
+            let binary = paths[id].join(AppKind::Runtime.binary_name().expect("a binary kind"));
+            binaries.set(
+                id,
+                manifest.version.clone(),
+                binary,
+                manifest.contracts.clone(),
+            );
+        }
+        binaries
+    };
+    #[cfg(not(feature = "php"))]
+    let binaries = ();
+
     let mut apps = HashMap::new();
     for (id, manifest) in &manifests {
         let handle = match manifest.kind {
             AppKind::Server => AppHandle::AdminApiPlaceholder,
             // A runtime is never mounted: the php apps on it run its binary.
             AppKind::Runtime => AppHandle::NotInstalled,
-            AppKind::Php => php_handle(config, id, manifest, &paths[id])?,
+            AppKind::Php => php_handle(config, &binaries, id, manifest, &paths[id])?,
             AppKind::Static => {
                 let section = manifest
                     .static_
@@ -145,24 +148,17 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
 #[cfg(feature = "php")]
 fn php_handle(
     config: &Config,
+    binaries: &Arc<crate::php::runtime_kind::RuntimeBinaries>,
     id: &AppId,
     manifest: &ReleaseManifest,
     dir: &Path,
 ) -> Result<AppHandle, BootError> {
-    let configs = config
-        .apps
-        .iter()
-        .filter_map(|(id, app)| app.php.clone().map(|php| (id.clone(), php)))
-        .collect();
-    let exe = crate::php::runtime_binary().map_err(|message| BootError::Php {
-        app: id.clone(),
-        message,
-    })?;
     let runtime = crate::php::PhpRuntime::new(
         Arc::new(LiveApps::new(HashMap::new())),
-        exe,
+        binaries.clone(),
         config.run_dir.clone(),
-        configs,
+        crate::php::php_configs(config),
+        config.php_runtimes().into_iter().collect(),
     );
     runtime
         .start(id, manifest, dir)
@@ -176,6 +172,7 @@ fn php_handle(
 #[cfg(not(feature = "php"))]
 fn php_handle(
     _config: &Config,
+    _binaries: &(),
     _id: &AppId,
     _manifest: &ReleaseManifest,
     _dir: &Path,
@@ -204,12 +201,30 @@ pub fn immutable_manifests(config: &Config) -> Result<BTreeMap<AppId, ReleaseMan
     for (id, app) in &config.apps {
         let manifest = match &app.path {
             _ if app.kind == AppKind::Server => server_manifest(id.clone()),
-            Some(path) => read_manifest(path, id, app.kind)?,
+            Some(path) => baked_in_manifest(path, id, app.kind)?,
             None => continue,
         };
         manifests.insert(id.clone(), manifest);
     }
     Ok(manifests)
+}
+
+/// A baked-in release's manifest: a runtime's is printed by its binary, every other kind's is its manifest file.
+fn baked_in_manifest(dir: &Path, id: &AppId, kind: AppKind) -> Result<ReleaseManifest, BootError> {
+    if kind != AppKind::Runtime {
+        return read_manifest(dir, id, kind);
+    }
+    let binary = dir.join(AppKind::Runtime.binary_name().expect("a binary kind"));
+    let mut manifest = speedyspec_server_domain::BinaryInspector::manifest(
+        &crate::binary::RuntimeInspector,
+        &binary,
+    )
+    .map_err(|message| BootError::Manifest {
+        path: binary.clone(),
+        message,
+    })?;
+    manifest.app = id.clone();
+    Ok(manifest)
 }
 
 fn read_manifest(dir: &Path, id: &AppId, kind: AppKind) -> Result<ReleaseManifest, BootError> {

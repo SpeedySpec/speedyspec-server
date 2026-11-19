@@ -60,18 +60,16 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
     }
     let server = server.ok_or("no server app is configured")?;
     let verifier = MinisignVerifier::new(keys).map_err(|err| err.0)?;
-    let runtimes: HashMap<AppKind, Arc<dyn AppRuntime>> = [
-        (
-            AppKind::Static,
-            Arc::new(StaticRuntime::new(
-                live.clone(),
-                config.static_memory,
-                config.static_fallback_grace,
-            )) as Arc<dyn AppRuntime>,
-        ),
-        (AppKind::Php, php_runtime(config, live)),
-    ]
+    let runtimes: HashMap<AppKind, Arc<dyn AppRuntime>> = [(
+        AppKind::Static,
+        Arc::new(StaticRuntime::new(
+            live.clone(),
+            config.static_memory,
+            config.static_fallback_grace,
+        )) as Arc<dyn AppRuntime>,
+    )]
     .into_iter()
+    .chain(php_runtime(config, live))
     .collect();
     let manager = ReleaseManager::new(
         policies,
@@ -224,31 +222,35 @@ pub fn spawn_fallback_sweep(live: Arc<LiveApps>) {
     });
 }
 
-/// PHP releases: worker pools with the `php` feature, the 503 placeholder without it.
+/// PHP releases: worker pools with the `php` feature, the 503 placeholder without it. The runtime kind's releases
+/// move the php apps on them to new pools.
 #[cfg(feature = "php")]
 fn php_runtime(
     config: &Config,
     live: Arc<speedyspec_server_presentation::LiveApps>,
-) -> Arc<dyn AppRuntime> {
-    let configs = config
-        .apps
-        .iter()
-        .filter_map(|(id, app)| app.php.clone().map(|php| (id.clone(), php)))
-        .collect();
-    let exe = crate::php::runtime_binary()
-        .unwrap_or_else(|_| std::path::PathBuf::from("speedyspec-php-runtime"));
-    Arc::new(crate::php::PhpRuntime::new(
+) -> Vec<(AppKind, Arc<dyn AppRuntime>)> {
+    let binaries = Arc::new(crate::php::runtime_kind::RuntimeBinaries::default());
+    let php = Arc::new(crate::php::PhpRuntime::new(
         live,
-        exe,
+        binaries.clone(),
         config.run_dir.clone(),
-        configs,
-    ))
+        crate::php::php_configs(config),
+        config.php_runtimes().into_iter().collect(),
+    ));
+    let kind = Arc::new(crate::php::runtime_kind::RuntimeKindRuntime::new(
+        php.clone(),
+        binaries,
+    ));
+    vec![(AppKind::Php, php), (AppKind::Runtime, kind)]
 }
 
 #[cfg(not(feature = "php"))]
 fn php_runtime(
     _config: &Config,
     live: Arc<speedyspec_server_presentation::LiveApps>,
-) -> Arc<dyn AppRuntime> {
-    Arc::new(crate::runtime::PhpPlaceholderRuntime::new(live))
+) -> Vec<(AppKind, Arc<dyn AppRuntime>)> {
+    vec![(
+        AppKind::Php,
+        Arc::new(crate::runtime::PhpPlaceholderRuntime::new(live)),
+    )]
 }

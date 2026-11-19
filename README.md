@@ -105,9 +105,15 @@ check_interval = "15m"
 prerelease = false
 allow_unsigned = false
 
+[app.php-runtime]
+kind = "runtime"                       # the PHP runtime binary the php apps run; see docs/php.md
+source = "https://releases.example.com/php-runtime/index.json"
+update = "manual"
+
 [app.blog]
 kind = "php"
 source = "https://releases.example.com/blog/index.json"
+runtime = "php-runtime"                # may be left out when only one runtime app is configured
 
 [app.blog.php]                         # php apps only; see docs/php.md
 workers = { min = 1, max = 4 }         # start min, grow to max on demand

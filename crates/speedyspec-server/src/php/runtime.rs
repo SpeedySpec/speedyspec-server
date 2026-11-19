@@ -10,38 +10,93 @@ use speedyspec_server_presentation::{AppHandle, LiveApps};
 
 use super::handler::{self, PhpRequestHandler};
 use super::pool::{EmbeddedPhpPool, PoolSettings, prepare_socket_dir};
+use super::runtime_kind::{RuntimeBinaries, check_contracts};
 use crate::config::PhpConfig;
 use speedyspec_runtime_contract::WorkerSpec;
 
 /// Starts each release's worker pool when it is prepared, puts its handler live when it is activated, and drains
 /// it when it is retired: a request already running on the old release finishes there.
+///
+/// Every pool runs the binary of the app's runtime app that is live when the pool is prepared. Switching the runtime
+/// prepares new pools for the live releases ([`PhpRuntime::prepare_with`]).
 pub struct PhpRuntime {
     live: Arc<LiveApps>,
-    exe: PathBuf,
+    binaries: Arc<RuntimeBinaries>,
     run_dir: PathBuf,
     configs: HashMap<AppId, PhpConfig>,
+    /// Each php app's runtime app.
+    runtimes: HashMap<AppId, AppId>,
     pools: Mutex<HashMap<(AppId, Version), EmbeddedPhpPool>>,
+    /// Each app's live release, so a runtime switch can start it again on the new binary.
+    releases: Mutex<HashMap<AppId, (ReleaseManifest, PathBuf)>>,
 }
 
-struct Ready {
-    pool: EmbeddedPhpPool,
+pub(crate) struct Ready {
+    pub(crate) pool: EmbeddedPhpPool,
     handler: PhpRequestHandler,
+    manifest: ReleaseManifest,
+    dir: PathBuf,
 }
 
 impl PhpRuntime {
     pub fn new(
         live: Arc<LiveApps>,
-        exe: PathBuf,
+        binaries: Arc<RuntimeBinaries>,
         run_dir: PathBuf,
         configs: HashMap<AppId, PhpConfig>,
+        runtimes: HashMap<AppId, AppId>,
     ) -> PhpRuntime {
         PhpRuntime {
             live,
-            exe,
+            binaries,
             run_dir,
             configs,
+            runtimes,
             pools: Mutex::new(HashMap::new()),
+            releases: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// The php apps on runtime `runtime` that have a live release, with that release.
+    pub(crate) fn live_on(&self, runtime: &AppId) -> Vec<(AppId, ReleaseManifest, PathBuf)> {
+        let releases = self.releases.lock().unwrap();
+        let mut apps: Vec<_> = releases
+            .iter()
+            .filter(|(app, _)| self.runtimes.get(*app) == Some(runtime))
+            .map(|(app, (manifest, dir))| (app.clone(), manifest.clone(), dir.clone()))
+            .collect();
+        apps.sort_by(|a, b| a.0.cmp(&b.0));
+        apps
+    }
+
+    /// The binary `app`'s pools run: its runtime app's live binary, which must speak this server's contract.
+    fn binary_for(&self, app: &AppId) -> Result<PathBuf, String> {
+        let runtime = self
+            .runtimes
+            .get(app)
+            .ok_or_else(|| format!("{app}: no runtime app is configured for it"))?;
+        let (_, binary, contracts) = self
+            .binaries
+            .active(runtime)
+            .ok_or_else(|| format!("{app}: runtime {runtime} has no active release"))?;
+        check_contracts(&contracts).map_err(|err| format!("{app}: runtime {runtime} {err}"))?;
+        Ok(binary)
+    }
+
+    /// Prepares `app`'s release on `binary` (a runtime's new binary, during a runtime switch).
+    pub(crate) fn prepare_with(
+        &self,
+        app: &AppId,
+        manifest: &ReleaseManifest,
+        dir: &Path,
+        binary: &Path,
+    ) -> Result<Prepared, String> {
+        let ready = self.ready(app, manifest, dir, binary)?;
+        Ok(Prepared {
+            app: app.clone(),
+            version: manifest.version.clone(),
+            payload: Box::new(ready),
+        })
     }
 
     fn config(&self, app: &AppId) -> PhpConfig {
@@ -63,7 +118,8 @@ impl PhpRuntime {
         manifest: &ReleaseManifest,
         dir: &Path,
     ) -> Result<AppHandle, String> {
-        let ready = self.ready(app, manifest, dir)?;
+        let binary = self.binary_for(app)?;
+        let ready = self.ready(app, manifest, dir, &binary)?;
         let handle = AppHandle::Php(handler::arc(ready.handler));
         if let Some(old) = self
             .pools
@@ -76,7 +132,13 @@ impl PhpRuntime {
         Ok(handle)
     }
 
-    fn ready(&self, app: &AppId, manifest: &ReleaseManifest, dir: &Path) -> Result<Ready, String> {
+    fn ready(
+        &self,
+        app: &AppId,
+        manifest: &ReleaseManifest,
+        dir: &Path,
+        binary: &Path,
+    ) -> Result<Ready, String> {
         let section = manifest
             .php_section()
             .ok_or("the release is not a php release")?;
@@ -101,11 +163,11 @@ impl PhpRuntime {
             bindings: config.bindings.clone(),
         };
         let version = manifest.version.to_string();
-        let dir = prepare_socket_dir(&self.run_dir, app.as_str(), &version)?;
+        let sockets = prepare_socket_dir(&self.run_dir, app.as_str(), &version)?;
         let pool = EmbeddedPhpPool::start(
-            self.exe.clone(),
+            binary.to_path_buf(),
             spec,
-            dir,
+            sockets,
             PoolSettings::from_config(&config),
             version,
         )?;
@@ -116,7 +178,12 @@ impl PhpRuntime {
             config.site_dir.clone(),
         )
         .map_err(|err| format!("{}: {err}", document_root.display()))?;
-        Ok(Ready { pool, handler })
+        Ok(Ready {
+            pool,
+            handler,
+            manifest: manifest.clone(),
+            dir: dir.to_path_buf(),
+        })
     }
 }
 
@@ -127,7 +194,8 @@ impl AppRuntime for PhpRuntime {
         manifest: &ReleaseManifest,
         dir: &Path,
     ) -> Result<Prepared, String> {
-        let ready = self.ready(app, manifest, dir)?;
+        let binary = self.binary_for(app)?;
+        let ready = self.ready(app, manifest, dir, &binary)?;
         Ok(Prepared {
             app: app.clone(),
             version: manifest.version.clone(),
@@ -149,6 +217,10 @@ impl AppRuntime for PhpRuntime {
         if let Some(old) = replaced {
             old.drain();
         }
+        self.releases
+            .lock()
+            .unwrap()
+            .insert(prepared.app.clone(), (ready.manifest, ready.dir));
         self.live
             .swap(&prepared.app, AppHandle::Php(handler::arc(ready.handler)));
     }

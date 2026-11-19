@@ -68,3 +68,41 @@ fn build() -> PathBuf {
     );
     next_to_server
 }
+
+/// How a test runtime release's workers behave.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Workers {
+    /// Run the real runtime binary, with `SPEEDYSPEC_RUNTIME_LABEL` set to the release's version.
+    Real,
+    /// Exit at once, so no pool can start.
+    ExitAtOnce,
+}
+
+/// A runtime release directory `<parent>/<version>/` whose `speedyspec-php-runtime` is a wrapper script: `manifest`
+/// prints this version's manifest, and `worker` runs the real binary (or exits, for [`Workers::ExitAtOnce`]).
+pub fn release(parent: &Path, version: &str, workers: Workers) -> PathBuf {
+    let dir = parent.join(version);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("speedyspec-php-runtime"), script(version, workers)).unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(
+        dir.join("speedyspec-php-runtime"),
+        std::fs::Permissions::from_mode(0o755),
+    )
+    .unwrap();
+    dir
+}
+
+/// The wrapper script's text (what a managed test publishes as the release's binary).
+pub fn script(version: &str, workers: Workers) -> String {
+    let worker = match workers {
+        Workers::Real => format!(
+            "export SPEEDYSPEC_RUNTIME_LABEL={version}\nexec '{}' \"$@\"",
+            binary().display()
+        ),
+        Workers::ExitAtOnce => "exit 1".to_string(),
+    };
+    format!(
+        "#!/bin/sh\nif [ \"$1\" = manifest ]; then\n  echo '{{\"version\":\"{version}\",\"contracts\":[1],\"php\":\"test\"}}'\n  exit 0\nfi\n{worker}\n"
+    )
+}

@@ -67,10 +67,20 @@ path = "{app}"
 site_dir = "{site}"
 {php}
 
+[app.rt]
+kind = "runtime"
+path = "{runtime}"
+
 [[mount]]
 path = "/"
 app = "blog"
 "#,
+        runtime = support::runtime::release(
+            &dir.path().join("rt"),
+            "1.0.0",
+            support::runtime::Workers::Real
+        )
+        .display(),
         run = dir.path().join("run").display(),
         app = fixture("php-app").display(),
         site = site.display(),
@@ -261,6 +271,8 @@ fn php_in_site_wp_content_runs() {
 fn client_disconnect_lets_script_finish() {
     let (setup, _server, addr) = serve("");
     let finished = setup.site().join("wp-content/finished");
+    // The first request after start pays one-time costs; this test is about a client leaving mid-script.
+    assert_eq!(get(addr, "/index.php").0, 200);
     {
         let mut stream = TcpStream::connect(addr).unwrap();
         write!(
@@ -593,10 +605,17 @@ update = "manual"
 [app.blog.php]
 site_dir = "{site}"
 
+[app.rt]
+kind = "runtime"
+source = "{runtime_source}"
+keys = ["{key}"]
+update = "manual"
+
 [[mount]]
 path = "/"
 app = "blog"
 "#,
+        runtime_source = host.url("/rt/index.json"),
         data = dir.path().join("data").display(),
         run = dir.path().join("run").display(),
         source = host.url("/blog/index.json"),
@@ -606,11 +625,7 @@ app = "blog"
     let config = dir.path().join("server.toml");
     std::fs::write(&config, toml).unwrap();
     let config_arg = config.display().to_string();
-    let runtime = support::runtime::binary();
-    let mut server = support::run::start_with(
-        &config,
-        &[("SPEEDYSPEC_PHP_RUNTIME", runtime.to_str().unwrap())],
-    );
+    let mut server = start(&config);
     let addr = server.address();
     let keeper = dir.path().join("run/keeper.sock");
     let deadline = Instant::now() + Duration::from_secs(10);
@@ -621,6 +636,20 @@ app = "blog"
             keeper.display()
         );
         std::thread::sleep(Duration::from_millis(50));
+    }
+    host.publish_binary(
+        "rt",
+        "1.0.0",
+        support::runtime::script("1.0.0", support::runtime::Workers::Real).as_bytes(),
+    );
+    for args in [
+        ["release", "install", "rt", "1.0.0"],
+        ["release", "switch", "rt@1.0.0", ""],
+    ] {
+        let mut all: Vec<&str> = args.iter().copied().filter(|a| !a.is_empty()).collect();
+        all.extend_from_slice(&["--config", &config_arg]);
+        let (code, out, err) = command(&all);
+        assert_eq!(code, 0, "{all:?}: {out}{err}");
     }
     let (code, out, err) = command(&[
         "release",

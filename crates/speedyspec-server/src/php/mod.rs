@@ -4,18 +4,20 @@
 pub mod handler;
 pub mod pool;
 pub mod runtime;
+pub mod runtime_kind;
 
 pub use handler::PhpRequestHandler;
 pub use pool::{EmbeddedPhpPool, PoolSettings};
 pub use runtime::PhpRuntime;
 pub use speedyspec_runtime_contract::WorkerSpec;
 
-/// The PHP runtime binary the pools start: `SPEEDYSPEC_PHP_RUNTIME` when set, else `speedyspec-php-runtime` next to
-/// this executable.
-pub fn runtime_binary() -> Result<std::path::PathBuf, String> {
-    if let Some(path) = std::env::var_os("SPEEDYSPEC_PHP_RUNTIME") {
-        return Ok(std::path::PathBuf::from(path));
-    }
-    let exe = std::env::current_exe().map_err(|err| format!("finding this executable: {err}"))?;
-    Ok(exe.with_file_name("speedyspec-php-runtime"))
+/// Every php app's pool settings.
+pub fn php_configs(
+    config: &crate::config::Config,
+) -> std::collections::HashMap<speedyspec_server_domain::AppId, crate::config::PhpConfig> {
+    config
+        .apps
+        .iter()
+        .filter_map(|(id, app)| app.php.clone().map(|php| (id.clone(), php)))
+        .collect()
 }
