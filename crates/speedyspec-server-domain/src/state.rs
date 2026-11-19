@@ -25,6 +25,24 @@ pub struct ReleaseState {
     pub staged: Option<StagedSet>,
     /// A server upgrade rolling across the pods.
     pub rollout: Option<Rollout>,
+    /// Apps held in maintenance by an operator or a failed migration.
+    pub maintenance: BTreeMap<AppId, MaintenanceRecord>,
+}
+
+/// Why an app is held in maintenance, as recorded in the state file.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MaintenanceRecord {
+    /// An operator's `maintenance on`.
+    pub operator: bool,
+    /// A migration that failed, and why: maintenance stays on until it is retried or cleared.
+    pub migration_failed: Option<String>,
+}
+
+impl MaintenanceRecord {
+    pub fn is_empty(&self) -> bool {
+        !self.operator && self.migration_failed.is_none()
+    }
 }
 
 /// Releases staged for every pod to prepare (the first step of a cluster switch).

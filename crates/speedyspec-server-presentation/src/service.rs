@@ -37,6 +37,9 @@ pub struct ServeState {
     pub maintenance: Arc<MaintenanceSet>,
     /// The static app whose maintenance page each app shows.
     pub maintenance_pages: HashMap<AppId, AppId>,
+    /// The gate app: while it fails its health checks, every gated mount is in maintenance (nothing behind the gate
+    /// works without it).
+    pub gate_app: Option<AppId>,
 }
 
 impl ServeState {
@@ -182,7 +185,14 @@ impl Gate {
             return text(StatusCode::NOT_FOUND, "not found").into();
         }
         // Maintenance comes before sign-in: everyone gets it, and its page needs nothing else.
-        if state.maintenance.is_on(&mount.app) {
+        let gate_unhealthy = mount.access == Access::SignedIn
+            && state.gate_app.as_ref().is_some_and(|gate| {
+                state
+                    .maintenance
+                    .sources(gate)
+                    .contains(&speedyspec_server_gate::MaintenanceSource::Health)
+            });
+        if state.maintenance.is_on(&mount.app) || gate_unhealthy {
             return maintenance_answer(state, &mount.app).into();
         }
         let gated = mount.access == Access::SignedIn;

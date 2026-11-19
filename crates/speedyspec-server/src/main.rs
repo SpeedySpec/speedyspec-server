@@ -49,6 +49,21 @@ enum Command {
         #[arg(long, default_value = DEFAULT_CONFIG)]
         config: PathBuf,
     },
+    /// Turn an operator's maintenance on or off for apps (every app when none is named), or clear every recorded
+    /// maintenance, a failed migration's included.
+    Maintenance {
+        action: Maintenance,
+        apps: Vec<AppId>,
+        #[arg(long, default_value = DEFAULT_CONFIG)]
+        config: PathBuf,
+    },
+}
+
+#[derive(Clone, Copy, clap::ValueEnum)]
+enum Maintenance {
+    On,
+    Off,
+    Clear,
 }
 
 #[derive(Subcommand)]
@@ -151,6 +166,18 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Command::Status { config } => control_command(&config, ControlRequest::Status),
+        Command::Maintenance {
+            action,
+            apps,
+            config,
+        } => {
+            let action = match action {
+                Maintenance::On => speedyspec_server::control::MaintenanceAction::On,
+                Maintenance::Off => speedyspec_server::control::MaintenanceAction::Off,
+                Maintenance::Clear => speedyspec_server::control::MaintenanceAction::Clear,
+            };
+            control_command(&config, ControlRequest::Maintenance { action, apps })
+        }
         Command::Reload { config } => control_command(&config, ControlRequest::Reload),
         Command::Release { action } => match action {
             ReleaseAction::List { app, config } => {

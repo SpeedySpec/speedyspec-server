@@ -68,7 +68,7 @@ fn admin_api(dir: &Path) -> PathBuf {
     let root = dir.join("release-admin-api");
     write(
         &root.join("speedyspec-release.json"),
-        r#"{"app":"admin-api","version":"1.0.0","kind":"php","php":{"gate":{"version":1,"site":"/gate/site.php","session":"/gate/session.php","changes":"/gate/changes.php"}}}"#,
+        r#"{"app":"admin-api","version":"1.0.0","kind":"php","php":{"health":{"live":"/gate/health.php","ready":"/gate/health.php"},"gate":{"version":1,"site":"/gate/site.php","session":"/gate/session.php","changes":"/gate/changes.php"}}}"#,
     );
     write(
         &root.join("index.php"),
@@ -89,6 +89,10 @@ fn admin_api(dir: &Path) -> PathBuf {
         "<?php\n$f = WP_CONTENT_DIR . '/changes.json';\nheader('Content-Type: application/json');\necho is_file($f) ? file_get_contents($f) : json_encode(['cursor' => '0', 'users' => []]);\n",
     );
     write(
+        &root.join("gate/health.php"),
+        "<?php\nif (is_file(WP_CONTENT_DIR . '/unhealthy')) { http_response_code(500); }\necho 'ok';\n",
+    );
+    write(
         &root.join("v1/session/signout.php"),
         &format!(
             "<?php\nheader('Set-Cookie: wordpress_logged_in_x=; Max-Age=0; Path=/');\nfile_put_contents(WP_CONTENT_DIR . '/deny', '1');\necho 'bye';\n"
@@ -98,10 +102,15 @@ fn admin_api(dir: &Path) -> PathBuf {
 }
 
 pub fn site() -> Site {
+    site_with("")
+}
+
+/// As [`site`], with more `[gate]` settings.
+pub fn site_with(gate_extra: &str) -> Site {
     let dir = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(dir.path().join("site-admin-api/wp-content")).unwrap();
     let toml = format!(
-        "mode = \"immutable\"\nrun_dir = \"{run}\"\n\n[[listener]]\naddress = \"127.0.0.1:0\"\n\n[access]\nimplementation = \"gate\"\n\n[gate]\napp = \"admin-api\"\nsite_ttl = \"200ms\"\npoll = \"200ms\"\n\n[app.server]\nkind = \"server\"\n\n[app.admin]\nkind = \"static\"\npath = \"{admin}\"\n\n[app.admin-api]\nkind = \"php\"\npath = \"{api}\"\n[app.admin-api.php]\nsite_dir = \"{site}\"\n\n[app.rt]\nkind = \"runtime\"\npath = \"{rt}\"\n\n[[mount]]\npath = \"/admin/\"\napp = \"admin\"\naccess = \"signed-in\"\n\n[[mount]]\npath = \"/admin-api/\"\napp = \"admin-api\"\naccess = \"signed-in\"\n",
+        "mode = \"immutable\"\nrun_dir = \"{run}\"\n\n[[listener]]\naddress = \"127.0.0.1:0\"\n\n[access]\nimplementation = \"gate\"\n\n[gate]\napp = \"admin-api\"\nsite_ttl = \"200ms\"\npoll = \"200ms\"\n{gate_extra}\n[health]\ninterval = \"200ms\"\n\n[app.server]\nkind = \"server\"\n\n[app.admin]\nkind = \"static\"\npath = \"{admin}\"\n\n[app.admin-api]\nkind = \"php\"\npath = \"{api}\"\n[app.admin-api.php]\nsite_dir = \"{site}\"\n\n[app.rt]\nkind = \"runtime\"\npath = \"{rt}\"\n\n[[mount]]\npath = \"/admin/\"\napp = \"admin\"\naccess = \"signed-in\"\n\n[[mount]]\npath = \"/admin-api/\"\napp = \"admin-api\"\naccess = \"signed-in\"\n",
         run = dir.path().join("run").display(),
         admin = admin_site(dir.path()).display(),
         api = admin_api(dir.path()).display(),
@@ -286,4 +295,60 @@ fn changes_path_is_not_reachable_by_visitors() {
         404
     );
     assert_eq!(get(site.addr, "/admin-api/gate/changes.php", None).0, 404);
+}
+
+fn wait(addr: std::net::SocketAddr, path: &str, status: u16) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while get(addr, path, Some(ALICE)).0 != status {
+        assert!(Instant::now() < deadline, "{path} never answered {status}");
+        std::thread::sleep(Duration::from_millis(100));
+    }
+}
+
+#[test]
+fn admin_api_site_state_turns_maintenance_on() {
+    let site = site();
+    assert_eq!(get(site.addr, "/admin/kit/frame.js", Some(ALICE)).0, 200);
+    std::fs::write(
+        site.api_content().join("site.json"),
+        r#"{"installed":true,"maintenance":true}"#,
+    )
+    .unwrap();
+    wait(site.addr, "/admin/kit/frame.js", 503);
+    wait(site.addr, "/admin-api/v1/posts", 503);
+    std::fs::write(
+        site.api_content().join("site.json"),
+        r#"{"installed":true,"maintenance":false}"#,
+    )
+    .unwrap();
+    wait(site.addr, "/admin/kit/frame.js", 200);
+}
+
+#[test]
+fn maintenance_apps_limits_it() {
+    let site = site_with("maintenance_apps = [\"admin\"]\n");
+    std::fs::write(
+        site.api_content().join("site.json"),
+        r#"{"installed":true,"maintenance":true}"#,
+    )
+    .unwrap();
+    wait(site.addr, "/admin/kit/frame.js", 503);
+    assert_eq!(
+        get(site.addr, "/admin-api/v1/posts", Some(ALICE)),
+        (200, "api".into()),
+        "not a maintenance app"
+    );
+}
+
+#[test]
+fn gate_app_health_covers_the_admin() {
+    let site = site();
+    assert_eq!(get(site.addr, "/admin/kit/frame.js", Some(ALICE)).0, 200);
+    std::fs::write(site.api_content().join("unhealthy"), "1").unwrap();
+    wait(site.addr, "/admin/kit/frame.js", 503);
+    assert_eq!(
+        get(site.addr, "/admin/", None).0,
+        503,
+        "the whole admin, public entries too"
+    );
 }

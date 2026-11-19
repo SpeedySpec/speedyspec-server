@@ -383,3 +383,38 @@ fn single_status_has_no_cluster_lines() {
         "{out}"
     );
 }
+
+/// Waits until `path` answers `status`.
+fn wait_status(addr: std::net::SocketAddr, path: &str, status: u16) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while get(addr, path).0 != status {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "{path} never answered {status}"
+        );
+        std::thread::sleep(Duration::from_millis(100));
+    }
+}
+
+#[test]
+fn maintenance_on_and_off_through_the_control_socket() {
+    let m = managed("update = \"manual\"", &["1.0.0"]);
+    m.ok(&["release", "install", "admin", "1.0.0"]);
+    m.ok(&["release", "switch", "admin@1.0.0"]);
+    assert_eq!(get(m.addr, "/").0, 200);
+    assert_eq!(
+        m.ok(&["maintenance", "on", "admin"]),
+        "maintenance on: admin\n"
+    );
+    wait_status(m.addr, "/", 503);
+    let state = std::fs::read_to_string(m.dir.path().join("data/state.json")).unwrap();
+    assert!(
+        state.contains("\"operator\": true"),
+        "recorded in the state file: {state}"
+    );
+    assert_eq!(
+        m.ok(&["maintenance", "off", "admin"]),
+        "maintenance off: admin\n"
+    );
+    wait_status(m.addr, "/", 200);
+}

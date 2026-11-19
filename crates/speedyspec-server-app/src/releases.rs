@@ -917,6 +917,50 @@ impl ReleaseManager {
         self.commit_state(&mut state, next)
     }
 
+    /// Turns an operator's maintenance on or off for `apps` (every configured app when empty). A failed migration's
+    /// maintenance is not touched: `clear_maintenance` ends that.
+    pub fn set_maintenance(&self, apps: &[AppId], on: bool) -> Result<Vec<AppId>, ReleaseError> {
+        self.leading()?;
+        let apps = self.maintenance_targets(apps)?;
+        let mut state = self.lock();
+        let mut next = state.clone();
+        for app in &apps {
+            next.maintenance.entry(app.clone()).or_default().operator = on;
+        }
+        next.maintenance.retain(|_, record| !record.is_empty());
+        self.commit_state(&mut state, next)?;
+        Ok(apps)
+    }
+
+    /// Ends every recorded maintenance of `apps` (every configured app when empty): the operator's and a failed
+    /// migration's.
+    pub fn clear_maintenance(&self, apps: &[AppId]) -> Result<Vec<AppId>, ReleaseError> {
+        self.leading()?;
+        let apps = self.maintenance_targets(apps)?;
+        let mut state = self.lock();
+        let mut next = state.clone();
+        for app in &apps {
+            next.maintenance.remove(app);
+        }
+        self.commit_state(&mut state, next)?;
+        Ok(apps)
+    }
+
+    fn maintenance_targets(&self, apps: &[AppId]) -> Result<Vec<AppId>, ReleaseError> {
+        if apps.is_empty() {
+            return Ok(self
+                .apps
+                .iter()
+                .filter(|(_, policy)| !matches!(policy.kind, AppKind::Server | AppKind::Runtime))
+                .map(|(app, _)| app.clone())
+                .collect());
+        }
+        for app in apps {
+            self.policy(app)?;
+        }
+        Ok(apps.to_vec())
+    }
+
     pub fn unpin(&self, app: &AppId) -> Result<(), ReleaseError> {
         self.leading()?;
         let mut state = self.lock();

@@ -238,3 +238,29 @@ fn php_runtimes(
     ));
     vec![(AppKind::Php, php), (AppKind::Runtime, kind)]
 }
+
+/// Keeps the operator's and failed migrations' maintenance, as recorded in the state file, in `maintenance`: at
+/// once, then every half second (a follower's state changes through its poll of the shared state).
+pub fn spawn_maintenance_sync(
+    manager: Arc<ReleaseManager>,
+    maintenance: Arc<speedyspec_server_gate::MaintenanceSet>,
+    apps: Vec<speedyspec_server_domain::AppId>,
+) {
+    use speedyspec_server_gate::MaintenanceSource;
+    tokio::spawn(async move {
+        let mut ticks = tokio::time::interval(std::time::Duration::from_millis(500));
+        loop {
+            ticks.tick().await;
+            let state = manager.status();
+            for app in &apps {
+                let record = state.maintenance.get(app).cloned().unwrap_or_default();
+                maintenance.set(app, MaintenanceSource::Operator, record.operator);
+                maintenance.set(
+                    app,
+                    MaintenanceSource::Upgrade,
+                    record.migration_failed.is_some(),
+                );
+            }
+        }
+    });
+}

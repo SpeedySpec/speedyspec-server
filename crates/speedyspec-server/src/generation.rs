@@ -155,6 +155,11 @@ async fn serve(channel: Channel) -> Result<(), String> {
         crate::cluster::spawn_loops(manager.clone(), draining.clone(), on_turn);
         let _ = readiness.manager.set(manager.clone());
         managed::spawn_fallback_sweep(live);
+        managed::spawn_maintenance_sync(
+            manager.clone(),
+            state.maintenance.clone(),
+            config.apps.keys().cloned().collect(),
+        );
         let apps = config
             .apps
             .iter()

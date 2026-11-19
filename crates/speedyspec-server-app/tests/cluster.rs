@@ -860,3 +860,24 @@ fn pod_booting_on_cluster_confirmed_version_is_confirmed() {
     assert_eq!(report.server.confirmed, Some(v("4.0.0")));
     assert_eq!(report.server.trial, None);
 }
+
+#[test]
+fn operator_maintenance_reaches_every_member() {
+    let pods = Pods::new();
+    let (a, _) = pods.pod("a");
+    let (b, _) = pods.pod("b");
+    pods.election.elect("a");
+    assert!(matches!(
+        b.set_maintenance(&[id("blog")], true).unwrap_err(),
+        ReleaseError::NotLeader { leader: Some(ref l) } if l == "a"
+    ));
+    a.set_maintenance(&[id("blog")], true).unwrap();
+    b.follow().unwrap();
+    assert!(
+        b.status().maintenance[&id("blog")].operator,
+        "the follower sees the leader's maintenance"
+    );
+    a.set_maintenance(&[id("blog")], false).unwrap();
+    b.follow().unwrap();
+    assert!(!b.status().maintenance.contains_key(&id("blog")));
+}

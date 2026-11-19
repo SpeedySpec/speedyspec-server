@@ -75,6 +75,7 @@ pub struct Booted {
 
 /// What the gate's revocation poll needs (started by the generation, on its runtime).
 pub struct Revocation {
+    pub gate: Arc<speedyspec_server_gate::GateAccess>,
     pub app: AppId,
     pub every: std::time::Duration,
     pub calls: Arc<dyn speedyspec_server_gate::GateCalls>,
@@ -94,6 +95,15 @@ impl Revocation {
             self.calls,
             self.sessions,
         );
+        // The site state's maintenance applies whether or not anyone visits a gated mount.
+        let (gate, every) = (self.gate, self.every);
+        tokio::spawn(async move {
+            let mut ticks = tokio::time::interval(every);
+            loop {
+                ticks.tick().await;
+                gate.refresh_site().await;
+            }
+        });
     }
 }
 
@@ -245,12 +255,15 @@ fn serve_state(
                     &config.mounts,
                     settings.timeout,
                 ));
-            let gate = Arc::new(speedyspec_server_gate::GateAccess::new(
-                settings.clone(),
-                view,
-                calls.clone(),
-                maintenance.clone(),
-            ));
+            let gate = Arc::new(
+                speedyspec_server_gate::GateAccess::new(
+                    settings.clone(),
+                    view,
+                    calls.clone(),
+                    maintenance.clone(),
+                )
+                .with_apps(config.apps.keys().cloned().collect()),
+            );
             let sessions = gate.sessions().clone();
             {
                 let sessions = sessions.clone();
@@ -263,6 +276,7 @@ fn serve_state(
                 }));
             }
             revocation = Some(Revocation {
+                gate: gate.clone(),
                 app: settings.app.clone(),
                 every: settings.poll,
                 calls,
@@ -284,6 +298,7 @@ fn serve_state(
             .iter()
             .filter_map(|(id, app)| app.maintenance_page.clone().map(|page| (id.clone(), page)))
             .collect(),
+        gate_app: config.gate.as_ref().map(|gate| gate.app.clone()),
     };
     (state, revocation)
 }

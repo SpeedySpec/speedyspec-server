@@ -49,6 +49,8 @@ pub struct GateAccess {
     maintenance: Arc<MaintenanceSet>,
     sessions: Arc<SessionCache>,
     site: Mutex<Option<(SiteState, Instant)>>,
+    /// Every app the site state's maintenance applies to when `maintenance_apps` is not set.
+    all_apps: Vec<AppId>,
 }
 
 /// A site state that cannot be read fails closed for install: the install page stays off.
@@ -75,6 +77,20 @@ impl GateAccess {
             maintenance,
             sessions,
             site: Mutex::new(None),
+            all_apps: Vec::new(),
+        }
+    }
+
+    /// The configured apps, which the site state's maintenance applies to unless `maintenance_apps` says otherwise.
+    pub fn with_apps(mut self, apps: Vec<AppId>) -> GateAccess {
+        self.all_apps = apps;
+        self
+    }
+
+    /// Reads the site state again if it is stale (the poll calls this, so its maintenance applies without visitors).
+    pub async fn refresh_site(&self) {
+        if let Some(gate) = self.view.gate() {
+            self.site_state(&gate).await;
         }
     }
 
@@ -107,6 +123,18 @@ impl GateAccess {
             }
         };
         *self.site.lock().unwrap() = Some((state, Instant::now()));
+        let apps = self
+            .settings
+            .maintenance_apps
+            .as_ref()
+            .unwrap_or(&self.all_apps);
+        for app in apps {
+            self.maintenance.set(
+                app,
+                crate::maintenance::MaintenanceSource::Site,
+                state.maintenance,
+            );
+        }
         state
     }
 

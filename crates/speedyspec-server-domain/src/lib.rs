@@ -24,4 +24,6 @@ pub use manifest::{
 };
 pub use mount::{Access, HostMatch, Mount, MountTable};
 pub use release::{Artifact, IndexEntry, ReleaseIndex};
-pub use state::{AppState, PendingGroup, ReleaseState, Rollout, ServerState, StagedSet};
+pub use state::{
+    AppState, MaintenanceRecord, PendingGroup, ReleaseState, Rollout, ServerState, StagedSet,
+};
