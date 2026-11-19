@@ -50,13 +50,21 @@ fn build() -> PathBuf {
         .find_map(|message| message["executable"].as_str().map(PathBuf::from))
         .expect("cargo reported the runtime executable");
     let next_to_server = server.with_file_name("speedyspec-php-runtime");
-    // A fresh copy of a binary is scanned by macOS the first time it runs, which delays the first worker; copy only
-    // when the binary changed.
-    if std::fs::read(&next_to_server).ok() == std::fs::read(&built).ok() {
-        return next_to_server;
+    if std::fs::read(&next_to_server).ok() != std::fs::read(&built).ok() {
+        let staged =
+            server.with_file_name(format!("speedyspec-php-runtime.{}", std::process::id()));
+        std::fs::copy(&built, &staged).expect("copying the runtime binary");
+        std::fs::rename(&staged, &next_to_server).expect("placing the runtime binary");
     }
-    let staged = server.with_file_name(format!("speedyspec-php-runtime.{}", std::process::id()));
-    std::fs::copy(&built, &staged).expect("copying the runtime binary");
-    std::fs::rename(&staged, &next_to_server).expect("placing the runtime binary");
+    // macOS scans a binary the first time it runs, which would delay a test's first worker by a second or more: run
+    // it once here, before any test measures time.
+    let warmed = Command::new(&next_to_server)
+        .arg("manifest")
+        .output()
+        .expect("running the runtime binary");
+    assert!(
+        warmed.status.success(),
+        "the runtime binary's manifest failed"
+    );
     next_to_server
 }
