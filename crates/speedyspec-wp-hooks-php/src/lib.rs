@@ -9,6 +9,21 @@
 //! A PHP callable registered as a callback is a `Callback::Foreign`; calling it is a boundary crossing. A Rust
 //! caller whose hook has only Rust callbacks never enters PHP.
 //!
+//! The hot functions (`add_filter`, `apply_filters`, `do_action`, ... and their `WP_Hook` methods) take their
+//! arguments unconverted ([`native::raw_function`]):
+//!
+//! - only what Rust reads is converted: the hook name, the priority, the accepted-args count and a callback's
+//!   identity. The filtered value and the arguments pass through as the zvals PHP gave, to the PHP callbacks and back
+//!   (a Rust callback converts what it reads);
+//! - a hook is looked up by the hash PHP already keeps in the name's `zend_string` ([`HookKey::prehashed`]);
+//! - `apply_filters()` and `do_action()` on a hook with no callbacks (and no `all` hook) count the run and hand the
+//!   value straight back, before any argument list is built;
+//! - each PHP callback is resolved once per request and called through Zend's fast path
+//!   ([`speedyspec_php::Callable`]).
+//!
+//! `speedyspec_php_ext::boundary_crossings()` counts the entries into PHP: none for a hook with no callbacks, one per
+//! PHP callback run.
+//!
 //! **The documented break:** a hook global replaced wholesale (`$wp_filter = [...]`) is a plain PHP array, no longer
 //! the proxy, and the Rust store does not see it; `$wp_filter[$name]` holds only `WP_Hook` objects
 //! (`compat/hooks/breaks.json`).
@@ -21,20 +36,22 @@ mod stores;
 use std::rc::Rc;
 
 use speedyspec_container::Container;
+use speedyspec_cqrs::CommandHandler;
 use speedyspec_cqrs::{BusError, Command, HandlerRef, Query, QueryRef};
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
-use speedyspec_php::native::{self, NativeError};
+use speedyspec_php::native::{self, Args, NativeError};
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_wp_hooks::{
     AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray, ArrayKey, Count,
     CurrentFilter, DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray,
-    DoingFilter, Entry, HasFilter, HasFilterResult, HookApi, HookError, HookStore, Partition,
-    PrioritySlice, RemoveAllFilters, RemoveFilter, WpHook, register_hook_handlers,
+    DoingFilter, Entry, HasFilter, HasFilterResult, HookApi, HookError, HookKey, HookName,
+    HookStore, Partition, PrioritySlice, RemoveAllFilters, RemoveFilter, WpHook,
+    register_hook_handlers,
 };
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 
-pub use callback::{PhpCallable, php_callback, unique_id};
+pub use callback::{PhpCallable, php_callback, php_callback_of, unique_id};
 pub use stores::{HOOK_STORE, HookStorage, PhpHookStorage, PhpHookStore, ResolvedHookStore};
 
 const FACADE: &str = include_str!("hooks.php");
@@ -162,33 +179,37 @@ impl WpHooksArea {
 impl NativeArea for WpHooksArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
         type Native = fn(&[Value]) -> Result<Value, NativeError>;
-        let mut entries: Vec<(&str, Native)> = vec![
+        type Raw = fn(&Args<'_>) -> Result<Value, NativeError>;
+        // The hot functions read their own arguments, and sync `$wp_current_filter` only when they run callbacks.
+        let raw: Vec<(&str, Raw)> = vec![
             ("add_filter", n_add_filter),
             ("apply_filters", n_apply_filters),
             ("apply_filters_ref_array", n_apply_filters_ref_array),
             ("has_filter", n_has_filter),
             ("remove_filter", n_remove_filter),
+            ("do_action", n_do_action),
+            ("do_action_ref_array", n_do_action_ref_array),
+            ("hook_add_filter", n_hook_add_filter),
+            ("hook_apply_filters", n_hook_apply_filters),
+            ("hook_do_action", n_hook_do_action),
+            ("hook_do_all_hook", n_hook_do_all_hook),
+            ("call_all_hook", n_call_all_hook),
+        ];
+        let mut entries: Vec<(&str, Native)> = vec![
             ("remove_all_filters", n_remove_all_filters),
             ("current_filter", n_current_filter),
             ("doing_filter", n_doing_filter),
             ("did_filter", n_did_filter),
-            ("do_action", n_do_action),
-            ("do_action_ref_array", n_do_action_ref_array),
             ("did_action", n_did_action),
             ("apply_filters_deprecated", n_apply_filters_deprecated),
             ("do_action_deprecated", n_do_action_deprecated),
-            ("call_all_hook", n_call_all_hook),
             ("unique_id", n_unique_id),
             ("hook_new", n_hook_new),
             ("hook_clone", n_hook_clone),
-            ("hook_add_filter", n_hook_add_filter),
             ("hook_remove_filter", n_hook_remove_filter),
             ("hook_has_filter", n_hook_has_filter),
             ("hook_has_filters", n_hook_has_filters),
             ("hook_remove_all_filters", n_hook_remove_all_filters),
-            ("hook_apply_filters", n_hook_apply_filters),
-            ("hook_do_action", n_hook_do_action),
-            ("hook_do_all_hook", n_hook_do_all_hook),
             ("hook_current_priority", n_hook_current_priority),
             ("hook_callbacks", n_hook_callbacks),
             ("hook_replace_callbacks", n_hook_replace_callbacks),
@@ -208,6 +229,9 @@ impl NativeArea for WpHooksArea {
             entries.push(("testing_snapshot", n_testing_snapshot));
             entries.push(("testing_restore", n_testing_restore));
         }
+        let raw = raw
+            .into_iter()
+            .map(|(name, f)| native::raw_function(&format!("{NATIVE}{name}"), f));
         entries
             .into_iter()
             .map(|(name, f)| {
@@ -224,6 +248,7 @@ impl NativeArea for WpHooksArea {
                     result
                 })
             })
+            .chain(raw)
             .collect()
     }
 
@@ -268,6 +293,39 @@ pub fn hooks_scenario_runner(php: speedyspec_php::Php) -> speedyspec_compat::Php
 
 fn arg(args: &[Value], i: usize) -> Value {
     args.get(i).cloned().unwrap_or(Value::Null)
+}
+
+/// Runs `f` with `$wp_current_filter` synced: PHP's changes come in first, and PHP sees the store's stack on return.
+fn synced<T>(s: &State, f: impl FnOnce() -> T) -> T {
+    let store = s.api.store();
+    mirror::sync_in(store.as_ref());
+    let result = f();
+    mirror::sync_out(store.as_ref());
+    result
+}
+
+/// The hook name in argument `i`, converted (Rust reads it) and keyed by the hash PHP keeps in its `zend_string`.
+fn hook_name(args: &Args<'_>, i: usize) -> Result<HookName, NativeError> {
+    let value = args.value(i)?;
+    if let Value::Str(name) = &value
+        && let key @ ArrayKey::Str(_) = ArrayKey::from_str_key(name)
+        && let Some(hash) = args.string_hash(i)
+    {
+        return Ok(HookName::prehashed(value, HookKey::prehashed(key, hash)));
+    }
+    // An integer key hashes to itself; anything else keeps PHP's error for later.
+    Ok(HookName::new(value))
+}
+
+/// True while `handler` is the Hook API itself (PHP did not bind its own), so its fast path may skip it.
+fn is_default<C>(handler: &HandlerRef<C>, api: &Rc<HookApi>) -> bool
+where
+    C: Command,
+    HookApi: CommandHandler<C>,
+{
+    handler
+        .handler()
+        .is_ok_and(|bound| std::ptr::addr_eq(Rc::as_ptr(&bound), Rc::as_ptr(api)))
 }
 
 fn values_of(array: &Value) -> Vec<Value> {
@@ -330,17 +388,17 @@ fn has_filter_value(result: HasFilterResult) -> Value {
     }
 }
 
+/// `has_filter()`'s callback (`None` for `false`) and priority (only an integer counts), from argument `first` on.
 fn has_filter_args(
-    args: &[Value],
+    args: &Args<'_>,
     first: usize,
-) -> (Option<speedyspec_wp_hooks::CallbackId>, Option<i64>) {
-    let callback = arg(args, first);
-    let callback = (!is_false(&callback)).then(|| callback::callback_id(&callback));
-    let priority = match arg(args, first + 1) {
-        Value::Int(n) => Some(n),
-        _ => None,
+) -> Result<(Option<speedyspec_wp_hooks::CallbackId>, Option<i64>), NativeError> {
+    let callback = if args.is_false(first) {
+        None
+    } else {
+        Some(callback::callback_id(&args.value(first)?))
     };
-    (callback, priority)
+    Ok((callback, args.int(first + 1)))
 }
 
 fn list(values: Vec<Value>) -> Value {
@@ -357,6 +415,11 @@ fn key(value: &Value) -> Result<ArrayKey, NativeError> {
     ArrayKey::from_value(value).map_err(hook_error)
 }
 
+/// A hook name PHP used as an offset of a hook global, as a store key.
+fn hook_key(value: &Value) -> Result<HookKey, NativeError> {
+    key(value).map(HookKey::new)
+}
+
 fn key_value(key: &ArrayKey) -> Key {
     match key {
         ArrayKey::Int(n) => Key::Int(*n),
@@ -366,47 +429,52 @@ fn key_value(key: &ArrayKey) -> Key {
 
 // ----- WordPress's functions
 
-fn n_add_filter(args: &[Value]) -> Result<Value, NativeError> {
+fn n_add_filter(args: &Args<'_>) -> Result<Value, NativeError> {
     let s = state()?;
-    let accepted_args = match arg(args, 3) {
-        Value::Int(n) => n,
-        _ => 1,
-    };
     let message = AddFilter {
-        hook: arg(args, 0),
-        callback: php_callback(arg(args, 1)),
-        priority: arg(args, 2),
-        accepted_args,
+        hook: hook_name(args, 0)?,
+        callback: php_callback_of(args.value(1)?, args.pass(1)),
+        priority: args.value(2)?,
+        accepted_args: args.int(3).unwrap_or(1),
     };
     command(&s.handlers.add_filter, message).map(Value::Bool)
 }
 
-fn n_apply_filters(args: &[Value]) -> Result<Value, NativeError> {
+fn n_apply_filters(args: &Args<'_>) -> Result<Value, NativeError> {
     let s = state()?;
+    let hook = hook_name(args, 0)?;
+    // Most filters have no callbacks: the value goes straight back, no argument built.
+    if is_default(&s.handlers.apply_filters, &s.api)
+        && s.api
+            .skip_if_empty(&hook, Count::Filters)
+            .map_err(hook_error)?
+    {
+        return Ok(args.pass(1));
+    }
     let message = ApplyFilters {
-        hook: arg(args, 0),
-        value: arg(args, 1),
-        args: args.iter().skip(2).cloned().collect(),
+        hook,
+        value: args.pass(1),
+        args: args.pass_from(2),
     };
-    command(&s.handlers.apply_filters, message)
+    synced(&s, || command(&s.handlers.apply_filters, message))
 }
 
-fn n_apply_filters_ref_array(args: &[Value]) -> Result<Value, NativeError> {
+fn n_apply_filters_ref_array(args: &Args<'_>) -> Result<Value, NativeError> {
     let s = state()?;
     let message = ApplyFiltersRefArray {
-        hook: arg(args, 0),
-        args: values_of(&arg(args, 1)),
+        hook: hook_name(args, 0)?,
+        args: args.items(1),
     };
-    command(&s.handlers.apply_filters_ref_array, message)
+    synced(&s, || command(&s.handlers.apply_filters_ref_array, message))
 }
 
-fn n_has_filter(args: &[Value]) -> Result<Value, NativeError> {
+fn n_has_filter(args: &Args<'_>) -> Result<Value, NativeError> {
     let s = state()?;
-    let (callback, priority) = has_filter_args(args, 1);
+    let (callback, priority) = has_filter_args(args, 1)?;
     query(
         &s.handlers.has_filter,
         HasFilter {
-            hook: arg(args, 0),
+            hook: hook_name(args, 0)?,
             callback,
             priority,
         },
@@ -414,12 +482,12 @@ fn n_has_filter(args: &[Value]) -> Result<Value, NativeError> {
     .map(has_filter_value)
 }
 
-fn n_remove_filter(args: &[Value]) -> Result<Value, NativeError> {
+fn n_remove_filter(args: &Args<'_>) -> Result<Value, NativeError> {
     let s = state()?;
     let message = RemoveFilter {
-        hook: arg(args, 0),
-        callback: callback::callback_id(&arg(args, 1)),
-        priority: arg(args, 2),
+        hook: hook_name(args, 0)?,
+        callback: callback::callback_id(&args.value(1)?),
+        priority: args.value(2)?,
     };
     command(&s.handlers.remove_filter, message).map(Value::Bool)
 }
@@ -428,7 +496,7 @@ fn n_remove_all_filters(args: &[Value]) -> Result<Value, NativeError> {
     let s = state()?;
     let priority = arg(args, 1);
     let message = RemoveAllFilters {
-        hook: arg(args, 0),
+        hook: HookName::new(arg(args, 0)),
         priority: (!is_false(&priority)).then_some(priority),
     };
     command(&s.handlers.remove_all_filters, message).map(Value::Bool)
@@ -459,36 +527,50 @@ fn n_doing_filter(args: &[Value]) -> Result<Value, NativeError> {
 
 fn n_did_filter(args: &[Value]) -> Result<Value, NativeError> {
     let s = state()?;
-    query(&s.handlers.did_filter, DidFilter { hook: arg(args, 0) }).map(Value::Int)
+    let hook = HookName::new(arg(args, 0));
+    query(&s.handlers.did_filter, DidFilter { hook }).map(Value::Int)
 }
 
 fn n_did_action(args: &[Value]) -> Result<Value, NativeError> {
     let s = state()?;
-    query(&s.handlers.did_action, DidAction { hook: arg(args, 0) }).map(Value::Int)
+    let hook = HookName::new(arg(args, 0));
+    query(&s.handlers.did_action, DidAction { hook }).map(Value::Int)
 }
 
-fn n_do_action(args: &[Value]) -> Result<Value, NativeError> {
+fn n_do_action(args: &Args<'_>) -> Result<Value, NativeError> {
     let s = state()?;
-    let message = DoAction {
-        hook: arg(args, 0),
-        args: args.iter().skip(1).cloned().collect(),
-    };
-    command(&s.handlers.do_action, message).map(|()| Value::Null)
+    let hook = hook_name(args, 0)?;
+    // Most actions have no callbacks: nothing to build or run.
+    if is_default(&s.handlers.do_action, &s.api)
+        && s.api
+            .skip_if_empty(&hook, Count::Actions)
+            .map_err(hook_error)?
+    {
+        return Ok(Value::Null);
+    }
+    let mut rest = args.pass_from(1);
+    if let Some(object) = args.single_object(1) {
+        // `array( &$this )`, which the Hook API unwraps (PHP4-style passing): given as the one-element array it is,
+        // so it can see inside.
+        rest[0] = Value::Array(vec![(Key::Int(0), object)]);
+    }
+    let message = DoAction { hook, args: rest };
+    synced(&s, || command(&s.handlers.do_action, message)).map(|()| Value::Null)
 }
 
-fn n_do_action_ref_array(args: &[Value]) -> Result<Value, NativeError> {
+fn n_do_action_ref_array(args: &Args<'_>) -> Result<Value, NativeError> {
     let s = state()?;
     let message = DoActionRefArray {
-        hook: arg(args, 0),
-        args: values_of(&arg(args, 1)),
+        hook: hook_name(args, 0)?,
+        args: args.items(1),
     };
-    command(&s.handlers.do_action_ref_array, message).map(|()| Value::Null)
+    synced(&s, || command(&s.handlers.do_action_ref_array, message)).map(|()| Value::Null)
 }
 
 fn n_apply_filters_deprecated(args: &[Value]) -> Result<Value, NativeError> {
     let s = state()?;
     let message = ApplyFiltersDeprecated {
-        hook: arg(args, 0),
+        hook: HookName::new(arg(args, 0)),
         args: values_of(&arg(args, 1)),
         version: arg(args, 2),
         replacement: arg(args, 3),
@@ -500,7 +582,7 @@ fn n_apply_filters_deprecated(args: &[Value]) -> Result<Value, NativeError> {
 fn n_do_action_deprecated(args: &[Value]) -> Result<Value, NativeError> {
     let s = state()?;
     let message = DoActionDeprecated {
-        hook: arg(args, 0),
+        hook: HookName::new(arg(args, 0)),
         args: values_of(&arg(args, 1)),
         version: arg(args, 2),
         replacement: arg(args, 3),
@@ -509,16 +591,19 @@ fn n_do_action_deprecated(args: &[Value]) -> Result<Value, NativeError> {
     command(&s.handlers.do_action_deprecated, message).map(|()| Value::Null)
 }
 
-fn n_call_all_hook(args: &[Value]) -> Result<Value, NativeError> {
+fn n_call_all_hook(args: &Args<'_>) -> Result<Value, NativeError> {
     let s = state()?;
-    let Some(all) = s.api.store().hook(&ArrayKey::Str("all".into())) else {
+    let Some(all) = s
+        .api
+        .store()
+        .hook(&HookKey::new(ArrayKey::Str("all".into())))
+    else {
         return Err(NativeError::throw(
             "Error",
             "Call to a member function do_all_hook() on null",
         ));
     };
-    all.do_all_hook(&values_of(&arg(args, 0)))
-        .map_err(hook_error)?;
+    synced(&s, || all.do_all_hook(&args.items(0))).map_err(hook_error)?;
     Ok(Value::Null)
 }
 
@@ -529,11 +614,22 @@ fn n_unique_id(args: &[Value]) -> Result<Value, NativeError> {
 // ----- WP_Hook
 
 fn hook_arg(args: &[Value]) -> Result<WpHook, NativeError> {
-    let id = match args.first() {
-        Some(Value::Int(n)) => *n as usize,
-        _ => return Err(NativeError::throw("Error", "not a WP_Hook")),
-    };
-    registry::hook(id)
+    match args.first() {
+        Some(Value::Int(n)) => hook_by_id(*n),
+        _ => Err(NativeError::throw("Error", "not a WP_Hook")),
+    }
+}
+
+/// The hook of a raw function's first argument, a `WP_Hook`'s id.
+fn raw_hook_arg(args: &Args<'_>) -> Result<WpHook, NativeError> {
+    match args.int(0) {
+        Some(n) => hook_by_id(n),
+        None => Err(NativeError::throw("Error", "not a WP_Hook")),
+    }
+}
+
+fn hook_by_id(id: i64) -> Result<WpHook, NativeError> {
+    registry::hook(id as usize)
         .ok_or_else(|| NativeError::throw("Error", "this WP_Hook belongs to an earlier request"))
 }
 
@@ -555,16 +651,12 @@ fn n_hook_clone(args: &[Value]) -> Result<Value, NativeError> {
         .ok_or_else(|| NativeError::throw("Error", "this WP_Hook belongs to an earlier request"))
 }
 
-fn n_hook_add_filter(args: &[Value]) -> Result<Value, NativeError> {
-    let hook = hook_arg(args)?;
-    let accepted_args = match arg(args, 4) {
-        Value::Int(n) => n,
-        _ => 0,
-    };
+fn n_hook_add_filter(args: &Args<'_>) -> Result<Value, NativeError> {
+    let hook = raw_hook_arg(args)?;
     hook.add_filter(
-        php_callback(arg(args, 2)),
-        &arg(args, 3),
-        accepted_args,
+        php_callback_of(args.value(2)?, args.pass(2)),
+        &args.value(3)?,
+        args.int(4).unwrap_or(0),
         partition(),
     )
     .map_err(hook_error)?;
@@ -581,7 +673,12 @@ fn n_hook_remove_filter(args: &[Value]) -> Result<Value, NativeError> {
 
 fn n_hook_has_filter(args: &[Value]) -> Result<Value, NativeError> {
     let hook = hook_arg(args)?;
-    let (callback, priority) = has_filter_args(args, 2);
+    let callback = arg(args, 2);
+    let callback = (!is_false(&callback)).then(|| callback::callback_id(&callback));
+    let priority = match arg(args, 3) {
+        Value::Int(n) => Some(n),
+        _ => None,
+    };
     Ok(has_filter_value(
         hook.has_filter(callback.as_ref().map(|id| &id.0), priority),
     ))
@@ -599,23 +696,23 @@ fn n_hook_remove_all_filters(args: &[Value]) -> Result<Value, NativeError> {
     Ok(Value::Null)
 }
 
-fn n_hook_apply_filters(args: &[Value]) -> Result<Value, NativeError> {
-    let hook = hook_arg(args)?;
-    hook.apply_filters(arg(args, 1), values_of(&arg(args, 2)))
-        .map_err(hook_error)
+fn n_hook_apply_filters(args: &Args<'_>) -> Result<Value, NativeError> {
+    let s = state()?;
+    let hook = raw_hook_arg(args)?;
+    synced(&s, || hook.apply_filters(args.pass(1), args.items(2))).map_err(hook_error)
 }
 
-fn n_hook_do_action(args: &[Value]) -> Result<Value, NativeError> {
-    let hook = hook_arg(args)?;
-    hook.do_action(values_of(&arg(args, 1)))
-        .map_err(hook_error)?;
+fn n_hook_do_action(args: &Args<'_>) -> Result<Value, NativeError> {
+    let s = state()?;
+    let hook = raw_hook_arg(args)?;
+    synced(&s, || hook.do_action(args.items(1))).map_err(hook_error)?;
     Ok(Value::Null)
 }
 
-fn n_hook_do_all_hook(args: &[Value]) -> Result<Value, NativeError> {
-    let hook = hook_arg(args)?;
-    hook.do_all_hook(&values_of(&arg(args, 1)))
-        .map_err(hook_error)?;
+fn n_hook_do_all_hook(args: &Args<'_>) -> Result<Value, NativeError> {
+    let s = state()?;
+    let hook = raw_hook_arg(args)?;
+    synced(&s, || hook.do_all_hook(&args.items(1))).map_err(hook_error)?;
     Ok(Value::Null)
 }
 
@@ -726,7 +823,7 @@ fn n_hook_replace_callbacks(args: &[Value]) -> Result<Value, NativeError> {
                 Key::Int(n) => ArrayKey::Int(n),
                 Key::Str(s) => ArrayKey::Str(s),
             };
-            let slice = slice_from(&slice, previous.get(&priority))?;
+            let slice = slice_from(&slice, previous.get(&priority).map(|s| &**s))?;
             hook.set_priority(Some(priority), slice);
         }
     }
@@ -757,7 +854,7 @@ fn n_hook_offset_get(args: &[Value]) -> Result<Value, NativeError> {
         .state()
         .callbacks
         .get(&offset)
-        .map_or(Value::Null, slice_value))
+        .map_or(Value::Null, |slice| slice_value(slice)))
 }
 
 fn n_hook_offset_set(args: &[Value]) -> Result<Value, NativeError> {
@@ -769,7 +866,7 @@ fn n_hook_offset_set(args: &[Value]) -> Result<Value, NativeError> {
     let existing = offset
         .as_ref()
         .and_then(|p| hook.state().callbacks.get(p).cloned());
-    let slice = slice_from(&arg(args, 2), existing.as_ref())?;
+    let slice = slice_from(&arg(args, 2), existing.as_deref())?;
     hook.set_priority(offset, slice);
     Ok(Value::Null)
 }
@@ -818,8 +915,8 @@ fn n_global_has(args: &[Value]) -> Result<Value, NativeError> {
     let store = store()?;
     let offset = arg(args, 1);
     Ok(Value::Bool(match global(args)? {
-        Global::Filter => store.has_hook(&key(&offset)?),
-        Global::Counts(kind) => store.count(kind, &key(&offset)?).is_some(),
+        Global::Filter => store.has_hook(&hook_key(&offset)?),
+        Global::Counts(kind) => store.count(kind, &hook_key(&offset)?).is_some(),
         Global::Current => index(&offset).is_some_and(|i| i < store.current_stack().len()),
     }))
 }
@@ -828,14 +925,14 @@ fn n_global_get(args: &[Value]) -> Result<Value, NativeError> {
     let store = store()?;
     let offset = arg(args, 1);
     match global(args)? {
-        Global::Filter => match store.hook(&key(&offset)?) {
+        Global::Filter => match store.hook(&hook_key(&offset)?) {
             Some(hook) => {
                 registry::object_for(&hook).map_err(|e| NativeError::throw("Error", e.to_string()))
             }
             None => Ok(Value::Null),
         },
         Global::Counts(kind) => Ok(store
-            .count(kind, &key(&offset)?)
+            .count(kind, &hook_key(&offset)?)
             .map_or(Value::Null, Value::Int)),
         Global::Current => Ok(index(&offset)
             .and_then(|i| store.current_stack().get(i).cloned())
@@ -883,14 +980,14 @@ fn n_global_set(args: &[Value]) -> Result<Value, NativeError> {
                 Value::Null => next_int_key(store.hooks().into_iter().map(|(k, _)| k)),
                 offset => key(&offset)?,
             };
-            store.insert(name, hook);
+            store.insert(HookKey::new(name), hook);
         }
         Global::Counts(kind) => {
             let name = match offset {
                 Value::Null => next_int_key(store.counts(kind).into_iter().map(|(k, _)| k)),
                 offset => key(&offset)?,
             };
-            store.set_count(kind, &name, Some(count_of(&value)?));
+            store.set_count(kind, &HookKey::new(name), Some(count_of(&value)?));
         }
         Global::Current => {
             let mut stack = store.current_stack();
@@ -915,8 +1012,8 @@ fn n_global_unset(args: &[Value]) -> Result<Value, NativeError> {
     let store = store()?;
     let offset = arg(args, 1);
     match global(args)? {
-        Global::Filter => store.remove(&key(&offset)?),
-        Global::Counts(kind) => store.set_count(kind, &key(&offset)?, None),
+        Global::Filter => store.remove(&hook_key(&offset)?),
+        Global::Counts(kind) => store.set_count(kind, &hook_key(&offset)?, None),
         Global::Current => {
             let mut stack = store.current_stack();
             if let Some(i) = index(&offset).filter(|i| *i < stack.len()) {
@@ -1021,14 +1118,14 @@ fn n_testing_restore(args: &[Value]) -> Result<Value, NativeError> {
     };
     store.clear();
     for (name, hook) in hooks {
-        store.insert(name, hook);
+        store.insert(HookKey::new(name), hook);
     }
     for (kind, saved) in [(Count::Actions, actions), (Count::Filters, filters)] {
         for (name, _) in store.counts(kind) {
-            store.set_count(kind, &name, None);
+            store.set_count(kind, &HookKey::new(name), None);
         }
         for (name, n) in saved {
-            store.set_count(kind, &name, Some(n));
+            store.set_count(kind, &HookKey::new(name), Some(n));
         }
     }
     store.set_current_stack(current);

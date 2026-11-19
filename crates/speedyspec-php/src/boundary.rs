@@ -413,17 +413,42 @@ fn run_native(
 
 /// Queues one reference for [`drain`]. After shutdown the reference points
 /// into freed memory and is forgotten instead.
+///
+/// A string or array that someone else still holds (its count stays above
+/// zero) is released at once instead: dropping that reference frees nothing
+/// and runs no PHP code, so it needs no entry into PHP. This is what lets a
+/// value passed through Rust unconverted cost no crossing to let go of. (PHP
+/// would also note such an array as a possible garbage cycle; one that only
+/// a cycle made unreachable is reclaimed when the request ends instead.)
 pub(crate) fn release_later(zv: ManuallyDrop<Zval>) {
     // SAFETY: reading the type flags of a zval we own.
     let counted =
         unsafe { u32::from(zv.u1.v.type_flags) & ext_php_rs::ffi::IS_TYPE_REFCOUNTED != 0 };
-    if counted {
-        let _ = ENGINE.try_with(|e| {
-            if e.alive.get() {
-                e.releases.borrow_mut().push(zv);
-            }
-        });
+    if !counted {
+        return;
     }
+    let _ = ENGINE.try_with(|e| {
+        if !e.alive.get() {
+            return;
+        }
+        // SAFETY: a counted zval we own a reference to, while the engine is
+        // alive: its header is live.
+        let released = unsafe {
+            let ty = u32::from(zv.u1.v.type_);
+            let counted = zv.value.counted;
+            if (ty == ext_php_rs::ffi::IS_STRING || ty == ext_php_rs::ffi::IS_ARRAY)
+                && (*counted).gc.refcount > 1
+            {
+                (*counted).gc.refcount -= 1;
+                true
+            } else {
+                false
+            }
+        };
+        if !released {
+            e.releases.borrow_mut().push(zv);
+        }
+    });
 }
 
 /// Releases queued references, each under its own guard (a release can run

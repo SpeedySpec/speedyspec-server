@@ -1,6 +1,8 @@
 use std::any::Any;
+use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
+use std::sync::OnceLock;
 
 use serde::de::Deserializer;
 use serde::ser::{Error as _, Serializer};
@@ -43,6 +45,60 @@ impl Value {
             Value::Opaque(_) => false,
             Value::Array(items) => items.iter().all(|(_, v)| v.is_portable()),
             _ => true,
+        }
+    }
+}
+
+/// How a language bridge reads the values it carries as `Opaque` without converting them (a PHP string or array
+/// passed through a hook untouched).
+#[derive(Clone, Copy)]
+pub struct OpaqueReader {
+    /// True when `read` would give a value (false keeps it opaque, as a PHP object). Must not convert anything.
+    pub readable: fn(&dyn Any) -> bool,
+    /// The value it holds, converted.
+    pub read: fn(&dyn Any) -> Option<Value>,
+}
+
+static READER: OnceLock<OpaqueReader> = OnceLock::new();
+
+/// Sets how [`Value::read`] reads carried values; the first bridge to set it wins (there is one per process).
+pub fn set_opaque_reader(reader: OpaqueReader) {
+    let _ = READER.set(reader);
+}
+
+impl Value {
+    /// This value as Rust code reads it. A bridge may carry a foreign value as `Opaque` so that it passes through
+    /// Rust unconverted; reading it converts it then, and only then. Anything else is itself, borrowed.
+    pub fn read(&self) -> Cow<'_, Value> {
+        match READER.get() {
+            Some(reader) if self.readable_by(reader) => Cow::Owned(self.read_with(reader)),
+            _ => Cow::Borrowed(self),
+        }
+    }
+
+    /// True when [`Value::read`] would convert something.
+    pub fn needs_reading(&self) -> bool {
+        READER.get().is_some_and(|reader| self.readable_by(reader))
+    }
+
+    fn readable_by(&self, reader: &OpaqueReader) -> bool {
+        match self {
+            Value::Opaque(any) => (reader.readable)(any.as_ref()),
+            Value::Array(items) => items.iter().any(|(_, v)| v.readable_by(reader)),
+            _ => false,
+        }
+    }
+
+    fn read_with(&self, reader: &OpaqueReader) -> Value {
+        match self {
+            Value::Opaque(any) => (reader.read)(any.as_ref()).unwrap_or_else(|| self.clone()),
+            Value::Array(items) => Value::Array(
+                items
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.read_with(reader)))
+                    .collect(),
+            ),
+            other => other.clone(),
         }
     }
 }

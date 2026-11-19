@@ -8,7 +8,7 @@ use speedyspec_container_php::ContainerArea;
 use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, NativeArea, Php};
 use speedyspec_php_ext::{Key, Value, twins_area};
-use speedyspec_wp_hooks::{Callback, HookStore, HookValue};
+use speedyspec_wp_hooks::{Callback, HookName, HookStore, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::{HOOK_STORE, PhpHookStore, WpHooksArea};
 
@@ -69,13 +69,9 @@ fn main() {
         Some(HookValue::Str(v)) => Ok(HookValue::Str(format!("{v}-rust"))),
         _ => Ok(HookValue::Null),
     });
-    api.add_filter(&HookValue::Str("r".into()), rust, &HookValue::Int(10), 1)
+    api.add_filter(&HookName::from("r"), rust, &HookValue::Int(10), 1)
         .unwrap();
-    let from_rust = api.apply_filters(
-        &HookValue::Str("r".into()),
-        HookValue::Str("y".into()),
-        vec![],
-    );
+    let from_rust = api.apply_filters(&HookName::from("r"), HookValue::Str("y".into()), vec![]);
     let log = php.eval(
         "t",
         "return [ArrayHookStore::$log, did_filter('p'), did_filter('r')];",

@@ -80,9 +80,19 @@ impl Callback {
         }
     }
 
+    /// Runs the callback. A foreign callback gets the arguments as they came (values its language passed through
+    /// unconverted stay so); a Rust callback reads them ([`HookValue::read`]), so only a Rust callback converts.
     pub fn call(&self, args: &[HookValue]) -> Result<HookValue, HookError> {
         match self {
-            Callback::Rust { run, .. } | Callback::Foreign { run, .. } => run.call(args),
+            Callback::Foreign { run, .. } => run.call(args),
+            Callback::Rust { run, .. } => {
+                if args.iter().any(HookValue::needs_reading) {
+                    let read: Vec<HookValue> = args.iter().map(|v| v.read().into_owned()).collect();
+                    run.call(&read)
+                } else {
+                    run.call(args)
+                }
+            }
         }
     }
 

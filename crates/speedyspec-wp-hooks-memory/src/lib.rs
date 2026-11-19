@@ -10,13 +10,19 @@
 use std::cell::{Cell, RefCell};
 
 use indexmap::IndexMap;
-use speedyspec_wp_hooks::{ArrayKey, Count, HookStore, HookValue, Partition, WpHook};
+use speedyspec_wp_hooks::{
+    ArrayKey, Count, HookKey, HookStore, HookValue, Partition, Prehashed, WpHook,
+};
+
+/// A table keyed by hook name, by the hash the name carries (PHP's own for a name from PHP): a lookup never
+/// hashes the name again.
+type Table<V> = IndexMap<HookKey, V, Prehashed>;
 
 #[derive(Default)]
 struct Globals {
-    filter: IndexMap<ArrayKey, WpHook>,
-    actions: IndexMap<ArrayKey, i64>,
-    filters: IndexMap<ArrayKey, i64>,
+    filter: Table<WpHook>,
+    actions: Table<i64>,
+    filters: Table<i64>,
     current: Vec<HookValue>,
 }
 
@@ -59,7 +65,7 @@ impl MemoryHookStore {
         self.partition.set(Partition::Worker);
     }
 
-    fn table(globals: &mut Globals, kind: Count) -> &mut IndexMap<ArrayKey, i64> {
+    fn table(globals: &mut Globals, kind: Count) -> &mut Table<i64> {
         match kind {
             Count::Actions => &mut globals.actions,
             Count::Filters => &mut globals.filters,
@@ -68,8 +74,12 @@ impl MemoryHookStore {
 }
 
 impl HookStore for MemoryHookStore {
-    fn hook(&self, name: &ArrayKey) -> Option<WpHook> {
+    fn hook(&self, name: &HookKey) -> Option<WpHook> {
         self.globals.borrow().filter.get(name).cloned()
+    }
+
+    fn has_hook(&self, name: &HookKey) -> bool {
+        self.globals.borrow().filter.contains_key(name)
     }
 
     fn hooks(&self) -> Vec<(ArrayKey, WpHook)> {
@@ -77,7 +87,7 @@ impl HookStore for MemoryHookStore {
             .borrow()
             .filter
             .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
+            .map(|(k, v)| (k.key().clone(), v.clone()))
             .collect()
     }
 
@@ -85,11 +95,11 @@ impl HookStore for MemoryHookStore {
         let mut globals = self.globals.borrow_mut();
         Self::table(&mut globals, kind)
             .iter()
-            .map(|(k, v)| (k.clone(), *v))
+            .map(|(k, v)| (k.key().clone(), *v))
             .collect()
     }
 
-    fn count(&self, kind: Count, name: &ArrayKey) -> Option<i64> {
+    fn count(&self, kind: Count, name: &HookKey) -> Option<i64> {
         let mut globals = self.globals.borrow_mut();
         Self::table(&mut globals, kind).get(name).copied()
     }
@@ -102,11 +112,11 @@ impl HookStore for MemoryHookStore {
         self.partition.get()
     }
 
-    fn insert(&self, name: ArrayKey, hook: WpHook) {
+    fn insert(&self, name: HookKey, hook: WpHook) {
         self.globals.borrow_mut().filter.insert(name, hook);
     }
 
-    fn remove(&self, name: &ArrayKey) {
+    fn remove(&self, name: &HookKey) {
         self.globals.borrow_mut().filter.shift_remove(name);
     }
 
@@ -126,14 +136,19 @@ impl HookStore for MemoryHookStore {
         self.globals.borrow_mut().current = stack;
     }
 
-    fn increment_did(&self, kind: Count, name: &ArrayKey) {
+    fn increment_did(&self, kind: Count, name: &HookKey) {
         let mut globals = self.globals.borrow_mut();
-        *Self::table(&mut globals, kind)
-            .entry(name.clone())
-            .or_insert(0) += 1;
+        let table = Self::table(&mut globals, kind);
+        // Only a hook run for the first time clones its name.
+        match table.get_mut(name) {
+            Some(n) => *n += 1,
+            None => {
+                table.insert(name.clone(), 1);
+            }
+        }
     }
 
-    fn set_count(&self, kind: Count, name: &ArrayKey, value: Option<i64>) {
+    fn set_count(&self, kind: Count, name: &HookKey, value: Option<i64>) {
         let mut globals = self.globals.borrow_mut();
         let table = Self::table(&mut globals, kind);
         match value {

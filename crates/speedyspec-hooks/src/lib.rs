@@ -6,4 +6,4 @@ mod contract;
 mod value;
 
 pub use contract::*;
-pub use value::{Key, Value};
+pub use value::{Key, OpaqueReader, Value, set_opaque_reader};

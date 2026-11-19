@@ -59,6 +59,7 @@ pub(crate) fn register_classes() -> Result<(), String> {
 }
 
 pub(crate) fn request_start() {
+    crate::callable::new_request();
     each(|area| area.request_start());
 }
 

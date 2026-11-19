@@ -10,12 +10,14 @@ use speedyspec_cqrs::{
     Command, CommandHandler, Query, QueryHandler, bind_command_handler, bind_query_handler,
 };
 
-use crate::{ArrayKey, Callback, CallbackId, HasFilterResult, HookApi, HookError, HookValue};
+use crate::{
+    ArrayKey, Callback, CallbackId, HasFilterResult, HookApi, HookError, HookName, HookValue,
+};
 
 /// `add_filter()`: always true.
 #[derive(Clone, Debug)]
 pub struct AddFilter {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub callback: Callback,
     pub priority: HookValue,
     pub accepted_args: i64,
@@ -35,7 +37,7 @@ impl CommandHandler<AddFilter> for HookApi {
 /// `add_action()`.
 #[derive(Clone, Debug)]
 pub struct AddAction {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub callback: Callback,
     pub priority: HookValue,
     pub accepted_args: i64,
@@ -55,7 +57,7 @@ impl CommandHandler<AddAction> for HookApi {
 /// `remove_filter()`.
 #[derive(Clone, Debug)]
 pub struct RemoveFilter {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub callback: CallbackId,
     pub priority: HookValue,
 }
@@ -74,7 +76,7 @@ impl CommandHandler<RemoveFilter> for HookApi {
 /// `remove_action()`.
 #[derive(Clone, Debug)]
 pub struct RemoveAction {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub callback: CallbackId,
     pub priority: HookValue,
 }
@@ -93,7 +95,7 @@ impl CommandHandler<RemoveAction> for HookApi {
 /// `remove_all_filters()`: `priority` is `None` for every priority.
 #[derive(Clone, Debug)]
 pub struct RemoveAllFilters {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub priority: Option<HookValue>,
 }
 
@@ -111,7 +113,7 @@ impl CommandHandler<RemoveAllFilters> for HookApi {
 /// `remove_all_actions()`.
 #[derive(Clone, Debug)]
 pub struct RemoveAllActions {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub priority: Option<HookValue>,
 }
 
@@ -129,7 +131,7 @@ impl CommandHandler<RemoveAllActions> for HookApi {
 /// `apply_filters()`.
 #[derive(Clone, Debug)]
 pub struct ApplyFilters {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub value: HookValue,
     pub args: Vec<HookValue>,
 }
@@ -148,7 +150,7 @@ impl CommandHandler<ApplyFilters> for HookApi {
 /// `apply_filters_ref_array()`.
 #[derive(Clone, Debug)]
 pub struct ApplyFiltersRefArray {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub args: Vec<HookValue>,
 }
 
@@ -166,7 +168,7 @@ impl CommandHandler<ApplyFiltersRefArray> for HookApi {
 /// `apply_filters_deprecated()`.
 #[derive(Clone, Debug)]
 pub struct ApplyFiltersDeprecated {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub args: Vec<HookValue>,
     pub version: HookValue,
     pub replacement: HookValue,
@@ -187,7 +189,7 @@ impl CommandHandler<ApplyFiltersDeprecated> for HookApi {
 /// `do_action()`.
 #[derive(Clone, Debug)]
 pub struct DoAction {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub args: Vec<HookValue>,
 }
 
@@ -205,7 +207,7 @@ impl CommandHandler<DoAction> for HookApi {
 /// `do_action_ref_array()`.
 #[derive(Clone, Debug)]
 pub struct DoActionRefArray {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub args: Vec<HookValue>,
 }
 
@@ -223,7 +225,7 @@ impl CommandHandler<DoActionRefArray> for HookApi {
 /// `do_action_deprecated()`.
 #[derive(Clone, Debug)]
 pub struct DoActionDeprecated {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub args: Vec<HookValue>,
     pub version: HookValue,
     pub replacement: HookValue,
@@ -244,7 +246,7 @@ impl CommandHandler<DoActionDeprecated> for HookApi {
 /// `has_filter()`: `callback` is `None` for `false`; `priority` only when it is an integer.
 #[derive(Clone, Debug)]
 pub struct HasFilter {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub callback: Option<CallbackId>,
     pub priority: Option<i64>,
 }
@@ -263,7 +265,7 @@ impl QueryHandler<HasFilter> for HookApi {
 /// `has_action()`.
 #[derive(Clone, Debug)]
 pub struct HasAction {
-    pub hook: HookValue,
+    pub hook: HookName,
     pub callback: Option<CallbackId>,
     pub priority: Option<i64>,
 }
@@ -282,7 +284,7 @@ impl QueryHandler<HasAction> for HookApi {
 /// `did_action()`.
 #[derive(Clone, Debug)]
 pub struct DidAction {
-    pub hook: HookValue,
+    pub hook: HookName,
 }
 
 impl Query for DidAction {
@@ -299,7 +301,7 @@ impl QueryHandler<DidAction> for HookApi {
 /// `did_filter()`.
 #[derive(Clone, Debug)]
 pub struct DidFilter {
-    pub hook: HookValue,
+    pub hook: HookName,
 }
 
 impl Query for DidFilter {
@@ -380,7 +382,7 @@ impl QueryHandler<CurrentAction> for HookApi {
 /// `WP_Hook::current_priority()` of a named hook.
 #[derive(Clone, Debug)]
 pub struct CurrentPriority {
-    pub hook: HookValue,
+    pub hook: HookName,
 }
 
 impl Query for CurrentPriority {

@@ -253,6 +253,11 @@ impl Php {
             e.alive.set(true);
         });
         hook_class::install(options.hooks);
+        // Rust code reads a PHP string or array passed through it unconverted only when it looks at it.
+        speedyspec_hooks::set_opaque_reader(speedyspec_hooks::OpaqueReader {
+            readable: convert::readable_opaque,
+            read: convert::read_opaque,
+        });
         php.request_setup()?;
         Ok(php)
     }
@@ -548,7 +553,12 @@ pub fn call_catching(callable: &Value, args: &[Value]) -> Result<Value, CallFail
     };
     release_later(target);
     settle_stray();
-    outcome.map_err(|err| match err {
+    outcome.map_err(failure_of)
+}
+
+/// A failed call as [`CallFailure`]: a thrown exception keeps its object.
+pub(crate) fn failure_of(err: CallError) -> CallFailure {
+    match err {
         CallError::Thrown(crate::boundary::Thrown::Exception {
             object,
             class,
@@ -564,8 +574,11 @@ pub fn call_catching(callable: &Value, args: &[Value]) -> Result<Value, CallFail
             },
             exception: Some(Value::Opaque(std::rc::Rc::new(object))),
         },
-        other => plain(other.into_php_error()),
-    })
+        other => CallFailure {
+            error: other.into_php_error(),
+            exception: None,
+        },
+    }
 }
 
 /// The SAPI's INI entries with [`set_ini`]'s settings after them, once set.
@@ -681,6 +694,122 @@ pub fn set_global(name: &str, value: &Value) -> Result<(), PhpError> {
             Ok(())
         }
         Ok(None) => Ok(()),
+        Err(interrupted) => Err(fatal_error(interrupted)),
+    }
+}
+
+/// The global `name`'s value slot (indirect slots and references followed), if it is set.
+///
+/// # Safety
+///
+/// A request is open, on the engine's thread.
+unsafe fn global_slot(name: &str) -> Option<*mut zval> {
+    // SAFETY: the symbol table is live while a request is open; indirect and reference slots point to live zvals.
+    unsafe {
+        let table = &raw mut (*ext_php_rs_executor_globals()).symbol_table;
+        let mut slot = ext_php_rs::ffi::zend_hash_str_find(table, name.as_ptr().cast(), name.len());
+        if slot.is_null() {
+            return None;
+        }
+        if u32::from(convert::type_of(slot)) == ext_php_rs::ffi::IS_INDIRECT {
+            slot = (*slot).value.zv;
+        }
+        if u32::from(convert::type_of(slot)) == ext_php_rs::ffi::IS_REFERENCE {
+            slot = &raw mut (*(*slot).value.ref_).val;
+        }
+        Some(slot)
+    }
+}
+
+/// `SEPARATE_ARRAY`: makes the array in `zv` one only `zv` holds, so changing it changes no copy.
+///
+/// # Safety
+///
+/// `zv` holds an array; inside a guard (duplicating allocates).
+unsafe fn separate_array(zv: *mut zval) {
+    // SAFETY: forwarded from the caller; an array's `arr` is its live table.
+    unsafe {
+        let ht = (*zv).value.arr;
+        let counted = u32::from((*zv).u1.v.type_flags) & ext_php_rs::ffi::IS_TYPE_REFCOUNTED != 0;
+        if counted && (*ht).gc.refcount == 1 {
+            return;
+        }
+        let dup = ext_php_rs::ffi::zend_array_dup(ht);
+        if counted {
+            // Others still hold it: dropping our share frees nothing.
+            (*ht).gc.refcount -= 1;
+        }
+        (*zv).value.arr = dup;
+        (*zv).u1.type_info = ext_php_rs::ffi::IS_ARRAY_EX;
+    }
+}
+
+/// `$GLOBALS[$name][] = $value`, in place, as WordPress pushes `$wp_current_filter`: one entry into PHP. False
+/// (nothing done) when the global is not an array.
+pub fn global_push(name: &str, value: &Value) -> Result<bool, PhpError> {
+    if !crate::boundary::alive() {
+        return Err(PhpError::Boot("no PHP request is open".to_owned()));
+    }
+    let mut fresh = ManuallyDrop::new(Zval::new());
+    let fresh_ptr: *mut zval = &raw mut *fresh;
+    let pushed = guard(|| -> Result<bool, convert::Unconvertible> {
+        // SAFETY: a request is open; `fresh` is zval storage owned by the enclosing frame, whose ownership moves into
+        // the array.
+        unsafe {
+            let Some(slot) = global_slot(name) else {
+                return Ok(false);
+            };
+            if u32::from(convert::type_of(slot)) != ext_php_rs::ffi::IS_ARRAY {
+                return Ok(false);
+            }
+            convert::write_value(fresh_ptr, value)?;
+            separate_array(slot);
+            if ext_php_rs::ffi::zend_hash_next_index_insert((*slot).value.arr, fresh_ptr).is_null()
+            {
+                // No next index (PHP warns "Cannot add element"): the value stays ours to release.
+                return Ok(false);
+            }
+            (*fresh_ptr).u1.type_info = ext_php_rs::ffi::IS_UNDEF;
+            Ok(true)
+        }
+    });
+    release_later(fresh);
+    match pushed {
+        Ok(Ok(done)) => Ok(done),
+        Ok(Err(why)) => Err(PhpError::Conversion(why.to_string())),
+        Err(interrupted) => Err(fatal_error(interrupted)),
+    }
+}
+
+/// `array_pop($GLOBALS[$name])`, in place, as WordPress pops `$wp_current_filter`: one entry into PHP. False
+/// (nothing done) when the global is not an array.
+pub fn global_pop(name: &str) -> Result<bool, PhpError> {
+    if !crate::boundary::alive() {
+        return Err(PhpError::Boot("no PHP request is open".to_owned()));
+    }
+    let popped = guard(|| {
+        // SAFETY: a request is open; the array's slots are read as `convert::array_values` does, and the last one is
+        // deleted through the hash API (which releases it, inside this guard).
+        unsafe {
+            let Some(slot) = global_slot(name) else {
+                return false;
+            };
+            if u32::from(convert::type_of(slot)) != ext_php_rs::ffi::IS_ARRAY {
+                return false;
+            }
+            if (*(*slot).value.arr).nNumOfElements == 0 {
+                return true;
+            }
+            separate_array(slot);
+            convert::pop_last((*slot).value.arr);
+            true
+        }
+    });
+    match popped {
+        Ok(done) => {
+            settle_stray();
+            Ok(done)
+        }
         Err(interrupted) => Err(fatal_error(interrupted)),
     }
 }

@@ -326,10 +326,15 @@ impl<C: Command> HandlerRef<C> {
     }
 
     pub fn call(&self, command: C) -> Result<C::Result, BusError> {
-        let handler = cached(&self.container, C::KEY, &self.cache, || {
+        Ok(self.handler()?.handle(command))
+    }
+
+    /// The handler bound now (resolved again only when its binding changed), for a caller that needs to know
+    /// which one it is.
+    pub fn handler(&self) -> Result<Rc<dyn CommandHandler<C>>, BusError> {
+        cached(&self.container, C::KEY, &self.cache, || {
             command_handler::<C>(&self.container)
-        })?;
-        Ok(handler.handle(command))
+        })
     }
 }
 
