@@ -3938,6 +3938,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-fastcgi"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "futures-util",
+ "tokio",
+]
+
+[[package]]
 name = "speedyspec-hooks"
 version = "0.1.0"
 dependencies = [
