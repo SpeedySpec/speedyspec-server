@@ -4170,6 +4170,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-hooks"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "speedyspec-container",
+ "speedyspec-cqrs",
+ "speedyspec-hooks",
+]
+
+[[package]]
+name = "speedyspec-wp-hooks-memory"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "serde_json",
+ "speedyspec-container",
+ "speedyspec-cqrs",
+ "speedyspec-wp-hooks",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
