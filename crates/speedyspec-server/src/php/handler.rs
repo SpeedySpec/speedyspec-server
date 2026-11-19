@@ -18,8 +18,8 @@ use salvo::{Request, Response};
 use speedyspec_fastcgi::{Client, Event};
 use speedyspec_server_presentation::{PhpCall, PhpEndpoint};
 
-use super::REPORT_PREFIX;
 use super::pool::{EmbeddedPhpPool, Fate};
+use speedyspec_runtime_contract::WorkerReport;
 
 /// See the module docs.
 #[derive(Debug)]
@@ -361,18 +361,8 @@ fn head_end(buf: &[u8]) -> Option<usize> {
 
 /// Logs a worker's stderr, or reads its after-request report.
 fn stderr(bytes: &[u8], report: &mut Option<(u64, u64, bool)>) {
-    if let Some(rest) = bytes.strip_prefix(REPORT_PREFIX) {
-        let text = String::from_utf8_lossy(rest);
-        let field = |name: &str| {
-            text.split_whitespace()
-                .find_map(|kv| kv.strip_prefix(name).and_then(|v| v.strip_prefix('=')))
-                .and_then(|v| v.parse::<u64>().ok())
-        };
-        *report = Some((
-            field("memory").unwrap_or(0),
-            field("requests").unwrap_or(0),
-            field("poisoned") == Some(1),
-        ));
+    if let Some(decoded) = WorkerReport::decode(bytes) {
+        *report = Some((decoded.memory, decoded.requests, decoded.poisoned));
         return;
     }
     tracing::warn!(event = "php_stderr", message = %String::from_utf8_lossy(bytes).trim_end());

@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 
 use speedyspec_fastcgi::{Record, RecordType, encode_pairs};
 
-use super::worker::WorkerSpec;
+use speedyspec_runtime_contract::WorkerSpec;
 
 /// The pool's sizing and limits (from `app.<id>.php`).
 #[derive(Clone, Debug)]
@@ -267,6 +267,8 @@ impl EmbeddedPhpPool {
                 version: "0.0.0".into(),
                 exe: PathBuf::new(),
                 spec: WorkerSpec {
+                    contract: speedyspec_runtime_contract::CONTRACT_MAJOR,
+                    env: Vec::new(),
                     app: "test".into(),
                     socket: PathBuf::new(),
                     release_dir: PathBuf::new(),
@@ -309,7 +311,7 @@ impl EmbeddedPhpPool {
         spec.socket = socket.clone();
         let json = serde_json::to_string(&spec).map_err(|err| err.to_string())?;
         let mut child = Command::new(&inner.exe)
-            .arg("php-worker")
+            .arg("worker")
             .arg("--spec")
             .arg(json)
             .stdin(Stdio::null())

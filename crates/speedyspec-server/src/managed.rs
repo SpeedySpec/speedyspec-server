@@ -233,8 +233,8 @@ fn php_runtime(
         .iter()
         .filter_map(|(id, app)| app.php.clone().map(|php| (id.clone(), php)))
         .collect();
-    let exe =
-        std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("speedyspec-server"));
+    let exe = crate::php::runtime_binary()
+        .unwrap_or_else(|_| std::path::PathBuf::from("speedyspec-php-runtime"));
     Arc::new(crate::php::PhpRuntime::new(
         live,
         exe,

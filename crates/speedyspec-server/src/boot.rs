@@ -137,9 +137,9 @@ fn php_handle(
         .iter()
         .filter_map(|(id, app)| app.php.clone().map(|php| (id.clone(), php)))
         .collect();
-    let exe = std::env::current_exe().map_err(|err| BootError::Php {
+    let exe = crate::php::runtime_binary().map_err(|message| BootError::Php {
         app: id.clone(),
-        message: err.to_string(),
+        message,
     })?;
     let runtime = crate::php::PhpRuntime::new(
         Arc::new(LiveApps::new(HashMap::new())),

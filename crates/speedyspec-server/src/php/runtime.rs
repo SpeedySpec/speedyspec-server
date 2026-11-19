@@ -10,8 +10,8 @@ use speedyspec_server_presentation::{AppHandle, LiveApps};
 
 use super::handler::{self, PhpRequestHandler};
 use super::pool::{EmbeddedPhpPool, PoolSettings, prepare_socket_dir};
-use super::worker::WorkerSpec;
 use crate::config::PhpConfig;
+use speedyspec_runtime_contract::WorkerSpec;
 
 /// Starts each release's worker pool when it is prepared, puts its handler live when it is activated, and drains
 /// it when it is retired: a request already running on the old release finishes there.
@@ -91,6 +91,8 @@ impl PhpRuntime {
             ));
         }
         let spec = WorkerSpec {
+            contract: speedyspec_runtime_contract::CONTRACT_MAJOR,
+            env: Vec::new(),
             app: app.to_string(),
             socket: PathBuf::new(),
             release_dir: release_dir.clone(),

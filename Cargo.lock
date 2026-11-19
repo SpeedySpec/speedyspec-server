@@ -3992,6 +3992,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-php-runtime"
+version = "1.0.0"
+dependencies = [
+ "clap",
+ "libc",
+ "semver",
+ "serde",
+ "serde_json",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-fastcgi",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-runtime-contract",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "tempfile",
+]
+
+[[package]]
+name = "speedyspec-runtime-contract"
+version = "0.1.0"
+dependencies = [
+ "semver",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "speedyspec-server"
 version = "0.1.0"
 dependencies = [
@@ -4024,6 +4056,7 @@ dependencies = [
  "speedyspec-hooks-memory",
  "speedyspec-php",
  "speedyspec-php-ext",
+ "speedyspec-runtime-contract",
  "speedyspec-server-app",
  "speedyspec-server-domain",
  "speedyspec-server-handoff",

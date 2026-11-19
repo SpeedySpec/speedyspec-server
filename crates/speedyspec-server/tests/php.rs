@@ -1,4 +1,4 @@
-//! PHP apps end to end: the real binary (built with `php`), a pool of `php-worker` processes, real sockets, and the
+//! PHP apps end to end: the real binary, a pool of `speedyspec-php-runtime worker` processes, real sockets, and the
 //! scripts in tests/fixtures/php-app.
 
 mod support;
@@ -29,6 +29,7 @@ impl Setup {
 }
 
 fn setup(php: &str) -> Setup {
+    support::runtime::binary();
     let dir = tempfile::tempdir().unwrap();
     let site = dir.path().join("site");
     std::fs::create_dir_all(site.join("uploads")).unwrap();
@@ -605,7 +606,11 @@ app = "blog"
     let config = dir.path().join("server.toml");
     std::fs::write(&config, toml).unwrap();
     let config_arg = config.display().to_string();
-    let mut server = start(&config);
+    let runtime = support::runtime::binary();
+    let mut server = support::run::start_with(
+        &config,
+        &[("SPEEDYSPEC_PHP_RUNTIME", runtime.to_str().unwrap())],
+    );
     let addr = server.address();
     let keeper = dir.path().join("run/keeper.sock");
     let deadline = Instant::now() + Duration::from_secs(10);
