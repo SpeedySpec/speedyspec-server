@@ -3,7 +3,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use speedyspec_container::{Container, ContainerError, Lifetime, Params, Resolved};
+use speedyspec_container::{Bridged, Container, ContainerError, Lifetime, Params, Resolved};
 
 fn text(value: &Resolved) -> String {
     value
@@ -323,4 +323,55 @@ fn typed_ports_resolve_as_trait_objects() {
         Err(err) => err,
     };
     assert!(err.to_string().contains("Greeter"), "{err}");
+}
+
+#[test]
+fn bridged_value_resolves_as_its_port() {
+    trait Greeter {
+        fn greet(&self) -> String;
+    }
+    struct Shout;
+    impl Greeter for Shout {
+        fn greet(&self) -> String {
+            "HELLO".into()
+        }
+    }
+    let c = Container::new();
+    c.bind("Greeter", |_, _| {
+        let port: Rc<dyn Greeter> = Rc::new(Shout);
+        Ok(Rc::new(Bridged {
+            port: Rc::new(port),
+            foreign: Rc::new("the PHP object".to_string()),
+        }) as Resolved)
+    });
+    assert_eq!(
+        c.make_port::<dyn Greeter>("Greeter").unwrap().greet(),
+        "HELLO"
+    );
+    let value = c.make("Greeter").unwrap();
+    let bridged = value
+        .downcast_ref::<Bridged>()
+        .expect("the other face stays reachable");
+    assert_eq!(
+        bridged.foreign.downcast_ref::<String>().unwrap(),
+        "the PHP object"
+    );
+}
+
+#[test]
+fn resolved_in_request_resets_at_request_edges() {
+    let c = Container::new();
+    c.singleton("state", |_, _| Ok(Rc::new(1) as Resolved));
+    assert!(!c.resolved_in_request("state"));
+    c.make("state").unwrap();
+    assert!(c.resolved_in_request("state"), "a cached hit counts too");
+    c.start_request();
+    assert!(!c.resolved_in_request("state"));
+    c.make("state").unwrap();
+    c.end_request();
+    assert!(!c.resolved_in_request("state"));
+    assert!(
+        c.resolved("state"),
+        "resolved() is for the life of the container"
+    );
 }

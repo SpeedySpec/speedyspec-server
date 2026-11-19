@@ -9,6 +9,7 @@ mod area;
 mod boundary;
 mod convert;
 mod hook_class;
+pub mod native;
 mod runtime;
 mod sapi;
 

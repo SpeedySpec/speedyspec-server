@@ -16,6 +16,14 @@ use std::rc::Rc;
 /// A resolved value.
 pub type Resolved = Rc<dyn Any>;
 
+/// A value with two faces: the port a Rust caller gets from [`Container::make_port`], and the value it came from
+/// in another language (a PHP object implementing the port's twin), which that language's bridge hands back.
+pub struct Bridged {
+    /// An `Rc<P>` for the port `P`.
+    pub port: Resolved,
+    pub foreign: Resolved,
+}
+
 /// What a binding runs to build its value.
 pub type Factory = Rc<dyn Fn(&Container, &Params) -> Result<Resolved, ContainerError>>;
 
@@ -51,6 +59,10 @@ impl Params {
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &Resolved)> {
+        self.0.iter().map(|(name, value)| (name.as_str(), value))
     }
 }
 
@@ -119,6 +131,8 @@ struct Inner {
     resolving: Vec<(Option<String>, ValueCallback, Lifetime)>,
     after: Vec<(Option<String>, ValueCallback, Lifetime)>,
     resolved: HashSet<String>,
+    /// Keys resolved since the request started.
+    resolved_in_request: HashSet<String>,
 }
 
 /// See the crate docs.
@@ -306,6 +320,15 @@ impl Container {
         );
     }
 
+    /// As [`Container::bind_foreign`], shared until the request ends.
+    pub fn scoped_foreign(
+        &self,
+        key: &str,
+        factory: impl Fn(&Container, &Params) -> Result<Resolved, ContainerError> + 'static,
+    ) {
+        self.push(key, Kind::Binding(Rc::new(factory), Sharing::Scoped), true);
+    }
+
     /// An instance registered by a language bridge.
     pub fn instance_foreign(&self, key: &str, value: Resolved) {
         self.push(key, Kind::Instance(value), true);
@@ -336,13 +359,14 @@ impl Container {
     /// The value of a port binding, as its trait object.
     pub fn make_port<P: ?Sized + 'static>(&self, key: &str) -> Result<Rc<P>, ContainerError> {
         let value = self.make(key)?;
-        value
-            .downcast_ref::<Rc<P>>()
-            .cloned()
-            .ok_or_else(|| ContainerError::WrongType {
-                key: key.to_string(),
-                expected: std::any::type_name::<P>(),
-            })
+        let port = match value.downcast_ref::<Bridged>() {
+            Some(bridged) => bridged.port.downcast_ref::<Rc<P>>().cloned(),
+            None => value.downcast_ref::<Rc<P>>().cloned(),
+        };
+        port.ok_or_else(|| ContainerError::WrongType {
+            key: key.to_string(),
+            expected: std::any::type_name::<P>(),
+        })
     }
 
     fn push(&self, key: &str, kind: Kind, foreign: bool) {
@@ -569,6 +593,24 @@ impl Container {
     }
 
     fn resolve(&self, key: &str, params: &Params) -> Result<Resolved, ContainerError> {
+        let value = self.resolve_entry(key, params)?;
+        let key = self.get_alias(key);
+        self.inner.borrow_mut().resolved_in_request.insert(key);
+        Ok(value)
+    }
+
+    /// Whether `key` was resolved since the request started (a cached shared value counts).
+    pub fn resolved_in_request(&self, key: &str) -> bool {
+        let key = self.get_alias(key);
+        self.inner.borrow().resolved_in_request.contains(&key)
+    }
+
+    /// Starts a request: nothing counts as resolved in it yet.
+    pub fn start_request(&self) {
+        self.inner.borrow_mut().resolved_in_request.clear();
+    }
+
+    fn resolve_entry(&self, key: &str, params: &Params) -> Result<Resolved, ContainerError> {
         let requested = key.to_string();
         let key = self.get_alias(key);
 
@@ -809,5 +851,6 @@ impl Container {
         inner.resolving.retain(|(_, _, l)| *l == Lifetime::Worker);
         inner.after.retain(|(_, _, l)| *l == Lifetime::Worker);
         inner.scoped.clear();
+        inner.resolved_in_request.clear();
     }
 }

@@ -3891,6 +3891,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-container-php"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-container",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+]
+
+[[package]]
 name = "speedyspec-hooks"
 version = "0.1.0"
 dependencies = [
