@@ -103,6 +103,42 @@ pub struct PhpConfig {
     pub site_dir: Option<PathBuf>,
     /// `(port key, PHP class)` bindings installed at the start of every request.
     pub bindings: Vec<(String, String)>,
+    /// `app.<id>.php.env`: environment variables for the app's workers.
+    pub env: Vec<(String, String)>,
+    /// `app.<id>.php.env_file`: a file of `KEY=value` lines for the app's workers.
+    pub env_file: Option<PathBuf>,
+}
+
+impl PhpConfig {
+    /// The app's worker environment: the site directory's `.env`, then `env_file`, then `env`, a later source winning
+    /// for a key. Read when a pool starts, so a changed file applies to the next release switch. A missing `env_file`
+    /// is an error; a missing `.env` is not.
+    pub fn worker_env(&self) -> Result<Vec<(String, String)>, String> {
+        let mut env = BTreeMap::new();
+        if let Some(site) = &self.site_dir
+            && let Ok(text) = std::fs::read_to_string(site.join(".env"))
+        {
+            env.extend(env_lines(&text));
+        }
+        if let Some(file) = &self.env_file {
+            let text = std::fs::read_to_string(file)
+                .map_err(|err| format!("reading env_file {}: {err}", file.display()))?;
+            env.extend(env_lines(&text));
+        }
+        env.extend(self.env.iter().cloned());
+        Ok(env.into_iter().collect())
+    }
+}
+
+/// `KEY=value` lines, nothing evaluated; comments and blank lines skipped.
+fn env_lines(text: &str) -> Vec<(String, String)> {
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .filter_map(|line| line.split_once('='))
+        .map(|(k, v)| (k.trim().to_string(), v.trim().to_string()))
+        .filter(|(k, _)| !k.is_empty())
+        .collect()
 }
 
 pub const DEFAULT_PHP_WORKERS: WorkerRange = WorkerRange { min: 1, max: 4 };
@@ -418,6 +454,9 @@ struct RawPhp {
     site_dir: Option<PathBuf>,
     #[serde(default)]
     bindings: BTreeMap<String, String>,
+    #[serde(default)]
+    env: BTreeMap<String, String>,
+    env_file: Option<PathBuf>,
 }
 
 #[derive(Deserialize)]
@@ -512,6 +551,8 @@ fn php_config(mode: Mode, id: &AppId, raw: Option<RawPhp>) -> Result<PhpConfig, 
         )?,
         site_dir: raw.site_dir,
         bindings: raw.bindings.into_iter().collect(),
+        env: raw.env.into_iter().collect(),
+        env_file: raw.env_file,
     })
 }
 
@@ -1546,5 +1587,33 @@ app = "blog"
             &format!("{SPEC_EXAMPLE}{MANAGED_BLOG}{BLOG_SITE}"),
             "app.blog.runtime",
         );
+    }
+
+    #[test]
+    fn env_sources_merge_in_order() {
+        let dir = tempfile::tempdir().unwrap();
+        let site = dir.path().join("site");
+        std::fs::create_dir_all(&site).unwrap();
+        std::fs::write(site.join(".env"), "# comment\nA=1\nB=1\n").unwrap();
+        let file = dir.path().join("blog.env");
+        std::fs::write(&file, "B=2\nC=2\n").unwrap();
+        let config = Config::parse(&format!(
+            "{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"{}\"\nenv_file = \"{}\"\nenv = {{ C = \"3\" }}\n",
+            site.display(),
+            file.display()
+        ))
+        .unwrap();
+        let php = config.apps[&id("blog")].php.clone().unwrap();
+        assert_eq!(
+            php.worker_env().unwrap(),
+            vec![
+                ("A".to_string(), "1".to_string()),
+                ("B".to_string(), "2".to_string()),
+                ("C".to_string(), "3".to_string())
+            ]
+        );
+        std::fs::remove_file(&file).unwrap();
+        let err = php.worker_env().unwrap_err();
+        assert!(err.contains("blog.env"), "{err}");
     }
 }

@@ -108,6 +108,8 @@ impl PhpRuntime {
             idle_timeout: crate::config::DEFAULT_PHP_IDLE_TIMEOUT,
             site_dir: None,
             bindings: Vec::new(),
+            env: Vec::new(),
+            env_file: None,
         })
     }
 
@@ -154,7 +156,7 @@ impl PhpRuntime {
         }
         let spec = WorkerSpec {
             contract: speedyspec_runtime_contract::CONTRACT_MAJOR,
-            env: Vec::new(),
+            env: config.worker_env()?,
             app: app.to_string(),
             socket: PathBuf::new(),
             release_dir: release_dir.clone(),

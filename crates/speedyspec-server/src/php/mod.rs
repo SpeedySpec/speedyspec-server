@@ -6,7 +6,7 @@ pub mod pool;
 pub mod runtime;
 pub mod runtime_kind;
 
-pub use handler::PhpRequestHandler;
+pub use handler::{InternalError, PhpRequestHandler};
 pub use pool::{EmbeddedPhpPool, PoolSettings};
 pub use runtime::PhpRuntime;
 pub use speedyspec_runtime_contract::WorkerSpec;

@@ -21,6 +21,47 @@ use speedyspec_server_presentation::{PhpCall, PhpEndpoint};
 use super::pool::{EmbeddedPhpPool, Fate};
 use speedyspec_runtime_contract::WorkerReport;
 
+/// The most a server's own call may answer with.
+const INTERNAL_RESPONSE_LIMIT: usize = 1024 * 1024;
+
+/// A request body, as it arrives.
+type BodyStream =
+    std::pin::Pin<Box<dyn futures_util::Stream<Item = Result<Bytes, io::Error>> + Send>>;
+
+/// Why a server's own call to a PHP app has no answer.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum InternalError {
+    /// No answer within the call's timeout.
+    Timeout,
+    /// The app could not answer: retired, crashed, not a script, or an oversized answer.
+    Unavailable(String),
+}
+
+impl std::fmt::Display for InternalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InternalError::Timeout => f.write_str("no answer in time"),
+            InternalError::Unavailable(why) => f.write_str(why),
+        }
+    }
+}
+
+/// What a request's CGI parameters are built from: a visitor's request, or a server's own call.
+struct Facts<'a> {
+    method: &'a str,
+    path_and_query: &'a str,
+    path: &'a str,
+    query: &'a str,
+    version: String,
+    headers: &'a http::HeaderMap,
+    port: Option<u16>,
+    host: &'a str,
+    /// The client's address; empty for a server's own call.
+    client: String,
+    https: bool,
+    mount: &'a str,
+}
+
 /// See the module docs.
 #[derive(Debug)]
 pub struct PhpRequestHandler {
@@ -69,6 +110,109 @@ impl PhpRequestHandler {
 
     pub fn pool(&self) -> &EmbeddedPhpPool {
         &self.pool
+    }
+
+    /// One of the server's own calls (a health probe, a gate question, a migration) on the pool's internal worker,
+    /// answered whole. `path` is the app's path with any query (`/v1/gate/session`); the request is built as a
+    /// visitor's to `mount` on `host` would be, with no client address. Bounded by `timeout` in all.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn internal(
+        &self,
+        mount: &str,
+        host: &str,
+        method: http::Method,
+        path: &str,
+        headers: http::HeaderMap,
+        body: Bytes,
+        timeout: std::time::Duration,
+    ) -> Result<http::Response<Bytes>, InternalError> {
+        let (path_only, query) = path
+            .split_once('?')
+            .map_or((path, None), |(p, q)| (p, Some(q)));
+        let (script, script_name, path_info) =
+            match self.target(mount, path_only.trim_start_matches('/'), query) {
+                Target::Script {
+                    script,
+                    script_name,
+                    path_info,
+                } => (script, script_name, path_info),
+                Target::Static(_) | Target::Redirect(_) => {
+                    return Err(InternalError::Unavailable(format!(
+                        "{path} is not a PHP script"
+                    )));
+                }
+            };
+        let request_path = format!("{}{}", mount.trim_end_matches('/'), path_only);
+        let path_and_query = match query {
+            Some(query) => format!("{request_path}?{query}"),
+            None => request_path.clone(),
+        };
+        let facts = Facts {
+            method: method.as_str(),
+            path_and_query: &path_and_query,
+            path: &request_path,
+            query: query.unwrap_or(""),
+            version: "HTTP/1.1".to_string(),
+            headers: &headers,
+            port: None,
+            host,
+            client: String::new(),
+            https: false,
+            mount,
+        };
+        let params = self.params_from(&facts, &script, &script_name, &path_info);
+        let deadline = tokio::time::Instant::now() + timeout;
+        let lease = match tokio::time::timeout_at(deadline, self.pool.acquire_internal()).await {
+            Ok(Ok(lease)) => lease,
+            Ok(Err(why)) => return Err(InternalError::Unavailable(why)),
+            Err(_) => return Err(InternalError::Timeout),
+        };
+        let (head_tx, head_rx) = tokio::sync::oneshot::channel();
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<Bytes, io::Error>>(4);
+        let body: BodyStream = Box::pin(futures_util::stream::once(async move { Ok(body) }));
+        tokio::spawn(exchange(
+            self.pool.clone(),
+            lease,
+            params,
+            body,
+            deadline,
+            head_tx,
+            tx,
+        ));
+        let (status, headers) = match head_rx.await {
+            Ok(Ok((status, headers, _))) => (status, headers),
+            Ok(Err(NoHead::Timeout)) => return Err(InternalError::Timeout),
+            Ok(Err(NoHead::BadGateway)) | Err(_) => {
+                return Err(InternalError::Unavailable(
+                    "the worker gave no answer".into(),
+                ));
+            }
+        };
+        let mut answer = Vec::new();
+        loop {
+            match tokio::time::timeout_at(deadline, rx.recv()).await {
+                Err(_) => return Err(InternalError::Timeout),
+                Ok(None) => break,
+                Ok(Some(Err(err))) if err.kind() == io::ErrorKind::TimedOut => {
+                    return Err(InternalError::Timeout);
+                }
+                Ok(Some(Err(err))) => return Err(InternalError::Unavailable(err.to_string())),
+                Ok(Some(Ok(chunk))) => {
+                    answer.extend_from_slice(&chunk);
+                    if answer.len() > INTERNAL_RESPONSE_LIMIT {
+                        return Err(InternalError::Unavailable(format!(
+                            "{path} answered more than {INTERNAL_RESPONSE_LIMIT} bytes"
+                        )));
+                    }
+                }
+            }
+        }
+        let mut response = http::Response::new(Bytes::from(answer));
+        *response.status_mut() = status;
+        for (name, value) in headers {
+            response.headers_mut().append(name, value);
+        }
+        Ok(response)
     }
 
     /// Is `path` an existing file inside `root` (symlinks resolved)?
@@ -180,24 +324,43 @@ impl PhpRequestHandler {
         script_name: &str,
         path_info: &str,
     ) -> Vec<(Vec<u8>, Vec<u8>)> {
+        let path_and_query = req
+            .uri()
+            .path_and_query()
+            .map_or_else(|| req.uri().path().to_string(), |p| p.as_str().to_string());
+        let facts = Facts {
+            method: req.method().as_str(),
+            path_and_query: &path_and_query,
+            path: req.uri().path(),
+            query: req.uri().query().unwrap_or(""),
+            version: format!("{:?}", req.version()),
+            headers: req.headers(),
+            port: req.local_addr().clone().into_std().map(|a| a.port()),
+            host: &call.origin.host,
+            client: call.origin.client.to_string(),
+            https: call.origin.https,
+            mount: &call.mount_prefix,
+        };
+        self.params_from(&facts, script, script_name, path_info)
+    }
+
+    fn params_from(
+        &self,
+        facts: &Facts<'_>,
+        script: &Path,
+        script_name: &str,
+        path_info: &str,
+    ) -> Vec<(Vec<u8>, Vec<u8>)> {
         let mut params: Vec<(String, String)> = vec![
             ("GATEWAY_INTERFACE".into(), "CGI/1.1".into()),
             (
                 "SERVER_SOFTWARE".into(),
                 format!("speedyspec-server/{}", env!("CARGO_PKG_VERSION")),
             ),
-            ("SERVER_PROTOCOL".into(), format!("{:?}", req.version())),
-            ("REQUEST_METHOD".into(), req.method().as_str().to_string()),
-            (
-                "REQUEST_URI".into(),
-                req.uri()
-                    .path_and_query()
-                    .map_or_else(|| req.uri().path().to_string(), |p| p.as_str().to_string()),
-            ),
-            (
-                "QUERY_STRING".into(),
-                req.uri().query().unwrap_or("").to_string(),
-            ),
+            ("SERVER_PROTOCOL".into(), facts.version.clone()),
+            ("REQUEST_METHOD".into(), facts.method.to_string()),
+            ("REQUEST_URI".into(), facts.path_and_query.to_string()),
+            ("QUERY_STRING".into(), facts.query.to_string()),
             ("SCRIPT_FILENAME".into(), script.display().to_string()),
             ("SCRIPT_NAME".into(), script_name.to_string()),
             ("PHP_SELF".into(), format!("{script_name}{path_info}")),
@@ -205,10 +368,10 @@ impl PhpRequestHandler {
                 "DOCUMENT_ROOT".into(),
                 self.document_root.display().to_string(),
             ),
-            ("DOCUMENT_URI".into(), req.uri().path().to_string()),
-            ("SERVER_NAME".into(), call.origin.host.clone()),
-            ("REMOTE_ADDR".into(), call.origin.client.to_string()),
-            ("SPEEDYSPEC_MOUNT".into(), call.mount_prefix.clone()),
+            ("DOCUMENT_URI".into(), facts.path.to_string()),
+            ("SERVER_NAME".into(), facts.host.to_string()),
+            ("REMOTE_ADDR".into(), facts.client.clone()),
+            ("SPEEDYSPEC_MOUNT".into(), facts.mount.to_string()),
         ];
         if !path_info.is_empty() {
             params.push(("PATH_INFO".into(), path_info.to_string()));
@@ -220,16 +383,16 @@ impl PhpRequestHandler {
                     .to_string(),
             ));
         }
-        if let Some(port) = req.local_addr().clone().into_std().map(|a| a.port()) {
+        if let Some(port) = facts.port {
             params.push(("SERVER_PORT".into(), port.to_string()));
         }
-        if call.origin.https {
+        if facts.https {
             params.push(("HTTPS".into(), "on".into()));
             params.push(("REQUEST_SCHEME".into(), "https".into()));
         } else {
             params.push(("REQUEST_SCHEME".into(), "http".into()));
         }
-        for (name, value) in req.headers() {
+        for (name, value) in facts.headers {
             let Ok(value) = value.to_str() else {
                 continue;
             };
@@ -385,24 +548,11 @@ async fn exchange(
     pool: EmbeddedPhpPool,
     lease: super::pool::Lease,
     params: Vec<(Vec<u8>, Vec<u8>)>,
-    body: salvo::http::ReqBody,
+    body: BodyStream,
     deadline: tokio::time::Instant,
     head: tokio::sync::oneshot::Sender<Result<Head, NoHead>>,
     tx: tokio::sync::mpsc::Sender<Result<Bytes, io::Error>>,
 ) {
-    let body = futures_util::stream::unfold(body, |mut body| async move {
-        loop {
-            match body.frame().await {
-                None => return None,
-                Some(Err(err)) => return Some((Err(io::Error::other(err.to_string())), body)),
-                Some(Ok(frame)) => {
-                    if let Ok(data) = frame.into_data() {
-                        return Some((Ok::<Bytes, io::Error>(data), body));
-                    }
-                }
-            }
-        }
-    });
     let socket = lease.socket().to_path_buf();
     let mut response =
         match tokio::time::timeout_at(deadline, Client::request(&socket, params, body)).await {
@@ -544,11 +694,24 @@ impl PhpEndpoint for PhpRequestHandler {
         };
         let (head_tx, head_rx) = tokio::sync::oneshot::channel();
         let (tx, rx) = tokio::sync::mpsc::channel::<Result<Bytes, io::Error>>(4);
+        let body = futures_util::stream::unfold(req.take_body(), |mut body| async move {
+            loop {
+                match body.frame().await {
+                    None => return None,
+                    Some(Err(err)) => return Some((Err(io::Error::other(err.to_string())), body)),
+                    Some(Ok(frame)) => {
+                        if let Ok(data) = frame.into_data() {
+                            return Some((Ok::<Bytes, io::Error>(data), body));
+                        }
+                    }
+                }
+            }
+        });
         tokio::spawn(exchange(
             self.pool.clone(),
             lease,
             params,
-            req.take_body(),
+            Box::pin(body),
             deadline,
             head_tx,
             tx,

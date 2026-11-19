@@ -1,7 +1,7 @@
 //! `speedyspec-php-runtime worker`: boots PHP once, then serves FastCGI requests on its socket, one at a time.
 
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use speedyspec_container::Container;
@@ -121,20 +121,6 @@ fn exit_with_parent() {
     });
 }
 
-/// `KEY=value` lines of `site_dir/.env`, nothing evaluated; comments and blank lines skipped.
-pub fn read_env(site: &Path) -> Vec<(String, String)> {
-    let Ok(text) = std::fs::read_to_string(site.join(".env")) else {
-        return Vec::new();
-    };
-    text.lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .filter_map(|line| line.split_once('='))
-        .map(|(k, v)| (k.trim().to_string(), v.trim().to_string()))
-        .filter(|(k, _)| !k.is_empty())
-        .collect()
-}
-
 /// One FastCGI request as PHP sees it.
 struct FastCgiRequest<'a> {
     responder: &'a mut Responder<UnixStream>,
@@ -193,8 +179,7 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         log("php_worker_contract_refused", &spec, &err);
         return 2;
     }
-    let site_env = spec.site_dir.as_deref().map(read_env).unwrap_or_default();
-    for (key, value) in site_env.into_iter().chain(spec.env.iter().cloned()) {
+    for (key, value) in &spec.env {
         // SAFETY: the worker is single-threaded at this point, before PHP starts.
         unsafe { std::env::set_var(key, value) };
     }

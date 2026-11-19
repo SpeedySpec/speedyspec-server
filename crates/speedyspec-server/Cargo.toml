@@ -48,6 +48,7 @@ quinn = { version = "0.11", default-features = false, features = ["runtime-tokio
 
 speedyspec-fastcgi = { path = "../speedyspec-fastcgi" }
 http-body-util = "0.1"
+http = "1"
 
 [dev-dependencies]
 speedyspec-server-handoff = { path = "../speedyspec-server-handoff" }

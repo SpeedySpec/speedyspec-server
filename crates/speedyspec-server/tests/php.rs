@@ -513,9 +513,10 @@ fn grows_to_max_and_shrinks_after_idle() {
         "three workers ran at once: {:?}",
         started.elapsed()
     );
+    // Three visitor workers, and the internal one kept for the server's own calls.
     assert_eq!(
         count_events(&server, "php_worker_started", None),
-        3,
+        4,
         "{:?}",
         server.log()
     );
