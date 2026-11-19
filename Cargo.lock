@@ -3884,6 +3884,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-compat"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "tar",
+ "tempfile",
+ "ureq",
+]
+
+[[package]]
 name = "speedyspec-container"
 version = "0.1.0"
 dependencies = [
