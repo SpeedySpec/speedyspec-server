@@ -12,14 +12,16 @@ mod hook_class;
 pub mod native;
 mod runtime;
 mod sapi;
+mod web;
 
 pub use area::NativeArea;
 /// ext-php-rs, for areas building their functions and classes.
 pub use ext_php_rs;
 pub use runtime::{
-    BootOptions, CallFailure, Output, Php, PhpError, call, call_catching, eval, global, object_id,
-    set_global,
+    BootOptions, CallFailure, Output, Php, PhpError, Served, call, call_catching, eval, global,
+    object_id, set_global,
 };
+pub use web::WebRequest;
 
 /// The PHP version linked into this binary, from the repository's
 /// `php-version` file.

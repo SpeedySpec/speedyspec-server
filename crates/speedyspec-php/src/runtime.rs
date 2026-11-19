@@ -197,6 +197,10 @@ impl Php {
             .ub_write_function(ub_write)
             .flush_function(flush)
             .log_message_function(log_message)
+            .send_headers_function(crate::web::send_headers)
+            .read_post_function(crate::web::read_post)
+            .read_cookies_function(crate::web::read_cookies)
+            .register_server_variables_function(crate::web::register_server_variables)
             .php_ini_ignore(1)
             .build()
             .map_err(|e| PhpError::Boot(format!("building the SAPI: {e}")))?;
@@ -281,6 +285,16 @@ impl Php {
     /// Ends the current request and starts a fresh one, as a php-fpm worker does between requests: every PHP value
     /// of the old request is freed (each area's `request_end` runs), and the new one runs the request setup again.
     pub fn restart_request(&self) -> Result<(), PhpError> {
+        self.end_request();
+        self.start_request()?;
+        self.request_setup()
+    }
+
+    /// Ends the open request, if one is (after [`Php::serve`] none is).
+    fn end_request(&self) {
+        if !crate::boundary::alive() {
+            return;
+        }
         settle_stray();
         // SAFETY: ends the request on the booting thread, as `Drop` does; areas' request_end runs inside it.
         unsafe { php_request_shutdown(ptr::null_mut()) };
@@ -293,6 +307,10 @@ impl Php {
             drop(current);
             drop(saved);
         });
+    }
+
+    /// Starts a request on the booting thread, after the previous one ended.
+    fn start_request(&self) -> Result<(), PhpError> {
         // SAFETY: the next request on the same thread, after the previous one ended.
         unsafe {
             if php_request_startup() != ZEND_RESULT_CODE_SUCCESS {
@@ -301,7 +319,97 @@ impl Php {
             (*ext_php_rs_compiler_globals()).skip_shebang = true;
         }
         ENGINE.with(|e| e.alive.set(true));
-        self.request_setup()
+        Ok(())
+    }
+
+    /// Serves one web request: the open request (if any) ends, `request` becomes the request PHP sees (its
+    /// parameters as `$_SERVER`, its body as `php://input`, PHP's headers and output sent to it), the request setup
+    /// runs (each area's `request_start`), `script` runs, and the request ends (each area's `request_end`). No
+    /// request is open afterwards. An exception or fatal error before any output makes the response a 500.
+    pub fn serve(&self, request: &mut dyn crate::web::WebRequest, script: &Path) -> Served {
+        self.end_request();
+        let param = |name: &str| {
+            request
+                .params()
+                .iter()
+                .find(|(k, _)| k == name)
+                .map(|(_, v)| v.clone())
+        };
+        let c = |value: Option<String>| value.and_then(|v| CString::new(v).ok());
+        let method = c(param("REQUEST_METHOD").or(Some("GET".into())));
+        let query = c(param("QUERY_STRING"));
+        let uri = c(param("REQUEST_URI"));
+        let content_type = c(param("CONTENT_TYPE"));
+        let content_length = param("CONTENT_LENGTH")
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(-1);
+        let script_c = c(script.to_str().map(str::to_owned));
+        let ptr_of = |v: &Option<CString>| {
+            v.as_ref()
+                .map_or(ptr::null_mut(), |s| s.as_ptr().cast_mut())
+        };
+        crate::web::begin(request);
+        // SAFETY: SG() on the booting thread between requests; the strings live until the request has ended.
+        unsafe {
+            let sg = &raw mut ext_php_rs::ffi::sapi_globals;
+            (*sg).server_context = (&raw mut SERVER_CONTEXT).cast();
+            (*sg).request_info.request_method = ptr_of(&method);
+            (*sg).request_info.query_string = ptr_of(&query);
+            (*sg).request_info.request_uri = ptr_of(&uri);
+            (*sg).request_info.content_type = ptr_of(&content_type);
+            (*sg).request_info.content_length = content_length;
+            (*sg).request_info.path_translated = ptr_of(&script_c);
+            (*sg).request_info.proto_num = 1001;
+        }
+        let started = self.start_request();
+        let mut served = Served {
+            result: Ok(()),
+            peak_memory: 0,
+            poisoned: false,
+            headers_sent: false,
+        };
+        match started {
+            Err(err) => served.result = Err(err),
+            Ok(()) => {
+                served.result = self
+                    .request_setup()
+                    .and_then(|()| self.require(script).map(|_| ()))
+                    .or_else(|err| match err {
+                        PhpError::Exit(_) => Ok(()),
+                        other => Err(other),
+                    });
+                if served.result.is_err() {
+                    // SAFETY: SG() during the request; PHP sends whatever code is set when the headers go out.
+                    unsafe {
+                        let sg = &raw mut ext_php_rs::ffi::sapi_globals;
+                        if (*sg).headers_sent == 0 {
+                            (*sg).sapi_headers.http_response_code = 500;
+                        }
+                    }
+                }
+                // SAFETY: the engine is running a request on this thread.
+                served.peak_memory = unsafe { zend_memory_peak_usage(true) } as u64;
+                served.poisoned = self.poisoned();
+                self.end_request();
+            }
+        }
+        served.headers_sent = crate::web::STATE.with(|s| s.borrow().headers_sent);
+        crate::web::end();
+        // SAFETY: SG() between requests: the request's strings are about to be dropped.
+        unsafe {
+            let sg = &raw mut ext_php_rs::ffi::sapi_globals;
+            (*sg).server_context = ptr::null_mut();
+            (*sg).request_info.request_method = ptr::null();
+            (*sg).request_info.query_string = ptr::null_mut();
+            (*sg).request_info.request_uri = ptr::null_mut();
+            (*sg).request_info.content_type = ptr::null();
+            (*sg).request_info.content_length = 0;
+            (*sg).request_info.path_translated = ptr::null_mut();
+            // PHP read the cookies from `read_cookies` (a string freed with the request); a later request must not.
+            (*sg).request_info.cookie_data = ptr::null_mut();
+        }
+        drop((method, query, uri, content_type, script_c));
+        served
     }
 
     /// Runs PHP statements (no `<?php` tag) and returns what a top-level
@@ -456,6 +564,25 @@ pub fn call_catching(callable: &Value, args: &[Value]) -> Result<Value, CallFail
         },
         other => plain(other.into_php_error()),
     })
+}
+
+/// What serving one web request came to.
+#[derive(Debug)]
+pub struct Served {
+    /// The script's outcome; `exit()` is a normal end.
+    pub result: Result<(), PhpError>,
+    /// The engine's peak memory during the request, in bytes.
+    pub peak_memory: u64,
+    /// Whether a fatal error left the engine degraded (the worker should be replaced).
+    pub poisoned: bool,
+    pub headers_sent: bool,
+}
+
+/// `SG(server_context)` while a web request runs: PHP only reads the body and cookies when it is set.
+static mut SERVER_CONTEXT: [u64; 4] = [0; 4];
+
+unsafe extern "C" {
+    fn zend_memory_peak_usage(real_usage: bool) -> usize;
 }
 
 /// `$GLOBALS[$name]`, through references; `None` when it is not set or no request is open. Runs no PHP code.
@@ -735,10 +862,12 @@ impl Drop for Php {
         // and clear an exception a destructor left, which shutdown must not
         // find pending.
         settle_stray();
-        // SAFETY: ends the request on the booting thread. Native functions
-        // still work during it (shutdown functions and destructors may fire
-        // hooks); PHP catches bailouts in each shutdown step itself.
-        unsafe { php_request_shutdown(ptr::null_mut()) };
+        // SAFETY: ends the request on the booting thread, if one is open (after `serve` none is). Native functions
+        // still work during it (shutdown functions and destructors may fire hooks); PHP catches bailouts in each
+        // shutdown step itself.
+        if crate::boundary::alive() {
+            unsafe { php_request_shutdown(ptr::null_mut()) };
+        }
 
         // The request freed every PHP value. Any reference Rust still holds
         // or has queued points into freed memory and must never be touched.

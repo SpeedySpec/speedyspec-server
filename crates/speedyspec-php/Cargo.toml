@@ -21,5 +21,9 @@ name = "php"
 harness = false
 
 [[test]]
+name = "serve"
+harness = false
+
+[[test]]
 name = "extensions"
 harness = false

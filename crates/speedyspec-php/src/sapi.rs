@@ -39,6 +39,9 @@ pub(crate) extern "C" fn ub_write(data: *const c_char, len: usize) -> usize {
     }
     // SAFETY: PHP passes a non-null buffer of `len` bytes that outlives the call.
     let bytes = unsafe { std::slice::from_raw_parts(data.cast::<u8>(), len) };
+    if let Some(written) = crate::web::write(bytes) {
+        return if written { len } else { 0 };
+    }
     let written = if OUTPUT_TO_STDERR.load(Ordering::SeqCst) {
         std::io::stderr().lock().write_all(bytes)
     } else {
