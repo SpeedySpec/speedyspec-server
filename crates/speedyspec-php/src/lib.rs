@@ -19,7 +19,7 @@ pub use area::NativeArea;
 pub use ext_php_rs;
 pub use runtime::{
     BootOptions, CallFailure, Output, Php, PhpError, Served, call, call_catching, eval, global,
-    object_id, set_global,
+    object_id, set_global, set_ini,
 };
 pub use web::WebRequest;
 

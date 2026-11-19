@@ -33,8 +33,16 @@ fn setup(php: &str) -> Setup {
     let site = dir.path().join("site");
     std::fs::create_dir_all(site.join("uploads")).unwrap();
     std::fs::create_dir_all(site.join("wp-content")).unwrap();
-    std::fs::write(site.join("uploads/a.txt"), "uploaded\n").unwrap();
-    std::fs::write(site.join("shared.txt"), "from the site\n").unwrap();
+    std::fs::create_dir_all(site.join("wp-content/uploads")).unwrap();
+    std::fs::create_dir_all(site.join("wp-content/plugins/x")).unwrap();
+    std::fs::write(site.join("wp-content/uploads/a.txt"), "uploaded\n").unwrap();
+    std::fs::write(site.join("wp-content/shared.txt"), "from the site\n").unwrap();
+    std::fs::write(site.join("uploads/private.txt"), "private\n").unwrap();
+    std::fs::write(
+        site.join("wp-content/plugins/x/endpoint.php"),
+        "<?php\necho 'site endpoint';\n",
+    )
+    .unwrap();
     std::fs::write(
         site.join(".env"),
         "# a comment\nSPEEDYSPEC_TEST_ENV=from-dotenv\n",
@@ -130,6 +138,15 @@ fn server_vars_and_body_round_trip() {
     assert_eq!(json["body"], "hello body");
     assert_eq!(json["cookie"]["c"], "cookie");
     assert_eq!(json["memory_limit"], "512M", "the release's ini applies");
+    assert_eq!(
+        json["upload_max_filesize"], "64M",
+        "per-directory settings apply too"
+    );
+    assert_eq!(
+        json["content_url"],
+        serde_json::Value::Null,
+        "WP_CONTENT_URL is never built from Host"
+    );
     assert!(
         json["content_dir"]
             .as_str()
@@ -173,11 +190,14 @@ fn php_file_runs_directly() {
 fn static_file_from_site_dir_then_release() {
     let (_setup, _server, addr) = serve("");
     assert_eq!(
-        get(addr, "/shared.txt"),
+        get(addr, "/wp-content/shared.txt"),
         (200, "from the site\n".into()),
-        "site_dir wins"
+        "site_dir's wp-content wins"
     );
-    assert_eq!(get(addr, "/uploads/a.txt"), (200, "uploaded\n".into()));
+    assert_eq!(
+        get(addr, "/wp-content/uploads/a.txt"),
+        (200, "uploaded\n".into())
+    );
     let response = client()
         .get(format!("http://{addr}/style.css"))
         .send()
@@ -187,6 +207,82 @@ fn static_file_from_site_dir_then_release() {
         "text/css; charset=utf-8"
     );
     assert_eq!(response.text().unwrap(), "body { color: red; }\n");
+}
+
+/// Only site_dir's wp-content is served from it, and no dotfile anywhere: site_dir holds secrets.
+#[cfg(feature = "php")]
+#[test]
+fn private_files_are_not_served() {
+    let (_setup, _server, addr) = serve("");
+    for path in [
+        "/.env",
+        "/uploads/private.txt",
+        "/.env.php",
+        "/wp-content/../.env",
+    ] {
+        let (_, body) = get(addr, path);
+        assert!(
+            body.starts_with("front:") && !body.contains("SPEEDYSPEC_TEST_ENV="),
+            "{path} goes to the front controller, not the file: {body}"
+        );
+    }
+}
+
+/// A directory without its trailing slash redirects, as Apache and nginx do (relative links in it must resolve).
+#[cfg(feature = "php")]
+#[test]
+fn directory_without_slash_redirects() {
+    let (_setup, _server, addr) = serve("");
+    let response = reqwest::blocking::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .unwrap()
+        .get(format!("http://{addr}/dir?x=1"))
+        .send()
+        .unwrap();
+    assert_eq!(response.status(), 301);
+    assert_eq!(response.headers()["location"], "/dir/?x=1");
+}
+
+#[cfg(feature = "php")]
+#[test]
+fn php_in_site_wp_content_runs() {
+    let (_setup, _server, addr) = serve("");
+    assert_eq!(
+        get(addr, "/wp-content/plugins/x/endpoint.php"),
+        (200, "site endpoint".into())
+    );
+}
+
+/// A client that goes away does not kill the script: WP-Cron relies on ignore_user_abort().
+#[cfg(feature = "php")]
+#[test]
+fn client_disconnect_lets_script_finish() {
+    let (setup, _server, addr) = serve("");
+    let finished = setup.site().join("wp-content/finished");
+    {
+        let mut stream = TcpStream::connect(addr).unwrap();
+        write!(
+            stream,
+            "GET /finish.php HTTP/1.1\r\nHost: localhost\r\n\r\n"
+        )
+        .unwrap();
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    let deadline = Instant::now() + Duration::from_secs(4);
+    while !finished.exists() && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    assert!(finished.exists(), "the script ran to its end");
+}
+
+/// The CLI-era `SpeedySpec\Hooks\Hook` registry holds nothing past a request.
+#[cfg(feature = "php")]
+#[test]
+fn legacy_hook_registry_is_request_scoped() {
+    let (_setup, _server, addr) = serve("workers = { min = 1, max = 1 }");
+    assert_eq!(get(addr, "/oldhook.php"), (200, "clean".into()));
+    assert_eq!(get(addr, "/oldhook.php"), (200, "clean".into()));
 }
 
 /// Reads a raw HTTP/1.1 response, calling `chunk` with the time each read arrives.

@@ -4020,6 +4020,7 @@ dependencies = [
  "speedyspec-container",
  "speedyspec-container-php",
  "speedyspec-fastcgi",
+ "speedyspec-hooks",
  "speedyspec-hooks-memory",
  "speedyspec-php",
  "speedyspec-php-ext",

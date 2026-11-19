@@ -217,7 +217,7 @@ impl Php {
         unsafe {
             ext_php_rs_sapi_startup();
             sapi_startup(sapi);
-            (*sapi).ini_entries = INI_ENTRIES.as_ptr();
+            (*sapi).ini_entries = EXTRA_INI.get().copied().unwrap_or(INI_ENTRIES).as_ptr();
             crate::area::install(options.areas);
             if php_module_startup(sapi, hook_class::module_entry()) != ZEND_RESULT_CODE_SUCCESS {
                 return Err(PhpError::Boot("php_module_startup failed".to_owned()));
@@ -566,6 +566,29 @@ pub fn call_catching(callable: &Value, args: &[Value]) -> Result<Value, CallFail
         },
         other => plain(other.into_php_error()),
     })
+}
+
+/// The SAPI's INI entries with [`set_ini`]'s settings after them, once set.
+static EXTRA_INI: std::sync::OnceLock<&'static std::ffi::CStr> = std::sync::OnceLock::new();
+
+/// INI settings for every request of this process, as php.ini would give them (so `PHP_INI_PERDIR` and
+/// `PHP_INI_SYSTEM` settings such as `upload_max_filesize` apply, which `ini_set()` cannot change). Call before
+/// [`Php::boot`], once. A key or value with a quote, a newline or a NUL is refused.
+pub fn set_ini(settings: &[(String, String)]) -> Result<(), String> {
+    let mut entries = INI_ENTRIES.to_string_lossy().into_owned();
+    for (key, value) in settings {
+        let bad = |s: &str| s.contains(['"', '\n', '\r', '\0']) || s.is_empty();
+        if bad(key) || key.contains('=') || value.contains(['"', '\n', '\r', '\0']) {
+            return Err(format!(
+                "the INI setting {key:?} = {value:?} cannot be passed to PHP"
+            ));
+        }
+        entries.push_str(&format!("{key}=\"{value}\"\n"));
+    }
+    let entries = CString::new(entries).map_err(|err| err.to_string())?;
+    EXTRA_INI
+        .set(Box::leak(entries.into_boxed_c_str()))
+        .map_err(|_| "the INI settings are already set".to_string())
 }
 
 /// What serving one web request came to.

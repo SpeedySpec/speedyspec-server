@@ -2,5 +2,12 @@
     "app": "blog",
     "version": "1.0.0",
     "kind": "php",
-    "php": { "document_root": "public", "entry": "index.php", "ini": { "memory_limit": "512M" } }
+    "php": {
+        "document_root": "public",
+        "entry": "index.php",
+        "ini": {
+            "memory_limit": "512M",
+            "upload_max_filesize": "64M"
+        }
+    }
 }

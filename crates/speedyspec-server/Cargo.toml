@@ -16,6 +16,7 @@ php = [
     "dep:speedyspec-php-ext",
     "dep:speedyspec-container",
     "dep:speedyspec-container-php",
+    "dep:speedyspec-hooks",
     "dep:speedyspec-hooks-memory",
     "dep:speedyspec-wp-hooks",
     "dep:speedyspec-wp-hooks-memory",
@@ -63,6 +64,7 @@ speedyspec-php = { path = "../speedyspec-php", optional = true }
 speedyspec-php-ext = { path = "../speedyspec-php-ext", optional = true }
 speedyspec-container = { path = "../speedyspec-container", optional = true }
 speedyspec-container-php = { path = "../speedyspec-container-php", optional = true }
+speedyspec-hooks = { path = "../speedyspec-hooks", optional = true }
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory", optional = true }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks", optional = true }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory", optional = true }

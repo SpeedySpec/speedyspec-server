@@ -9,4 +9,4 @@ $server = [];
 foreach ($keys as $key) {
     $server[$key] = $_SERVER[$key] ?? null;
 }
-echo json_encode(['server' => $server, 'get' => $_GET, 'body' => file_get_contents('php://input'), 'cookie' => $_COOKIE, 'memory_limit' => ini_get('memory_limit'), 'content_dir' => defined('WP_CONTENT_DIR') ? WP_CONTENT_DIR : null, 'env' => getenv('SPEEDYSPEC_TEST_ENV') ?: null]);
+echo json_encode(['server' => $server, 'get' => $_GET, 'body' => file_get_contents('php://input'), 'cookie' => $_COOKIE, 'memory_limit' => ini_get('memory_limit'), 'upload_max_filesize' => ini_get('upload_max_filesize'), 'content_url' => defined('WP_CONTENT_URL') ? WP_CONTENT_URL : null, 'content_dir' => defined('WP_CONTENT_DIR') ? WP_CONTENT_DIR : null, 'env' => getenv('SPEEDYSPEC_TEST_ENV') ?: null]);

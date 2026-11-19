@@ -33,26 +33,107 @@ fn quote(value: &str) -> String {
     format!("'{}'", value.replace('\\', "\\\\").replace('\'', "\\'"))
 }
 
-/// PHP run at the start of every request, before the script: the release's INI settings and the site directory's
-/// `wp-content`.
+/// PHP run at the start of every request, before the script: `WP_CONTENT_DIR` is the site directory's
+/// `wp-content`. `WP_CONTENT_URL` is left to WordPress, which derives it from `siteurl` (building it from the request's
+/// Host would let any client choose it). The release's INI settings are applied at boot ([`run_worker`]).
 fn preload(spec: &WorkerSpec) -> String {
     let mut code = String::from("<?php\n");
-    for (key, value) in &spec.ini {
-        code.push_str(&format!("ini_set({}, {});\n", quote(key), quote(value)));
-    }
     if let Some(site) = &spec.site_dir {
         let content = site.join("wp-content");
         code.push_str(&format!(
             "if (!defined('WP_CONTENT_DIR')) {{ define('WP_CONTENT_DIR', {}); }}\n",
             quote(&content.display().to_string())
         ));
-        code.push_str(
-            "if (!defined('WP_CONTENT_URL') && isset($_SERVER['HTTP_HOST'])) { define('WP_CONTENT_URL', \
-             ((($_SERVER['HTTPS'] ?? '') === 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . \
-             ($_SERVER['SPEEDYSPEC_MOUNT'] ?? '/') . 'wp-content'); }\n",
-        );
     }
     code
+}
+
+/// The CLI's plugin registry (`SpeedySpec\Hooks\Hook`), which the runtime always registers, emptied at the end of
+/// every request: the PHP callbacks it holds belong to that request and must not outlive it.
+struct RequestHooks(std::cell::RefCell<Rc<speedyspec_hooks_memory::MemoryHooks>>);
+
+impl RequestHooks {
+    fn current(&self) -> Rc<speedyspec_hooks_memory::MemoryHooks> {
+        self.0.borrow().clone()
+    }
+}
+
+impl speedyspec_hooks::Hooks for RequestHooks {
+    fn add(
+        &self,
+        hook: &str,
+        callback: Rc<speedyspec_hooks::Callback>,
+        options: speedyspec_hooks::AddOptions,
+    ) -> Result<speedyspec_hooks::CallbackId, speedyspec_hooks::HookError> {
+        self.current().add(hook, callback, options)
+    }
+    fn remove(
+        &self,
+        hook: &str,
+        id: speedyspec_hooks::CallbackId,
+    ) -> Result<bool, speedyspec_hooks::HookError> {
+        self.current().remove(hook, id)
+    }
+    fn remove_keyed(
+        &self,
+        hook: &str,
+        key: &str,
+        priority: i64,
+    ) -> Result<bool, speedyspec_hooks::HookError> {
+        self.current().remove_keyed(hook, key, priority)
+    }
+    fn has(&self, hook: &str) -> Result<bool, speedyspec_hooks::HookError> {
+        self.current().has(hook)
+    }
+    fn has_keyed(&self, hook: &str, key: &str) -> Result<bool, speedyspec_hooks::HookError> {
+        self.current().has_keyed(hook, key)
+    }
+    fn run(
+        &self,
+        hook: &str,
+        args: &[speedyspec_hooks::Value],
+    ) -> Result<(), speedyspec_hooks::HookError> {
+        self.current().run(hook, args)
+    }
+    fn filter(
+        &self,
+        hook: &str,
+        value: speedyspec_hooks::Value,
+        args: &[speedyspec_hooks::Value],
+    ) -> Result<speedyspec_hooks::Value, speedyspec_hooks::HookError> {
+        self.current().filter(hook, value, args)
+    }
+    fn ran(&self, hook: &str) -> Result<u64, speedyspec_hooks::HookError> {
+        self.current().ran(hook)
+    }
+}
+
+/// Empties [`RequestHooks`] as each request ends (also after a fatal error).
+struct RequestHooksArea(Rc<RequestHooks>);
+
+impl NativeArea for RequestHooksArea {
+    fn request_end(&self) {
+        let old = self
+            .0
+            .0
+            .replace(Rc::new(speedyspec_hooks_memory::MemoryHooks::new()));
+        drop(old);
+    }
+}
+
+/// Exits when the server that started this worker is gone (the worker is then a child of init).
+fn exit_with_parent() {
+    // SAFETY: getppid has no preconditions.
+    let parent = unsafe { libc::getppid() };
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            // SAFETY: as above.
+            if unsafe { libc::getppid() } != parent {
+                std::process::exit(0);
+            }
+        }
+    });
 }
 
 /// `KEY=value` lines of `site_dir/.env`, nothing evaluated; comments and blank lines skipped.
@@ -129,6 +210,19 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
             unsafe { std::env::set_var(key, value) };
         }
     }
+    exit_with_parent();
+    let ini: Vec<(String, String)> = spec
+        .ini
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    if let Err(err) = speedyspec_php::set_ini(&ini) {
+        log("php_worker_boot_failed", &spec, &err);
+        return 1;
+    }
+    let legacy = Rc::new(RequestHooks(std::cell::RefCell::new(Rc::new(
+        speedyspec_hooks_memory::MemoryHooks::new(),
+    ))));
     let container = Rc::new(Container::new());
     let memory = Rc::new(MemoryHookStore::new());
     let hooks = WpHooksArea::new(container.clone(), memory);
@@ -140,10 +234,11 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         speedyspec_php_ext::twins_area(),
         Rc::new(container_area),
         Rc::new(hooks),
+        Rc::new(RequestHooksArea(legacy.clone())),
     ];
     let preload = preload(&spec);
     let php = match Php::boot(BootOptions {
-        hooks: Rc::new(speedyspec_hooks_memory::MemoryHooks::new()),
+        hooks: legacy,
         preload: &[("speedyspec://worker", preload.as_str())],
         areas,
     }) {
@@ -165,18 +260,23 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
             return 1;
         }
     };
-    let release = std::fs::canonicalize(&spec.release_dir).unwrap_or(spec.release_dir.clone());
+    {
+        use std::os::unix::fs::PermissionsExt;
+        // Only the server (the same user) may send requests: a request's parameters are trusted ($_SERVER).
+        let _ = std::fs::set_permissions(&spec.socket, std::fs::Permissions::from_mode(0o600));
+    }
+    // Scripts run from the release, or from the site directory's wp-content (plugins and themes installed there).
+    let roots: Vec<PathBuf> = std::iter::once(spec.release_dir.clone())
+        .chain(spec.site_dir.iter().map(|site| site.join("wp-content")))
+        .filter_map(|root| std::fs::canonicalize(root).ok())
+        .collect();
     let mut requests = 0u64;
     for connection in listener.incoming() {
         let Ok(stream) = connection else {
             continue;
         };
         let mut responder = Responder::new(stream);
-        loop {
-            let head = match responder.next_request() {
-                Ok(Some(head)) => head,
-                _ => break,
-            };
+        while let Ok(Some(head)) = responder.next_request() {
             let params: Vec<(String, String)> = head
                 .params
                 .iter()
@@ -191,7 +291,7 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
             let inside = script
                 .as_ref()
                 .and_then(|s| std::fs::canonicalize(s).ok())
-                .filter(|s| s.starts_with(&release));
+                .filter(|s| roots.iter().any(|root| s.starts_with(root)));
             let mut request = FastCgiRequest {
                 responder: &mut responder,
                 params,

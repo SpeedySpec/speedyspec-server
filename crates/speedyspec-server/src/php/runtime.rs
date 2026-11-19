@@ -65,10 +65,14 @@ impl PhpRuntime {
     ) -> Result<AppHandle, String> {
         let ready = self.ready(app, manifest, dir)?;
         let handle = AppHandle::Php(handler::arc(ready.handler));
-        self.pools
+        if let Some(old) = self
+            .pools
             .lock()
             .unwrap()
-            .insert((app.clone(), manifest.version.clone()), ready.pool);
+            .insert((app.clone(), manifest.version.clone()), ready.pool)
+        {
+            old.drain();
+        }
         Ok(handle)
     }
 
@@ -134,10 +138,15 @@ impl AppRuntime for PhpRuntime {
             .payload
             .downcast::<Ready>()
             .expect("prepared by PhpRuntime");
-        self.pools
+        let replaced = self
+            .pools
             .lock()
             .unwrap()
             .insert((prepared.app.clone(), prepared.version.clone()), ready.pool);
+        // A reactivation of the live version replaces its pool: the old one drains.
+        if let Some(old) = replaced {
+            old.drain();
+        }
         self.live
             .swap(&prepared.app, AppHandle::Php(handler::arc(ready.handler)));
     }

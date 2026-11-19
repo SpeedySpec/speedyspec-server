@@ -30,19 +30,29 @@ A php release's `speedyspec-release.json` may have a `php` section; without one,
 |---|---|---|
 | `document_root` | `.` | the directory URLs map into |
 | `entry` | `index.php` | the front controller under `document_root`; a release without it is refused at unpack |
-| `ini` | none | INI settings, applied with `ini_set()` at the start of every request (`PHP_INI_ALL` settings only) |
+| `ini` | none | INI settings for the release's workers, applied at boot as php.ini would (`upload_max_filesize` included) |
 
 ## Requests
 
-A path that names an existing `.php` file under the document root runs it (`PATH_INFO` is what follows the file); a
-directory with an `index.php` runs that; another existing file is served as is, from `site_dir` first, then the
-release; every other path goes to `entry`. The worker gets the CGI/1.1 parameters as `$_SERVER`, the body on
+A path that names an existing `.php` file under the document root, or under `site_dir/wp-content`, runs it
+(`PATH_INFO` is what follows the file); a directory with an `index.php` runs that (named without its trailing slash, it
+redirects to it first); another existing file is served as is, from `site_dir/wp-content` first, then the release;
+every other path goes to `entry`. Nothing in `site_dir` outside `wp-content` is ever served, and no path with a
+dot-segment (`.env`, `.git/`) is served or run. The worker gets the CGI/1.1 parameters as `$_SERVER`, the body on
 `php://input`, and sends back the status and headers from `header()`/`http_response_code()`. Both bodies stream: a
 slow client holds the worker back rather than being buffered, and the whole request is bounded by `request_timeout`.
 
 Each request starts clean: request-lifetime bindings, hook callbacks and globals end with the previous request, also
 after a fatal error. A script that dies before sending output is a 500; a worker that crashes is a 502 and is
 replaced; a request past `request_timeout` is a 504 and its worker is killed.
+
+## The hook globals
+
+`$wp_filter`, `$wp_actions` and `$wp_filters` are proxy objects over the Rust hook store: reading, indexing,
+`isset`, iterating, counting and appending work as in WordPress, but passing one to an array function
+(`array_keys($wp_filter)`, `in_array(…, $wp_actions)`) throws a `TypeError`, and replacing one wholesale is not seen
+by the store. `$wp_current_filter` is a real array, kept equal to the store wherever PHP can see it. These are listed
+in `compat/hooks/breaks.json`.
 
 ## Pool settings
 
@@ -70,17 +80,18 @@ bindings = { "SpeedySpec\\WpHooks\\HookStore" = "App\\HookStore" }
 A release switch starts the new release's pool before it goes live. Requests already running finish on the old
 release's pool, which then drains: no new requests, its workers exit after their last one.
 
-Worker sockets live under `<run_dir>/php/<app>/<version>/`, or under `/tmp/speedyspec-php-…` when `run_dir` does not
-exist or the path would be too long for a socket.
+Each pool's worker sockets live in a directory of its own, private to the server's user:
+`<run_dir>/php/<app>/<version>/<pid>-<n>/`, or a fresh `mkdtemp` directory under `/tmp` when `run_dir` does not exist
+or the path would be too long for a socket. Workers exit when the server that started them is gone.
 
 Each event is a log line: `php_pool_started`, `php_worker_started`, `php_worker_exited`, `php_request_timeout`,
 `php_worker_recycled`, `php_pool_drained`; PHP's own errors arrive as `php_stderr`.
 
 ## The site directory
 
-`site_dir` holds what an app writes: uploads, caches, `wp-content`. Workers define `WP_CONTENT_DIR` as
-`site_dir/wp-content` and `WP_CONTENT_URL` from the request's host and the mount. Files in `site_dir` are served
-before the release's. `site_dir/.env`, if present, is read as `KEY=value` lines (nothing is evaluated) into the
+`site_dir` holds what an app writes: uploads, caches, `wp-content`, and its secrets. Workers define `WP_CONTENT_DIR`
+as `site_dir/wp-content` (WordPress derives `WP_CONTENT_URL` from `siteurl`). Only `site_dir/wp-content` is served,
+before the release's own `wp-content`. `site_dir/.env`, if present, is read as `KEY=value` lines (nothing is evaluated) into the
 workers' environment, for `getenv()`.
 
 ## `php.bindings`

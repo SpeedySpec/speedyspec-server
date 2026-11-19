@@ -41,6 +41,13 @@ enum Target {
         path_info: String,
     },
     Static(PathBuf),
+    /// A directory named without its trailing slash: `301` to the same path with it.
+    Redirect(String),
+}
+
+fn is_php(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("php"))
 }
 
 impl PhpRequestHandler {
@@ -71,49 +78,79 @@ impl PhpRequestHandler {
         (real.starts_with(&root) && real.is_file()).then_some(real)
     }
 
-    fn target(&self, mount: &str, rel: &str) -> Target {
-        let rel = rel.trim_start_matches('/');
-        let is_php = |p: &Path| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("php"));
-        if !rel.is_empty() {
-            for root in self
-                .site_dir
-                .iter()
-                .chain(std::iter::once(&self.document_root))
-            {
-                if let Some(file) = Self::file_inside(root, &root.join(rel)) {
-                    if !is_php(&file) {
-                        return Target::Static(file);
-                    }
-                }
-            }
-        }
-        let segments: Vec<&str> = rel.split('/').filter(|s| !s.is_empty()).collect();
-        let mut path = self.document_root.clone();
+    /// The first `.php` file along `segments` under `root`: the script, and its `SCRIPT_NAME` and `PATH_INFO`.
+    fn script_along(root: &Path, segments: &[&str], url_prefix: &str) -> Option<Target> {
+        let mut path = root.to_path_buf();
         for (i, segment) in segments.iter().enumerate() {
             path.push(segment);
-            if is_php(&path) {
-                if let Some(script) = Self::file_inside(&self.document_root, &path) {
-                    let rest = segments[i + 1..].join("/");
-                    let path_info = if rest.is_empty() {
-                        String::new()
-                    } else {
-                        format!("/{rest}")
-                    };
-                    return Target::Script {
-                        script,
-                        script_name: format!("{mount}{}", segments[..=i].join("/")),
-                        path_info,
-                    };
-                }
+            if is_php(&path)
+                && let Some(script) = Self::file_inside(root, &path)
+            {
+                let rest = segments[i + 1..].join("/");
+                let path_info = if rest.is_empty() {
+                    String::new()
+                } else {
+                    format!("/{rest}")
+                };
+                return Some(Target::Script {
+                    script,
+                    script_name: format!("{url_prefix}{}", segments[..=i].join("/")),
+                    path_info,
+                });
             }
         }
-        if path.is_dir() {
-            if let Some(index) = Self::file_inside(&self.document_root, &path.join("index.php")) {
-                let dir = segments.join("/");
-                let script_name = if dir.is_empty() {
+        None
+    }
+
+    /// Maps a path below the mount to its target. Only `site_dir/wp-content` is reachable in the site directory,
+    /// which also holds the app's secrets (`.env`); a path with a dot-segment (`.env`, `.git/`) is never served or
+    /// run, and goes to the front controller.
+    fn target(&self, mount: &str, rel: &str, query: Option<&str>) -> Target {
+        let trailing = rel.ends_with('/');
+        let rel = rel.trim_start_matches('/');
+        let segments: Vec<&str> = rel.split('/').filter(|s| !s.is_empty()).collect();
+        let hidden = segments.iter().any(|s| s.starts_with('.'));
+        let content = self.site_dir.as_ref().map(|site| site.join("wp-content"));
+        let in_content = segments.first() == Some(&"wp-content");
+        if !hidden && !segments.is_empty() {
+            if let (true, Some(content)) = (in_content, &content) {
+                let below = segments[1..].join("/");
+                if let Some(file) = Self::file_inside(content, &content.join(&below))
+                    && !is_php(&file)
+                {
+                    return Target::Static(file);
+                }
+            }
+            if let Some(file) =
+                Self::file_inside(&self.document_root, &self.document_root.join(rel))
+                && !is_php(&file)
+            {
+                return Target::Static(file);
+            }
+        }
+        if !hidden {
+            if let (true, Some(content)) = (in_content, &content)
+                && let Some(script) =
+                    Self::script_along(content, &segments[1..], &format!("{mount}wp-content/"))
+            {
+                return script;
+            }
+            if let Some(script) = Self::script_along(&self.document_root, &segments, mount) {
+                return script;
+            }
+            let dir = self.document_root.join(segments.join("/"));
+            if dir.is_dir()
+                && let Some(index) = Self::file_inside(&self.document_root, &dir.join("index.php"))
+            {
+                let joined = segments.join("/");
+                if !joined.is_empty() && !trailing {
+                    let query = query.map(|q| format!("?{q}")).unwrap_or_default();
+                    return Target::Redirect(format!("{mount}{joined}/{query}"));
+                }
+                let script_name = if joined.is_empty() {
                     format!("{mount}index.php")
                 } else {
-                    format!("{mount}{dir}/index.php")
+                    format!("{mount}{joined}/index.php")
                 };
                 return Target::Script {
                     script: index,
@@ -225,11 +262,11 @@ impl PhpRequestHandler {
                     salvo::http::header::CONTENT_TYPE,
                     HeaderValue::from_static(content_type(file)),
                 );
-                if let Ok(meta) = handle.metadata().await {
-                    if let Ok(len) = HeaderValue::from_str(&meta.len().to_string()) {
-                        res.headers_mut()
-                            .insert(salvo::http::header::CONTENT_LENGTH, len);
-                    }
+                if let Ok(meta) = handle.metadata().await
+                    && let Ok(len) = HeaderValue::from_str(&meta.len().to_string())
+                {
+                    res.headers_mut()
+                        .insert(salvo::http::header::CONTENT_LENGTH, len);
                 }
                 res.stream(tokio_util::io::ReaderStream::new(handle));
             }
@@ -341,18 +378,170 @@ fn stderr(bytes: &[u8], report: &mut Option<(u64, u64, bool)>) {
     tracing::warn!(event = "php_stderr", message = %String::from_utf8_lossy(bytes).trim_end());
 }
 
+/// Why no response head came from the worker.
+enum NoHead {
+    BadGateway,
+    Timeout,
+}
+
+/// The response head, and what followed it in the same read.
+type Head = (StatusCode, Vec<(HeaderName, HeaderValue)>, Vec<u8>);
+
+/// Runs one FastCGI exchange to its end, on its own task: the head goes to `head`, the body to `body` while anyone
+/// reads it. A client that goes away does not stop the script (WP-Cron relies on that): its output is drained and
+/// dropped until the worker ends the request, all within `deadline`. The worker is always given back before the
+/// client is told anything, so a client that stops reading never holds it.
+async fn exchange(
+    pool: EmbeddedPhpPool,
+    lease: super::pool::Lease,
+    params: Vec<(Vec<u8>, Vec<u8>)>,
+    body: salvo::http::ReqBody,
+    deadline: tokio::time::Instant,
+    head: tokio::sync::oneshot::Sender<Result<Head, NoHead>>,
+    tx: tokio::sync::mpsc::Sender<Result<Bytes, io::Error>>,
+) {
+    let body = futures_util::stream::unfold(body, |mut body| async move {
+        loop {
+            match body.frame().await {
+                None => return None,
+                Some(Err(err)) => return Some((Err(io::Error::other(err.to_string())), body)),
+                Some(Ok(frame)) => {
+                    if let Ok(data) = frame.into_data() {
+                        return Some((Ok::<Bytes, io::Error>(data), body));
+                    }
+                }
+            }
+        }
+    });
+    let socket = lease.socket().to_path_buf();
+    let mut response =
+        match tokio::time::timeout_at(deadline, Client::request(&socket, params, body)).await {
+            Ok(Ok(response)) => response,
+            Ok(Err(err)) => {
+                pool.release(lease, Fate::Crashed(err.to_string()));
+                let _ = head.send(Err(NoHead::BadGateway));
+                return;
+            }
+            Err(_) => {
+                pool.release(lease, Fate::TimedOut);
+                let _ = head.send(Err(NoHead::Timeout));
+                return;
+            }
+        };
+    let mut report = None;
+    let mut buffered = Vec::new();
+    let mut head = Some(head);
+    let mut client_gone = false;
+    loop {
+        let next = tokio::time::timeout_at(deadline, response.next()).await;
+        let event = match next {
+            Err(_) => {
+                drop(response);
+                pool.release(lease, Fate::TimedOut);
+                if let Some(head) = head.take() {
+                    let _ = head.send(Err(NoHead::Timeout));
+                } else {
+                    let _ = tx.try_send(Err(io::Error::new(
+                        io::ErrorKind::TimedOut,
+                        "request_timeout",
+                    )));
+                }
+                return;
+            }
+            Ok(None) => {
+                let (memory, requests, poisoned) = report.unwrap_or((0, 0, false));
+                pool.release(
+                    lease,
+                    Fate::Answered {
+                        memory,
+                        requests,
+                        poisoned,
+                    },
+                );
+                if let Some(head) = head.take() {
+                    // Output with no head at all: PHP always sends one, so the worker is broken.
+                    let _ = head.send(Err(NoHead::BadGateway));
+                }
+                return;
+            }
+            Ok(Some(Err(err))) => {
+                pool.release(
+                    lease,
+                    Fate::Crashed("the worker closed the connection mid-request".into()),
+                );
+                if let Some(head) = head.take() {
+                    let _ = head.send(Err(NoHead::BadGateway));
+                } else {
+                    let _ = tx.try_send(Err(err));
+                }
+                return;
+            }
+            Ok(Some(Ok(event))) => event,
+        };
+        let bytes = match event {
+            Event::Stderr(bytes) => {
+                stderr(&bytes, &mut report);
+                continue;
+            }
+            Event::End(_) => continue,
+            Event::Stdout(bytes) => bytes,
+        };
+        let chunk = if let Some(sender) = head.take() {
+            buffered.extend_from_slice(&bytes);
+            let Some(end) = head_end(&buffered) else {
+                head = Some(sender);
+                continue;
+            };
+            let rest = buffered.split_off(end);
+            let (status, headers) = parse_head(&buffered);
+            if sender.send(Ok((status, headers, Vec::new()))).is_err() {
+                client_gone = true;
+            }
+            if rest.is_empty() {
+                continue;
+            }
+            Bytes::from(rest)
+        } else {
+            bytes
+        };
+        if client_gone {
+            continue;
+        }
+        match tokio::time::timeout_at(deadline, tx.send(Ok(chunk))).await {
+            Ok(Ok(())) => {}
+            // The client went away: keep draining, so the script runs to its end.
+            Ok(Err(_)) => client_gone = true,
+            // The client stopped reading: the deadline applies as to any request.
+            Err(_) => {
+                drop(response);
+                pool.release(lease, Fate::TimedOut);
+                return;
+            }
+        }
+    }
+}
+
 #[salvo::async_trait]
 impl PhpEndpoint for PhpRequestHandler {
     async fn serve(&self, call: PhpCall, req: &mut Request, res: &mut Response) {
-        let (script, script_name, path_info) = match self.target(&call.mount_prefix, &call.rel_path)
-        {
-            Target::Static(file) => return self.serve_static(&file, res).await,
-            Target::Script {
-                script,
-                script_name,
-                path_info,
-            } => (script, script_name, path_info),
-        };
+        let query = req.uri().query().map(str::to_string);
+        let (script, script_name, path_info) =
+            match self.target(&call.mount_prefix, &call.rel_path, query.as_deref()) {
+                Target::Static(file) => return self.serve_static(&file, res).await,
+                Target::Redirect(location) => {
+                    res.status_code(StatusCode::MOVED_PERMANENTLY);
+                    if let Ok(value) = HeaderValue::from_str(&location) {
+                        res.headers_mut()
+                            .insert(salvo::http::header::LOCATION, value);
+                    }
+                    return;
+                }
+                Target::Script {
+                    script,
+                    script_name,
+                    path_info,
+                } => (script, script_name, path_info),
+            };
         let params = self.params(&call, req, &script, &script_name, &path_info);
         let deadline = tokio::time::Instant::now() + self.pool.request_timeout();
         let lease = match tokio::time::timeout_at(deadline, self.pool.acquire()).await {
@@ -363,145 +552,30 @@ impl PhpEndpoint for PhpRequestHandler {
             }
             Err(_) => return plain(res, StatusCode::GATEWAY_TIMEOUT, "gateway timeout"),
         };
-        let body = req.take_body();
-        let body = futures_util::stream::unfold(body, |mut body| async move {
-            loop {
-                match body.frame().await {
-                    None => return None,
-                    Some(Err(err)) => return Some((Err(io::Error::other(err.to_string())), body)),
-                    Some(Ok(frame)) => {
-                        if let Ok(data) = frame.into_data() {
-                            return Some((Ok::<Bytes, io::Error>(data), body));
-                        }
-                    }
-                }
-            }
-        });
-        let socket = lease.socket().to_path_buf();
-        let mut response = match Client::request(&socket, params, body).await {
-            Ok(response) => response,
-            Err(err) => {
-                self.pool.release(lease, Fate::Crashed(err.to_string()));
-                return plain(res, StatusCode::BAD_GATEWAY, "bad gateway");
-            }
-        };
-
-        // The head: everything before the first blank line of the worker's output.
-        let mut buffered = Vec::new();
-        let mut report = None;
-        let split = loop {
-            match tokio::time::timeout_at(deadline, response.next()).await {
-                Err(_) => {
-                    drop(response);
-                    self.pool.release(lease, Fate::TimedOut);
-                    return plain(res, StatusCode::GATEWAY_TIMEOUT, "gateway timeout");
-                }
-                Ok(None) | Ok(Some(Err(_))) => {
-                    self.pool.release(
-                        lease,
-                        Fate::Crashed("the worker closed the connection mid-request".into()),
-                    );
-                    return plain(res, StatusCode::BAD_GATEWAY, "bad gateway");
-                }
-                Ok(Some(Ok(Event::Stderr(bytes)))) => stderr(&bytes, &mut report),
-                Ok(Some(Ok(Event::Stdout(bytes)))) => {
-                    buffered.extend_from_slice(&bytes);
-                    if let Some(end) = head_end(&buffered) {
-                        break Some(end);
-                    }
-                }
-                Ok(Some(Ok(Event::End(_)))) => break None,
-            }
-        };
-        let (status, headers, rest, ended) = match split {
-            Some(end) => {
-                let (status, headers) = parse_head(&buffered[..end]);
-                (status, headers, buffered.split_off(end), false)
-            }
-            // Output with no head at all: PHP always sends one, so this is a broken worker.
-            None => {
-                let (memory, requests, poisoned) = report.unwrap_or((0, 0, false));
-                self.pool.release(
-                    lease,
-                    Fate::Answered {
-                        memory,
-                        requests,
-                        poisoned,
-                    },
-                );
-                return plain(res, StatusCode::BAD_GATEWAY, "bad gateway");
-            }
-        };
-        res.status_code(status);
-        for (name, value) in headers {
-            res.headers_mut().append(name, value);
-        }
-
-        // The body, passed on as it comes; a slow client holds the worker back (bounded by the deadline).
+        let (head_tx, head_rx) = tokio::sync::oneshot::channel();
         let (tx, rx) = tokio::sync::mpsc::channel::<Result<Bytes, io::Error>>(4);
-        let pool = self.pool.clone();
-        tokio::spawn(async move {
-            if !rest.is_empty() && tx.send(Ok(Bytes::from(rest))).await.is_err() {
-                pool.release(lease, Fate::Crashed("the client went away".into()));
-                return;
-            }
-            let _ = ended;
-            loop {
-                let next = tokio::time::timeout_at(deadline, response.next()).await;
-                match next {
-                    Err(_) => {
-                        drop(response);
-                        let _ = tx
-                            .send(Err(io::Error::new(
-                                io::ErrorKind::TimedOut,
-                                "request_timeout",
-                            )))
-                            .await;
-                        pool.release(lease, Fate::TimedOut);
-                        return;
-                    }
-                    Ok(None) => {
-                        let (memory, requests, poisoned) = report.unwrap_or((0, 0, false));
-                        pool.release(
-                            lease,
-                            Fate::Answered {
-                                memory,
-                                requests,
-                                poisoned,
-                            },
-                        );
-                        return;
-                    }
-                    Ok(Some(Err(err))) => {
-                        let _ = tx.send(Err(err)).await;
-                        pool.release(
-                            lease,
-                            Fate::Crashed("the worker closed the connection mid-response".into()),
-                        );
-                        return;
-                    }
-                    Ok(Some(Ok(Event::Stderr(bytes)))) => stderr(&bytes, &mut report),
-                    Ok(Some(Ok(Event::End(_)))) => {}
-                    Ok(Some(Ok(Event::Stdout(bytes)))) => {
-                        let sent = tokio::time::timeout_at(deadline, tx.send(Ok(bytes))).await;
-                        match sent {
-                            Ok(Ok(())) => {}
-                            Ok(Err(_)) => {
-                                drop(response);
-                                pool.release(lease, Fate::Crashed("the client went away".into()));
-                                return;
-                            }
-                            Err(_) => {
-                                drop(response);
-                                pool.release(lease, Fate::TimedOut);
-                                return;
-                            }
-                        }
-                    }
+        tokio::spawn(exchange(
+            self.pool.clone(),
+            lease,
+            params,
+            req.take_body(),
+            deadline,
+            head_tx,
+            tx,
+        ));
+        match head_rx.await {
+            Ok(Ok((status, headers, _))) => {
+                res.status_code(status);
+                for (name, value) in headers {
+                    res.headers_mut().append(name, value);
                 }
+                res.stream(tokio_stream_from(rx));
             }
-        });
-        res.stream(tokio_stream_from(rx));
+            Ok(Err(NoHead::Timeout)) => plain(res, StatusCode::GATEWAY_TIMEOUT, "gateway timeout"),
+            Ok(Err(NoHead::BadGateway)) | Err(_) => {
+                plain(res, StatusCode::BAD_GATEWAY, "bad gateway")
+            }
+        }
     }
 }
 

@@ -249,7 +249,7 @@ async fn serve(channel: Channel) -> Result<(), String> {
                     }
                     Some((ToGeneration::Control(line), _)) => {
                         let (backend, channel) = (backend.clone(), channel.clone());
-                        tokio::spawn(async move { reply(&*channel, backend, line).await });
+                        tokio::spawn(async move { reply(&channel, backend, line).await });
                     }
                     Some((ToGeneration::Drain, _)) => {
                         tracing::info!(event = "generation_draining", pid = std::process::id());

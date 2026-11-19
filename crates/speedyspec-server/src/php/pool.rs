@@ -57,6 +57,16 @@ pub struct Worker {
     idle_since: Instant,
 }
 
+impl Drop for Worker {
+    /// A worker no pool holds any more is stopped: a child process is not killed when its handle is dropped.
+    fn drop(&mut self) {
+        if matches!(self.child.try_wait(), Ok(None)) {
+            let _ = self.child.kill();
+            let _ = self.child.wait();
+        }
+    }
+}
+
 impl Worker {
     fn alive(&mut self) -> bool {
         matches!(self.child.try_wait(), Ok(None))
@@ -99,7 +109,11 @@ struct Inner {
     state: Mutex<State>,
     wake: tokio::sync::Notify,
     next: AtomicU64,
+    /// Tests start fake workers: `(socket, process)` for a worker id.
+    spawner: Option<Spawner>,
 }
+
+type Spawner = Box<dyn Fn(u64) -> Result<(PathBuf, Child), String> + Send + Sync>;
 
 /// See the module docs.
 #[derive(Clone)]
@@ -148,45 +162,53 @@ fn log(event: &str, inner: &Inner, fields: serde_json::Value) {
     tracing::info!(event, details = %line);
 }
 
-/// Where a release's worker sockets go: `run_dir/php/<app>/<version>/`, or a short directory under `/tmp` when that
-/// path would be too long for a socket.
-pub fn socket_dir(run_dir: &Path, app: &str, version: &str) -> PathBuf {
-    let dir = run_dir.join("php").join(app).join(version);
-    if dir.join("worker-0000.sock").as_os_str().len() <= SOCKET_PATH_LIMIT {
-        return dir;
-    }
-    PathBuf::from(format!(
-        "/tmp/speedyspec-php-{}-{app}-{version}",
-        std::process::id()
-    ))
+static NONCE: AtomicU64 = AtomicU64::new(0);
+
+/// Makes `dir` readable and writable by the server's user only.
+fn private(dir: &Path) -> std::io::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))
 }
 
-/// Creates the release's socket directory: [`socket_dir`], or a private directory under `/tmp` when `run_dir`
-/// cannot be used (the server already runs without its lock and control socket then, with a warning).
+/// Creates a pool's own socket directory, private to the server's user: `run_dir/php/<app>/<version>/<pid>-<n>/`, so
+/// two pools of one release (a handoff, a reactivation, a rollback while the old pool drains) never share sockets.
+/// When `run_dir` does not exist (the server never creates it) or the path is too long for a socket, a fresh
+/// `mkdtemp` directory under `/tmp` is used instead.
 pub fn prepare_socket_dir(run_dir: &Path, app: &str, version: &str) -> Result<PathBuf, String> {
-    let dir = socket_dir(run_dir, app, version);
-    // The server never creates run_dir itself (immutable mode writes nothing); it uses one that exists.
-    let usable = if dir.starts_with(run_dir) && !run_dir.is_dir() {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("{} does not exist", run_dir.display()),
-        ))
+    let unique = format!(
+        "{}-{}",
+        std::process::id(),
+        NONCE.fetch_add(1, Ordering::SeqCst)
+    );
+    let dir = run_dir.join("php").join(app).join(version).join(unique);
+    let short = dir.join("worker-0000.sock").as_os_str().len() <= SOCKET_PATH_LIMIT;
+    let wanted = if !short {
+        Err("the path is too long for a socket".to_string())
+    } else if !run_dir.is_dir() {
+        Err(format!("{} does not exist", run_dir.display()))
     } else {
         std::fs::create_dir_all(&dir)
+            .and_then(|()| private(&dir))
+            .map_err(|err| err.to_string())
     };
-    match usable {
-        Ok(()) => Ok(dir),
-        Err(err) => {
-            let fallback = PathBuf::from(format!(
-                "/tmp/speedyspec-php-{}-{app}-{version}",
-                std::process::id()
-            ));
-            tracing::warn!(event = "php_socket_dir_fallback", wanted = %dir.display(), error = %err, used = %fallback.display());
-            std::fs::create_dir_all(&fallback)
-                .map_err(|err| format!("{}: {err}", fallback.display()))?;
-            Ok(fallback)
-        }
+    if wanted.is_ok() {
+        return Ok(dir);
     }
+    let mut template = b"/tmp/speedyspec-php-XXXXXX\0".to_vec();
+    // SAFETY: a NUL-terminated, writable template; mkdtemp creates the directory with mode 0700.
+    let made = unsafe { libc::mkdtemp(template.as_mut_ptr().cast()) };
+    if made.is_null() {
+        return Err(format!(
+            "creating a socket directory under /tmp: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    template.pop();
+    let fallback = PathBuf::from(String::from_utf8_lossy(&template).into_owned());
+    if let Err(why) = wanted {
+        tracing::warn!(event = "php_socket_dir_fallback", wanted = %dir.display(), error = %why, used = %fallback.display());
+    }
+    Ok(fallback)
 }
 
 impl EmbeddedPhpPool {
@@ -214,6 +236,7 @@ impl EmbeddedPhpPool {
             }),
             wake: tokio::sync::Notify::new(),
             next: AtomicU64::new(0),
+            spawner: None,
         });
         let pool = EmbeddedPhpPool { inner };
         for _ in 0..pool.inner.settings.min.max(1) {
@@ -232,10 +255,54 @@ impl EmbeddedPhpPool {
         Ok(pool)
     }
 
+    /// A pool with no workers yet, whose workers `spawner` starts (tests).
+    #[cfg(test)]
+    fn with_spawner(
+        settings: PoolSettings,
+        spawner: impl Fn(u64) -> Result<(PathBuf, Child), String> + Send + Sync + 'static,
+    ) -> EmbeddedPhpPool {
+        EmbeddedPhpPool {
+            inner: Arc::new(Inner {
+                app: "test".into(),
+                version: "0.0.0".into(),
+                exe: PathBuf::new(),
+                spec: WorkerSpec {
+                    app: "test".into(),
+                    socket: PathBuf::new(),
+                    release_dir: PathBuf::new(),
+                    site_dir: None,
+                    ini: Default::default(),
+                    bindings: Vec::new(),
+                },
+                dir: PathBuf::from("/nonexistent"),
+                settings,
+                state: Mutex::new(State {
+                    idle: Vec::new(),
+                    total: 0,
+                    busy: 0,
+                    draining: false,
+                }),
+                wake: tokio::sync::Notify::new(),
+                next: AtomicU64::new(0),
+                spawner: Some(Box::new(spawner)),
+            }),
+        }
+    }
+
     /// Starts one worker and waits until it answers `GET_VALUES`.
     fn spawn_worker(&self) -> Result<Worker, String> {
         let inner = &self.inner;
         let id = inner.next.fetch_add(1, Ordering::SeqCst);
+        if let Some(spawner) = &inner.spawner {
+            let (socket, child) = spawner(id)?;
+            return Ok(Worker {
+                id,
+                socket,
+                child,
+                requests: 0,
+                idle_since: Instant::now(),
+            });
+        }
         let socket = inner.dir.join(format!("worker-{id:04}.sock"));
         let _ = std::fs::remove_file(&socket);
         let mut spec = inner.spec.clone();
@@ -310,29 +377,16 @@ impl EmbeddedPhpPool {
                 }
                 if state.total < self.inner.settings.max {
                     state.total += 1;
-                    state.busy += 1;
                     true
                 } else {
                     false
                 }
             };
+            // The new worker starts on its own thread and joins the idle set; this request waits for it like any
+            // other, so a request that gives up meanwhile leaves no slot or process behind.
             if grow {
                 let pool = self.clone();
-                let started = tokio::task::spawn_blocking(move || pool.spawn_worker())
-                    .await
-                    .map_err(|e| e.to_string())?;
-                return match started {
-                    Ok(worker) => Ok(Lease {
-                        pool: Arc::downgrade(&self.inner),
-                        worker: Some(worker),
-                    }),
-                    Err(err) => {
-                        let mut state = self.inner.state.lock().unwrap();
-                        state.total -= 1;
-                        state.busy -= 1;
-                        Err(err)
-                    }
-                };
+                std::thread::spawn(move || pool.replace());
             }
             notified.await;
         }
@@ -429,6 +483,7 @@ impl EmbeddedPhpPool {
             }
             Err(err) => {
                 self.inner.state.lock().unwrap().total -= 1;
+                self.inner.wake.notify_waiters();
                 log(
                     "php_worker_exited",
                     &self.inner,
@@ -578,6 +633,70 @@ fn reap(weak: Weak<Inner>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A pool whose workers are `sleep` processes that take `delay` to start.
+    fn fake_pool(max: u32, delay: Duration) -> EmbeddedPhpPool {
+        let settings = PoolSettings {
+            min: 0,
+            max,
+            max_requests: 100,
+            request_timeout: Duration::from_secs(5),
+            memory_limit: u64::MAX,
+            idle_timeout: Duration::from_secs(60),
+        };
+        EmbeddedPhpPool::with_spawner(settings, move |id| {
+            std::thread::sleep(delay);
+            let child = Command::new("sleep")
+                .arg("30")
+                .spawn()
+                .map_err(|e| e.to_string())?;
+            Ok((
+                PathBuf::from(format!("/nonexistent/worker-{id}.sock")),
+                child,
+            ))
+        })
+    }
+
+    /// A request that gives up while its worker is starting leaks no capacity and no process: the worker joins the
+    /// idle set for the next request.
+    #[tokio::test]
+    async fn cancelled_acquire_leaks_nothing() {
+        let pool = fake_pool(1, Duration::from_millis(300));
+        let gave_up = tokio::time::timeout(Duration::from_millis(50), pool.acquire()).await;
+        assert!(
+            gave_up.is_err(),
+            "the caller gave up while the worker started"
+        );
+        tokio::time::sleep(Duration::from_millis(600)).await;
+        assert_eq!(
+            pool.counts(),
+            (1, 1),
+            "the started worker is idle, not counted busy"
+        );
+        let lease = tokio::time::timeout(Duration::from_millis(200), pool.acquire()).await;
+        assert!(
+            matches!(lease, Ok(Ok(_))),
+            "the next request gets it at once"
+        );
+    }
+
+    #[test]
+    fn socket_dirs_are_private_and_unique_per_pool() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::Builder::new()
+            .prefix("ss")
+            .tempdir_in("/tmp")
+            .unwrap();
+        let one = prepare_socket_dir(dir.path(), "blog", "1.0.0").unwrap();
+        let two = prepare_socket_dir(dir.path(), "blog", "1.0.0").unwrap();
+        assert_ne!(one, two, "two pools of one release never share a directory");
+        let missing = prepare_socket_dir(&dir.path().join("missing"), "blog", "1.0.0").unwrap();
+        for path in [&one, &two, &missing] {
+            let mode = std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o700, "{} is private", path.display());
+        }
+        let _ = std::fs::remove_dir_all(&missing);
+    }
 
     #[test]
     fn socket_dir_falls_back_when_run_dir_is_unusable() {
