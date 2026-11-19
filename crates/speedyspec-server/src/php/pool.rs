@@ -43,6 +43,10 @@ impl PoolSettings {
     }
 }
 
+/// How long a draining pool still lends its idle workers to requests routed to it just before it began draining (a
+/// switch swaps the handler first, but a request may already hold the old one).
+pub const DRAIN_GRACE: Duration = Duration::from_secs(1);
+
 /// How long a new worker may take to answer `GET_VALUES`.
 const READY_TIMEOUT: Duration = Duration::from_secs(20);
 /// macOS and Linux limit a socket path to about 104 bytes.
@@ -97,12 +101,24 @@ struct State {
     total: u32,
     busy: u32,
     draining: bool,
+    /// When draining began.
+    drain_started: Option<Instant>,
     /// The worker kept for the server's own calls, when idle. Never counted in `total`.
     internal: Option<Worker>,
     /// The internal worker is leased.
     internal_busy: bool,
     /// A replacement internal worker is starting.
     internal_starting: bool,
+}
+
+impl State {
+    /// Draining, but still lending idle workers to requests already routed to this pool.
+    fn in_grace(&self) -> bool {
+        self.draining
+            && self
+                .drain_started
+                .is_some_and(|at| at.elapsed() < DRAIN_GRACE)
+    }
 }
 
 struct Inner {
@@ -246,6 +262,7 @@ impl EmbeddedPhpPool {
                 total: 0,
                 busy: 0,
                 draining: false,
+                drain_started: None,
                 internal: None,
                 internal_busy: false,
                 internal_starting: false,
@@ -302,6 +319,7 @@ impl EmbeddedPhpPool {
                     total: 0,
                     busy: 0,
                     draining: false,
+                    drain_started: None,
                     internal: None,
                     internal_busy: false,
                     internal_starting: false,
@@ -382,7 +400,7 @@ impl EmbeddedPhpPool {
             notified.as_mut().enable();
             let grow = {
                 let mut state = self.inner.state.lock().unwrap();
-                if state.draining {
+                if state.draining && !state.in_grace() {
                     return Err("the release is being retired".into());
                 }
                 while let Some(mut worker) = state.idle.pop() {
@@ -401,7 +419,11 @@ impl EmbeddedPhpPool {
                         serde_json::json!({ "worker": worker.id, "reason": "exited while idle" }),
                     );
                 }
-                if state.total < self.inner.settings.max {
+                if state.draining {
+                    // A draining pool never grows: a request routed here late waits for an idle worker or the end
+                    // of the grace period.
+                    false
+                } else if state.total < self.inner.settings.max {
                     state.total += 1;
                     true
                 } else {
@@ -552,7 +574,7 @@ impl EmbeddedPhpPool {
         let mut state = inner.state.lock().unwrap();
         state.busy -= 1;
         match (&fate, recycle) {
-            (_, None) if !state.draining && worker.alive() => {
+            (_, None) if (!state.draining || state.in_grace()) && worker.alive() => {
                 worker.idle_since = Instant::now();
                 state.idle.push(worker);
             }
@@ -628,7 +650,11 @@ impl EmbeddedPhpPool {
 
     /// Stops new leases, waits (on a thread of its own) for the open ones, then stops every worker.
     pub fn drain(&self) {
-        self.inner.state.lock().unwrap().draining = true;
+        {
+            let mut state = self.inner.state.lock().unwrap();
+            state.draining = true;
+            state.drain_started.get_or_insert_with(Instant::now);
+        }
         self.inner.wake.notify_waiters();
         self.inner.internal_wake.notify_waiters();
         let inner = self.inner.clone();
@@ -636,7 +662,7 @@ impl EmbeddedPhpPool {
             loop {
                 let idle = {
                     let mut state = inner.state.lock().unwrap();
-                    if state.busy == 0 && !state.internal_busy {
+                    if state.busy == 0 && !state.internal_busy && !state.in_grace() {
                         let mut idle = std::mem::take(&mut state.idle);
                         idle.extend(state.internal.take());
                         Some(idle)
@@ -654,6 +680,8 @@ impl EmbeddedPhpPool {
                         &inner,
                         serde_json::json!({ "workers": count }),
                     );
+                    // A request still waiting here is refused now rather than at its own timeout.
+                    inner.wake.notify_waiters();
                     let _ = std::fs::remove_dir_all(&inner.dir);
                     return;
                 }
@@ -895,6 +923,33 @@ mod tests {
         assert!(
             matches!(again, Ok(Ok(_))),
             "a replacement internal worker answers"
+        );
+    }
+
+    /// A request routed to a release just before its pool began draining is still served by an idle worker, for
+    /// the drain's grace period; after it, the pool refuses.
+    #[tokio::test]
+    async fn draining_pool_still_serves_requests_routed_to_it() {
+        let pool = fake_pool(1, Duration::from_millis(0));
+        let lease = pool.acquire().await.unwrap();
+        pool.release(
+            lease,
+            Fate::Answered {
+                memory: 0,
+                requests: 1,
+                poisoned: false,
+            },
+        );
+        pool.drain();
+        let straggler = tokio::time::timeout(Duration::from_millis(200), pool.acquire()).await;
+        assert!(
+            matches!(straggler, Ok(Ok(_))),
+            "a request already routed here is served"
+        );
+        tokio::time::sleep(DRAIN_GRACE + Duration::from_millis(300)).await;
+        assert!(
+            pool.acquire().await.is_err(),
+            "after the grace period the pool refuses"
         );
     }
 }

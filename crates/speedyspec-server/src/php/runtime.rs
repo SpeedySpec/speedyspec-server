@@ -228,10 +228,6 @@ impl AppRuntime for PhpRuntime {
             .lock()
             .unwrap()
             .insert((prepared.app.clone(), prepared.version.clone()), ready.pool);
-        // A reactivation of the live version replaces its pool: the old one drains.
-        if let Some(old) = replaced {
-            old.drain();
-        }
         self.live
             .set_internal_paths(&prepared.app, internal_paths(&ready.manifest));
         self.releases
@@ -244,6 +240,11 @@ impl AppRuntime for PhpRuntime {
             .unwrap()
             .insert(prepared.app.clone(), handler.clone());
         self.live.swap(&prepared.app, AppHandle::Php(handler));
+        // A reactivation of the live version (or a runtime switch) replaces its pool: the old one drains, only once
+        // new requests already go to the new one.
+        if let Some(old) = replaced {
+            old.drain();
+        }
     }
 
     fn retire(&self, app: &AppId, version: &Version) {
