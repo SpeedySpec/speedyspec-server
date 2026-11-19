@@ -14,7 +14,7 @@ use speedyspec_server_presentation::LiveApps;
 
 use crate::boot::server_manifest;
 use crate::config::{Config, UpdatePolicy};
-use crate::runtime::{PhpPlaceholderRuntime, StaticRuntime};
+use crate::runtime::StaticRuntime;
 
 /// How often expired static fallbacks are dropped.
 const SWEEP_INTERVAL: Duration = Duration::from_secs(60);
@@ -69,10 +69,7 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
                 config.static_fallback_grace,
             )) as Arc<dyn AppRuntime>,
         ),
-        (
-            AppKind::Php,
-            Arc::new(PhpPlaceholderRuntime::new(live)) as Arc<dyn AppRuntime>,
-        ),
+        (AppKind::Php, php_runtime(config, live)),
     ]
     .into_iter()
     .collect();
@@ -223,4 +220,33 @@ pub fn spawn_fallback_sweep(live: Arc<LiveApps>) {
             live.drop_expired_fallbacks(Instant::now());
         }
     });
+}
+
+/// PHP releases: worker pools with the `php` feature, the 503 placeholder without it.
+#[cfg(feature = "php")]
+fn php_runtime(
+    config: &Config,
+    live: Arc<speedyspec_server_presentation::LiveApps>,
+) -> Arc<dyn AppRuntime> {
+    let configs = config
+        .apps
+        .iter()
+        .filter_map(|(id, app)| app.php.clone().map(|php| (id.clone(), php)))
+        .collect();
+    let exe =
+        std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("speedyspec-server"));
+    Arc::new(crate::php::PhpRuntime::new(
+        live,
+        exe,
+        config.run_dir.clone(),
+        configs,
+    ))
+}
+
+#[cfg(not(feature = "php"))]
+fn php_runtime(
+    _config: &Config,
+    live: Arc<speedyspec_server_presentation::LiveApps>,
+) -> Arc<dyn AppRuntime> {
+    Arc::new(crate::runtime::PhpPlaceholderRuntime::new(live))
 }

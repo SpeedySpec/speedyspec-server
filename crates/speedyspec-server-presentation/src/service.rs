@@ -15,7 +15,7 @@ use speedyspec_server_domain::{
 };
 
 use crate::forwarded::{ForwardedHeaders, origin};
-use crate::handlers::{AppHandle, text};
+use crate::handlers::{AppHandle, PhpCall, PhpEndpoint, text};
 use crate::live::LiveApps;
 use crate::path::normalize;
 use speedyspec_server_static::encode_path;
@@ -60,20 +60,34 @@ impl Handler for Gate {
         res: &mut Response,
         ctrl: &mut FlowCtrl,
     ) {
-        let answer = self.answer(req).await;
-        write(res, answer);
+        match self.answer(req).await {
+            Answer::Done(answer) => write(res, answer),
+            Answer::Php(endpoint, call) => endpoint.serve(call, req, res).await,
+        }
         ctrl.skip_rest();
     }
 }
 
+/// What the gate decided.
+enum Answer {
+    Done(http::Response<Bytes>),
+    Php(Arc<dyn PhpEndpoint>, PhpCall),
+}
+
+impl From<http::Response<Bytes>> for Answer {
+    fn from(response: http::Response<Bytes>) -> Answer {
+        Answer::Done(response)
+    }
+}
+
 impl Gate {
-    async fn answer(&self, req: &Request) -> http::Response<Bytes> {
+    async fn answer(&self, req: &Request) -> Answer {
         let state = &self.state;
         let path = match normalize(req.uri().path()) {
             Ok(path) => path,
             Err(rejection) => {
                 tracing::debug!(path = req.uri().path(), reason = %rejection, "rejected request path");
-                return text(StatusCode::BAD_REQUEST, "bad request path");
+                return text(StatusCode::BAD_REQUEST, "bad request path").into();
             }
         };
 
@@ -124,12 +138,12 @@ impl Gate {
                     HeaderValue::from_str(&location)
                         .expect("percent-encoded path and a query from a valid URI"),
                 );
-                return response;
+                return response.into();
             }
         }
 
         let Some(mount) = state.mounts.resolve(&seen.host, &path) else {
-            return text(StatusCode::NOT_FOUND, "not found");
+            return text(StatusCode::NOT_FOUND, "not found").into();
         };
         if mount.access == Access::SignedIn {
             let request = AccessRequest {
@@ -142,15 +156,25 @@ impl Gate {
                 response
                     .headers_mut()
                     .insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
-                return response;
+                return response.into();
             }
         }
         let Some(handle) = state.handle(&mount.app) else {
-            return text(StatusCode::SERVICE_UNAVAILABLE, "service unavailable");
+            return text(StatusCode::SERVICE_UNAVAILABLE, "service unavailable").into();
         };
         let rel_path = &path[mount.path.len()..];
 
-        handle.respond(req.method(), &mount.path, rel_path, query, req.headers())
+        if let AppHandle::Php(endpoint) = &*handle {
+            let call = PhpCall {
+                mount_prefix: mount.path.clone(),
+                rel_path: rel_path.to_string(),
+                origin: seen,
+            };
+            return Answer::Php(endpoint.clone(), call);
+        }
+        handle
+            .respond(req.method(), &mount.path, rel_path, query, req.headers())
+            .into()
     }
 }
 

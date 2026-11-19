@@ -34,6 +34,13 @@ enum Command {
     /// Run one generation (started only by a keeper, with its channel on fd 3).
     #[command(hide = true)]
     Serve,
+    /// Serve one PHP release's FastCGI requests (started only by the server's PHP pool).
+    #[cfg(feature = "php")]
+    #[command(hide = true, name = "php-worker")]
+    PhpWorker {
+        #[arg(long)]
+        spec: String,
+    },
     /// List, check, install, switch, roll back and pin releases on the running server.
     Release {
         #[command(subcommand)]
@@ -181,6 +188,18 @@ fn main() -> ExitCode {
                 control_command(&config, ControlRequest::Unpin { app })
             }
         },
+        #[cfg(feature = "php")]
+        Command::PhpWorker { spec } => {
+            match serde_json::from_str::<speedyspec_server::php::WorkerSpec>(&spec) {
+                Ok(spec) => ExitCode::from(
+                    u8::try_from(speedyspec_server::php::run_worker(spec)).unwrap_or(1),
+                ),
+                Err(err) => {
+                    eprintln!("speedyspec-server php-worker: --spec is not valid: {err}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
         Command::Serve => match speedyspec_server::generation::run() {
             Ok(()) => ExitCode::SUCCESS,
             Err(message) => {

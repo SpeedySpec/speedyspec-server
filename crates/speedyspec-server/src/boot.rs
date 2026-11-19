@@ -35,6 +35,8 @@ pub enum BootError {
     Incompatible(Vec<Incompatibility>),
     #[error("app {app}: {message}")]
     Static { app: AppId, message: String },
+    #[error("app {app}: starting its PHP workers: {message}")]
+    Php { app: AppId, message: String },
     #[error("binding {address}: {error}")]
     Bind {
         address: String,
@@ -97,7 +99,7 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
     for (id, manifest) in &manifests {
         let handle = match manifest.kind {
             AppKind::Server => AppHandle::AdminApiPlaceholder,
-            AppKind::Php => AppHandle::PhpPlaceholder,
+            AppKind::Php => php_handle(config, id, manifest, &paths[id])?,
             AppKind::Static => {
                 let section = manifest
                     .static_
@@ -120,6 +122,48 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
         apps.insert(id.clone(), handle);
     }
     Ok(serve_state(config, apps))
+}
+
+/// A php app's handle in immutable mode: its release's worker pool, started now.
+#[cfg(feature = "php")]
+fn php_handle(
+    config: &Config,
+    id: &AppId,
+    manifest: &ReleaseManifest,
+    dir: &Path,
+) -> Result<AppHandle, BootError> {
+    let configs = config
+        .apps
+        .iter()
+        .filter_map(|(id, app)| app.php.clone().map(|php| (id.clone(), php)))
+        .collect();
+    let exe = std::env::current_exe().map_err(|err| BootError::Php {
+        app: id.clone(),
+        message: err.to_string(),
+    })?;
+    let runtime = crate::php::PhpRuntime::new(
+        Arc::new(LiveApps::new(HashMap::new())),
+        exe,
+        config.run_dir.clone(),
+        configs,
+    );
+    runtime
+        .start(id, manifest, dir)
+        .map_err(|message| BootError::Php {
+            app: id.clone(),
+            message,
+        })
+}
+
+/// Without the `php` feature, a php app answers 503.
+#[cfg(not(feature = "php"))]
+fn php_handle(
+    _config: &Config,
+    _id: &AppId,
+    _manifest: &ReleaseManifest,
+    _dir: &Path,
+) -> Result<AppHandle, BootError> {
+    Ok(AppHandle::PhpPlaceholder)
 }
 
 fn serve_state(config: &Config, apps: HashMap<AppId, AppHandle>) -> ServeState {
