@@ -84,7 +84,8 @@ if [ -n "${GITHUB_TOKEN:-}" ]; then
     token_flags=(--env GITHUB_TOKEN)
 fi
 
-exec docker run --rm ${tty_flag[@]+"${tty_flag[@]}"} \
+# --init: an init (tini) as PID 1 reaps orphans, as a host does; the keeper tests watch orphaned generations exit.
+exec docker run --rm --init ${tty_flag[@]+"${tty_flag[@]}"} \
     --platform "$platform" \
     --volume "$repo:/work" \
     --volume "$php_build_dir:/work/.php-build" \
