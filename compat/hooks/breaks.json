@@ -26,10 +26,6 @@
       "scenario": "wp_filters_read_and_write",
       "step": 7,
       "why": "Replacing $wp_filters wholesale (step 4): the Rust hook store keeps counting."
-    },
-    {
-      "scenario": "wp_current_filter_replace",
-      "why": "Replacing $wp_current_filter wholesale: the global becomes a plain PHP array, not the proxy over the Rust hook store."
     }
   ]
 }

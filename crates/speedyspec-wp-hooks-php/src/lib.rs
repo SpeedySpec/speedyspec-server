@@ -14,6 +14,7 @@
 //! (`compat/hooks/breaks.json`).
 
 mod callback;
+mod mirror;
 mod registry;
 mod stores;
 
@@ -26,8 +27,8 @@ use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_wp_hooks::{
-    AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray, ArrayKey, Callback,
-    Count, CurrentFilter, DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray,
+    AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray, ArrayKey, Count,
+    CurrentFilter, DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray,
     DoingFilter, Entry, HasFilter, HasFilterResult, HookApi, HookError, HookStore, Partition,
     PrioritySlice, RemoveAllFilters, RemoveFilter, WpHook, register_hook_handlers,
 };
@@ -37,6 +38,24 @@ pub use callback::{PhpCallable, php_callback, unique_id};
 pub use stores::{HOOK_STORE, HookStorage, PhpHookStorage, PhpHookStore, ResolvedHookStore};
 
 const FACADE: &str = include_str!("hooks.php");
+const TESTING: &str = r#"namespace SpeedySpec\WpHooks;
+
+/**
+ * Saves and restores the whole hook store, for test cases that back up their hooks.
+ */
+final class Testing
+{
+    public static function snapshot(): int
+    {
+        return Native\testing_snapshot();
+    }
+
+    public static function restore(int $snapshot): void
+    {
+        Native\testing_restore($snapshot);
+    }
+}
+"#;
 const NATIVE: &str = "SpeedySpec\\WpHooks\\Native\\";
 
 /// The handlers PHP's functions call, each resolved once.
@@ -76,6 +95,7 @@ fn state() -> Result<Rc<State>, NativeError> {
 /// The native area of WordPress's Hook API.
 pub struct WpHooksArea {
     state: Rc<State>,
+    testing: bool,
 }
 
 impl WpHooksArea {
@@ -109,7 +129,17 @@ impl WpHooksArea {
             handlers,
         });
         STATE.with(|s| *s.borrow_mut() = Some(state.clone()));
-        WpHooksArea { state }
+        WpHooksArea {
+            state,
+            testing: false,
+        }
+    }
+
+    /// Adds `SpeedySpec\WpHooks\Testing::snapshot()` and `restore()`, which save and restore the whole hook store
+    /// (WordPress's test case backs up its hooks around each test). For test runs only.
+    pub fn with_testing(mut self) -> WpHooksArea {
+        self.testing = true;
+        self
     }
 
     /// The Hook API (`plugin.php`) for Rust callers.
@@ -121,7 +151,7 @@ impl WpHooksArea {
 impl NativeArea for WpHooksArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
         type Native = fn(&[Value]) -> Result<Value, NativeError>;
-        let entries: Vec<(&str, Native)> = vec![
+        let mut entries: Vec<(&str, Native)> = vec![
             ("add_filter", n_add_filter),
             ("apply_filters", n_apply_filters),
             ("apply_filters_ref_array", n_apply_filters_ref_array),
@@ -139,6 +169,7 @@ impl NativeArea for WpHooksArea {
             ("call_all_hook", n_call_all_hook),
             ("unique_id", n_unique_id),
             ("hook_new", n_hook_new),
+            ("hook_clone", n_hook_clone),
             ("hook_add_filter", n_hook_add_filter),
             ("hook_remove_filter", n_hook_remove_filter),
             ("hook_has_filter", n_hook_has_filter),
@@ -162,26 +193,53 @@ impl NativeArea for WpHooksArea {
             ("global_all", n_global_all),
             ("global_count", n_global_count),
         ];
+        if self.testing {
+            entries.push(("testing_snapshot", n_testing_snapshot));
+            entries.push(("testing_restore", n_testing_restore));
+        }
         entries
             .into_iter()
-            .map(|(name, f)| native::function(&format!("{NATIVE}{name}"), f))
+            .map(|(name, f)| {
+                native::function(&format!("{NATIVE}{name}"), move |args: &[Value]| {
+                    // PHP may have changed $wp_current_filter; it sees the store's stack again on return.
+                    let store = state().map(|s| s.api.store().clone());
+                    if let Ok(store) = &store {
+                        mirror::sync_in(store.as_ref());
+                    }
+                    let result = f(args);
+                    if let Ok(store) = &store {
+                        mirror::sync_out(store.as_ref());
+                    }
+                    result
+                })
+            })
             .collect()
     }
 
     fn request_start(&self) {
         self.state.memory.start_request();
-        let installed = speedyspec_php::eval("speedyspec://wp-hooks", FACADE).and_then(|_| {
-            speedyspec_php::call(
-                &Value::Str("SpeedySpec\\WpHooks\\install_globals".into()),
-                &[],
-            )
-        });
+        let installed = speedyspec_php::eval("speedyspec://wp-hooks", FACADE)
+            .and_then(|_| {
+                if self.testing {
+                    speedyspec_php::eval("speedyspec://wp-hooks-testing", TESTING)
+                } else {
+                    Ok(Value::Null)
+                }
+            })
+            .and_then(|_| {
+                speedyspec_php::call(
+                    &Value::Str("SpeedySpec\\WpHooks\\install_globals".into()),
+                    &[],
+                )
+            });
+        mirror::start();
         if let Err(err) = installed {
             eprintln!("speedyspec_wordpress: installing the Hook API failed: {err}");
         }
     }
 
     fn request_end(&self) {
+        mirror::end();
         registry::clear();
         self.state.memory.end_request();
     }
@@ -473,6 +531,16 @@ fn n_hook_new(args: &[Value]) -> Result<Value, NativeError> {
     Ok(Value::Int(registry::register_new(arg(args, 0)) as i64))
 }
 
+fn n_hook_clone(args: &[Value]) -> Result<Value, NativeError> {
+    let original = match arg(args, 1) {
+        Value::Int(n) => n as usize,
+        _ => return Err(NativeError::throw("Error", "not a WP_Hook")),
+    };
+    registry::register_clone(arg(args, 0), original)
+        .map(|id| Value::Int(id as i64))
+        .ok_or_else(|| NativeError::throw("Error", "this WP_Hook belongs to an earlier request"))
+}
+
 fn n_hook_add_filter(args: &[Value]) -> Result<Value, NativeError> {
     let hook = hook_arg(args)?;
     let accepted_args = match arg(args, 4) {
@@ -574,7 +642,12 @@ fn callbacks_value(hook: &WpHook) -> Value {
 }
 
 /// A priority's callbacks from PHP (`offsetSet()` or a write to `callbacks`).
-fn slice_from(value: &Value) -> Result<PrioritySlice, NativeError> {
+/// A priority's callbacks from PHP (`offsetSet()` or a write to `callbacks`). An entry whose function is the one
+/// `existing` already holds under the same id keeps its callback (a Rust callback stays Rust).
+fn slice_from(
+    value: &Value,
+    existing: Option<&PrioritySlice>,
+) -> Result<PrioritySlice, NativeError> {
     let Value::Array(entries) = value else {
         return Err(NativeError::throw(
             "TypeError",
@@ -604,15 +677,21 @@ fn slice_from(value: &Value) -> Result<PrioritySlice, NativeError> {
             Key::Int(n) => ArrayKey::Int(*n),
             Key::Str(s) => ArrayKey::Str(s.clone()),
         };
-        let callback: Callback = php_callback(function);
-        slice.insert(
-            id,
-            Entry {
-                callback,
+        let kept = existing
+            .and_then(|slice| slice.get(&id))
+            .filter(|entry| entry.callback.value() == function);
+        let entry = match kept {
+            Some(entry) => Entry {
+                accepted_args,
+                ..entry.clone()
+            },
+            None => Entry {
+                callback: php_callback(function),
                 accepted_args,
                 partition: partition(),
             },
-        );
+        };
+        slice.insert(id, entry);
     }
     Ok(slice)
 }
@@ -623,8 +702,8 @@ fn n_hook_callbacks(args: &[Value]) -> Result<Value, NativeError> {
 
 fn n_hook_replace_callbacks(args: &[Value]) -> Result<Value, NativeError> {
     let hook = hook_arg(args)?;
-    let priorities: Vec<ArrayKey> = hook.state().callbacks.keys().cloned().collect();
-    for priority in &priorities {
+    let previous = hook.state().callbacks.clone();
+    for priority in previous.keys() {
         hook.unset_priority(priority);
     }
     if let Value::Array(entries) = arg(args, 1) {
@@ -633,7 +712,8 @@ fn n_hook_replace_callbacks(args: &[Value]) -> Result<Value, NativeError> {
                 Key::Int(n) => ArrayKey::Int(n),
                 Key::Str(s) => ArrayKey::Str(s),
             };
-            hook.set_priority(Some(priority), slice_from(&slice)?);
+            let slice = slice_from(&slice, previous.get(&priority))?;
+            hook.set_priority(Some(priority), slice);
         }
     }
     Ok(Value::Null)
@@ -672,7 +752,11 @@ fn n_hook_offset_set(args: &[Value]) -> Result<Value, NativeError> {
         Value::Null => None,
         offset => Some(key(&offset)?),
     };
-    hook.set_priority(offset, slice_from(&arg(args, 2))?);
+    let existing = offset
+        .as_ref()
+        .and_then(|p| hook.state().callbacks.get(p).cloned());
+    let slice = slice_from(&arg(args, 2), existing.as_ref())?;
+    hook.set_priority(offset, slice);
     Ok(Value::Null)
 }
 
@@ -698,6 +782,11 @@ fn global(args: &[Value]) -> Result<Global, NativeError> {
         Some(Value::Str(kind)) if kind == "current" => Ok(Global::Current),
         _ => Err(NativeError::throw("Error", "unknown hook global")),
     }
+}
+
+/// The hook store, for a PHP callback's mirror of `$wp_current_filter`.
+fn store_for_callbacks() -> Option<Rc<dyn HookStore>> {
+    state().ok().map(|s| s.api.store().clone())
 }
 
 fn store() -> Result<Rc<dyn HookStore>, NativeError> {
@@ -856,4 +945,78 @@ fn n_global_count(args: &[Value]) -> Result<Value, NativeError> {
         Global::Current => store.current_stack().len(),
     };
     Ok(Value::Int(count as i64))
+}
+
+// ----- testing
+
+/// A saved hook store.
+struct Snapshot {
+    hooks: Vec<(ArrayKey, WpHook)>,
+    actions: Vec<(ArrayKey, i64)>,
+    filters: Vec<(ArrayKey, i64)>,
+    current: Vec<Value>,
+}
+
+thread_local! {
+    static SNAPSHOTS: std::cell::RefCell<Vec<Snapshot>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+fn n_testing_snapshot(_args: &[Value]) -> Result<Value, NativeError> {
+    let store = store()?;
+    let snapshot = Snapshot {
+        hooks: store
+            .hooks()
+            .into_iter()
+            .map(|(name, hook)| (name, hook.duplicate()))
+            .collect(),
+        actions: store.counts(Count::Actions),
+        filters: store.counts(Count::Filters),
+        current: store.current_stack(),
+    };
+    let id = SNAPSHOTS.with(|s| {
+        let mut s = s.borrow_mut();
+        s.push(snapshot);
+        s.len() - 1
+    });
+    Ok(Value::Int(id as i64))
+}
+
+fn n_testing_restore(args: &[Value]) -> Result<Value, NativeError> {
+    let store = store()?;
+    let id = match arg(args, 0) {
+        Value::Int(n) => n as usize,
+        _ => return Err(NativeError::throw("Error", "not a snapshot")),
+    };
+    let restored = SNAPSHOTS.with(|s| {
+        s.borrow().get(id).map(|snapshot| {
+            let hooks: Vec<(ArrayKey, WpHook)> = snapshot
+                .hooks
+                .iter()
+                .map(|(name, hook)| (name.clone(), hook.duplicate()))
+                .collect();
+            (
+                hooks,
+                snapshot.actions.clone(),
+                snapshot.filters.clone(),
+                snapshot.current.clone(),
+            )
+        })
+    });
+    let Some((hooks, actions, filters, current)) = restored else {
+        return Err(NativeError::throw("Error", "no such snapshot"));
+    };
+    store.clear();
+    for (name, hook) in hooks {
+        store.insert(name, hook);
+    }
+    for (kind, saved) in [(Count::Actions, actions), (Count::Filters, filters)] {
+        for (name, _) in store.counts(kind) {
+            store.set_count(kind, &name, None);
+        }
+        for (name, n) in saved {
+            store.set_count(kind, &name, Some(n));
+        }
+    }
+    store.set_current_stack(current);
+    Ok(Value::Null)
 }

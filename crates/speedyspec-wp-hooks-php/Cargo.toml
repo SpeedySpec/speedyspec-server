@@ -16,8 +16,11 @@ speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
 
 [dev-dependencies]
+serde_json = "1"
+sha2 = "0.10"
 speedyspec-container-php = { path = "../speedyspec-container-php" }
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+ureq = "3"
 
 [[test]]
 name = "php"
@@ -25,4 +28,8 @@ harness = false
 
 [[test]]
 name = "php_store"
+harness = false
+
+[[test]]
+name = "wordpress"
 harness = false

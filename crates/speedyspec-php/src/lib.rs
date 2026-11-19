@@ -17,7 +17,8 @@ pub use area::NativeArea;
 /// ext-php-rs, for areas building their functions and classes.
 pub use ext_php_rs;
 pub use runtime::{
-    BootOptions, CallFailure, Output, Php, PhpError, call, call_catching, eval, object_id,
+    BootOptions, CallFailure, Output, Php, PhpError, call, call_catching, eval, global, object_id,
+    set_global,
 };
 
 /// The PHP version linked into this binary, from the repository's

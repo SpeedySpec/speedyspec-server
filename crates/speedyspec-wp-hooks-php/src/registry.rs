@@ -34,6 +34,22 @@ pub fn register_new(object: Value) -> usize {
     })
 }
 
+/// Registers a PHP object made by `clone`, with a duplicate of `original`'s Rust hook.
+pub fn register_clone(object: Value, original: usize) -> Option<usize> {
+    let hook = hook(original)?.duplicate();
+    Some(TABLE.with(|t| {
+        let mut t = t.borrow_mut();
+        let id = t.hooks.len();
+        t.by_hook.insert(hook.addr(), id);
+        t.hooks.push(hook);
+        if let Some(object_id) = speedyspec_php::object_id(&object) {
+            t.by_object.insert(object_id, id);
+        }
+        t.objects.insert(id, object);
+        id
+    }))
+}
+
 pub fn hook(id: usize) -> Option<WpHook> {
     TABLE.with(|t| t.borrow().hooks.get(id).cloned())
 }

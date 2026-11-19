@@ -198,6 +198,16 @@ impl WpHook {
         WpHook::default()
     }
 
+    /// A new hook with the same callbacks and nothing running (`clone $hook`).
+    pub fn duplicate(&self) -> WpHook {
+        let state = self.0.borrow();
+        WpHook(Rc::new(RefCell::new(HookState {
+            callbacks: state.callbacks.clone(),
+            priorities: state.priorities.clone(),
+            ..HookState::default()
+        })))
+    }
+
     /// The hook's identity (the same for every handle to it).
     pub fn addr(&self) -> usize {
         Rc::as_ptr(&self.0) as *const () as usize

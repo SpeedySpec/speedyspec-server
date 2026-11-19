@@ -63,6 +63,11 @@ const CASES: &[(&str, Case)] = &[
     ("exit_in_require_is_caught", case_exit_in_require_is_caught),
     ("exit_in_run_file", case_exit_in_run_file),
     ("run_file_argv", case_run_file_argv),
+    ("run_file_script_name", case_run_file_script_name),
+    (
+        "globals_read_and_written_from_rust",
+        case_globals_read_and_written_from_rust,
+    ),
     ("fiber_fires_hook", case_fiber_fires_hook),
     ("fiber_without_hooks", case_fiber_without_hooks),
     (
@@ -455,6 +460,54 @@ fn case_run_file_argv(ctx: &Ctx) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// `$_SERVER['SCRIPT_NAME']`, `SCRIPT_FILENAME` and `PHP_SELF` name the script, as the PHP CLI sets them (a phar's
+/// stub runs only when it finds itself there).
+fn case_run_file_script_name(ctx: &Ctx) -> Result<(), String> {
+    let path = fixture("script_name.php");
+    let (out, result) = capture(1, || ctx.php.run_file(&path, &[]));
+    match result {
+        Ok(0) => {}
+        other => return Err(format!("expected Ok(0), got {other:?}")),
+    }
+    eq(&out?, "self|same|same")
+}
+
+/// `global()` and `set_global()` read and write `$GLOBALS`, through references, for the code that runs next.
+fn case_globals_read_and_written_from_rust(ctx: &Ctx) -> Result<(), String> {
+    if speedyspec_php::global("speedyspec_no_such_global").is_some() {
+        return Err("a missing global reads as None".into());
+    }
+    ctx.php
+        .eval("t", "$GLOBALS['speedyspec_g'] = ['a', 2];")
+        .map_err(|e| e.to_string())?;
+    let read = speedyspec_php::global("speedyspec_g");
+    let expected = Value::Array(vec![
+        (Key::Int(0), Value::Str("a".into())),
+        (Key::Int(1), Value::Int(2)),
+    ]);
+    if read.as_ref() != Some(&expected) {
+        return Err(format!("read {read:?}"));
+    }
+    speedyspec_php::set_global("speedyspec_g", &Value::Str("replaced".into()))
+        .map_err(|e| e.to_string())?;
+    speedyspec_php::set_global("speedyspec_new", &Value::Int(7)).map_err(|e| e.to_string())?;
+    let seen = ctx
+        .php
+        .eval("t", "$r = &$GLOBALS['speedyspec_g']; return [$GLOBALS['speedyspec_g'], $GLOBALS['speedyspec_new']];")
+        .map_err(|e| e.to_string())?;
+    let expected = Value::Array(vec![
+        (Key::Int(0), Value::Str("replaced".into())),
+        (Key::Int(1), Value::Int(7)),
+    ]);
+    if seen != expected {
+        return Err(format!("PHP saw {seen:?}"));
+    }
+    // Through a reference: the referenced variable changes too.
+    speedyspec_php::set_global("speedyspec_g", &Value::Int(3)).map_err(|e| e.to_string())?;
+    let via_ref = ctx.php.eval("t", "return $r;").map_err(|e| e.to_string())?;
+    eq(&format!("{via_ref:?}"), "Int(3)")
 }
 
 fn case_fatal_is_caught(ctx: &Ctx) -> Result<(), String> {

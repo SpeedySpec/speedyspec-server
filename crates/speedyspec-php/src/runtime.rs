@@ -336,6 +336,7 @@ impl Php {
 
     /// Runs a PHP file the way `php <path> <argv...>` would and returns its
     /// exit status: 0 when it ends normally, `n` when it calls `exit(n)`.
+    /// `$_SERVER['SCRIPT_NAME']`, `SCRIPT_FILENAME` and `PHP_SELF` are the path.
     /// `$argv` (and `$_SERVER['argv']`) is `[path, ...argv]` and `$argc` its
     /// length. An uncaught exception or fatal error is an `Err`.
     pub fn run_file(&self, path: &Path, argv: &[String]) -> Result<i32, PhpError> {
@@ -355,6 +356,12 @@ impl Php {
             "]; $GLOBALS['argc'] = \\count($GLOBALS['argv']); \
              $_SERVER['argv'] = $GLOBALS['argv']; $_SERVER['argc'] = $GLOBALS['argc'];",
         );
+        // As the PHP CLI sets them: a phar's stub runs only when it finds itself here.
+        let quoted = php_quote(script);
+        code.push_str(&format!(
+            " $_SERVER['SCRIPT_NAME'] = {quoted}; $_SERVER['SCRIPT_FILENAME'] = {quoted}; \
+             $_SERVER['PHP_SELF'] = {quoted};"
+        ));
         self.eval("speedyspec://argv", &code)?;
 
         // SAFETY: plain write to the executor globals on the engine's thread.
@@ -449,6 +456,81 @@ pub fn call_catching(callable: &Value, args: &[Value]) -> Result<Value, CallFail
         },
         other => plain(other.into_php_error()),
     })
+}
+
+/// `$GLOBALS[$name]`, through references; `None` when it is not set or no request is open. Runs no PHP code.
+pub fn global(name: &str) -> Option<Value> {
+    if !crate::boundary::alive() {
+        return None;
+    }
+    // SAFETY: a request is open, so the symbol table is live; `to_value` neither runs PHP code nor allocates PHP
+    // memory.
+    unsafe {
+        let table = &raw mut (*ext_php_rs_executor_globals()).symbol_table;
+        let slot = ext_php_rs::ffi::zend_hash_str_find(table, name.as_ptr().cast(), name.len());
+        if slot.is_null() {
+            return None;
+        }
+        let value = convert::deref(slot);
+        if u32::from(convert::type_of(value)) == ext_php_rs::ffi::IS_UNDEF {
+            return None;
+        }
+        convert::to_value(value).ok()
+    }
+}
+
+/// `$GLOBALS[$name] = $value`: a variable referencing the global sees the new value too.
+pub fn set_global(name: &str, value: &Value) -> Result<(), PhpError> {
+    if !crate::boundary::alive() {
+        return Err(PhpError::Boot("no PHP request is open".to_owned()));
+    }
+    let mut fresh = ManuallyDrop::new(Zval::new());
+    let fresh_ptr: *mut zval = &raw mut *fresh;
+    let written = guard(|| {
+        // SAFETY: `fresh` is zval storage owned by this frame.
+        unsafe { convert::write_value(fresh_ptr, value) }
+    });
+    match written {
+        Ok(Ok(())) => {}
+        Ok(Err(why)) => {
+            release_later(fresh);
+            return Err(PhpError::Conversion(why.to_string()));
+        }
+        Err(interrupted) => return Err(fatal_error(interrupted)),
+    }
+    let name_ptr = name.as_ptr();
+    let name_len = name.len();
+    let replaced = guard(|| {
+        // SAFETY: a request is open; the slot found is live; the new value's ownership moves into the table or
+        // the slot, and the old value is handed back to be released.
+        unsafe {
+            let table = &raw mut (*ext_php_rs_executor_globals()).symbol_table;
+            let slot = ext_php_rs::ffi::zend_hash_str_find(table, name_ptr.cast(), name_len);
+            if slot.is_null() {
+                ext_php_rs::ffi::zend_hash_str_update(table, name_ptr.cast(), name_len, fresh_ptr);
+                return None;
+            }
+            let mut target = slot;
+            if u32::from(convert::type_of(target)) == ext_php_rs::ffi::IS_INDIRECT {
+                target = (*target).value.zv;
+            }
+            if u32::from(convert::type_of(target)) == ext_php_rs::ffi::IS_REFERENCE {
+                target = &raw mut (*(*target).value.ref_).val;
+            }
+            let old: Zval = ptr::read(target);
+            ptr::copy_nonoverlapping(fresh_ptr, target, 1);
+            Some(old)
+        }
+    });
+    match replaced {
+        Ok(Some(old)) => {
+            release_later(ManuallyDrop::new(old));
+            settle_stray();
+            Ok(())
+        }
+        Ok(None) => Ok(()),
+        Err(interrupted) => Err(fatal_error(interrupted)),
+    }
 }
 
 /// `spl_object_id($value)` for a PHP object held as a `Value::Opaque`.

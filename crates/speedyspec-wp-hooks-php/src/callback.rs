@@ -17,6 +17,11 @@ pub struct PhpCallable(pub Value);
 
 impl HookCallback for PhpCallable {
     fn call(&self, args: &[Value]) -> Result<Value, HookError> {
+        // The callback sees the store's $wp_current_filter, and its changes come back.
+        let store = crate::store_for_callbacks();
+        if let Some(store) = &store {
+            crate::mirror::sync_out(store.as_ref());
+        }
         let called = if args.is_empty() {
             speedyspec_php::call_catching(
                 &Value::Str("call_user_func".into()),
@@ -33,6 +38,9 @@ impl HookCallback for PhpCallable {
                 &[self.0.clone(), Value::Array(list)],
             )
         };
+        if let Some(store) = &store {
+            crate::mirror::sync_in(store.as_ref());
+        }
         called.map_err(hook_error)
     }
 }
