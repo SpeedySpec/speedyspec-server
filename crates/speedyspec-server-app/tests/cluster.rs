@@ -67,6 +67,15 @@ impl Pods {
     }
 
     fn pod(&self, name: &str) -> (Arc<ReleaseManager>, Arc<RecordingRuntime>) {
+        self.pod_with(name, |manager| manager)
+    }
+
+    /// As `pod`, with the manager built further (a migrator).
+    fn pod_with(
+        &self,
+        name: &str,
+        build: impl FnOnce(ReleaseManager) -> ReleaseManager,
+    ) -> (Arc<ReleaseManager>, Arc<RecordingRuntime>) {
         let runtime = Arc::new(RecordingRuntime::new());
         let cluster = Cluster::new(
             name,
@@ -78,7 +87,9 @@ impl Pods {
         let now = self.now.clone();
         let cluster = cluster.with_clock(Arc::new(move || *now.lock().unwrap()));
         (
-            Arc::new(self.world.manager_in(Arc::new(cluster), runtime.clone())),
+            Arc::new(build(
+                self.world.manager_in(Arc::new(cluster), runtime.clone()),
+            )),
             runtime,
         )
     }
@@ -859,4 +870,192 @@ fn pod_booting_on_cluster_confirmed_version_is_confirmed() {
         .unwrap();
     assert_eq!(report.server.confirmed, Some(v("4.0.0")));
     assert_eq!(report.server.trial, None);
+}
+
+#[test]
+fn operator_maintenance_reaches_every_member() {
+    let pods = Pods::new();
+    let (a, _) = pods.pod("a");
+    let (b, _) = pods.pod("b");
+    pods.election.elect("a");
+    assert!(matches!(
+        b.set_maintenance(&[id("blog")], true).unwrap_err(),
+        ReleaseError::NotLeader { leader: Some(ref l) } if l == "a"
+    ));
+    a.set_maintenance(&[id("blog")], true).unwrap();
+    b.follow().unwrap();
+    assert!(
+        b.status().maintenance[&id("blog")].operator,
+        "the follower sees the leader's maintenance"
+    );
+    a.set_maintenance(&[id("blog")], false).unwrap();
+    b.follow().unwrap();
+    assert!(!b.status().maintenance.contains_key(&id("blog")));
+}
+
+/// Counts migrations across every pod, and fails them while `fail` is set.
+#[derive(Default)]
+struct Counting {
+    calls: std::sync::atomic::AtomicUsize,
+    fail: std::sync::atomic::AtomicBool,
+}
+
+impl speedyspec_server_app::Migrator for Counting {
+    fn migrate(
+        &self,
+        _: &speedyspec_server_domain::Prepared,
+        _: &str,
+        _: Duration,
+    ) -> Result<(), String> {
+        self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if self.fail.load(std::sync::atomic::Ordering::SeqCst) {
+            Err("500: boom".into())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+/// Three pods with blog 1.0.0 active, 3.0.0 (which migrates) kept, every pod with the same counting migrator.
+fn three_migrating() -> (
+    Pods,
+    Vec<(Arc<ReleaseManager>, Arc<RecordingRuntime>)>,
+    Arc<Counting>,
+) {
+    let mut world = World::new();
+    world.app("blog", AppKind::Php, 3);
+    world.publish("blog", "1.0.0", "");
+    world.publish_manifest(
+        "blog",
+        "3.0.0",
+        r#"{"app":"blog","version":"3.0.0","kind":"php","php":{"switch":{"maintenance":"self","migrate":"/migrate.php"}}}"#,
+    );
+    let pods = Pods::from(world);
+    let counting = Arc::new(Counting::default());
+    let all: Vec<_> = ["a", "b", "c"]
+        .iter()
+        .map(|p| {
+            let counting = counting.clone();
+            pods.pod_with(p, move |m| m.with_migrator(counting))
+        })
+        .collect();
+    pods.election.elect("a");
+    all[0].0.install(&id("blog"), Some(v("1.0.0"))).unwrap();
+    all[0].0.install(&id("blog"), Some(v("3.0.0"))).unwrap();
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    let switching = run_switch(&all[0].0, "1.0.0");
+    staged(&pods);
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    finish(switching).unwrap();
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    (pods, all, counting)
+}
+
+#[test]
+fn only_the_leader_migrates_once() {
+    let (pods, all, counting) = three_migrating();
+    let switching = run_switch(&all[0].0, "3.0.0");
+    staged(&pods);
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    finish(switching).unwrap();
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    assert_eq!(
+        counting.calls.load(std::sync::atomic::Ordering::SeqCst),
+        1,
+        "one migration for the cluster"
+    );
+    for (_, runtime) in &all {
+        assert_eq!(runtime.active("blog"), Some(v("3.0.0")));
+    }
+    assert!(!pods.world.saved().maintenance.contains_key(&id("blog")));
+}
+
+#[test]
+fn failed_cluster_migration_leaves_everyone_on_the_old_release() {
+    let (pods, all, counting) = three_migrating();
+    counting
+        .fail
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    let switching = run_switch(&all[0].0, "3.0.0");
+    staged(&pods);
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    let err = finish(switching).unwrap_err();
+    assert!(matches!(err, ReleaseError::Migration { .. }), "{err}");
+    for (manager, _) in &all[1..] {
+        manager.follow().unwrap();
+    }
+    for (_, runtime) in &all {
+        assert_eq!(runtime.active("blog"), Some(v("1.0.0")));
+    }
+    let saved = pods.world.saved();
+    assert_eq!(saved.staged, None);
+    assert!(
+        saved.maintenance[&id("blog")].migration_failed.is_some(),
+        "every replica keeps maintenance on"
+    );
+}
+
+#[test]
+fn one_members_unhealthy_report_rolls_every_member_back() {
+    let mut world = World::new();
+    world.app("rt", AppKind::Runtime, 3);
+    world.app("blog", AppKind::Php, 3);
+    for version in ["1.0.0", "1.1.0"] {
+        world.publish_binary(
+            "rt",
+            version,
+            &format!(r#"{{"app":"rt","version":"{version}","kind":"runtime","contracts":[1]}}"#),
+            support::TARGET,
+        );
+    }
+    let pods = Pods::from(world);
+    let build = |m: ReleaseManager| m.with_php_runtimes([(id("blog"), id("rt"))].into());
+    let all: Vec<_> = ["a", "b"].iter().map(|p| pods.pod_with(p, build)).collect();
+    pods.election.elect("a");
+    for version in ["1.0.0", "1.1.0"] {
+        all[0].0.install(&id("rt"), Some(v(version))).unwrap();
+    }
+    // b reports in, so the leader waits for it to prepare each set.
+    all[1].0.follow().unwrap();
+    for target in ["1.0.0", "1.1.0"] {
+        let leader = all[0].0.clone();
+        let switching = std::thread::spawn(move || leader.switch(&[(id("rt"), v(target))]));
+        staged(&pods);
+        all[1].0.follow().unwrap();
+        switching.join().unwrap().unwrap();
+        all[1].0.follow().unwrap();
+    }
+    assert!(pods.world.saved().runtime_trials.contains_key(&id("rt")));
+    // b's blog turns unhealthy: it says so in its member report, and the leader rolls the runtime back.
+    all[1].0.set_unhealthy(vec![id("blog")]);
+    let leader = all[0].0.clone();
+    let checking = std::thread::spawn(move || leader.check_member_health());
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while pods.world.saved().staged.is_none() && !checking.is_finished() {
+        assert!(Instant::now() < deadline, "no rollback was staged");
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    all[1].0.follow().unwrap();
+    checking.join().unwrap().unwrap();
+    all[1].0.follow().unwrap();
+    for (_, runtime) in &all {
+        assert_eq!(runtime.active("rt"), Some(v("1.0.0")));
+    }
+    assert!(
+        pods.world.saved().apps[&id("rt")]
+            .failed
+            .contains_key(&v("1.1.0"))
+    );
 }

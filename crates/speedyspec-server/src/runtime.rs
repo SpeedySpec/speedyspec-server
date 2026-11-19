@@ -33,20 +33,22 @@ impl AppRuntime for StaticRuntime {
             .static_
             .as_ref()
             .ok_or("the release has no static section")?;
+        let rules = speedyspec_server_gate::AccessRules::compile(&section.access)?;
         let set = StaticSet::build(dir, section, self.limit).map_err(|err| err.to_string())?;
         tracing::info!(event = "static_loaded", app = %app, version = %manifest.version, bytes = set.total_bytes());
         Ok(Prepared {
             app: app.clone(),
             version: manifest.version.clone(),
-            payload: Box::new(set),
+            payload: Box::new((set, rules)),
         })
     }
 
     fn activate(&self, prepared: Prepared) {
-        let set = *prepared
+        let (set, rules) = *prepared
             .payload
-            .downcast::<StaticSet>()
+            .downcast::<(StaticSet, speedyspec_server_gate::AccessRules)>()
             .expect("prepared by StaticRuntime");
+        self.live.set_rules(&prepared.app, rules);
         let fallback = match self.live.get(&prepared.app).as_deref() {
             Some(AppHandle::Static(old)) => Some(Fallback {
                 set: Arc::new(old.current.immutable_only()),
@@ -61,40 +63,6 @@ impl AppRuntime for StaticRuntime {
                 fallback,
             }),
         );
-    }
-}
-
-/// PHP releases until the worker pool exists: prepare checks the release is on disk; activate puts the placeholder
-/// (503) in place.
-pub struct PhpPlaceholderRuntime {
-    live: Arc<LiveApps>,
-}
-
-impl PhpPlaceholderRuntime {
-    pub fn new(live: Arc<LiveApps>) -> PhpPlaceholderRuntime {
-        PhpPlaceholderRuntime { live }
-    }
-}
-
-impl AppRuntime for PhpPlaceholderRuntime {
-    fn prepare(
-        &self,
-        app: &AppId,
-        manifest: &ReleaseManifest,
-        dir: &Path,
-    ) -> Result<Prepared, String> {
-        if !dir.is_dir() {
-            return Err(format!("{} is not a directory", dir.display()));
-        }
-        Ok(Prepared {
-            app: app.clone(),
-            version: manifest.version.clone(),
-            payload: Box::new(()),
-        })
-    }
-
-    fn activate(&self, prepared: Prepared) {
-        self.live.swap(&prepared.app, AppHandle::PhpPlaceholder);
     }
 }
 
@@ -121,6 +89,8 @@ mod tests {
             requires: Default::default(),
             static_: Some(StaticSection {
                 root: "dist".to_string(),
+                maintenance_page: None,
+                access: Vec::new(),
                 not_found: None,
                 cache: vec![speedyspec_server_domain::CacheRule {
                     pattern: "_astro/**".to_string(),
@@ -129,6 +99,7 @@ mod tests {
             }),
             php: None,
             protocol: None,
+            contracts: Vec::new(),
         }
     }
 
@@ -199,26 +170,5 @@ mod tests {
         );
         let err = runtime.prepare(&app, &manifest, dir.path()).err().unwrap();
         assert!(err.contains("limit"), "{err}");
-    }
-
-    #[test]
-    fn php_placeholder_runtime_checks_dir_and_swaps_placeholder() {
-        let app = AppId::parse("blog").unwrap();
-        let live = live(&app);
-        let runtime = PhpPlaceholderRuntime::new(live.clone());
-        let mut manifest = release(Path::new("/nonexistent"), "1.0.0", &[]);
-        manifest.kind = AppKind::Php;
-        manifest.static_ = None;
-        assert!(
-            runtime
-                .prepare(&app, &manifest, Path::new("/nonexistent/x"))
-                .is_err()
-        );
-        let dir = tempfile::tempdir().unwrap();
-        runtime.activate(runtime.prepare(&app, &manifest, dir.path()).unwrap());
-        assert!(matches!(
-            *live.get(&app).unwrap(),
-            AppHandle::PhpPlaceholder
-        ));
     }
 }

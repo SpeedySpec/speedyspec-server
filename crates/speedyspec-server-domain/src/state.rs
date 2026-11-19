@@ -25,6 +25,38 @@ pub struct ReleaseState {
     pub staged: Option<StagedSet>,
     /// A server upgrade rolling across the pods.
     pub rollout: Option<Rollout>,
+    /// Apps held in maintenance by an operator or a failed migration.
+    pub maintenance: BTreeMap<AppId, MaintenanceRecord>,
+    /// Runtime apps whose new release is on trial: rolled back on their own if a php app on them turns unhealthy.
+    pub runtime_trials: BTreeMap<AppId, RuntimeTrial>,
+}
+
+/// A runtime release on trial, the release it replaced, and when the trial ends (milliseconds since the Unix epoch).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuntimeTrial {
+    pub version: Version,
+    pub previous: Version,
+    pub until_ms: u64,
+}
+
+/// Why an app is held in maintenance, as recorded in the state file.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MaintenanceRecord {
+    /// An operator's `maintenance on`.
+    pub operator: bool,
+    /// A migration that failed, and why: maintenance stays on until it is retried or cleared.
+    pub migration_failed: Option<String>,
+    /// The release whose migration failed (what `release retry-migration` switches to).
+    pub migration_version: Option<semver::Version>,
+    /// A migration is running (the leader records it so every replica shows the maintenance page).
+    pub migrating: bool,
+}
+
+impl MaintenanceRecord {
+    pub fn is_empty(&self) -> bool {
+        !self.operator && self.migration_failed.is_none() && !self.migrating
+    }
 }
 
 /// Releases staged for every pod to prepare (the first step of a cluster switch).

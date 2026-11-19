@@ -16,7 +16,8 @@ pub struct ReleaseHost {
     stopped: Arc<AtomicBool>,
     key: minisign::KeyPair,
     published: Mutex<Vec<(String, String, String)>>,
-    servers: Mutex<Vec<(String, String)>>,
+    /// (app, version, sha256) of every published binary release.
+    servers: Mutex<Vec<(String, String, String)>>,
 }
 
 impl ReleaseHost {
@@ -131,40 +132,50 @@ impl ReleaseHost {
 
     /// Publishes `binary` as server release `version` for `target` (another platform's binary, for a container).
     pub fn publish_server_for(&self, version: &str, binary: &std::path::Path, target: &str) {
-        let bytes = std::fs::read(binary).unwrap();
-        let sha: String = Sha256::digest(&bytes)
+        self.publish_binary_for("server", version, &std::fs::read(binary).unwrap(), target);
+    }
+
+    /// Publishes `bytes` as binary release `version` of `app` (a server or a runtime) for this platform.
+    pub fn publish_binary(&self, app: &str, version: &str, bytes: &[u8]) {
+        self.publish_binary_for(app, version, bytes, speedyspec_server::binary::TARGET);
+    }
+
+    /// Publishes `bytes` as binary release `version` of `app` for `target`.
+    pub fn publish_binary_for(&self, app: &str, version: &str, bytes: &[u8], target: &str) {
+        let sha: String = Sha256::digest(bytes)
             .iter()
             .map(|b| format!("{b:02x}"))
             .collect();
         let signature = minisign::sign(
             Some(&self.key.pk),
             &self.key.sk,
-            std::io::Cursor::new(&bytes),
+            std::io::Cursor::new(bytes),
             None,
             None,
         )
         .unwrap();
-        let path = format!("/server/{target}/server-{version}");
+        let path = format!("/{app}/{target}/{app}-{version}");
         let mut files = self.files.lock().unwrap();
-        files.insert(path.clone(), bytes);
+        files.insert(path.clone(), bytes.to_vec());
         files.insert(
             format!("{path}.minisig"),
             signature.into_string().into_bytes(),
         );
         let mut published = self.servers.lock().unwrap();
-        published.push((version.to_string(), sha));
+        published.push((app.to_string(), version.to_string(), sha));
         let entries: Vec<String> = published
             .iter()
-            .map(|(v, sha)| {
-                let url = self.url(&format!("/server/{target}/server-{v}"));
+            .filter(|(a, ..)| a == app)
+            .map(|(_, v, sha)| {
+                let url = self.url(&format!("/{app}/{target}/{app}-{v}"));
                 format!(
                     r#"{{"version":"{v}","published":"x","artifacts":[{{"target":"{target}","url":"{url}","sha256":"{sha}","minisig":"{url}.minisig"}}]}}"#
                 )
             })
             .collect();
         files.insert(
-            "/server/index.json".to_string(),
-            format!(r#"{{"app":"server","releases":[{}]}}"#, entries.join(",")).into_bytes(),
+            format!("/{app}/index.json"),
+            format!(r#"{{"app":"{app}","releases":[{}]}}"#, entries.join(",")).into_bytes(),
         );
     }
 

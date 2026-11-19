@@ -18,7 +18,13 @@ pub use contracts::{
     SourceError, StateError, StateStore, StoreError, VerifyError,
 };
 pub use error::DomainError;
-pub use manifest::{CacheRule, MANIFEST_FILE, PhpSection, ReleaseManifest, StaticSection};
+pub use manifest::{
+    AccessRule, CacheRule, GateSection, HealthSection, MANIFEST_FILE, MaintenanceScope, PhpSection,
+    PublicWhen, ReleaseManifest, StaticSection, SwitchSection,
+};
 pub use mount::{Access, HostMatch, Mount, MountTable};
 pub use release::{Artifact, IndexEntry, ReleaseIndex};
-pub use state::{AppState, PendingGroup, ReleaseState, Rollout, ServerState, StagedSet};
+pub use state::{
+    AppState, MaintenanceRecord, PendingGroup, ReleaseState, Rollout, RuntimeTrial, ServerState,
+    StagedSet,
+};

@@ -28,6 +28,9 @@ pub struct ReleaseManifest {
     /// The keeper protocol a server binary speaks. Only for kind `server`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub protocol: Option<u32>,
+    /// The worker contract majors a runtime binary speaks. Required for kind `runtime`, and only there.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub contracts: Vec<u32>,
 }
 
 /// How a static release is served.
@@ -42,6 +45,47 @@ pub struct StaticSection {
     /// `Cache-Control` rules; the first match wins.
     #[serde(default)]
     pub cache: Vec<CacheRule>,
+    /// A self-contained HTML file under `root` shown, from memory, by every app in maintenance that names this app.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub maintenance_page: Option<String>,
+    /// Which paths are public behind a gated mount, and which are a page's own files; the rest need sign-in.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub access: Vec<AccessRule>,
+}
+
+/// One access rule: a glob over the path relative to the mount, either public (under a condition) or one page's
+/// files. The first matching rule wins; a path no rule matches needs sign-in.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccessRule {
+    #[serde(rename = "match")]
+    pub pattern: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public: Option<PublicWhen>,
+    /// `"{page}"`: the page id the pattern's `{page}` captures.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page: Option<String>,
+}
+
+/// When a public rule's paths are public.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PublicWhen {
+    Always,
+    /// Only while the site is not installed; otherwise disabled for everyone.
+    NotInstalled,
+    /// Only while the app is in maintenance; otherwise disabled for everyone.
+    Maintenance,
+}
+
+/// The gate app's endpoints the server calls (paths of the app, starting with `/`), and the gate contract's version.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GateSection {
+    pub version: u32,
+    pub site: String,
+    pub session: String,
+    pub changes: String,
 }
 
 /// How a php release is served.
@@ -57,6 +101,49 @@ pub struct PhpSection {
     /// INI settings for the release's workers.
     #[serde(default)]
     pub ini: BTreeMap<String, String>,
+    /// The versions of the runtime this app is configured to run on that this release works with.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime: Option<semver::VersionReq>,
+    /// The app's health probes, which the server calls internally.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub health: Option<HealthSection>,
+    /// Which paths are public behind a gated mount (see [`StaticSection::access`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub access: Vec<AccessRule>,
+    /// The endpoints of a gate app.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gate: Option<GateSection>,
+    /// Switching to this release migrates first, under maintenance.
+    #[serde(default, rename = "switch", skip_serializing_if = "Option::is_none")]
+    pub switch_: Option<SwitchSection>,
+}
+
+/// A release that migrates when switched to: its `migrate` path (internal, `POST`) runs on the new release before it
+/// goes live, with `maintenance` on.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SwitchSection {
+    pub maintenance: MaintenanceScope,
+    pub migrate: String,
+}
+
+/// Which apps are in maintenance while a release migrates.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MaintenanceScope {
+    /// The site's: the gate's maintenance apps, or every app.
+    Site,
+    /// Only this app.
+    #[serde(rename = "self")]
+    SelfOnly,
+}
+
+/// A php app's health probes: paths of the app (starting with `/`) that answer 200 while it is live and ready.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HealthSection {
+    pub live: String,
+    pub ready: String,
 }
 
 impl PhpSection {
@@ -75,6 +162,11 @@ impl Default for PhpSection {
             document_root: Self::default_document_root(),
             entry: Self::default_entry(),
             ini: BTreeMap::new(),
+            runtime: None,
+            health: None,
+            access: Vec::new(),
+            gate: None,
+            switch_: None,
         }
     }
 }
@@ -121,10 +213,25 @@ impl ReleaseManifest {
                     section: "static",
                 });
             }
-            (AppKind::Server | AppKind::Php, Some(_)) => {
+            (AppKind::Server | AppKind::Php | AppKind::Runtime, Some(_)) => {
                 return Err(DomainError::UnexpectedSection {
                     kind,
                     section: "static",
+                });
+            }
+            _ => {}
+        }
+        match (self.kind, self.contracts.is_empty()) {
+            (AppKind::Runtime, true) => {
+                return Err(DomainError::MissingSection {
+                    kind,
+                    section: "contracts",
+                });
+            }
+            (AppKind::Server | AppKind::Static | AppKind::Php, false) => {
+                return Err(DomainError::UnexpectedSection {
+                    kind,
+                    section: "contracts",
                 });
             }
             _ => {}
@@ -150,6 +257,54 @@ impl ReleaseManifest {
                     });
                 }
             }
+        }
+        let rules = self
+            .static_
+            .iter()
+            .flat_map(|s| s.access.iter())
+            .chain(self.php.iter().flat_map(|p| p.access.iter()));
+        for rule in rules {
+            if rule.public.is_some() == rule.page.is_some() {
+                return Err(DomainError::BadManifest(format!(
+                    "access rule {:?} must have exactly one of `public` or `page`",
+                    rule.pattern
+                )));
+            }
+        }
+        if let Some(gate) = self.php.as_ref().and_then(|php| php.gate.as_ref()) {
+            for (field, path) in [
+                ("site", &gate.site),
+                ("session", &gate.session),
+                ("changes", &gate.changes),
+            ] {
+                if !path.starts_with('/') {
+                    return Err(DomainError::BadManifest(format!(
+                        "php.gate.{field} {path:?} must be a path starting with `/`"
+                    )));
+                }
+            }
+        }
+        if let Some(health) = self.php.as_ref().and_then(|php| php.health.as_ref()) {
+            for (field, path) in [
+                ("health.live", &health.live),
+                ("health.ready", &health.ready),
+            ] {
+                if !path.starts_with('/') {
+                    return Err(DomainError::BadManifest(format!(
+                        "php.{field} {path:?} must be a path starting with `/`"
+                    )));
+                }
+            }
+        }
+        if let Some(page) = self
+            .static_
+            .as_ref()
+            .and_then(|s| s.maintenance_page.as_ref())
+            && !inside(page)
+        {
+            return Err(DomainError::BadManifest(format!(
+                "static.maintenance_page {page:?} must be a relative path without `..`"
+            )));
         }
         if let Some(section) = &self.static_ {
             let root = Path::new(&section.root);
@@ -292,4 +447,102 @@ mod tests {
     }
 
     const MANIFEST_NO_PROTOCOL: &str = r#"{"app":"server","version":"0.1.0","kind":"server"}"#;
+
+    #[test]
+    fn runtime_manifest_requires_contracts() {
+        let json = r#"{"app":"rt","version":"1.0.0","kind":"runtime"}"#;
+        assert_eq!(
+            ReleaseManifest::parse(json.as_bytes()).unwrap_err(),
+            DomainError::MissingSection {
+                kind: "runtime",
+                section: "contracts"
+            }
+        );
+        let json = r#"{"app":"rt","version":"1.0.0","kind":"runtime","contracts":[1]}"#;
+        assert_eq!(
+            ReleaseManifest::parse(json.as_bytes()).unwrap().contracts,
+            vec![1]
+        );
+    }
+
+    #[test]
+    fn contracts_only_on_runtime() {
+        let json = r#"{"app":"blog","version":"1.0.0","kind":"php","contracts":[1]}"#;
+        assert_eq!(
+            ReleaseManifest::parse(json.as_bytes()).unwrap_err(),
+            DomainError::UnexpectedSection {
+                kind: "php",
+                section: "contracts"
+            }
+        );
+    }
+
+    #[test]
+    fn php_section_parses_runtime_requirement() {
+        let json = r#"{"app":"blog","version":"1.0.0","kind":"php","php":{"runtime":"^1.4"}}"#;
+        let manifest = ReleaseManifest::parse(json.as_bytes()).unwrap();
+        assert_eq!(
+            manifest.php_section().unwrap().runtime,
+            Some(semver::VersionReq::parse("^1.4").unwrap())
+        );
+    }
+
+    #[test]
+    fn health_and_maintenance_page_parse_and_are_checked() {
+        let php = r#"{"app":"blog","version":"1.0.0","kind":"php","php":{"health":{"live":"/healthz","ready":"/readyz"}}}"#;
+        let health = ReleaseManifest::parse(php.as_bytes())
+            .unwrap()
+            .php_section()
+            .unwrap()
+            .health
+            .unwrap();
+        assert_eq!(
+            (health.live.as_str(), health.ready.as_str()),
+            ("/healthz", "/readyz")
+        );
+        let bad = php.replace("\"/healthz\"", "\"healthz\"");
+        assert!(ReleaseManifest::parse(bad.as_bytes()).is_err());
+        let page = r#"{"app":"admin","version":"1.0.0","kind":"static","static":{"root":"dist","maintenance_page":"maintenance.html"}}"#;
+        let manifest = ReleaseManifest::parse(page.as_bytes()).unwrap();
+        assert_eq!(
+            manifest.static_.unwrap().maintenance_page.as_deref(),
+            Some("maintenance.html")
+        );
+        assert!(
+            ReleaseManifest::parse(page.replace("maintenance.html", "../x.html").as_bytes())
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn access_rule_needs_public_or_page() {
+        let ok = r#"{"app":"admin","version":"1.0.0","kind":"static","static":{"root":".","access":[{"match":"","public":"always"},{"match":"components/{page}/**","page":"{page}"}]}}"#;
+        let manifest = ReleaseManifest::parse(ok.as_bytes()).unwrap();
+        let access = &manifest.static_.unwrap().access;
+        assert_eq!(access[0].public, Some(PublicWhen::Always));
+        assert_eq!(access[1].page.as_deref(), Some("{page}"));
+        for bad in [
+            r#"[{"match":"x"}]"#,
+            r#"[{"match":"x","public":"always","page":"{page}"}]"#,
+            r#"[{"match":"x","public":"sometimes"}]"#,
+        ] {
+            let json = ok.replace(r#"[{"match":"","public":"always"},{"match":"components/{page}/**","page":"{page}"}]"#, bad);
+            assert!(ReleaseManifest::parse(json.as_bytes()).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn gate_section_parses() {
+        let json = r#"{"app":"admin-api","version":"1.0.0","kind":"php","php":{"gate":{"version":1,"site":"/v1/gate/site","session":"/v1/gate/session","changes":"/v1/gate/changes"},"access":[{"match":"v1/session/**","public":"always"}]}}"#;
+        let php = ReleaseManifest::parse(json.as_bytes())
+            .unwrap()
+            .php_section()
+            .unwrap();
+        let gate = php.gate.unwrap();
+        assert_eq!(
+            (gate.version, gate.site.as_str(), gate.changes.as_str()),
+            (1, "/v1/gate/site", "/v1/gate/changes")
+        );
+        assert_eq!(php.access.len(), 1);
+    }
 }

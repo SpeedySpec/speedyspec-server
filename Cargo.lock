@@ -3992,6 +3992,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-php-runtime"
+version = "1.0.0"
+dependencies = [
+ "clap",
+ "libc",
+ "semver",
+ "serde",
+ "serde_json",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-fastcgi",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-runtime-contract",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "tempfile",
+]
+
+[[package]]
+name = "speedyspec-runtime-contract"
+version = "0.1.0"
+dependencies = [
+ "semver",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "speedyspec-server"
 version = "0.1.0"
 dependencies = [
@@ -4017,15 +4049,11 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "speedyspec-container",
- "speedyspec-container-php",
  "speedyspec-fastcgi",
- "speedyspec-hooks",
- "speedyspec-hooks-memory",
- "speedyspec-php",
- "speedyspec-php-ext",
+ "speedyspec-runtime-contract",
  "speedyspec-server-app",
  "speedyspec-server-domain",
+ "speedyspec-server-gate",
  "speedyspec-server-handoff",
  "speedyspec-server-infra-access-dev",
  "speedyspec-server-infra-fs",
@@ -4035,9 +4063,6 @@ dependencies = [
  "speedyspec-server-infra-minisign",
  "speedyspec-server-presentation",
  "speedyspec-server-static",
- "speedyspec-wp-hooks",
- "speedyspec-wp-hooks-memory",
- "speedyspec-wp-hooks-php",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
@@ -4071,6 +4096,21 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "speedyspec-server-gate"
+version = "0.1.0"
+dependencies = [
+ "http",
+ "httpdate",
+ "regex",
+ "semver",
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-server-domain",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -4165,6 +4205,7 @@ dependencies = [
  "percent-encoding",
  "salvo",
  "speedyspec-server-domain",
+ "speedyspec-server-gate",
  "speedyspec-server-infra-access-dev",
  "speedyspec-server-static",
  "tempfile",

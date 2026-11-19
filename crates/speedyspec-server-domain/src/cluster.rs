@@ -67,6 +67,9 @@ pub struct MemberReport {
     pub holds: Vec<(AppId, Version)>,
     /// What the readiness probe answers.
     pub ready: bool,
+    /// The apps this pod holds in maintenance because their health probes fail.
+    #[serde(default)]
+    pub unhealthy: Vec<AppId>,
     pub server: PodServer,
 }
 
@@ -92,6 +95,7 @@ mod tests {
             prepare_failed: None,
             holds: vec![(AppId::parse("admin").unwrap(), Version::new(1, 0, 0))],
             ready: true,
+            unhealthy: vec![AppId::parse("blog").unwrap()],
             server: PodServer::default(),
         };
         report.server.running = Some(Version::new(0, 1, 0));

@@ -144,6 +144,10 @@ path = "{admin}"
 kind = "php"
 path = "{blog}"
 
+[app.rt]
+kind = "runtime"
+path = "{runtime}"
+
 [[mount]]
 path = "/blog/"
 app = "blog"
@@ -156,6 +160,12 @@ access = "{admin_access}"
 {access}"#,
         admin = admin.display(),
         blog = fixture("blog").display(),
+        runtime = support::runtime::release(
+            &dir.path().join("rt"),
+            "1.0.0",
+            support::runtime::Workers::Real
+        )
+        .display(),
     );
     let config = dir.path().join("server.toml");
     std::fs::write(&config, toml).unwrap();
@@ -236,7 +246,7 @@ async fn signed_in_denied_by_default() {
 }
 
 #[tokio::test]
-async fn php_mount_placeholder() {
+async fn php_mount_is_served_by_its_pool() {
     let setup = setup("public", None, "", None);
     let mut server = start(&setup.config, setup.dir.path());
     let plain = first(&server.listening(1), "tcp", 0);

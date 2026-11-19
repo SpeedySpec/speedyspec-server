@@ -1,7 +1,7 @@
 //! The live handle of every app, each swappable in one step.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
 use arc_swap::ArcSwap;
@@ -13,6 +13,10 @@ use crate::handlers::{AppHandle, StaticApp};
 /// switch never mixes two releases in one response.
 pub struct LiveApps {
     apps: HashMap<AppId, ArcSwap<AppHandle>>,
+    /// Each app's internal paths (its live release's health probes, the gate's own calls): never served to visitors.
+    internal: RwLock<HashMap<AppId, Arc<[String]>>>,
+    /// Each app's live release's access rules, compiled.
+    rules: RwLock<HashMap<AppId, Arc<speedyspec_server_gate::AccessRules>>>,
 }
 
 impl LiveApps {
@@ -23,7 +27,40 @@ impl LiveApps {
                 .into_iter()
                 .map(|(app, handle)| (app, ArcSwap::from_pointee(handle)))
                 .collect(),
+            internal: RwLock::new(HashMap::new()),
+            rules: RwLock::new(HashMap::new()),
         }
+    }
+
+    /// `app`'s live release's access rules.
+    pub fn rules(&self, app: &AppId) -> Option<Arc<speedyspec_server_gate::AccessRules>> {
+        self.rules.read().unwrap().get(app).cloned()
+    }
+
+    /// Replaces `app`'s access rules (as its live release changes).
+    pub fn set_rules(&self, app: &AppId, rules: speedyspec_server_gate::AccessRules) {
+        self.rules
+            .write()
+            .unwrap()
+            .insert(app.clone(), Arc::new(rules));
+    }
+
+    /// The paths of `app` only the server may call.
+    pub fn internal_paths(&self, app: &AppId) -> Arc<[String]> {
+        self.internal
+            .read()
+            .unwrap()
+            .get(app)
+            .cloned()
+            .unwrap_or_else(|| Arc::from(Vec::new()))
+    }
+
+    /// Replaces `app`'s internal paths (as its live release changes).
+    pub fn set_internal_paths(&self, app: &AppId, paths: Vec<String>) {
+        self.internal
+            .write()
+            .unwrap()
+            .insert(app.clone(), Arc::from(paths));
     }
 
     pub fn get(&self, app: &AppId) -> Option<Arc<AppHandle>> {
@@ -83,16 +120,12 @@ mod tests {
                 .collect(),
         );
         let held = live.get(&app).unwrap();
-        let old = live.swap(&app, AppHandle::PhpPlaceholder).unwrap();
-        assert!(matches!(*old, AppHandle::NotInstalled));
+        let old = live.swap(&app, AppHandle::NotInstalled).unwrap();
+        assert!(Arc::ptr_eq(&old, &held), "the old handle is returned");
         assert!(
-            matches!(*held, AppHandle::NotInstalled),
-            "a request already holding the old handle keeps it"
+            !Arc::ptr_eq(&held, &live.get(&app).unwrap()),
+            "new requests get the new handle; one already holding the old keeps it"
         );
-        assert!(matches!(
-            *live.get(&app).unwrap(),
-            AppHandle::PhpPlaceholder
-        ));
         assert!(live.get(&AppId::parse("other").unwrap()).is_none());
     }
 
@@ -109,6 +142,8 @@ mod tests {
         std::fs::create_dir_all(dir.path().join("dist")).unwrap();
         let section = StaticSection {
             root: "dist".to_string(),
+            maintenance_page: None,
+            access: Vec::new(),
             not_found: None,
             cache: Vec::new(),
         };

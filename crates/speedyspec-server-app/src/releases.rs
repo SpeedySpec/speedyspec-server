@@ -47,6 +47,20 @@ pub enum ReleaseError {
     NoSource(AppId),
     #[error("switching the server is done by the keeper; use `release switch server@<version>`")]
     ServerSwitchViaKeeper,
+    #[error(
+        "switch runtime {runtime} on its own: {apps} run on it, and a runtime switch moves them by itself"
+    )]
+    RuntimeWithItsApps { runtime: AppId, apps: String },
+    #[error("{app} {version}: migration failed: {reason}")]
+    Migration {
+        app: AppId,
+        version: Version,
+        reason: String,
+    },
+    #[error("{0}: a migration is pending; retry or clear it first")]
+    MigrationPending(AppId),
+    #[error("{0}: no failed migration to retry")]
+    NoFailedMigration(AppId),
     #[error("an upgrade to server {0} is on trial; wait for it to be confirmed or to fail")]
     UpgradeInProgress(Version),
     #[error("{0}")]
@@ -111,6 +125,20 @@ pub struct ReleaseManager {
     pub(crate) state_store: Arc<dyn StateStore>,
     pub(crate) runtimes: HashMap<AppKind, Arc<dyn AppRuntime>>,
     pub(crate) inspector: Arc<dyn BinaryInspector>,
+    /// Reads runtime binaries' manifests; the server's inspector when none is set.
+    pub(crate) runtime_inspector: Option<Arc<dyn BinaryInspector>>,
+    /// Each php app's runtime app, for the runtime requirement in the set check.
+    pub(crate) php_runtimes: BTreeMap<AppId, AppId>,
+    /// Runs a release's migration on its prepared (not yet live) release.
+    pub(crate) migrator: Option<Arc<dyn Migrator>>,
+    /// Turns this replica's upgrade maintenance on and off at once (the state file tells the others).
+    pub(crate) maintenance_sink: Option<Arc<dyn MaintenanceSink>>,
+    /// The apps a release's `"site"` maintenance scope means.
+    pub(crate) site_apps: Vec<AppId>,
+    /// How long a migration may run.
+    pub(crate) migrate_timeout: std::time::Duration,
+    /// How long a new runtime release is on trial (`runtime.trial_period`).
+    pub(crate) runtime_trial_period: std::time::Duration,
     /// The Rust target triple whose server artifacts this build installs.
     pub(crate) target: String,
     pub(crate) state: Mutex<ReleaseState>,
@@ -131,6 +159,21 @@ pub(crate) struct Node {
     pub(crate) serving: BTreeMap<AppId, Version>,
     pub(crate) held: Option<(u64, Vec<(AppKind, Prepared)>)>,
     pub(crate) report: MemberReport,
+}
+
+/// Runs a release's migration on its prepared, not yet live, release (the server sends it as an internal request).
+pub trait Migrator: Send + Sync {
+    fn migrate(
+        &self,
+        prepared: &Prepared,
+        path: &str,
+        timeout: std::time::Duration,
+    ) -> Result<(), String>;
+}
+
+/// Where this replica's upgrade maintenance is turned on and off at once.
+pub trait MaintenanceSink: Send + Sync {
+    fn upgrade(&self, apps: &[AppId], on: bool);
 }
 
 /// What one follower step did.
@@ -170,6 +213,13 @@ impl ReleaseManager {
             state_store,
             runtimes,
             inspector,
+            runtime_inspector: None,
+            php_runtimes: BTreeMap::new(),
+            migrator: None,
+            maintenance_sink: None,
+            site_apps: Vec::new(),
+            migrate_timeout: std::time::Duration::from_secs(30 * 60),
+            runtime_trial_period: std::time::Duration::from_secs(120),
             target,
             published: Mutex::new(state.clone()),
             downloads: Mutex::new(HashMap::new()),
@@ -179,6 +229,55 @@ impl ReleaseManager {
             node: Mutex::new(Node::default()),
             took_over: Mutex::new(None),
         })
+    }
+
+    /// Reads runtime binaries' manifests with `inspector` (they run as `<binary> manifest`, as the server does, but
+    /// print a different manifest).
+    pub fn with_runtime_inspector(mut self, inspector: Arc<dyn BinaryInspector>) -> ReleaseManager {
+        self.runtime_inspector = Some(inspector);
+        self
+    }
+
+    /// Runs releases' migrations.
+    pub fn with_migrator(mut self, migrator: Arc<dyn Migrator>) -> ReleaseManager {
+        self.migrator = Some(migrator);
+        self
+    }
+
+    /// Where upgrade maintenance is turned on and off at once, and the apps a `"site"` scope means.
+    pub fn with_maintenance(
+        mut self,
+        sink: Arc<dyn MaintenanceSink>,
+        site_apps: Vec<AppId>,
+    ) -> ReleaseManager {
+        self.maintenance_sink = Some(sink);
+        self.site_apps = site_apps;
+        self
+    }
+
+    /// How long a new runtime release is on trial (`runtime.trial_period`).
+    pub fn with_runtime_trial_period(mut self, period: std::time::Duration) -> ReleaseManager {
+        self.runtime_trial_period = period;
+        self
+    }
+
+    /// How long a migration may run (`switch.migrate_timeout`).
+    pub fn with_migrate_timeout(mut self, timeout: std::time::Duration) -> ReleaseManager {
+        self.migrate_timeout = timeout;
+        self
+    }
+
+    /// Each php app's runtime app: a php release's `php.runtime` is checked against it.
+    pub fn with_php_runtimes(mut self, runtimes: BTreeMap<AppId, AppId>) -> ReleaseManager {
+        self.php_runtimes = runtimes;
+        self
+    }
+
+    fn binary_inspector(&self, kind: AppKind) -> &Arc<dyn BinaryInspector> {
+        match (kind, &self.runtime_inspector) {
+            (AppKind::Runtime, Some(inspector)) => inspector,
+            _ => &self.inspector,
+        }
     }
 
     /// Takes the operation lock. A panic in an earlier operation does not poison it for later ones.
@@ -403,13 +502,13 @@ impl ReleaseManager {
         {
             return Ok(version);
         }
-        let target = if policy.kind == AppKind::Server {
+        let target = if policy.kind.is_binary() {
             self.target.as_str()
         } else {
             "any"
         };
         let Some(artifact) = entry.artifact_for(target) else {
-            let err = if policy.kind == AppKind::Server {
+            let err = if policy.kind.is_binary() {
                 ReleaseError::NoArtifactForTarget(app.clone(), version.clone(), target.to_string())
             } else {
                 ReleaseError::NoArtifact(app.clone(), version.clone())
@@ -469,7 +568,7 @@ impl ReleaseManager {
         {
             return Ok(());
         }
-        if self.policy(app)?.kind == AppKind::Server {
+        if self.policy(app)?.kind.is_binary() {
             return self.keep_binary(state, app, version);
         }
         let policy = self.policy(app)?.clone();
@@ -503,27 +602,44 @@ impl ReleaseManager {
         Ok(())
     }
 
-    /// Keeps a verified server binary: moves it into place, then reads its manifest by running it.
+    /// Keeps a verified binary (the server's or a runtime's): moves it into place, then reads its manifest by running
+    /// it. A runtime's manifest is kept beside it, with this app's id, so switches can read it.
     fn keep_binary(
         &self,
         state: &mut ReleaseState,
         app: &AppId,
         version: &Version,
     ) -> Result<(), ReleaseError> {
+        let kind = self.policy(app)?.kind;
+        let name = kind.binary_name().expect("a binary kind");
         let archive = self.store.partial_dir(app, version).join("artifact");
-        let path = self.store.commit_binary(app, version, &archive)?;
-        let checked = self.inspector.manifest(&path).and_then(|manifest| {
-            if manifest.kind != AppKind::Server || manifest.version != *version {
-                Err(format!(
-                    "{} reports kind {} version {}, expected a server binary of version {version}",
-                    path.display(),
-                    manifest.kind.as_str(),
-                    manifest.version
-                ))
-            } else {
-                Ok(())
+        let path = self.store.commit_binary(app, version, &archive, name)?;
+        let checked = self
+            .binary_inspector(kind)
+            .manifest(&path)
+            .and_then(|manifest| {
+                if manifest.kind != kind || manifest.version != *version {
+                    Err(format!(
+                        "{} reports kind {} version {}, expected a {} binary of version {version}",
+                        path.display(),
+                        manifest.kind.as_str(),
+                        manifest.version,
+                        kind.as_str()
+                    ))
+                } else {
+                    Ok(manifest)
+                }
+            });
+        let checked = match checked {
+            Ok(mut manifest) if kind == AppKind::Runtime => {
+                manifest.app = app.clone();
+                self.store
+                    .write_manifest(app, version, &manifest)
+                    .map_err(|err| err.to_string())
             }
-        });
+            Ok(_) => Ok(()),
+            Err(reason) => Err(reason),
+        };
         if let Err(reason) = checked {
             let _ = self.store.remove(app, version);
             return Err(self.reject_locked(state, app, version, ReleaseError::Inspect(reason)));
@@ -637,6 +753,18 @@ impl ReleaseManager {
         state: &mut ReleaseState,
         targets: &[(AppId, Version)],
     ) -> Result<(), ReleaseError> {
+        self.check_no_pending_migration(state, targets)?;
+        self.switch_unchecked(state, targets)
+    }
+
+    /// As [`Self::switch_locked`], without refusing a runtime switch while a migration is pending (a trial's own
+    /// rollback must not wait on one).
+    fn switch_unchecked(
+        &self,
+        state: &mut ReleaseState,
+        targets: &[(AppId, Version)],
+    ) -> Result<(), ReleaseError> {
+        self.check_runtime_alone(targets)?;
         if !self.cluster.is_single() {
             return self.switch_staged(state, targets);
         }
@@ -670,7 +798,7 @@ impl ReleaseManager {
             manifests.insert(app.clone(), manifest.clone());
             incoming.push((app.clone(), version.clone(), manifest));
         }
-        check_set(&manifests).map_err(ReleaseError::Incompatible)?;
+        check_set(&manifests, &self.php_runtimes).map_err(ReleaseError::Incompatible)?;
 
         let mut prepared = Vec::with_capacity(incoming.len());
         let mut failures = Vec::new();
@@ -709,6 +837,7 @@ impl ReleaseManager {
                 )
             })
             .collect();
+        let scopes = self.migrate_all(state, &prepared, false)?;
         for (kind, ready) in prepared {
             self.go_live(kind, ready);
         }
@@ -722,6 +851,8 @@ impl ReleaseManager {
             self.reactivate(&old);
             return Err(err);
         }
+        self.finish_migrations(state, &scopes)?;
+        self.record_runtime_trials(state, &old)?;
         for (app, previous) in &old {
             if let Some(previous) = previous {
                 let kind = self.policy(app)?.kind;
@@ -734,6 +865,325 @@ impl ReleaseManager {
         let apps: Vec<AppId> = targets.iter().map(|(app, _)| app.clone()).collect();
         self.prune(state, &apps)?;
 
+        Ok(())
+    }
+
+    /// Puts every runtime app this switch moved off an earlier release on trial.
+    fn record_runtime_trials(
+        &self,
+        state: &mut ReleaseState,
+        old: &[(AppId, Option<Version>)],
+    ) -> Result<(), ReleaseError> {
+        let mut next = state.clone();
+        let mut changed = false;
+        for (app, previous) in old {
+            if !self.policy(app).is_ok_and(|p| p.kind == AppKind::Runtime) {
+                continue;
+            }
+            let (Some(previous), Some(version)) =
+                (previous, next.apps.get(app).and_then(|c| c.active.clone()))
+            else {
+                continue;
+            };
+            next.runtime_trials.insert(
+                app.clone(),
+                speedyspec_server_domain::RuntimeTrial {
+                    version,
+                    previous: previous.clone(),
+                    until_ms: now_ms() + self.runtime_trial_period.as_millis() as u64,
+                },
+            );
+            changed = true;
+        }
+        if changed {
+            self.commit_state(state, next)?;
+        }
+        Ok(())
+    }
+
+    /// A php app turned unhealthy: if its runtime's new release is still on trial, switch the runtime back to the
+    /// release before it and mark the new one failed. Returns whether it rolled back. A follower does nothing here
+    /// (it reports the app in its member file; the leader acts).
+    pub fn runtime_unhealthy(&self, php_app: &AppId) -> Result<bool, ReleaseError> {
+        if !self.cluster.view().is_leader {
+            return Ok(false);
+        }
+        let Some(runtime) = self.php_runtimes.get(php_app).cloned() else {
+            return Ok(false);
+        };
+        let mut state = self.lock();
+        match state.runtime_trials.get(&runtime).cloned() {
+            Some(trial) if now_ms() <= trial.until_ms => {
+                self.roll_back_trial(&mut state, &runtime, &trial, php_app)?;
+                Ok(true)
+            }
+            _ => Ok(false),
+        }
+    }
+
+    /// One round of the runtime trials, given the php apps unhealthy now: a trial with an unhealthy app on it rolls
+    /// back (whether or not its period has passed: it was never confirmed), and a trial past its period with every
+    /// app healthy is confirmed.
+    pub fn check_runtime_trials(&self, unhealthy: &[AppId]) -> Result<(), ReleaseError> {
+        if !self.cluster.view().is_leader {
+            return Ok(());
+        }
+        let mut state = self.lock();
+        for (runtime, trial) in state.runtime_trials.clone() {
+            let sick = unhealthy
+                .iter()
+                .find(|app| self.php_runtimes.get(*app) == Some(&runtime))
+                .cloned();
+            match sick {
+                Some(app) => self.roll_back_trial(&mut state, &runtime, &trial, &app)?,
+                None if now_ms() > trial.until_ms => {
+                    let mut next = state.clone();
+                    next.runtime_trials.remove(&runtime);
+                    self.commit_state(&mut state, next)?;
+                    tracing::info!(event = "runtime_trial_confirmed", runtime = %runtime, version = %trial.version);
+                }
+                None => {}
+            }
+        }
+        Ok(())
+    }
+
+    /// Confirms every runtime trial whose period has passed (no app known unhealthy).
+    pub fn confirm_runtime_trials(&self) -> Result<(), ReleaseError> {
+        self.check_runtime_trials(&[])
+    }
+
+    fn roll_back_trial(
+        &self,
+        state: &mut ReleaseState,
+        runtime: &AppId,
+        trial: &speedyspec_server_domain::RuntimeTrial,
+        php_app: &AppId,
+    ) -> Result<(), ReleaseError> {
+        tracing::warn!(event = "runtime_trial_failed", runtime = %runtime, version = %trial.version, app = %php_app);
+        self.switch_unchecked(state, &[(runtime.clone(), trial.previous.clone())])?;
+        let mut next = state.clone();
+        next.runtime_trials.remove(runtime);
+        next.app_mut(runtime).failed.insert(
+            trial.version.clone(),
+            format!("unhealthy during trial: {php_app}"),
+        );
+        self.commit_state(state, next)
+    }
+
+    /// The apps this pod holds in maintenance because their health probes fail (published in its member report).
+    pub fn set_unhealthy(&self, apps: Vec<AppId>) {
+        self.publish(|node| node.report.unhealthy = apps);
+    }
+
+    /// Leader only: rolls a runtime on trial back when any live member reports a php app on it unhealthy.
+    pub fn check_member_health(&self) -> Result<(), ReleaseError> {
+        if self.cluster.is_single() || !self.cluster.view().is_leader {
+            return Ok(());
+        }
+        let Some((reports, live)) = self.cluster.members_now() else {
+            return Ok(());
+        };
+        let unhealthy: std::collections::BTreeSet<AppId> = reports
+            .iter()
+            .filter(|report| live.contains(&report.pod))
+            .flat_map(|report| report.unhealthy.iter().cloned())
+            .collect();
+        for app in unhealthy {
+            self.runtime_unhealthy(&app)?;
+        }
+        Ok(())
+    }
+
+    /// Whether any target's release migrates.
+    fn migrates(&self, targets: &[(AppId, Version)]) -> bool {
+        targets.iter().any(|(app, version)| {
+            self.store
+                .manifest(app, version)
+                .ok()
+                .and_then(|m| m.php_section())
+                .is_some_and(|php| php.switch_.is_some())
+        })
+    }
+
+    /// The apps a migrating release's maintenance scope covers.
+    fn scope(&self, app: &AppId, scope: speedyspec_server_domain::MaintenanceScope) -> Vec<AppId> {
+        match scope {
+            speedyspec_server_domain::MaintenanceScope::SelfOnly => vec![app.clone()],
+            speedyspec_server_domain::MaintenanceScope::Site if !self.site_apps.is_empty() => {
+                self.site_apps.clone()
+            }
+            speedyspec_server_domain::MaintenanceScope::Site => self
+                .apps
+                .iter()
+                .filter(|(_, p)| !matches!(p.kind, AppKind::Server | AppKind::Runtime))
+                .map(|(id, _)| id.clone())
+                .collect(),
+        }
+    }
+
+    /// Runs the migration of every prepared release that has one, in turn: maintenance on (here at once, and in the
+    /// state file for every replica), then the migration on the prepared release. A failed migration is recorded
+    /// (the release failed, maintenance kept on) and fails the switch. Returns each migration's scope, for
+    /// [`Self::finish_migrations`] once the switch is done.
+    fn migrate_all(
+        &self,
+        state: &mut ReleaseState,
+        prepared: &[(AppKind, Prepared)],
+        cluster: bool,
+    ) -> Result<Vec<Vec<AppId>>, ReleaseError> {
+        let mut scopes = Vec::new();
+        for (kind, ready) in prepared {
+            if *kind != AppKind::Php {
+                continue;
+            }
+            let Some(switch) = self
+                .store
+                .manifest(&ready.app, &ready.version)
+                .ok()
+                .and_then(|m| m.php_section())
+                .and_then(|php| php.switch_)
+            else {
+                continue;
+            };
+            // Only a switch forward migrates: going back to an older release (a rollback) is instant, onto a
+            // database the newer release left usable for it.
+            let active = state.apps.get(&ready.app).and_then(|c| c.active.clone());
+            if active.is_some_and(|active| ready.version < active) {
+                continue;
+            }
+            let scope = self.scope(&ready.app, switch.maintenance);
+            let mut next = state.clone();
+            for app in &scope {
+                next.maintenance.entry(app.clone()).or_default().migrating = true;
+            }
+            self.commit_state(state, next)?;
+            if let Some(sink) = &self.maintenance_sink {
+                sink.upgrade(&scope, true);
+            }
+            if cluster {
+                // The followers show the maintenance page from their next poll of the state.
+                std::thread::sleep(self.cluster.poll_interval * 2);
+            }
+            tracing::info!(event = "migrating", app = %ready.app, version = %ready.version, path = %switch.migrate);
+            let outcome = match &self.migrator {
+                Some(migrator) => migrator.migrate(ready, &switch.migrate, self.migrate_timeout),
+                None => Err("this server cannot run migrations".to_string()),
+            };
+            if let Err(reason) = outcome {
+                let mut next = state.clone();
+                for app in &scope {
+                    let record = next.maintenance.entry(app.clone()).or_default();
+                    record.migrating = false;
+                    record.migration_failed = Some(reason.clone());
+                    record.migration_version = Some(ready.version.clone());
+                }
+                next.app_mut(&ready.app)
+                    .failed
+                    .insert(ready.version.clone(), format!("migration failed: {reason}"));
+                self.commit_state(state, next)?;
+                tracing::error!(event = "migration_failed", app = %ready.app, version = %ready.version, reason = %reason);
+                return Err(ReleaseError::Migration {
+                    app: ready.app.clone(),
+                    version: ready.version.clone(),
+                    reason,
+                });
+            }
+            scopes.push(scope);
+        }
+        Ok(scopes)
+    }
+
+    /// Ends the upgrade maintenance of migrations whose switch is done.
+    fn finish_migrations(
+        &self,
+        state: &mut ReleaseState,
+        scopes: &[Vec<AppId>],
+    ) -> Result<(), ReleaseError> {
+        if scopes.is_empty() {
+            return Ok(());
+        }
+        let mut next = state.clone();
+        for app in scopes.iter().flatten() {
+            if let Some(record) = next.maintenance.get_mut(app) {
+                record.migrating = false;
+            }
+        }
+        next.maintenance.retain(|_, record| !record.is_empty());
+        self.commit_state(state, next)?;
+        if let Some(sink) = &self.maintenance_sink {
+            for scope in scopes {
+                sink.upgrade(scope, false);
+            }
+        }
+        Ok(())
+    }
+
+    /// Refuses to switch a runtime while a migration runs or has failed.
+    fn check_no_pending_migration(
+        &self,
+        state: &ReleaseState,
+        targets: &[(AppId, Version)],
+    ) -> Result<(), ReleaseError> {
+        let runtime_switch = targets
+            .iter()
+            .any(|(app, _)| self.policy(app).is_ok_and(|p| p.kind == AppKind::Runtime));
+        if !runtime_switch {
+            return Ok(());
+        }
+        match state
+            .maintenance
+            .iter()
+            .find(|(_, record)| record.migrating || record.migration_failed.is_some())
+        {
+            Some((app, _)) => Err(ReleaseError::MigrationPending(app.clone())),
+            None => Ok(()),
+        }
+    }
+
+    /// Switches `app` to the release whose migration failed, again (its failure cleared first).
+    pub fn retry_migration(&self, app: &AppId) -> Result<(), ReleaseError> {
+        self.leading()?;
+        let mut state = self.lock();
+        let version = state
+            .maintenance
+            .get(app)
+            .and_then(|record| record.migration_version.clone())
+            .ok_or_else(|| ReleaseError::NoFailedMigration(app.clone()))?;
+        let mut next = state.clone();
+        for record in next.maintenance.values_mut() {
+            if record.migration_version.as_ref() == Some(&version) {
+                record.migration_failed = None;
+                record.migration_version = None;
+            }
+        }
+        next.maintenance.retain(|_, record| !record.is_empty());
+        next.app_mut(app).failed.remove(&version);
+        self.commit_state(&mut state, next)?;
+        self.switch_locked(&mut state, &[(app.clone(), version)])
+    }
+
+    /// Refuses a switch that names a runtime app together with php apps on it: the runtime's switch starts those apps
+    /// again on the new binary, so their own switch in the same step would race it.
+    fn check_runtime_alone(&self, targets: &[(AppId, Version)]) -> Result<(), ReleaseError> {
+        for (runtime, _) in targets {
+            if self
+                .policy(runtime)
+                .is_ok_and(|p| p.kind == AppKind::Runtime)
+            {
+                let apps: Vec<&str> = targets
+                    .iter()
+                    .filter(|(app, _)| self.php_runtimes.get(app) == Some(runtime))
+                    .map(|(app, _)| app.as_str())
+                    .collect();
+                if !apps.is_empty() {
+                    return Err(ReleaseError::RuntimeWithItsApps {
+                        runtime: runtime.clone(),
+                        apps: apps.join(", "),
+                    });
+                }
+            }
+        }
         Ok(())
     }
 
@@ -845,6 +1295,50 @@ impl ReleaseManager {
         self.commit_state(&mut state, next)
     }
 
+    /// Turns an operator's maintenance on or off for `apps` (every configured app when empty). A failed migration's
+    /// maintenance is not touched: `clear_maintenance` ends that.
+    pub fn set_maintenance(&self, apps: &[AppId], on: bool) -> Result<Vec<AppId>, ReleaseError> {
+        self.leading()?;
+        let apps = self.maintenance_targets(apps)?;
+        let mut state = self.lock();
+        let mut next = state.clone();
+        for app in &apps {
+            next.maintenance.entry(app.clone()).or_default().operator = on;
+        }
+        next.maintenance.retain(|_, record| !record.is_empty());
+        self.commit_state(&mut state, next)?;
+        Ok(apps)
+    }
+
+    /// Ends every recorded maintenance of `apps` (every configured app when empty): the operator's and a failed
+    /// migration's.
+    pub fn clear_maintenance(&self, apps: &[AppId]) -> Result<Vec<AppId>, ReleaseError> {
+        self.leading()?;
+        let apps = self.maintenance_targets(apps)?;
+        let mut state = self.lock();
+        let mut next = state.clone();
+        for app in &apps {
+            next.maintenance.remove(app);
+        }
+        self.commit_state(&mut state, next)?;
+        Ok(apps)
+    }
+
+    fn maintenance_targets(&self, apps: &[AppId]) -> Result<Vec<AppId>, ReleaseError> {
+        if apps.is_empty() {
+            return Ok(self
+                .apps
+                .iter()
+                .filter(|(_, policy)| !matches!(policy.kind, AppKind::Server | AppKind::Runtime))
+                .map(|(app, _)| app.clone())
+                .collect());
+        }
+        for app in apps {
+            self.policy(app)?;
+        }
+        Ok(apps.to_vec())
+    }
+
     pub fn unpin(&self, app: &AppId) -> Result<(), ReleaseError> {
         self.leading()?;
         let mut state = self.lock();
@@ -888,7 +1382,14 @@ impl ReleaseManager {
         }
 
         let mut next = state.clone();
-        for (app, policy) in &self.apps {
+        // Runtimes go live before the php apps that run their binary.
+        let mut order: Vec<(&AppId, &AppPolicy)> = self.apps.iter().collect();
+        order.sort_by_key(|(_, policy)| match policy.kind {
+            AppKind::Server | AppKind::Static => 0,
+            AppKind::Runtime => 1,
+            AppKind::Php => 2,
+        });
+        for (app, policy) in order {
             if policy.kind == AppKind::Server {
                 continue;
             }
@@ -964,7 +1465,7 @@ impl ReleaseManager {
             tracing::error!(event = "boot_state_not_saved", error = %err);
         }
 
-        if let Err(incompatible) = check_set(&self.manifests_of(&state)) {
+        if let Err(incompatible) = check_set(&self.manifests_of(&state), &self.php_runtimes) {
             for item in &incompatible {
                 tracing::error!(event = "incompatible_set", message = %item);
             }
@@ -1059,7 +1560,8 @@ impl ReleaseManager {
             }
         }
         let version = server_target.ok_or(ReleaseError::ServerSwitchViaKeeper)?;
-        crate::compat::check_set(&manifests).map_err(ReleaseError::Incompatible)?;
+        crate::compat::check_set(&manifests, &self.php_runtimes)
+            .map_err(ReleaseError::Incompatible)?;
 
         let binary = self
             .store
@@ -1454,7 +1956,7 @@ impl ReleaseManager {
         for (app, version) in &targets {
             manifests.insert(app.clone(), self.store.manifest(app, version)?);
         }
-        check_set(&manifests).map_err(ReleaseError::Incompatible)?;
+        check_set(&manifests, &self.php_runtimes).map_err(ReleaseError::Incompatible)?;
 
         let revision = state.revision + 1;
         let mut next = state.clone();
@@ -1541,6 +2043,39 @@ impl ReleaseManager {
             }
         }
 
+        // A release that migrates does so once, here on the leader, after every pod has prepared and before the set
+        // is made active: no pod can switch to it before the migration is done.
+        let mut scopes = Vec::new();
+        if !ready_pods.is_empty() {
+            let held = self
+                .node
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .held
+                .take();
+            let result = match &held {
+                Some((r, prepared)) if *r == revision => self.migrate_all(state, prepared, true),
+                _ if self.migrates(targets) => Err(ReleaseError::Prepare {
+                    app: targets[0].0.clone(),
+                    version: targets[0].1.clone(),
+                    reason: "the leader did not prepare the set, so it cannot run its migration"
+                        .to_string(),
+                }),
+                _ => Ok(Vec::new()),
+            };
+            self.node.lock().unwrap_or_else(|p| p.into_inner()).held = held;
+            match result {
+                Ok(done) => scopes = done,
+                Err(err) => {
+                    let mut next = state.clone();
+                    next.staged = None;
+                    self.commit_state(state, next)?;
+                    self.publish(|node| node.held = None);
+                    tracing::error!(event = "switch_abandoned", revision, reason = %err);
+                    return Err(err);
+                }
+            }
+        }
         let mut next = state.clone();
         next.staged = None;
         if ready_pods.is_empty() {
@@ -1608,6 +2143,8 @@ impl ReleaseManager {
             node.report.ready = mine_ok;
         });
         tracing::info!(event = "activated", revision = serving, prepared = ?ready_pods, failed = ?failed_pods);
+        self.finish_migrations(state, &scopes)?;
+        self.record_runtime_trials(state, &old)?;
         let apps: Vec<AppId> = targets.iter().map(|(app, _)| app.clone()).collect();
         self.prune(state, &apps)?;
         Ok(())
@@ -2149,6 +2686,9 @@ impl ReleaseManager {
     /// advance the rollout.
     pub fn lead(&self, exe: Option<&std::path::Path>) -> Result<(), ReleaseError> {
         self.leading()?;
+        if let Err(err) = self.check_member_health() {
+            tracing::warn!(event = "member_health_check_failed", error = %err);
+        }
         let epoch = self.cluster.view().epoch;
         let current = *self.took_over.lock().unwrap_or_else(|p| p.into_inner());
         if current != Some(epoch) {

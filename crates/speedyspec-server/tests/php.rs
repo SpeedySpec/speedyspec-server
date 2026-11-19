@@ -1,4 +1,4 @@
-//! PHP apps end to end: the real binary (built with `php`), a pool of `php-worker` processes, real sockets, and the
+//! PHP apps end to end: the real binary, a pool of `speedyspec-php-runtime worker` processes, real sockets, and the
 //! scripts in tests/fixtures/php-app.
 
 mod support;
@@ -29,6 +29,7 @@ impl Setup {
 }
 
 fn setup(php: &str) -> Setup {
+    support::runtime::binary();
     let dir = tempfile::tempdir().unwrap();
     let site = dir.path().join("site");
     std::fs::create_dir_all(site.join("uploads")).unwrap();
@@ -66,10 +67,20 @@ path = "{app}"
 site_dir = "{site}"
 {php}
 
+[app.rt]
+kind = "runtime"
+path = "{runtime}"
+
 [[mount]]
 path = "/"
 app = "blog"
 "#,
+        runtime = support::runtime::release(
+            &dir.path().join("rt"),
+            "1.0.0",
+            support::runtime::Workers::Real
+        )
+        .display(),
         run = dir.path().join("run").display(),
         app = fixture("php-app").display(),
         site = site.display(),
@@ -108,7 +119,6 @@ fn count_events(server: &Running, event: &str, field: Option<(&str, &str)>) -> u
         .count()
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn server_vars_and_body_round_trip() {
     let (_setup, server, addr) = serve("");
@@ -156,7 +166,6 @@ fn server_vars_and_body_round_trip() {
     assert_eq!(json["env"], "from-dotenv", "site_dir/.env reaches getenv()");
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn front_controller_gets_unmatched_paths() {
     let (_setup, _server, addr) = serve("");
@@ -168,7 +177,6 @@ fn front_controller_gets_unmatched_paths() {
     assert_eq!(get(addr, "/dir/"), (200, "dir index".into()));
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn php_file_runs_directly() {
     let (_setup, _server, addr) = serve("");
@@ -185,7 +193,6 @@ fn php_file_runs_directly() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn static_file_from_site_dir_then_release() {
     let (_setup, _server, addr) = serve("");
@@ -210,7 +217,6 @@ fn static_file_from_site_dir_then_release() {
 }
 
 /// Only site_dir's wp-content is served from it, and no dotfile anywhere: site_dir holds secrets.
-#[cfg(feature = "php")]
 #[test]
 fn private_files_are_not_served() {
     let (_setup, _server, addr) = serve("");
@@ -229,7 +235,6 @@ fn private_files_are_not_served() {
 }
 
 /// A directory without its trailing slash redirects, as Apache and nginx do (relative links in it must resolve).
-#[cfg(feature = "php")]
 #[test]
 fn directory_without_slash_redirects() {
     let (_setup, _server, addr) = serve("");
@@ -244,7 +249,6 @@ fn directory_without_slash_redirects() {
     assert_eq!(response.headers()["location"], "/dir/?x=1");
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn php_in_site_wp_content_runs() {
     let (_setup, _server, addr) = serve("");
@@ -255,11 +259,12 @@ fn php_in_site_wp_content_runs() {
 }
 
 /// A client that goes away does not kill the script: WP-Cron relies on ignore_user_abort().
-#[cfg(feature = "php")]
 #[test]
 fn client_disconnect_lets_script_finish() {
     let (setup, _server, addr) = serve("");
     let finished = setup.site().join("wp-content/finished");
+    // The first request after start pays one-time costs; this test is about a client leaving mid-script.
+    assert_eq!(get(addr, "/index.php").0, 200);
     {
         let mut stream = TcpStream::connect(addr).unwrap();
         write!(
@@ -277,7 +282,6 @@ fn client_disconnect_lets_script_finish() {
 }
 
 /// The CLI-era `SpeedySpec\Hooks\Hook` registry holds nothing past a request.
-#[cfg(feature = "php")]
 #[test]
 fn legacy_hook_registry_is_request_scoped() {
     let (_setup, _server, addr) = serve("workers = { min = 1, max = 1 }");
@@ -304,7 +308,6 @@ fn raw_get(addr: SocketAddr, path: &str, mut chunk: impl FnMut(&[u8], Duration))
     }
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn response_streams() {
     let (_setup, _server, addr) = serve("");
@@ -325,7 +328,6 @@ fn response_streams() {
     assert!(text.contains("chunk4"), "{text}");
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn fatal_error_is_500_and_next_request_clean() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 1 }");
@@ -348,7 +350,6 @@ fn fatal_error_is_500_and_next_request_clean() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn hooks_work_in_a_request() {
     let (_setup, _server, addr) = serve("workers = { min = 1, max = 1 }");
@@ -360,7 +361,6 @@ fn hooks_work_in_a_request() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn crash_is_502_and_worker_replaced() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 1 }");
@@ -376,7 +376,6 @@ fn crash_is_502_and_worker_replaced() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn hang_is_504_and_worker_killed() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 1 }\nrequest_timeout = \"1s\"");
@@ -399,7 +398,6 @@ fn hang_is_504_and_worker_killed() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn slow_upload_bounded_by_request_timeout() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 1 }\nrequest_timeout = \"1s\"");
@@ -429,7 +427,6 @@ fn slow_upload_bounded_by_request_timeout() {
     assert_eq!(get(addr, "/upload.php").0, 200, "the worker is free again");
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn slow_reader_gets_streamed_response() {
     let (setup, _server, addr) = serve("");
@@ -462,7 +459,6 @@ fn slow_reader_gets_streamed_response() {
     assert!(total > 200 * 65536, "every byte arrives ({total})");
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn leak_recycles_worker() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 1 }\nmemory_limit = \"16MiB\"");
@@ -485,7 +481,6 @@ fn leak_recycles_worker() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn max_requests_recycles_worker() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 1 }\nmax_requests = 2");
@@ -503,7 +498,6 @@ fn max_requests_recycles_worker() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn grows_to_max_and_shrinks_after_idle() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 3 }\nidle_timeout = \"1s\"");
@@ -519,9 +513,10 @@ fn grows_to_max_and_shrinks_after_idle() {
         "three workers ran at once: {:?}",
         started.elapsed()
     );
+    // Three visitor workers, and the two internal ones kept for the server's own calls (probes, gate calls).
     assert_eq!(
         count_events(&server, "php_worker_started", None),
-        3,
+        5,
         "{:?}",
         server.log()
     );
@@ -548,7 +543,6 @@ fn grows_to_max_and_shrinks_after_idle() {
     assert_eq!(get(addr, "/pid.php").0, 200, "min stays");
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn release_switch_finishes_long_request_on_old_pool() {
     use support::release_host::ReleaseHost;
@@ -592,10 +586,17 @@ update = "manual"
 [app.blog.php]
 site_dir = "{site}"
 
+[app.rt]
+kind = "runtime"
+source = "{runtime_source}"
+keys = ["{key}"]
+update = "manual"
+
 [[mount]]
 path = "/"
 app = "blog"
 "#,
+        runtime_source = host.url("/rt/index.json"),
         data = dir.path().join("data").display(),
         run = dir.path().join("run").display(),
         source = host.url("/blog/index.json"),
@@ -616,6 +617,20 @@ app = "blog"
             keeper.display()
         );
         std::thread::sleep(Duration::from_millis(50));
+    }
+    host.publish_binary(
+        "rt",
+        "1.0.0",
+        support::runtime::script("1.0.0", support::runtime::Workers::Real).as_bytes(),
+    );
+    for args in [
+        ["release", "install", "rt", "1.0.0"],
+        ["release", "switch", "rt@1.0.0", ""],
+    ] {
+        let mut all: Vec<&str> = args.iter().copied().filter(|a| !a.is_empty()).collect();
+        all.extend_from_slice(&["--config", &config_arg]);
+        let (code, out, err) = command(&all);
+        assert_eq!(code, 0, "{all:?}: {out}{err}");
     }
     let (code, out, err) = command(&[
         "release",
@@ -683,14 +698,23 @@ app = "blog"
     );
 }
 
-#[cfg(not(feature = "php"))]
+/// A worker's spec (the app's credentials) never shows in its argv, and the server's own environment does not reach
+/// PHP: only the allowlist and the app's own environment.
 #[test]
-fn without_php_feature_placeholder_still_answers_503() {
-    let (_setup, _server, addr) = serve("");
-    let response = client()
-        .get(format!("http://{addr}/server.php"))
-        .send()
+fn worker_secrets_stay_out_of_argv_and_the_server_environment_stays_out() {
+    let setup = setup("");
+    let mut server = support::run::start_with(&setup.config, &[("SPEEDYSPEC_SERVER_ONLY", "1")]);
+    let addr = server.address();
+    assert_eq!(get(addr, "/env.php"), (200, "absent from-dotenv".into()));
+    let (_, pid) = get(addr, "/pid.php");
+    let ps = std::process::Command::new("ps")
+        .args(["-o", "command=", "-p", pid.trim()])
+        .output()
         .unwrap();
-    assert_eq!(response.status(), 503);
-    assert_eq!(response.headers()["retry-after"], "30");
+    let argv = String::from_utf8_lossy(&ps.stdout);
+    assert!(!argv.trim().is_empty(), "ps saw the worker");
+    assert!(
+        !argv.contains("from-dotenv") && !argv.contains("release_dir"),
+        "the spec is not in argv: {argv}"
+    );
 }

@@ -1,8 +1,10 @@
 # speedyspec-server
 
-The SpeedySpec web server. One binary serves the SpeedySpec admin (a static Astro site, held in memory), the Rust
-admin API at `/admin/api/`, and other apps mounted by host and path, over HTTP/1.1, HTTP/2 and HTTP/3. Each app has its
-own releases: it is downloaded, verified, kept, switched and rolled back without touching the others. The server
+The SpeedySpec web server. One binary serves the SpeedySpec admin (a static site, held in memory), and runs the admin
+API, the front-end API and the blog (PHP apps, on the PHP runtime's supervised workers over FastCGI), each mounted by
+host and path, over HTTP/1.1, HTTP/2 and HTTP/3. It gates the admin: sign-in and per-page access, decided by the admin
+API. Each app, and the PHP runtime, has its own releases: it is downloaded, verified, kept, switched and rolled back
+without touching the others. The server
 upgrades itself by handing its listening sockets to a new process, so no connection is refused during an upgrade.
 
 The same binary is the control tool: `status`, `release …` and `reload` talk to the running server through
@@ -105,9 +107,23 @@ check_interval = "15m"
 prerelease = false
 allow_unsigned = false
 
+[app.php-runtime]
+kind = "runtime"                       # the PHP runtime binary the php apps run; see docs/php.md
+source = "https://releases.example.com/php-runtime/index.json"
+update = "manual"
+
 [app.blog]
 kind = "php"
 source = "https://releases.example.com/blog/index.json"
+runtime = "php-runtime"                # may be left out when only one runtime app is configured
+
+[app.admin-api]
+kind = "php"                           # the admin API: the gate asks it who is signed in
+source = "https://releases.example.com/admin-api/index.json"
+
+[app.admin-api.php]
+site_dir = "/var/lib/speedyspec/sites/admin-api"
+env_file = "/etc/speedyspec/admin-api.env"   # e.g. a database user that can write; merged after site_dir/.env
 
 [app.blog.php]                         # php apps only; see docs/php.md
 workers = { min = 1, max = 4 }         # start min, grow to max on demand
@@ -117,6 +133,7 @@ memory_limit = "256MiB"                # a worker past this after a request is r
 idle_timeout = "10s"                   # idle workers above min exit after this
 site_dir = "/var/lib/speedyspec/sites/blog"  # the app's writable directory; required in managed mode
 bindings = {}                          # PHP classes bound to ports for every request
+env = { WP_ENVIRONMENT = "production" }  # merged last, after site_dir/.env and env_file
 
 [[mount]]
 host = "*"                             # or an exact host, which beats "*" on that host
@@ -124,8 +141,34 @@ path = "/admin/"
 app = "admin"
 access = "signed-in"                   # or "public" (default)
 
+[[mount]]
+path = "/admin-api/"
+app = "admin-api"
+access = "signed-in"
+
 [access]
-implementation = "deny"                # "dev-allow-all" only with every listener on loopback
+implementation = "gate"                # or "deny"; "dev-allow-all" only with every listener on loopback
+
+[gate]                                 # see docs/php.md, "The admin gate"
+app = "admin-api"                      # the php app the gate asks
+session_ttl = "60s"                    # how long a signed-in answer is remembered
+timeout = "5s"
+site_ttl = "2s"                        # how long the site state is remembered
+poll = "1s"                            # how often the revocation feed is read
+max_pending = 16                       # uncached session checks at once; more get 503
+# maintenance_apps = ["admin", "blog"] # the apps the admin API's maintenance covers (default: every app)
+
+[health]                               # each php app's health probes
+interval = "2s"
+timeout = "1s"
+fail_after = 3                         # failed rounds in a row before maintenance
+pass_after = 3
+
+[runtime]
+trial_period = "2m"                    # how long a new runtime release is on trial
+
+[switch]
+migrate_timeout = "30m"                # how long a release's migration may run
 
 [limits]
 static_memory = 536870912              # bytes of static files held in memory (512 MiB)
@@ -140,8 +183,9 @@ trial_period = "2m"                    # how long a new server version is on tri
 ```
 
 In immutable mode, apps take `path` (a directory holding `speedyspec-release.json`) instead of `source`; `source` is
-refused there, and `path` is refused in managed mode. The server app takes neither `path` nor a mount: its only mount
-is the built-in admin API at `/admin/api/`, on every host, signed-in only. Durations are written like `30s`, `15m`,
+refused there, and `path` is refused in managed mode. A runtime app's `path` holds its `speedyspec-php-runtime`
+binary. The server app takes neither `path` nor a mount. An app may name `maintenance_page = "<static app>"`, whose
+release's maintenance page it shows while in maintenance. Durations are written like `30s`, `15m`,
 `1h`, and the `[handoff]` ones must be at least `1s`.
 
 ## Releases (managed mode)
@@ -259,10 +303,10 @@ See [`docs/cluster.md`](docs/cluster.md) for how leaders, followers, epochs and 
 
 ## PHP apps
 
-An app with `kind = "php"` runs on a pool of supervised PHP workers (an embedded, static PHP with every extension
-WordPress needs), per release, over FastCGI. WordPress's hook functions, `WP_Hook` and a service container
-(`SpeedySpec\Container\Container`) are native, in Rust. Build the server with the `php` feature; without it a PHP app
-answers 503.
+An app with `kind = "php"` runs on a pool of supervised PHP workers, per release, over FastCGI. The workers are the
+PHP runtime (`speedyspec-php-runtime`: an embedded, static PHP with every extension WordPress needs, and WordPress's hook
+functions, `WP_Hook` and a service container native, in Rust), released as an app of its own with `kind = "runtime"`.
+The server itself holds no PHP.
 
 Its settings are under `[app.<id>.php]`, as in the example configuration above.
 
@@ -273,11 +317,12 @@ See [`docs/php.md`](docs/php.md) for the build, the release's `php` section, the
 
 ```
 scripts/build-php.sh                                   # once: the static PHP, into .php-build/
-cargo test --workspace --features speedyspec-server/test-hooks,speedyspec-server/php
+cargo test --workspace --features speedyspec-server/test-hooks
 ```
 
 On Linux musl, `scripts/linux-php.sh scripts/build-php.sh` and `scripts/linux-php.sh cargo test …`. Without the static
-PHP, leave `php` off and `--exclude` the PHP crates (as the CI's `test` job does).
+PHP, the server still builds (`scripts/check-no-php-in-server.sh` checks it holds none); its tests start the runtime's
+workers, so they run where PHP is built (as the CI's `php` job does).
 
 `test-hooks` turns on the hooks the keeper tests need (fake versions and protocols, crash and never-ready switches, a
 slow streaming route, and the one-host lease file `leadership = "file"` the multi-process cluster tests use). It is

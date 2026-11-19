@@ -101,7 +101,12 @@ async fn serve(channel: Channel) -> Result<(), String> {
         }
     }
 
-    let state = prepare(&config).map_err(|err| err.to_string())?;
+    let booted = prepare(&config).map_err(|err| err.to_string())?;
+    let state = booted.state;
+    let (php, binaries) = (booted.php, booted.binaries);
+    if let Some(revocation) = booted.revocation {
+        revocation.spawn(php.clone());
+    }
     let live = state.apps.clone();
     let version = own_version();
     // Release commands and auto-update pause while set: from a server switch beginning, and while draining.
@@ -110,11 +115,25 @@ async fn serve(channel: Channel) -> Result<(), String> {
     let mut drained = false;
     let mut releases = None;
     let readiness = Arc::new(crate::cluster::Readiness::default());
+    let _ = readiness.maintenance.set(state.maintenance.clone());
+    let manager_cell: crate::health::ManagerCell = Default::default();
+    crate::health::spawn(
+        &config,
+        php.clone(),
+        state.maintenance.clone(),
+        manager_cell.clone(),
+    );
     let backend: Arc<dyn ControlBackend> = if config.mode == Mode::Managed {
-        let (settings, apps) = (config.clone(), live.clone());
+        let (settings, apps, php, binaries, maintenance) = (
+            config.clone(),
+            live.clone(),
+            php.clone(),
+            binaries.clone(),
+            state.maintenance.clone(),
+        );
         let applied = version.clone();
         let manager = tokio::task::spawn_blocking(move || {
-            let manager = managed::start(&settings, apps)?;
+            let manager = managed::start(&settings, apps, php, binaries, maintenance)?;
             manager
                 .apply_pending_group(&applied)
                 .map_err(|err| err.to_string())?;
@@ -146,7 +165,13 @@ async fn serve(channel: Channel) -> Result<(), String> {
         });
         crate::cluster::spawn_loops(manager.clone(), draining.clone(), on_turn);
         let _ = readiness.manager.set(manager.clone());
+        let _ = manager_cell.set(manager.clone());
         managed::spawn_fallback_sweep(live);
+        managed::spawn_maintenance_sync(
+            manager.clone(),
+            state.maintenance.clone(),
+            config.apps.keys().cloned().collect(),
+        );
         let apps = config
             .apps
             .iter()

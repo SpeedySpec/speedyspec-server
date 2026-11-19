@@ -45,6 +45,15 @@ pub enum ControlRequest {
         app: AppId,
     },
     Status,
+    /// Switch an app again to the release whose migration failed.
+    RetryMigration {
+        app: AppId,
+    },
+    /// Turn an operator's maintenance on or off, or clear every recorded maintenance (a failed migration's too).
+    Maintenance {
+        action: MaintenanceAction,
+        apps: Vec<AppId>,
+    },
     /// Hand off to a new generation of the confirmed binary, re-reading the config (answered by the keeper).
     Reload,
     /// Internal: the keeper refused a server switch the generation recorded; undo it without marking it failed.
@@ -65,6 +74,15 @@ pub enum ControlResponse {
 }
 
 /// Answers control requests. Called on a blocking thread.
+/// What `speedyspec-server maintenance` does.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MaintenanceAction {
+    On,
+    Off,
+    Clear,
+}
+
 pub trait ControlBackend: Send + Sync {
     fn handle(&self, request: ControlRequest) -> ControlResponse;
 }
@@ -278,6 +296,27 @@ impl ControlBackend for ManagedBackend {
                 .unpin(&app)
                 .map(|()| json!(format!("unpinned {app}")))
                 .map_err(|err| err.to_string()),
+            ControlRequest::RetryMigration { app } => manager
+                .retry_migration(&app)
+                .map(|()| json!(format!("migrated and switched {app}")))
+                .map_err(|err| err.to_string()),
+            ControlRequest::Maintenance { action, apps } => {
+                let done = match action {
+                    MaintenanceAction::On => manager.set_maintenance(&apps, true),
+                    MaintenanceAction::Off => manager.set_maintenance(&apps, false),
+                    MaintenanceAction::Clear => manager.clear_maintenance(&apps),
+                };
+                let word = match action {
+                    MaintenanceAction::On => "on",
+                    MaintenanceAction::Off => "off",
+                    MaintenanceAction::Clear => "cleared",
+                };
+                done.map(|apps| {
+                    let names: Vec<&str> = apps.iter().map(AppId::as_str).collect();
+                    json!(format!("maintenance {word}: {}", names.join(", ")))
+                })
+                .map_err(|err| err.to_string())
+            }
         };
         match result {
             Ok(value) => ControlResponse::Ok(value),

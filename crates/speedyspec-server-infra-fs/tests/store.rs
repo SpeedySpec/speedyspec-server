@@ -243,7 +243,12 @@ fn commit_binary_sets_executable() {
     std::fs::write(partial.join("artifact"), b"bin").unwrap();
     let path = s
         .store
-        .commit_binary(&admin(), &v1(), &partial.join("artifact"))
+        .commit_binary(
+            &admin(),
+            &v1(),
+            &partial.join("artifact"),
+            "speedyspec-server",
+        )
         .unwrap();
     assert_eq!(
         path,

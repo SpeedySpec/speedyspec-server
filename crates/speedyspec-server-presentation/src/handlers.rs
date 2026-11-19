@@ -17,12 +17,8 @@ pub enum AppHandle {
     Static(StaticApp),
     /// An app with no release installed yet.
     NotInstalled,
-    /// A PHP app whose server was built without PHP (503).
-    PhpPlaceholder,
     /// A PHP app's live release: its endpoint answers the whole request.
     Php(Arc<dyn PhpEndpoint>),
-    /// The admin API, until it has endpoints.
-    AdminApiPlaceholder,
 }
 
 impl AppHandle {
@@ -37,7 +33,7 @@ impl AppHandle {
         match self {
             AppHandle::Static(app) => app.respond(method, mount_prefix, rel_path, query, headers),
             // The gate hands PHP requests to the endpoint; nothing else reaches here for one.
-            AppHandle::NotInstalled | AppHandle::PhpPlaceholder | AppHandle::Php(_) => {
+            AppHandle::NotInstalled | AppHandle::Php(_) => {
                 let mut response = text(StatusCode::SERVICE_UNAVAILABLE, "service unavailable");
                 response.headers_mut().insert(
                     header::RETRY_AFTER,
@@ -45,7 +41,6 @@ impl AppHandle {
                 );
                 response
             }
-            AppHandle::AdminApiPlaceholder => text(StatusCode::NOT_FOUND, "not found"),
         }
     }
 }

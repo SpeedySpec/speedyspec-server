@@ -1,0 +1,32 @@
+[package]
+name = "speedyspec-php-runtime"
+version = "1.0.0"
+description = "The SpeedySpec PHP runtime: embedded PHP serving FastCGI, with the Rust WordPress API."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "speedyspec-php-runtime"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+libc = "0.2"
+semver = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+speedyspec-runtime-contract = { path = "../speedyspec-runtime-contract" }
+speedyspec-fastcgi = { path = "../speedyspec-fastcgi" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+
+[dev-dependencies]
+tempfile = "3"

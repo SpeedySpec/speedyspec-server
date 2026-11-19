@@ -15,7 +15,6 @@ use speedyspec_server_presentation::ForwardedHeaders;
 pub const DEFAULT_CONFIG: &str = "/etc/speedyspec/server.toml";
 
 /// The built-in mount of the server app: the admin API, for any host, signed-in only.
-pub const ADMIN_API_PATH: &str = "/admin/api/";
 
 const DEFAULT_RUN_DIR: &str = "/run/speedyspec";
 const DEFAULT_STATIC_MEMORY: u64 = 512 * 1024 * 1024;
@@ -39,6 +38,8 @@ pub enum Mode {
 pub enum AccessImpl {
     Deny,
     DevAllowAll,
+    /// The admin gate: release access rules and the gate app's answers (`[gate]`).
+    Gate,
 }
 
 /// When a managed app checks for and installs new releases.
@@ -75,7 +76,30 @@ pub struct AppConfig {
     pub allow_unsigned: bool,
     /// The worker pool of a `php` app (`app.<id>.php`); `None` for other kinds.
     pub php: Option<PhpConfig>,
+    /// The `runtime` app a `php` app's workers run (`app.<id>.runtime`, or the only runtime app); `None` for other
+    /// kinds.
+    pub runtime: Option<AppId>,
+    /// The static app whose maintenance page this app shows while in maintenance (`app.<id>.maintenance_page`).
+    pub maintenance_page: Option<AppId>,
 }
+
+/// `[health]`: how often and how patiently each PHP app's health probes are called.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HealthConfig {
+    pub interval: Duration,
+    pub timeout: Duration,
+    /// Failed rounds in a row that turn maintenance on.
+    pub fail_after: u32,
+    /// Passed rounds in a row that turn it off again.
+    pub pass_after: u32,
+}
+
+pub const DEFAULT_HEALTH: HealthConfig = HealthConfig {
+    interval: Duration::from_secs(2),
+    timeout: Duration::from_secs(1),
+    fail_after: 3,
+    pass_after: 3,
+};
 
 /// How many workers a php app's pool keeps: `min` always, up to `max` on demand.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,6 +124,42 @@ pub struct PhpConfig {
     pub site_dir: Option<PathBuf>,
     /// `(port key, PHP class)` bindings installed at the start of every request.
     pub bindings: Vec<(String, String)>,
+    /// `app.<id>.php.env`: environment variables for the app's workers.
+    pub env: Vec<(String, String)>,
+    /// `app.<id>.php.env_file`: a file of `KEY=value` lines for the app's workers.
+    pub env_file: Option<PathBuf>,
+}
+
+impl PhpConfig {
+    /// The app's worker environment: the site directory's `.env`, then `env_file`, then `env`, a later source winning
+    /// for a key. Read when a pool starts, so a changed file applies to the next release switch. A missing `env_file`
+    /// is an error; a missing `.env` is not.
+    pub fn worker_env(&self) -> Result<Vec<(String, String)>, String> {
+        let mut env = BTreeMap::new();
+        if let Some(site) = &self.site_dir
+            && let Ok(text) = std::fs::read_to_string(site.join(".env"))
+        {
+            env.extend(env_lines(&text));
+        }
+        if let Some(file) = &self.env_file {
+            let text = std::fs::read_to_string(file)
+                .map_err(|err| format!("reading env_file {}: {err}", file.display()))?;
+            env.extend(env_lines(&text));
+        }
+        env.extend(self.env.iter().cloned());
+        Ok(env.into_iter().collect())
+    }
+}
+
+/// `KEY=value` lines, nothing evaluated; comments and blank lines skipped.
+fn env_lines(text: &str) -> Vec<(String, String)> {
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .filter_map(|line| line.split_once('='))
+        .map(|(k, v)| (k.trim().to_string(), v.trim().to_string()))
+        .filter(|(k, _)| !k.is_empty())
+        .collect()
 }
 
 pub const DEFAULT_PHP_WORKERS: WorkerRange = WorkerRange { min: 1, max: 4 };
@@ -127,6 +187,14 @@ pub struct Config {
     pub handoff: HandoffConfig,
     /// `[cluster]`; `None` is a single host.
     pub cluster: Option<ClusterConfig>,
+    /// `[health]`.
+    pub health: HealthConfig,
+    /// `[gate]`, required with `access.implementation = "gate"`.
+    pub gate: Option<speedyspec_server_gate::GateSettings>,
+    /// `[switch] migrate_timeout`: how long a release's migration may run (default 30 minutes).
+    pub migrate_timeout: Duration,
+    /// `[runtime] trial_period`: how long a new runtime release is on trial (default 2 minutes).
+    pub runtime_trial_period: Duration,
 }
 
 /// Who decides which pod leads.
@@ -207,6 +275,37 @@ struct RawConfig {
     #[serde(default)]
     handoff: RawHandoff,
     cluster: Option<RawCluster>,
+    #[serde(default)]
+    health: RawHealth,
+    gate: Option<RawGate>,
+    #[serde(default, rename = "switch")]
+    switch_: RawSwitch,
+    #[serde(default)]
+    runtime: RawRuntime,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct RawRuntime {
+    trial_period: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct RawSwitch {
+    migrate_timeout: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawGate {
+    app: Option<String>,
+    session_ttl: Option<String>,
+    timeout: Option<String>,
+    site_ttl: Option<String>,
+    poll: Option<String>,
+    max_pending: Option<usize>,
+    maintenance_apps: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -401,6 +500,17 @@ struct RawApp {
     #[serde(default)]
     allow_unsigned: bool,
     php: Option<RawPhp>,
+    runtime: Option<String>,
+    maintenance_page: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct RawHealth {
+    interval: Option<String>,
+    timeout: Option<String>,
+    fail_after: Option<u32>,
+    pass_after: Option<u32>,
 }
 
 #[derive(Deserialize, Default)]
@@ -414,6 +524,9 @@ struct RawPhp {
     site_dir: Option<PathBuf>,
     #[serde(default)]
     bindings: BTreeMap<String, String>,
+    #[serde(default)]
+    env: BTreeMap<String, String>,
+    env_file: Option<PathBuf>,
 }
 
 #[derive(Deserialize)]
@@ -508,6 +621,8 @@ fn php_config(mode: Mode, id: &AppId, raw: Option<RawPhp>) -> Result<PhpConfig, 
         )?,
         site_dir: raw.site_dir,
         bindings: raw.bindings.into_iter().collect(),
+        env: raw.env.into_iter().collect(),
+        env_file: raw.env_file,
     })
 }
 
@@ -638,6 +753,27 @@ impl Config {
                 AppKind::Php => Some(php_config(raw.mode, &id, app.php)?),
                 _ => None,
             };
+            let maintenance_page = app
+                .maintenance_page
+                .as_deref()
+                .map(|name| {
+                    AppId::parse(name).map_err(|err| {
+                        invalid(format!("app.{id}.maintenance_page {name:?}: {err}"))
+                    })
+                })
+                .transpose()?;
+            let runtime = match (&app.runtime, app.kind) {
+                (None, _) => None,
+                (Some(name), AppKind::Php) => Some(
+                    AppId::parse(name)
+                        .map_err(|err| invalid(format!("app.{id}.runtime {name:?}: {err}")))?,
+                ),
+                (Some(_), _) => {
+                    return Err(invalid(format!(
+                        "app.{id}.runtime is only for apps with kind = \"php\""
+                    )));
+                }
+            };
             apps.insert(
                 id,
                 AppConfig {
@@ -651,21 +787,65 @@ impl Config {
                     check_interval,
                     prerelease: app.prerelease,
                     allow_unsigned: app.allow_unsigned,
+                    runtime,
+                    maintenance_page,
                 },
             );
         }
+        resolve_runtimes(&mut apps)?;
+        for (id, app) in &apps {
+            if let Some(page) = &app.maintenance_page
+                && apps
+                    .get(page)
+                    .is_none_or(|other| other.kind != AppKind::Static)
+            {
+                return Err(invalid(format!(
+                    "app.{id}.maintenance_page {page:?} is not a configured app with kind = \"static\""
+                )));
+            }
+        }
+        let gate = match raw.gate {
+            None if raw.access.implementation == AccessImpl::Gate => {
+                return Err(invalid(
+                    "access.implementation = \"gate\" needs [gate] with gate.app naming the admin API app",
+                ));
+            }
+            None => None,
+            Some(raw_gate) => Some(gate_settings(raw_gate, &apps)?),
+        };
+        let health = HealthConfig {
+            interval: duration(
+                "health.interval",
+                raw.health.interval.as_deref(),
+                DEFAULT_HEALTH.interval,
+            )?,
+            timeout: duration(
+                "health.timeout",
+                raw.health.timeout.as_deref(),
+                DEFAULT_HEALTH.timeout,
+            )?,
+            fail_after: raw
+                .health
+                .fail_after
+                .unwrap_or(DEFAULT_HEALTH.fail_after)
+                .max(1),
+            pass_after: raw
+                .health
+                .pass_after
+                .unwrap_or(DEFAULT_HEALTH.pass_after)
+                .max(1),
+        };
         let servers: Vec<&AppId> = apps
             .iter()
             .filter(|(_, app)| app.kind == AppKind::Server)
             .map(|(id, _)| id)
             .collect();
-        let [server] = servers.as_slice() else {
+        if servers.len() != 1 {
             return Err(invalid(format!(
                 "exactly one app must have kind = \"server\", found {}",
                 servers.len()
             )));
-        };
-        let server = (*server).clone();
+        }
         if raw.mode == Mode::Managed && raw.data_dir.is_none() {
             return Err(invalid("mode = \"managed\" needs data_dir"));
         }
@@ -683,16 +863,11 @@ impl Config {
                 }
                 Some(config) if config.kind == AppKind::Server => {
                     return Err(invalid(format!(
-                        "mount.app {:?} is the server app, whose only mount is the built-in {ADMIN_API_PATH}",
+                        "mount.app {:?} is the server app, which has no mounts",
                         mount.app
                     )));
                 }
                 Some(_) => {}
-            }
-            if mount.path == ADMIN_API_PATH {
-                return Err(invalid(format!(
-                    "mount.path {ADMIN_API_PATH:?} is reserved for the admin API on every host"
-                )));
             }
             let host = if mount.host == "*" {
                 HostMatch::Any
@@ -704,22 +879,6 @@ impl Config {
                 path: mount.path,
                 app,
                 access: mount.access,
-            });
-        }
-        // The admin API answers on every host. An exact-host mount beats every `*` mount on its host, so the built-in
-        // mount is added once for `*` and once for each exact host that has mounts of its own.
-        let mut hosts: Vec<HostMatch> = vec![HostMatch::Any];
-        for mount in &mounts {
-            if !hosts.contains(&mount.host) {
-                hosts.push(mount.host.clone());
-            }
-        }
-        for host in hosts {
-            mounts.push(Mount {
-                host,
-                path: ADMIN_API_PATH.to_string(),
-                app: server.clone(),
-                access: Access::SignedIn,
             });
         }
         let static_fallback_grace = duration(
@@ -774,6 +933,18 @@ impl Config {
             static_memory: raw.limits.static_memory,
             static_fallback_grace,
             handoff,
+            health,
+            gate,
+            migrate_timeout: duration(
+                "switch.migrate_timeout",
+                raw.switch_.migrate_timeout.as_deref(),
+                Duration::from_secs(30 * 60),
+            )?,
+            runtime_trial_period: duration(
+                "runtime.trial_period",
+                raw.runtime.trial_period.as_deref(),
+                Duration::from_secs(120),
+            )?,
             cluster: raw
                 .cluster
                 .map(|c| cluster_config(raw.mode, c))
@@ -784,6 +955,107 @@ impl Config {
 
 /// The per-app rules: a mode mixes nothing, and the server app has neither `path` nor (until managed mode) anything
 /// to mount.
+/// `[gate]`: its app must be a configured php app.
+fn gate_settings(
+    raw: RawGate,
+    apps: &BTreeMap<AppId, AppConfig>,
+) -> Result<speedyspec_server_gate::GateSettings, ConfigError> {
+    let name = raw
+        .app
+        .ok_or_else(|| invalid("gate.app is required: the admin API app the gate asks"))?;
+    let app = AppId::parse(&name).map_err(|err| invalid(format!("gate.app {name:?}: {err}")))?;
+    if apps
+        .get(&app)
+        .is_none_or(|config| config.kind != AppKind::Php)
+    {
+        return Err(invalid(format!(
+            "gate.app {name:?} is not a configured app with kind = \"php\""
+        )));
+    }
+    let maintenance_apps = raw
+        .maintenance_apps
+        .map(|names| {
+            names
+                .iter()
+                .map(|name| match AppId::parse(name) {
+                    Ok(id) if apps.contains_key(&id) => Ok(id),
+                    _ => Err(invalid(format!(
+                        "gate.maintenance_apps: {name:?} is not a configured app"
+                    ))),
+                })
+                .collect::<Result<Vec<_>, _>>()
+        })
+        .transpose()?;
+    Ok(speedyspec_server_gate::GateSettings {
+        app,
+        session_ttl: duration(
+            "gate.session_ttl",
+            raw.session_ttl.as_deref(),
+            Duration::from_secs(60),
+        )?,
+        timeout: duration(
+            "gate.timeout",
+            raw.timeout.as_deref(),
+            Duration::from_secs(5),
+        )?,
+        site_ttl: duration(
+            "gate.site_ttl",
+            raw.site_ttl.as_deref(),
+            Duration::from_secs(2),
+        )?,
+        poll: duration("gate.poll", raw.poll.as_deref(), Duration::from_secs(1))?,
+        max_pending: raw.max_pending.unwrap_or(16).max(1),
+        maintenance_apps,
+    })
+}
+
+/// Gives every php app its runtime app: the one it names, which must be a `runtime` app, or the only runtime app
+/// configured. A php app with several to choose from must name one.
+fn resolve_runtimes(apps: &mut BTreeMap<AppId, AppConfig>) -> Result<(), ConfigError> {
+    let runtimes: Vec<AppId> = apps
+        .iter()
+        .filter(|(_, app)| app.kind == AppKind::Runtime)
+        .map(|(id, _)| id.clone())
+        .collect();
+    for (id, app) in apps.iter_mut().filter(|(_, app)| app.kind == AppKind::Php) {
+        match (&app.runtime, runtimes.as_slice()) {
+            (Some(named), _) if !runtimes.contains(named) => {
+                return Err(invalid(format!(
+                    "app.{id}.runtime {named:?} is not a configured app with kind = \"runtime\""
+                )));
+            }
+            (Some(_), _) => {}
+            (None, []) => {
+                return Err(invalid(format!(
+                    "app.{id}.runtime: a php app needs an app with kind = \"runtime\" to run on, and none is configured"
+                )));
+            }
+            (None, [only]) => app.runtime = Some(only.clone()),
+            (None, _) => {
+                return Err(invalid(format!(
+                    "app.{id}.runtime must name one of the runtime apps {}",
+                    runtimes
+                        .iter()
+                        .map(AppId::as_str)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+impl Config {
+    /// Each php app's runtime app.
+    pub fn php_runtimes(&self) -> BTreeMap<AppId, AppId> {
+        self.apps
+            .iter()
+            .filter_map(|(id, app)| app.runtime.clone().map(|runtime| (id.clone(), runtime)))
+            .collect()
+    }
+}
+
 fn check_app(mode: Mode, id: &AppId, app: &RawApp) -> Result<(), ConfigError> {
     if app.kind == AppKind::Server {
         if app.path.is_some() {
@@ -879,6 +1151,10 @@ path = "/srv/admin"
 kind = "php"
 path = "/srv/blog"
 
+[app.rt]
+kind = "runtime"
+path = "/opt/rt/1.0.0"
+
 [[mount]]
 path = "/admin/"
 app = "admin"
@@ -935,11 +1211,13 @@ app = "blog"
             (admin.app.as_str(), admin.access),
             ("admin", Access::SignedIn)
         );
-        let api = config
-            .mounts
-            .resolve("example.com", "/admin/api/x")
-            .unwrap();
-        assert_eq!((api.app.as_str(), api.access), ("server", Access::SignedIn));
+        assert!(
+            config
+                .mounts
+                .mounts()
+                .iter()
+                .all(|m| m.app.as_str() != "server")
+        );
     }
 
     fn speedyspec_server_static_limit() -> u64 {
@@ -974,26 +1252,6 @@ app = "blog"
             Access::SignedIn
         );
         assert_eq!(config.mounts.resolve("other.org", "/x"), None);
-    }
-
-    #[test]
-    fn admin_api_reachable_on_exact_hosts() {
-        let config = Config::parse(IMMUTABLE).unwrap();
-        let api = config
-            .mounts
-            .resolve("example.com", "/admin/api/x")
-            .unwrap();
-        assert_eq!((api.app.as_str(), api.access), ("server", Access::SignedIn));
-    }
-
-    #[test]
-    fn rejects_exact_host_admin_api_mount() {
-        rejects(
-            &format!(
-                "{IMMUTABLE}\n[[mount]]\nhost = \"example.com\"\npath = \"/admin/api/\"\napp = \"blog\"\n"
-            ),
-            "/admin/api/",
-        );
     }
 
     #[test]
@@ -1104,14 +1362,6 @@ app = "blog"
         rejects(
             &format!("{IMMUTABLE}\n[[mount]]\npath = \"/x/\"\napp = \"nope\"\n"),
             "nope",
-        );
-    }
-
-    #[test]
-    fn rejects_admin_api_duplicate() {
-        rejects(
-            &format!("{IMMUTABLE}\n[[mount]]\npath = \"/admin/api/\"\napp = \"blog\"\n"),
-            "/admin/api/",
         );
     }
 
@@ -1363,7 +1613,7 @@ app = "blog"
     #[test]
     fn php_settings_parse() {
         let config = Config::parse(&format!(
-            "{SPEC_EXAMPLE}{MANAGED_BLOG}[app.blog.php]\nworkers = {{ min = 2, max = 8 }}\nmax_requests = 50\nrequest_timeout = \"5s\"\nmemory_limit = \"64MiB\"\nidle_timeout = \"1m\"\nsite_dir = \"/srv/blog-site\"\nbindings = {{ \"SpeedySpec\\\\WpHooks\\\\HookStore\" = \"App\\\\Store\" }}\n"
+            "{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nworkers = {{ min = 2, max = 8 }}\nmax_requests = 50\nrequest_timeout = \"5s\"\nmemory_limit = \"64MiB\"\nidle_timeout = \"1m\"\nsite_dir = \"/srv/blog-site\"\nbindings = {{ \"SpeedySpec\\\\WpHooks\\\\HookStore\" = \"App\\\\Store\" }}\n"
         ))
         .unwrap();
         let php = config.apps[&id("blog")].php.clone().unwrap();
@@ -1383,7 +1633,7 @@ app = "blog"
                 "App\\Store".to_string()
             )]
         );
-        let bytes = Config::parse(&format!("{SPEC_EXAMPLE}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nmemory_limit = 1048576\n")).unwrap();
+        let bytes = Config::parse(&format!("{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nmemory_limit = 1048576\n")).unwrap();
         assert_eq!(
             bytes.apps[&id("blog")].php.clone().unwrap().memory_limit,
             1_048_576
@@ -1393,18 +1643,18 @@ app = "blog"
     #[test]
     fn php_settings_are_checked() {
         rejects(
-            &format!("{SPEC_EXAMPLE}{MANAGED_BLOG}"),
+            &format!("{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}"),
             "app.blog.php.site_dir",
         );
         rejects(
             &format!(
-                "{SPEC_EXAMPLE}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nworkers = {{ min = 3, max = 2 }}\n"
+                "{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nworkers = {{ min = 3, max = 2 }}\n"
             ),
             "app.blog.php.workers",
         );
         rejects(
             &format!(
-                "{SPEC_EXAMPLE}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nmemory_limit = \"lots\"\n"
+                "{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\nmemory_limit = \"lots\"\n"
             ),
             "app.blog.php.memory_limit",
         );
@@ -1414,6 +1664,145 @@ app = "blog"
                 "kind = \"static\"\npath = \"/srv/admin\"\n[app.admin.php]\nmax_requests = 5",
             ),
             "app.admin.php",
+        );
+    }
+
+    const RUNTIME: &str =
+        "\n[app.rt]\nkind = \"runtime\"\nsource = \"https://releases.example.com/rt/index.json\"\n";
+    const BLOG_SITE: &str = "[app.blog.php]\nsite_dir = \"/s\"\n";
+
+    #[test]
+    fn php_app_defaults_to_the_only_runtime() {
+        let config =
+            Config::parse(&format!("{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}{BLOG_SITE}")).unwrap();
+        assert_eq!(config.apps[&id("blog")].runtime, Some(id("rt")));
+        assert_eq!(config.apps[&id("rt")].kind, AppKind::Runtime);
+        assert_eq!(config.apps[&id("rt")].runtime, None);
+    }
+
+    #[test]
+    fn php_app_with_two_runtimes_must_name_one() {
+        let second = "\n[app.rt2]\nkind = \"runtime\"\nsource = \"https://releases.example.com/rt2/index.json\"\n";
+        rejects(
+            &format!("{SPEC_EXAMPLE}{RUNTIME}{second}{MANAGED_BLOG}{BLOG_SITE}"),
+            "app.blog.runtime",
+        );
+        let named = MANAGED_BLOG.replace("kind = \"php\"", "kind = \"php\"\nruntime = \"rt2\"");
+        let config = Config::parse(&format!(
+            "{SPEC_EXAMPLE}{RUNTIME}{second}{named}{BLOG_SITE}"
+        ))
+        .unwrap();
+        assert_eq!(config.apps[&id("blog")].runtime, Some(id("rt2")));
+    }
+
+    #[test]
+    fn runtime_must_name_a_runtime_app() {
+        let named = MANAGED_BLOG.replace("kind = \"php\"", "kind = \"php\"\nruntime = \"admin\"");
+        rejects(
+            &format!("{SPEC_EXAMPLE}{RUNTIME}{named}{BLOG_SITE}"),
+            "app.blog.runtime",
+        );
+        rejects(
+            &format!(
+                "{SPEC_EXAMPLE}{}",
+                RUNTIME.replace("kind = \"runtime\"", "kind = \"runtime\"\nruntime = \"rt\"")
+            ),
+            "app.rt.runtime",
+        );
+    }
+
+    #[test]
+    fn immutable_runtime_from_path() {
+        let config = Config::parse(IMMUTABLE).unwrap();
+        assert_eq!(
+            config.apps[&id("rt")].path.as_deref(),
+            Some(std::path::Path::new("/opt/rt/1.0.0"))
+        );
+        assert_eq!(config.apps[&id("blog")].runtime, Some(id("rt")));
+    }
+
+    #[test]
+    fn php_app_with_no_runtime_is_an_error() {
+        rejects(
+            &format!("{SPEC_EXAMPLE}{MANAGED_BLOG}{BLOG_SITE}"),
+            "app.blog.runtime",
+        );
+    }
+
+    #[test]
+    fn env_sources_merge_in_order() {
+        let dir = tempfile::tempdir().unwrap();
+        let site = dir.path().join("site");
+        std::fs::create_dir_all(&site).unwrap();
+        std::fs::write(site.join(".env"), "# comment\nA=1\nB=1\n").unwrap();
+        let file = dir.path().join("blog.env");
+        std::fs::write(&file, "B=2\nC=2\n").unwrap();
+        let config = Config::parse(&format!(
+            "{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"{}\"\nenv_file = \"{}\"\nenv = {{ C = \"3\" }}\n",
+            site.display(),
+            file.display()
+        ))
+        .unwrap();
+        let php = config.apps[&id("blog")].php.clone().unwrap();
+        assert_eq!(
+            php.worker_env().unwrap(),
+            vec![
+                ("A".to_string(), "1".to_string()),
+                ("B".to_string(), "2".to_string()),
+                ("C".to_string(), "3".to_string())
+            ]
+        );
+        std::fs::remove_file(&file).unwrap();
+        let err = php.worker_env().unwrap_err();
+        assert!(err.contains("blog.env"), "{err}");
+    }
+
+    #[test]
+    fn the_server_app_has_no_mounts() {
+        rejects(
+            &format!("{IMMUTABLE}\n[[mount]]\npath = \"/srv/\"\napp = \"server\"\n"),
+            "the server app, which has no mounts",
+        );
+        let config = Config::parse(&format!(
+            "{IMMUTABLE}\n[[mount]]\npath = \"/admin/api/\"\napp = \"blog\"\naccess = \"signed-in\"\n"
+        ))
+        .unwrap();
+        let api = config.mounts.resolve("other.org", "/admin/api/x").unwrap();
+        assert_eq!(
+            api.app.as_str(),
+            "blog",
+            "/admin/api/ is an ordinary path now"
+        );
+    }
+
+    #[test]
+    fn gate_settings_parse() {
+        let config = Config::parse(&format!(
+            "{IMMUTABLE}\n[access]\nimplementation = \"gate\"\n\n[gate]\napp = \"blog\"\nsession_ttl = \"30s\"\nmax_pending = 4\nmaintenance_apps = [\"blog\"]\n"
+        ))
+        .unwrap();
+        assert_eq!(config.access, AccessImpl::Gate);
+        let gate = config.gate.unwrap();
+        assert_eq!(gate.app, id("blog"));
+        assert_eq!(gate.session_ttl, Duration::from_secs(30));
+        assert_eq!(gate.timeout, Duration::from_secs(5));
+        assert_eq!(gate.site_ttl, Duration::from_secs(2));
+        assert_eq!(gate.poll, Duration::from_secs(1));
+        assert_eq!(gate.max_pending, 4);
+        assert_eq!(gate.maintenance_apps, Some(vec![id("blog")]));
+    }
+
+    #[test]
+    fn gate_needs_a_php_gate_app() {
+        rejects(
+            &format!("{IMMUTABLE}\n[access]\nimplementation = \"gate\"\n"),
+            "gate.app",
+        );
+        rejects(
+            &format!(
+                "{IMMUTABLE}\n[access]\nimplementation = \"gate\"\n\n[gate]\napp = \"admin\"\n"
+            ),
+            "gate.app",
         );
     }
 }

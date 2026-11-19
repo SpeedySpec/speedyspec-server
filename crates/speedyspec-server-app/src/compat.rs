@@ -28,11 +28,23 @@ impl fmt::Display for Incompatibility {
 
 /// Checks every release's requirements against the others in `set`. A requirement on an app that is not in the set is
 /// ignored, and logged once at `info` per call, so a release can name an app a deployment does not run.
-pub fn check_set(set: &BTreeMap<AppId, ReleaseManifest>) -> Result<(), Vec<Incompatibility>> {
+///
+/// A php release's `php.runtime` is a requirement on the runtime app `runtimes` maps it to, whatever that app's id.
+pub fn check_set(
+    set: &BTreeMap<AppId, ReleaseManifest>,
+    runtimes: &BTreeMap<AppId, AppId>,
+) -> Result<(), Vec<Incompatibility>> {
     let mut failures = Vec::new();
     let mut ignored = Vec::new();
     for manifest in set.values() {
-        for (target, range) in &manifest.requires {
+        let runtime = manifest
+            .php
+            .as_ref()
+            .and_then(|php| php.runtime.clone())
+            .zip(runtimes.get(&manifest.app).cloned())
+            .map(|(range, runtime)| (runtime, range));
+        for (target, range) in manifest.requires.clone().into_iter().chain(runtime) {
+            let (target, range) = (&target, &range);
             match set.get(target) {
                 None => ignored.push(format!("{} requires {target}", manifest.app)),
                 Some(other) if !range.matches(&other.version) => failures.push(Incompatibility {
@@ -82,6 +94,7 @@ mod tests {
             static_: None,
             php: None,
             protocol: None,
+            contracts: Vec::new(),
         }
     }
 
@@ -95,7 +108,7 @@ mod tests {
             manifest("server", "3.2.1", &[]),
             manifest("admin", "5.2.0", &[("server", "^3.1")]),
         ]);
-        assert_eq!(check_set(&releases), Ok(()));
+        assert_eq!(check_set(&releases, &BTreeMap::new()), Ok(()));
     }
 
     #[test]
@@ -104,7 +117,7 @@ mod tests {
             manifest("server", "3.2.1", &[]),
             manifest("admin", "6.0.0", &[("server", "^4")]),
         ]);
-        let failures = check_set(&releases).unwrap_err();
+        let failures = check_set(&releases, &BTreeMap::new()).unwrap_err();
         assert_eq!(failures.len(), 1);
         assert_eq!(
             failures[0].to_string(),
@@ -118,7 +131,7 @@ mod tests {
             manifest("server", "4.0.0", &[("admin", "^6")]),
             manifest("admin", "5.2.0", &[("server", "^3")]),
         ]);
-        let failures = check_set(&releases).unwrap_err();
+        let failures = check_set(&releases, &BTreeMap::new()).unwrap_err();
         let apps: Vec<_> = failures.iter().map(|f| f.app.as_str()).collect();
         assert_eq!(apps, ["admin", "server"]);
     }
@@ -148,7 +161,9 @@ mod tests {
             .finish();
         let releases = set(vec![manifest("admin", "1.0.0", &[("frontend-api", "^2")])]);
 
-        let result = tracing::subscriber::with_default(subscriber, || check_set(&releases));
+        let result = tracing::subscriber::with_default(subscriber, || {
+            check_set(&releases, &BTreeMap::new())
+        });
 
         assert_eq!(result, Ok(()));
         let log = String::from_utf8(captured.0.lock().unwrap().clone()).unwrap();
@@ -157,5 +172,27 @@ mod tests {
             log.contains("INFO") && log.contains("admin") && log.contains("frontend-api"),
             "{log}"
         );
+    }
+
+    #[test]
+    fn php_runtime_requirement_uses_the_configured_runtime() {
+        let mut blog = manifest("blog", "1.0.0", &[]);
+        blog.php = Some(speedyspec_server_domain::PhpSection {
+            runtime: Some(VersionReq::parse("^1.4").unwrap()),
+            ..Default::default()
+        });
+        let mut rt = manifest("rt", "1.3.0", &[]);
+        rt.kind = AppKind::Runtime;
+        rt.contracts = vec![1];
+        let runtimes: BTreeMap<AppId, AppId> =
+            [(AppId::parse("blog").unwrap(), AppId::parse("rt").unwrap())].into();
+        let err = check_set(&set(vec![blog.clone(), rt.clone()]), &runtimes).unwrap_err();
+        assert_eq!(err.len(), 1);
+        assert_eq!(
+            (err[0].app.as_str(), err[0].requires.as_str()),
+            ("blog", "rt")
+        );
+        rt.version = Version::parse("1.4.2").unwrap();
+        assert_eq!(check_set(&set(vec![blog, rt]), &runtimes), Ok(()));
     }
 }

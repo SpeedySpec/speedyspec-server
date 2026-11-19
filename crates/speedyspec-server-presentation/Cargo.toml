@@ -14,6 +14,7 @@ ipnet = "2"
 percent-encoding = "2"
 salvo = { version = "1.2", default-features = false, features = ["server", "http1"] }
 speedyspec-server-domain = { path = "../speedyspec-server-domain" }
+speedyspec-server-gate = { path = "../speedyspec-server-gate" }
 speedyspec-server-static = { path = "../speedyspec-server-static" }
 tracing = "0.1"
 

@@ -306,3 +306,38 @@ fn save_failure_does_not_activate() {
     assert_eq!(w.saved().apps[&id("blog")].active, Some(v("1.0.0")));
     assert_eq!(manager.status().apps[&id("blog")].active, Some(v("1.0.0")));
 }
+
+#[test]
+fn off_keeps_a_failed_migration_and_clear_ends_it() {
+    let mut w = World::new();
+    w.app("blog", AppKind::Php, 3);
+    let mut seeded = speedyspec_server_domain::ReleaseState::default();
+    seeded.maintenance.insert(
+        id("blog"),
+        speedyspec_server_domain::MaintenanceRecord {
+            migration_failed: Some("500: boom".into()),
+            ..Default::default()
+        },
+    );
+    speedyspec_server_domain::StateStore::save(&*w.state, &seeded).unwrap();
+    let manager = w.manager();
+    manager.set_maintenance(&[id("blog")], true).unwrap();
+    manager.set_maintenance(&[id("blog")], false).unwrap();
+    let record = &w.saved().maintenance[&id("blog")];
+    assert!(
+        !record.operator && record.migration_failed.is_some(),
+        "off leaves the failed migration: {record:?}"
+    );
+    manager.clear_maintenance(&[id("blog")]).unwrap();
+    assert!(!w.saved().maintenance.contains_key(&id("blog")));
+}
+
+#[test]
+fn maintenance_with_no_apps_means_every_app() {
+    let mut w = World::new();
+    w.app("blog", AppKind::Php, 3);
+    w.app("admin", AppKind::Static, 3);
+    let apps = w.manager().set_maintenance(&[], true).unwrap();
+    assert_eq!(apps, vec![id("admin"), id("blog")]);
+    assert!(w.saved().maintenance[&id("admin")].operator);
+}

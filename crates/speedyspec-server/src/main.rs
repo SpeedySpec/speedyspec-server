@@ -34,13 +34,6 @@ enum Command {
     /// Run one generation (started only by a keeper, with its channel on fd 3).
     #[command(hide = true)]
     Serve,
-    /// Serve one PHP release's FastCGI requests (started only by the server's PHP pool).
-    #[cfg(feature = "php")]
-    #[command(hide = true, name = "php-worker")]
-    PhpWorker {
-        #[arg(long)]
-        spec: String,
-    },
     /// List, check, install, switch, roll back and pin releases on the running server.
     Release {
         #[command(subcommand)]
@@ -56,6 +49,21 @@ enum Command {
         #[arg(long, default_value = DEFAULT_CONFIG)]
         config: PathBuf,
     },
+    /// Turn an operator's maintenance on or off for apps (every app when none is named), or clear every recorded
+    /// maintenance, a failed migration's included.
+    Maintenance {
+        action: Maintenance,
+        apps: Vec<AppId>,
+        #[arg(long, default_value = DEFAULT_CONFIG)]
+        config: PathBuf,
+    },
+}
+
+#[derive(Clone, Copy, clap::ValueEnum)]
+enum Maintenance {
+    On,
+    Off,
+    Clear,
 }
 
 #[derive(Subcommand)]
@@ -102,6 +110,12 @@ enum ReleaseAction {
     },
     /// Let auto-update run for an app again.
     Unpin {
+        app: AppId,
+        #[arg(long, default_value = DEFAULT_CONFIG)]
+        config: PathBuf,
+    },
+    /// Switch an app again to the release whose migration failed, running the migration again.
+    RetryMigration {
         app: AppId,
         #[arg(long, default_value = DEFAULT_CONFIG)]
         config: PathBuf,
@@ -158,6 +172,18 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Command::Status { config } => control_command(&config, ControlRequest::Status),
+        Command::Maintenance {
+            action,
+            apps,
+            config,
+        } => {
+            let action = match action {
+                Maintenance::On => speedyspec_server::control::MaintenanceAction::On,
+                Maintenance::Off => speedyspec_server::control::MaintenanceAction::Off,
+                Maintenance::Clear => speedyspec_server::control::MaintenanceAction::Clear,
+            };
+            control_command(&config, ControlRequest::Maintenance { action, apps })
+        }
         Command::Reload { config } => control_command(&config, ControlRequest::Reload),
         Command::Release { action } => match action {
             ReleaseAction::List { app, config } => {
@@ -187,19 +213,10 @@ fn main() -> ExitCode {
             ReleaseAction::Unpin { app, config } => {
                 control_command(&config, ControlRequest::Unpin { app })
             }
-        },
-        #[cfg(feature = "php")]
-        Command::PhpWorker { spec } => {
-            match serde_json::from_str::<speedyspec_server::php::WorkerSpec>(&spec) {
-                Ok(spec) => ExitCode::from(
-                    u8::try_from(speedyspec_server::php::run_worker(spec)).unwrap_or(1),
-                ),
-                Err(err) => {
-                    eprintln!("speedyspec-server php-worker: --spec is not valid: {err}");
-                    ExitCode::FAILURE
-                }
+            ReleaseAction::RetryMigration { app, config } => {
+                control_command(&config, ControlRequest::RetryMigration { app })
             }
-        }
+        },
         Command::Serve => match speedyspec_server::generation::run() {
             Ok(()) => ExitCode::SUCCESS,
             Err(message) => {

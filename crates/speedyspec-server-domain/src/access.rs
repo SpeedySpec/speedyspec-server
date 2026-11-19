@@ -23,7 +23,14 @@ impl Identity {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AccessDecision {
     Allowed(Identity),
+    /// Not signed in (401).
     Denied,
+    /// Signed in, but not allowed this page's files (403).
+    Forbidden,
+    /// A conditional public entry whose condition does not hold: off for everyone (404).
+    Disabled,
+    /// The check could not be made now (503, try again shortly).
+    Busy,
 }
 
 /// What an access check sees of a request.
@@ -31,6 +38,10 @@ pub enum AccessDecision {
 pub struct AccessRequest<'a> {
     /// The mount's policy.
     pub access: Access,
+    /// The mount's app.
+    pub app: &'a crate::AppId,
+    /// The normalised path below the mount, without its leading `/`.
+    pub rel_path: &'a str,
     pub headers: &'a http::HeaderMap,
     /// The client's address, after trusted-proxy headers are applied.
     pub client: IpAddr,
@@ -65,8 +76,11 @@ mod tests {
     fn access_check_is_object_safe() {
         let check: Box<dyn AccessCheck> = Box::new(Always);
         let headers = http::HeaderMap::new();
+        let app = crate::AppId::parse("admin").unwrap();
         let request = AccessRequest {
             access: crate::Access::SignedIn,
+            app: &app,
+            rel_path: "",
             headers: &headers,
             client: [127, 0, 0, 1].into(),
         };

@@ -21,7 +21,13 @@ const SWEEP_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Builds the release manager over `data_dir`, warns about unsigned apps, and runs start-up recovery, which
 /// activates every app's last active release into `live`.
-pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>, String> {
+pub fn start(
+    config: &Config,
+    live: Arc<LiveApps>,
+    php: Arc<crate::php::PhpRuntime>,
+    binaries: Arc<crate::php::runtime_kind::RuntimeBinaries>,
+    maintenance: Arc<speedyspec_server_gate::MaintenanceSet>,
+) -> Result<Arc<ReleaseManager>, String> {
     let data_dir = config
         .data_dir
         .as_ref()
@@ -60,18 +66,16 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
     }
     let server = server.ok_or("no server app is configured")?;
     let verifier = MinisignVerifier::new(keys).map_err(|err| err.0)?;
-    let runtimes: HashMap<AppKind, Arc<dyn AppRuntime>> = [
-        (
-            AppKind::Static,
-            Arc::new(StaticRuntime::new(
-                live.clone(),
-                config.static_memory,
-                config.static_fallback_grace,
-            )) as Arc<dyn AppRuntime>,
-        ),
-        (AppKind::Php, php_runtime(config, live)),
-    ]
+    let runtimes: HashMap<AppKind, Arc<dyn AppRuntime>> = [(
+        AppKind::Static,
+        Arc::new(StaticRuntime::new(
+            live.clone(),
+            config.static_memory,
+            config.static_fallback_grace,
+        )) as Arc<dyn AppRuntime>,
+    )]
     .into_iter()
+    .chain(php_runtimes(php, binaries))
     .collect();
     let manager = ReleaseManager::new(
         policies,
@@ -85,7 +89,22 @@ pub fn start(config: &Config, live: Arc<LiveApps>) -> Result<Arc<ReleaseManager>
         crate::binary::TARGET.to_string(),
         crate::cluster::build(config)?,
     )
-    .map_err(|err| err.to_string())?;
+    .map_err(|err| err.to_string())?
+    .with_runtime_inspector(Arc::new(crate::binary::RuntimeInspector))
+    .with_php_runtimes(config.php_runtimes())
+    .with_migrator(Arc::new(crate::php::calls::PhpMigrator::new(
+        &config.mounts,
+    )))
+    .with_maintenance(
+        Arc::new(crate::php::calls::UpgradeMaintenance(maintenance)),
+        config
+            .gate
+            .as_ref()
+            .and_then(|gate| gate.maintenance_apps.clone())
+            .unwrap_or_default(),
+    )
+    .with_migrate_timeout(config.migrate_timeout)
+    .with_runtime_trial_period(config.runtime_trial_period);
 
     let report = manager.boot();
     tracing::info!(
@@ -222,31 +241,40 @@ pub fn spawn_fallback_sweep(live: Arc<LiveApps>) {
     });
 }
 
-/// PHP releases: worker pools with the `php` feature, the 503 placeholder without it.
-#[cfg(feature = "php")]
-fn php_runtime(
-    config: &Config,
-    live: Arc<speedyspec_server_presentation::LiveApps>,
-) -> Arc<dyn AppRuntime> {
-    let configs = config
-        .apps
-        .iter()
-        .filter_map(|(id, app)| app.php.clone().map(|php| (id.clone(), php)))
-        .collect();
-    let exe =
-        std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("speedyspec-server"));
-    Arc::new(crate::php::PhpRuntime::new(
-        live,
-        exe,
-        config.run_dir.clone(),
-        configs,
-    ))
+/// PHP releases: worker pools. The runtime kind's releases move the php apps on them to new pools.
+fn php_runtimes(
+    php: Arc<crate::php::PhpRuntime>,
+    binaries: Arc<crate::php::runtime_kind::RuntimeBinaries>,
+) -> Vec<(AppKind, Arc<dyn AppRuntime>)> {
+    let kind = Arc::new(crate::php::runtime_kind::RuntimeKindRuntime::new(
+        php.clone(),
+        binaries,
+    ));
+    vec![(AppKind::Php, php), (AppKind::Runtime, kind)]
 }
 
-#[cfg(not(feature = "php"))]
-fn php_runtime(
-    _config: &Config,
-    live: Arc<speedyspec_server_presentation::LiveApps>,
-) -> Arc<dyn AppRuntime> {
-    Arc::new(crate::runtime::PhpPlaceholderRuntime::new(live))
+/// Keeps the operator's and failed migrations' maintenance, as recorded in the state file, in `maintenance`: at
+/// once, then every half second (a follower's state changes through its poll of the shared state).
+pub fn spawn_maintenance_sync(
+    manager: Arc<ReleaseManager>,
+    maintenance: Arc<speedyspec_server_gate::MaintenanceSet>,
+    apps: Vec<speedyspec_server_domain::AppId>,
+) {
+    use speedyspec_server_gate::MaintenanceSource;
+    tokio::spawn(async move {
+        let mut ticks = tokio::time::interval(std::time::Duration::from_millis(500));
+        loop {
+            ticks.tick().await;
+            let state = manager.status();
+            for app in &apps {
+                let record = state.maintenance.get(app).cloned().unwrap_or_default();
+                maintenance.set(app, MaintenanceSource::Operator, record.operator);
+                maintenance.set(
+                    app,
+                    MaintenanceSource::Upgrade,
+                    record.migrating || record.migration_failed.is_some(),
+                );
+            }
+        }
+    });
 }

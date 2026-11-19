@@ -1,32 +1,17 @@
-//! The `php-worker` role: boots PHP once, then serves FastCGI requests on its socket, one at a time.
+//! `speedyspec-php-runtime worker`: boots PHP once, then serves FastCGI requests on its socket, one at a time.
 
-use std::collections::BTreeMap;
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
 
-use serde::{Deserialize, Serialize};
 use speedyspec_container::Container;
 use speedyspec_container_php::ContainerArea;
 use speedyspec_fastcgi::Responder;
 use speedyspec_php::{BootOptions, NativeArea, Php, WebRequest};
+use speedyspec_runtime_contract::{WorkerReport, WorkerSpec};
 use speedyspec_wp_hooks::HookStore;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::{HOOK_STORE, PhpHookStore, WpHooksArea};
-
-/// What a worker is started with (as JSON, `php-worker --spec`).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct WorkerSpec {
-    pub app: String,
-    pub socket: PathBuf,
-    /// The release's root.
-    pub release_dir: PathBuf,
-    pub site_dir: Option<PathBuf>,
-    /// The release's `php.ini` settings, applied at the start of every request.
-    pub ini: BTreeMap<String, String>,
-    /// `app.<id>.php.bindings`.
-    pub bindings: Vec<(String, String)>,
-}
 
 /// A PHP string literal.
 fn quote(value: &str) -> String {
@@ -136,20 +121,6 @@ fn exit_with_parent() {
     });
 }
 
-/// `KEY=value` lines of `site_dir/.env`, nothing evaluated; comments and blank lines skipped.
-pub fn read_env(site: &Path) -> Vec<(String, String)> {
-    let Ok(text) = std::fs::read_to_string(site.join(".env")) else {
-        return Vec::new();
-    };
-    text.lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .filter_map(|line| line.split_once('='))
-        .map(|(k, v)| (k.trim().to_string(), v.trim().to_string()))
-        .filter(|(k, _)| !k.is_empty())
-        .collect()
-}
-
 /// One FastCGI request as PHP sees it.
 struct FastCgiRequest<'a> {
     responder: &'a mut Responder<UnixStream>,
@@ -204,11 +175,13 @@ fn param(params: &[(String, String)], name: &str) -> Option<String> {
 
 /// Serves until the socket is closed or the worker is told to stop. Returns the process exit status.
 pub fn run_worker(spec: WorkerSpec) -> i32 {
-    if let Some(site) = &spec.site_dir {
-        for (key, value) in read_env(site) {
-            // SAFETY: the worker is single-threaded at this point, before PHP starts.
-            unsafe { std::env::set_var(key, value) };
-        }
+    if let Err(err) = spec.check() {
+        log("php_worker_contract_refused", &spec, &err);
+        return 2;
+    }
+    for (key, value) in &spec.env {
+        // SAFETY: the worker is single-threaded at this point, before PHP starts.
+        unsafe { std::env::set_var(key, value) };
     }
     exit_with_parent();
     let ini: Vec<(String, String)> = spec
@@ -312,13 +285,12 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
                 }
             };
             requests += 1;
-            let report = format!(
-                "memory={peak} requests={requests} poisoned={}",
-                u8::from(poisoned)
-            );
-            let mut record = super::REPORT_PREFIX.to_vec();
-            record.extend_from_slice(report.as_bytes());
-            let _ = responder.write_stderr(&record);
+            let report = WorkerReport {
+                memory: peak,
+                requests,
+                poisoned,
+            };
+            let _ = responder.write_stderr(&report.encode());
             if responder.end_request(0).is_err() {
                 break;
             }

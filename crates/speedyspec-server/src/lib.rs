@@ -4,11 +4,11 @@ pub mod cluster;
 pub mod config;
 pub mod control;
 pub mod generation;
+pub mod health;
 pub mod keeper;
 pub mod listeners;
 pub mod managed;
 pub mod notify;
-#[cfg(feature = "php")]
 pub mod php;
 pub mod runtime;
 pub mod serving;

@@ -8,7 +8,9 @@ use std::sync::Arc;
 
 use serde::Deserialize;
 use speedyspec_server_app::{Incompatibility, check_set};
-use speedyspec_server_domain::{AccessCheck, AppId, AppKind, MANIFEST_FILE, ReleaseManifest};
+use speedyspec_server_domain::{
+    AccessCheck, AppId, AppKind, AppRuntime, MANIFEST_FILE, ReleaseManifest,
+};
 use speedyspec_server_infra_access_dev::{DenySignedIn, DevAllowAll};
 use speedyspec_server_presentation::{AppHandle, LiveApps, ServeState, StaticApp};
 use speedyspec_server_static::StaticSet;
@@ -57,27 +59,83 @@ pub fn server_manifest(app: AppId) -> ReleaseManifest {
         static_: None,
         php: None,
         protocol: Some(crate::binary::own_protocol()),
+        contracts: Vec::new(),
     }
 }
 
-/// Builds the serving state. Immutable mode reads every baked-in release, checks that they work together, and loads
-/// static ones into memory. Managed mode starts every app as not installed; the release manager's start-up recovery
-/// then activates what is kept.
-pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
+/// What booting gives a generation: the serving state, and the PHP runtime its php apps run on (shared with the
+/// release manager in managed mode, and with the server's own calls to the apps).
+pub struct Booted {
+    pub state: ServeState,
+    pub php: Arc<crate::php::PhpRuntime>,
+    pub binaries: Arc<crate::php::runtime_kind::RuntimeBinaries>,
+    /// With the gate: what its revocation poll needs.
+    pub revocation: Option<Revocation>,
+}
+
+/// What the gate's revocation poll needs (started by the generation, on its runtime).
+pub struct Revocation {
+    pub gate: Arc<speedyspec_server_gate::GateAccess>,
+    pub app: AppId,
+    pub every: std::time::Duration,
+    pub calls: Arc<dyn speedyspec_server_gate::GateCalls>,
+    pub sessions: Arc<speedyspec_server_gate::SessionCache>,
+}
+
+impl Revocation {
+    /// Polls the gate app's live release's revocation feed.
+    pub fn spawn(self, php: Arc<crate::php::PhpRuntime>) {
+        let app = self.app.clone();
+        let path: speedyspec_server_gate::ChangesPath =
+            Arc::new(move || Some(php.live_manifest(&app)?.php_section()?.gate?.changes));
+        speedyspec_server_gate::RevocationPoll::spawn(
+            self.app,
+            path,
+            self.every,
+            self.calls,
+            self.sessions,
+        );
+        // The site state's maintenance applies whether or not anyone visits a gated mount.
+        let (gate, every) = (self.gate, self.every);
+        tokio::spawn(async move {
+            let mut ticks = tokio::time::interval(every);
+            loop {
+                ticks.tick().await;
+                gate.refresh_site().await;
+            }
+        });
+    }
+}
+
+/// Builds the serving state. Every app starts as not installed. Immutable mode then reads every baked-in release,
+/// checks that they work together, loads static ones into memory and starts php ones' pools; managed mode leaves that
+/// to the release manager's start-up recovery.
+pub fn prepare(config: &Config) -> Result<Booted, BootError> {
+    let apps = config
+        .apps
+        .iter()
+        .map(|(id, _)| (id.clone(), AppHandle::NotInstalled))
+        .collect();
+    let live = Arc::new(LiveApps::new(apps));
+    let binaries = Arc::new(crate::php::runtime_kind::RuntimeBinaries::default());
+    let php = Arc::new(
+        crate::php::PhpRuntime::new(
+            live.clone(),
+            binaries.clone(),
+            config.run_dir.clone(),
+            crate::php::php_configs(config),
+            config.php_runtimes().into_iter().collect(),
+        )
+        .with_gate_app(config.gate.as_ref().map(|gate| gate.app.clone())),
+    );
     if config.mode == Mode::Managed {
-        let apps = config
-            .apps
-            .iter()
-            .map(|(id, app)| {
-                let handle = if app.kind == AppKind::Server {
-                    AppHandle::AdminApiPlaceholder
-                } else {
-                    AppHandle::NotInstalled
-                };
-                (id.clone(), handle)
-            })
-            .collect();
-        return Ok(serve_state(config, apps));
+        let (state, revocation) = serve_state(config, live, &php);
+        return Ok(Booted {
+            state,
+            php,
+            binaries,
+            revocation,
+        });
     }
     let mut manifests = BTreeMap::new();
     let mut paths = HashMap::new();
@@ -85,7 +143,7 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
         let manifest = match (app.kind, &app.path) {
             (AppKind::Server, _) => server_manifest(id.clone()),
             (_, Some(path)) => {
-                let manifest = read_manifest(path, id, app.kind)?;
+                let manifest = baked_in_manifest(path, id, app.kind)?;
                 paths.insert(id.clone(), path.clone());
                 manifest
             }
@@ -93,13 +151,30 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
         };
         manifests.insert(id.clone(), manifest);
     }
-    check_set(&manifests).map_err(BootError::Incompatible)?;
+    check_set(&manifests, &config.php_runtimes()).map_err(BootError::Incompatible)?;
 
-    let mut apps = HashMap::new();
+    // Runtimes first: the php apps' pools run their binaries.
+    for (id, manifest) in manifests.iter().filter(|(_, m)| m.kind == AppKind::Runtime) {
+        let binary = paths[id].join(AppKind::Runtime.binary_name().expect("a binary kind"));
+        binaries.set(
+            id,
+            manifest.version.clone(),
+            binary,
+            manifest.contracts.clone(),
+        );
+    }
     for (id, manifest) in &manifests {
-        let handle = match manifest.kind {
-            AppKind::Server => AppHandle::AdminApiPlaceholder,
-            AppKind::Php => php_handle(config, id, manifest, &paths[id])?,
+        match manifest.kind {
+            AppKind::Server | AppKind::Runtime => {}
+            AppKind::Php => {
+                let prepared =
+                    php.prepare(id, manifest, &paths[id])
+                        .map_err(|message| BootError::Php {
+                            app: id.clone(),
+                            message,
+                        })?;
+                php.activate(prepared);
+            }
             AppKind::Static => {
                 let section = manifest
                     .static_
@@ -113,72 +188,119 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
                         }
                     })?;
                 tracing::info!(event = "static_loaded", app = %id, version = %manifest.version, bytes = set.total_bytes());
-                AppHandle::Static(StaticApp {
-                    current: Arc::new(set),
-                    fallback: None,
-                })
+                let rules = speedyspec_server_gate::AccessRules::compile(&section.access).map_err(
+                    |message| BootError::Static {
+                        app: id.clone(),
+                        message,
+                    },
+                )?;
+                live.set_rules(id, rules);
+                live.swap(
+                    id,
+                    AppHandle::Static(StaticApp {
+                        current: Arc::new(set),
+                        fallback: None,
+                    }),
+                );
             }
-        };
-        apps.insert(id.clone(), handle);
+        }
     }
-    Ok(serve_state(config, apps))
+    let (state, revocation) = serve_state(config, live, &php);
+    Ok(Booted {
+        state,
+        php,
+        binaries,
+        revocation,
+    })
 }
 
-/// A php app's handle in immutable mode: its release's worker pool, started now.
-#[cfg(feature = "php")]
-fn php_handle(
+/// What the gate reads of the live releases: the gate app's endpoints from its live php release, and every app's
+/// access rules from the live table.
+struct LiveGateView {
+    php: Arc<crate::php::PhpRuntime>,
+    live: Arc<LiveApps>,
+    gate_app: AppId,
+}
+
+impl speedyspec_server_gate::GateView for LiveGateView {
+    fn gate(&self) -> Option<speedyspec_server_domain::GateSection> {
+        self.php.live_manifest(&self.gate_app)?.php_section()?.gate
+    }
+
+    fn rules(&self, app: &AppId) -> Option<Arc<speedyspec_server_gate::AccessRules>> {
+        self.live.rules(app)
+    }
+}
+
+fn serve_state(
     config: &Config,
-    id: &AppId,
-    manifest: &ReleaseManifest,
-    dir: &Path,
-) -> Result<AppHandle, BootError> {
-    let configs = config
-        .apps
-        .iter()
-        .filter_map(|(id, app)| app.php.clone().map(|php| (id.clone(), php)))
-        .collect();
-    let exe = std::env::current_exe().map_err(|err| BootError::Php {
-        app: id.clone(),
-        message: err.to_string(),
-    })?;
-    let runtime = crate::php::PhpRuntime::new(
-        Arc::new(LiveApps::new(HashMap::new())),
-        exe,
-        config.run_dir.clone(),
-        configs,
-    );
-    runtime
-        .start(id, manifest, dir)
-        .map_err(|message| BootError::Php {
-            app: id.clone(),
-            message,
-        })
-}
-
-/// Without the `php` feature, a php app answers 503.
-#[cfg(not(feature = "php"))]
-fn php_handle(
-    _config: &Config,
-    _id: &AppId,
-    _manifest: &ReleaseManifest,
-    _dir: &Path,
-) -> Result<AppHandle, BootError> {
-    Ok(AppHandle::PhpPlaceholder)
-}
-
-fn serve_state(config: &Config, apps: HashMap<AppId, AppHandle>) -> ServeState {
-    let access: Arc<dyn AccessCheck> = match config.access {
-        AccessImpl::Deny => Arc::new(DenySignedIn),
-        AccessImpl::DevAllowAll => Arc::new(DevAllowAll),
+    live: Arc<LiveApps>,
+    php: &Arc<crate::php::PhpRuntime>,
+) -> (ServeState, Option<Revocation>) {
+    let maintenance = Arc::new(speedyspec_server_gate::MaintenanceSet::default());
+    let mut revocation = None;
+    let access: Arc<dyn AccessCheck> = match (config.access, &config.gate) {
+        (AccessImpl::Deny, _) => Arc::new(DenySignedIn),
+        (AccessImpl::DevAllowAll, _) => Arc::new(DevAllowAll),
+        (AccessImpl::Gate, gate) => {
+            let settings = gate.clone().expect("the config check requires [gate]");
+            let view = Arc::new(LiveGateView {
+                php: php.clone(),
+                live: live.clone(),
+                gate_app: settings.app.clone(),
+            });
+            let calls: Arc<dyn speedyspec_server_gate::GateCalls> =
+                Arc::new(crate::php::calls::FastCgiGateCalls::new(
+                    php.clone(),
+                    &config.mounts,
+                    settings.timeout,
+                ));
+            let gate = Arc::new(
+                speedyspec_server_gate::GateAccess::new(
+                    settings.clone(),
+                    view,
+                    calls.clone(),
+                    maintenance.clone(),
+                )
+                .with_apps(config.apps.keys().cloned().collect()),
+            );
+            let sessions = gate.sessions().clone();
+            {
+                let sessions = sessions.clone();
+                php.set_sign_out(Arc::new(move |headers, set_cookies| {
+                    if let Some(cookie) = speedyspec_server_gate::cookie_header(headers)
+                        && speedyspec_server_gate::clears_a_sent_cookie(&cookie, set_cookies)
+                    {
+                        sessions.forget_header(&cookie);
+                    }
+                }));
+            }
+            revocation = Some(Revocation {
+                gate: gate.clone(),
+                app: settings.app.clone(),
+                every: settings.poll,
+                calls,
+                sessions,
+            });
+            gate
+        }
     };
 
-    ServeState {
+    let state = ServeState {
         mounts: config.mounts.clone(),
-        apps: Arc::new(LiveApps::new(apps)),
+        apps: live,
         access,
         trusted_proxies: config.trusted_proxies.clone(),
         forwarded_headers: config.forwarded_headers,
-    }
+        maintenance,
+        maintenance_pages: config
+            .apps
+            .iter()
+            .filter_map(|(id, app)| app.maintenance_page.clone().map(|page| (id.clone(), page)))
+            .collect(),
+        gate_app: config.gate.as_ref().map(|gate| gate.app.clone()),
+    };
+    (state, revocation)
 }
 
 /// Every baked-in release's manifest in immutable mode, the server's included.
@@ -187,12 +309,30 @@ pub fn immutable_manifests(config: &Config) -> Result<BTreeMap<AppId, ReleaseMan
     for (id, app) in &config.apps {
         let manifest = match &app.path {
             _ if app.kind == AppKind::Server => server_manifest(id.clone()),
-            Some(path) => read_manifest(path, id, app.kind)?,
+            Some(path) => baked_in_manifest(path, id, app.kind)?,
             None => continue,
         };
         manifests.insert(id.clone(), manifest);
     }
     Ok(manifests)
+}
+
+/// A baked-in release's manifest: a runtime's is printed by its binary, every other kind's is its manifest file.
+fn baked_in_manifest(dir: &Path, id: &AppId, kind: AppKind) -> Result<ReleaseManifest, BootError> {
+    if kind != AppKind::Runtime {
+        return read_manifest(dir, id, kind);
+    }
+    let binary = dir.join(AppKind::Runtime.binary_name().expect("a binary kind"));
+    let mut manifest = speedyspec_server_domain::BinaryInspector::manifest(
+        &crate::binary::RuntimeInspector,
+        &binary,
+    )
+    .map_err(|message| BootError::Manifest {
+        path: binary.clone(),
+        message,
+    })?;
+    manifest.app = id.clone();
+    Ok(manifest)
 }
 
 fn read_manifest(dir: &Path, id: &AppId, kind: AppKind) -> Result<ReleaseManifest, BootError> {
