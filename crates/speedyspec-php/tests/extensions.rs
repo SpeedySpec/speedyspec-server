@@ -7,14 +7,54 @@ use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, Php};
 
 const EXTENSIONS: &[&str] = &[
-    "bcmath", "ctype", "curl", "dom", "exif", "fileinfo", "filter", "gd", "hash", "iconv", "imagick", "intl", "json",
-    "libxml", "mbstring", "mysqli", "mysqlnd", "Zend OPcache", "openssl", "pcre", "pdo", "pdo_mysql", "pdo_sqlite",
-    "Phar", "session", "SimpleXML", "sodium", "sqlite3", "tokenizer", "xml", "xmlreader", "xmlwriter", "zip", "zlib",
+    "bcmath",
+    "ctype",
+    "curl",
+    "dom",
+    "exif",
+    "fileinfo",
+    "filter",
+    "gd",
+    "hash",
+    "iconv",
+    "imagick",
+    "intl",
+    "json",
+    "libxml",
+    "mbstring",
+    "mysqli",
+    "mysqlnd",
+    "Zend OPcache",
+    "openssl",
+    "pcre",
+    "pdo",
+    "pdo_mysql",
+    "pdo_sqlite",
+    "Phar",
+    "session",
+    "SimpleXML",
+    "sodium",
+    "sqlite3",
+    "tokenizer",
+    "xml",
+    "xmlreader",
+    "xmlwriter",
+    "zip",
+    "zlib",
 ];
 
 fn main() {
-    let php = Php::boot(BootOptions { hooks: Rc::new(MemoryHooks::new()), preload: &[] }).expect("PHP boots");
-    let list = EXTENSIONS.iter().map(|e| format!("'{e}'")).collect::<Vec<_>>().join(",");
+    let php = Php::boot(BootOptions {
+        hooks: Rc::new(MemoryHooks::new()),
+        preload: &[],
+        areas: Vec::new(),
+    })
+    .expect("PHP boots");
+    let list = EXTENSIONS
+        .iter()
+        .map(|e| format!("'{e}'"))
+        .collect::<Vec<_>>()
+        .join(",");
     let probe = format!(
         r#"
         $missing = [];

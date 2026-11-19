@@ -114,6 +114,12 @@ pub(crate) fn find_exception_class() -> Result<(), PhpError> {
 #[php_module]
 #[php(startup = startup)]
 pub fn module(module: ModuleBuilder) -> ModuleBuilder {
+    let mut module = module
+        .name("speedyspec_wordpress")
+        .request_shutdown_function(crate::area::request_shutdown);
+    for function in crate::area::functions() {
+        module = module.function(function);
+    }
     module
 }
 
@@ -139,6 +145,8 @@ fn startup(_ty: i32, _module_number: i32) -> i32 {
             // process, which is how long the class lives.
             .registration(|_ce, arg_info| std::mem::forget(arg_info))
             .register()
+            .map_err(|err| err.to_string())?;
+        crate::area::register_classes()
     });
     match registered {
         Ok(Ok(())) => 0,

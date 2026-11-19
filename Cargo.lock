@@ -3909,6 +3909,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-php-ext"
+version = "0.1.0"
+dependencies = [
+ "inventory",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-port-macros",
+]
+
+[[package]]
+name = "speedyspec-php-port-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "speedyspec-server"
 version = "0.1.0"
 dependencies = [

@@ -148,6 +148,7 @@ fn main() -> ExitCode {
     let php = match Php::boot(BootOptions {
         hooks: hooks.clone(),
         preload: &[("T.php", "<?php final class PreT {}")],
+        areas: Vec::new(),
     }) {
         Ok(php) => php,
         Err(err) => {

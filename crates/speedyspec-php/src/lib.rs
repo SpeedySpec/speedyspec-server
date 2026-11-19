@@ -5,13 +5,17 @@
 //! booted it. The hook registry passed in [`BootOptions`] is exposed to PHP as
 //! `SpeedySpec\Hooks\Hook` and the WordPress-named functions.
 
+mod area;
 mod boundary;
 mod convert;
 mod hook_class;
 mod runtime;
 mod sapi;
 
-pub use runtime::{BootOptions, Output, Php, PhpError};
+pub use area::NativeArea;
+/// ext-php-rs, for areas building their functions and classes.
+pub use ext_php_rs;
+pub use runtime::{BootOptions, Output, Php, PhpError, call, eval};
 
 /// The PHP version linked into this binary, from the repository's
 /// `php-version` file.
