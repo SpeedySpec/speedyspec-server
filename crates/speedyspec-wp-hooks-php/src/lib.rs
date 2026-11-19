@@ -96,6 +96,7 @@ fn state() -> Result<Rc<State>, NativeError> {
 pub struct WpHooksArea {
     state: Rc<State>,
     testing: bool,
+    legacy: bool,
 }
 
 impl WpHooksArea {
@@ -132,7 +133,17 @@ impl WpHooksArea {
         WpHooksArea {
             state,
             testing: false,
+            legacy: true,
         }
+    }
+
+    /// Leaves out WordPress's legacy names: no `hooks.php` (the global hook functions, `WP_Hook`) and no hook
+    /// globals, so PHP that declares those names itself still loads. The native API
+    /// (`SpeedySpec\WpHooks\Native\*`) and the hook store stay. For hosts that never run WordPress's own
+    /// `plugin.php`-era code, such as the speedyspec CLI.
+    pub fn without_legacy(mut self) -> WpHooksArea {
+        self.legacy = false;
+        self
     }
 
     /// Adds `SpeedySpec\WpHooks\Testing::snapshot()` and `restore()`, which save and restore the whole hook store
@@ -218,6 +229,9 @@ impl NativeArea for WpHooksArea {
 
     fn request_start(&self) {
         self.state.memory.start_request();
+        if !self.legacy {
+            return;
+        }
         let installed = speedyspec_php::eval("speedyspec://wp-hooks", FACADE)
             .and_then(|_| {
                 if self.testing {

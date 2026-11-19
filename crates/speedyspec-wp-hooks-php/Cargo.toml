@@ -33,3 +33,7 @@ harness = false
 [[test]]
 name = "wordpress"
 harness = false
+
+[[test]]
+name = "without_legacy"
+harness = false
