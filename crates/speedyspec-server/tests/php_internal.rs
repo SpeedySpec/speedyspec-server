@@ -55,6 +55,7 @@ async fn internal_request_runs_while_visitors_fill_the_pool() {
             HeaderMap::new(),
             Bytes::from_static(b"hi"),
             Duration::from_secs(5),
+            speedyspec_server::php::pool::InternalLane::Calls,
         )
         .await
         .unwrap();
@@ -80,6 +81,7 @@ async fn internal_request_times_out() {
             HeaderMap::new(),
             Bytes::new(),
             Duration::from_millis(300),
+            speedyspec_server::php::pool::InternalLane::Calls,
         )
         .await
         .unwrap_err();

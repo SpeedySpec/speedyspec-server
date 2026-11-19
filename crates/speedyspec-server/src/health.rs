@@ -55,14 +55,19 @@ pub fn spawn(
             },
         )
     };
-    HealthMonitor::spawn(targets, calls, maintenance, settings, on_change);
+    HealthMonitor::spawn(targets, calls, maintenance.clone(), settings, on_change);
     let every = config.health.interval;
+    let health = maintenance;
     tokio::spawn(async move {
         let mut ticks = tokio::time::interval(every);
         loop {
             ticks.tick().await;
             if let Some(manager) = manager.get().cloned() {
-                let _ = tokio::task::spawn_blocking(move || manager.confirm_runtime_trials()).await;
+                let unhealthy =
+                    health.in_maintenance_by(speedyspec_server_gate::MaintenanceSource::Health);
+                let _ =
+                    tokio::task::spawn_blocking(move || manager.check_runtime_trials(&unhealthy))
+                        .await;
             }
         }
     });

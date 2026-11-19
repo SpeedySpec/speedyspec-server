@@ -13,11 +13,13 @@ runtime app (`app.<id>.runtime`, or the only one configured), and a php release 
 `"php": { "runtime": "^1.4" }`.
 
 - **The contract.** The server and the runtime share `speedyspec-runtime-contract`: the worker's start
-  (`worker --spec <json>`), FastCGI on the worker's 0600 socket, and the per-request report (an `FCGI_STDERR` record
+  (`worker --spec-stdin`, the spec as JSON on standard input, so an app's credentials never show in the process list), FastCGI on the worker's 0600 socket, and the per-request report (an `FCGI_STDERR` record
   starting `\0speedyspec:`). Its major is 1. The server refuses a runtime whose `contracts` lack it, and a worker
   refuses a spec of another major; adding a field is a minor change the other side ignores.
 - **Switching the runtime** starts every php app on it again from the new binary, swaps them all at once, and drains
-  the old pools. A runtime is switched on its own, never in the same step as an app on it.
+  the old pools. A runtime is switched on its own, never in the same step as an app on it. For a runtime major whose
+  range no current app release accepts, first release and switch app versions whose range accepts both majors
+  (`">=1, <3"`), then switch the runtime.
 - **The trial.** A new runtime release is on trial for `runtime.trial_period` (2 minutes). If a php app on it turns
   unhealthy during the trial, the runtime switches back and the new release is marked failed (auto-update never offers
   it again). In cluster mode one replica's report rolls back every replica; independent replicas each roll back
@@ -115,7 +117,9 @@ before the release's own `wp-content`.
 A worker's environment is merged by the server when a pool starts, a later source winning for a key:
 `site_dir/.env` (`KEY=value` lines, nothing evaluated), then `app.<id>.php.env_file`, then `app.<id>.php.env`. That is
 how each app gets its own credentials: the admin API a database user that can write, the front-end API and the blog
-only what they need.
+only what they need. Of the server's own environment, a worker keeps only `PATH`, `HOME`, `USER`, `TMPDIR`, `TZ`,
+`LANG` and `LC_ALL`. Credentials are isolated between apps only as far as their workers are: pools of one OS user can
+read each other's process environment.
 
 ## `php.bindings`
 
@@ -126,10 +130,12 @@ request. A Rust caller of a port with no PHP binding never enters PHP.
 
 ## The server's own calls
 
-Each pool keeps one worker beyond `workers.max` for the server's own calls: health probes, the gate's questions and
-migrations. A pool full of visitors never starves them. These calls are internal requests to the app's first mount,
-with no client address; their paths (the release's probes, the gate's revocation feed, the migration) answer 404 to
-visitors and never reach PHP.
+Each pool keeps two workers beyond `workers.max` for the server's own calls: one for health probes, one for the gate's
+questions and migrations. A pool full of visitors never starves them, and gate calls never delay a probe. These calls
+are internal requests to the app's first mount, with no client address; their paths (the release's probes, the gate's
+revocation feed, the migration) answer 404 to visitors and never reach PHP, nor does any path below them or after a
+`.php` segment (`/migrate.php/x`, `/index.php/migrate.php`). Internal paths come from the live release: a release that
+still ships its migration script must keep declaring it.
 
 ## Health and maintenance
 

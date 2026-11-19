@@ -171,3 +171,22 @@ fn runtime_switch_refused_during_migration() {
         "{err}"
     );
 }
+
+#[test]
+fn rolling_back_to_a_migrating_release_does_not_migrate_again() {
+    let mut w = world();
+    w.publish("blog", "3.0.0", "");
+    let (migrator, sink) = (Arc::new(FakeMigrator::default()), Arc::new(Sink::default()));
+    let manager = manager(&w, &migrator, &sink);
+    manager.install(&id("blog"), Some(v("3.0.0"))).unwrap();
+    manager.switch(&[(id("blog"), v("2.0.0"))]).unwrap();
+    manager.switch(&[(id("blog"), v("3.0.0"))]).unwrap();
+    assert_eq!(migrator.calls.lock().unwrap().len(), 1);
+    manager.rollback(&id("blog"), Some(v("2.0.0"))).unwrap();
+    assert_eq!(w.saved().apps[&id("blog")].active, Some(v("2.0.0")));
+    assert_eq!(
+        migrator.calls.lock().unwrap().len(),
+        1,
+        "a rollback is instant: no migration runs"
+    );
+}

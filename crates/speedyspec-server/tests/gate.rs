@@ -295,6 +295,13 @@ fn changes_path_is_not_reachable_by_visitors() {
         404
     );
     assert_eq!(get(site.addr, "/admin-api/gate/changes.php", None).0, 404);
+    for path in [
+        "/admin-api/gate/changes.php/x",
+        "/admin-api/index.php/gate/changes.php",
+        "/admin-api/gate/health.php/y",
+    ] {
+        assert_eq!(get(site.addr, path, Some(ALICE)).0, 404, "{path}");
+    }
 }
 
 fn wait(addr: std::net::SocketAddr, path: &str, status: u16) {

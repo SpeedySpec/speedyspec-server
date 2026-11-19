@@ -96,6 +96,9 @@ impl RevocationPoll {
                         tracing::warn!(event = "gate_changes_unavailable", error = %err);
                         cache.forget_all();
                         cache.set_bypass(true);
+                        // The gate app may no longer know this cursor (a switch, lost feed state): start again from
+                        // its current one. Everything is forgotten already, so nothing is missed.
+                        cursor.clear();
                     }
                 }
             }
@@ -320,6 +323,36 @@ mod tests {
         assert!(
             remembered(&cache, "u=7", 7).await,
             "once it answers, answers are remembered again"
+        );
+        poll.abort();
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_failed_poll_starts_again_from_the_current_cursor() {
+        let cache = Arc::new(SessionCache::new(Duration::from_secs(60), 16));
+        let calls = feed(vec![
+            Ok(Changes {
+                cursor: "5".into(),
+                change: ChangeSet::Users(vec![]),
+            }),
+            Err(CallError::Malformed("unknown cursor".into())),
+            Ok(Changes {
+                cursor: "9".into(),
+                change: ChangeSet::Users(vec![]),
+            }),
+        ]);
+        let poll = RevocationPoll::spawn(
+            AppId::parse("admin-api").unwrap(),
+            Arc::new(|| Some("/changes".to_string())),
+            Duration::from_secs(1),
+            calls.clone(),
+            cache,
+        );
+        tokio::time::sleep(Duration::from_millis(2500)).await;
+        assert_eq!(
+            calls.1.lock().unwrap().as_slice(),
+            ["", "5", ""],
+            "after an error, the feed is asked from the start"
         );
         poll.abort();
     }

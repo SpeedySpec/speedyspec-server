@@ -148,6 +148,7 @@ impl PhpRequestHandler {
         headers: http::HeaderMap,
         body: Bytes,
         timeout: std::time::Duration,
+        lane: super::pool::InternalLane,
     ) -> Result<http::Response<Bytes>, InternalError> {
         let (path_only, query) = path
             .split_once('?')
@@ -185,7 +186,8 @@ impl PhpRequestHandler {
         };
         let params = self.params_from(&facts, &script, &script_name, &path_info);
         let deadline = tokio::time::Instant::now() + timeout;
-        let lease = match tokio::time::timeout_at(deadline, self.pool.acquire_internal()).await {
+        let lease = match tokio::time::timeout_at(deadline, self.pool.acquire_internal(lane)).await
+        {
             Ok(Ok(lease)) => lease,
             Ok(Err(why)) => return Err(InternalError::Unavailable(why)),
             Err(_) => return Err(InternalError::Timeout),

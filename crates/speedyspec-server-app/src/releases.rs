@@ -753,8 +753,18 @@ impl ReleaseManager {
         state: &mut ReleaseState,
         targets: &[(AppId, Version)],
     ) -> Result<(), ReleaseError> {
-        self.check_runtime_alone(targets)?;
         self.check_no_pending_migration(state, targets)?;
+        self.switch_unchecked(state, targets)
+    }
+
+    /// As [`Self::switch_locked`], without refusing a runtime switch while a migration is pending (a trial's own
+    /// rollback must not wait on one).
+    fn switch_unchecked(
+        &self,
+        state: &mut ReleaseState,
+        targets: &[(AppId, Version)],
+    ) -> Result<(), ReleaseError> {
+        self.check_runtime_alone(targets)?;
         if !self.cluster.is_single() {
             return self.switch_staged(state, targets);
         }
@@ -902,47 +912,63 @@ impl ReleaseManager {
             return Ok(false);
         };
         let mut state = self.lock();
-        let Some(trial) = state.runtime_trials.get(&runtime).cloned() else {
-            return Ok(false);
-        };
-        if now_ms() > trial.until_ms {
-            return Ok(false);
+        match state.runtime_trials.get(&runtime).cloned() {
+            Some(trial) if now_ms() <= trial.until_ms => {
+                self.roll_back_trial(&mut state, &runtime, &trial, php_app)?;
+                Ok(true)
+            }
+            _ => Ok(false),
         }
-        tracing::warn!(event = "runtime_trial_failed", runtime = %runtime, version = %trial.version, app = %php_app);
-        self.switch_locked(&mut state, &[(runtime.clone(), trial.previous.clone())])?;
-        let mut next = state.clone();
-        next.runtime_trials.remove(&runtime);
-        next.app_mut(&runtime).failed.insert(
-            trial.version.clone(),
-            format!("unhealthy during trial: {php_app}"),
-        );
-        self.commit_state(&mut state, next)?;
-        Ok(true)
     }
 
-    /// Confirms every runtime trial whose period has passed.
-    pub fn confirm_runtime_trials(&self) -> Result<(), ReleaseError> {
+    /// One round of the runtime trials, given the php apps unhealthy now: a trial with an unhealthy app on it rolls
+    /// back (whether or not its period has passed: it was never confirmed), and a trial past its period with every
+    /// app healthy is confirmed.
+    pub fn check_runtime_trials(&self, unhealthy: &[AppId]) -> Result<(), ReleaseError> {
         if !self.cluster.view().is_leader {
             return Ok(());
         }
         let mut state = self.lock();
-        let now = now_ms();
-        if !state
-            .runtime_trials
-            .values()
-            .any(|trial| now > trial.until_ms)
-        {
-            return Ok(());
-        }
-        let mut next = state.clone();
-        next.runtime_trials.retain(|runtime, trial| {
-            let keep = now <= trial.until_ms;
-            if !keep {
-                tracing::info!(event = "runtime_trial_confirmed", runtime = %runtime, version = %trial.version);
+        for (runtime, trial) in state.runtime_trials.clone() {
+            let sick = unhealthy
+                .iter()
+                .find(|app| self.php_runtimes.get(*app) == Some(&runtime))
+                .cloned();
+            match sick {
+                Some(app) => self.roll_back_trial(&mut state, &runtime, &trial, &app)?,
+                None if now_ms() > trial.until_ms => {
+                    let mut next = state.clone();
+                    next.runtime_trials.remove(&runtime);
+                    self.commit_state(&mut state, next)?;
+                    tracing::info!(event = "runtime_trial_confirmed", runtime = %runtime, version = %trial.version);
+                }
+                None => {}
             }
-            keep
-        });
-        self.commit_state(&mut state, next)
+        }
+        Ok(())
+    }
+
+    /// Confirms every runtime trial whose period has passed (no app known unhealthy).
+    pub fn confirm_runtime_trials(&self) -> Result<(), ReleaseError> {
+        self.check_runtime_trials(&[])
+    }
+
+    fn roll_back_trial(
+        &self,
+        state: &mut ReleaseState,
+        runtime: &AppId,
+        trial: &speedyspec_server_domain::RuntimeTrial,
+        php_app: &AppId,
+    ) -> Result<(), ReleaseError> {
+        tracing::warn!(event = "runtime_trial_failed", runtime = %runtime, version = %trial.version, app = %php_app);
+        self.switch_unchecked(state, &[(runtime.clone(), trial.previous.clone())])?;
+        let mut next = state.clone();
+        next.runtime_trials.remove(runtime);
+        next.app_mut(runtime).failed.insert(
+            trial.version.clone(),
+            format!("unhealthy during trial: {php_app}"),
+        );
+        self.commit_state(state, next)
     }
 
     /// The apps this pod holds in maintenance because their health probes fail (published in its member report).
@@ -1020,6 +1046,12 @@ impl ReleaseManager {
             else {
                 continue;
             };
+            // Only a switch forward migrates: going back to an older release (a rollback) is instant, onto a
+            // database the newer release left usable for it.
+            let active = state.apps.get(&ready.app).and_then(|c| c.active.clone());
+            if active.is_some_and(|active| ready.version < active) {
+                continue;
+            }
             let scope = self.scope(&ready.app, switch.maintenance);
             let mut next = state.clone();
             for app in &scope {

@@ -47,6 +47,9 @@ impl PoolSettings {
 /// switch swaps the handler first, but a request may already hold the old one).
 pub const DRAIN_GRACE: Duration = Duration::from_secs(1);
 
+/// The server's environment variables a worker keeps; everything else of the server's is cleared.
+const WORKER_ENV_ALLOWLIST: &[&str] = &["PATH", "HOME", "USER", "TMPDIR", "TZ", "LANG", "LC_ALL"];
+
 /// How long a new worker may take to answer `GET_VALUES`.
 const READY_TIMEOUT: Duration = Duration::from_secs(20);
 /// macOS and Linux limit a socket path to about 104 bytes.
@@ -104,11 +107,11 @@ struct State {
     /// When draining began.
     drain_started: Option<Instant>,
     /// The worker kept for the server's own calls, when idle. Never counted in `total`.
-    internal: Option<Worker>,
-    /// The internal worker is leased.
-    internal_busy: bool,
-    /// A replacement internal worker is starting.
-    internal_starting: bool,
+    internal: [Option<Worker>; 2],
+    /// Each lane's internal worker is leased.
+    internal_busy: [bool; 2],
+    /// A replacement for each lane's internal worker is starting.
+    internal_starting: [bool; 2],
 }
 
 impl State {
@@ -155,12 +158,21 @@ impl std::fmt::Debug for EmbeddedPhpPool {
     }
 }
 
+/// Which of a pool's two internal workers a server's own call uses.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InternalLane {
+    /// Health probes.
+    Probe = 0,
+    /// The gate's questions, its revocation feed, and migrations.
+    Calls = 1,
+}
+
 /// A worker leased for one request. Dropped without [`EmbeddedPhpPool::release`], the worker is killed.
 pub struct Lease {
     pool: Weak<Inner>,
     worker: Option<Worker>,
-    /// The pool's internal worker, rather than a visitor's.
-    internal: bool,
+    /// The lane of the pool's internal worker this is, rather than a visitor's.
+    internal: Option<InternalLane>,
 }
 
 impl Lease {
@@ -263,9 +275,9 @@ impl EmbeddedPhpPool {
                 busy: 0,
                 draining: false,
                 drain_started: None,
-                internal: None,
-                internal_busy: false,
-                internal_starting: false,
+                internal: [None, None],
+                internal_busy: [false; 2],
+                internal_starting: [false; 2],
             }),
             wake: tokio::sync::Notify::new(),
             internal_wake: tokio::sync::Notify::new(),
@@ -279,8 +291,10 @@ impl EmbeddedPhpPool {
             state.total += 1;
             state.idle.push(worker);
         }
-        let internal = pool.spawn_worker()?;
-        pool.inner.state.lock().unwrap().internal = Some(internal);
+        for lane in [InternalLane::Probe, InternalLane::Calls] {
+            let internal = pool.spawn_worker()?;
+            pool.inner.state.lock().unwrap().internal[lane as usize] = Some(internal);
+        }
         log(
             "php_pool_started",
             &pool.inner,
@@ -320,9 +334,9 @@ impl EmbeddedPhpPool {
                     busy: 0,
                     draining: false,
                     drain_started: None,
-                    internal: None,
-                    internal_busy: false,
-                    internal_starting: false,
+                    internal: [None, None],
+                    internal_busy: [false; 2],
+                    internal_starting: [false; 2],
                 }),
                 wake: tokio::sync::Notify::new(),
                 internal_wake: tokio::sync::Notify::new(),
@@ -351,15 +365,31 @@ impl EmbeddedPhpPool {
         let mut spec = inner.spec.clone();
         spec.socket = socket.clone();
         let json = serde_json::to_string(&spec).map_err(|err| err.to_string())?;
+        // The spec (the app's credentials) goes on stdin, never in argv; the worker gets only the allowlisted parts
+        // of the server's environment, and its app's own (in the spec).
         let mut child = Command::new(&inner.exe)
             .arg("worker")
-            .arg("--spec")
-            .arg(json)
-            .stdin(Stdio::null())
+            .arg("--spec-stdin")
+            .env_clear()
+            .envs(
+                WORKER_ENV_ALLOWLIST
+                    .iter()
+                    .filter_map(|key| std::env::var_os(key).map(|value| (key, value))),
+            )
+            .stdin(Stdio::piped())
             .stdout(Stdio::null())
             .stderr(Stdio::inherit())
             .spawn()
             .map_err(|err| format!("starting {}: {err}", inner.exe.display()))?;
+        if let Some(mut stdin) = child.stdin.take() {
+            let written = stdin.write_all(json.as_bytes());
+            drop(stdin);
+            if let Err(err) = written {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("passing the worker its spec: {err}"));
+            }
+        }
         let deadline = Instant::now() + READY_TIMEOUT;
         loop {
             if let Ok(Some(status)) = child.try_wait() {
@@ -409,7 +439,7 @@ impl EmbeddedPhpPool {
                         return Ok(Lease {
                             pool: Arc::downgrade(&self.inner),
                             worker: Some(worker),
-                            internal: false,
+                            internal: None,
                         });
                     }
                     state.total -= 1;
@@ -440,10 +470,12 @@ impl EmbeddedPhpPool {
         }
     }
 
-    /// Leases the worker kept for the server's own calls (health probes, the gate's questions, migrations). It is
-    /// never a visitor's, so a pool full of visitors cannot starve these calls; it waits only for another internal
-    /// call. A missing or dead internal worker is started again.
-    pub async fn acquire_internal(&self) -> Result<Lease, String> {
+    /// Leases one of the workers kept for the server's own calls: [`InternalLane::Probe`] for health probes,
+    /// [`InternalLane::Calls`] for the gate's questions and migrations. Neither is ever a visitor's, so a pool full
+    /// of visitors cannot starve these calls, and gate calls cannot starve probes. A missing or dead internal worker
+    /// is started again.
+    pub async fn acquire_internal(&self, lane: InternalLane) -> Result<Lease, String> {
+        let i = lane as usize;
         loop {
             let notified = self.inner.internal_wake.notified();
             let start = {
@@ -451,14 +483,14 @@ impl EmbeddedPhpPool {
                 if state.draining {
                     return Err("the release is being retired".into());
                 }
-                if !state.internal_busy {
-                    if let Some(mut worker) = state.internal.take() {
+                if !state.internal_busy[i] {
+                    if let Some(mut worker) = state.internal[i].take() {
                         if worker.alive() {
-                            state.internal_busy = true;
+                            state.internal_busy[i] = true;
                             return Ok(Lease {
                                 pool: Arc::downgrade(&self.inner),
                                 worker: Some(worker),
-                                internal: true,
+                                internal: Some(lane),
                             });
                         }
                         log(
@@ -468,28 +500,30 @@ impl EmbeddedPhpPool {
                         );
                     }
                 }
-                let start =
-                    !state.internal_busy && state.internal.is_none() && !state.internal_starting;
+                let start = !state.internal_busy[i]
+                    && state.internal[i].is_none()
+                    && !state.internal_starting[i];
                 if start {
-                    state.internal_starting = true;
+                    state.internal_starting[i] = true;
                 }
                 start
             };
             if start {
                 let pool = self.clone();
-                std::thread::spawn(move || pool.replace_internal());
+                std::thread::spawn(move || pool.replace_internal(lane));
             }
             notified.await;
         }
     }
 
-    /// Starts the internal worker again.
-    fn replace_internal(&self) {
+    /// Starts a lane's internal worker again.
+    fn replace_internal(&self, lane: InternalLane) {
+        let i = lane as usize;
         let started = self.spawn_worker();
         let mut state = self.inner.state.lock().unwrap();
-        state.internal_starting = false;
+        state.internal_starting[i] = false;
         match started {
-            Ok(worker) if !state.draining => state.internal = Some(worker),
+            Ok(worker) if !state.draining => state.internal[i] = Some(worker),
             Ok(worker) => {
                 drop(state);
                 terminate(worker);
@@ -513,8 +547,9 @@ impl EmbeddedPhpPool {
         }
     }
 
-    /// Takes the internal worker back: kept when it answered and is healthy, otherwise stopped and started again.
-    fn give_back_internal(&self, mut worker: Worker, fate: Fate) {
+    /// Takes an internal worker back: kept when it answered and is healthy, otherwise stopped and started again.
+    fn give_back_internal(&self, mut worker: Worker, fate: Fate, lane: InternalLane) {
+        let i = lane as usize;
         let keep = matches!(
             fate,
             Fate::Answered {
@@ -526,14 +561,14 @@ impl EmbeddedPhpPool {
             worker.requests = requests;
         }
         let mut state = self.inner.state.lock().unwrap();
-        state.internal_busy = false;
+        state.internal_busy[i] = false;
         if keep && !state.draining {
-            state.internal = Some(worker);
+            state.internal[i] = Some(worker);
             drop(state);
         } else {
             let restart = !state.draining;
             if restart {
-                state.internal_starting = true;
+                state.internal_starting[i] = true;
             }
             drop(state);
             let _ = worker.child.kill();
@@ -545,15 +580,15 @@ impl EmbeddedPhpPool {
             );
             if restart {
                 let pool = self.clone();
-                std::thread::spawn(move || pool.replace_internal());
+                std::thread::spawn(move || pool.replace_internal(lane));
             }
         }
         self.inner.internal_wake.notify_waiters();
     }
 
-    fn give_back(&self, mut worker: Worker, fate: Fate, internal: bool) {
-        if internal {
-            return self.give_back_internal(worker, fate);
+    fn give_back(&self, mut worker: Worker, fate: Fate, internal: Option<InternalLane>) {
+        if let Some(lane) = internal {
+            return self.give_back_internal(worker, fate, lane);
         }
         let inner = &self.inner;
         let settings = &inner.settings;
@@ -662,9 +697,14 @@ impl EmbeddedPhpPool {
             loop {
                 let idle = {
                     let mut state = inner.state.lock().unwrap();
-                    if state.busy == 0 && !state.internal_busy && !state.in_grace() {
+                    if state.busy == 0
+                        && !state.internal_busy.iter().any(|b| *b)
+                        && !state.in_grace()
+                    {
                         let mut idle = std::mem::take(&mut state.idle);
-                        idle.extend(state.internal.take());
+                        for slot in &mut state.internal {
+                            idle.extend(slot.take());
+                        }
                         Some(idle)
                     } else {
                         None
@@ -902,7 +942,11 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        let internal = tokio::time::timeout(Duration::from_secs(2), pool.acquire_internal()).await;
+        let internal = tokio::time::timeout(
+            Duration::from_secs(2),
+            pool.acquire_internal(InternalLane::Calls),
+        )
+        .await;
         assert!(
             matches!(internal, Ok(Ok(_))),
             "the internal call gets a worker at once"
@@ -917,9 +961,13 @@ mod tests {
     #[tokio::test]
     async fn killed_internal_worker_is_replaced() {
         let pool = fake_pool(1, Duration::from_millis(0));
-        let lease = pool.acquire_internal().await.unwrap();
+        let lease = pool.acquire_internal(InternalLane::Calls).await.unwrap();
         pool.release(lease, Fate::TimedOut);
-        let again = tokio::time::timeout(Duration::from_secs(2), pool.acquire_internal()).await;
+        let again = tokio::time::timeout(
+            Duration::from_secs(2),
+            pool.acquire_internal(InternalLane::Calls),
+        )
+        .await;
         assert!(
             matches!(again, Ok(Ok(_))),
             "a replacement internal worker answers"
@@ -951,5 +999,28 @@ mod tests {
             pool.acquire().await.is_err(),
             "after the grace period the pool refuses"
         );
+    }
+
+    /// Health probes have a worker of their own: gate calls filling theirs never delay a probe.
+    #[tokio::test]
+    async fn probes_have_their_own_worker() {
+        let pool = fake_pool(1, Duration::from_millis(0));
+        let call = pool.acquire_internal(InternalLane::Calls).await.unwrap();
+        let probe = tokio::time::timeout(
+            Duration::from_secs(2),
+            pool.acquire_internal(InternalLane::Probe),
+        )
+        .await;
+        assert!(
+            matches!(probe, Ok(Ok(_))),
+            "the probe gets its worker while a gate call holds the other"
+        );
+        let second_call = tokio::time::timeout(
+            Duration::from_millis(200),
+            pool.acquire_internal(InternalLane::Calls),
+        )
+        .await;
+        assert!(second_call.is_err(), "gate calls wait for their own worker");
+        drop(call);
     }
 }

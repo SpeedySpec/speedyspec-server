@@ -12,6 +12,7 @@ use speedyspec_server_gate::{
 };
 
 use super::handler::InternalError;
+use super::pool::InternalLane;
 use super::runtime::PhpRuntime;
 
 /// Where an app's internal requests are addressed: its first mount's path, and that mount's host (`localhost` for
@@ -65,6 +66,7 @@ impl FastCgiGateCalls {
         headers: HeaderMap,
         body: Bytes,
         timeout: Duration,
+        lane: InternalLane,
     ) -> Result<http::Response<Bytes>, CallError> {
         let handler = self
             .php
@@ -83,6 +85,7 @@ impl FastCgiGateCalls {
                 headers,
                 body,
                 timeout,
+                lane,
             )
             .await
             .map_err(|err| match err {
@@ -149,6 +152,7 @@ impl GateCalls for FastCgiGateCalls {
                     HeaderMap::new(),
                     Bytes::new(),
                     self.timeout,
+                    InternalLane::Probe,
                 )
                 .await?;
             Ok(response.status().as_u16())
@@ -169,6 +173,7 @@ impl GateCalls for FastCgiGateCalls {
                     HeaderMap::new(),
                     Bytes::new(),
                     self.timeout,
+                    InternalLane::Calls,
                 )
                 .await?;
             if response.status() != http::StatusCode::OK {
@@ -202,7 +207,15 @@ impl GateCalls for FastCgiGateCalls {
             let mut headers = HeaderMap::new();
             headers.insert(http::header::COOKIE, cookie.clone());
             let response = self
-                .call(app, Method::GET, path, headers, Bytes::new(), self.timeout)
+                .call(
+                    app,
+                    Method::GET,
+                    path,
+                    headers,
+                    Bytes::new(),
+                    self.timeout,
+                    InternalLane::Calls,
+                )
                 .await?;
             Ok(read_session(&response))
         })
@@ -225,6 +238,7 @@ impl GateCalls for FastCgiGateCalls {
                     HeaderMap::new(),
                     Bytes::new(),
                     self.timeout,
+                    InternalLane::Calls,
                 )
                 .await?;
             if response.status() != http::StatusCode::OK {
@@ -377,6 +391,7 @@ impl speedyspec_server_app::Migrator for PhpMigrator {
                             HeaderMap::new(),
                             Bytes::new(),
                             timeout,
+                            InternalLane::Calls,
                         ))
                         .map_err(|err| match err {
                             InternalError::Timeout => {

@@ -513,10 +513,10 @@ fn grows_to_max_and_shrinks_after_idle() {
         "three workers ran at once: {:?}",
         started.elapsed()
     );
-    // Three visitor workers, and the internal one kept for the server's own calls.
+    // Three visitor workers, and the two internal ones kept for the server's own calls (probes, gate calls).
     assert_eq!(
         count_events(&server, "php_worker_started", None),
-        4,
+        5,
         "{:?}",
         server.log()
     );
@@ -695,5 +695,26 @@ app = "blog"
         server.wait_for_event("php_pool_drained", Duration::from_secs(5)),
         "{:?}",
         server.log()
+    );
+}
+
+/// A worker's spec (the app's credentials) never shows in its argv, and the server's own environment does not reach
+/// PHP: only the allowlist and the app's own environment.
+#[test]
+fn worker_secrets_stay_out_of_argv_and_the_server_environment_stays_out() {
+    let setup = setup("");
+    let mut server = support::run::start_with(&setup.config, &[("SPEEDYSPEC_SERVER_ONLY", "1")]);
+    let addr = server.address();
+    assert_eq!(get(addr, "/env.php"), (200, "absent from-dotenv".into()));
+    let (_, pid) = get(addr, "/pid.php");
+    let ps = std::process::Command::new("ps")
+        .args(["-o", "command=", "-p", pid.trim()])
+        .output()
+        .unwrap();
+    let argv = String::from_utf8_lossy(&ps.stdout);
+    assert!(!argv.trim().is_empty(), "ps saw the worker");
+    assert!(
+        !argv.contains("from-dotenv") && !argv.contains("release_dir"),
+        "the spec is not in argv: {argv}"
     );
 }

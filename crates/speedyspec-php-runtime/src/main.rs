@@ -22,16 +22,39 @@ enum Command {
     /// Serve FastCGI requests as one of an app's workers.
     Worker {
         /// The worker spec, as JSON.
+        #[arg(
+            long,
+            conflicts_with = "spec_stdin",
+            required_unless_present = "spec_stdin"
+        )]
+        spec: Option<String>,
+        /// Read the worker spec, as JSON, from standard input (how the server passes it: the app's credentials never
+        /// show in the process list).
         #[arg(long)]
-        spec: String,
+        spec_stdin: bool,
     },
     /// Print this runtime's manifest as JSON.
     Manifest,
 }
 
+/// The spec, from the argument or from standard input.
+fn read_spec(spec: Option<String>, from_stdin: bool) -> Result<String, String> {
+    match spec {
+        Some(spec) if !from_stdin => Ok(spec),
+        _ => {
+            let mut spec = String::new();
+            std::io::Read::read_to_string(&mut std::io::stdin(), &mut spec)
+                .map_err(|err| err.to_string())?;
+            Ok(spec)
+        }
+    }
+}
+
 fn main() -> ExitCode {
     match Cli::parse().command {
-        Command::Worker { spec } => match serde_json::from_str::<WorkerSpec>(&spec) {
+        Command::Worker { spec, spec_stdin } => match read_spec(spec, spec_stdin).and_then(|spec| {
+            serde_json::from_str::<WorkerSpec>(&spec).map_err(|err| err.to_string())
+        }) {
             Ok(spec) => ExitCode::from(u8::try_from(worker::run_worker(spec)).unwrap_or(1)),
             Err(err) => {
                 eprintln!("speedyspec-php-runtime worker: --spec is not valid: {err}");

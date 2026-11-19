@@ -34,6 +34,31 @@ struct Entry {
     until: Instant,
 }
 
+/// Frees an ask's pending slot when its last caller goes away before it is answered (a closed tab, an aborted
+/// request), so abandoned asks never fill `max_pending`.
+struct PendingSlot<'a> {
+    cache: &'a SessionCache,
+    key: Key,
+    cell: Arc<OnceCell<CacheOutcome>>,
+}
+
+impl Drop for PendingSlot<'_> {
+    fn drop(&mut self) {
+        if self.cell.initialized() {
+            return;
+        }
+        let mut pending = self.cache.pending.lock().unwrap();
+        // The map's reference and this one: nobody else is waiting on it.
+        if pending
+            .get(&self.key)
+            .is_some_and(|cell| Arc::ptr_eq(cell, &self.cell))
+            && Arc::strong_count(&self.cell) <= 2
+        {
+            pending.remove(&self.key);
+        }
+    }
+}
+
 /// See the module docs.
 pub struct SessionCache {
     ttl: Duration,
@@ -97,7 +122,13 @@ impl SessionCache {
                 }
             }
         };
-        let outcome = cell
+        let slot = PendingSlot {
+            cache: self,
+            key,
+            cell,
+        };
+        let outcome = slot
+            .cell
             .get_or_init(|| async {
                 let outcome = match ask.await {
                     Ok(SessionAnswer::SignedIn { user, pages }) => {
@@ -290,6 +321,31 @@ mod tests {
             calls.load(Ordering::SeqCst),
             1,
             "only user 5 is asked again"
+        );
+    }
+
+    /// A lookup whose caller goes away (a closed tab, an aborted request) frees its slot: abandoned asks never fill
+    /// `max_pending` for everyone else.
+    #[tokio::test]
+    async fn abandoned_asks_free_their_slot() {
+        let cache = Arc::new(SessionCache::new(Duration::from_secs(60), 2));
+        for name in ["a=1", "a=2", "a=3"] {
+            let value = cookie(name);
+            let slow = cache.answer(&value, async {
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                signed_in(1)
+            });
+            assert!(
+                tokio::time::timeout(Duration::from_millis(20), slow)
+                    .await
+                    .is_err(),
+                "{name}: still asking, not busy"
+            );
+        }
+        let fresh = cache.answer(&cookie("b=1"), async { signed_in(2) }).await;
+        assert!(
+            matches!(fresh, CacheOutcome::SignedIn { user: 2, .. }),
+            "{fresh:?}"
         );
     }
 }

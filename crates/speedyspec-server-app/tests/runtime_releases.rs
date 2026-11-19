@@ -173,3 +173,52 @@ fn independent_replica_rolls_back_only_itself() {
         "the other replica has its own state"
     );
 }
+
+#[test]
+fn trial_rollback_is_not_blocked_by_a_failed_migration() {
+    let (w, manager) = on_trial(std::time::Duration::from_secs(60));
+    let mut state = w.saved();
+    state.revision += 1;
+    state.maintenance.insert(
+        id("blog"),
+        speedyspec_server_domain::MaintenanceRecord {
+            migration_failed: Some("500".into()),
+            ..Default::default()
+        },
+    );
+    speedyspec_server_domain::StateStore::save(&*w.state, &state).unwrap();
+    manager.refresh().unwrap();
+    assert!(
+        manager.runtime_unhealthy(&id("blog")).unwrap(),
+        "a trial rollback is not an operator's switch"
+    );
+    assert_eq!(w.saved().apps[&id("rt")].active, Some(v("1.0.0")));
+}
+
+#[test]
+fn an_app_already_unhealthy_rolls_back_the_trial() {
+    let (w, manager) = on_trial(std::time::Duration::from_secs(60));
+    // The app never turns unhealthy during the trial: it already was. The round's check still rolls back.
+    manager.check_runtime_trials(&[id("blog")]).unwrap();
+    assert_eq!(w.saved().apps[&id("rt")].active, Some(v("1.0.0")));
+}
+
+#[test]
+fn a_trial_is_never_confirmed_while_an_app_on_it_is_unhealthy() {
+    let (w, manager) = on_trial(std::time::Duration::from_millis(100));
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    manager.check_runtime_trials(&[id("blog")]).unwrap();
+    assert_eq!(
+        w.saved().apps[&id("rt")].active,
+        Some(v("1.0.0")),
+        "rolled back, not confirmed"
+    );
+    let (w, manager) = on_trial(std::time::Duration::from_millis(100));
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    manager.check_runtime_trials(&[]).unwrap();
+    assert!(
+        w.saved().runtime_trials.is_empty(),
+        "confirmed when healthy"
+    );
+    assert_eq!(w.saved().apps[&id("rt")].active, Some(v("1.1.0")));
+}

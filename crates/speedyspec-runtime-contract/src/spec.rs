@@ -1,4 +1,5 @@
-//! How a worker is started: `speedyspec-php-runtime worker --spec <json>`.
+//! How a worker is started: `speedyspec-php-runtime worker --spec-stdin`, the spec as JSON on standard input (or
+//! `--spec <json>` by hand).
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
