@@ -96,7 +96,6 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
     }
     check_set(&manifests, &config.php_runtimes()).map_err(BootError::Incompatible)?;
 
-    #[cfg(feature = "php")]
     let binaries = {
         let binaries = Arc::new(crate::php::runtime_kind::RuntimeBinaries::default());
         for (id, manifest) in manifests.iter().filter(|(_, m)| m.kind == AppKind::Runtime) {
@@ -110,8 +109,6 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
         }
         binaries
     };
-    #[cfg(not(feature = "php"))]
-    let binaries = ();
 
     let mut apps = HashMap::new();
     for (id, manifest) in &manifests {
@@ -145,7 +142,6 @@ pub fn prepare(config: &Config) -> Result<ServeState, BootError> {
 }
 
 /// A php app's handle in immutable mode: its release's worker pool, started now.
-#[cfg(feature = "php")]
 fn php_handle(
     config: &Config,
     binaries: &Arc<crate::php::runtime_kind::RuntimeBinaries>,
@@ -166,18 +162,6 @@ fn php_handle(
             app: id.clone(),
             message,
         })
-}
-
-/// Without the `php` feature, a php app answers 503.
-#[cfg(not(feature = "php"))]
-fn php_handle(
-    _config: &Config,
-    _binaries: &(),
-    _id: &AppId,
-    _manifest: &ReleaseManifest,
-    _dir: &Path,
-) -> Result<AppHandle, BootError> {
-    Ok(AppHandle::PhpPlaceholder)
 }
 
 fn serve_state(config: &Config, apps: HashMap<AppId, AppHandle>) -> ServeState {

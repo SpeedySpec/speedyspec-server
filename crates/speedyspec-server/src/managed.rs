@@ -222,9 +222,7 @@ pub fn spawn_fallback_sweep(live: Arc<LiveApps>) {
     });
 }
 
-/// PHP releases: worker pools with the `php` feature, the 503 placeholder without it. The runtime kind's releases
-/// move the php apps on them to new pools.
-#[cfg(feature = "php")]
+/// PHP releases: worker pools. The runtime kind's releases move the php apps on them to new pools.
 fn php_runtime(
     config: &Config,
     live: Arc<speedyspec_server_presentation::LiveApps>,
@@ -242,15 +240,4 @@ fn php_runtime(
         binaries,
     ));
     vec![(AppKind::Php, php), (AppKind::Runtime, kind)]
-}
-
-#[cfg(not(feature = "php"))]
-fn php_runtime(
-    _config: &Config,
-    live: Arc<speedyspec_server_presentation::LiveApps>,
-) -> Vec<(AppKind, Arc<dyn AppRuntime>)> {
-    vec![(
-        AppKind::Php,
-        Arc::new(crate::runtime::PhpPlaceholderRuntime::new(live)),
-    )]
 }

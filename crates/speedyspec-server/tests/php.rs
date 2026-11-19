@@ -119,7 +119,6 @@ fn count_events(server: &Running, event: &str, field: Option<(&str, &str)>) -> u
         .count()
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn server_vars_and_body_round_trip() {
     let (_setup, server, addr) = serve("");
@@ -167,7 +166,6 @@ fn server_vars_and_body_round_trip() {
     assert_eq!(json["env"], "from-dotenv", "site_dir/.env reaches getenv()");
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn front_controller_gets_unmatched_paths() {
     let (_setup, _server, addr) = serve("");
@@ -179,7 +177,6 @@ fn front_controller_gets_unmatched_paths() {
     assert_eq!(get(addr, "/dir/"), (200, "dir index".into()));
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn php_file_runs_directly() {
     let (_setup, _server, addr) = serve("");
@@ -196,7 +193,6 @@ fn php_file_runs_directly() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn static_file_from_site_dir_then_release() {
     let (_setup, _server, addr) = serve("");
@@ -221,7 +217,6 @@ fn static_file_from_site_dir_then_release() {
 }
 
 /// Only site_dir's wp-content is served from it, and no dotfile anywhere: site_dir holds secrets.
-#[cfg(feature = "php")]
 #[test]
 fn private_files_are_not_served() {
     let (_setup, _server, addr) = serve("");
@@ -240,7 +235,6 @@ fn private_files_are_not_served() {
 }
 
 /// A directory without its trailing slash redirects, as Apache and nginx do (relative links in it must resolve).
-#[cfg(feature = "php")]
 #[test]
 fn directory_without_slash_redirects() {
     let (_setup, _server, addr) = serve("");
@@ -255,7 +249,6 @@ fn directory_without_slash_redirects() {
     assert_eq!(response.headers()["location"], "/dir/?x=1");
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn php_in_site_wp_content_runs() {
     let (_setup, _server, addr) = serve("");
@@ -266,7 +259,6 @@ fn php_in_site_wp_content_runs() {
 }
 
 /// A client that goes away does not kill the script: WP-Cron relies on ignore_user_abort().
-#[cfg(feature = "php")]
 #[test]
 fn client_disconnect_lets_script_finish() {
     let (setup, _server, addr) = serve("");
@@ -290,7 +282,6 @@ fn client_disconnect_lets_script_finish() {
 }
 
 /// The CLI-era `SpeedySpec\Hooks\Hook` registry holds nothing past a request.
-#[cfg(feature = "php")]
 #[test]
 fn legacy_hook_registry_is_request_scoped() {
     let (_setup, _server, addr) = serve("workers = { min = 1, max = 1 }");
@@ -317,7 +308,6 @@ fn raw_get(addr: SocketAddr, path: &str, mut chunk: impl FnMut(&[u8], Duration))
     }
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn response_streams() {
     let (_setup, _server, addr) = serve("");
@@ -338,7 +328,6 @@ fn response_streams() {
     assert!(text.contains("chunk4"), "{text}");
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn fatal_error_is_500_and_next_request_clean() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 1 }");
@@ -361,7 +350,6 @@ fn fatal_error_is_500_and_next_request_clean() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn hooks_work_in_a_request() {
     let (_setup, _server, addr) = serve("workers = { min = 1, max = 1 }");
@@ -373,7 +361,6 @@ fn hooks_work_in_a_request() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn crash_is_502_and_worker_replaced() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 1 }");
@@ -389,7 +376,6 @@ fn crash_is_502_and_worker_replaced() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn hang_is_504_and_worker_killed() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 1 }\nrequest_timeout = \"1s\"");
@@ -412,7 +398,6 @@ fn hang_is_504_and_worker_killed() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn slow_upload_bounded_by_request_timeout() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 1 }\nrequest_timeout = \"1s\"");
@@ -442,7 +427,6 @@ fn slow_upload_bounded_by_request_timeout() {
     assert_eq!(get(addr, "/upload.php").0, 200, "the worker is free again");
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn slow_reader_gets_streamed_response() {
     let (setup, _server, addr) = serve("");
@@ -475,7 +459,6 @@ fn slow_reader_gets_streamed_response() {
     assert!(total > 200 * 65536, "every byte arrives ({total})");
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn leak_recycles_worker() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 1 }\nmemory_limit = \"16MiB\"");
@@ -498,7 +481,6 @@ fn leak_recycles_worker() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn max_requests_recycles_worker() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 1 }\nmax_requests = 2");
@@ -516,7 +498,6 @@ fn max_requests_recycles_worker() {
     );
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn grows_to_max_and_shrinks_after_idle() {
     let (_setup, server, addr) = serve("workers = { min = 1, max = 3 }\nidle_timeout = \"1s\"");
@@ -561,7 +542,6 @@ fn grows_to_max_and_shrinks_after_idle() {
     assert_eq!(get(addr, "/pid.php").0, 200, "min stays");
 }
 
-#[cfg(feature = "php")]
 #[test]
 fn release_switch_finishes_long_request_on_old_pool() {
     use support::release_host::ReleaseHost;
@@ -715,16 +695,4 @@ app = "blog"
         "{:?}",
         server.log()
     );
-}
-
-#[cfg(not(feature = "php"))]
-#[test]
-fn without_php_feature_placeholder_still_answers_503() {
-    let (_setup, _server, addr) = serve("");
-    let response = client()
-        .get(format!("http://{addr}/server.php"))
-        .send()
-        .unwrap();
-    assert_eq!(response.status(), 503);
-    assert_eq!(response.headers()["retry-after"], "30");
 }

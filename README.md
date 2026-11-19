@@ -265,10 +265,10 @@ See [`docs/cluster.md`](docs/cluster.md) for how leaders, followers, epochs and 
 
 ## PHP apps
 
-An app with `kind = "php"` runs on a pool of supervised PHP workers (an embedded, static PHP with every extension
-WordPress needs), per release, over FastCGI. WordPress's hook functions, `WP_Hook` and a service container
-(`SpeedySpec\Container\Container`) are native, in Rust. Build the server with the `php` feature; without it a PHP app
-answers 503.
+An app with `kind = "php"` runs on a pool of supervised PHP workers, per release, over FastCGI. The workers are the
+PHP runtime (`speedyspec-php-runtime`: an embedded, static PHP with every extension WordPress needs, and WordPress's hook
+functions, `WP_Hook` and a service container native, in Rust), released as an app of its own with `kind = "runtime"`.
+The server itself holds no PHP.
 
 Its settings are under `[app.<id>.php]`, as in the example configuration above.
 
@@ -279,11 +279,12 @@ See [`docs/php.md`](docs/php.md) for the build, the release's `php` section, the
 
 ```
 scripts/build-php.sh                                   # once: the static PHP, into .php-build/
-cargo test --workspace --features speedyspec-server/test-hooks,speedyspec-server/php
+cargo test --workspace --features speedyspec-server/test-hooks
 ```
 
 On Linux musl, `scripts/linux-php.sh scripts/build-php.sh` and `scripts/linux-php.sh cargo test …`. Without the static
-PHP, leave `php` off and `--exclude` the PHP crates (as the CI's `test` job does).
+PHP, the server still builds (`scripts/check-no-php-in-server.sh` checks it holds none); its tests start the runtime's
+workers, so they run where PHP is built (as the CI's `php` job does).
 
 `test-hooks` turns on the hooks the keeper tests need (fake versions and protocols, crash and never-ready switches, a
 slow streaming route, and the one-host lease file `leadership = "file"` the multi-process cluster tests use). It is

@@ -83,7 +83,7 @@ mod tests {
                 .collect(),
         );
         let held = live.get(&app).unwrap();
-        let old = live.swap(&app, AppHandle::PhpPlaceholder).unwrap();
+        let old = live.swap(&app, AppHandle::AdminApiPlaceholder).unwrap();
         assert!(matches!(*old, AppHandle::NotInstalled));
         assert!(
             matches!(*held, AppHandle::NotInstalled),
@@ -91,7 +91,7 @@ mod tests {
         );
         assert!(matches!(
             *live.get(&app).unwrap(),
-            AppHandle::PhpPlaceholder
+            AppHandle::AdminApiPlaceholder
         ));
         assert!(live.get(&AppId::parse("other").unwrap()).is_none());
     }

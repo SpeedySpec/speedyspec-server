@@ -246,7 +246,7 @@ async fn signed_in_denied_by_default() {
 }
 
 #[tokio::test]
-async fn php_mount_placeholder() {
+async fn php_mount_is_served_by_its_pool() {
     let setup = setup("public", None, "", None);
     let mut server = start(&setup.config, setup.dir.path());
     let plain = first(&server.listening(1), "tcp", 0);

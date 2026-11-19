@@ -80,7 +80,7 @@ fn service(access: Arc<dyn AccessCheck>) -> (tempfile::TempDir, Service) {
         ("site", static_app(public)),
         ("admin", static_app(admin)),
         ("server", AppHandle::AdminApiPlaceholder),
-        ("blog", AppHandle::PhpPlaceholder),
+        ("blog", AppHandle::NotInstalled),
     ]
     .into_iter()
     .map(|(id, handle)| (AppId::parse(id).unwrap(), handle))

@@ -25,9 +25,13 @@ jobs:
       - if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y musl-tools
       - uses: Swatinem/rust-cache@v2
-      # Without the static PHP: every crate that needs it is left out here and tested in the php job.
+      # Without the static PHP: the server builds without it, and holds none of it. Every crate that needs PHP, and the
+      # server's own tests (which start the PHP runtime's workers), run in the php job.
+      - run: cargo build -p speedyspec-server --features test-hooks --target ${{ matrix.target }}
+      - run: scripts/check-no-php-in-server.sh
       - run: >-
-          cargo test --workspace --features speedyspec-server/test-hooks --target ${{ matrix.target }}
+          cargo test --workspace --target ${{ matrix.target }}
+          --exclude speedyspec-server --exclude speedyspec-php-runtime
           --exclude speedyspec-php --exclude speedyspec-php-ext --exclude speedyspec-container-php
           --exclude speedyspec-cqrs-php --exclude speedyspec-compat --exclude speedyspec-wp-hooks-php
       - run: test -z "$(cargo tree -i aws-lc-sys --target all 2>/dev/null)"
@@ -82,7 +86,7 @@ jobs:
       - name: Extensions
         run: ${{ matrix.run }} cargo test -p speedyspec-php --test extensions
       - name: Test with php
-        run: ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks,speedyspec-server/php
+        run: ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks
 
   kubernetes:
     runs-on: ubuntu-latest

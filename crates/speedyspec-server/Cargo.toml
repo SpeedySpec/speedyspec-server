@@ -9,20 +9,6 @@ license.workspace = true
 [features]
 # Hooks for tests only: files next to the executable override its version or make a generation misbehave.
 test-hooks = []
-# PHP apps: supervised embedded-PHP workers over FastCGI (needs the static PHP build).
-php = [
-    "dep:speedyspec-fastcgi",
-    "dep:speedyspec-php",
-    "dep:speedyspec-php-ext",
-    "dep:speedyspec-container",
-    "dep:speedyspec-container-php",
-    "dep:speedyspec-hooks",
-    "dep:speedyspec-hooks-memory",
-    "dep:speedyspec-wp-hooks",
-    "dep:speedyspec-wp-hooks-memory",
-    "dep:speedyspec-wp-hooks-php",
-    "dep:http-body-util",
-]
 
 [[bin]]
 name = "speedyspec-server"
@@ -60,17 +46,8 @@ futures-util = "0.3"
 rustix = { version = "1", features = ["net", "fs", "process", "stdio", "system"] }
 quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-ring"] }
 
-speedyspec-fastcgi = { path = "../speedyspec-fastcgi", optional = true }
-speedyspec-php = { path = "../speedyspec-php", optional = true }
-speedyspec-php-ext = { path = "../speedyspec-php-ext", optional = true }
-speedyspec-container = { path = "../speedyspec-container", optional = true }
-speedyspec-container-php = { path = "../speedyspec-container-php", optional = true }
-speedyspec-hooks = { path = "../speedyspec-hooks", optional = true }
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory", optional = true }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks", optional = true }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory", optional = true }
-speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php", optional = true }
-http-body-util = { version = "0.1", optional = true }
+speedyspec-fastcgi = { path = "../speedyspec-fastcgi" }
+http-body-util = "0.1"
 
 [dev-dependencies]
 speedyspec-server-handoff = { path = "../speedyspec-server-handoff" }

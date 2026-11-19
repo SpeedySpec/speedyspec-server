@@ -65,38 +65,6 @@ impl AppRuntime for StaticRuntime {
 }
 
 /// PHP releases until the worker pool exists: prepare checks the release is on disk; activate puts the placeholder
-/// (503) in place.
-pub struct PhpPlaceholderRuntime {
-    live: Arc<LiveApps>,
-}
-
-impl PhpPlaceholderRuntime {
-    pub fn new(live: Arc<LiveApps>) -> PhpPlaceholderRuntime {
-        PhpPlaceholderRuntime { live }
-    }
-}
-
-impl AppRuntime for PhpPlaceholderRuntime {
-    fn prepare(
-        &self,
-        app: &AppId,
-        manifest: &ReleaseManifest,
-        dir: &Path,
-    ) -> Result<Prepared, String> {
-        if !dir.is_dir() {
-            return Err(format!("{} is not a directory", dir.display()));
-        }
-        Ok(Prepared {
-            app: app.clone(),
-            version: manifest.version.clone(),
-            payload: Box::new(()),
-        })
-    }
-
-    fn activate(&self, prepared: Prepared) {
-        self.live.swap(&prepared.app, AppHandle::PhpPlaceholder);
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -200,26 +168,5 @@ mod tests {
         );
         let err = runtime.prepare(&app, &manifest, dir.path()).err().unwrap();
         assert!(err.contains("limit"), "{err}");
-    }
-
-    #[test]
-    fn php_placeholder_runtime_checks_dir_and_swaps_placeholder() {
-        let app = AppId::parse("blog").unwrap();
-        let live = live(&app);
-        let runtime = PhpPlaceholderRuntime::new(live.clone());
-        let mut manifest = release(Path::new("/nonexistent"), "1.0.0", &[]);
-        manifest.kind = AppKind::Php;
-        manifest.static_ = None;
-        assert!(
-            runtime
-                .prepare(&app, &manifest, Path::new("/nonexistent/x"))
-                .is_err()
-        );
-        let dir = tempfile::tempdir().unwrap();
-        runtime.activate(runtime.prepare(&app, &manifest, dir.path()).unwrap());
-        assert!(matches!(
-            *live.get(&app).unwrap(),
-            AppHandle::PhpPlaceholder
-        ));
     }
 }
