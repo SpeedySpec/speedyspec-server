@@ -31,3 +31,18 @@ fn placeholders_stay_question_marks() {
     );
     assert_eq!(emitted.params, stmt.params());
 }
+
+#[test]
+fn backslash_escapes_survive_emission() {
+    let stmt =
+        parse_one(r#"SELECT 'C:\\new', 'it\'s', 'a\nb', 'x\0y', '50\%', "dq\\" FROM t"#).unwrap();
+    let emitted = one(MySqlDialect.prepare(&stmt).unwrap());
+    // Parsing the emitted text again gives the same values: nothing was unescaped twice.
+    assert_eq!(
+        parse_one(&emitted.sql).unwrap().tree(),
+        stmt.tree(),
+        "{}",
+        emitted.sql
+    );
+    assert!(emitted.sql.contains(r#"'C:\\new'"#), "{}", emitted.sql);
+}

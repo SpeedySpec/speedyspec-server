@@ -125,32 +125,132 @@ impl MySqlStore {
         };
         match result {
             Ok(out) => {
-                self.track(stmt.kind());
+                if let Some(open) = transaction_effect(stmt) {
+                    self.in_tx.set(open);
+                }
                 Ok(out)
             }
             Err(e) => {
                 let error = self.map(e);
-                if matches!(error, DbError::Connection { .. }) {
-                    *self.conn.borrow_mut() = None;
-                    self.in_tx.set(false);
+                match &error {
+                    DbError::Connection { .. } => {
+                        *self.conn.borrow_mut() = None;
+                        self.in_tx.set(false);
+                    }
+                    // A deadlock rolls the whole transaction back; DDL commits before it runs, so a failed one has
+                    // committed too.
+                    DbError::Deadlock { .. } => self.in_tx.set(false),
+                    _ if transaction_effect(stmt) == Some(false)
+                        && stmt.kind() == StatementKind::Ddl =>
+                    {
+                        self.in_tx.set(false)
+                    }
+                    _ => {}
                 }
                 Err(error)
             }
         }
     }
 
-    fn track(&self, kind: StatementKind) {
-        match kind {
-            StatementKind::Transaction(TxControl::Begin) => self.in_tx.set(true),
-            StatementKind::Transaction(TxControl::Commit | TxControl::Rollback)
-            | StatementKind::Ddl => self.in_tx.set(false),
-            _ => {}
-        }
-    }
-
     fn control(&self, sql: &str) -> Result<(), DbError> {
         self.run(&parse_one(sql)?).map(|_| ())
     }
+}
+
+/// Whether a statement that ran leaves a transaction open (`Some(true)`), ends it (`Some(false)`, also MySQL's implicit
+/// commits) or changes nothing (`None`).
+fn transaction_effect(stmt: &Statement) -> Option<bool> {
+    use speedyspec_data::ast::{self, Set, Statement as S};
+    match stmt.kind() {
+        StatementKind::Transaction(TxControl::Begin) => Some(true),
+        StatementKind::Transaction(TxControl::Commit | TxControl::Rollback) => Some(false),
+        // Temporary tables are the DDL MySQL does not commit for.
+        StatementKind::Ddl => match stmt.tree() {
+            S::CreateTable(create) if create.temporary => None,
+            S::Drop {
+                temporary: true, ..
+            } => None,
+            _ => Some(false),
+        },
+        StatementKind::Set => {
+            let autocommit = |name: &ast::ObjectName, values: &[ast::Expr]| -> Option<bool> {
+                let name = name.to_string().to_ascii_lowercase();
+                let name = name
+                    .trim_start_matches("@@")
+                    .trim_start_matches("session.")
+                    .trim_start_matches("local.");
+                if name != "autocommit" {
+                    return None;
+                }
+                match values
+                    .first()?
+                    .to_string()
+                    .to_ascii_lowercase()
+                    .trim_matches('\'')
+                {
+                    "0" | "off" | "false" => Some(true),
+                    "1" | "on" | "true" => Some(false),
+                    _ => None,
+                }
+            };
+            match stmt.tree() {
+                S::Set(Set::SingleAssignment {
+                    variable, values, ..
+                }) => autocommit(variable, values),
+                S::Set(Set::MultipleAssignments { assignments }) => assignments
+                    .iter()
+                    .filter_map(|a| autocommit(&a.name, std::slice::from_ref(&a.value)))
+                    .next_back(),
+                _ => None,
+            }
+        }
+        _ => match stmt.tree() {
+            S::LockTables { .. } | S::Lock(_) => Some(false),
+            _ => None,
+        },
+    }
+}
+
+/// A double as MySQL's text protocol prints it: fixed notation for decimal exponents -15 to 14, else `1e20`,
+/// `1.5e-16`; `digits` and `exp` are the shortest round-trip digits and the leading digit's exponent.
+fn mysql_float_text(negative: bool, digits: &str, exp: i32) -> String {
+    let sign = if negative { "-" } else { "" };
+    let n = digits.len() as i32;
+    if (-15..15).contains(&exp) {
+        if exp >= 0 {
+            if n > exp + 1 {
+                format!(
+                    "{sign}{}.{}",
+                    &digits[..(exp + 1) as usize],
+                    &digits[(exp + 1) as usize..]
+                )
+            } else {
+                format!("{sign}{digits}{}", "0".repeat((exp + 1 - n) as usize))
+            }
+        } else {
+            format!("{sign}0.{}{digits}", "0".repeat((-exp - 1) as usize))
+        }
+    } else {
+        let frac = if n > 1 {
+            format!(".{}", &digits[1..])
+        } else {
+            String::new()
+        };
+        format!("{sign}{}{frac}e{exp}", &digits[..1])
+    }
+}
+
+fn float_text(sci: String, negative: bool) -> String {
+    if sci == "0e0" {
+        return if negative { "-0".into() } else { "0".into() };
+    }
+    let (mantissa, exp) = sci.split_once('e').expect("{:e} has an exponent");
+    let digits: String = mantissa.chars().filter(char::is_ascii_digit).collect();
+    mysql_float_text(
+        negative,
+        &digits,
+        exp.parse().expect("exponent is an integer"),
+    )
 }
 
 fn collect<T: mysql::prelude::Protocol>(
@@ -230,11 +330,16 @@ fn from_mysql(v: Value, column: &Column) -> DbValue {
             Ok(s) => DbValue::Text(s),
             Err(e) => DbValue::Bytes(e.into_bytes()),
         },
-        Value::Int(i) => DbValue::Int(i),
-        Value::UInt(u) => DbValue::UInt(u),
-        // A FLOAT column's text form is its shortest f32 representation, as MySQL prints it.
-        Value::Float(f) => DbValue::Float(format!("{f}").parse().unwrap_or(f64::from(f))),
-        Value::Double(d) => DbValue::Float(d),
+        // The binary protocol's typed values become the text the text protocol gives, so a result is the same
+        // whether or not the statement had params.
+        Value::Int(i) => DbValue::Text(i.to_string()),
+        Value::UInt(u) => DbValue::Text(u.to_string()),
+        Value::Float(f) => {
+            DbValue::Text(float_text(format!("{:e}", f.abs()), f.is_sign_negative()))
+        }
+        Value::Double(d) => {
+            DbValue::Text(float_text(format!("{:e}", d.abs()), d.is_sign_negative()))
+        }
         Value::Date(y, mo, d, h, mi, s, us) => {
             let date = format!("{y:04}-{mo:02}-{d:02}");
             if column.column_type() == ColumnType::MYSQL_TYPE_DATE {

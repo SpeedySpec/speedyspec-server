@@ -197,6 +197,108 @@ pub fn sql_store_suite(store: &dyn SqlStore, scratch_table: &str) {
         || "row e survived reset".into(),
     );
 
+    // backslash_round_trip: MySQL string escapes reach the server as written.
+    check(
+        "backslash_round_trip",
+        store.execute(&sql(
+            "backslash_round_trip",
+            &format!(r"INSERT INTO {t} (name, value) VALUES ('bs', 'C:\\new\\')"),
+        )),
+    );
+    ensure(
+        "backslash_round_trip",
+        value_of(store, t, "bs") == Some(br"C:\new\".to_vec()),
+        || {
+            format!(
+                "{:?}",
+                value_of(store, t, "bs").map(|v| String::from_utf8_lossy(&v).into_owned())
+            )
+        },
+    );
+    let injected = check(
+        "backslash_round_trip",
+        store.query(&sql(
+            "backslash_round_trip",
+            &format!(r"SELECT name FROM {t} WHERE name = 'nomatch\\' AND value = ' OR 1=1 -- '"),
+        )),
+    );
+    ensure("backslash_round_trip", injected.rows.is_empty(), || {
+        format!("{} rows escaped the literal", injected.rows.len())
+    });
+
+    // same_values_both_protocols: a query gives the same values with and without bound params.
+    let plain = check(
+        "same_values_both_protocols",
+        store.query(&sql(
+            "same_values_both_protocols",
+            "SELECT 1+1, 1e20, 0.1e0, 1.5e-7, CAST(0.5 AS FLOAT), 'x'",
+        )),
+    );
+    let mut bound = sql(
+        "same_values_both_protocols",
+        "SELECT 1+1, 1e20, 0.1e0, 1.5e-7, CAST(0.5 AS FLOAT), ?",
+    );
+    bound.params_mut().push(DbValue::Text("x".into()));
+    let bound = check("same_values_both_protocols", store.query(&bound));
+    ensure(
+        "same_values_both_protocols",
+        plain.rows[0].values() == bound.rows[0].values(),
+        || {
+            format!(
+                "{:?} vs {:?}",
+                plain.rows[0].values(),
+                bound.rows[0].values()
+            )
+        },
+    );
+
+    // implicit_transactions: what MySQL itself commits or opens is tracked.
+    check("implicit_transactions", store.begin());
+    check(
+        "implicit_transactions",
+        store.execute(&sql(
+            "implicit_transactions",
+            "CREATE TEMPORARY TABLE speedyspec_tmp (a int)",
+        )),
+    );
+    ensure("implicit_transactions", store.in_transaction(), || {
+        "CREATE TEMPORARY TABLE ended the transaction".into()
+    });
+    check(
+        "implicit_transactions",
+        store.execute(&sql(
+            "implicit_transactions",
+            "DROP TEMPORARY TABLE speedyspec_tmp",
+        )),
+    );
+    ensure("implicit_transactions", store.in_transaction(), || {
+        "DROP TEMPORARY TABLE ended the transaction".into()
+    });
+    let failed = store.execute(&sql(
+        "implicit_transactions",
+        &format!("CREATE TABLE {t} (a int)"),
+    ));
+    ensure("implicit_transactions", failed.is_err(), || {
+        "duplicate CREATE TABLE succeeded".into()
+    });
+    ensure("implicit_transactions", !store.in_transaction(), || {
+        "a failed DDL statement still commits".into()
+    });
+    check(
+        "implicit_transactions",
+        store.execute(&sql("implicit_transactions", "SET autocommit = 0")),
+    );
+    ensure("implicit_transactions", store.in_transaction(), || {
+        "SET autocommit = 0 not tracked".into()
+    });
+    check(
+        "implicit_transactions",
+        store.execute(&sql("implicit_transactions", "SET autocommit = 1")),
+    );
+    ensure("implicit_transactions", !store.in_transaction(), || {
+        "SET autocommit = 1 not tracked".into()
+    });
+
     // 9. introspect
     let introspector = store.introspect();
     let tables = check("introspect", introspector.tables(Some(t)));

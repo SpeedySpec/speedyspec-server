@@ -55,3 +55,15 @@ fn rejects_empty_and_multiple() {
     ));
     assert_eq!(parse_many("SELECT 1; SELECT 2").unwrap().len(), 2);
 }
+
+#[test]
+fn errors_at_end_of_input_have_position() {
+    match parse_one("SELECT *\nFROM t WHERE") {
+        Err(DbError::Parse { line, column, .. }) => assert_eq!((line, column), (2, 13)),
+        other => panic!("{other:?}"),
+    }
+    match parse_one("SELECT 1; SELECT 2") {
+        Err(DbError::Parse { line, column, .. }) => assert_eq!((line, column), (1, 11)),
+        other => panic!("{other:?}"),
+    }
+}

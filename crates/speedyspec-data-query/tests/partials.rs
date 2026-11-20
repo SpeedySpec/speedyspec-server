@@ -112,3 +112,16 @@ fn partial_cannot_smuggle_other_clauses() {
         Err(DbError::Parse { .. })
     ));
 }
+
+#[test]
+fn and_where_keeps_xor_precedence() {
+    let stmt = Query::parse("SELECT * FROM t WHERE a = 1 XOR b = 2")
+        .unwrap()
+        .and_where(Partial::expr("c = 3").unwrap())
+        .build()
+        .unwrap();
+    assert_eq!(
+        stmt.tree().to_string(),
+        "SELECT * FROM t WHERE (a = 1 XOR b = 2) AND c = 3"
+    );
+}

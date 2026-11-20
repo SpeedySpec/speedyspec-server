@@ -148,17 +148,31 @@ fn only_host(query: &ast::Query, sql: &str) -> Result<(), DbError> {
     }
 }
 
-fn wrap_or(expr: Expr) -> Expr {
+/// True when the expression's text holds an `OR` or `XOR` outside parentheses. The tree's shape cannot be trusted
+/// for this: sqlparser binds `XOR` more tightly than `=`, while MySQL binds it more loosely than `AND`, and the text
+/// is what MySQL reads.
+fn has_loose_operator(expr: &Expr) -> bool {
     match expr {
         Expr::BinaryOp {
-            op: ast::BinaryOperator::Or,
+            op: ast::BinaryOperator::Or | ast::BinaryOperator::Xor,
             ..
-        } => Expr::Nested(Box::new(expr)),
-        other => other,
+        } => true,
+        Expr::BinaryOp { left, right, .. } => has_loose_operator(left) || has_loose_operator(right),
+        Expr::UnaryOp { expr, .. } => has_loose_operator(expr),
+        _ => false,
     }
 }
 
-/// `left AND right`, parenthesising either side that is an `OR`.
+/// `OR` and `XOR` bind more loosely than `AND` in MySQL, so a side of an added `AND` holding one is parenthesised.
+fn wrap_or(expr: Expr) -> Expr {
+    if has_loose_operator(&expr) {
+        Expr::Nested(Box::new(expr))
+    } else {
+        expr
+    }
+}
+
+/// `left AND right`, parenthesising either side that holds an unparenthesised `OR` or `XOR`.
 pub(crate) fn and(left: Expr, right: Expr) -> Expr {
     Expr::BinaryOp {
         left: Box::new(wrap_or(left)),
