@@ -4144,6 +4144,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-cache-file"
+version = "0.1.0"
+dependencies = [
+ "sha2 0.10.9",
+ "speedyspec-cache",
+ "speedyspec-cache-conformance",
+ "speedyspec-data",
+ "speedyspec-data-file",
+ "speedyspec-data-memory",
+ "tempfile",
+]
+
+[[package]]
 name = "speedyspec-cache-kv"
 version = "0.1.0"
 dependencies = [
