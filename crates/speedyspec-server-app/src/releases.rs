@@ -1211,7 +1211,7 @@ impl ReleaseManager {
     }
 
     /// Removes kept releases beyond each app's `keep`, oldest first. A pinned release does not count against `keep`,
-    /// and neither it nor the active release is ever removed.
+    /// and neither it, the active release, nor a runtime trial's rollback target is ever removed.
     fn prune(&self, state: &mut ReleaseState, apps: &[AppId]) -> Result<(), ReleaseError> {
         let mut next = state.clone();
         let mut removed = false;
@@ -1224,6 +1224,10 @@ impl ReleaseManager {
         };
         for app in apps {
             let keep = self.policy(app)?.keep as usize;
+            let fallback = next
+                .runtime_trials
+                .get(app)
+                .map(|trial| trial.previous.clone());
             let current = next.app_mut(app);
             let (active, pinned) = (current.active.clone(), current.pinned.clone());
             let counted = |kept: &[Version]| {
@@ -1235,6 +1239,7 @@ impl ReleaseManager {
                 let Some(index) = current.kept.iter().position(|version| {
                     Some(version) != active.as_ref()
                         && Some(version) != pinned.as_ref()
+                        && Some(version) != fallback.as_ref()
                         && !held.contains(&(app.clone(), version.clone()))
                 }) else {
                     break;

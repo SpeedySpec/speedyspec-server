@@ -109,22 +109,30 @@ fn wait_status(addr: std::net::SocketAddr, path: &str, status: u16) {
     }
 }
 
+/// What an unhealthy app answers: a plain server error, not the maintenance page. Failing health is an outage, not
+/// planned maintenance.
+const UNAVAILABLE: &str = "service unavailable";
+
 #[test]
-fn failing_health_puts_only_that_app_in_maintenance() {
+fn failing_health_answers_only_that_app_with_a_server_error() {
     let site = site();
     wait_status(site.addr, "/blog/", 200);
     site.health("blog", 500);
     wait_status(site.addr, "/blog/", 503);
     let response = get(site.addr, "/blog/anything");
     assert_eq!(response.status(), 503);
-    assert_eq!(response.headers()["retry-after"], "30");
+    assert!(
+        response.headers().get("retry-after").is_none(),
+        "an outage has no expected end"
+    );
+    assert_eq!(response.headers()["cache-control"], "no-store");
     assert!(
         response.headers()["content-type"]
             .to_str()
             .unwrap()
-            .starts_with("text/html")
+            .starts_with("text/plain")
     );
-    assert_eq!(response.text().unwrap(), PAGE);
+    assert_eq!(response.text().unwrap(), UNAVAILABLE);
     let api = get(site.addr, "/api/");
     assert_eq!(
         (api.status().as_u16(), api.text().unwrap()),
@@ -147,7 +155,7 @@ fn recovery_ends_maintenance() {
 }
 
 #[test]
-fn maintenance_page_needs_no_php() {
+fn unhealthy_answer_needs_no_php() {
     let site = site();
     wait_status(site.addr, "/blog/", 200);
     let addr = site.addr;
@@ -157,10 +165,10 @@ fn maintenance_page_needs_no_php() {
     site.health("blog", 500);
     wait_status(site.addr, "/blog/", 503);
     let started = Instant::now();
-    assert_eq!(get(site.addr, "/blog/").text().unwrap(), PAGE);
+    assert_eq!(get(site.addr, "/blog/").text().unwrap(), UNAVAILABLE);
     assert!(
         started.elapsed() < Duration::from_millis(500),
-        "served from memory"
+        "answered without PHP"
     );
     let _ = busy.join();
 }

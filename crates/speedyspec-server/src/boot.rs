@@ -262,7 +262,15 @@ fn serve_state(
                     calls.clone(),
                     maintenance.clone(),
                 )
-                .with_apps(config.apps.keys().cloned().collect()),
+                .with_apps(config.apps.keys().cloned().collect())
+                .with_admin(
+                    config
+                        .mounts
+                        .iter()
+                        .filter(|mount| mount.access == speedyspec_server_domain::Access::SignedIn)
+                        .map(|mount| mount.app.clone())
+                        .collect(),
+                ),
             );
             let sessions = gate.sessions().clone();
             {
