@@ -14,7 +14,8 @@ pub enum MaintenanceSource {
     Upgrade,
     /// An operator's `maintenance on`.
     Operator,
-    /// The app's health probes are failing.
+    /// The app's health probes are failing. Not planned maintenance: the app answers a plain server error, and
+    /// any planned source wins over it.
     Health,
 }
 

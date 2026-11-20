@@ -222,3 +222,32 @@ fn a_trial_is_never_confirmed_while_an_app_on_it_is_unhealthy() {
     );
     assert_eq!(w.saved().apps[&id("rt")].active, Some(v("1.1.0")));
 }
+
+/// A trial's rollback target is never pruned, whatever the runtime's `keep`: with `keep = 1`, installing the new
+/// runtime would otherwise remove the release a failed trial switches back to.
+#[test]
+fn a_trial_keeps_its_rollback_target_with_keep_1() {
+    let mut w = World::new();
+    w.app("server", AppKind::Server, 3);
+    w.app("rt", AppKind::Runtime, 1);
+    w.app("blog", AppKind::Php, 3);
+    for version in ["1.0.0", "1.1.0", "1.2.0"] {
+        w.publish_binary("rt", version, &runtime_manifest(version), TARGET);
+    }
+    let manager = w
+        .manager()
+        .with_php_runtimes([(id("blog"), id("rt"))].into())
+        .with_runtime_trial_period(std::time::Duration::from_secs(60));
+    manager.install(&id("rt"), Some(v("1.0.0"))).unwrap();
+    manager.switch(&[(id("rt"), v("1.0.0"))]).unwrap();
+    manager.install(&id("rt"), Some(v("1.1.0"))).unwrap();
+    manager.switch(&[(id("rt"), v("1.1.0"))]).unwrap();
+    manager.install(&id("rt"), Some(v("1.2.0"))).unwrap();
+    assert!(
+        w.saved().apps[&id("rt")].kept.contains(&v("1.0.0")),
+        "{:?}",
+        w.saved().apps[&id("rt")].kept
+    );
+    assert!(manager.runtime_unhealthy(&id("blog")).unwrap());
+    assert_eq!(w.saved().apps[&id("rt")].active, Some(v("1.0.0")));
+}

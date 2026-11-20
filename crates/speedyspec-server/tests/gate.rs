@@ -9,6 +9,7 @@ use support::run::{Running, start};
 use support::runtime::{Workers, release};
 
 const ALICE: &str = "wordpress_logged_in_x=alice";
+const MAINTENANCE_PAGE: &str = "<!doctype html><title>Down for maintenance</title>";
 
 pub struct Site {
     pub dir: tempfile::TempDir,
@@ -34,6 +35,15 @@ impl Site {
         )
         .unwrap();
     }
+
+    /// The admin API's site maintenance, on or off.
+    pub fn set_maintenance(&self, on: bool) {
+        std::fs::write(
+            self.api_content().join("site.json"),
+            format!(r#"{{"installed":true,"maintenance":{on}}}"#),
+        )
+        .unwrap();
+    }
 }
 
 fn write(path: &Path, text: &str) {
@@ -45,7 +55,7 @@ fn admin_site(dir: &Path) -> PathBuf {
     let root = dir.join("release-admin");
     write(
         &root.join("speedyspec-release.json"),
-        r#"{"app":"admin","version":"1.0.0","kind":"static","static":{"root":".","access":[
+        r#"{"app":"admin","version":"1.0.0","kind":"static","static":{"root":".","maintenance_page":"maintenance.html","access":[
   {"match":"","public":"always"},{"match":"signin","public":"always"},{"match":"signin/**","public":"always"},
   {"match":"install/**","public":"not-installed"},
   {"match":"components/{page}/**","page":"{page}"},{"match":"contracts/{page}/**","page":"{page}"}]}}"#,
@@ -55,11 +65,28 @@ fn admin_site(dir: &Path) -> PathBuf {
         ("signin/index.html", "sign in"),
         ("install/index.html", "install"),
         ("kit/frame.js", "frame"),
+        ("maintenance.html", MAINTENANCE_PAGE),
         ("components/core/general/view.js", "general"),
         ("components/core/users/view.js", "users"),
     ] {
         write(&root.join(file), text);
     }
+    root
+}
+
+/// A blog outside the gate, showing the admin's maintenance page; its health fails while `unhealthy` exists in its
+/// site's wp-content.
+fn blog(dir: &Path) -> PathBuf {
+    let root = dir.join("release-blog");
+    write(
+        &root.join("speedyspec-release.json"),
+        r#"{"app":"blog","version":"1.0.0","kind":"php","php":{"health":{"live":"/health.php","ready":"/health.php"}}}"#,
+    );
+    write(&root.join("index.php"), "<?php\necho 'blog';\n");
+    write(
+        &root.join("health.php"),
+        "<?php\nif (is_file(WP_CONTENT_DIR . '/unhealthy')) { http_response_code(500); }\necho 'ok';\n",
+    );
     root
 }
 
@@ -109,12 +136,15 @@ pub fn site() -> Site {
 pub fn site_with(gate_extra: &str) -> Site {
     let dir = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(dir.path().join("site-admin-api/wp-content")).unwrap();
+    std::fs::create_dir_all(dir.path().join("site-blog/wp-content")).unwrap();
     let toml = format!(
-        "mode = \"immutable\"\nrun_dir = \"{run}\"\n\n[[listener]]\naddress = \"127.0.0.1:0\"\n\n[access]\nimplementation = \"gate\"\n\n[gate]\napp = \"admin-api\"\nsite_ttl = \"200ms\"\npoll = \"200ms\"\n{gate_extra}\n[health]\ninterval = \"200ms\"\n\n[app.server]\nkind = \"server\"\n\n[app.admin]\nkind = \"static\"\npath = \"{admin}\"\n\n[app.admin-api]\nkind = \"php\"\npath = \"{api}\"\n[app.admin-api.php]\nsite_dir = \"{site}\"\n\n[app.rt]\nkind = \"runtime\"\npath = \"{rt}\"\n\n[[mount]]\npath = \"/admin/\"\napp = \"admin\"\naccess = \"signed-in\"\n\n[[mount]]\npath = \"/admin-api/\"\napp = \"admin-api\"\naccess = \"signed-in\"\n",
+        "mode = \"immutable\"\nrun_dir = \"{run}\"\n\n[[listener]]\naddress = \"127.0.0.1:0\"\n\n[access]\nimplementation = \"gate\"\n\n[gate]\napp = \"admin-api\"\nsite_ttl = \"200ms\"\npoll = \"200ms\"\n{gate_extra}\n[health]\ninterval = \"200ms\"\n\n[app.server]\nkind = \"server\"\n\n[app.admin]\nkind = \"static\"\npath = \"{admin}\"\n\n[app.admin-api]\nkind = \"php\"\npath = \"{api}\"\nmaintenance_page = \"admin\"\n[app.admin-api.php]\nsite_dir = \"{site}\"\n\n[app.blog]\nkind = \"php\"\npath = \"{blog}\"\nmaintenance_page = \"admin\"\n[app.blog.php]\nsite_dir = \"{blog_site}\"\n\n[app.rt]\nkind = \"runtime\"\npath = \"{rt}\"\n\n[[mount]]\npath = \"/blog/\"\napp = \"blog\"\n\n[[mount]]\npath = \"/admin/\"\napp = \"admin\"\naccess = \"signed-in\"\n\n[[mount]]\npath = \"/admin-api/\"\napp = \"admin-api\"\naccess = \"signed-in\"\n",
         run = dir.path().join("run").display(),
         admin = admin_site(dir.path()).display(),
         api = admin_api(dir.path()).display(),
         site = dir.path().join("site-admin-api").display(),
+        blog = blog(dir.path()).display(),
+        blog_site = dir.path().join("site-blog").display(),
         rt = release(&dir.path().join("rt"), "1.0.0", Workers::Real).display(),
     );
     let config = dir.path().join("server.toml");
@@ -313,37 +343,45 @@ fn wait(addr: std::net::SocketAddr, path: &str, status: u16) {
 }
 
 #[test]
-fn admin_api_site_state_turns_maintenance_on() {
+fn site_maintenance_spares_the_admin() {
     let site = site();
-    assert_eq!(get(site.addr, "/admin/kit/frame.js", Some(ALICE)).0, 200);
-    std::fs::write(
-        site.api_content().join("site.json"),
-        r#"{"installed":true,"maintenance":true}"#,
-    )
-    .unwrap();
-    wait(site.addr, "/admin/kit/frame.js", 503);
-    wait(site.addr, "/admin-api/v1/posts", 503);
-    std::fs::write(
-        site.api_content().join("site.json"),
-        r#"{"installed":true,"maintenance":false}"#,
-    )
-    .unwrap();
-    wait(site.addr, "/admin/kit/frame.js", 200);
+    wait(site.addr, "/blog/", 200);
+    site.set_maintenance(true);
+    wait(site.addr, "/blog/", 503);
+    assert_eq!(
+        get(site.addr, "/blog/", None),
+        (503, MAINTENANCE_PAGE.into())
+    );
+    assert_eq!(
+        get(site.addr, "/admin/kit/frame.js", Some(ALICE)),
+        (200, "frame".into()),
+        "admins sign in to end it"
+    );
+    assert_eq!(get(site.addr, "/admin/signin/", None).0, 200);
+    assert_eq!(
+        get(site.addr, "/admin-api/v1/posts", Some(ALICE)),
+        (200, "api".into())
+    );
+    site.set_maintenance(false);
+    wait(site.addr, "/blog/", 200);
 }
 
 #[test]
-fn maintenance_apps_limits_it() {
+fn maintenance_apps_limits_it_and_never_reaches_the_admin() {
     let site = site_with("maintenance_apps = [\"admin\"]\n");
-    std::fs::write(
-        site.api_content().join("site.json"),
-        r#"{"installed":true,"maintenance":true}"#,
-    )
-    .unwrap();
-    wait(site.addr, "/admin/kit/frame.js", 503);
+    wait(site.addr, "/blog/", 200);
+    site.set_maintenance(true);
+    // One site-state refresh and one poll later, nothing has changed.
+    std::thread::sleep(Duration::from_millis(800));
     assert_eq!(
-        get(site.addr, "/admin-api/v1/posts", Some(ALICE)),
-        (200, "api".into()),
-        "not a maintenance app"
+        get(site.addr, "/blog/", None),
+        (200, "blog".into()),
+        "not listed"
+    );
+    assert_eq!(
+        get(site.addr, "/admin/kit/frame.js", Some(ALICE)),
+        (200, "frame".into()),
+        "listed, but the admin"
     );
 }
 
@@ -354,8 +392,31 @@ fn gate_app_health_covers_the_admin() {
     std::fs::write(site.api_content().join("unhealthy"), "1").unwrap();
     wait(site.addr, "/admin/kit/frame.js", 503);
     assert_eq!(
-        get(site.addr, "/admin/", None).0,
-        503,
-        "the whole admin, public entries too"
+        get(site.addr, "/admin/", None),
+        (503, "service unavailable".into()),
+        "the whole admin, public entries too, with a server error rather than the page"
+    );
+    assert_eq!(
+        get(site.addr, "/admin-api/v1/posts", Some(ALICE)),
+        (503, "service unavailable".into())
+    );
+}
+
+#[test]
+fn planned_maintenance_keeps_its_page_while_unhealthy() {
+    let site = site();
+    wait(site.addr, "/blog/", 200);
+    site.set_maintenance(true);
+    wait(site.addr, "/blog/", 503);
+    std::fs::write(site.dir.path().join("site-blog/wp-content/unhealthy"), "1").unwrap();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while !site.server.has_event("app_unhealthy") {
+        assert!(Instant::now() < deadline, "{:?}", site.server.log());
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    assert_eq!(
+        get(site.addr, "/blog/", None),
+        (503, MAINTENANCE_PAGE.into()),
+        "the planned page, not the outage answer"
     );
 }

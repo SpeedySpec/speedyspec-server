@@ -141,16 +141,26 @@ still ships its migration script must keep declaring it.
 
 A php release may name its probes: `"php": { "health": { "live": "/healthz", "ready": "/readyz" } }`. The server calls
 both every `health.interval`; `health.fail_after` failed rounds in a row (a non-200 answer, or none within
-`health.timeout`) put the app in maintenance, `health.pass_after` passed rounds end it. An unhealthy app makes `/readyz`
+`health.timeout`) mark the app unhealthy, `health.pass_after` passed rounds end it. An unhealthy app makes `/readyz`
 answer 503, so a load balancer stops sending this replica traffic.
 
-Maintenance is per app, on while any of these is: the admin API's site state (for `gate.maintenance_apps`, or every
-app), a switch to a release that migrates (or one whose migration failed), an operator's
+Failing health is an outage, not maintenance: an unhealthy app answers a plain `503 service unavailable`, with no
+`Retry-After` and no maintenance page, without reaching PHP. While the gate app fails its health checks, every gated
+mount answers the same. If every replica is unhealthy at once (a shared database is down), the load balancer has no
+ready replica and answers its own 5xx; either way the visitor sees a server error.
+
+Maintenance is planned, per app, and on while any of these is: the admin API's site state (for `gate.maintenance_apps`,
+or every app), a switch to a release that migrates (or one whose migration failed), or an operator's
 `speedyspec-server maintenance on [app...]` (`off`, and `clear` to end a failed migration's too; in the state file, so
-it survives restarts), or failing health. While the gate app fails its health checks, every gated mount is in
-maintenance. An app in maintenance answers 503 with `Retry-After`: the maintenance page of the static app it names
-(`app.<id>.maintenance_page`; that release's `"static": { "maintenance_page": "maintenance.html" }`, one self-contained
-file held in memory), or a small JSON body.
+it survives restarts). An app in maintenance answers 503 with `Retry-After`: the maintenance page of the static app it
+names (`app.<id>.maintenance_page`; that release's `"static": { "maintenance_page": "maintenance.html" }`, one
+self-contained file held in memory), or a small JSON body. Maintenance wins over failing health: an app in both shows
+its maintenance page.
+
+The admin API's site maintenance never applies to the admin itself (the gate app and every app behind a
+`signed-in` mount), even when `gate.maintenance_apps` names it: admins sign in and turn it off there, or use the CLI.
+The admin goes into maintenance only for a moment: while one of its own releases migrates, an operator's
+`maintenance on`, or while the admin API is down (which needs the CLI to fix anyway).
 
 ## The admin gate
 
