@@ -12,6 +12,8 @@ speedyspec-data = { path = "../speedyspec-data" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 
 [dev-dependencies]
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }

@@ -49,31 +49,13 @@ fn numeric_text(s: &str) -> Option<f64> {
     plain.then(|| t.parse::<f64>().ok()).flatten()
 }
 
-/// PHP's `(int)` of a value `resolve_network_id` accepted.
-fn php_int(value: &HookValue) -> i64 {
-    match value {
-        HookValue::Int(n) => *n,
-        HookValue::Float(f) => *f as i64,
-        HookValue::Bool(b) => i64::from(*b),
-        HookValue::Str(s) => numeric_text(s)
-            .map(|f| s.trim().parse::<i64>().unwrap_or(f as i64))
-            .unwrap_or(0),
-        HookValue::Bytes(b) => std::str::from_utf8(b)
-            .ok()
-            .and_then(numeric_text)
-            .map(|f| f as i64)
-            .unwrap_or(0),
-        _ => 0,
-    }
-}
-
 /// `$network_id` as every network function reads it: truthy and not numeric is refused (`None`); otherwise
 /// `(int)`, and 0 is the current network.
 pub fn resolve_network_id(raw: &HookValue, multisite: &dyn Multisite) -> Option<i64> {
     if truthy(raw) && !is_numeric(raw) {
         return None;
     }
-    match php_int(raw) {
+    match crate::php_int(raw) {
         0 => Some(multisite.network_id() as i64),
         id => Some(id),
     }
