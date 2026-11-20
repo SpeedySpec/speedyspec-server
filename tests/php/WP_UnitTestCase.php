@@ -73,6 +73,12 @@ abstract class WP_UnitTestCase extends TestCase
         if (isset($GLOBALS['wpdb']))
         {
             $this->start_transaction();
+            // WordPress's own set_up reads options (resetting post types and taxonomies), so each test starts with
+            // alloptions loaded; the option tests count queries from there.
+            if (function_exists('wp_load_alloptions'))
+            {
+                wp_load_alloptions();
+            }
         }
         $this->expectDeprecated();
     }
@@ -128,6 +134,11 @@ abstract class WP_UnitTestCase extends TestCase
         }
     }
 
+    public function deprecated_argument_run($function_name, $message, $version)
+    {
+        $this->deprecated_function_run($function_name, '', $version, $message);
+    }
+
     public function deprecated_function_run_for_function($function_name, $replacement, $version, $message = '')
     {
         $this->deprecated_function_run($function_name, $replacement, $version, $message);
@@ -142,12 +153,62 @@ abstract class WP_UnitTestCase extends TestCase
         if (isset($GLOBALS['wpdb']))
         {
             $GLOBALS['wpdb']->query('ROLLBACK');
+            // The rolled-back rows must not outlive the test in the object cache either.
+            if (function_exists('wp_cache_flush'))
+            {
+                wp_cache_flush();
+            }
         }
         $this->_restore_hooks();
         $this->expected_deprecated = array();
         $this->caught_deprecated = array();
         $this->expected_doing_it_wrong = array();
         $this->caught_doing_it_wrong = array();
+    }
+
+    /**
+     * Empties the object cache between tests and declares the groups WordPress's test case declares, as WordPress's
+     * test case does.
+     */
+    public static function flush_cache()
+    {
+        global $wp_object_cache;
+
+        wp_cache_flush_runtime();
+
+        if (is_object($wp_object_cache) && method_exists($wp_object_cache, '__remoteset'))
+        {
+            $wp_object_cache->__remoteset();
+        }
+
+        wp_cache_flush();
+
+        wp_cache_add_global_groups(
+            array(
+                'blog-details',
+                'blog-id-cache',
+                'blog-lookup',
+                'blog_meta',
+                'global-posts',
+                'networks',
+                'network-queries',
+                'sites',
+                'site-details',
+                'site-options',
+                'site-queries',
+                'site-transient',
+                'theme_files',
+                'rss',
+                'users',
+                'user-queries',
+                'user_meta',
+                'useremail',
+                'userlogins',
+                'userslugs',
+            )
+        );
+
+        wp_cache_add_non_persistent_groups(array('counts', 'plugins', 'theme_json'));
     }
 
     protected function assert_post_conditions()
@@ -185,6 +246,7 @@ abstract class WP_UnitTestCase extends TestCase
         add_action('deprecated_hook_run', array($this, 'deprecated_function_run'), 10, 4);
         add_action('deprecated_function_run', array($this, 'deprecated_function_run_for_function'), 10, 3);
         add_action('doing_it_wrong_run', array($this, 'doing_it_wrong_run'), 10, 3);
+        add_action('deprecated_argument_run', array($this, 'deprecated_argument_run'), 10, 3);
     }
 
     public function deprecated_function_run($function_name, $replacement, $version, $message = '')
