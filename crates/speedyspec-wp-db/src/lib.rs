@@ -8,3 +8,14 @@ mod error;
 
 pub use config::{DbHost, WpDbConfig};
 pub use error::WpDbError;
+
+mod escape;
+mod php;
+mod prepare;
+
+pub use escape::{PlaceholderEscape, esc_like, escape, quote_identifier, real_escape, weak_escape};
+pub use php::float_to_string;
+pub use prepare::{DoingItWrong, Prepare, PrepareOutcome};
+
+/// A PHP value, as the Hook API carries it.
+pub type WpValue = speedyspec_hooks::Value;

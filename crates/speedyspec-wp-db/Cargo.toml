@@ -16,3 +16,5 @@ speedyspec-container = { path = "../speedyspec-container" }
 indexmap = "2"
 percent-encoding = "2"
 regex = "1"
+hmac = "0.12"
+sha2 = "0.10"
