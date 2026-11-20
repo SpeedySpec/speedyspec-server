@@ -4480,6 +4480,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-firewall"
+version = "0.1.0"
+dependencies = [
+ "ipnet",
+ "regex",
+]
+
+[[package]]
 name = "speedyspec-hooks"
 version = "0.1.0"
 dependencies = [
