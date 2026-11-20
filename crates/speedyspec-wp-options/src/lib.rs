@@ -12,6 +12,7 @@ mod autoload_set;
 pub mod conformance;
 mod entity;
 mod error;
+mod external_cache;
 mod facade;
 mod fired;
 mod messages;
@@ -34,6 +35,7 @@ pub use autoload_policy::{
 };
 pub use entity::Option;
 pub use error::OptionsError;
+pub use external_cache::{ExternalObjectCache, ObjectCachePersistence};
 pub use facade::{FromOptionValue, Options};
 pub use messages::{
     AddOption, AutoloadValuesToAutoload, DeleteOption, DetermineOptionAutoloadValue,

@@ -4777,6 +4777,8 @@ dependencies = [
 name = "speedyspec-wp-options"
 version = "0.1.0"
 dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-memory",
  "speedyspec-container",
  "speedyspec-cqrs",
  "speedyspec-data",
@@ -4831,15 +4833,22 @@ dependencies = [
 name = "speedyspec-wp-options-sql"
 version = "0.1.0"
 dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-file",
+ "speedyspec-cache-kv",
+ "speedyspec-cache-sql",
  "speedyspec-data",
+ "speedyspec-data-file",
  "speedyspec-data-mysql",
  "speedyspec-data-query",
+ "speedyspec-data-valkey",
  "speedyspec-hooks",
  "speedyspec-wp-db",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-object-cache",
  "speedyspec-wp-options",
+ "tempfile",
 ]
 
 [[package]]
