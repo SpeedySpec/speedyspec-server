@@ -1,0 +1,16 @@
+[package]
+name = "speedyspec-data-postgres"
+version = "0.1.0"
+description = "The PostgreSQL engine: MySQL statements translated for PostgreSQL, answered with MySQL's results."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+speedyspec-data-translate = { path = "../speedyspec-data-translate" }
+sqlparser = { version = "0.64", features = ["visitor"] }
+
+[dev-dependencies]
+speedyspec-data-translate = { path = "../speedyspec-data-translate", features = ["testing"] }

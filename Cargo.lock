@@ -4209,6 +4209,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-data-postgres"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+ "speedyspec-data-query",
+ "speedyspec-data-translate",
+ "sqlparser",
+]
+
+[[package]]
 name = "speedyspec-data-query"
 version = "0.1.0"
 dependencies = [
