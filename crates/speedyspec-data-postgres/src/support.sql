@@ -42,6 +42,20 @@ EXCEPTION WHEN others THEN
     RETURN NULL;
 END $$;
 
+-- x / y: MySQL's exact division, the dividend's scale plus div_precision_increment (4), NULL for a zero divisor.
+CREATE OR REPLACE FUNCTION speedyspec_div(x numeric, y numeric) RETURNS numeric LANGUAGE sql IMMUTABLE AS $$
+    SELECT CASE WHEN y = 0 THEN NULL ELSE round(x / y, scale(x) + 4) END
+$$;
+
+-- A date as MySQL's text: the zero date (stored as -infinity) as MySQL writes it.
+CREATE OR REPLACE FUNCTION speedyspec_text(x timestamp) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+    SELECT CASE WHEN x = '-infinity' THEN '0000-00-00 00:00:00' ELSE to_char(x, 'YYYY-MM-DD HH24:MI:SS') END
+$$;
+
+CREATE OR REPLACE FUNCTION speedyspec_text(x date) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+    SELECT CASE WHEN x = '-infinity' THEN '0000-00-00' ELSE to_char(x, 'YYYY-MM-DD') END
+$$;
+
 -- @@name: the session variable the store keeps as speedyspec.<name>.
 CREATE OR REPLACE FUNCTION speedyspec_sysvar(name text) RETURNS text LANGUAGE sql STABLE AS $$
     SELECT current_setting('speedyspec.' || name, true)
@@ -52,4 +66,4 @@ CREATE OR REPLACE FUNCTION speedyspec_latin1(x text) RETURNS text LANGUAGE sql I
     SELECT regexp_replace(x COLLATE "C", '[^\u0001-\u007f\u00a0-\u00ff€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]', '?', 'g')
 $$;
 
-COMMENT ON FUNCTION speedyspec_signed(text) IS 'speedyspec-support 4';
+COMMENT ON FUNCTION speedyspec_signed(text) IS 'speedyspec-support 5';

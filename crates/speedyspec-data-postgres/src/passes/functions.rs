@@ -35,14 +35,28 @@ impl VisitorMut for Fill {
     }
 }
 
-/// The PostgreSQL expression `sql`, with `__a0`, `__a1`… replaced by `args`.
-pub(crate) fn template(sql: &str, args: Vec<Expr>) -> Expr {
+/// The PostgreSQL expression `sql`, with `__a0`, `__a1`… replaced by `args`; an error when `sql` does not parse.
+pub(crate) fn try_template(sql: &str, args: Vec<Expr>) -> Result<Expr, DbError> {
     let mut expr = Parser::new(&PostgreSqlDialect {})
         .try_with_sql(sql)
         .and_then(|mut p| p.parse_expr())
-        .unwrap_or_else(|e| panic!("{sql}: {e}"));
+        .map_err(|e| unsupported(&format!("a translation that does not parse ({sql}: {e})")))?;
     let _ = expr.visit(&mut Fill(args));
-    expr
+    Ok(expr)
+}
+
+/// The PostgreSQL expression `sql`, a fixed template, with `__a0`, `__a1`… replaced by `args`.
+pub(crate) fn template(sql: &str, args: Vec<Expr>) -> Expr {
+    try_template(sql, args).unwrap_or_else(|e| panic!("{sql}: {e}"))
+}
+
+/// MySQL's error for a native function called with the wrong number of arguments.
+fn parameter_count(function: &str) -> DbError {
+    DbError::Engine {
+        engine: String::new(),
+        code: Some("1582".into()),
+        message: format!("Incorrect parameter count in the call to native function '{function}'"),
+    }
 }
 
 /// The plain arguments of a call.
@@ -139,6 +153,30 @@ fn date_format(format: &str) -> Result<String, DbError> {
     Ok(out)
 }
 
+/// `DATE_FORMAT` of MySQL's zero date: each number specifier as zeros; `None` (NULL) when the format names a month
+/// or a day, which the zero date has none of.
+fn zero_date_format(format: &str) -> Option<String> {
+    let mut out = String::new();
+    let mut chars = format.chars();
+    while let Some(c) = chars.next() {
+        if c != '%' {
+            out.push(c);
+            continue;
+        }
+        out.push_str(match chars.next()? {
+            'Y' => "0000",
+            'y' | 'm' | 'd' | 'H' | 'i' | 's' => "00",
+            'c' | 'e' => "0",
+            'h' => "12",
+            'p' => "AM",
+            'j' => "000",
+            '%' => "%",
+            _ => return None,
+        });
+    }
+    Some(out)
+}
+
 fn quoted(s: &str) -> String {
     format!("'{}'", s.replace('\'', "''"))
 }
@@ -168,7 +206,17 @@ pub(crate) fn rewrite_call(
             .ok_or_else(|| unsupported(&format!("{name} with too few arguments")))
     };
     let date = |i: usize| arg(i).map(|e| date_arg(e, temporal));
-    let t = |sql: &str, args: Vec<Expr>| Ok(Some(template(sql, args)));
+    let t = |sql: &str, args: Vec<Expr>| try_template(sql, args).map(Some);
+    // A date column may hold the zero date, stored as -infinity, which PostgreSQL's date functions refuse: MySQL
+    // gives `zero` for it.
+    let zero_dated = a.first().is_some_and(temporal);
+    let guard = |sql: &str, zero: &str| {
+        if zero_dated {
+            format!("CASE WHEN __a0 = '-infinity' THEN {zero} ELSE {sql} END")
+        } else {
+            sql.to_string()
+        }
+    };
     match name.as_str() {
         "now" | "current_timestamp" | "localtimestamp" | "sysdate" => {
             t("LOCALTIMESTAMP(0)", vec![])
@@ -177,7 +225,10 @@ pub(crate) fn rewrite_call(
         "curtime" | "current_time" => t("LOCALTIME(0)", vec![]),
         "utc_timestamp" => t("(now() AT TIME ZONE 'UTC')::timestamp(0)", vec![]),
         "unix_timestamp" if a.is_empty() => t("floor(extract(epoch FROM now()))::bigint", vec![]),
-        "unix_timestamp" => t("floor(extract(epoch FROM __a0))::bigint", vec![date(0)?]),
+        "unix_timestamp" => t(
+            &guard("floor(extract(epoch FROM __a0))::bigint", "0"),
+            vec![date(0)?],
+        ),
         "from_unixtime" if a.len() == 1 => t(
             "(to_timestamp(__a0) AT TIME ZONE 'UTC')::timestamp(0)",
             vec![arg(0)?],
@@ -205,12 +256,21 @@ pub(crate) fn rewrite_call(
                 name.as_str()
             };
             t(
-                &format!("extract({} FROM __a0)::integer", field.to_ascii_uppercase()),
+                &guard(
+                    &format!("extract({} FROM __a0)::integer", field.to_ascii_uppercase()),
+                    "0",
+                ),
                 vec![date(0)?],
             )
         }
-        "dayofweek" => t("(extract(DOW FROM __a0)::integer + 1)", vec![date(0)?]),
-        "weekday" => t("(extract(ISODOW FROM __a0)::integer - 1)", vec![date(0)?]),
+        "dayofweek" => t(
+            &guard("(extract(DOW FROM __a0)::integer + 1)", "NULL"),
+            vec![date(0)?],
+        ),
+        "weekday" => t(
+            &guard("(extract(ISODOW FROM __a0)::integer - 1)", "NULL"),
+            vec![date(0)?],
+        ),
         "week" => {
             let mode = match a.get(1) {
                 None => 0,
@@ -218,14 +278,23 @@ pub(crate) fn rewrite_call(
             };
             match mode {
                 0 => t(
-                    "floor((extract(DOY FROM __a0) + 6 - extract(DOW FROM __a0)) / 7)::integer",
+                    &guard(
+                        "floor((extract(DOY FROM __a0) + 6 - extract(DOW FROM __a0)) / 7)::integer",
+                        "NULL",
+                    ),
                     vec![date(0)?],
                 ),
                 1 => t(
-                    "CASE WHEN extract(ISOYEAR FROM __a0) < extract(YEAR FROM __a0) THEN 0 WHEN extract(ISOYEAR FROM __a0) > extract(YEAR FROM __a0) THEN 53 ELSE extract(WEEK FROM __a0)::integer END",
+                    &guard(
+                        "CASE WHEN extract(ISOYEAR FROM __a0) < extract(YEAR FROM __a0) THEN 0 WHEN extract(ISOYEAR FROM __a0) > extract(YEAR FROM __a0) THEN 53 ELSE extract(WEEK FROM __a0)::integer END",
+                        "NULL",
+                    ),
                     vec![date(0)?],
                 ),
-                3 => t("extract(WEEK FROM __a0)::integer", vec![date(0)?]),
+                3 => t(
+                    &guard("extract(WEEK FROM __a0)::integer", "NULL"),
+                    vec![date(0)?],
+                ),
                 other => Err(unsupported(&format!("WEEK mode {other}"))),
             }
         }
@@ -233,16 +302,24 @@ pub(crate) fn rewrite_call(
             let format = text(&arg(1)?)
                 .ok_or_else(|| unsupported("DATE_FORMAT with a non-literal format"))?
                 .to_string();
+            let zero = zero_date_format(&format).map_or("NULL".to_string(), |z| quoted(&z));
             t(
-                &format!("to_char(__a0, {})", quoted(&date_format(&format)?)),
+                &guard(
+                    &format!("to_char(__a0, {})", quoted(&date_format(&format)?)),
+                    &zero,
+                ),
                 vec![date(0)?],
             )
         }
+        "concat" if a.is_empty() => Err(parameter_count("CONCAT")),
+        "field" if a.len() < 2 => Err(parameter_count("FIELD")),
         "concat" => {
             let parts: Vec<String> = (0..a.len())
                 .map(|i| {
                     if is_string_literal(&a[i]) {
                         format!("__a{i}")
+                    } else if temporal(&a[i]) {
+                        format!("speedyspec_text(__a{i})")
                     } else {
                         format!("__a{i}::text")
                     }

@@ -199,8 +199,53 @@ struct Loose<'a> {
 }
 
 impl Loose<'_> {
+    /// GROUP BY an ordinal (`GROUP BY 1`) or a select alias as the expression it names, which PostgreSQL then
+    /// sees grouped. A name a table's column has stays the column, as MySQL looks in FROM first for GROUP BY.
+    fn resolve_group_by(&self, select: &mut Select) {
+        let tables = tables_of(select);
+        let projection = select.projection.clone();
+        let GroupByExpr::Expressions(list, _) = &mut select.group_by else {
+            return;
+        };
+        for item in list.iter_mut() {
+            let replacement = match &*item {
+                Expr::Value(v) => match &v.value {
+                    Value::Number(n, _) => n
+                        .parse::<usize>()
+                        .ok()
+                        .and_then(|n| projection.get(n.checked_sub(1)?))
+                        .and_then(|p| match p {
+                            SelectItem::UnnamedExpr(e)
+                            | SelectItem::ExprWithAlias { expr: e, .. } => Some(e.clone()),
+                            _ => None,
+                        }),
+                    _ => None,
+                },
+                Expr::Identifier(i)
+                    if !tables
+                        .iter()
+                        .any(|(_, t)| self.schema.resolve(t, &i.value).is_some()) =>
+                {
+                    projection.iter().find_map(|p| match p {
+                        SelectItem::ExprWithAlias { expr, alias }
+                            if alias.value.eq_ignore_ascii_case(&i.value) =>
+                        {
+                            Some(expr.clone())
+                        }
+                        _ => None,
+                    })
+                }
+                _ => None,
+            };
+            if let Some(e) = replacement {
+                *item = e;
+            }
+        }
+    }
+
     /// Rewrites one SELECT; the grouping it used, for its query's ORDER BY.
     fn select<'s>(&'s self, select: &mut Select) -> Option<Grouping<'s>> {
+        self.resolve_group_by(select);
         let grouped = match &select.group_by {
             GroupByExpr::Expressions(list, _) => list.clone(),
             GroupByExpr::All(_) => return None,

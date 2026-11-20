@@ -189,6 +189,17 @@ impl Exprs<'_> {
                 ..
             } => true,
             Expr::Nested(inner) => self.is_text_column(inner),
+            // A zero-date guard around a text function (`CASE WHEN d = '-infinity' THEN '00' ELSE to_char(..) END`).
+            Expr::Case {
+                conditions,
+                else_result,
+                ..
+            } => {
+                conditions.iter().any(|w| self.is_text_column(&w.result))
+                    || else_result
+                        .as_deref()
+                        .is_some_and(|e| self.is_text_column(e))
+            }
             _ => self
                 .schema
                 .type_of(&self.tables, expr)
@@ -344,9 +355,18 @@ impl VisitorMut for Exprs<'_> {
                 op: B::MyIntegerDivide,
                 right,
             } => {
-                *expr = template("trunc(__a0 / __a1)::bigint", vec![take(left), take(right)]);
+                // MySQL's DIV by zero is NULL.
+                *expr = template(
+                    "trunc(__a0 / NULLIF(__a1, 0))::bigint",
+                    vec![take(left), take(right)],
+                );
             }
-            Expr::Case { conditions, .. } => {
+            // A simple CASE compares its operand with each WHEN; only a searched CASE has conditions.
+            Expr::Case {
+                operand: None,
+                conditions,
+                ..
+            } => {
                 for when in conditions.iter_mut() {
                     when.condition = truthy(take(&mut when.condition));
                 }
@@ -369,6 +389,15 @@ impl VisitorMut for Exprs<'_> {
                         call("speedyspec_decimal", text(take(inner))),
                         DataType::Numeric(info),
                     )),
+                    // A date column as MySQL writes it, its zero date included.
+                    DataType::Text | DataType::Char(_) | DataType::Varchar(_)
+                        if self
+                            .schema
+                            .type_of(&self.tables, inner)
+                            .is_some_and(|t| crate::types::is_temporal(&t)) =>
+                    {
+                        Some(call("speedyspec_text", take(inner)))
+                    }
                     DataType::Text | DataType::Char(_) | DataType::Varchar(_) => {
                         Some(text(take(inner)))
                     }
@@ -406,7 +435,7 @@ impl VisitorMut for Exprs<'_> {
             // MySQL does arithmetic on a string as on its leading number.
             Expr::BinaryOp {
                 left,
-                op: B::Plus | B::Minus | B::Multiply | B::Divide | B::Modulo,
+                op: op @ (B::Plus | B::Minus | B::Multiply | B::Divide | B::Modulo),
                 right,
             } => {
                 if self.is_text_column(left) {
@@ -414,6 +443,23 @@ impl VisitorMut for Exprs<'_> {
                 }
                 if self.is_text_column(right) {
                     self.double(right);
+                }
+                match op {
+                    // MySQL's `/` is exact (the dividend's scale plus 4) and NULL for a zero divisor.
+                    B::Divide => {
+                        let numeric = |e: Expr| {
+                            cast(e, DataType::Numeric(sqlparser::ast::ExactNumberInfo::None))
+                        };
+                        *expr = template(
+                            "speedyspec_div(__a0, __a1)",
+                            vec![numeric(take(left)), numeric(take(right))],
+                        );
+                    }
+                    B::Modulo => {
+                        let divisor = take(right);
+                        **right = template("NULLIF(__a0, 0)", vec![divisor]);
+                    }
+                    _ => {}
                 }
             }
             Expr::Convert {

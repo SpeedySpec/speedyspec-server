@@ -16,6 +16,11 @@ fn select(mysql: &str, pg: &str) {
     );
 }
 
+/// A date function on `post_date`, guarded for the zero date (`-infinity`), which reads as `zero`.
+fn zero_guarded(zero: &str, pg: &str) -> String {
+    format!(r#"CASE WHEN "post_date" = '-infinity' THEN {zero} ELSE {pg} END"#)
+}
+
 fn refused(sql: &str) -> String {
     match wp_dialect().plan(&parse_one(sql).unwrap()) {
         Err(DbError::Unsupported {
@@ -42,7 +47,7 @@ fn clock_functions() {
     );
     select(
         "UNIX_TIMESTAMP(post_date)",
-        r#"floor(extract(epoch FROM "post_date"))::bigint"#,
+        &zero_guarded("0", r#"floor(extract(epoch FROM "post_date"))::bigint"#),
     );
     select(
         "FROM_UNIXTIME(5)",
@@ -54,35 +59,41 @@ fn clock_functions() {
 fn date_parts() {
     select(
         "YEAR(post_date)",
-        r#"extract(YEAR FROM "post_date")::integer"#,
+        &zero_guarded("0", r#"extract(YEAR FROM "post_date")::integer"#),
     );
     select(
         "MONTH(post_date)",
-        r#"extract(MONTH FROM "post_date")::integer"#,
+        &zero_guarded("0", r#"extract(MONTH FROM "post_date")::integer"#),
     );
     select(
         "DAYOFMONTH(post_date)",
-        r#"extract(DAY FROM "post_date")::integer"#,
+        &zero_guarded("0", r#"extract(DAY FROM "post_date")::integer"#),
     );
     select(
         "HOUR(post_date)",
-        r#"extract(HOUR FROM "post_date")::integer"#,
+        &zero_guarded("0", r#"extract(HOUR FROM "post_date")::integer"#),
     );
     select(
         "DAYOFWEEK(post_date)",
-        r#"(extract(DOW FROM "post_date")::integer + 1)"#,
+        &zero_guarded("NULL", r#"(extract(DOW FROM "post_date")::integer + 1)"#),
     );
     select(
         "WEEK(post_date)",
-        r#"floor((extract(DOY FROM "post_date") + 6 - extract(DOW FROM "post_date")) / 7)::integer"#,
+        &zero_guarded(
+            "NULL",
+            r#"floor((extract(DOY FROM "post_date") + 6 - extract(DOW FROM "post_date")) / 7)::integer"#,
+        ),
     );
     select(
         "WEEK(post_date, 3)",
-        r#"extract(WEEK FROM "post_date")::integer"#,
+        &zero_guarded("NULL", r#"extract(WEEK FROM "post_date")::integer"#),
     );
     select(
         "WEEK(post_date, 1)",
-        r#"CASE WHEN extract(ISOYEAR FROM "post_date") < extract(YEAR FROM "post_date") THEN 0 WHEN extract(ISOYEAR FROM "post_date") > extract(YEAR FROM "post_date") THEN 53 ELSE extract(WEEK FROM "post_date")::integer END"#,
+        &zero_guarded(
+            "NULL",
+            r#"CASE WHEN extract(ISOYEAR FROM "post_date") < extract(YEAR FROM "post_date") THEN 0 WHEN extract(ISOYEAR FROM "post_date") > extract(YEAR FROM "post_date") THEN 53 ELSE extract(WEEK FROM "post_date")::integer END"#,
+        ),
     );
     assert_eq!(
         refused("SELECT WEEK(post_date, 2) FROM wp_posts"),
@@ -112,7 +123,9 @@ fn date_format_named() {
         &wp_dialect(),
         "SELECT DATE_FORMAT(post_date, '%Y-%m-%d') AS d FROM wp_posts",
         vec![],
-        &[r#"SELECT to_char("post_date", 'YYYY-MM-DD') AS "d" FROM "wp_posts""#],
+        &[
+            r#"SELECT CASE WHEN "post_date" = '-infinity' THEN '0000-00-00' ELSE to_char("post_date", 'YYYY-MM-DD') END AS "d" FROM "wp_posts""#,
+        ],
     );
     assert!(refused("SELECT DATE_FORMAT(post_date, '%U') FROM wp_posts").contains("DATE_FORMAT"));
 }
@@ -177,7 +190,7 @@ fn aggregate_and_conditional_functions() {
     select("ISNULL(post_title)", r#""post_title" IS NULL"#);
     select("LAST_INSERT_ID()", "lastval()");
     select("UUID()", "gen_random_uuid()::text");
-    select("ID DIV 2", r#"trunc("ID" / 2)::bigint"#);
+    select("ID DIV 2", r#"trunc("ID" / NULLIF(2, 0))::bigint"#);
 }
 
 #[test]
@@ -334,7 +347,7 @@ fn corpus_number_and_text_coercions() {
         "SELECT ID FROM wp_posts WHERE DATE_FORMAT(post_date, '%H.%i') >= 9.000000",
         vec![],
         &[
-            r#"SELECT "ID" FROM "wp_posts" WHERE speedyspec_double(to_char("post_date", 'HH24.MI')) >= 9.000000"#,
+            r#"SELECT "ID" FROM "wp_posts" WHERE speedyspec_double(CASE WHEN "post_date" = '-infinity' THEN '00.00' ELSE to_char("post_date", 'HH24.MI') END) >= 9.000000"#,
         ],
     );
 }
@@ -347,7 +360,7 @@ fn date_functions_on_text() {
     );
     select(
         "WEEKDAY(post_date)",
-        r#"(extract(ISODOW FROM "post_date")::integer - 1)"#,
+        &zero_guarded("NULL", r#"(extract(ISODOW FROM "post_date")::integer - 1)"#),
     );
 }
 

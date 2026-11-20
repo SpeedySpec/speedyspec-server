@@ -8,7 +8,7 @@ use crate::error::map_error;
 /// The support objects, public so a CLI can install them ahead of time.
 pub const SUPPORT_SQL: &str = include_str!("support.sql");
 
-const MARKER: &str = "speedyspec-support 4";
+const MARKER: &str = "speedyspec-support 5";
 
 /// Installs the support objects in the current schema unless the marker says they are there.
 pub(crate) fn ensure(client: &mut Client, engine: &str) -> Result<(), DbError> {
