@@ -10,3 +10,10 @@ license.workspace = true
 speedyspec-data = { path = "../speedyspec-data" }
 speedyspec-data-query = { path = "../speedyspec-data-query" }
 sqlparser = { version = "0.64", features = ["visitor"] }
+
+[features]
+# The static introspector the tests and the engines' tests build schemas with.
+testing = []
+
+[dev-dependencies]
+speedyspec-data-translate = { path = ".", features = ["testing"] }

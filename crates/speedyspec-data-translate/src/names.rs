@@ -31,3 +31,32 @@ pub(crate) fn literal_text(expr: &Expr) -> String {
         other => other.to_string(),
     }
 }
+
+/// A name as MySQL text: bare when it is a plain, non-keyword identifier, else backquoted.
+pub(crate) fn sql_ident(name: &str) -> String {
+    let plain = name
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$');
+    let keyword = sqlparser::keywords::ALL_KEYWORDS
+        .binary_search(&name.to_ascii_uppercase().as_str())
+        .is_ok();
+    if plain && !keyword {
+        name.to_string()
+    } else {
+        format!("`{}`", name.replace('`', "``"))
+    }
+}
+
+/// A string as a MySQL literal.
+pub(crate) fn sql_literal(text: &str) -> String {
+    format!("'{}'", text.replace('\\', "\\\\").replace('\'', "''"))
+}
+
+/// An optional string as a MySQL literal, `NULL` for none.
+pub(crate) fn sql_opt(text: Option<&str>) -> String {
+    text.map_or_else(|| "NULL".to_string(), sql_literal)
+}

@@ -4,23 +4,35 @@
 //! are numbered first ([`number_placeholders`]), so a pass may move or repeat expressions without touching them.
 
 mod admin;
+mod catalogue;
+mod ddl;
 mod expressions;
 mod found_rows;
 mod hints;
 mod insert;
 mod lexical;
+mod mysql_type;
 mod names;
 mod params;
 mod row_limit;
+#[cfg(feature = "testing")]
+pub mod testing;
 
 use speedyspec_data_query::PassChain;
 
 pub use admin::AdminPass;
+pub use catalogue::{
+    CatalogueColumn, CatalogueIndex, CatalogueTable, ColumnPosition, IndexKind, SchemaChange,
+    catalogue_ddl, catalogue_table, catalogue_tables, catalogue_writes, column_key,
+    index_object_name, is_catalogue_table, read_catalogue,
+};
+pub use ddl::DdlPass;
 pub use expressions::{ExpressionPass, function_call};
 pub use found_rows::take_found_rows;
 pub use hints::HintsPass;
 pub use insert::InsertPass;
 pub use lexical::LexicalPass;
+pub use mysql_type::{MySqlType, Temporal, TypeFamily};
 pub use params::number_placeholders;
 pub use row_limit::RowLimitPass;
 
@@ -28,6 +40,7 @@ pub use row_limit::RowLimitPass;
 pub fn neutral_chain() -> PassChain {
     let mut chain = PassChain::new();
     chain.push(Box::new(AdminPass));
+    chain.push(Box::new(DdlPass));
     chain.push(Box::new(LexicalPass));
     chain.push(Box::new(HintsPass));
     chain.push(Box::new(ExpressionPass));
