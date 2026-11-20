@@ -18,6 +18,9 @@ use crate::plan::{ID_ALIAS, INSERTED_ALIAS, PgEmitted, PgPlan, RowCount};
 
 const MYSQL_VERSION: &str = "8.4.0";
 
+/// (table OID, column number) → (table, column).
+type OriginCache = std::collections::HashMap<(u32, i16), Option<(String, String)>>;
+
 pub struct PostgresStore {
     name: String,
     conn: Rc<RefCell<Connection>>,
@@ -29,7 +32,7 @@ pub struct PostgresStore {
     found_rows: Cell<u64>,
     last_id: Cell<u64>,
     /// (table OID, column number) → (table, column), forgotten after DDL.
-    origins: RefCell<std::collections::HashMap<(u32, i16), Option<(String, String)>>>,
+    origins: RefCell<OriginCache>,
 }
 
 /// `SET autocommit = 0|1`, which PostgreSQL has no variable for.
