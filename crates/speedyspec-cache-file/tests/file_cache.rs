@@ -119,3 +119,52 @@ fn concurrent_increments() {
         Some(b"400".as_slice())
     );
 }
+
+#[test]
+fn writes_do_not_sync_each_entry() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = store(dir.path());
+    let cache = FileCache::new(&store, "object-cache").unwrap();
+    let start = std::time::Instant::now();
+    for i in 0..300 {
+        cache.set("g", &i.to_string(), b"v", None).unwrap();
+    }
+    assert!(
+        start.elapsed() < std::time::Duration::from_millis(750),
+        "{:?}",
+        start.elapsed()
+    );
+}
+
+#[test]
+fn purge_expired_removes_unread_entries() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = store(dir.path());
+    let cache = FileCache::new(&store, "object-cache").unwrap();
+    for k in ["a", "b", "c"] {
+        cache
+            .set("g", k, b"v", Some(std::time::Duration::from_millis(10)))
+            .unwrap();
+    }
+    cache.set("g", "kept", b"v", None).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    assert_eq!(cache.purge_expired().unwrap(), 3);
+    assert_eq!(
+        cache.get("g", "kept").unwrap().as_deref(),
+        Some(b"v".as_slice())
+    );
+}
+
+#[test]
+fn flush_removes_leftover_trash() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = store(dir.path());
+    let cache = FileCache::new(&store, "object-cache").unwrap();
+    cache.set("g", "k", b"v", None).unwrap();
+    std::fs::create_dir_all(dir.path().join("object-cache/.trash-1-2/x")).unwrap();
+    cache.flush().unwrap();
+    let left: Vec<_> = std::fs::read_dir(dir.path().join("object-cache"))
+        .unwrap()
+        .collect();
+    assert!(left.is_empty(), "{left:?}");
+}

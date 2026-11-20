@@ -99,6 +99,16 @@ impl FileClient {
 
     /// Writes through a temp file renamed over the target, so a reader sees the old file or the new one whole.
     pub fn write(&self, path: &str, bytes: &[u8]) -> Result<(), DbError> {
+        self.write_atomic(path, bytes, true)
+    }
+
+    /// As `write`, without syncing the data to disk first: a reader still sees the old file or the new one whole,
+    /// but a power loss may lose the write. For caches.
+    pub fn write_unsynced(&self, path: &str, bytes: &[u8]) -> Result<(), DbError> {
+        self.write_atomic(path, bytes, false)
+    }
+
+    fn write_atomic(&self, path: &str, bytes: &[u8], sync: bool) -> Result<(), DbError> {
         let full = self.resolve(path)?;
         let dir = full.parent().expect("a resolved path has a parent");
         fs::create_dir_all(dir).map_err(|e| self.io(path, e))?;
@@ -118,7 +128,9 @@ impl FileClient {
                 .create_new(true)
                 .open(&temp)?;
             file.write_all(bytes)?;
-            file.sync_data()?;
+            if sync {
+                file.sync_data()?;
+            }
             fs::rename(&temp, &full)
         })();
         if let Err(e) = result {
