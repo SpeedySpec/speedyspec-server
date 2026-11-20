@@ -83,6 +83,19 @@ impl OptionsApi {
         Ok(self.d.hooks.apply_filters(&name, value, args())?)
     }
 
+    /// `do_action()`, through the fast path when nothing listens.
+    pub(crate) fn action(
+        &self,
+        hook: &str,
+        args: impl FnOnce() -> Vec<HookValue>,
+    ) -> Result<(), OptionsError> {
+        let name = HookName::from(hook);
+        if self.d.hooks.skip_if_empty(&name, Count::Actions)? {
+            return Ok(());
+        }
+        Ok(self.d.hooks.do_action(&name, args())?)
+    }
+
     pub(crate) fn group() -> HookValue {
         HookValue::Str("options".into())
     }
@@ -131,6 +144,14 @@ pub(crate) fn set_key(array: &mut HookValue, name: &str, value: HookValue) {
     match items.iter_mut().find(|(k, _)| *k == key) {
         Some(slot) => slot.1 = value,
         None => items.push((key, value)),
+    }
+}
+
+/// `unset($array[$name])`.
+pub(crate) fn unset_key(array: &mut HookValue, name: &str) {
+    if let HookValue::Array(items) = array {
+        let key = key_of(name);
+        items.retain(|(k, _)| *k != key);
     }
 }
 

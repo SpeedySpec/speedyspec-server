@@ -10,12 +10,30 @@ use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{ObjectCache, ObjectCachePorts};
 use speedyspec_wp_options::Option as OptionEntity;
 use speedyspec_wp_options::{
-    Autoload, InstallingFlag, OptionName, OptionRepository, OptionsApi, OptionsDeps,
-    SerializedValue,
+    Autoload, Deprecations, InstallingFlag, OptionName, OptionRepository, OptionsApi, OptionsDeps,
+    OptionsError, SerializedValue,
 };
 use speedyspec_wp_options_memory::MemoryOptionRepository;
 
 pub type Log = Rc<RefCell<Vec<(String, Vec<HookValue>)>>>;
+
+/// `_deprecated_argument()` calls: function, version, message.
+#[derive(Default)]
+pub struct RecordedDeprecations(pub RefCell<Vec<(String, String, String)>>);
+
+impl Deprecations for RecordedDeprecations {
+    fn deprecated_argument(
+        &self,
+        function: &str,
+        version: &str,
+        message: &str,
+    ) -> Result<(), OptionsError> {
+        self.0
+            .borrow_mut()
+            .push((function.into(), version.into(), message.into()));
+        Ok(())
+    }
+}
 
 pub struct Fixture {
     pub api: OptionsApi,
@@ -23,6 +41,7 @@ pub struct Fixture {
     pub cache: Rc<ObjectCache>,
     pub repo: Rc<MemoryOptionRepository>,
     pub installing: Rc<InstallingFlag>,
+    pub deprecations: Rc<RecordedDeprecations>,
     pub log: Log,
 }
 
@@ -34,14 +53,17 @@ pub fn fixture() -> Fixture {
     let cache = Rc::new(ObjectCache::new(ObjectCachePorts::rust(), None));
     let repo = Rc::new(MemoryOptionRepository::new());
     let installing = Rc::new(InstallingFlag::new());
+    let deprecations = Rc::new(RecordedDeprecations::default());
     let mut deps = OptionsDeps::rust(hooks.clone(), cache.clone(), repo.clone());
     deps.installing = installing.clone();
+    deps.deprecations = deprecations.clone();
     Fixture {
         api: OptionsApi::new(deps),
         hooks,
         cache,
         repo,
         installing,
+        deprecations,
         log: Rc::new(RefCell::new(Vec::new())),
     }
 }
@@ -106,4 +128,26 @@ pub fn assoc(pairs: &[(&str, HookValue)]) -> HookValue {
             .map(|(k, v)| (Key::Str((*k).into()), v.clone()))
             .collect(),
     )
+}
+
+pub fn cached(f: &Fixture, key: &str) -> Option<HookValue> {
+    f.cache.get(&s(key), &options(), false).unwrap()
+}
+
+/// `$alloptions[$name]` as the cache holds it.
+pub fn in_alloptions(f: &Fixture, name: &str) -> Option<HookValue> {
+    match cached(f, "alloptions") {
+        Some(HookValue::Array(items)) => items
+            .into_iter()
+            .find(|(k, _)| *k == Key::Str(name.into()))
+            .map(|(_, v)| v),
+        _ => None,
+    }
+}
+
+pub fn stored(f: &Fixture, name: &str) -> Option<Vec<u8>> {
+    f.repo
+        .value(&OptionName::new(name).unwrap(), false)
+        .unwrap()
+        .map(|v| v.as_bytes().to_vec())
 }

@@ -7,6 +7,7 @@ mod adapters;
 mod api;
 mod autoload;
 mod autoload_policy;
+mod autoload_set;
 #[cfg(feature = "conformance")]
 pub mod conformance;
 mod entity;
@@ -15,6 +16,7 @@ mod name;
 mod ports;
 mod read;
 mod value;
+mod write;
 
 pub use adapters::{
     CORE_SANITIZED_OPTIONS, FixedProtectedOptions, HookSanitizing, InstallingFlag, LogDeprecations,
