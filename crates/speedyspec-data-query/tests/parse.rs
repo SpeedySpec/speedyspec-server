@@ -4,12 +4,24 @@ use speedyspec_data_query::{parse_many, parse_one};
 #[test]
 fn parses_wordpress_core_queries() {
     let cases = [
-        ("SELECT option_name, option_value FROM wp_options WHERE autoload IN ('yes','on','auto-on','auto')", StatementKind::Select),
-        ("INSERT INTO `wp_options` (`option_name`, `option_value`, `autoload`) VALUES ('a', 'b', 'auto') ON DUPLICATE KEY UPDATE `option_name` = VALUES(`option_name`), `option_value` = VALUES(`option_value`), `autoload` = VALUES(`autoload`)", StatementKind::Insert),
-        ("SELECT SQL_CALC_FOUND_ROWS wp_posts.ID FROM wp_posts WHERE 1=1 ORDER BY wp_posts.post_date DESC LIMIT 0, 10", StatementKind::Select),
+        (
+            "SELECT option_name, option_value FROM wp_options WHERE autoload IN ('yes','on','auto-on','auto')",
+            StatementKind::Select,
+        ),
+        (
+            "INSERT INTO `wp_options` (`option_name`, `option_value`, `autoload`) VALUES ('a', 'b', 'auto') ON DUPLICATE KEY UPDATE `option_name` = VALUES(`option_name`), `option_value` = VALUES(`option_value`), `autoload` = VALUES(`autoload`)",
+            StatementKind::Insert,
+        ),
+        (
+            "SELECT SQL_CALC_FOUND_ROWS wp_posts.ID FROM wp_posts WHERE 1=1 ORDER BY wp_posts.post_date DESC LIMIT 0, 10",
+            StatementKind::Select,
+        ),
         ("SELECT FOUND_ROWS()", StatementKind::Select),
         ("SHOW FULL COLUMNS FROM `wp_posts` ", StatementKind::Show),
-        ("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_520_ci'", StatementKind::Set),
+        (
+            "SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_520_ci'",
+            StatementKind::Set,
+        ),
     ];
     for (sql, kind) in cases {
         let stmt = parse_one(sql).unwrap_or_else(|e| panic!("{sql}: {e}"));
