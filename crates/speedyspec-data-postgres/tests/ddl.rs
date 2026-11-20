@@ -126,8 +126,16 @@ fn ddl_refusals() {
         ),
         "AUTO_INCREMENT added to an existing column"
     );
-    let long = format!("CREATE TABLE t (a int, KEY {} (a))", "k".repeat(70));
-    assert_eq!(unsupported(&long), "an index name longer than 63 bytes");
+    // `t__<60 k>` is past PostgreSQL's 63 bytes: cut, with a hash of the whole name.
+    let long = format!("CREATE TABLE t (a int, KEY {} (a))", "k".repeat(60));
+    let created = emitted(&long).unwrap();
+    let index = created
+        .iter()
+        .find(|s| s.starts_with("CREATE INDEX"))
+        .unwrap_or_else(|| panic!("{created:?}"));
+    let name = index.split('"').nth(1).unwrap();
+    assert_eq!(name.len(), 63, "{index}");
+    assert!(name.starts_with("t__kkk"), "{index}");
     let fulltext = emitted("CREATE TABLE t (a text, FULLTEXT KEY ft (a))").unwrap();
     assert!(
         !fulltext

@@ -256,6 +256,34 @@ impl PgDdl {
     }
 }
 
+/// PostgreSQL's longest name, in bytes.
+const MAX_NAME: usize = 63;
+
+/// An index object name (`<table>__<index>`) PostgreSQL can hold: one longer than 63 bytes is cut to 46 bytes and
+/// ends with `_` and 16 hex digits of a hash of the whole name, the same every time. The catalogue keeps the MySQL
+/// name, so `SHOW INDEX` and later DDL never see this one.
+pub(crate) fn pg_index_name(name: &str) -> String {
+    if name.len() <= MAX_NAME {
+        return name.to_string();
+    }
+    // FNV-1a, 64 bits.
+    let hash = name.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| {
+        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+    });
+    let mut cut = MAX_NAME - 17;
+    while !name.is_char_boundary(cut) {
+        cut -= 1;
+    }
+    format!("{}_{hash:016x}", &name[..cut])
+}
+
+fn shorten_index_name(name: &mut ObjectName) {
+    let written = object_name(name);
+    if written.len() > MAX_NAME {
+        *name = ObjectName::from(vec![Ident::with_quote('"', pg_index_name(&written))]);
+    }
+}
+
 fn column_def(name: &Ident, data_type: &DataType, options: &[ColumnOption]) -> ColumnDef {
     ColumnDef {
         name: name.clone(),
@@ -279,15 +307,23 @@ impl RewritePass for PgDdl {
                     .retain(|c| matches!(c, TableConstraint::PrimaryKey(_)));
             }
             Ast::CreateIndex(create) => {
-                if let Some(name) = &create.name
-                    && object_name(name).len() > 63
-                {
-                    return Err(unsupported("an index name longer than 63 bytes"));
+                if let Some(name) = &mut create.name {
+                    shorten_index_name(name);
                 }
             }
             Ast::Truncate(truncate) => truncate.identity = Some(TruncateIdentityOption::Restart),
             // PostgreSQL finds a temporary table first by name; it has no DROP TEMPORARY.
-            Ast::Drop { temporary, .. } => *temporary = false,
+            Ast::Drop {
+                temporary,
+                object_type,
+                names,
+                ..
+            } => {
+                *temporary = false;
+                if *object_type == sqlparser::ast::ObjectType::Index {
+                    names.iter_mut().for_each(shorten_index_name);
+                }
+            }
             Ast::AlterTable(alter) => {
                 let table = object_name(&alter.name);
                 let [op] = alter.operations.as_slice() else {
