@@ -109,6 +109,29 @@ impl KvCache {
     }
 }
 
+impl KvCache {
+    /// Removes every entry of `group` under a generation below `current`, a batch at a time.
+    fn purge_generations(&self, group: &str, current: u64) -> Result<(), DbError> {
+        const BATCH: usize = 1000;
+        let start = keys::entry(group.as_bytes(), 0, b"");
+        let end = keys::entry(group.as_bytes(), current, b"");
+        loop {
+            let found = self.store.range(
+                &self.keyspace,
+                std::ops::Bound::Included(&start),
+                std::ops::Bound::Excluded(&end),
+                Some(BATCH),
+            )?;
+            for (k, _) in &found {
+                self.store.delete(&self.keyspace, k)?;
+            }
+            if found.len() < BATCH {
+                return Ok(());
+            }
+        }
+    }
+}
+
 impl CachingStore for KvCache {
     fn name(&self) -> &str {
         &self.name
@@ -227,9 +250,15 @@ impl CachingStore for KvCache {
     /// Bumps the group's generation: old entries are no longer addressed and go by their own expiry or at `flush`.
     fn flush_group(&self, group: &str) -> Result<(), CacheError> {
         let key = keys::generation(group.as_bytes());
-        self.store
+        let generation = self
+            .store
             .increment(&self.keyspace, &key, 1)
-            .map(|_| ())
-            .map_err(|e| self.backend(e))
+            .map_err(|e| self.backend(e))?;
+        // Where the store keeps keys in order, the older generations' entries are one contiguous range: remove
+        // them, so a flushed group does not stay on disk. Best effort: the flush itself has already happened.
+        if self.store.capabilities().ordered_ranges {
+            let _ = self.purge_generations(group, u64::try_from(generation).unwrap_or(0));
+        }
+        Ok(())
     }
 }

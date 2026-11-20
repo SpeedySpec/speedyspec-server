@@ -90,3 +90,32 @@ fn entry_key_layout() {
         vec![b'e', 0, 0, 0, 1, b'g', 0, 0, 0, 0, 0, 0, 0, 7, b'k']
     );
 }
+
+#[test]
+fn flush_group_removes_old_generations_on_ordered_stores() {
+    let store = memory();
+    let cache = KvCache::new(store.clone(), "cache");
+    for round in 0..3 {
+        for i in 0..100 {
+            cache
+                .set("posts", &format!("{round}-{i}"), b"v", None)
+                .unwrap();
+        }
+        cache.set("users", "u", b"kept", None).unwrap();
+        cache.flush_group("posts").unwrap();
+    }
+    let all = store
+        .range(
+            "cache",
+            std::ops::Bound::Unbounded,
+            std::ops::Bound::Unbounded,
+            None,
+        )
+        .unwrap();
+    // Only the two generation counters and the users entry remain.
+    assert_eq!(all.len(), 2, "{} entries left", all.len());
+    assert_eq!(
+        cache.get("users", "u").unwrap().as_deref(),
+        Some(b"kept".as_slice())
+    );
+}
