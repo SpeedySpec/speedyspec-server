@@ -9,8 +9,10 @@ use crate::adapters::call;
 
 pub struct PhpCodec;
 
+/// Whether a PHP object is inside: a value a PHP callback returned is opaque until read, and only an object is
+/// still opaque once read.
 fn holds_object(value: &Value) -> bool {
-    match value {
+    match value.read().as_ref() {
         Value::Opaque(_) => true,
         Value::Array(items) => items.iter().any(|(_, v)| holds_object(v)),
         _ => false,
@@ -49,7 +51,7 @@ impl ValueCodec for PhpCodec {
     }
 
     fn clone_value(&self, value: Value) -> Value {
-        if matches!(value, Value::Opaque(_)) {
+        if matches!(value.read().as_ref(), Value::Opaque(_)) {
             return call(
                 "SpeedySpec\\WpOptions\\clone_value",
                 std::slice::from_ref(&value),

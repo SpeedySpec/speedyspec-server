@@ -4615,6 +4615,8 @@ dependencies = [
 name = "speedyspec-wp-options-php"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
+ "speedyspec-compat",
  "speedyspec-container",
  "speedyspec-container-php",
  "speedyspec-cqrs",
@@ -4634,6 +4636,7 @@ dependencies = [
  "speedyspec-wp-object-cache-php",
  "speedyspec-wp-options",
  "speedyspec-wp-options-sql",
+ "tempfile",
 ]
 
 [[package]]

@@ -6,12 +6,13 @@
 //! (resolved once), so PHP may override one. The options themselves are read and written through
 //! `SqlOptionRepository` on the global `wpdb`, so the `query` filter fires and `$wpdb->num_queries` counts.
 //!
-//! **Documented break:** an array or object given as an option name returns false with no hook
-//! (`non_scalar_option_name`); WordPress's `trim()` would throw a `TypeError` for it.
+//! An array or object given as `get_option`'s, `add_option`'s or `update_option`'s name throws the `TypeError`
+//! WordPress's own `isset( $deprecated_keys[ $option ] )` throws.
 
 mod adapters;
 mod codec;
 mod native;
+mod release;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -32,6 +33,30 @@ pub use adapters::{
     PhpSanitizing, Snapshot,
 };
 pub use codec::PhpCodec;
+pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
+
+/// Runs the options scenarios through the native functions (the port side of `compat/options`), over `release`
+/// prepared next to it with `prepare_release`.
+pub fn options_scenario_runner(
+    php: speedyspec_php::Php,
+    release: &std::path::Path,
+) -> Result<speedyspec_compat::PhpRunner, String> {
+    let out = release.with_file_name("wordpress-options-port");
+    let root = prepare_release(release, &out)?;
+    let code = format!(
+        "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', true); require {:?};",
+        format!("{}/", root.display()),
+        speedyspec_compat::compat_dir()
+            .join("options/setup.php")
+            .display()
+            .to_string()
+    );
+    Ok(speedyspec_compat::PhpRunner::new(php, move |php| {
+        php.eval("speedyspec://compat/options-setup", &code)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }))
+}
 
 const FACADE: &str = include_str!("options.php");
 

@@ -155,8 +155,10 @@ fn main() {
     yes(
         "scalar_names",
         "add_option('123', 'n'); $before = did_filter('pre_option');
-        $arr = get_option(['x']); $after = did_filter('pre_option');
-        return get_option(123) === 'n' && $arr === false && $after === $before;",
+        try { get_option(['x']); $threw = false; } catch (TypeError $e) { $threw = $e->getMessage(); }
+        $after = did_filter('pre_option');
+        return get_option(123) === 'n' && get_option([]) === false
+            && $threw === 'Cannot access offset of type array in isset or empty' && $after === $before;",
     );
     yes(
         "protected_dies",
@@ -179,5 +181,44 @@ fn main() {
         "no_crossing_without_php_callbacks",
         matches!(&got, Ok(Value::Str(v)) if v == "v") && crossed == 0,
         (&got, crossed),
+    );
+    // What a pre_cache_alloptions callback returns is cached as a copy: a PHP handle kept in the cache, written back
+    // into an array beside another entry, corrupted that array and hung the next read (see the speedyspec-php
+    // zval-copy note). The exact sequence that hung:
+    let probe = "$c = $GLOBALS['wp_object_cache']->cache['options'] ?? []; return array_keys($c);";
+    for (step, code) in [
+        (
+            "seed",
+            "update_option('seeded', 'Compat', 'on'); return true;",
+        ),
+        (
+            "filter",
+            "function speedyspec_test_literal() { return ['x' => 1]; }
+            add_filter('pre_cache_alloptions', 'speedyspec_test_literal');
+            add_filter('pre_cache_alloptions', function ($a) { return $a; }, 10, 99);
+            add_filter('alloptions', function ($a) { return $a; }, 10, 99); return true;",
+        ),
+        (
+            "load",
+            "wp_cache_flush(); return is_array(wp_load_alloptions());",
+        ),
+        ("probe", probe),
+        (
+            "add",
+            "return wp_cache_add('blogname', 'Compat', 'options');",
+        ),
+    ] {
+        let r = eval(code);
+        check(
+            &format!("filtered_alloptions_cached_as_copy ({step})"),
+            r.is_ok(),
+            &r,
+        );
+    }
+    let r = eval(probe);
+    check(
+        "filtered_alloptions_cached_as_copy",
+        matches!(&r, Ok(Value::Array(keys)) if keys.len() == 2),
+        &r,
     );
 }

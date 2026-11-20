@@ -197,13 +197,14 @@ fn invalid_utf8_update_is_zero() {
         r.repo.value(&name("a"), false).unwrap(),
         Some(SerializedValue::new(b"ok".to_vec()))
     );
-    // add_option's raw query is not charset-checked.
+    // wpdb::query refuses add_option's INSERT too: WordPress 7.1.5's add_option of these bytes returns false.
     assert_eq!(
         r.repo
             .add(&option("b", &[0x61, 0xff], Autoload::On))
             .unwrap(),
-        1
+        0
     );
+    assert_eq!(r.repo.value(&name("b"), false).unwrap(), None);
 }
 
 #[test]

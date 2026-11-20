@@ -116,6 +116,28 @@ fn name(v: &Value) -> Option<String> {
     }
 }
 
+/// The name `get_option`, `add_option` and `update_option` take: an array or object reaches WordPress's
+/// `isset( $deprecated_keys[ $option ] )`, which throws PHP's `TypeError`; an empty array is `empty()`, so false.
+fn checked_name(v: &Value) -> Result<Option<String>, NativeError> {
+    match v {
+        Value::Array(items) if items.is_empty() => Ok(None),
+        Value::Array(_) | Value::Opaque(_) => {
+            let kind = match speedyspec_php::call(
+                &Value::Str("get_debug_type".into()),
+                std::slice::from_ref(v),
+            ) {
+                Ok(Value::Str(kind)) => kind,
+                _ => "array".into(),
+            };
+            Err(NativeError::throw(
+                "TypeError",
+                format!("Cannot access offset of type {kind} in isset or empty"),
+            ))
+        }
+        other => Ok(name(other)),
+    }
+}
+
 fn text(k: &Key) -> String {
     match k {
         Key::Int(i) => i.to_string(),
@@ -158,7 +180,7 @@ fn snapshot() -> Option<Rc<Snapshot>> {
 }
 
 fn get_option(args: &[Value]) -> R {
-    let Some(n) = name(&a(args, 0)) else {
+    let Some(n) = checked_name(&a(args, 0))? else {
         return Ok(Value::Bool(false));
     };
     let default = args.get(1).cloned();
@@ -171,7 +193,7 @@ fn get_options(args: &[Value]) -> R {
 }
 
 fn add_option(args: &[Value]) -> R {
-    let Some(n) = name(&a(args, 0)) else {
+    let Some(n) = checked_name(&a(args, 0))? else {
         return Ok(Value::Bool(false));
     };
     let m = AddOption {
@@ -184,7 +206,7 @@ fn add_option(args: &[Value]) -> R {
 }
 
 fn update_option(args: &[Value]) -> R {
-    let Some(n) = name(&a(args, 0)) else {
+    let Some(n) = checked_name(&a(args, 0))? else {
         return Ok(Value::Bool(false));
     };
     let m = UpdateOption {

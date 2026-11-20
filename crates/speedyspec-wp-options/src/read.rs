@@ -130,7 +130,11 @@ impl OptionsApi {
             }
             if self.caches_alloptions() {
                 alloptions = self.filter("pre_cache_alloptions", alloptions, Vec::new)?;
-                self.cache().add(&key, alloptions.clone(), &group, 0)?;
+                // The cache keeps a copy (PHP arrays are values), never the PHP handle a callback returned: a handle
+                // written back into an array corrupts it (speedyspec-php's `write` copies a whole zval into a hash
+                // bucket, chain link included).
+                self.cache()
+                    .add(&key, alloptions.read().into_owned(), &group, 0)?;
             }
             alloptions
         };

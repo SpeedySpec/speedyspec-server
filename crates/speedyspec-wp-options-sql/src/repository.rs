@@ -241,10 +241,31 @@ impl OptionRepository for SqlOptionRepository {
         )
     }
 
+    /// `wpdb::query` refuses an `INSERT` holding text the table's charset cannot hold (nothing is sent); the same
+    /// field check stands in for it here.
     fn add(&self, option: &OptionEntity) -> Result<u64, OptionsError> {
+        let table = self.table();
+        let data = vec![
+            (
+                "option_name".to_string(),
+                WpValue::Str(option.name.as_str().to_string()),
+            ),
+            ("option_value".to_string(), wp(&option.value)),
+            (
+                "autoload".to_string(),
+                WpValue::Str(option.autoload.as_str().to_string()),
+            ),
+        ];
+        // `wpdb::query` checks only a query that is not plain ASCII (`check_ascii`).
+        let ascii = option.name.as_str().is_ascii()
+            && option.value.as_bytes().is_ascii()
+            && option.autoload.as_str().is_ascii();
+        if !ascii && !self.fields_pass(&table, &data)? {
+            return Ok(0);
+        }
         let columns = ["option_name", "option_value", "autoload"];
         self.affected(
-            Query::insert_into(&self.table(), &columns)
+            Query::insert_into(&table, &columns)
                 .values(crate::OptionMapper::to_values(option))
                 .on_duplicate_update(&columns)
                 .build(),
