@@ -37,7 +37,7 @@ use speedyspec_wp_db::{
 use speedyspec_wp_hooks::HookApi;
 
 pub use host::PhpWpdbHost;
-pub use state::ResolvedWpdbState;
+pub use state::{PhpWpdbState, ResolvedWpdbState};
 
 const FACADE: &str = include_str!("wpdb.php");
 

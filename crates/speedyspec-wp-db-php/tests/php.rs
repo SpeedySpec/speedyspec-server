@@ -15,7 +15,7 @@ use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, NativeArea, Php, PhpError};
 use speedyspec_php_ext::{Value, twins_area};
 use speedyspec_wp_db::{WpDbConfig, WpDbError};
-use speedyspec_wp_db_php::WpDbArea;
+use speedyspec_wp_db_php::{PhpWpdbState, WpDbArea};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::WpHooksArea;
 
@@ -315,6 +315,104 @@ fn main() {
             && $wpdb->tables('blog', false)[0] === 'posts' && $wpdb->tables('blog')['posts'] === 'wp_posts'
             && $wpdb->esc_like('50%') === '50\\%' && $wpdb->quote_identifier('a`b') === '`a``b`';"#,
     );
+    // ----- properties, magic methods and the state twin
+    eval("function is_multisite() { return $GLOBALS['speedyspec_ms'] ?? false; } return true;")
+        .unwrap();
+    yes(
+        "table_properties_follow_rust",
+        r#"global $wpdb; $single = $wpdb->posts === 'wp_posts';
+        $GLOBALS['speedyspec_ms'] = true; define('MULTISITE', true);
+        $wpdb->set_prefix('wp_'); $wpdb->set_blog_id(2);
+        $ms = $wpdb->posts === 'wp_2_posts' && $wpdb->users === 'wp_users' && $wpdb->prefix === 'wp_2_';
+        $wpdb->set_blog_id(1); $GLOBALS['speedyspec_ms'] = false; $wpdb->set_prefix('wp_');
+        $wpdb->posts = 'x';
+        return $single && $ms;"#,
+    );
+    check(
+        "table_property_written_from_php",
+        api.table_name("posts") == "x",
+        api.table_name("posts"),
+    );
+    eval("$GLOBALS['wpdb']->posts = 'wp_posts'; return true;").unwrap();
+    yes(
+        "protected_members_like_wordpress",
+        r#"global $wpdb;
+        $ok = !empty($wpdb->dbh); $dbh = $wpdb->dbh; $ok = $ok && !empty($dbh) && isset($wpdb->dbh);
+        unset($wpdb->dbh); $ok = $ok && empty($wpdb->dbh);
+        $wpdb->dbh = $dbh; $ok = $ok && !empty($wpdb->dbh);
+        $new_meta = "HAHA I HOPE THIS DOESN'T WORK";
+        $col_meta = $wpdb->col_meta; $wpdb->col_meta = $new_meta;
+        $ok = $ok && $col_meta !== $new_meta && $col_meta === $wpdb->col_meta;
+        $ok = $ok && empty($wpdb->nonexistent_property);
+        $wpdb->nonexistent_property = true;
+        $ok = $ok && $wpdb->nonexistent_property === true && isset($wpdb->nonexistent_property);
+        unset($wpdb->nonexistent_property);
+        return $ok && empty($wpdb->nonexistent_property);"#,
+    );
+    yes(
+        "custom_table_property",
+        r#"global $wpdb; $n = did_action('deprecated_function_run'); $wpdb->mytable = 'wp_mytable';
+        return $wpdb->mytable === 'wp_mytable' && did_action('deprecated_function_run') === $n;"#,
+    );
+    SEEN.with(|s| s.borrow_mut().clear());
+    yes(
+        "binary_bytes_round_trip",
+        r#"global $wpdb; $v = $wpdb->get_var('SELECT bin FROM b');
+        $q = $wpdb->prepare('INSERT INTO latin VALUES (%s)', "\xE9");
+        return $v === "\xE9\x00\xFF" && $q === "INSERT INTO latin VALUES ('\xE9')" && $wpdb->query($q) === 1;"#,
+    );
+    let sent = SEEN.with(|s| {
+        s.borrow()
+            .iter()
+            .find(|(t, _)| t.starts_with("INSERT INTO latin"))
+            .cloned()
+    });
+    check(
+        "binary_reaches_store",
+        matches!(&sent, Some((_, p)) if p == &vec![DbValue::Bytes(vec![0xE9])]),
+        &sent,
+    );
+    let twin = eval(
+        r#"final class ArrayWpdbState implements \SpeedySpec\WpDb\WpdbState
+        {
+            public static array $stored = [];
+            private array $state = [];
+            public function load(): array { return $this->state; }
+            public function store(array $state): void { $this->state = $state; self::$stored[] = $state; }
+            public function reset(): void { $this->state = []; }
+        }
+        return new ArrayWpdbState();"#,
+    )
+    .unwrap();
+    let twin: Rc<dyn speedyspec_wp_db::WpdbState> = Rc::new(PhpWpdbState::new(
+        speedyspec_php_ext::PhpObject::new(twin).expect("a PHP object"),
+    ));
+    let memory = container
+        .make_port::<dyn speedyspec_wp_db::WpdbState>(speedyspec_wp_db::WPDB_STATE)
+        .unwrap();
+    let bound = twin.clone();
+    container.singleton_port::<dyn speedyspec_wp_db::WpdbState>(
+        speedyspec_wp_db::WPDB_STATE,
+        move |_, _| Ok(bound.clone()),
+    );
+    let stored = eval(
+        r#"global $wpdb; $wpdb->query('SELECT 1'); $last = end(ArrayWpdbState::$stored);
+        return $last['last_query'] === 'SELECT 1' && $last['num_rows'] === 1 && $wpdb->last_query === 'SELECT 1';"#,
+    );
+    container.singleton_port::<dyn speedyspec_wp_db::WpdbState>(
+        speedyspec_wp_db::WPDB_STATE,
+        move |_, _| Ok(memory.clone()),
+    );
+    check(
+        "php_state_twin_replaces_memory",
+        matches!(stored, Ok(Value::Bool(true))),
+        stored,
+    );
+    yes(
+        "dbh_not_mysqli",
+        r#"global $wpdb; return !($wpdb->dbh instanceof mysqli) && !empty($wpdb->dbh) && $wpdb->dbh instanceof \SpeedySpec\WpDb\Connection
+            && $wpdb->is_mysql === true;"#,
+    );
     let tmp = tempfile::tempdir().unwrap();
     std::fs::write(tmp.path().join("db.php"), "<?php").unwrap();
     let refused = WpDbArea::check_drop_in(tmp.path());
@@ -329,5 +427,5 @@ fn main() {
         WpDbArea::check_drop_in(&tmp.path().join("none")).is_ok(),
         (),
     );
-    let _ = (api, Rc::new(()) as Rc<dyn Any>);
+    let _ = Rc::new(()) as Rc<dyn Any>;
 }

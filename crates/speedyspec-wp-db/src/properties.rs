@@ -366,9 +366,8 @@ impl WpDb {
                 self.with_tables_mut(|t| t.set_old_ms_global_tables(string_list(value)))
             }
             "dbh" => {
-                if matches!(value, WpValue::Null) {
-                    self.modify(|s| s.dbh_present = false)
-                }
+                let present = !matches!(value, WpValue::Null | WpValue::Bool(false));
+                self.modify(|s| s.dbh_present = present)
             }
             "checking_collation" | "result" | "col_info" | "dbuser" | "dbpassword" | "dbname"
             | "dbhost" | "use_mysqli" | "is_mysql" | "has_connected" => {}

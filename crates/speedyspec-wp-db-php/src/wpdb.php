@@ -10,6 +10,21 @@ namespace SpeedySpec\WpDb
     final class Connection
     {
     }
+
+    /**
+     * Keeps `wpdb`'s per-request state where a host wants it, in place of the worker's memory.
+     *
+     *  Bound in the container under `SpeedySpec\WpDb\WpdbState`, an implementation receives the whole state after
+     *  each change and hands it back on each read.
+     */
+    interface WpdbState
+    {
+        public function load(): array;
+
+        public function store(array $state): void;
+
+        public function reset(): void;
+    }
 }
 namespace
 {
@@ -52,6 +67,7 @@ namespace
         private int $speedyspec_generation = -1;
         private array $speedyspec_objects = [];
         private ?\SpeedySpec\WpDb\Connection $speedyspec_connection = null;
+        private array $speedyspec_converted = [];
 
         public $show_errors
         {
@@ -533,18 +549,37 @@ namespace
                     }
                     return $this->speedyspec_connection ??= new \SpeedySpec\WpDb\Connection();
                 case 'col_info':
-                    $cols = $this->speedyspec_get('col_info');
-                    return null === $cols ? null : array_map(static fn (array $c): object => (object) $c, $cols);
+                    return $this->speedyspec_converted('col_info', static fn (array $cols): array => array_map(
+                        static fn (array $c): object => (object) $c,
+                        $cols
+                    ));
                 case 'col_meta':
-                    return array_map(
+                    return $this->speedyspec_converted('col_meta', static fn (array $tables): array => array_map(
                         static fn (array $cols): array => array_map(static fn (array $c): object => (object) $c, $cols),
-                        $this->speedyspec_get('col_meta')
-                    );
+                        $tables
+                    ));
                 case 'result':
                     return null;
                 default:
                     return $this->speedyspec_get($name);
             }
+        }
+
+        /**
+         * Converts a property's arrays into objects once, so repeated reads hand out the same objects.
+         */
+        private function speedyspec_converted(string $name, \Closure $convert): mixed
+        {
+            $raw = $this->speedyspec_get($name);
+            if (null === $raw)
+            {
+                return null;
+            }
+            if (!isset($this->speedyspec_converted[$name]) || $this->speedyspec_converted[$name][0] !== $raw)
+            {
+                $this->speedyspec_converted[$name] = [$raw, $convert($raw)];
+            }
+            return $this->speedyspec_converted[$name][1];
         }
 
         public function __get($name)
