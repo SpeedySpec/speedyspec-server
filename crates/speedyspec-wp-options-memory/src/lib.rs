@@ -1,6 +1,11 @@
 //! An in-memory option repository, for tests and for callers with no database. It answers as MySQL's
 //! `wp_options` does, row counts included.
 
+mod sitemeta;
+pub mod suites;
+
+pub use sitemeta::MemorySitemetaRepository;
+
 use std::cell::{Cell, RefCell};
 
 use indexmap::IndexMap;

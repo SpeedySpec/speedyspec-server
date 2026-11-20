@@ -13,6 +13,7 @@ speedyspec-wp-db = { path = "../speedyspec-wp-db" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 
 [dev-dependencies]
+speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }
 speedyspec-cache = { path = "../speedyspec-cache" }
 speedyspec-cache-file = { path = "../speedyspec-cache-file" }
 speedyspec-cache-kv = { path = "../speedyspec-cache-kv" }

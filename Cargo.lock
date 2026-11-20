@@ -4796,6 +4796,7 @@ name = "speedyspec-wp-options-memory"
 version = "0.1.0"
 dependencies = [
  "indexmap",
+ "speedyspec-data",
  "speedyspec-wp-options",
 ]
 
@@ -4848,6 +4849,7 @@ dependencies = [
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-object-cache",
  "speedyspec-wp-options",
+ "speedyspec-wp-options-memory",
  "tempfile",
 ]
 
