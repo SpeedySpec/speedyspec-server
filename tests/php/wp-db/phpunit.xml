@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    bootstrap="bootstrap.php"
+    colors="false"
+    cacheResult="false"
+    failOnWarning="false"
+    failOnDeprecation="false"
+    displayDetailsOnTestsThatTriggerDeprecations="true"
+    displayDetailsOnPhpunitDeprecations="false"
+>
+    <testsuites>
+        <testsuite name="wordpress-db">
+            <file>../wordpress/db.php</file>
+            <file>../wordpress/db/charset.php</file>
+            <file>../wordpress/db/realEscape.php</file>
+            <file>../wordpress/db/dbDelta.php</file>
+        </testsuite>
+    </testsuites>
+    <groups>
+        <exclude>
+            <group>documented-break</group>
+            <group>needs-wordpress</group>
+        </exclude>
+    </groups>
+</phpunit>

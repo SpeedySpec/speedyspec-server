@@ -54,6 +54,7 @@ pub(crate) struct Settings {
     pub reconnect_retries: u32,
     pub reconnect_delay: std::time::Duration,
     pub has_connected: bool,
+    pub is_mysql: bool,
     pub incompatible_modes: Vec<String>,
 }
 
@@ -131,6 +132,7 @@ impl Settings {
             reconnect_retries: 5,
             reconnect_delay: std::time::Duration::from_secs(1),
             has_connected: false,
+            is_mysql: true,
             incompatible_modes: [
                 "NO_ZERO_DATE",
                 "ONLY_FULL_GROUP_BY",

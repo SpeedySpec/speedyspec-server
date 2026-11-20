@@ -447,21 +447,21 @@ namespace
             }
         }
 
-        public $is_mysql
-        {
-            get => $this->speedyspec_get('is_mysql');
-            set($value)
-            {
-                N\prop_set($this->speedyspec_db, 'is_mysql', $value);
-            }
-        }
-
         public $time_start
         {
             get => $this->speedyspec_get('time_start');
             set($value)
             {
                 N\prop_set($this->speedyspec_db, 'time_start', $value);
+            }
+        }
+
+        private $allow_unsafe_unquoted_parameters
+        {
+            get => $this->speedyspec_get('allow_unsafe_unquoted_parameters');
+            set($value)
+            {
+                N\set_allow_unsafe($this->speedyspec_db, $value);
             }
         }
 

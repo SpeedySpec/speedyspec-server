@@ -15,5 +15,11 @@
       "step": 1,
       "why": "placeholder_escape_filter_not_registered: the placeholder escape is removed in Rust before the query filter runs, as WordPress's priority-0 remove_placeholder_escape callback would, so the query hook stays empty and keeps its fast path; has_filter('query') is false where WordPress registered the callback"
     }
+  ],
+  "wordpress_tests": [
+    {
+      "test": "Tests_DB::test_mysqli_flush_sync",
+      "why": "parse_create_procedure: the test creates a stored procedure whose BEGIN ... END body sqlparser cannot parse, and every statement is parsed before it reaches the engine; the procedure is never created"
+    }
   ]
 }

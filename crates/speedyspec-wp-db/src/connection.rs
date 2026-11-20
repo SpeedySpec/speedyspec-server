@@ -150,11 +150,20 @@ impl WpDb {
         if charset == engine_charset && (collate.is_empty() || collate == engine_collate) {
             return Ok(());
         }
-        let mut sql = format!("SET NAMES {}", literal(&charset));
-        if !collate.is_empty() {
-            sql.push_str(&format!(" COLLATE {}", literal(&collate)));
+        // `mysqli_set_charset()` first: it changes the connection's charset even when the `COLLATE` that follows
+        // names a collation of another charset and fails, as it does when a caller switches charsets.
+        if self.caps()?.has_cap("set_charset") {
+            self.store
+                .execute(&parse_one(&format!("SET NAMES {}", literal(&charset)))?)?;
         }
-        self.store.execute(&parse_one(&sql)?)?;
+        if !collate.is_empty() {
+            let sql = format!(
+                "SET NAMES {} COLLATE {}",
+                literal(&charset),
+                literal(&collate)
+            );
+            let _ = self.store.execute(&parse_one(&sql)?);
+        }
         Ok(())
     }
 

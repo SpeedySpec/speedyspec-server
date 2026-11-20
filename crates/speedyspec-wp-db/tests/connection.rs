@@ -57,7 +57,10 @@ fn set_charset_is_not_counted() {
         .unwrap();
     assert_eq!(
         r.store.texts(),
-        vec!["SET NAMES 'latin1' COLLATE latin1_swedish_ci"]
+        vec![
+            "SET NAMES 'latin1'",
+            "SET NAMES 'latin1' COLLATE latin1_swedish_ci"
+        ]
     );
     let mut n = 99;
     r.state.read(&mut |s| n = s.num_queries);
@@ -65,7 +68,7 @@ fn set_charset_is_not_counted() {
     assert_eq!(r.hooks.did_filter(&HookName::from("query")).unwrap(), 0);
     // The engine's own charset needs no SET NAMES.
     r.db.set_charset(Some("utf8mb4"), None).unwrap();
-    assert_eq!(r.store.texts().len(), 1);
+    assert_eq!(r.store.texts().len(), 2);
 }
 
 #[test]

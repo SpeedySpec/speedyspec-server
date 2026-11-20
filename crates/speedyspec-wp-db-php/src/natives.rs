@@ -420,6 +420,14 @@ fn n_prop_set(args: &[Value]) -> R {
     ))
 }
 
+/// Writes `allow_unsafe_unquoted_parameters`, which `__set` ignores but reflection reaches (WordPress's tests).
+fn n_set_allow_unsafe(args: &[Value]) -> R {
+    ctx(args)?
+        .db
+        .set_allow_unsafe_unquoted_parameters(truthy(&a(args, 1)));
+    Ok(Value::Null)
+}
+
 fn n_set_prefix(args: &[Value]) -> R {
     let c = ctx(args)?;
     let set = !matches!(a(args, 2), Value::Bool(false))
@@ -704,12 +712,11 @@ fn n_process_field_formats(args: &[Value]) -> R {
         return Ok(Value::Array(Vec::new()));
     };
     let types = c.db.field_types();
-    Ok(fields_to_php(
-        &FieldFormats {
-            field_types: &types,
-        }
-        .process_field_formats(&data, formats(&a(args, 2)).as_deref()),
-    ))
+    let fields = FieldFormats {
+        field_types: &types,
+    }
+    .process_field_formats(&data, formats(&a(args, 2)).as_deref());
+    Ok(fields_to_php_with(&fields, false, false))
 }
 
 fn n_process_field_charsets(args: &[Value]) -> R {
@@ -726,7 +733,7 @@ fn n_process_field_charsets(args: &[Value]) -> R {
             }
         };
     }
-    Ok(fields_to_php(&fields))
+    Ok(merge_fields(&a(args, 1), &fields, &["charset"]))
 }
 
 fn n_process_field_lengths(args: &[Value]) -> R {
@@ -743,7 +750,7 @@ fn n_process_field_lengths(args: &[Value]) -> R {
             }
         };
     }
-    Ok(fields_to_php(&fields))
+    Ok(merge_fields(&a(args, 1), &fields, &["length"]))
 }
 
 fn n_get_table_charset(args: &[Value]) -> R {
@@ -800,7 +807,7 @@ fn n_strip_invalid_text(args: &[Value]) -> R {
     let c = ctx(args)?;
     let mut fields = fields_from_php(&a(args, 1));
     match c.db.strip_fields(&mut fields) {
-        Ok(()) => Ok(fields_to_php(&fields)),
+        Ok(()) => Ok(merge_fields(&a(args, 1), &fields, &["value"])),
         Err(e) => Ok(wp_error("wpdb_strip_invalid_text_failure", &e.last_error())),
     }
 }
@@ -950,6 +957,7 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
         ("last_result", n_last_result),
         ("prop_get", n_prop_get),
         ("prop_set", n_prop_set),
+        ("set_allow_unsafe", n_set_allow_unsafe),
         ("set_prefix", n_set_prefix),
         ("set_blog_id", n_set_blog_id),
         ("get_blog_prefix", n_get_blog_prefix),
@@ -1010,6 +1018,15 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
     ];
     entries
         .into_iter()
-        .map(|(name, f)| native::function(&format!("{NATIVE}{name}"), f))
+        .map(|(name, f)| {
+            native::function(&format!("{NATIVE}{name}"), move |args: &[Value]| {
+                let result = f(args);
+                // An exception a WordPress function threw during the call (`wp_die()`) reaches PHP.
+                match crate::host::take_pending() {
+                    Some(exception) => Err(NativeError::Rethrow(exception)),
+                    None => result,
+                }
+            })
+        })
         .collect()
 }

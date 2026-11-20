@@ -164,6 +164,11 @@ fn length_of(v: Option<&Value>) -> Option<ColLength> {
 
 /// `process_fields`' arrays: `[field => ['value' => .., 'format' => .., 'charset' => .., 'length' => ..]]`.
 pub(crate) fn fields_to_php(fields: &[Field]) -> Value {
+    fields_to_php_with(fields, true, true)
+}
+
+/// The arrays as each stage of `process_fields` leaves them: formats first, then charsets, then lengths.
+pub(crate) fn fields_to_php_with(fields: &[Field], charset: bool, length: bool) -> Value {
     Value::Array(
         fields
             .iter()
@@ -172,11 +177,15 @@ pub(crate) fn fields_to_php(fields: &[Field]) -> Value {
                     (Key::Str("value".into()), f.value.clone()),
                     (Key::Str("format".into()), Value::Str(f.format.clone())),
                 ];
-                entry.push((
-                    Key::Str("charset".into()),
-                    f.charset.clone().map_or(Value::Bool(false), Value::Str),
-                ));
-                entry.push((Key::Str("length".into()), length_value(f.length)));
+                if charset {
+                    entry.push((
+                        Key::Str("charset".into()),
+                        f.charset.clone().map_or(Value::Bool(false), Value::Str),
+                    ));
+                }
+                if length {
+                    entry.push((Key::Str("length".into()), length_value(f.length)));
+                }
                 (Key::Str(f.name.clone()), Value::Array(entry))
             })
             .collect(),
@@ -210,4 +219,37 @@ pub(crate) fn fields_from_php(v: &Value) -> Vec<Field> {
             }
         })
         .collect()
+}
+
+/// The arrays PHP gave, each entry with only `keys` set from `fields` (WordPress's helpers change those and keep
+/// every other key, in its place).
+pub(crate) fn merge_fields(original: &Value, fields: &[Field], keys: &[&str]) -> Value {
+    let Value::Array(items) = original else {
+        return fields_to_php(fields);
+    };
+    Value::Array(
+        items
+            .iter()
+            .zip(fields)
+            .map(|((k, entry), field)| {
+                let mut pairs = match entry {
+                    Value::Array(pairs) => pairs.clone(),
+                    _ => Vec::new(),
+                };
+                for key in keys {
+                    let value = match *key {
+                        "value" => field.value.clone(),
+                        "charset" => field.charset.clone().map_or(Value::Bool(false), Value::Str),
+                        "length" => length_value(field.length),
+                        _ => continue,
+                    };
+                    match pairs.iter_mut().find(|(k, _)| key_string(k) == *key) {
+                        Some(slot) => slot.1 = value,
+                        None => pairs.push((Key::Str((*key).into()), value)),
+                    }
+                }
+                (k.clone(), Value::Array(pairs))
+            })
+            .collect(),
+    )
 }

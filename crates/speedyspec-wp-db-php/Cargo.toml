@@ -35,3 +35,7 @@ harness = false
 [[test]]
 name = "replay"
 harness = false
+
+[[test]]
+name = "wordpress"
+harness = false

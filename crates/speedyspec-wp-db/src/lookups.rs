@@ -189,6 +189,10 @@ impl WpDb {
                 return Ok(answer);
             }
         }
+        // Skip this entirely if this isn't a MySQL database.
+        if !self.settings.borrow().is_mysql {
+            return Ok(None);
+        }
         let key = table.to_lowercase();
         let primed = self.read(|s| {
             s.table_charset
@@ -214,6 +218,9 @@ impl WpDb {
         table: &str,
         column: &str,
     ) -> Result<Option<ColLength>, WpDbError> {
+        if !self.settings.borrow().is_mysql {
+            return Ok(None);
+        }
         if self.read(|s| {
             s.col_meta
                 .get(&table.to_lowercase())

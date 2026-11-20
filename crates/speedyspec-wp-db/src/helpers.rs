@@ -88,6 +88,11 @@ impl WpDb {
         self.settings.borrow_mut().field_types = types;
     }
 
+    /// `allow_unsafe_unquoted_parameters`, which only `wpdb` itself (or reflection) changes.
+    pub fn set_allow_unsafe_unquoted_parameters(&self, allow: bool) {
+        self.settings.borrow_mut().allow_unsafe_unquoted_parameters = allow;
+    }
+
     /// `wpdb::process_fields`.
     pub fn process_fields(
         &self,

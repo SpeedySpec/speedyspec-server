@@ -232,7 +232,14 @@ impl WpDb {
             "allow_unsafe_unquoted_parameters" => {
                 WpValue::Bool(self.settings.borrow().allow_unsafe_unquoted_parameters)
             }
-            "use_mysqli" | "is_mysql" => WpValue::Bool(true),
+            "use_mysqli" => WpValue::Bool(true),
+            "is_mysql" => {
+                if self.settings.borrow().is_mysql {
+                    WpValue::Bool(true)
+                } else {
+                    WpValue::Null
+                }
+            }
             "has_connected" => WpValue::Bool(self.settings.borrow().has_connected),
             "field_types" => WpValue::Array(
                 self.field_types()
@@ -370,7 +377,8 @@ impl WpDb {
                 self.modify(|s| s.dbh_present = present)
             }
             "checking_collation" | "result" | "col_info" | "dbuser" | "dbpassword" | "dbname"
-            | "dbhost" | "use_mysqli" | "is_mysql" | "has_connected" => {}
+            | "dbhost" | "use_mysqli" | "has_connected" => {}
+            "is_mysql" => self.settings.borrow_mut().is_mysql = truthy(value),
             other if TABLE_PROPERTIES.contains(&other) => {
                 let v = text(value);
                 self.with_tables_mut(|t| t.set(other, v))

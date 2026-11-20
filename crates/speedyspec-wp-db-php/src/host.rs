@@ -4,8 +4,24 @@ use speedyspec_php::PhpError;
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_wp_db::{DoingItWrong, WpdbHost};
 
+thread_local! {
+    /// An exception a WordPress function threw while `wpdb` called it (`wp_die()`, `dead_db()`), rethrown when the
+    /// native function that made the call returns.
+    static PENDING: std::cell::RefCell<Option<Value>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Takes the exception waiting to be rethrown, if any.
+pub(crate) fn take_pending() -> Option<Value> {
+    PENDING.with(|p| p.borrow_mut().take())
+}
+
 fn call(name: &str, args: &[Value]) -> Result<Value, PhpError> {
-    speedyspec_php::call(&Value::Str(name.into()), args)
+    speedyspec_php::call_catching(&Value::Str(name.into()), args).map_err(|failure| {
+        if let Some(exception) = failure.exception {
+            PENDING.with(|p| p.borrow_mut().get_or_insert(exception).clone());
+        }
+        failure.error
+    })
 }
 
 fn exists(function: &str) -> bool {
@@ -122,7 +138,10 @@ impl WpdbHost for PhpWpdbHost {
 
     fn caller(&self) -> String {
         if exists("wp_debug_backtrace_summary")
-            && let Ok(v) = call("wp_debug_backtrace_summary", &[Value::Str("wpdb".into())])
+            && let Ok(v) = call(
+                "wp_debug_backtrace_summary",
+                &[Value::Str("wpdb".into()), Value::Int(1)],
+            )
         {
             return text(v).unwrap_or_default();
         }
