@@ -29,3 +29,9 @@ mod query_text;
 
 pub use fields::{ColLength, Field, FieldFormats, LengthKind, delete_sql, insert_sql, update_sql};
 pub use query_text::{QueryClass, get_table_from_query};
+
+mod caps;
+mod charset;
+
+pub use caps::ServerCaps;
+pub use charset::{CharsetRules, Convert, StripContext};
