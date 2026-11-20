@@ -45,7 +45,6 @@ impl SchemaCache {
         found
     }
 
-    #[allow(dead_code)] // read by the DDL and write passes
     pub(crate) fn indexes(&self, table: &str) -> Indexes {
         if let Some(hit) = self.indexes.borrow().get(table) {
             return hit.clone();
