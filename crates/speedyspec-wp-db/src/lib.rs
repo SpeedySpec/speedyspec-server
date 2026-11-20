@@ -35,3 +35,11 @@ mod charset;
 
 pub use caps::ServerCaps;
 pub use charset::{CharsetRules, Convert, StripContext};
+
+mod host;
+mod shape;
+mod state;
+
+pub use host::{HostCall, MemoryWpdbHost, WpdbHost};
+pub use shape::{LastQuery, OutputShape, Shaped, WpRow, var};
+pub use state::{ColumnMeta, LoggedQuery, MemoryWpdbState, RequestState, WPDB_STATE, WpdbState};

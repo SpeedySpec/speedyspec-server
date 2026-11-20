@@ -19,3 +19,7 @@ mod registry;
 
 pub use passes::{PassChain, PassContext, Rewrite, RewritePass, Rewritten};
 pub use registry::EngineRegistry;
+
+mod mysql_text;
+
+pub use mysql_text::mysql_text;
