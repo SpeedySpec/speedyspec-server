@@ -3965,6 +3965,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-data-conformance"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+ "speedyspec-data-query",
+]
+
+[[package]]
 name = "speedyspec-data-query"
 version = "0.1.0"
 dependencies = [
