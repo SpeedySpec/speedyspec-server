@@ -53,6 +53,9 @@ pub struct GateAccess {
     refreshing: tokio::sync::Mutex<()>,
     /// Every app the site state's maintenance applies to when `maintenance_apps` is not set.
     all_apps: Vec<AppId>,
+    /// The admin (the gate app and every app behind the gate), which the site state's maintenance never reaches:
+    /// admins sign in to end it.
+    admin: Vec<AppId>,
 }
 
 /// A site state that cannot be read fails closed for install: the install page stays off.
@@ -81,12 +84,20 @@ impl GateAccess {
             site: Mutex::new(None),
             refreshing: tokio::sync::Mutex::new(()),
             all_apps: Vec::new(),
+            admin: Vec::new(),
         }
     }
 
     /// The configured apps, which the site state's maintenance applies to unless `maintenance_apps` says otherwise.
     pub fn with_apps(mut self, apps: Vec<AppId>) -> GateAccess {
         self.all_apps = apps;
+        self
+    }
+
+    /// The admin's apps: the gate app and every app behind the gate. The site state's maintenance never applies to
+    /// them, so admins can sign in to end it; an upgrade's or an operator's still does.
+    pub fn with_admin(mut self, apps: Vec<AppId>) -> GateAccess {
+        self.admin = apps;
         self
     }
 
@@ -158,7 +169,10 @@ impl GateAccess {
                 .maintenance_apps
                 .as_ref()
                 .unwrap_or(&self.all_apps);
-            for app in apps {
+            for app in apps
+                .iter()
+                .filter(|app| **app != self.settings.app && !self.admin.contains(app))
+            {
                 self.maintenance.set(
                     app,
                     crate::maintenance::MaintenanceSource::Site,

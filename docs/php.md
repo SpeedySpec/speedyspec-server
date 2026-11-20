@@ -157,6 +157,11 @@ names (`app.<id>.maintenance_page`; that release's `"static": { "maintenance_pag
 self-contained file held in memory), or a small JSON body. Maintenance wins over failing health: an app in both shows
 its maintenance page.
 
+The admin API's site maintenance never applies to the admin itself (the gate app and every app behind a
+`signed-in` mount), even when `gate.maintenance_apps` names it: admins sign in and turn it off there, or use the CLI.
+The admin goes into maintenance only for a moment: while one of its own releases migrates, an operator's
+`maintenance on`, or while the admin API is down (which needs the CLI to fix anyway).
+
 ## The admin gate
 
 `access.implementation = "gate"` checks every request to a `signed-in` mount. The live release's access rules decide

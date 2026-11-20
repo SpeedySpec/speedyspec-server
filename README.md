@@ -156,7 +156,7 @@ timeout = "5s"
 site_ttl = "2s"                        # how long the site state is remembered
 poll = "1s"                            # how often the revocation feed is read
 max_pending = 16                       # uncached session checks at once; more get 503
-# maintenance_apps = ["admin", "blog"] # the apps the admin API's maintenance covers (default: every app)
+# maintenance_apps = ["blog", "frontend-api"] # the apps the admin API's maintenance covers (default: every app; never the admin)
 
 [health]                               # each php app's health probes
 interval = "2s"
