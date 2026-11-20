@@ -21,3 +21,4 @@ sha2 = "0.10"
 
 [dev-dependencies]
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }

@@ -52,6 +52,8 @@ pub(crate) struct Settings {
     pub field_types: IndexMap<String, String>,
     pub allow_unsafe_unquoted_parameters: bool,
     pub reconnect_retries: u32,
+    pub reconnect_delay: std::time::Duration,
+    pub has_connected: bool,
     pub incompatible_modes: Vec<String>,
 }
 
@@ -117,6 +119,8 @@ impl WpDb {
                 field_types: IndexMap::new(),
                 allow_unsafe_unquoted_parameters: true,
                 reconnect_retries: 5,
+                reconnect_delay: std::time::Duration::from_secs(1),
+                has_connected: false,
                 incompatible_modes: [
                     "NO_ZERO_DATE",
                     "ONLY_FULL_GROUP_BY",

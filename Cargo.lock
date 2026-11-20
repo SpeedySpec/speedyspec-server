@@ -4442,6 +4442,7 @@ dependencies = [
  "speedyspec-container",
  "speedyspec-cqrs",
  "speedyspec-data",
+ "speedyspec-data-mysql",
  "speedyspec-data-query",
  "speedyspec-hooks",
  "speedyspec-wp-hooks",
