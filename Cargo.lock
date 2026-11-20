@@ -4062,6 +4062,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-cache-sql"
+version = "0.1.0"
+dependencies = [
+ "sha2 0.10.9",
+ "speedyspec-cache",
+ "speedyspec-cache-conformance",
+ "speedyspec-data",
+ "speedyspec-data-mysql",
+ "speedyspec-data-query",
+]
+
+[[package]]
 name = "speedyspec-compat"
 version = "0.1.0"
 dependencies = [
