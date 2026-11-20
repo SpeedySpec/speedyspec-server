@@ -29,7 +29,6 @@ const MAX_DEPTH: usize = 4096;
 struct Reader<'a> {
     bytes: &'a [u8],
     pos: usize,
-    depth: usize,
 }
 
 type R<T> = Result<T, usize>;
@@ -100,48 +99,28 @@ impl Reader<'_> {
         String::from_utf8(name.to_vec()).map_err(|_| start)
     }
 
-    fn members(&mut self, object: bool) -> R<Vec<(PhpKey, PhpValue)>> {
+    /// A container's header (`<count>:{`), checked against the input before anything is allocated.
+    fn open(&mut self) -> R<usize> {
         let count = self.length(b':')?;
         self.expect(b'{')?;
         // Each member takes at least 4 bytes; a larger count cannot be real.
         if count > self.remaining() / 4 + 1 {
             return Err(self.pos);
         }
-        self.depth += 1;
-        if self.depth > MAX_DEPTH {
-            return Err(self.pos);
-        }
-        let mut items = Vec::with_capacity(count);
-        for _ in 0..count {
-            let at = self.pos;
-            let key = match self.value()? {
-                PhpValue::Int(i) if object => PhpKey::Str(i.to_string().into_bytes()),
-                PhpValue::Int(i) => PhpKey::Int(i),
-                PhpValue::Str(s) if !object => match canonical_int(&s) {
-                    Some(i) => PhpKey::Int(i),
-                    None => PhpKey::Str(s),
-                },
-                PhpValue::Str(s) => PhpKey::Str(s),
-                _ => return Err(at),
-            };
-            let value = self.value()?;
-            items.push((key, value));
-        }
-        self.depth -= 1;
-        self.expect(b'}')?;
-        Ok(items)
+        Ok(count)
     }
 
-    fn value(&mut self) -> R<PhpValue> {
+    /// One token: a complete scalar, or the start of an array or object.
+    fn token(&mut self) -> R<Token> {
         let start = self.pos;
         let tag = self.peek().ok_or(start)?;
         self.pos += 1;
         if tag == b'N' {
             self.expect(b';')?;
-            return Ok(PhpValue::Null);
+            return Ok(Token::Value(PhpValue::Null));
         }
         self.expect(b':')?;
-        Ok(match tag {
+        Ok(Token::Value(match tag {
             b'b' => match self.number_text(b';')? {
                 "0" => PhpValue::Bool(false),
                 "1" => PhpValue::Bool(true),
@@ -169,14 +148,19 @@ impl Reader<'_> {
                 self.expect(b';')?;
                 PhpValue::Str(s)
             }
-            b'a' => PhpValue::Array(self.members(false)?),
+            b'a' => {
+                return Ok(Token::Open {
+                    class: None,
+                    count: self.open()?,
+                });
+            }
             b'O' => {
                 let class = self.class_name()?;
                 self.expect(b':')?;
-                PhpValue::Object {
-                    class,
-                    properties: self.members(true)?,
-                }
+                return Ok(Token::Open {
+                    class: Some(class),
+                    count: self.open()?,
+                });
             }
             b'C' => {
                 let class = self.class_name()?;
@@ -211,8 +195,85 @@ impl Reader<'_> {
                 }
             }
             _ => return Err(start),
-        })
+        }))
     }
+
+    /// The whole value, nesting kept on a heap stack (hostile depth cannot exhaust the thread's stack).
+    fn value(&mut self) -> R<PhpValue> {
+        let mut stack: Vec<Frame> = Vec::new();
+        loop {
+            // A finished container closes and becomes its parent's value.
+            let mut done: Option<PhpValue> = None;
+            if let Some(top) = stack.last() {
+                if top.key.is_none() && top.items.len() == top.count {
+                    self.expect(b'}')?;
+                    let frame = stack.pop().expect("a frame");
+                    done = Some(match frame.class {
+                        Some(class) => PhpValue::Object {
+                            class,
+                            properties: frame.items,
+                        },
+                        None => PhpValue::Array(frame.items),
+                    });
+                }
+            }
+            let value = match done {
+                Some(v) => v,
+                None => {
+                    let at = self.pos;
+                    match self.token()? {
+                        Token::Value(v) => v,
+                        Token::Open { class, count } => {
+                            if stack.last().is_some_and(|f| f.key.is_none()) {
+                                return Err(at);
+                            }
+                            if stack.len() >= MAX_DEPTH {
+                                return Err(at);
+                            }
+                            stack.push(Frame {
+                                class,
+                                count,
+                                items: Vec::with_capacity(count.min(1024)),
+                                key: None,
+                            });
+                            continue;
+                        }
+                    }
+                }
+            };
+            let Some(top) = stack.last_mut() else {
+                return Ok(value);
+            };
+            match top.key.take() {
+                Some(key) => top.items.push((key, value)),
+                None => {
+                    let object = top.class.is_some();
+                    top.key = Some(match value {
+                        PhpValue::Int(i) if object => PhpKey::Str(i.to_string().into_bytes()),
+                        PhpValue::Int(i) => PhpKey::Int(i),
+                        PhpValue::Str(s) if !object => match canonical_int(&s) {
+                            Some(i) => PhpKey::Int(i),
+                            None => PhpKey::Str(s),
+                        },
+                        PhpValue::Str(s) => PhpKey::Str(s),
+                        _ => return Err(self.pos),
+                    });
+                }
+            }
+        }
+    }
+}
+
+enum Token {
+    Value(PhpValue),
+    Open { class: Option<String>, count: usize },
+}
+
+struct Frame {
+    class: Option<String>,
+    count: usize,
+    items: Vec<(PhpKey, PhpValue)>,
+    key: Option<PhpKey>,
 }
 
 /// PHP's symbol-table rule: a string key that is a canonical decimal `i64` is an integer key.
@@ -230,11 +291,7 @@ pub(crate) fn canonical_int(s: &[u8]) -> Option<i64> {
 
 /// PHP's `unserialize()`: bytes after the first complete value are ignored.
 pub fn unserialize(bytes: &[u8]) -> Result<PhpValue, UnserializeError> {
-    let mut reader = Reader {
-        bytes,
-        pos: 0,
-        depth: 0,
-    };
+    let mut reader = Reader { bytes, pos: 0 };
     reader.value().map_err(|offset| UnserializeError {
         offset,
         length: bytes.len(),
