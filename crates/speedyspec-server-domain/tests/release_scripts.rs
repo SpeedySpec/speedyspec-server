@@ -473,3 +473,162 @@ fn index_usage_exits_2() {
         Some(2)
     );
 }
+
+fn repo_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn read_json(path: &Path) -> serde_json::Value {
+    serde_json::from_str(
+        &std::fs::read_to_string(path).unwrap_or_else(|err| panic!("{}: {err}", path.display())),
+    )
+    .unwrap()
+}
+
+/// Every workspace crate, by directory (`crates/<name>`), with its name and version.
+fn workspace_crates() -> Vec<(String, String, String)> {
+    let output = Command::new(env!("CARGO"))
+        .args(["metadata", "--format-version", "1", "--no-deps"])
+        .current_dir(repo_root())
+        .output()
+        .unwrap();
+    let metadata: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let root = metadata["workspace_root"].as_str().unwrap().to_string();
+    let mut crates: Vec<(String, String, String)> = metadata["packages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| {
+            let dir = Path::new(p["manifest_path"].as_str().unwrap())
+                .parent()
+                .unwrap()
+                .strip_prefix(&root)
+                .unwrap()
+                .to_string_lossy()
+                .into_owned();
+            (
+                dir,
+                p["name"].as_str().unwrap().to_string(),
+                p["version"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect();
+    crates.sort();
+    crates
+}
+
+const COMPONENTS: [&str; 2] = ["speedyspec-server", "speedyspec-php-runtime"];
+
+/// Every crate is a release-please package, so a change in any crate is seen, and the `cargo-workspace` plugin bumps
+/// the server or the runtime when a crate it is built from is bumped. Only those two publish GitHub releases.
+#[test]
+fn release_config_registers_every_crate() {
+    let config = read_json(&repo_root().join("release-please-config.json"));
+    let manifest = read_json(&repo_root().join(".release-please-manifest.json"));
+    let packages = config["packages"].as_object().unwrap();
+    let crates = workspace_crates();
+    assert_eq!(packages.len(), crates.len(), "{:?}", packages.keys());
+    for (dir, name, version) in &crates {
+        let entry = &packages
+            .get(dir)
+            .unwrap_or_else(|| panic!("{dir} is not a release-please package"));
+        assert_eq!(entry["component"], name.as_str(), "{dir}");
+        assert!(entry.get("additional-paths").is_none(), "{dir}");
+        if COMPONENTS.contains(&name.as_str()) {
+            assert_eq!(
+                entry["release-as"],
+                version.as_str(),
+                "{dir}: the first release"
+            );
+            assert!(entry.get("skip-github-release").is_none(), "{dir}");
+            assert_eq!(manifest[dir], "0.0.0", "{dir}: never released");
+        } else {
+            assert_eq!(entry["skip-github-release"], true, "{dir}");
+            assert_eq!(entry["skip-changelog"], true, "{dir}");
+            assert_eq!(manifest[dir], version.as_str(), "{dir}");
+        }
+    }
+    assert_eq!(config["release-type"], "rust");
+    let plugin = config["plugins"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|plugin| plugin["type"] == "cargo-workspace")
+        .expect("the cargo-workspace plugin");
+    assert_ne!(
+        plugin["merge"], false,
+        "one release pull request for every crate"
+    );
+    for component in COMPONENTS {
+        assert!(
+            pending(&repo_root(), component).starts_with("pending=false\n"),
+            "{component}"
+        );
+    }
+}
+
+/// A repository with this release-please manifest and these tags.
+fn manifest_repo(manifest: &serde_json::Value, tags: &[&str]) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join(".release-please-manifest.json"),
+        manifest.to_string(),
+    )
+    .unwrap();
+    git(dir.path(), &["init", "-q"]);
+    git(dir.path(), &["add", "."]);
+    git(dir.path(), &["commit", "-qm", "init"]);
+    for tag in tags {
+        git(dir.path(), &["tag", tag]);
+    }
+    dir
+}
+
+fn tags(dir: &Path) -> Vec<String> {
+    let output = Command::new("git")
+        .args(["tag", "-l"])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    stdout(&output).lines().map(String::from).collect()
+}
+
+/// After a release, each library crate is tagged at its released version (with no GitHub release), so release-please
+/// counts only its commits since then. The server and the runtime are tagged by release-please itself.
+#[test]
+fn library_tags_are_created_only_where_missing() {
+    let dir = manifest_repo(
+        &serde_json::json!({
+            "crates/speedyspec-server": "0.1.0",
+            "crates/speedyspec-php-runtime": "1.0.0",
+            "crates/speedyspec-server-gate": "0.1.1",
+            "crates/speedyspec-php": "0.2.0",
+        }),
+        &["speedyspec-php-v0.2.0"],
+    );
+    let output = run(
+        "release-tag-libraries.sh",
+        &["HEAD"],
+        &[("SPEEDYSPEC_REPO", dir.path())],
+    );
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(stdout(&output), "speedyspec-server-gate-v0.1.1\n");
+    assert_eq!(
+        tags(dir.path()),
+        ["speedyspec-php-v0.2.0", "speedyspec-server-gate-v0.1.1"]
+    );
+    let again = run(
+        "release-tag-libraries.sh",
+        &["HEAD"],
+        &[("SPEEDYSPEC_REPO", dir.path())],
+    );
+    assert_eq!(stdout(&again), "", "nothing left to tag");
+}
+
+#[test]
+fn library_tags_usage_exits_2() {
+    assert_eq!(
+        run("release-tag-libraries.sh", &[], &[]).status.code(),
+        Some(2)
+    );
+}

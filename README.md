@@ -232,10 +232,17 @@ grep ' speedyspec-server-x86_64-unknown-linux-musl$' SHA256SUMS | sha256sum -c
 
 ### Releasing
 
-release-please keeps a release pull request open on `main`. Merging it builds that component for every target at the
-merge commit and runs its tests there; only when every build passes are the tag and the GitHub release created. The
-binaries are then signed and uploaded, and both indexes are rebuilt from the GitHub releases and deployed to Pages. A
-failed build publishes nothing, and the next push to `main` tries again.
+release-please keeps one release pull request open on `main`. Every crate is a release-please package, so a change
+in any of them is seen; the `cargo-workspace` plugin then bumps the server or the runtime whenever a crate it is built
+from is bumped. Only the server and the runtime get GitHub releases: after a release, the workflow tags each library
+crate at its new version (`<crate>-v<version>`, a plain tag) so release-please counts its commits from there. Changes
+outside the crates (`php-version`, `scripts/build-php.sh`) release nothing by themselves: commit a PHP update together
+with a change to the runtime crate (its changelog is a good place to say which PHP it embeds).
+
+Merging the release pull request builds each bumped component for every target at the merge commit and runs its tests
+there; only when every build passes are the tags and the GitHub releases created. The binaries are then signed and
+uploaded, and both indexes are rebuilt from the GitHub releases and deployed to Pages. A failed build publishes
+nothing, and the next push to `main` tries again.
 
 The *Release* workflow can also be run by hand: with a tag, it finishes a release whose publishing failed part-way
 (a release whose binaries, signatures and `SHA256SUMS` are all there is never changed: builds are not reproducible,

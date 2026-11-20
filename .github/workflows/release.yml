@@ -122,6 +122,21 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+      # Library crates are release-please packages without GitHub releases; release-please finds where each was last
+      # released from its tag, so tag them at the merged release (only when this push merged one).
+      - uses: actions/checkout@v4
+        if: needs.pending.outputs.releases != '[]'
+      - name: Tag the library crates
+        if: needs.pending.outputs.releases != '[]'
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          git fetch --tags --quiet origin
+          tags="$(scripts/release-tag-libraries.sh "$SHA")"
+          if [ -n "$tags" ]; then
+              # shellcheck disable=SC2086 # one tag name per word
+              git push origin $tags
+          fi
 
   publish:
     needs: [pending, build-server, build-runtime, release-please]
