@@ -4431,6 +4431,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-db"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "percent-encoding",
+ "regex",
+ "speedyspec-container",
+ "speedyspec-cqrs",
+ "speedyspec-data",
+ "speedyspec-data-query",
+ "speedyspec-hooks",
+ "speedyspec-wp-hooks",
+]
+
+[[package]]
 name = "speedyspec-wp-hooks"
 version = "0.1.0"
 dependencies = [

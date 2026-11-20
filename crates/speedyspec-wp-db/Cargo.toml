@@ -1,0 +1,18 @@
+[package]
+name = "speedyspec-wp-db"
+version = "0.1.0"
+description = "WordPress's wpdb in Rust: every method as a command or query over speedyspec's data layer, with its hooks."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-container = { path = "../speedyspec-container" }
+indexmap = "2"
+percent-encoding = "2"
+regex = "1"
