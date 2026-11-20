@@ -3965,6 +3965,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-data-query"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "speedyspec-data",
+ "sqlparser",
+]
+
+[[package]]
 name = "speedyspec-fastcgi"
 version = "0.1.0"
 dependencies = [

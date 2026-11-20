@@ -1,0 +1,12 @@
+[package]
+name = "speedyspec-data-query"
+version = "0.1.0"
+description = "SQL parsing, the query builder with partials, rewrite passes and the engine registry for speedyspec's data layer."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-data = { path = "../speedyspec-data" }
+sqlparser = { version = "0.64", features = ["visitor"] }
+indexmap = "2"
