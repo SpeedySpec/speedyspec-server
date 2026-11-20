@@ -7,10 +7,14 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+bytes = "1"
+postgres = "0.19"
 speedyspec-data = { path = "../speedyspec-data" }
 speedyspec-data-query = { path = "../speedyspec-data-query" }
 speedyspec-data-translate = { path = "../speedyspec-data-translate" }
 sqlparser = { version = "0.64", features = ["visitor"] }
 
 [dev-dependencies]
+bytes = "1"
+postgres = "0.19"
 speedyspec-data-translate = { path = "../speedyspec-data-translate", features = ["testing"] }
