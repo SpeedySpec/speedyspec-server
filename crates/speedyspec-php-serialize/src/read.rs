@@ -204,18 +204,19 @@ impl Reader<'_> {
         loop {
             // A finished container closes and becomes its parent's value.
             let mut done: Option<PhpValue> = None;
-            if let Some(top) = stack.last() {
-                if top.key.is_none() && top.items.len() == top.count {
-                    self.expect(b'}')?;
-                    let frame = stack.pop().expect("a frame");
-                    done = Some(match frame.class {
-                        Some(class) => PhpValue::Object {
-                            class,
-                            properties: frame.items,
-                        },
-                        None => PhpValue::Array(frame.items),
-                    });
-                }
+            if stack
+                .last()
+                .is_some_and(|top| top.key.is_none() && top.items.len() == top.count)
+            {
+                self.expect(b'}')?;
+                let frame = stack.pop().expect("a frame");
+                done = Some(match frame.class {
+                    Some(class) => PhpValue::Object {
+                        class,
+                        properties: frame.items,
+                    },
+                    None => PhpValue::Array(frame.items),
+                });
             }
             let value = match done {
                 Some(v) => v,
