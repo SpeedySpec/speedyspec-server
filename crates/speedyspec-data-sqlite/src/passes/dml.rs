@@ -380,6 +380,13 @@ impl SqliteDml {
         plain.replace_into = false;
         let mut out = Vec::new();
         for (r, row) in rows.iter().enumerate() {
+            if row.content.len() != columns.len() {
+                return Err(DbError::Engine {
+                    engine: String::new(),
+                    code: Some("1136".into()),
+                    message: format!("Column count doesn't match value count at row {}", r + 1),
+                });
+            }
             let clashes = keys.iter().map(|key| {
                 let mut terms = key.iter().map(|&p| Expr::BinaryOp {
                     left: Box::new(Expr::Identifier(ident(&columns[p]))),

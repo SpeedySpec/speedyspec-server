@@ -379,12 +379,16 @@ impl RewritePass for DdlPass {
                         ddl.out.push(create_index(&table, index)?);
                     }
                 }
-                ddl.writes.push(SchemaChange::CreateTable(catalogue));
+                // A temporary table belongs to one connection; the shared catalogue never records it.
+                if !create.temporary {
+                    ddl.writes.push(SchemaChange::CreateTable(catalogue));
+                }
             }
             Ast::Drop {
                 object_type: ObjectType::Table,
                 names,
                 if_exists,
+                temporary,
                 ..
             } => {
                 for name in names {
@@ -395,7 +399,7 @@ impl RewritePass for DdlPass {
                     }
                     let _ = if_exists;
                     ddl.out.push(Statement::new(one, Vec::new()));
-                    if !is_catalogue_table(&table) {
+                    if !is_catalogue_table(&table) && !*temporary {
                         ddl.writes.push(SchemaChange::DropTable(table));
                     }
                 }
