@@ -54,3 +54,7 @@ mod timed;
 
 pub use api::{QueryOutcome, WpDb, WpDbParts};
 pub use timed::{TimedSqlStore, Timing, microtime};
+
+mod messages;
+
+pub use messages::*;
