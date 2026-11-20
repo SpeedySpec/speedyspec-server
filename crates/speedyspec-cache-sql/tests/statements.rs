@@ -172,6 +172,7 @@ fn stored_key_hashes_long_keys() {
             .chars()
             .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
     );
-    // Characters, not bytes: 191 multibyte characters stay.
-    assert_eq!(stored_key(&"é".repeat(191)), "é".repeat(191));
+    // Bytes, not characters (the columns are varbinary): 95 two-byte characters stay, 96 are hashed.
+    assert_eq!(stored_key(&"é".repeat(95)), "é".repeat(95));
+    assert!(stored_key(&"é".repeat(96)).starts_with("sha256:"));
 }

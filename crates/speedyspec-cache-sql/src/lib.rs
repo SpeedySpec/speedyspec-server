@@ -12,9 +12,9 @@ use speedyspec_data::ast;
 use speedyspec_data::{DbError, DbValue, Rows, SqlStore, Statement, UpsertForm};
 use speedyspec_data_query::{Query, parse_one};
 
-/// A group or key as the table stores it: over 191 characters, `sha256:` and the hex digest of its UTF-8 bytes.
+/// A group or key as the table stores it: over 191 bytes, `sha256:` and the hex digest of its UTF-8 bytes.
 pub fn stored_key(text: &str) -> String {
-    if text.chars().count() <= 191 {
+    if text.len() <= 191 {
         return text.to_string();
     }
     let digest = Sha256::digest(text.as_bytes());
@@ -135,9 +135,9 @@ impl SqlCache {
                 "DELETE FROM {q} WHERE expires_at IS NOT NULL AND expires_at <= ?"
             ))?,
             create: parse(format!(
-                "CREATE TABLE IF NOT EXISTS {q} (cache_group varchar(191) NOT NULL, cache_key varchar(191) NOT NULL, \
+                "CREATE TABLE IF NOT EXISTS {q} (cache_group varbinary(191) NOT NULL, cache_key varbinary(191) NOT NULL, \
                  cache_value longblob NOT NULL, expires_at bigint NULL, PRIMARY KEY (cache_group, cache_key), \
-                 KEY expires_at (expires_at)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+                 KEY expires_at (expires_at))"
             ))?,
         };
         Ok(SqlCache {

@@ -158,6 +158,9 @@ impl ObjectCache {
                     if let Some(g) = self.cache.borrow_mut().get_mut(group) {
                         g.shift_remove(id);
                     }
+                    // Bytes come only from the second level: left there, the bad row would block `add` until it
+                    // expires.
+                    self.forget_second(id, group);
                     None
                 }
             },

@@ -320,6 +320,188 @@
       ]
     },
     {
+      "name": "object_refs_multiple",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "foo": "alpha"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "wp_cache_set_multiple",
+          "args": [
+            {
+              "array": [
+                [
+                  "b",
+                  {
+                    "var": "o"
+                  }
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "wp_cache_add_multiple",
+          "args": [
+            {
+              "array": [
+                [
+                  "a",
+                  {
+                    "var": "o"
+                  }
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "speedyspec_compat_prop_set",
+          "args": [
+            {
+              "var": "o"
+            },
+            "foo",
+            "bravo"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "b"
+          ],
+          "as": "gb"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "gb"
+            }
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "a"
+          ],
+          "as": "ga"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "ga"
+            }
+          ]
+        },
+        {
+          "call": "wp_cache_get_multiple",
+          "args": [
+            [
+              "b"
+            ]
+          ],
+          "as": "m"
+        },
+        {
+          "call": "current",
+          "args": [
+            {
+              "var": "m"
+            }
+          ],
+          "as": "inner"
+        },
+        {
+          "call": "speedyspec_compat_prop_set",
+          "args": [
+            {
+              "var": "inner"
+            },
+            "foo",
+            "charlie"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "b"
+          ],
+          "as": "gb2"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "gb2"
+            }
+          ]
+        },
+        {
+          "call": "speedyspec_compat_new_cache",
+          "as": "c"
+        },
+        {
+          "call": "$c->set_multiple",
+          "args": [
+            {
+              "array": [
+                [
+                  "k",
+                  {
+                    "var": "o"
+                  }
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "speedyspec_compat_prop_set",
+          "args": [
+            {
+              "var": "o"
+            },
+            "foo",
+            "delta"
+          ]
+        },
+        {
+          "call": "$c->get_multiple",
+          "args": [
+            [
+              "k"
+            ]
+          ],
+          "as": "cm"
+        },
+        {
+          "call": "current",
+          "args": [
+            {
+              "var": "cm"
+            }
+          ],
+          "as": "cinner"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "cinner"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "array_holding_object_shares_it",
       "steps": [
         {

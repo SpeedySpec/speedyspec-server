@@ -16,7 +16,8 @@ pub struct MemoryCache {
 }
 
 fn deadline(expiry: Option<Duration>) -> Option<Instant> {
-    expiry.map(|d| Instant::now() + d)
+    // An expiry past what the clock can hold never comes.
+    expiry.and_then(|d| Instant::now().checked_add(d))
 }
 
 fn live(entry: &Entry) -> bool {

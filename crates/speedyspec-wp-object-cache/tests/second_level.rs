@@ -321,3 +321,26 @@ fn add_writes_through_the_second_levels_add() {
     assert!(c.add(&s("k"), Value::Int(4), &s("g"), 0).unwrap());
     assert_eq!(store.get("g", "k").unwrap(), Some(b"i:4;".to_vec()));
 }
+
+#[test]
+fn refused_value_removes_the_persisted_one() {
+    let (c, store, _) = rig();
+    c.set(&s("k"), Value::Int(1), &s("g"), 0).unwrap();
+    c.set(&s("k"), Value::Opaque(Rc::new(5u8)), &s("g"), 0)
+        .unwrap();
+    // The next request must not read the value the caller overwrote.
+    let (next, _) = cache_over(store.clone());
+    assert_eq!(next.get(&s("k"), &s("g"), false).unwrap(), None);
+    assert_eq!(store.get("g", "k").unwrap(), None);
+}
+
+#[test]
+fn corrupt_second_level_entry_is_removed() {
+    let (c, store, _) = rig();
+    store.set("g", "k", b"a:1:{i:0;", None).unwrap();
+    assert_eq!(c.get(&s("k"), &s("g"), false).unwrap(), None);
+    assert_eq!(store.get("g", "k").unwrap(), None);
+    // `add` is no longer blocked by the bad row.
+    let (next, _) = cache_over(store.clone());
+    assert!(next.add(&s("k"), Value::Int(1), &s("g"), 0).unwrap());
+}

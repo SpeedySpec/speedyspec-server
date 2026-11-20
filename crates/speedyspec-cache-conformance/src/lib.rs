@@ -177,6 +177,37 @@ pub fn caching_store_suite(cache: &dyn CachingStore) {
         || "a key was lost or merged".into(),
     );
 
+    // MySQL's PAD SPACE collations compare 'k' and 'k ' equal: the store must not.
+    ok("trailing_space_keys", cache.set("g", "sp", b"none", None));
+    ok("trailing_space_keys", cache.set("g", "sp ", b"one", None));
+    ok("trailing_space_keys", cache.set("sp ", "k", b"group", None));
+    let many = ok("trailing_space_keys", cache.get_many("g", &["sp", "sp "]));
+    ensure(
+        "trailing_space_keys",
+        get("g", "sp").as_deref() == Some(b"none")
+            && get("g", "sp ").as_deref() == Some(b"one")
+            && get("sp", "k").is_none()
+            && get("sp ", "k").as_deref() == Some(b"group")
+            && many == vec![Some(b"none".to_vec()), Some(b"one".to_vec())],
+        || format!("{:?} {:?} {many:?}", get("g", "sp"), get("g", "sp ")),
+    );
+
+    // WordPress passes any positive `$expire`: one far past any clock still stores and reads.
+    ok(
+        "huge_expiry_is_kept",
+        cache.set(
+            "g",
+            "far",
+            b"far",
+            Some(std::time::Duration::from_secs(i64::MAX as u64)),
+        ),
+    );
+    ensure(
+        "huge_expiry_is_kept",
+        get("g", "far").as_deref() == Some(b"far"),
+        || format!("{:?}", get("g", "far")),
+    );
+
     ok("empty_value", cache.set("g", "empty", b"", None));
     ensure(
         "empty_value",

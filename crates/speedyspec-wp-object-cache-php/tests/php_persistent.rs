@@ -56,4 +56,17 @@ fn main() {
         matches!(closure, Ok(None)) && matches!(&plain, Ok(Some(b)) if b == b"s:5:\"plain\";"),
         (&closure, &plain),
     );
+
+    // wp_cache_flush_runtime() empties this request's first level only: the shared second level stays.
+    let r = speedyspec_php::eval(
+        "case",
+        "wp_cache_set('kept', 'v', 'g'); wp_cache_flush_runtime(); return wp_cache_get('kept', 'g');",
+    );
+    let stored = store.get("g", "kept");
+    check(
+        "flush_runtime_keeps_second_level",
+        matches!(&stored, Ok(Some(b)) if b == b"s:1:\"v\";")
+            && matches!(&r, Ok(Value::Str(v)) if v == "v"),
+        (&stored, &r),
+    );
 }

@@ -232,7 +232,8 @@ impl Reader<'_> {
                             stack.push(Frame {
                                 class,
                                 count,
-                                items: Vec::with_capacity(count.min(1024)),
+                                // A claimed count is not trusted: a small start, grown by the members read.
+                                items: Vec::with_capacity(count.min(8)),
                                 key: None,
                             });
                             continue;

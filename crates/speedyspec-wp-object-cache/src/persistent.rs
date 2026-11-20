@@ -42,10 +42,13 @@ impl ObjectCache {
                         store.set(&key_text(&group), &key_text(&id), &bytes, expiry(expire))
                     {
                         self.miss(&group, &id, &e.to_string());
+                        self.forget_second(&id, &group);
                     }
                 }
                 Err(CodecError::Refused(why) | CodecError::Corrupt(why)) => {
-                    self.miss(&group, &id, &why)
+                    self.miss(&group, &id, &why);
+                    // The value the caller replaced must not come back in a later request.
+                    self.forget_second(&id, &group);
                 }
             }
         }
@@ -98,6 +101,15 @@ impl ObjectCache {
                 self.miss(g, id, &e.to_string());
                 None
             }
+        }
+    }
+
+    /// Removes the second level's entry, best effort: a value it cannot hold, or bytes it holds that cannot be read.
+    pub(crate) fn forget_second(&self, id: &Key, g: &Key) {
+        if let Some(store) = self.second(g)
+            && let Err(e) = store.delete(&key_text(g), &key_text(id))
+        {
+            self.miss(g, id, &e.to_string());
         }
     }
 

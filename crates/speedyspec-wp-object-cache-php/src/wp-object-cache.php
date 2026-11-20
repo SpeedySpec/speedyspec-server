@@ -4,6 +4,8 @@ namespace
 {
     use SpeedySpec\WpObjectCache\Native as N;
 
+    use function SpeedySpec\WpObjectCache\clone_objects;
+
     /**
      * Sets up the object cache, refusing an object-cache.php drop-in.
      *
@@ -43,7 +45,7 @@ namespace
         {
             return $wp_object_cache->add_multiple($data, $group, (int) $expire);
         }
-        return N\cache_add_multiple(spl_object_id($wp_object_cache), $data, $group, (int) $expire);
+        return N\cache_add_multiple(spl_object_id($wp_object_cache), clone_objects($data), $group, (int) $expire);
     }
 
     function wp_cache_replace($key, $data, $group = '', $expire = 0)
@@ -81,7 +83,7 @@ namespace
         {
             return $wp_object_cache->set_multiple($data, $group, (int) $expire);
         }
-        return N\cache_set_multiple(spl_object_id($wp_object_cache), $data, $group, (int) $expire);
+        return N\cache_set_multiple(spl_object_id($wp_object_cache), clone_objects($data), $group, (int) $expire);
     }
 
     function wp_cache_get_multiple($keys, $group = '', $force = false)
@@ -91,7 +93,7 @@ namespace
         {
             return $wp_object_cache->get_multiple($keys, $group, $force);
         }
-        return N\cache_get_multiple(spl_object_id($wp_object_cache), $keys, $group, $force);
+        return clone_objects(N\cache_get_multiple(spl_object_id($wp_object_cache), $keys, $group, $force));
     }
 
     function wp_cache_delete($key, $group = '')
@@ -188,7 +190,13 @@ namespace
 
     function wp_cache_flush_runtime()
     {
-        return wp_cache_flush();
+        global $wp_object_cache;
+        if (get_class($wp_object_cache) !== 'WP_Object_Cache')
+        {
+            return wp_cache_flush();
+        }
+        // WordPress flushes everything because its cache has no second level; the shared one stays.
+        return N\cache_flush_runtime(spl_object_id($wp_object_cache));
     }
 
     function wp_cache_supports($feature)
@@ -280,7 +288,7 @@ namespace
 
         public function add_multiple(array $data, $group = '', $expire = 0)
         {
-            return N\object_add_multiple($this, $data, $group, (int) $expire);
+            return N\object_add_multiple($this, clone_objects($data), $group, (int) $expire);
         }
 
         public function replace($key, $data, $group = 'default', $expire = 0)
@@ -303,7 +311,7 @@ namespace
 
         public function set_multiple(array $data, $group = '', $expire = 0)
         {
-            return N\object_set_multiple($this, $data, $group, (int) $expire);
+            return N\object_set_multiple($this, clone_objects($data), $group, (int) $expire);
         }
 
         public function get($key, $group = 'default', $force = false, &$found = null)
@@ -315,7 +323,7 @@ namespace
 
         public function get_multiple($keys, $group = 'default', $force = false)
         {
-            return N\object_get_multiple($this, $keys, $group, $force);
+            return clone_objects(N\object_get_multiple($this, $keys, $group, $force));
         }
 
         public function delete($key, $group = 'default', $deprecated = false)
@@ -378,5 +386,30 @@ namespace
             }
             echo '</ul>';
         }
+    }
+}
+
+namespace SpeedySpec\WpObjectCache
+{
+    /**
+     * Copies each top-level object of a list, as WordPress's `add()`, `set()` and `get()` do for one value.
+     *
+     *  WordPress's `*_multiple()` methods loop over those, so a caller's object is never the cached one.
+     *
+     * @param array<int|string, mixed> $values
+     *   Values by cache key.
+     * @return array<int|string, mixed>
+     *   The same values, each object a clone.
+     */
+    function clone_objects(array $values): array
+    {
+        foreach ($values as $key => $value)
+        {
+            if (is_object($value))
+            {
+                $values[$key] = clone $value;
+            }
+        }
+        return $values;
     }
 }

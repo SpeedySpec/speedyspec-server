@@ -26,7 +26,15 @@ fn store() -> Rc<dyn SqlStore> {
 #[test]
 #[ignore = "needs MySQL: set SPEEDYSPEC_TEST_MYSQL_URL"]
 fn sql_cache_conformance() {
-    let cache = SqlCache::new(store(), "speedyspec_cache_conformance").unwrap();
+    let store = store();
+    // A fresh table each run, so a change to the schema is what the suite checks.
+    store
+        .execute(
+            &speedyspec_data_query::parse_one("DROP TABLE IF EXISTS speedyspec_cache_conformance")
+                .unwrap(),
+        )
+        .unwrap();
+    let cache = SqlCache::new(store, "speedyspec_cache_conformance").unwrap();
     cache.install().unwrap();
     cache.install().unwrap();
     caching_store_suite(&cache);
