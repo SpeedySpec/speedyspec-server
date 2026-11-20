@@ -157,3 +157,20 @@ fn stop_ends_serve() {
     std::thread::spawn(move || other.stop()).join().unwrap();
     thread.join().unwrap().unwrap();
 }
+
+#[test]
+fn shared_socket_directory_is_refused_and_left_alone() {
+    let dir = tempfile::tempdir().unwrap();
+    let shared = dir.path().join("shared");
+    std::fs::create_dir(&shared).unwrap();
+    std::fs::set_permissions(&shared, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let mut cfg = config(dir.path());
+    cfg.socket = shared.join("owner.sock");
+    let err = RedbOwner::open(cfg).err().expect("refused");
+    assert!(
+        matches!(&err, OwnerError::Boot(DbError::Config(m)) if m.contains("shared")),
+        "{err:?}"
+    );
+    let mode = std::fs::metadata(&shared).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o755);
+}

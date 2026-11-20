@@ -115,7 +115,7 @@ impl FileCache {
     fn write(&self, group: &str, key: &str, expires: u64, value: &[u8]) -> Result<(), CacheError> {
         let path = entry_path(&self.dir, group, key);
         self.client
-            .write(&path, &encode(expires, &name(group, key), value))
+            .write_unsynced(&path, &encode(expires, &name(group, key), value))
             .map_err(|e| self.backend(e))
     }
 
@@ -176,6 +176,39 @@ impl FileCache {
         // The entry keeps its expiry.
         self.write(group, key, expires, n.to_string().as_bytes())?;
         Ok(Some(n))
+    }
+}
+
+impl FileCache {
+    /// Removes every expired entry, read again or not; how many. The runtime calls it now and then, as WordPress's
+    /// cron deletes expired transients.
+    pub fn purge_expired(&self) -> Result<u64, CacheError> {
+        let now = now_ms();
+        let mut removed = 0;
+        let list = |dir: &str| self.client.list(dir).map_err(|e| self.backend(e));
+        for group in list(&self.dir)?.into_iter().filter(|g| g.starts_with("g-")) {
+            let group = format!("{}/{group}", self.dir);
+            for shard in list(&group)?.into_iter().filter(|s| !s.starts_with('.')) {
+                let shard = format!("{group}/{shard}");
+                for entry in list(&shard)?.into_iter().filter(|e| !e.starts_with('.')) {
+                    let path = format!("{shard}/{entry}");
+                    let Some(bytes) = self.client.read(&path).map_err(|e| self.backend(e))? else {
+                        continue;
+                    };
+                    let expires = bytes
+                        .first_chunk::<8>()
+                        .map(|b| u64::from_le_bytes(*b))
+                        .unwrap_or(0);
+                    if expires != 0
+                        && now >= expires
+                        && self.client.remove(&path).map_err(|e| self.backend(e))?
+                    {
+                        removed += 1;
+                    }
+                }
+            }
+        }
+        Ok(removed)
     }
 }
 
@@ -253,6 +286,11 @@ impl CachingStore for FileCache {
         for entry in self.client.list(&self.dir).map_err(|e| self.backend(e))? {
             if entry.starts_with("g-") {
                 self.discard(&format!("{}/{entry}", self.dir))?;
+            } else if entry.starts_with(".trash-") {
+                // A flush a crash interrupted.
+                self.client
+                    .remove_dir_all(&format!("{}/{entry}", self.dir))
+                    .map_err(|e| self.backend(e))?;
             }
         }
         Ok(())

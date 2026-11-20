@@ -31,6 +31,23 @@ fn ttl_ms(ttl: Option<Duration>) -> Option<u64> {
     })
 }
 
+/// Whether an idle connection is still open: nothing to read yet. End of stream, or bytes no request asked for,
+/// mean it is not.
+fn alive(stream: &UnixStream) -> bool {
+    use std::os::fd::AsRawFd;
+    let mut byte = 0u8;
+    // SAFETY: a one-byte peek into a local buffer on the stream's own descriptor; MSG_DONTWAIT never blocks.
+    let n = unsafe {
+        libc::recv(
+            stream.as_raw_fd(),
+            (&raw mut byte).cast(),
+            1,
+            libc::MSG_PEEK | libc::MSG_DONTWAIT,
+        )
+    };
+    n < 0 && std::io::Error::last_os_error().kind() == std::io::ErrorKind::WouldBlock
+}
+
 fn wire(b: Bound<&[u8]>) -> WireBound {
     match b {
         Bound::Included(k) => WireBound::Included(k.to_vec()),
@@ -126,6 +143,11 @@ impl RedbClient {
     }
 
     fn exchange(&self, request: &Request) -> Result<Response, DbError> {
+        // A connection the owner closed while it sat idle (a restart between requests) is remade before anything
+        // is sent, so only a request truly lost in flight fails.
+        if self.conn.borrow().as_ref().is_some_and(|s| !alive(s)) {
+            *self.conn.borrow_mut() = None;
+        }
         if self.conn.borrow().is_none() {
             let stream = self.connect()?;
             *self.conn.borrow_mut() = Some(stream);

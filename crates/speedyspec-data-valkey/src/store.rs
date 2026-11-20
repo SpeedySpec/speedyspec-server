@@ -1,9 +1,9 @@
 //! `ValkeyStore`: keys stored as `<prefix><keyspace>:<key>`, one connection made on first use and remade once after
 //! a loss.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ops::Bound;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use redis::{Client, Connection, RedisError, Value};
 use speedyspec_data::{Capabilities, DbError, KeyValues, NoSqlStore, UpsertForm};
@@ -15,6 +15,8 @@ pub struct ValkeyStore {
     prefix: String,
     timeout: Duration,
     conn: RefCell<Option<Connection>>,
+    /// When the connection last answered.
+    used: Cell<Instant>,
 }
 
 /// The driver's URL for a `valkey://` one: `redis://`, or `rediss://` over TLS.
@@ -70,6 +72,7 @@ impl ValkeyStore {
             prefix: prefix.to_string(),
             timeout,
             conn: RefCell::new(None),
+            used: Cell::new(Instant::now()),
         })
     }
 
@@ -131,6 +134,20 @@ impl ValkeyStore {
         retry: bool,
         f: impl Fn(&mut Connection) -> Result<T, RedisError>,
     ) -> Result<T, DbError> {
+        // A call that is never retried first checks a connection that sat idle (an idle timeout or a restart may
+        // have closed it), so only a reply truly lost in flight fails.
+        if !retry && self.conn.borrow().is_some() && self.used.get().elapsed() > IDLE_CHECK {
+            self.attempts(true, |c| redis::cmd("PING").query::<String>(c))?;
+        }
+        self.attempts(retry, f)
+    }
+
+    /// Runs `f`, once more after a lost connection when `retry`.
+    fn attempts<T>(
+        &self,
+        retry: bool,
+        f: impl Fn(&mut Connection) -> Result<T, RedisError>,
+    ) -> Result<T, DbError> {
         let attempts = if retry { 2 } else { 1 };
         for attempt in 0..attempts {
             if self.conn.borrow().is_none() {
@@ -141,7 +158,10 @@ impl ValkeyStore {
                 f(guard.as_mut().expect("connected above"))
             };
             match result {
-                Ok(v) => return Ok(v),
+                Ok(v) => {
+                    self.used.set(Instant::now());
+                    return Ok(v);
+                }
                 Err(e) if Self::lost(&e) => {
                     *self.conn.borrow_mut() = None;
                     if attempt + 1 == attempts {
@@ -154,6 +174,9 @@ impl ValkeyStore {
         unreachable!("the loop returns")
     }
 }
+
+/// How long a connection may sit idle before a call that is never retried checks it.
+const IDLE_CHECK: Duration = Duration::from_secs(1);
 
 /// A TTL as Valkey's PX: at least 1 ms, rounded up.
 fn millis(ttl: Duration) -> u64 {

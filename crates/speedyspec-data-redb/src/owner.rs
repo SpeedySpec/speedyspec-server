@@ -109,9 +109,24 @@ impl RedbOwner {
     pub fn open(config: OwnerConfig) -> Result<RedbOwner, OwnerError> {
         check_socket_path(&config.socket).map_err(OwnerError::Boot)?;
         let dir = config.socket.parent().unwrap_or_else(|| Path::new("."));
-        fs::create_dir_all(dir).map_err(|e| boot(e, "create", dir))?;
-        fs::set_permissions(dir, fs::Permissions::from_mode(0o700))
-            .map_err(|e| boot(e, "restrict", dir))?;
+        match fs::metadata(dir) {
+            // A directory the owner did not make is someone else's: refuse one others can enter, never change it.
+            Ok(meta) => {
+                let mode = meta.permissions().mode() & 0o777;
+                if mode & 0o077 != 0 {
+                    return Err(OwnerError::Boot(DbError::Config(format!(
+                        "the redb owner socket's directory {} is open to others (mode {mode:o}); give the socket \
+                         a directory of its own",
+                        dir.display()
+                    ))));
+                }
+            }
+            Err(_) => {
+                fs::create_dir_all(dir).map_err(|e| boot(e, "create", dir))?;
+                fs::set_permissions(dir, fs::Permissions::from_mode(0o700))
+                    .map_err(|e| boot(e, "restrict", dir))?;
+            }
+        }
         if fs::symlink_metadata(&config.socket).is_ok() {
             if UnixStream::connect(&config.socket).is_ok() {
                 return Err(OwnerError::AlreadyRunning);
@@ -183,7 +198,8 @@ impl RedbOwner {
             let _ = w.join();
         }
         let _ = sweeper.join();
-        result
+        // Writes commit without a sync; a clean stop makes them durable.
+        result.and(self.store.sync())
     }
 }
 
@@ -193,7 +209,7 @@ fn sweep(store: &RedbStore, stopped: &AtomicBool, every: Duration) {
     while !stopped.load(Ordering::SeqCst) {
         std::thread::sleep(Duration::from_millis(50));
         if Instant::now() >= next {
-            let _ = store.sweep_expired(1000);
+            let _ = store.sweep_all_expired(1000).and_then(|_| store.sync());
             next = Instant::now() + every;
         }
     }
