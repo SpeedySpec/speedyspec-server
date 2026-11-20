@@ -4043,6 +4043,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-cache"
+version = "0.1.0"
+
+[[package]]
 name = "speedyspec-compat"
 version = "0.1.0"
 dependencies = [
