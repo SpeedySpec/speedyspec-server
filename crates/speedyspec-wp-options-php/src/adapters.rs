@@ -28,7 +28,7 @@ pub(crate) fn exists(function: &str) -> Result<bool, OptionsError> {
     ))
 }
 
-fn truthy(v: &Value) -> bool {
+pub(crate) fn truthy(v: &Value) -> bool {
     !speedyspec_wp_options::php_empty(&v.read())
 }
 
