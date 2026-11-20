@@ -26,7 +26,7 @@ pub(crate) use expressions::PgExpressions;
 pub(crate) use group_by::PgLooseGroupBy;
 pub(crate) use identifiers::PgIdentifiers;
 pub(crate) use placeholders::PgPlaceholders;
-pub(crate) use writes::{PgChangedRows, PgInsertId, PgReplace, PgUpsert};
+pub(crate) use writes::{PgChangedRows, PgInsertId, PgReplace, PgUpdateJoin, PgUpsert};
 pub(crate) use zero_dates::PgZeroDates;
 
 /// The neutral passes, then PostgreSQL's, in order.
@@ -44,6 +44,7 @@ pub(crate) fn pg_chain(schema: &Rc<SchemaCache>) -> PassChain {
     chain.push(Box::new(PgInsertId {
         schema: schema.clone(),
     }));
+    chain.push(Box::new(PgUpdateJoin));
     chain.push(Box::new(PgChangedRows {
         schema: schema.clone(),
     }));

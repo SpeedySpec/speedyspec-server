@@ -67,6 +67,37 @@ impl Zero<'_> {
             .is_some_and(|t| is_temporal(&t))
     }
 
+    fn is_number(&self, expr: &Expr) -> bool {
+        self.schema.type_of(&self.tables, expr).is_some_and(|t| {
+            matches!(
+                t.family(),
+                speedyspec_data_translate::TypeFamily::Integer
+                    | speedyspec_data_translate::TypeFamily::Decimal { .. }
+                    | speedyspec_data_translate::TypeFamily::Float
+            )
+        })
+    }
+
+    /// An empty string stored in a number column, a literal or a param, as `0`: MySQL (without strict mode, as
+    /// wpdb sets it) stores 0.
+    fn empty_number(&mut self, value: &mut Expr) {
+        let Expr::Value(v) = value else { return };
+        match &mut v.value {
+            Value::SingleQuotedString(s) | Value::DoubleQuotedString(s) if s.trim().is_empty() => {
+                v.value = Value::Number("0".into(), false)
+            }
+            Value::Placeholder(p) => {
+                if let Some(n) = p.strip_prefix('?').and_then(|n| n.parse::<usize>().ok())
+                    && let Some(param) = self.params.get_mut(n.wrapping_sub(1))
+                    && matches!(param, DbValue::Text(s) if s.trim().is_empty())
+                {
+                    *param = DbValue::Int(0);
+                }
+            }
+            _ => {}
+        }
+    }
+
     /// The zero date in `value`, a literal or a param, as `-infinity`.
     fn fix(&mut self, value: &mut Expr) {
         let Expr::Value(v) = value else { return };
@@ -112,6 +143,9 @@ impl VisitorMut for Zero<'_> {
                         if self.is_date(c) {
                             self.fix(v);
                         }
+                        if self.is_number(c) {
+                            self.empty_number(v);
+                        }
                     }
                 }
             }
@@ -120,6 +154,10 @@ impl VisitorMut for Zero<'_> {
                     self.fix(right);
                 } else if self.is_date(right) {
                     self.fix(left);
+                }
+                // The changed-rows guard compares a number column with the value it is set to.
+                if self.is_number(left) {
+                    self.empty_number(right);
                 }
             }
             Expr::Between {
@@ -178,6 +216,9 @@ impl RewritePass for PgZeroDates {
                             if zero.is_date(&column) {
                                 zero.fix(&mut a.value);
                             }
+                            if zero.is_number(&column) {
+                                zero.empty_number(&mut a.value);
+                            }
                             if zero.is_latin1(&column) {
                                 zero.narrow(&mut a.value);
                             }
@@ -201,15 +242,30 @@ impl RewritePass for PgZeroDates {
                             ident.is_some_and(|i| zero.is_date(&Expr::Identifier(i)))
                         })
                         .collect();
+                    let numbers: Vec<bool> = insert
+                        .columns
+                        .iter()
+                        .map(|c| {
+                            let ident = c.0.last().and_then(|p| p.as_ident().cloned());
+                            ident.is_some_and(|i| zero.is_number(&Expr::Identifier(i)))
+                        })
+                        .collect();
                     if let Some(source) = &mut insert.source
                         && let SetExpr::Values(values) = source.body.as_mut()
                     {
                         for row in &mut values.rows {
-                            for ((value, date), narrow) in
-                                row.content.iter_mut().zip(&dates).zip(&latin1)
+                            for (((value, date), narrow), number) in row
+                                .content
+                                .iter_mut()
+                                .zip(&dates)
+                                .zip(&latin1)
+                                .zip(&numbers)
                             {
                                 if *date {
                                     zero.fix(value);
+                                }
+                                if *number {
+                                    zero.empty_number(value);
                                 }
                                 if *narrow {
                                     zero.narrow(value);

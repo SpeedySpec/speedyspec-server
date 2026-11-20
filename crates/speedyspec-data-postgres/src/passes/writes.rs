@@ -6,10 +6,12 @@ use speedyspec_data::{DbError, Statement};
 use speedyspec_data_query::{PassContext, Rewrite, RewritePass, parse_one};
 use speedyspec_data_translate::{TypeFamily, object_name, sql_ident};
 use sqlparser::ast::{
-    Assignment, AssignmentTarget, BinaryOperator, DoUpdate, Expr, Ident, Insert, ObjectName,
-    OnConflict, OnConflictAction, OnInsert, SelectItem, SetExpr, Statement as Ast, TableObject,
+    Assignment, AssignmentTarget, BinaryOperator, DataType, DoUpdate, Expr, Ident, Insert,
+    ObjectName, OnConflict, OnConflictAction, OnInsert, SelectItem, SetExpr, Statement as Ast,
+    TableObject, VisitMut, VisitorMut,
 };
 
+use super::expressions::cast;
 use super::functions::{template, unsupported};
 use super::params::{copy_params, renumber};
 use crate::plan::{ID_ALIAS, INSERTED_ALIAS};
@@ -68,14 +70,44 @@ fn is_text(schema: &SchemaCache, table: &str, column: &str) -> bool {
         .is_some_and(|t| matches!(t.family(), TypeFamily::Text | TypeFamily::Enum))
 }
 
+/// Whether `value` is already text where it meets a text column: a string, a parameter (typed from the column) or
+/// a text column.
+fn is_text_value(schema: &SchemaCache, tables: &[(String, String)], value: &Expr) -> bool {
+    match value {
+        Expr::Value(v) => matches!(
+            v.value,
+            sqlparser::ast::Value::SingleQuotedString(_)
+                | sqlparser::ast::Value::DoubleQuotedString(_)
+                | sqlparser::ast::Value::Placeholder(_)
+        ),
+        Expr::Identifier(_) | Expr::CompoundIdentifier(_) => schema
+            .type_of(tables, value)
+            .is_some_and(|t| matches!(t.family(), TypeFamily::Text | TypeFamily::Enum)),
+        _ => false,
+    }
+}
+
 /// `(cols) IS DISTINCT FROM (exprs)`, one column as a scalar comparison; text compared byte for byte, so a change
-/// of case counts as MySQL's row comparison counts it.
-fn changed(columns: Vec<(Expr, bool)>, values: Vec<Expr>) -> Expr {
-    let wrap = |(e, text): (Expr, bool)| if text { collate_c(e) } else { e };
+/// of case counts as MySQL's row comparison counts it. A value that is not text (`meta_value + 1`, `5`, `NOW()`)
+/// is compared as the text the column stores.
+fn changed(
+    schema: &SchemaCache,
+    tables: &[(String, String)],
+    columns: Vec<(Expr, bool)>,
+    values: Vec<Expr>,
+) -> Expr {
     let pairs: Vec<(Expr, Expr)> = columns
         .into_iter()
         .zip(values)
-        .map(|((c, text), v)| (wrap((c, text)), wrap((v, text))))
+        .map(|((c, text), v)| {
+            if !text {
+                (c, v)
+            } else if is_text_value(schema, tables, &v) {
+                (collate_c(c), collate_c(v))
+            } else {
+                (collate_c(c), collate_c(cast(v, DataType::Text)))
+            }
+        })
         .collect();
     let (left, right): (Vec<Expr>, Vec<Expr>) = pairs.into_iter().unzip();
     if left.len() == 1 {
@@ -86,6 +118,24 @@ fn changed(columns: Vec<(Expr, bool)>, values: Vec<Expr>) -> Expr {
     } else {
         Expr::IsDistinctFrom(Box::new(Expr::Tuple(left)), Box::new(Expr::Tuple(right)))
     }
+}
+
+/// Qualifies `expr`'s bare references to `table`'s columns with the table's name.
+fn qualify(schema: &SchemaCache, table: &str, expr: &mut Expr) {
+    struct Qualify<'a>(&'a SchemaCache, &'a str);
+    impl VisitorMut for Qualify<'_> {
+        type Break = ();
+        fn post_visit_expr(&mut self, expr: &mut Expr) -> std::ops::ControlFlow<()> {
+            if let Expr::Identifier(i) = expr
+                && i.quote_style.is_none_or(|q| q == '`' || q == '"')
+                && self.0.resolve(self.1, &i.value).is_some()
+            {
+                *expr = Expr::CompoundIdentifier(vec![Ident::new(self.1), i.clone()]);
+            }
+            std::ops::ControlFlow::Continue(())
+        }
+    }
+    let _ = expr.visit(&mut Qualify(schema, table));
 }
 
 fn last_ident(name: &ObjectName) -> Option<Ident> {
@@ -249,8 +299,19 @@ impl RewritePass for PgUpsert {
             copy_params(&mut value, &mut params);
             values.push(value);
         }
+        // PostgreSQL sees both the row and `excluded`: a bare column means the row, as in MySQL.
+        for Assignment { value, .. } in assignments.iter_mut() {
+            qualify(&self.schema, &table, value);
+        }
+        for value in &mut values {
+            qualify(&self.schema, &table, value);
+        }
+        let tables = [
+            (table.clone(), table.clone()),
+            ("excluded".to_string(), table.clone()),
+        ];
         if !columns.is_empty() && selection.is_none() {
-            *selection = Some(changed(columns, values));
+            *selection = Some(changed(&self.schema, &tables, columns, values));
         }
         let inserted = template("(xmax = 0)", vec![]);
         let item = SelectItem::ExprWithAlias {
@@ -300,13 +361,44 @@ impl RewritePass for PgInsertId {
         if !explicit {
             return Ok(Rewrite::Continue);
         }
-        // MySQL's counter moves past an id given explicitly; PostgreSQL's sequence must be told.
         let t = format!("\"{}\"", table.replace('"', "\"\""));
         let seq = format!(
             "pg_get_serial_sequence('{}', '{}')",
             t.replace('\'', "''"),
             id.replace('\'', "''")
         );
+        // MySQL generates the next id for an explicit NULL or 0, as for an omitted one.
+        let params = stmt.params().to_vec();
+        let Ast::Insert(insert) = stmt.tree_mut() else {
+            unreachable!("checked above")
+        };
+        let position = column_names(insert)
+            .iter()
+            .position(|c| c.eq_ignore_ascii_case(&id))
+            .expect("explicit above");
+        let mut given = 0;
+        if let Some(source) = &mut insert.source
+            && let SetExpr::Values(values) = source.body.as_mut()
+        {
+            for row in &mut values.rows {
+                let Some(value) = row.content.get_mut(position) else {
+                    continue;
+                };
+                if generates_id(value, &params) {
+                    *value = template(&format!("nextval({seq})"), vec![]);
+                } else {
+                    given += 1;
+                }
+            }
+            if given == 0 {
+                let params = renumber(stmt.tree_mut(), &params);
+                *stmt.params_mut() = params;
+                return Ok(Rewrite::Continue);
+            }
+        }
+        let params = renumber(stmt.tree_mut(), &params);
+        *stmt.params_mut() = params;
+        // MySQL's counter moves past an id given explicitly; PostgreSQL's sequence must be told.
         let c = format!("\"{}\"", id.replace('"', "\"\""));
         let sql = format!(
             "SELECT setval({seq}, GREATEST((SELECT COALESCE(MAX({c}), 0) FROM {t}), COALESCE(pg_sequence_last_value({seq}), 0), 1)) AS \"__speedyspec_sequence\""
@@ -324,6 +416,108 @@ impl RewritePass for PgInsertId {
             first,
             Statement::new(setval, Vec::new()),
         ]))
+    }
+}
+
+/// `UPDATE a JOIN b ON c SET … WHERE w`, which PostgreSQL spells `UPDATE a SET … FROM b WHERE c AND (w)`. Inner
+/// joins only: an outer join has no such form.
+pub(crate) struct PgUpdateJoin;
+
+impl RewritePass for PgUpdateJoin {
+    fn name(&self) -> &'static str {
+        "pg_update_join"
+    }
+
+    fn rewrite(&self, stmt: &mut Statement, _cx: &PassContext) -> Result<Rewrite, DbError> {
+        use sqlparser::ast::{
+            JoinConstraint, JoinOperator, TableFactor, TableWithJoins, UpdateTableFromKind,
+        };
+        let Ast::Update(update) = stmt.tree_mut() else {
+            return Ok(Rewrite::Continue);
+        };
+        if update.table.joins.is_empty() {
+            return Ok(Rewrite::Continue);
+        }
+        if update.from.is_some() {
+            return Err(unsupported("UPDATE with both JOIN and FROM"));
+        }
+        let target = match &update.table.relation {
+            TableFactor::Table { name, alias, .. } => alias
+                .as_ref()
+                .map_or_else(|| object_name(name), |a| a.name.value.clone()),
+            _ => return Err(unsupported("UPDATE of a derived table")),
+        };
+        let mut from = Vec::new();
+        let mut conditions = Vec::new();
+        for join in std::mem::take(&mut update.table.joins) {
+            match join.join_operator {
+                JoinOperator::Join(c) | JoinOperator::Inner(c) | JoinOperator::CrossJoin(c) => {
+                    match c {
+                        JoinConstraint::On(on) => conditions.push(Expr::Nested(Box::new(on))),
+                        JoinConstraint::None => {}
+                        _ => return Err(unsupported("UPDATE ... JOIN ... USING or NATURAL")),
+                    }
+                }
+                _ => return Err(unsupported("UPDATE with an outer JOIN")),
+            }
+            from.push(TableWithJoins {
+                relation: join.relation,
+                joins: Vec::new(),
+            });
+        }
+        for a in &mut update.assignments {
+            let AssignmentTarget::ColumnName(name) = &mut a.target else {
+                continue;
+            };
+            if name.0.len() > 1 {
+                let qualifier = name.0[name.0.len() - 2]
+                    .as_ident()
+                    .map(|i| i.value.clone())
+                    .unwrap_or_default();
+                if !qualifier.eq_ignore_ascii_case(&target) {
+                    return Err(unsupported(
+                        "UPDATE ... JOIN setting a joined table's column",
+                    ));
+                }
+                let column = name.0.pop().expect("two parts");
+                name.0 = vec![column];
+            }
+        }
+        if let Some(w) = update.selection.take() {
+            conditions.push(Expr::Nested(Box::new(w)));
+        }
+        update.selection = conditions.into_iter().reduce(|a, b| Expr::BinaryOp {
+            left: Box::new(a),
+            op: BinaryOperator::And,
+            right: Box::new(b),
+        });
+        update.from = Some(UpdateTableFromKind::AfterSet(from));
+        Ok(Rewrite::Continue)
+    }
+}
+
+/// An id value MySQL replaces with the next one: NULL or zero, written or bound.
+fn generates_id(value: &Expr, params: &[speedyspec_data::DbValue]) -> bool {
+    use speedyspec_data::DbValue;
+    use sqlparser::ast::Value;
+    let Expr::Value(v) = value else {
+        return false;
+    };
+    match &v.value {
+        Value::Null => true,
+        Value::Number(n, _) => n.parse::<f64>().is_ok_and(|n| n == 0.0),
+        Value::SingleQuotedString(s) => s.trim() == "0",
+        Value::Placeholder(p) => p
+            .strip_prefix('?')
+            .and_then(|n| n.parse::<usize>().ok())
+            .and_then(|n| params.get(n.wrapping_sub(1)))
+            .is_some_and(|v| match v {
+                DbValue::Null => true,
+                DbValue::Int(0) | DbValue::UInt(0) => true,
+                DbValue::Text(s) => s.trim() == "0",
+                _ => false,
+            }),
+        _ => false,
     }
 }
 
@@ -369,7 +563,7 @@ impl RewritePass for PgChangedRows {
         if columns.is_empty() {
             return Ok(Rewrite::Continue);
         }
-        let guard = changed(columns, values);
+        let guard = changed(&self.schema, &tables, columns, values);
         update.selection = Some(match update.selection.take() {
             Some(w) => Expr::BinaryOp {
                 left: Box::new(Expr::Nested(Box::new(w))),
