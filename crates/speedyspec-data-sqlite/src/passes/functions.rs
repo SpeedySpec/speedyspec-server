@@ -143,6 +143,11 @@ impl VisitorMut for Functions {
                 Expr::Function(f) if function_name(f) == "last_insert_id" => {
                     Some("LAST_INSERT_ID()".to_string())
                 }
+                // MySQL names a string literal's column by its value; SQLite by its quoted text.
+                Expr::Value(v) => match &v.value {
+                    Value::SingleQuotedString(s) | Value::DoubleQuotedString(s) => Some(s.clone()),
+                    _ => None,
+                },
                 // MySQL 8 names information_schema columns in upper case.
                 Expr::Identifier(c) if reads_schema => Some(c.value.to_ascii_uppercase()),
                 _ => None,
@@ -207,6 +212,28 @@ impl VisitorMut for Functions {
                 substring_from,
                 ..
             } if substring_from.is_some() => *special = true,
+            Expr::Convert {
+                charset: Some(charset),
+                data_type: None,
+                expr: inner,
+                ..
+            } => {
+                // SQLite keeps all text as UTF-8: a Unicode target changes nothing but utf8mb3's four-byte limit.
+                let name = object_name(charset).to_ascii_lowercase();
+                let inner = take(inner);
+                *expr = match name.as_str() {
+                    "utf8mb4" | "utf16" | "utf16le" | "utf32" | "ucs2" => inner,
+                    "utf8" | "utf8mb3" => {
+                        speedyspec_data_translate::function_call("speedyspec_utf8mb3", vec![inner])
+                    }
+                    "binary" => cast(inner, DataType::Blob(None)),
+                    _ => {
+                        return ControlFlow::Break(unsupported(
+                            "CONVERT ... USING a non-Unicode charset",
+                        ));
+                    }
+                };
+            }
             Expr::RLike { regexp, .. } => *regexp = true,
             Expr::Collate { collation, .. } => {
                 let name = object_name(collation).to_ascii_lowercase();
@@ -273,6 +300,58 @@ impl VisitorMut for Functions {
     }
 }
 
+/// SQLite has no parenthesised query as a statement or as a member of a UNION: a member with nothing of its own is
+/// its body, one with ORDER BY or LIMIT becomes `SELECT * FROM (member)`.
+fn unparenthesise(query: &mut Query) {
+    fn member(set: &mut sqlparser::ast::SetExpr, n: &mut usize) {
+        use sqlparser::ast::SetExpr;
+        match set {
+            SetExpr::SetOperation { left, right, .. } => {
+                for side in [left, right] {
+                    if let SetExpr::Query(inner) = side.as_mut() {
+                        unparenthesise(inner);
+                        let plain = inner.with.is_none()
+                            && inner.order_by.is_none()
+                            && inner.limit_clause.is_none();
+                        let replacement = if plain {
+                            (*inner.body).clone()
+                        } else {
+                            *n += 1;
+                            let sql = format!("SELECT * FROM (SELECT 1) AS speedyspec_member_{n}");
+                            let parsed =
+                                speedyspec_data_query::parse_one(&sql).expect("a skeleton parses");
+                            let Ast::Query(mut wrapper) = parsed.into_parts().0 else {
+                                unreachable!()
+                            };
+                            if let SetExpr::Select(select) = wrapper.body.as_mut()
+                                && let Some(from) = select.from.first_mut()
+                                && let TableFactor::Derived { subquery, .. } = &mut from.relation
+                            {
+                                *subquery = inner.clone();
+                            }
+                            *wrapper.body
+                        };
+                        **side = replacement;
+                    } else {
+                        member(side, n);
+                    }
+                }
+            }
+            SetExpr::Query(inner) => unparenthesise(inner),
+            _ => {}
+        }
+    }
+    while let sqlparser::ast::SetExpr::Query(inner) = query.body.as_mut() {
+        if query.with.is_some() || query.order_by.is_some() || query.limit_clause.is_some() {
+            break;
+        }
+        let inner = (**inner).clone();
+        *query = inner;
+    }
+    let mut n = 0;
+    member(query.body.as_mut(), &mut n);
+}
+
 fn sqlite_statement(sql: &str) -> Ast {
     Parser::parse_sql(&SQLiteDialect {}, sql)
         .unwrap_or_else(|e| panic!("{sql}: {e}"))
@@ -298,6 +377,9 @@ impl RewritePass for SqliteFunctions {
                 "BEGIN IMMEDIATE"
             });
             return Ok(Rewrite::Continue);
+        }
+        if let Ast::Query(query) = stmt.tree_mut() {
+            unparenthesise(query);
         }
         if let ControlFlow::Break(e) = stmt.tree_mut().visit(&mut Functions) {
             return Err(e);

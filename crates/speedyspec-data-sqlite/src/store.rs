@@ -201,7 +201,22 @@ impl SqliteStore {
     }
 
     fn error(&self, e: rusqlite::Error) -> DbError {
-        map_error(&self.name, e)
+        match map_error(&self.name, e) {
+            // MySQL's wording, which WordPress and plugins match on.
+            DbError::Engine {
+                engine, message, ..
+            } if message.starts_with("no such table: ") => {
+                let table = message.trim_start_matches("no such table: ");
+                let table = table.rsplit('.').next().unwrap_or(table);
+                let database = self.session.lock().expect("session").database().to_string();
+                DbError::Engine {
+                    engine,
+                    code: Some("1146".into()),
+                    message: format!("Table '{database}.{table}' doesn't exist"),
+                }
+            }
+            other => other,
+        }
     }
 
     fn control(&self, sql: &str) -> Result<(), DbError> {
@@ -403,10 +418,35 @@ impl SqliteStore {
             Ok(plan) => plan,
             Err(e) => {
                 self.reopen()?;
-                return Err(e);
+                return Err(match e {
+                    // A pass's engine error names no engine; this store is the one that refused.
+                    DbError::Engine {
+                        engine,
+                        code,
+                        message,
+                    } if engine.is_empty() => DbError::Engine {
+                        engine: self.name.clone(),
+                        code,
+                        message,
+                    },
+                    other => other,
+                });
             }
         };
         let (steps, found_rows, information_schema) = match plan {
+            SqlitePlan::Emulated(speedyspec_data::EmulatedOp::SetSession { name, value })
+                if name == "database" =>
+            {
+                let database = self.session.lock().expect("session").database().to_string();
+                if !value.eq_ignore_ascii_case(&database) {
+                    return Err(DbError::Engine {
+                        engine: self.name.clone(),
+                        code: Some("1049".into()),
+                        message: format!("Unknown database '{value}'"),
+                    });
+                }
+                return Ok((Rows::default(), ExecResult::default()));
+            }
             SqlitePlan::Emulated(op) => {
                 let rows = {
                     let found = self.found_rows.get();
@@ -454,7 +494,7 @@ impl SqliteStore {
             };
             if auto && exec.insert_id.is_none() && outcome.changes > 0 {
                 exec.insert_id = match step.insert_id {
-                    InsertIdRule::LastRowid if outcome.moved => u64::try_from(outcome.rowid).ok(),
+                    InsertIdRule::LastRowid => u64::try_from(outcome.rowid).ok(),
                     InsertIdRule::Returning => {
                         outcome.first_returned.and_then(|r| u64::try_from(r).ok())
                     }
@@ -533,6 +573,10 @@ impl Introspector for SqliteStore {
 
     fn table_collation(&self, table: &str) -> Result<Option<String>, DbError> {
         Ok(self.catalogue_of(table)?.and_then(|t| t.collation))
+    }
+
+    fn index_type(&self, table: &str, index: &str) -> Result<Option<String>, DbError> {
+        Ok(self.catalogue_of(table)?.and_then(|t| t.index_type(index)))
     }
 }
 

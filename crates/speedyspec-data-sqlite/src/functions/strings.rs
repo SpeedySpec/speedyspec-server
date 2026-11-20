@@ -223,6 +223,17 @@ pub(crate) fn register(conn: &Connection) -> rusqlite::Result<()> {
                 .map_or(0, |i| i as i64),
         ))
     })?;
+    // CONVERT(x USING utf8mb3): MySQL's three-byte UTF-8 holds no character beyond U+FFFF, which becomes '?'.
+    conn.create_scalar_function("speedyspec_utf8mb3", 1, f, |ctx| {
+        Ok(match text(ctx, 0) {
+            None => Value::Null,
+            Some(s) => Value::Text(
+                s.chars()
+                    .map(|c| if u32::from(c) > 0xFFFF { '?' } else { c })
+                    .collect(),
+            ),
+        })
+    })?;
     conn.create_scalar_function("md5", 1, f, |ctx| {
         Ok(match ctx.get_raw(0) {
             ValueRef::Null => Value::Null,

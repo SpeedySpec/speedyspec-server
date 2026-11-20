@@ -434,3 +434,89 @@ fn reset_rolls_back_raw_transaction() {
         Some("0")
     );
 }
+
+#[test]
+fn use_database() {
+    let store = memory();
+    exec(&store, "USE `wordpress`");
+    let err = store.execute(&stmt("USE other")).unwrap_err();
+    assert!(
+        matches!(&err, DbError::Engine { message, .. } if message == "Unknown database 'other'"),
+        "{err:?}"
+    );
+}
+
+#[test]
+fn replace_with_explicit_id_reports_it() {
+    let store = memory();
+    exec(
+        &store,
+        "INSERT INTO wp_options (option_id, option_name) VALUES (5, 'a')",
+    );
+    let result = exec(
+        &store,
+        "REPLACE INTO wp_options (option_id, option_name) VALUES (5, 'b')",
+    );
+    assert_eq!((result.rows_affected, result.insert_id), (2, Some(5)));
+}
+
+#[test]
+fn column_charset_is_the_collation_id() {
+    let store = memory();
+    exec(&store, "INSERT INTO wp_options (option_name) VALUES ('a')");
+    let rows = query(&store, "SELECT option_name, option_id FROM wp_options");
+    assert_eq!(
+        (rows.columns[0].charset, rows.columns[1].charset),
+        (246, 63)
+    );
+}
+
+#[test]
+fn string_literal_column_is_named_by_its_value() {
+    let store = memory();
+    let rows = query(&store, "SELECT '', 'abc'");
+    let names: Vec<&str> = rows.columns.iter().map(|c| c.name.as_str()).collect();
+    assert_eq!(names, ["", "abc"]);
+}
+
+#[test]
+fn parenthesised_select_runs() {
+    let store = memory();
+    exec(
+        &store,
+        "INSERT INTO wp_options (option_name) VALUES ('a'), ('b')",
+    );
+    assert_eq!(
+        query(&store, "(SELECT option_name FROM wp_options)")
+            .rows
+            .len(),
+        2
+    );
+    assert_eq!(
+        query(&store, "(SELECT option_name FROM wp_options WHERE option_name = 'a') UNION (SELECT option_name FROM wp_options LIMIT 1)").rows.len(),
+        1
+    );
+}
+
+#[test]
+fn missing_table_error_reads_as_mysql() {
+    let store = memory();
+    let err = store
+        .execute(&stmt("SELECT * FROM wp_missing"))
+        .unwrap_err();
+    assert!(
+        matches!(&err, DbError::Engine { message, .. } if message == "Table 'wordpress.wp_missing' doesn't exist"),
+        "{err:?}"
+    );
+}
+
+#[test]
+fn column_flags_like_mysql() {
+    let store = memory();
+    exec(&store, "INSERT INTO wp_options (option_name) VALUES ('a')");
+    let rows = query(&store, "SELECT option_id, option_value FROM wp_options");
+    // NOT_NULL | PRI_KEY | UNSIGNED | AUTO_INCREMENT | PART_KEY | NUM, as MySQL 8.4 sends for wp_options.option_id.
+    assert_eq!(rows.columns[0].flags, 49699);
+    // NOT_NULL | BLOB, for a longtext.
+    assert_eq!(rows.columns[1].flags, 17);
+}

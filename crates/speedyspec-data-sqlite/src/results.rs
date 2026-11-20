@@ -17,11 +17,32 @@ const BLOB: u32 = 16;
 const UNSIGNED: u32 = 32;
 const BINARY: u32 = 128;
 const AUTO_INCREMENT: u32 = 512;
+const PART_KEY: u32 = 16384;
 const NUM: u32 = 32768;
 
 /// The charset ids mysqli reports: binary, and utf8mb4.
 const CHARSET_BINARY: u16 = 63;
 const CHARSET_UTF8MB4: u16 = 255;
+
+/// MySQL's id for a collation, which mysqli reports as the column's charset.
+fn collation_id(name: &str) -> u16 {
+    match name {
+        "utf8mb4_unicode_520_ci" => 246,
+        "utf8mb4_unicode_ci" => 224,
+        "utf8mb4_general_ci" => 45,
+        "utf8mb4_bin" => 46,
+        "utf8mb4_0900_bin" => 309,
+        "utf8mb3_general_ci" | "utf8_general_ci" => 33,
+        "utf8mb3_unicode_ci" | "utf8_unicode_ci" => 192,
+        "utf8mb3_bin" | "utf8_bin" => 83,
+        "latin1_swedish_ci" => 8,
+        "latin1_general_ci" => 48,
+        "latin1_bin" => 47,
+        "ascii_general_ci" => 11,
+        "binary" => CHARSET_BINARY,
+        _ => CHARSET_UTF8MB4,
+    }
+}
 
 /// Where a result column comes from: the table and its catalogue column, when it is a plain column.
 pub struct Origin {
@@ -156,8 +177,15 @@ fn flags(column: &CatalogueColumn, indexes: &[speedyspec_data_translate::Catalog
     if type_name(column) == "MYSQL_TYPE_BLOB" {
         flags |= BLOB;
     }
-    if family == TypeFamily::Binary || is_numeric(family) {
+    if family == TypeFamily::Binary {
         flags |= BINARY;
+    }
+    if indexes.iter().any(|i| {
+        i.parts
+            .iter()
+            .any(|(c, _)| c.eq_ignore_ascii_case(&column.name))
+    }) {
+        flags |= PART_KEY;
     }
     if is_numeric(family) {
         flags |= NUM;
@@ -227,13 +255,13 @@ pub fn describe(names: &[String], origins: &[Option<Origin>], rows: &[Row]) -> V
                             TypeFamily::Float => 31,
                             _ => 0,
                         },
-                        charset: if is_numeric(family)
-                            || family == TypeFamily::Binary
-                            || c.collation.is_none()
-                        {
-                            CHARSET_BINARY
-                        } else {
-                            CHARSET_UTF8MB4
+                        charset: match &c.collation {
+                            Some(collation)
+                                if !is_numeric(family) && family != TypeFamily::Binary =>
+                            {
+                                collation_id(collation)
+                            }
+                            _ => CHARSET_BINARY,
                         },
                     }
                 }

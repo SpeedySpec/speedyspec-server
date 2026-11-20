@@ -60,4 +60,8 @@ impl Introspector for StaticIntrospector {
     fn table_collation(&self, table: &str) -> Result<Option<String>, DbError> {
         Ok(self.table(table).and_then(|t| t.collation.clone()))
     }
+
+    fn index_type(&self, table: &str, index: &str) -> Result<Option<String>, DbError> {
+        Ok(self.table(table).and_then(|t| t.index_type(index)))
+    }
 }

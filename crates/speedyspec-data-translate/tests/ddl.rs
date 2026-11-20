@@ -329,3 +329,22 @@ fn ddl_binary_table_collation_moves_to_columns() {
         "CREATE TABLE t (a varchar(10) COLLATE utf8mb4_bin, b int, c text COLLATE utf8mb4_unicode_ci)",
     );
 }
+
+#[test]
+fn catalogue_collation_from_charset() {
+    use speedyspec_data_query::parse_one;
+    use speedyspec_data_translate::catalogue_table;
+    let sql =
+        "CREATE TABLE t (a varchar(1) CHARACTER SET koi8r, b text, c int) DEFAULT CHARSET=big5";
+    let table = catalogue_table(parse_one(sql).unwrap().tree()).unwrap();
+    assert_eq!(table.collation.as_deref(), Some("big5_chinese_ci"));
+    let collations: Vec<Option<&str>> = table
+        .columns
+        .iter()
+        .map(|c| c.collation.as_deref())
+        .collect();
+    assert_eq!(
+        collations,
+        [Some("koi8r_general_ci"), Some("big5_chinese_ci"), None]
+    );
+}

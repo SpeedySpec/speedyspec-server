@@ -27,6 +27,7 @@ pub enum IndexKind {
     Unique,
     Index,
     Fulltext,
+    Spatial,
 }
 
 impl IndexKind {
@@ -36,6 +37,7 @@ impl IndexKind {
             IndexKind::Unique => "UNIQUE",
             IndexKind::Index => "INDEX",
             IndexKind::Fulltext => "FULLTEXT",
+            IndexKind::Spatial => "SPATIAL",
         }
     }
 
@@ -44,6 +46,7 @@ impl IndexKind {
             "PRIMARY" => IndexKind::Primary,
             "UNIQUE" => IndexKind::Unique,
             "FULLTEXT" => IndexKind::Fulltext,
+            "SPATIAL" => IndexKind::Spatial,
             _ => IndexKind::Index,
         }
     }
@@ -121,18 +124,30 @@ pub fn column_key(column: &str, indexes: &[CatalogueIndex]) -> &'static str {
     key
 }
 
-fn default_collation(charset: &str) -> Option<String> {
-    Some(
-        match charset.to_ascii_lowercase().as_str() {
-            "utf8mb4" => "utf8mb4_0900_ai_ci",
-            "utf8" | "utf8mb3" => "utf8mb3_general_ci",
-            "latin1" => "latin1_swedish_ci",
-            "ascii" => "ascii_general_ci",
-            "binary" => return None,
-            _ => return None,
+/// MySQL 8.4's default collation for a character set.
+pub fn default_collation(charset: &str) -> Option<String> {
+    let charset = charset.to_ascii_lowercase();
+    let collation = match charset.as_str() {
+        "binary" => return None,
+        "utf8mb4" => "utf8mb4_0900_ai_ci",
+        "utf8" | "utf8mb3" => "utf8mb3_general_ci",
+        "latin1" => "latin1_swedish_ci",
+        "dec8" => "dec8_swedish_ci",
+        "swe7" => "swe7_swedish_ci",
+        "hp8" => "hp8_english_ci",
+        "latin5" => "latin5_turkish_ci",
+        "tis620" => "tis620_thai_ci",
+        "armscii8" | "ascii" | "cp1250" | "cp1251" | "cp1256" | "cp1257" | "cp850" | "cp852"
+        | "cp866" | "geostd8" | "greek" | "hebrew" | "keybcs2" | "koi8r" | "koi8u" | "latin2"
+        | "latin7" | "macce" | "macroman" | "ucs2" | "utf16" | "utf16le" | "utf32" => {
+            return Some(format!("{charset}_general_ci"));
         }
-        .to_string(),
-    )
+        "big5" | "gb2312" | "gbk" | "gb18030" => return Some(format!("{charset}_chinese_ci")),
+        "sjis" | "ujis" | "cp932" | "eucjpms" => return Some(format!("{charset}_japanese_ci")),
+        "euckr" => "euckr_korean_ci",
+        _ => return None,
+    };
+    Some(collation.to_string())
 }
 
 /// The table's `COLLATE`, or its `CHARSET`'s default collation.
@@ -197,6 +212,9 @@ pub fn column_of(
             }
             ColumnOption::OnUpdate(_) => on_update = true,
             ColumnOption::Collation(name) => collation = Some(object_name(name)),
+            ColumnOption::CharacterSet(name) if collation.is_none() => {
+                collation = default_collation(&object_name(name));
+            }
             ColumnOption::PrimaryKey(_) => primary = true,
             ColumnOption::Unique(_) => unique = true,
             ColumnOption::DialectSpecific(tokens)
@@ -324,7 +342,7 @@ pub fn catalogue_table(create: &Ast) -> Result<CatalogueTable, DbError> {
                 parts(&f.columns),
             ),
             TableConstraint::FulltextOrSpatial(f) => (
-                IndexKind::Index,
+                IndexKind::Spatial,
                 f.opt_index_name.clone(),
                 parts(&f.columns),
             ),
@@ -375,6 +393,21 @@ pub fn catalogue_table(create: &Ast) -> Result<CatalogueTable, DbError> {
 }
 
 impl CatalogueTable {
+    /// MySQL's `Index_type` for one of the table's indexes.
+    pub fn index_type(&self, index: &str) -> Option<String> {
+        self.indexes
+            .iter()
+            .find(|i| i.name.eq_ignore_ascii_case(index))
+            .map(|i| {
+                match i.kind {
+                    IndexKind::Fulltext => "FULLTEXT",
+                    IndexKind::Spatial => "SPATIAL",
+                    _ => "BTREE",
+                }
+                .to_string()
+            })
+    }
+
     pub fn column_defs(&self) -> Vec<ColumnDef> {
         self.columns
             .iter()
@@ -411,6 +444,7 @@ impl CatalogueTable {
                 IndexKind::Unique => format!("UNIQUE KEY {} ({cols})", sql_ident(&index.name)),
                 IndexKind::Index => format!("KEY {} ({cols})", sql_ident(&index.name)),
                 IndexKind::Fulltext => format!("FULLTEXT KEY {} ({cols})", sql_ident(&index.name)),
+                IndexKind::Spatial => format!("SPATIAL KEY {} ({cols})", sql_ident(&index.name)),
             });
         }
         let collate = self

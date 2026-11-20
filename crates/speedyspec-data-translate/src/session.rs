@@ -65,8 +65,16 @@ impl SessionVars {
             .insert(name.to_ascii_lowercase(), value.to_string());
     }
 
-    /// `SET NAMES charset [COLLATE collation]`.
+    /// `SET NAMES charset [COLLATE collation]`; MySQL 8.4 reports the `utf8` alias by its real name, `utf8mb3`.
     pub fn set_names(&mut self, charset: &str, collation: Option<&str>) {
+        let real = |name: &str| match name.strip_prefix("utf8_") {
+            Some(rest) => format!("utf8mb3_{rest}"),
+            None if name.eq_ignore_ascii_case("utf8") => "utf8mb3".to_string(),
+            None => name.to_string(),
+        };
+        let charset = real(charset);
+        let collation = collation.map(real);
+        let (charset, collation) = (charset.as_str(), collation.as_deref());
         for name in [
             "character_set_client",
             "character_set_connection",

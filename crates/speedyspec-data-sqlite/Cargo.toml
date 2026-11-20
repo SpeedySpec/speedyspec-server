@@ -19,6 +19,7 @@ unicode-normalization = "0.1.26"
 uuid = { version = "1.29.3", features = ["v4"] }
 
 [dev-dependencies]
+speedyspec-data-corpus = { path = "../speedyspec-data-corpus" }
 speedyspec-data-conformance = { path = "../speedyspec-data-conformance" }
 tempfile = "3"
 speedyspec-data-translate = { path = "../speedyspec-data-translate", features = ["testing"] }

@@ -30,8 +30,7 @@ fn stmt(sql: &str) -> Result<Statement, DbError> {
     parse_one(sql)
 }
 
-/// The table as the catalogue describes it now. The introspector does not say which indexes are `FULLTEXT`, so
-/// those read as plain indexes.
+/// The table as the catalogue describes it now.
 fn current(table: &str, introspector: &dyn Introspector) -> Result<CatalogueTable, DbError> {
     let columns = introspector
         .columns(table)?
@@ -50,18 +49,21 @@ fn current(table: &str, introspector: &dyn Introspector) -> Result<CatalogueTabl
     let indexes = introspector
         .indexes(table)?
         .into_iter()
-        .map(|i| CatalogueIndex {
-            kind: if i.name == "PRIMARY" {
-                IndexKind::Primary
-            } else if i.unique {
-                IndexKind::Unique
-            } else {
-                IndexKind::Index
-            },
-            name: i.name,
-            parts: i.columns,
+        .map(|i| {
+            let kind = match introspector.index_type(table, &i.name)?.as_deref() {
+                _ if i.name == "PRIMARY" => IndexKind::Primary,
+                Some("FULLTEXT") => IndexKind::Fulltext,
+                Some("SPATIAL") => IndexKind::Spatial,
+                _ if i.unique => IndexKind::Unique,
+                _ => IndexKind::Index,
+            };
+            Ok(CatalogueIndex {
+                kind,
+                name: i.name,
+                parts: i.columns,
+            })
         })
-        .collect();
+        .collect::<Result<_, DbError>>()?;
     Ok(CatalogueTable {
         name: table.to_string(),
         collation: introspector.table_collation(table)?,
@@ -148,7 +150,8 @@ fn rebuild(new: &CatalogueTable, copies: &[(String, String)]) -> Result<Vec<Stat
         sql_ident(table)
     ))?);
     for index in &new.indexes {
-        if index.kind != IndexKind::Primary {
+        // FULLTEXT and SPATIAL indexes live in the catalogue only.
+        if matches!(index.kind, IndexKind::Unique | IndexKind::Index) {
             out.push(create_index(table, index)?);
         }
     }
@@ -196,8 +199,11 @@ impl SqliteAlter {
         original: &Statement,
     ) -> Result<Rewrite, DbError> {
         let (column, primary, _) = column_of(def, old.collation.as_deref())?;
-        let previous = find(old, old_name)
-            .ok_or_else(|| unsupported("CHANGE of a column the table does not have"))?;
+        let previous = find(old, old_name).ok_or_else(|| DbError::Engine {
+            engine: String::new(),
+            code: Some("1054".into()),
+            message: format!("Unknown column '{old_name}' in '{}'", old.name),
+        })?;
         let mut new = old.clone();
         for c in &mut new.columns {
             if c.name.eq_ignore_ascii_case(old_name) {
@@ -336,8 +342,11 @@ impl SqliteAlter {
                     sql_ident(table),
                     sql_ident(&to)
                 ))?];
-                for index in old.indexes.iter().filter(|i| i.kind != IndexKind::Primary) {
-                    // A FULLTEXT index lives only in the catalogue; IF EXISTS lets its drop pass.
+                for index in old
+                    .indexes
+                    .iter()
+                    .filter(|i| matches!(i.kind, IndexKind::Unique | IndexKind::Index))
+                {
                     out.push(stmt(&format!(
                         "DROP INDEX IF EXISTS {}",
                         sql_ident(&index_object_name(table, &index.name))

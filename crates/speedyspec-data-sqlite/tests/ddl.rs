@@ -200,3 +200,33 @@ fn ddl_steps_run_on_sqlite() {
         .unwrap();
     assert_eq!(triggers, 1);
 }
+
+#[test]
+fn rename_keeps_fulltext_in_the_catalogue_only() {
+    let ddl = [
+        "CREATE TABLE a (id int NOT NULL, x text, PRIMARY KEY (id), KEY k (x(10)), FULLTEXT KEY ft (x))",
+    ];
+    let steps = plan_steps("ALTER TABLE a RENAME TO b", &ddl);
+    assert!(
+        !steps
+            .iter()
+            .any(|s| s.contains("a__ft") || s.contains("b__ft")),
+        "{steps:?}"
+    );
+    assert!(steps.iter().any(|s| s.contains("\"b__k\"")), "{steps:?}");
+}
+
+#[test]
+fn change_of_a_missing_column_is_mysqls_error() {
+    let introspector = speedyspec_data_translate::testing::StaticIntrospector::from_mysql_ddl(&[
+        "CREATE TABLE t (a int)",
+    ]);
+    let stmt = parse_one("ALTER TABLE t CHANGE COLUMN b b int").unwrap();
+    let err = SqliteDialect::new()
+        .plan(&stmt, Some(&introspector))
+        .unwrap_err();
+    assert!(
+        matches!(&err, DbError::Engine { code: Some(c), message, .. } if c == "1054" && message == "Unknown column 'b' in 't'"),
+        "{err:?}"
+    );
+}

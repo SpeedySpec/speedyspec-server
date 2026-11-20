@@ -12,7 +12,7 @@ use sqlparser::ast::{
 use crate::names::{literal_text, object_name};
 
 /// `SHOW …`, `DESCRIBE`, `SET NAMES`, `SET [SESSION] name = literal`, `SELECT FOUND_ROWS()`, and the statements MySQL
-/// runs for their side effects only (`LOCK`/`UNLOCK TABLES`, `ANALYZE TABLE`, `SET autocommit = 1`), as emulations.
+/// runs for their side effects only (`LOCK`/`UNLOCK TABLES`, `ANALYZE TABLE`), as emulations.
 pub struct AdminPass;
 
 fn unsupported(construct: &str, target: DialectKind) -> DbError {
@@ -116,6 +116,10 @@ fn emulate(tree: &Ast, target: DialectKind) -> Result<Option<EmulatedOp>, DbErro
             like: match filter {
                 Some(ShowStatementFilter::Like(p)) => Some(p.clone()),
                 None => None,
+                Some(ShowStatementFilter::Where(condition)) => Some(
+                    variable_name_pattern(condition)
+                        .ok_or_else(|| unsupported("SHOW VARIABLES WHERE", target))?,
+                ),
                 Some(_) => return Err(unsupported("SHOW VARIABLES WHERE", target)),
             },
         },
@@ -193,21 +197,50 @@ fn emulate(tree: &Ast, target: DialectKind) -> Result<Option<EmulatedOp>, DbErro
                 .map(literal_text)
                 .collect::<Vec<_>>()
                 .join(", ");
-            if name == "autocommit" {
-                if value == "1" || value.eq_ignore_ascii_case("on") {
-                    EmulatedOp::Noop
-                } else {
-                    return Err(unsupported("SET autocommit = 0", target));
-                }
-            } else {
-                EmulatedOp::SetSession { name, value }
-            }
+            // `autocommit` is a SetSession like any variable; the engine opens or ends the transaction it implies.
+            EmulatedOp::SetSession { name, value }
         }
         Ast::Set(_) => return Err(unsupported("this form of SET", target)),
         Ast::LockTables { .. } | Ast::UnlockTables | Ast::Analyze(_) => EmulatedOp::Noop,
+        // The engine has one database: it accepts its own name and refuses others, as MySQL refuses an unknown one.
+        Ast::Use(sqlparser::ast::Use::Object(name) | sqlparser::ast::Use::Database(name)) => {
+            EmulatedOp::SetSession {
+                name: "database".into(),
+                value: object_name(name),
+            }
+        }
         query if bare_found_rows(query) => EmulatedOp::FoundRows,
         _ => return Ok(None),
     }))
+}
+
+/// `Variable_name = 'x'` as the `LIKE` pattern matching exactly `x`, and `Variable_name LIKE 'p'` as `p`.
+fn variable_name_pattern(condition: &sqlparser::ast::Expr) -> Option<String> {
+    use sqlparser::ast::{BinaryOperator, Expr};
+    let is_name = |e: &Expr| matches!(e, Expr::Identifier(i) if i.value.eq_ignore_ascii_case("variable_name"));
+    match condition {
+        Expr::BinaryOp {
+            left,
+            op: BinaryOperator::Eq,
+            right,
+        } if is_name(left) => {
+            let exact = literal_text(right);
+            Some(
+                exact
+                    .replace('\\', "\\\\")
+                    .replace('%', "\\%")
+                    .replace('_', "\\_"),
+            )
+        }
+        Expr::Like {
+            negated: false,
+            expr,
+            pattern,
+            escape_char: None,
+            ..
+        } if is_name(expr) => Some(literal_text(pattern)),
+        _ => None,
+    }
 }
 
 impl RewritePass for AdminPass {

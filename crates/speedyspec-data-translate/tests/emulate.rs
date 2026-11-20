@@ -316,3 +316,59 @@ fn mysql_like_rules() {
     assert!(mysql_like(r"100\%", "100%", false));
     assert!(mysql_like("", "", false));
 }
+
+#[test]
+fn fulltext_and_spatial_index_types() {
+    let schema = StaticIntrospector::from_mysql_ddl(&[
+        "CREATE TABLE t (id int NOT NULL, body text, g geometry NOT NULL, PRIMARY KEY (id), FULLTEXT KEY ft (body), SPATIAL KEY sp (g))",
+    ]);
+    let mut session = session();
+    let index = answer_emulated(
+        &EmulatedOp::ShowIndex { table: "t".into() },
+        &schema,
+        &mut session,
+        0,
+    )
+    .unwrap();
+    let kind = |name: &str| {
+        index
+            .rows
+            .iter()
+            .find(|r| r.get("Key_name") == Some(&t(name)))
+            .and_then(|r| r.get("Index_type").cloned())
+    };
+    assert_eq!(
+        (kind("PRIMARY"), kind("ft"), kind("sp")),
+        (Some(t("BTREE")), Some(t("FULLTEXT")), Some(t("SPATIAL")))
+    );
+    let create = answer_emulated(
+        &EmulatedOp::ShowCreateTable { table: "t".into() },
+        &schema,
+        &mut session,
+        0,
+    )
+    .unwrap();
+    let text = match &values(&create, 0)[1] {
+        DbValue::Text(s) => s.clone(),
+        other => panic!("{other:?}"),
+    };
+    assert!(text.contains("  FULLTEXT KEY `ft` (`body`)"), "{text}");
+    assert!(text.contains("  SPATIAL KEY `sp` (`g`)"), "{text}");
+}
+
+/// MySQL 8.4 reports the `utf8` alias by its real name, `utf8mb3`.
+#[test]
+fn set_names_utf8_reads_as_utf8mb3() {
+    let mut session = session();
+    session.set_names("utf8", Some("utf8_general_ci"));
+    assert_eq!(
+        session.get("collation_connection"),
+        Some("utf8mb3_general_ci")
+    );
+    assert_eq!(session.get("character_set_client"), Some("utf8mb3"));
+    session.set_names("utf8", None);
+    assert_eq!(
+        session.get("collation_connection"),
+        Some("utf8mb3_general_ci")
+    );
+}

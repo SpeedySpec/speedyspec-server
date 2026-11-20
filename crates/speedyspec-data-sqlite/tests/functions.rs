@@ -197,3 +197,19 @@ fn session() {
     assert_eq!(one(&conn, "SELECT version()"), text("8.4.0"));
     assert_eq!(one(&conn, "SELECT database()"), text("wordpress"));
 }
+
+#[test]
+fn utf8mb3_drops_four_byte_characters() {
+    let conn = Connection::open_in_memory().unwrap();
+    speedyspec_data_sqlite::register(
+        &conn,
+        std::sync::Arc::new(std::sync::Mutex::new(
+            speedyspec_data_translate::SessionVars::mysql_defaults("main", "8.4.0"),
+        )),
+    )
+    .unwrap();
+    let out: String = conn
+        .query_row("SELECT speedyspec_utf8mb3('a😈é')", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(out, "a?é");
+}

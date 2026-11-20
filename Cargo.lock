@@ -4187,6 +4187,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-data-corpus"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "speedyspec-compat",
+ "speedyspec-data",
+ "speedyspec-data-query",
+ "sqlparser",
+]
+
+[[package]]
 name = "speedyspec-data-mysql"
 version = "0.1.0"
 dependencies = [
@@ -4215,6 +4227,7 @@ dependencies = [
  "rusqlite",
  "speedyspec-data",
  "speedyspec-data-conformance",
+ "speedyspec-data-corpus",
  "speedyspec-data-query",
  "speedyspec-data-translate",
  "sqlparser",
@@ -4566,6 +4579,7 @@ dependencies = [
  "speedyspec-data",
  "speedyspec-data-mysql",
  "speedyspec-data-query",
+ "speedyspec-data-sqlite",
  "speedyspec-hooks-memory",
  "speedyspec-php",
  "speedyspec-php-ext",

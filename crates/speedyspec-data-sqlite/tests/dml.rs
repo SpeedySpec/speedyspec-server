@@ -512,3 +512,19 @@ fn dml_steps_run_on_sqlite() {
         .unwrap();
     assert_eq!(left, 2);
 }
+
+#[test]
+fn convert_using_unicode_and_binary() {
+    one(
+        "SELECT CONVERT(post_title USING utf8mb4), CONVERT(post_title USING utf8), CONVERT(post_title USING binary) FROM wp_posts",
+        vec![],
+        r#"SELECT "post_title", speedyspec_utf8mb3("post_title"), CAST("post_title" AS BLOB) FROM "wp_posts""#,
+    );
+    assert_eq!(
+        plan_error(
+            "SELECT CONVERT(post_title USING koi8r) FROM wp_posts",
+            SCHEMA
+        ),
+        unsupported("CONVERT ... USING a non-Unicode charset")
+    );
+}

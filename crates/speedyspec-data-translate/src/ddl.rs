@@ -101,8 +101,8 @@ impl Ddl<'_> {
             parts: cols,
         };
         match kind {
-            IndexKind::Fulltext => {
-                // Only the catalogue knows a FULLTEXT index; adding one it already has changes nothing.
+            IndexKind::Fulltext | IndexKind::Spatial => {
+                // Only the catalogue knows a FULLTEXT or SPATIAL index; adding one it already has changes nothing.
                 if existing.iter().any(|n| n.eq_ignore_ascii_case(&index.name)) {
                     return Ok(());
                 }
@@ -156,7 +156,7 @@ impl Ddl<'_> {
                     if f.fulltext {
                         IndexKind::Fulltext
                     } else {
-                        IndexKind::Index
+                        IndexKind::Spatial
                     },
                     f.opt_index_name.as_ref().map(|n| n.value.clone()),
                     parts(&f.columns),

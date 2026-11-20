@@ -228,7 +228,37 @@ fn admin_emulations() {
         ("LOCK TABLES t WRITE", EmulatedOp::Noop),
         ("UNLOCK TABLES", EmulatedOp::Noop),
         ("ANALYZE TABLE t", EmulatedOp::Noop),
-        ("SET autocommit = 1", EmulatedOp::Noop),
+        (
+            "SET autocommit = 1",
+            EmulatedOp::SetSession {
+                name: "autocommit".into(),
+                value: "1".into(),
+            },
+        ),
+        (
+            "SET autocommit = 0",
+            EmulatedOp::SetSession {
+                name: "autocommit".into(),
+                value: "0".into(),
+            },
+        ),
+        (
+            "SHOW VARIABLES WHERE Variable_name='collation_connection'",
+            EmulatedOp::ShowVariables {
+                like: like("collation\\_connection"),
+            },
+        ),
+        (
+            "USE `wordpress`",
+            EmulatedOp::SetSession {
+                name: "database".into(),
+                value: "wordpress".into(),
+            },
+        ),
+        (
+            "SHOW VARIABLES WHERE Variable_name LIKE 'max%'",
+            EmulatedOp::ShowVariables { like: like("max%") },
+        ),
     ] {
         assert_eq!(emulated(sql), op, "{sql}");
     }
@@ -238,7 +268,7 @@ fn admin_emulations() {
 fn admin_refusals() {
     for (sql, construct) in [
         ("SET @a = 1", "user variable"),
-        ("SET autocommit = 0", "SET autocommit = 0"),
+        ("SHOW VARIABLES WHERE Value = 'x'", "SHOW VARIABLES WHERE"),
         ("SELECT FOUND_ROWS() + 1", "FOUND_ROWS() in an expression"),
         (
             "SHOW TABLE STATUS LIKE 'wp_%'",

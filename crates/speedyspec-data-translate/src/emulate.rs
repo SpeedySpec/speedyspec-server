@@ -43,11 +43,28 @@ fn charset_of(collation: &str) -> &str {
     collation.split('_').next().unwrap_or(collation)
 }
 
+/// The table's indexes, each with MySQL's `Index_type`.
+fn typed_indexes(
+    introspector: &dyn Introspector,
+    table: &str,
+) -> Result<Vec<(IndexDef, String)>, DbError> {
+    introspector
+        .indexes(table)?
+        .into_iter()
+        .map(|i| {
+            let kind = introspector
+                .index_type(table, &i.name)?
+                .unwrap_or_else(|| "BTREE".into());
+            Ok((i, kind))
+        })
+        .collect()
+}
+
 /// `SHOW CREATE TABLE`'s text, in MySQL 8.4's layout.
 pub fn render_create_table(
     table: &str,
     columns: &[ColumnDef],
-    indexes: &[IndexDef],
+    indexes: &[(IndexDef, String)],
     collation: Option<&str>,
 ) -> String {
     let mut lines: Vec<String> = Vec::new();
@@ -77,7 +94,7 @@ pub fn render_create_table(
         }
         lines.push(line);
     }
-    for index in indexes {
+    for (index, kind) in indexes {
         let cols: Vec<String> = index
             .columns
             .iter()
@@ -91,6 +108,8 @@ pub fn render_create_table(
             format!("  PRIMARY KEY ({cols})")
         } else if index.unique {
             format!("  UNIQUE KEY `{}` ({cols})", index.name)
+        } else if kind == "FULLTEXT" || kind == "SPATIAL" {
+            format!("  {kind} KEY `{}` ({cols})", index.name)
         } else {
             format!("  KEY `{}` ({cols})", index.name)
         });
@@ -200,7 +219,8 @@ pub fn answer_emulated(
                     .any(|c| c.name.eq_ignore_ascii_case(name) && c.nullable)
             };
             let mut out = Vec::new();
-            for index in introspector.indexes(table)? {
+            for (index, kind) in typed_indexes(introspector, table)? {
+                let typed = kind != "BTREE";
                 for (seq, (column, sub)) in index.columns.iter().enumerate() {
                     out.push(vec![
                         t(table),
@@ -208,12 +228,13 @@ pub fn answer_emulated(
                         t(&index.name),
                         DbValue::Int(seq as i64 + 1),
                         t(column),
-                        t("A"),
+                        // MySQL leaves a FULLTEXT or SPATIAL index's Collation empty.
+                        if typed { DbValue::Null } else { t("A") },
                         DbValue::Int(0),
                         sub.map_or(DbValue::Null, |n| DbValue::Int(i64::from(n))),
                         DbValue::Null,
                         t(if nullable(column) { "YES" } else { "" }),
-                        t("BTREE"),
+                        t(&kind),
                         t(""),
                         t(""),
                         t("YES"),
@@ -246,7 +267,7 @@ pub fn answer_emulated(
             let text = render_create_table(
                 table,
                 &introspector.columns(table)?,
-                &introspector.indexes(table)?,
+                &typed_indexes(introspector, table)?,
                 introspector.table_collation(table)?.as_deref(),
             );
             rows(
