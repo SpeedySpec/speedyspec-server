@@ -7,8 +7,8 @@ use speedyspec_wp_hooks::{
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
 use speedyspec_wp_options::{
-    Deprecations, FILTER_DEFAULT_OPTION, OptionsApi, OptionsDeps, OptionsError, SettingArgsInput,
-    SettingsRegistry,
+    ArgsParsing, Deprecations, FILTER_DEFAULT_OPTION, OptionsApi, OptionsDeps, OptionsError,
+    SettingArgsInput, SettingsRegistry, SettingsStore,
 };
 use speedyspec_wp_options_memory::{MemoryOptionRepository, MemorySettingsStore};
 
@@ -259,6 +259,53 @@ fn args_filter_sees_raw_args() {
         ]
     );
     assert_eq!((seen[2].clone(), seen[3].clone()), (s("g"), s("n")));
+}
+
+/// Parses `type=integer&default=3` as PHP's `parse_str` would, for the query-string test.
+struct QueryString;
+impl ArgsParsing for QueryString {
+    fn parse_args(&self, args: &HookValue) -> HookValue {
+        match args {
+            HookValue::Str(q) => HookValue::Array(
+                q.split('&')
+                    .filter_map(|pair| pair.split_once('='))
+                    .map(|(k, v)| (Key::Str(k.into()), s(v)))
+                    .collect(),
+            ),
+            _ => HookValue::Array(Vec::new()),
+        }
+    }
+}
+
+#[test]
+fn query_string_args_reach_the_filter_raw_then_are_parsed() {
+    let r = rig();
+    let registry = SettingsRegistry::new(r.store.clone(), r.hooks.clone(), r.notices.clone())
+        .with_args_parsing(Rc::new(QueryString));
+    let seen: Rc<RefCell<Vec<HookValue>>> = Rc::default();
+    let log = seen.clone();
+    r.hooks
+        .add_filter(
+            &HookName::from("register_setting_args"),
+            Callback::rust("see", move |args: &[HookValue]| {
+                log.borrow_mut().push(args[0].clone());
+                Ok(args[0].clone())
+            }),
+            &HookValue::Int(10),
+            1,
+        )
+        .unwrap();
+    registry
+        .register_setting(
+            "g",
+            "q",
+            SettingArgsInput::Other(s("type=integer&default=3")),
+        )
+        .unwrap();
+    assert_eq!(seen.borrow()[0], s("type=integer&default=3"));
+    let registered = r.store.get("q").unwrap();
+    assert_eq!(field(&registered, "type"), Some(s("integer")));
+    assert_eq!(field(&registered, "default"), Some(s("3")));
 }
 
 #[test]

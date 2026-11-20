@@ -42,6 +42,7 @@ pub use adapters::{
 pub use codec::PhpCodec;
 pub use ports::PhpExternalObjectCache;
 pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
+pub use settings::PhpArgsParsing;
 pub use settings_store::PhpSettingsStore;
 
 /// Runs the options scenarios through the native functions (the port side of `compat/options`), over `release`
@@ -139,11 +140,10 @@ impl OptionsArea {
             },
         ));
         register_transient_handlers(&container, transients);
-        let settings = Rc::new(SettingsRegistry::new(
-            Rc::new(PhpSettingsStore),
-            hooks,
-            Rc::new(PhpDeprecations),
-        ));
+        let settings = Rc::new(
+            SettingsRegistry::new(Rc::new(PhpSettingsStore), hooks, Rc::new(PhpDeprecations))
+                .with_args_parsing(Rc::new(settings::PhpArgsParsing)),
+        );
         register_settings_handlers(&container, settings);
         let shared = Rc::new(Shared {
             handlers: native::Handlers::new(&container),

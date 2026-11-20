@@ -1,13 +1,13 @@
 //! The settings functions, native. `register_setting`'s `$args`: a callable is its sanitize callback; an array is
-//! taken as it is (a callable `sanitize_callback` in it carried as a `Callback`); anything else goes through
-//! `wp_parse_args` first, as WordPress's own `wp_parse_args( $args, $defaults )` would take it.
+//! taken as it is (a callable `sanitize_callback` in it carried as a `Callback`); anything else reaches
+//! `register_setting_args` as given and is then parsed by `wp_parse_args` (`PhpArgsParsing`), as in WordPress.
 
 use std::rc::Rc;
 
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_wp_hooks_php::php_callback;
 use speedyspec_wp_options::{
-    FilterDefaultOption, GetRegisteredSettings, RegisterSetting, SettingArgsInput,
+    ArgsParsing, FilterDefaultOption, GetRegisteredSettings, RegisterSetting, SettingArgsInput,
     UnregisterSetting, php_empty,
 };
 
@@ -19,24 +19,9 @@ fn callable(v: &Value) -> bool {
     call("is_callable", std::slice::from_ref(v)).is_ok_and(|r| truthy(&r))
 }
 
-fn args_input(args: Value) -> SettingArgsInput {
-    if callable(&args) {
-        return SettingArgsInput::Callable(php_callback(args));
-    }
-    let array = match args.read().into_owned() {
-        Value::Array(items) => items,
-        other if exists("wp_parse_args").unwrap_or(false) => {
-            match call("wp_parse_args", &[other]) {
-                Ok(v) => match v.read().into_owned() {
-                    Value::Array(items) => items,
-                    _ => Vec::new(),
-                },
-                Err(_) => Vec::new(),
-            }
-        }
-        _ => Vec::new(),
-    };
-    SettingArgsInput::Array(Value::Array(
+/// An args array with a non-empty `sanitize_callback` carried as a `Callback`, as the registry adds it.
+fn with_callbacks(array: Vec<(Key, Value)>) -> Value {
+    Value::Array(
         array
             .into_iter()
             .map(|(k, v)| {
@@ -49,7 +34,32 @@ fn args_input(args: Value) -> SettingArgsInput {
                 }
             })
             .collect(),
-    ))
+    )
+}
+
+fn args_input(args: Value) -> SettingArgsInput {
+    if callable(&args) {
+        return SettingArgsInput::Callable(php_callback(args));
+    }
+    match args.read().into_owned() {
+        Value::Array(items) => SettingArgsInput::Array(with_callbacks(items)),
+        other => SettingArgsInput::Other(other),
+    }
+}
+
+/// `wp_parse_args()` of arguments that are not an array, in PHP (a query string goes through `wp_parse_str`).
+pub struct PhpArgsParsing;
+
+impl ArgsParsing for PhpArgsParsing {
+    fn parse_args(&self, args: &Value) -> Value {
+        if !exists("wp_parse_args").unwrap_or(false) {
+            return Value::Array(Vec::new());
+        }
+        match call("wp_parse_args", std::slice::from_ref(args)).map(|v| v.read().into_owned()) {
+            Ok(Value::Array(items)) => with_callbacks(items),
+            _ => Value::Array(Vec::new()),
+        }
+    }
 }
 
 pub(crate) fn entries() -> Vec<(&'static str, Native)> {

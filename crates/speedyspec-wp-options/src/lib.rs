@@ -64,7 +64,10 @@ pub use ports::{
     Deprecations, Installing, Multisite, OptionGroups, OptionRepository, ProtectedOptions,
     Sanitizing, ValueCodec,
 };
-pub use settings::{FILTER_DEFAULT_OPTION, SettingArgsInput, SettingsRegistry, SettingsStore};
+pub use settings::{
+    ArgsParsing, FILTER_DEFAULT_OPTION, NoArgsParsing, SettingArgsInput, SettingsRegistry,
+    SettingsStore,
+};
 pub use settings_messages::{
     FilterDefaultOption, GetRegisteredSettings, RegisterSetting, UnregisterSetting,
     register_settings_handlers,

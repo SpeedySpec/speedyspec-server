@@ -21,11 +21,28 @@ pub trait SettingsStore {
     fn disallow(&self, group: &str, name: &str);
 }
 
-/// `register_setting()`'s `$args`: an array, or a callable that becomes its `sanitize_callback`.
+/// `register_setting()`'s `$args`: an array, a callable that becomes its `sanitize_callback`, or anything else (a
+/// query string), which `register_setting_args` sees as given and `wp_parse_args` then parses.
 #[derive(Clone, Debug)]
 pub enum SettingArgsInput {
     Array(HookValue),
     Callable(Callback),
+    Other(HookValue),
+}
+
+/// `wp_parse_args()` of arguments that are not an array (a query string, through PHP's `parse_str`): unported
+/// WordPress, so a port. The array it returns is then merged over the defaults.
+pub trait ArgsParsing {
+    fn parse_args(&self, args: &HookValue) -> HookValue;
+}
+
+/// Without PHP, arguments that are not an array count as none.
+pub struct NoArgsParsing;
+
+impl ArgsParsing for NoArgsParsing {
+    fn parse_args(&self, _args: &HookValue) -> HookValue {
+        HookValue::Array(Vec::new())
+    }
 }
 
 /// The function name `register_setting()` adds to `default_option_{$name}`.
@@ -46,14 +63,17 @@ fn entry<'a>(array: &'a HookValue, name: &str) -> Option<&'a HookValue> {
 }
 
 /// `wp_parse_args( $args, $defaults )`: the defaults' keys first (the args' values winning), then the args' other
-/// keys in their order. Arguments that are not an array count as none.
-fn parse_args(args: &HookValue, defaults: &HookValue) -> HookValue {
+/// keys in their order. Arguments that are not an array go through `parsing` first.
+fn parse_args(args: &HookValue, defaults: &HookValue, parsing: &dyn ArgsParsing) -> HookValue {
     let (HookValue::Array(defaults), args) = (defaults, args.read().into_owned()) else {
         unreachable!("the defaults are an array")
     };
     let args = match args {
         HookValue::Array(items) => items,
-        _ => Vec::new(),
+        other => match parsing.parse_args(&other).read().into_owned() {
+            HookValue::Array(items) => items,
+            _ => Vec::new(),
+        },
     };
     let mut out = defaults.clone();
     for (k, v) in args {
@@ -108,6 +128,7 @@ pub struct SettingsRegistry {
     store: Rc<dyn SettingsStore>,
     hooks: Rc<HookApi>,
     deprecations: Rc<dyn Deprecations>,
+    parsing: Rc<dyn ArgsParsing>,
 }
 
 impl SettingsRegistry {
@@ -120,7 +141,14 @@ impl SettingsRegistry {
             store,
             hooks,
             deprecations,
+            parsing: Rc::new(NoArgsParsing),
         }
+    }
+
+    /// Parses arguments that are not an array as WordPress's `wp_parse_args()` does (the PHP adapter).
+    pub fn with_args_parsing(mut self, parsing: Rc<dyn ArgsParsing>) -> SettingsRegistry {
+        self.parsing = parsing;
+        self
     }
 
     /// `misc` and `privacy` are gone: deprecated, and replaced by `general` and `reading`.
@@ -151,7 +179,7 @@ impl SettingsRegistry {
             (Key::Str("show_in_rest".into()), HookValue::Bool(false)),
         ]);
         let args = match args {
-            SettingArgsInput::Array(v) => v,
+            SettingArgsInput::Array(v) | SettingArgsInput::Other(v) => v,
             SettingArgsInput::Callable(cb) => HookValue::Array(vec![(
                 Key::Str("sanitize_callback".into()),
                 HookValue::Opaque(Rc::new(cb)),
@@ -162,7 +190,7 @@ impl SettingsRegistry {
             args,
             vec![defaults.clone(), s(group), s(name)],
         )?;
-        let args = parse_args(&args, &defaults);
+        let args = parse_args(&args, &defaults, &*self.parsing);
         let show_in_rest = entry(&args, "show_in_rest")
             .cloned()
             .unwrap_or(HookValue::Bool(false));
