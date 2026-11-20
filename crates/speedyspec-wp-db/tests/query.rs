@@ -254,6 +254,8 @@ fn connection_error_retries_once() {
         engine: "default".into(),
         message: "gone".into(),
     }));
+    // check_connection's SELECT 1, then the query once more.
+    r.store.answer(Answer::Rows(rows(&["1"], &[&[Some("1")]])));
     r.store.answer(Answer::Rows(rows(&["a"], &[&[Some("1")]])));
     assert!(
         matches!(r.db.query("SELECT a FROM t").unwrap(), QueryOutcome::Rows(rows) if rows.len() == 1)
@@ -285,4 +287,42 @@ fn binary_text_reaches_store_as_bytes() {
         insert.2,
         vec![speedyspec_data::DbValue::Bytes(vec![0xE9, 0x00, 0xFF])]
     );
+}
+
+#[test]
+fn connection_error_does_not_resend_blindly() {
+    let r = rig();
+    r.db.set_reconnect(1, std::time::Duration::ZERO);
+    r.store.answer(Answer::Err(DbError::Connection {
+        engine: "default".into(),
+        message: "lost".into(),
+    }));
+    r.store.answer(Answer::Rows(rows(&["1"], &[&[Some("1")]])));
+    r.store.answer(Answer::Exec(ExecResult {
+        rows_affected: 1,
+        insert_id: None,
+    }));
+    let _ = r.db.query("UPDATE t SET n = n + 1");
+    let updates = r
+        .store
+        .texts()
+        .iter()
+        .filter(|t| t.starts_with("UPDATE"))
+        .count();
+    assert!(updates <= 2, "sent {updates} times: {:?}", r.store.texts());
+    assert_eq!(
+        r.store.texts()[1],
+        "SELECT 1",
+        "the connection is checked before any resend: {:?}",
+        r.store.texts()
+    );
+}
+
+#[test]
+fn hook_exceptions_reach_the_caller() {
+    let r = rig();
+    filter(&r.hooks, "query", "throws", |_| {
+        Err(speedyspec_wp_hooks::HookError::message("boom"))
+    });
+    assert!(matches!(r.db.query("SELECT 1"), Err(WpDbError::Hook(e)) if e.message == "boom"));
 }

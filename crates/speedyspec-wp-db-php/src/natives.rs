@@ -373,15 +373,13 @@ fn n_get_results(args: &[Value]) -> R {
     Ok(match (results, shape) {
         (None, _) | (_, None) => Value::Null,
         (Some(_), Some(OutputShape::Object)) => list(vec![Value::Str("o".into())]),
-        (Some(Shaped::Keyed(keyed)), _) => {
-            let rows = c.db.with_last_result(|rows| rows.to_vec());
-            let pairs = keyed
-                .into_iter()
-                .map(|(key, row)| {
-                    let index = rows.iter().position(|r| *r == row).unwrap_or(0);
-                    list(vec![bytes_value(key), Value::Int(index as i64)])
-                })
-                .collect();
+        (Some(Shaped::Keyed(_)), _) => {
+            let pairs = c.db.with_last_result(|rows| {
+                keyed_rows(rows)
+                    .into_iter()
+                    .map(|(key, index)| list(vec![bytes_value(key), Value::Int(index as i64)]))
+                    .collect()
+            });
             list(vec![Value::Str("k".into()), list(pairs)])
         }
         (Some(Shaped::List(rows)), Some(s)) => list(vec![
@@ -1020,12 +1018,30 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
         .into_iter()
         .map(|(name, f)| {
             native::function(&format!("{NATIVE}{name}"), move |args: &[Value]| {
+                // Nothing left over from a call that did not come from PHP.
+                let _ = crate::host::take_pending();
+                let _ = speedyspec_wp_db::take_hook_error();
                 let result = f(args);
-                // An exception a WordPress function threw during the call (`wp_die()`) reaches PHP.
-                match crate::host::take_pending() {
-                    Some(exception) => Err(NativeError::Rethrow(exception)),
-                    None => result,
+                // An exception a WordPress function (`wp_die()`) or a hook callback threw during the call reaches
+                // PHP, where wpdb's own result would have hidden it behind `false`.
+                if let Some(exception) = crate::host::take_pending() {
+                    return Err(NativeError::Rethrow(exception));
                 }
+                if let Some(hook) = speedyspec_wp_db::take_hook_error() {
+                    return Err(
+                        match hook
+                            .payload
+                            .as_ref()
+                            .and_then(|p| p.downcast_ref::<Value>())
+                        {
+                            Some(exception) => NativeError::Rethrow(exception.clone()),
+                            // Any other payload is PHP unwinding (an exit); there is nothing to throw.
+                            None if hook.payload.is_some() => NativeError::Silent,
+                            None => NativeError::throw("Error", hook.message),
+                        },
+                    );
+                }
+                result
             })
         })
         .collect()

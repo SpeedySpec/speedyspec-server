@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// mysqli's numeric code for a field type, from the name `ColumnInfo::sql_type` carries.
-fn type_code(name: &str) -> i64 {
+pub(crate) fn type_code(name: &str) -> i64 {
     let name = name.trim_start_matches("MYSQL_TYPE_");
     match name {
         "DECIMAL" => 0,

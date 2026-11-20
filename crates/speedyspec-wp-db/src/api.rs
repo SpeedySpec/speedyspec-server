@@ -68,6 +68,7 @@ pub struct WpDb {
     pub(crate) escape: PlaceholderEscape,
     pub(crate) tables: RefCell<TableNames>,
     pub(crate) settings: RefCell<Settings>,
+    pub(crate) overrides: RefCell<std::collections::HashMap<String, WpValue>>,
     query_hook: HookName,
     statement_hook: HookName,
 }
@@ -114,6 +115,7 @@ impl WpDb {
             escape,
             tables: RefCell::new(TableNames::new()),
             settings: RefCell::new(Settings::fresh()),
+            overrides: RefCell::new(std::collections::HashMap::new()),
             query_hook: HookName::from("query"),
             statement_hook: HookName::from("speedyspec_query_statement"),
         }
@@ -158,6 +160,7 @@ impl WpDb {
             ..Settings::fresh()
         };
         *self.tables.borrow_mut() = TableNames::new();
+        self.overrides.borrow_mut().clear();
     }
 
     /// The timed store, for Rust callers sharing the connection.
@@ -402,16 +405,16 @@ impl WpDb {
 
     fn execute(&self, stmt: Statement, class: QueryClass) -> Result<QueryOutcome, WpDbError> {
         let stmt = self.filter_statement(stmt)?;
+        let in_transaction = self.store.in_transaction();
         let mut result = self.run(&stmt);
+        // WordPress's rule: when the connection went away, check it and run the query once more. The store may
+        // have applied a write before the connection dropped, and a transaction is gone with its connection, so
+        // nothing is resent blindly and nothing is resent inside a transaction.
         if matches!(result, Err(DbError::Connection { .. })) {
-            result = self.run(&stmt);
-            if matches!(result, Err(DbError::Connection { .. })) {
-                if self.check_connection(true).unwrap_or(false) {
-                    result = self.run(&stmt);
-                } else {
-                    self.modify(|s| s.insert_id = 0);
-                    return Err(WpDbError::Db(result.err().expect("checked above")));
-                }
+            if !in_transaction && self.check_connection(true).unwrap_or(false) {
+                result = self.run(&stmt);
+            } else {
+                self.modify(|s| s.insert_id = 0);
             }
         }
         let result = match result {

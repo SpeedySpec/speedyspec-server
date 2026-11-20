@@ -470,7 +470,12 @@ namespace
             get => $this->speedyspec_last_result();
             set($value)
             {
-                N\prop_set($this->speedyspec_db, 'last_result', $value);
+                // The rows' properties go to the port; the objects themselves are handed out until the next result.
+                $value = is_array($value) ? $value : array();
+                $rows = array_map(static fn ($row) => is_object($row) ? get_object_vars($row) : (array) $row, $value);
+                N\prop_set($this->speedyspec_db, 'last_result', $rows);
+                [$this->speedyspec_generation] = N\last_result($this->speedyspec_db, -1);
+                $this->speedyspec_objects = array_values($value);
             }
         }
 

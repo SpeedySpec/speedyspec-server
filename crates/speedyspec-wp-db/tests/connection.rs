@@ -66,9 +66,9 @@ fn set_charset_is_not_counted() {
     r.state.read(&mut |s| n = s.num_queries);
     assert_eq!(n, 0);
     assert_eq!(r.hooks.did_filter(&HookName::from("query")).unwrap(), 0);
-    // The engine's own charset needs no SET NAMES.
+    // Every call sets the names: the session may have been switched since the engine opened it.
     r.db.set_charset(Some("utf8mb4"), None).unwrap();
-    assert_eq!(r.store.texts().len(), 2);
+    assert_eq!(r.store.texts().len(), 3);
 }
 
 #[test]
@@ -139,4 +139,17 @@ fn db_connect_sets_up_the_session() {
     assert!(texts.contains(&"USE `wp`".to_string()), "{texts:?}");
     assert_eq!(r.db.db_version().unwrap(), "8.4.3");
     assert!(r.db.has_cap("utf8mb4_520"));
+}
+
+#[test]
+fn restoring_the_charset_always_sets_names() {
+    let r = rig();
+    r.db.init_charset();
+    r.db.set_charset(Some("latin1"), Some("latin1_swedish_ci"))
+        .unwrap();
+    r.db.set_charset(None, None).unwrap();
+    assert_eq!(
+        r.store.texts().last().map(String::as_str),
+        Some("SET NAMES 'utf8mb4' COLLATE utf8mb4_unicode_520_ci")
+    );
 }

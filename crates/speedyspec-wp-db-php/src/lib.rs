@@ -196,6 +196,8 @@ impl NativeArea for WpDbArea {
     }
 
     fn request_start(&self) {
+        let _ = host::take_pending();
+        let _ = speedyspec_wp_db::take_hook_error();
         self.shared.global.reset_request();
         self.shared.memory.reset();
         self.shared.global.state().reset();
@@ -225,6 +227,9 @@ impl NativeArea for WpDbArea {
     }
 
     fn request_end(&self) {
+        // An exception parked by a call from Rust must not outlive its request.
+        let _ = host::take_pending();
+        let _ = speedyspec_wp_db::take_hook_error();
         INSTANCES.with(|i| i.borrow_mut().extra.clear());
     }
 }

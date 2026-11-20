@@ -7,7 +7,7 @@ mod config;
 mod error;
 
 pub use config::{DbHost, WpDbConfig};
-pub use error::WpDbError;
+pub use error::{WpDbError, take_hook_error};
 
 mod escape;
 mod php;
@@ -41,7 +41,7 @@ mod shape;
 mod state;
 
 pub use host::{HostCall, MemoryWpdbHost, WpdbHost};
-pub use shape::{LastQuery, OutputShape, Shaped, WpRow, var};
+pub use shape::{LastQuery, OutputShape, Shaped, WpRow, keyed_rows, var};
 pub use state::{ColumnMeta, LoggedQuery, MemoryWpdbState, RequestState, WPDB_STATE, WpdbState};
 
 mod api;

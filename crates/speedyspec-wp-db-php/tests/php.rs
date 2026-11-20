@@ -413,6 +413,18 @@ fn main() {
         r#"global $wpdb; return !($wpdb->dbh instanceof mysqli) && !empty($wpdb->dbh) && $wpdb->dbh instanceof \SpeedySpec\WpDb\Connection
             && $wpdb->is_mysql === true;"#,
     );
+    yes(
+        "hook_exception_reaches_php",
+        r#"global $wpdb; add_filter('query', function ($q) { throw new RuntimeException('boom'); });
+        try { $wpdb->query('SELECT 1'); $r = false; } catch (RuntimeException $e) { $r = $e->getMessage() === 'boom'; }
+        remove_all_filters('query'); return $r;"#,
+    );
+    yes(
+        "col_info_and_last_result_writes",
+        r#"global $wpdb; $wpdb->query('SELECT k, v FROM two'); $info = $wpdb->col_info;
+        $wpdb->last_result = [(object) ['a' => 'x']];
+        return is_array($info) && $info[0]->name === 'k' && $wpdb->get_var(null) === 'x' && $wpdb->last_result[0]->a === 'x';"#,
+    );
     let tmp = tempfile::tempdir().unwrap();
     std::fs::write(tmp.path().join("db.php"), "<?php").unwrap();
     let refused = WpDbArea::check_drop_in(tmp.path());

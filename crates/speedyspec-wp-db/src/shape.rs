@@ -67,23 +67,32 @@ pub enum Shaped {
 impl Shaped {
     pub fn of(rows: &[WpRow], shape: OutputShape) -> Shaped {
         match shape {
-            OutputShape::ObjectK => {
-                let mut keyed: Vec<(Vec<u8>, WpRow)> = Vec::new();
-                for row in rows {
-                    let key = row
-                        .fields
-                        .first()
-                        .and_then(|(_, v)| v.clone())
-                        .unwrap_or_default();
-                    if !keyed.iter().any(|(k, _)| *k == key) {
-                        keyed.push((key, row.clone()));
-                    }
-                }
-                Shaped::Keyed(keyed)
-            }
+            OutputShape::ObjectK => Shaped::Keyed(
+                keyed_rows(rows)
+                    .into_iter()
+                    .map(|(key, index)| (key, rows[index].clone()))
+                    .collect(),
+            ),
             _ => Shaped::List(rows.to_vec()),
         }
     }
+}
+
+/// `OBJECT_K`'s keys and the index of the first row with each, in order (one pass, keys hashed).
+pub fn keyed_rows(rows: &[WpRow]) -> Vec<(Vec<u8>, usize)> {
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for (index, row) in rows.iter().enumerate() {
+        let key = row
+            .fields
+            .first()
+            .and_then(|(_, v)| v.clone())
+            .unwrap_or_default();
+        if seen.insert(key.clone()) {
+            out.push((key, index));
+        }
+    }
+    out
 }
 
 /// `get_var`'s cell: null for a missing row or column, SQL NULL and `''`.

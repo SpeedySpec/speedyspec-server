@@ -102,6 +102,9 @@ impl WpDb {
     /// The property `name`, or `None` when `wpdb` has no such property. `last_result` is its rows as arrays,
     /// `col_info` its columns as arrays, `error` `[code, message]`; the facade makes the objects.
     pub fn property(&self, name: &str) -> Option<WpValue> {
+        if let Some(written) = self.overrides.borrow().get(name) {
+            return Some(written.clone());
+        }
         let s = |f: &dyn Fn(&crate::RequestState) -> WpValue| self.read(|st| f(st));
         Some(match name {
             "show_errors" => s(&|st| WpValue::Bool(st.show_errors)),
@@ -173,7 +176,10 @@ impl WpDb {
                             WpValue::Int(i64::from(c.charset)),
                         ),
                         (Key::Str("flags".into()), WpValue::Int(i64::from(c.flags))),
-                        (Key::Str("type".into()), self.get_col_info_one(c, "type")),
+                        (
+                            Key::Str("type".into()),
+                            WpValue::Int(crate::helpers::type_code(&c.sql_type)),
+                        ),
                         (
                             Key::Str("decimals".into()),
                             WpValue::Int(i64::from(c.decimals)),
@@ -269,15 +275,6 @@ impl WpDb {
         })
     }
 
-    fn get_col_info_one(&self, c: &speedyspec_data::ColumnInfo, info: &str) -> WpValue {
-        let columns = Rc::new(vec![c.clone()]);
-        let saved = self.read(|s| s.col_info.clone());
-        self.modify(|s| s.col_info = Some(columns));
-        let value = self.get_col_info(info, 0);
-        self.modify(|s| s.col_info = saved);
-        value
-    }
-
     /// Writes the property `name`; false when `wpdb` has no such property (the caller keeps it as a dynamic one).
     /// Writes WordPress's `__set` ignores are accepted and dropped.
     pub fn set_property(&self, name: &str, value: &WpValue) -> bool {
@@ -309,10 +306,13 @@ impl WpDb {
             }
             "ready" => self.modify(|s| s.ready = truthy(value)),
             "queries" => {
-                if matches!(value, WpValue::Null)
-                    || matches!(value, WpValue::Array(a) if a.is_empty())
+                self.modify(|s| s.queries.clear());
+                if !matches!(value, WpValue::Null)
+                    && !matches!(value, WpValue::Array(a) if a.is_empty())
                 {
-                    self.modify(|s| s.queries.clear());
+                    self.overrides
+                        .borrow_mut()
+                        .insert(name.into(), value.clone());
                 }
             }
             "error" => {
@@ -326,14 +326,35 @@ impl WpDb {
                 })
             }
             "last_result" => {
-                if matches!(value, WpValue::Null)
-                    || matches!(value, WpValue::Array(a) if a.is_empty())
-                {
-                    self.modify(|s| {
-                        s.last_result = Rc::new(Vec::new());
-                        s.result_generation += 1;
-                    });
-                }
+                // Rows as arrays (the facade turns objects into their properties first).
+                let rows: Vec<crate::WpRow> = match value {
+                    WpValue::Array(rows) => rows
+                        .iter()
+                        .map(|(_, row)| crate::WpRow {
+                            fields: match row {
+                                WpValue::Array(fields) => fields
+                                    .iter()
+                                    .map(|(k, v)| {
+                                        (
+                                            key_text(k),
+                                            if matches!(v, WpValue::Null) {
+                                                None
+                                            } else {
+                                                to_bytes(v)
+                                            },
+                                        )
+                                    })
+                                    .collect(),
+                                _ => Vec::new(),
+                            },
+                        })
+                        .collect(),
+                    _ => Vec::new(),
+                };
+                self.modify(|s| {
+                    s.last_result = Rc::new(rows.clone());
+                    s.result_generation += 1;
+                });
             }
             "reconnect_retries" => {
                 let delay = self.settings.borrow().reconnect_delay;
@@ -377,7 +398,12 @@ impl WpDb {
                 self.modify(|s| s.dbh_present = present)
             }
             "checking_collation" | "result" | "col_info" | "dbuser" | "dbpassword" | "dbname"
-            | "dbhost" | "use_mysqli" | "has_connected" => {}
+            | "dbhost" | "use_mysqli" | "has_connected" => {
+                // WordPress's __set writes them; they read back as written.
+                self.overrides
+                    .borrow_mut()
+                    .insert(name.into(), value.clone());
+            }
             "is_mysql" => self.settings.borrow_mut().is_mysql = truthy(value),
             other if TABLE_PROPERTIES.contains(&other) => {
                 let v = text(value);

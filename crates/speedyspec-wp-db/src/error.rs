@@ -87,8 +87,21 @@ impl From<DbError> for WpDbError {
     }
 }
 
+thread_local! {
+    static LAST_HOOK_ERROR: std::cell::RefCell<Option<HookError>> = const { std::cell::RefCell::new(None) };
+}
+
+/// The last hook callback failure (a PHP exception, say) met while running `wpdb`, taken once. A language bridge
+/// rethrows it where `wpdb`'s own result would have hidden it behind `false`.
+pub fn take_hook_error() -> Option<HookError> {
+    LAST_HOOK_ERROR.with(|e| e.borrow_mut().take())
+}
+
 impl From<HookError> for WpDbError {
     fn from(e: HookError) -> Self {
+        LAST_HOOK_ERROR.with(|slot| {
+            slot.borrow_mut().get_or_insert_with(|| e.clone());
+        });
         WpDbError::Hook(e)
     }
 }

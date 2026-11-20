@@ -238,3 +238,10 @@ fn binary_argument_survives() {
     .prepare(Some(b"%s"), &[Value::Bytes(vec![0xE9])]);
     assert_eq!(out.sql, Some(b"'\xE9'".to_vec()));
 }
+
+#[test]
+fn float_strings_match_php() {
+    assert_eq!(speedyspec_wp_db::float_to_string(0.00001), "1.0E-5");
+    assert_eq!(speedyspec_wp_db::float_to_string(0.0001), "0.0001");
+    assert_eq!(speedyspec_wp_db::float_to_string(1e15), "1.0E+15");
+}

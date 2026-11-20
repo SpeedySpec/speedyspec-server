@@ -4,7 +4,7 @@ use speedyspec_data::Statement;
 use speedyspec_wp_hooks::{Count, HookName};
 
 use crate::php::to_bytes;
-use crate::{LoggedQuery, WpDb, WpValue};
+use crate::{LoggedQuery, WpDb, WpDbError, WpValue};
 
 fn truthy(v: &WpValue) -> bool {
     match v {
@@ -83,7 +83,11 @@ impl WpDb {
                     ],
                 )
                 .map(|v| v.read().into_owned())
-                .unwrap_or(data),
+                .unwrap_or_else(|e| {
+                    // Recorded for the bridge to rethrow; the entry keeps its data.
+                    let _ = WpDbError::from(e);
+                    data
+                }),
         };
         let entry = LoggedQuery {
             query: query.into(),

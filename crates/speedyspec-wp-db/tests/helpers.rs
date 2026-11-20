@@ -387,3 +387,54 @@ fn parse_failure_counts_as_a_query() {
     r.state.read(&mut |s| n = s.num_queries);
     assert_eq!(n, 1);
 }
+
+#[test]
+fn col_info_property_does_not_panic() {
+    let r = rig();
+    r.store
+        .answer(support::Answer::Rows(rows(&["k"], &[&[Some("a")]])));
+    r.db.query("SELECT k FROM t").unwrap();
+    assert!(matches!(r.db.property("col_info"), Some(WpValue::Array(_))));
+}
+
+#[test]
+fn property_writes_read_back() {
+    let r = rig();
+    assert!(r.db.set_property("dbname", &WpValue::Str("other".into())));
+    assert_eq!(r.db.property("dbname"), Some(WpValue::Str("other".into())));
+    let row = WpValue::Array(vec![(
+        speedyspec_hooks::Key::Str("a".into()),
+        WpValue::Str("x".into()),
+    )]);
+    r.db.set_property(
+        "last_result",
+        &WpValue::Array(vec![(speedyspec_hooks::Key::Int(0), row)]),
+    );
+    assert_eq!(r.db.get_var(0, 0), Some(b"x".to_vec()));
+}
+
+#[test]
+fn object_k_keeps_first_row_index() {
+    let r = rig();
+    r.store.answer(support::Answer::Rows(rows(
+        &["k", "v"],
+        &[
+            &[Some("a"), Some("1")],
+            &[Some("a"), Some("2")],
+            &[Some("b"), Some("3")],
+        ],
+    )));
+    r.db.query("SELECT k, v FROM t").unwrap();
+    match r.db.get_results(Some(OutputShape::ObjectK)).unwrap() {
+        Shaped::Keyed(k) => assert_eq!(
+            k.iter()
+                .map(|(key, row)| (key.clone(), row.fields[1].1.clone()))
+                .collect::<Vec<_>>(),
+            vec![
+                (b"a".to_vec(), Some(b"1".to_vec())),
+                (b"b".to_vec(), Some(b"3".to_vec()))
+            ]
+        ),
+        other => panic!("{other:?}"),
+    }
+}

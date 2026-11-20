@@ -31,7 +31,7 @@ pub fn float_to_string(f: f64) -> String {
     let exp: i32 = exp.parse().expect("exponent is an integer");
     let digits: String = mantissa.chars().filter(char::is_ascii_digit).collect();
     let sign = if f < 0.0 { "-" } else { "" };
-    if (-5..15).contains(&exp) {
+    if (-4..15).contains(&exp) {
         let n = digits.len() as i32;
         let body = if exp >= 0 {
             if n > exp + 1 {

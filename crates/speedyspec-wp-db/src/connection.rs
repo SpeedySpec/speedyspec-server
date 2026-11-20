@@ -141,15 +141,6 @@ impl WpDb {
         if charset.is_empty() || !self.caps()?.has_cap("collation") {
             return Ok(());
         }
-        let engine_charset = self
-            .config
-            .charset
-            .clone()
-            .unwrap_or_else(|| "utf8mb4".into());
-        let engine_collate = self.config.collate.clone().unwrap_or_default();
-        if charset == engine_charset && (collate.is_empty() || collate == engine_collate) {
-            return Ok(());
-        }
         // `mysqli_set_charset()` first: it changes the connection's charset even when the `COLLATE` that follows
         // names a collation of another charset and fails, as it does when a caller switches charsets.
         if self.caps()?.has_cap("set_charset") {
