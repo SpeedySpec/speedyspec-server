@@ -9,3 +9,7 @@ pub use parse::{parse_many, parse_one};
 mod builder;
 
 pub use builder::{Order, Query};
+
+mod partial;
+
+pub use partial::{Clause, Partial};

@@ -338,11 +338,7 @@ impl Query {
         match self.selection_mut() {
             Some(selection) => {
                 *selection = Some(match selection.take() {
-                    Some(existing) => Expr::BinaryOp {
-                        left: Box::new(existing),
-                        op: ast::BinaryOperator::And,
-                        right: Box::new(condition),
-                    },
+                    Some(existing) => crate::partial::and(existing, condition),
                     None => condition,
                 })
             }
