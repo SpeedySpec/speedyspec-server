@@ -125,3 +125,16 @@ fn reconnects_after_client_kill() {
     );
     assert_eq!(store.increment("ks", b"n", 1).unwrap(), 2);
 }
+
+#[test]
+#[ignore = "needs Valkey: set SPEEDYSPEC_TEST_VALKEY_URL"]
+fn idle_connection_is_checked_before_increment() {
+    let _live = LIVE.lock().unwrap_or_else(|e| e.into_inner());
+    let store = store(&prefix("idle"));
+    store.put("ks", b"n", b"1", None).unwrap();
+    kill_clients();
+    // Killed while idle (an idle timeout, a restart between requests): nothing was in flight, so the increment
+    // reaches the server.
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    assert_eq!(store.increment("ks", b"n", 1).unwrap(), 2);
+}
