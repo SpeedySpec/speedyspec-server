@@ -3194,6 +3194,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "redis"
+version = "0.32.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "014cc767fefab6a3e798ca45112bccad9c6e0e218fbd49720042716c73cfef44"
+dependencies = [
+ "combine",
+ "itoa",
+ "num-bigint",
+ "percent-encoding",
+ "ryu",
+ "socket2",
+ "url",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4194,6 +4209,16 @@ name = "speedyspec-data-uow"
 version = "0.1.0"
 dependencies = [
  "speedyspec-data",
+]
+
+[[package]]
+name = "speedyspec-data-valkey"
+version = "0.1.0"
+dependencies = [
+ "redis",
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-query",
 ]
 
 [[package]]
