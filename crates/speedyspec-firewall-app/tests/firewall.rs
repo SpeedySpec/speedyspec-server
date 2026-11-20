@@ -178,38 +178,48 @@ fn user_enumeration_blocked_for_anonymous_only() {
         block_user_enumeration: true,
         ..raw()
     });
+    let check = |uri: &str, extra: &[(&str, &str)]| {
+        let mut params = params("192.0.2.7", "GET", uri, None);
+        params.extend(extra.iter().map(|(k, v)| (k.to_string(), v.to_string())));
+        status(&firewall.check(&RequestFacts::from_params(&params).unwrap()))
+    };
+    let cookie = ("HTTP_COOKIE", "wordpress_logged_in_x=1");
+    assert_eq!(check("/?author=2", &[]), Some(403));
+    assert_eq!(check("/?p=1&author=12", &[]), Some(403));
+    assert_eq!(check("/?author=1%20", &[]), Some(403));
+    assert_eq!(check("/wp-json/wp/v2/users", &[]), Some(403));
+    assert_eq!(check("/wp-json/wp/v2/users/1", &[]), Some(403));
+    assert_eq!(check("/?rest_route=/wp/v2/users", &[]), Some(403));
+    assert_eq!(check("/?rest_route=%2Fwp%2Fv2%2Fusers%2F1", &[]), Some(403));
+    assert_eq!(check("/?author=bob", &[]), None);
+    assert_eq!(check("/wp-json/wp/v2/usersx", &[]), None);
+    assert_eq!(check("/?rest_route=/wp/v2/posts", &[]), None);
+    // Forged credentials do not bypass the rule.
     assert_eq!(
-        status(&firewall.check(&facts("192.0.2.7", "GET", "/?author=2"))),
+        check(
+            "/wp-json/wp/v2/users",
+            &[("HTTP_AUTHORIZATION", "Bearer x")]
+        ),
         Some(403)
     );
+    assert_eq!(check("/wp-json/wp/v2/users", &[cookie]), Some(403));
+    assert_eq!(check("/?author=1", &[cookie]), Some(403));
+    // Real REST credentials (application passwords, or the editor's cookie and nonce) and admin screens pass.
     assert_eq!(
-        status(&firewall.check(&facts("192.0.2.7", "GET", "/?p=1&author=12"))),
-        Some(403)
+        check(
+            "/wp-json/wp/v2/users",
+            &[("HTTP_AUTHORIZATION", "Basic eA==")]
+        ),
+        None
     );
     assert_eq!(
-        status(&firewall.check(&facts("192.0.2.7", "GET", "/wp-json/wp/v2/users"))),
-        Some(403)
+        check(
+            "/wp-json/wp/v2/users/me",
+            &[cookie, ("HTTP_X_WP_NONCE", "n")]
+        ),
+        None
     );
-    assert_eq!(
-        status(&firewall.check(&facts("192.0.2.7", "GET", "/wp-json/wp/v2/users/1"))),
-        Some(403)
-    );
-    assert_eq!(
-        firewall.check(&facts("192.0.2.7", "GET", "/?author=bob")),
-        Verdict::Continue
-    );
-    assert_eq!(
-        firewall.check(&facts("192.0.2.7", "GET", "/wp-json/wp/v2/usersx")),
-        Verdict::Continue
-    );
-    let signed_in = RequestFacts::from_params(&params(
-        "192.0.2.7",
-        "GET",
-        "/?author=2",
-        Some("wordpress_logged_in_x=1"),
-    ))
-    .unwrap();
-    assert_eq!(firewall.check(&signed_in), Verdict::Continue);
+    assert_eq!(check("/wp-admin/edit.php?author=1", &[cookie]), None);
 }
 
 #[test]
