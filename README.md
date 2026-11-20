@@ -94,7 +94,7 @@ headers = "x-forwarded"                # or "forwarded" (RFC 7239)
 
 [app.server]
 kind = "server"                        # exactly one; its release is this binary
-source = "https://speedyspec.github.io/speedyspec-server/server/index.json"
+source = "https://releases.speedyspec.com/server/index.json"
 keys = ["RWT1iFxWT0DcUmOoHd7G9+GvpsUxaAPTOqtDr0GyVUvsJHHuBNRxI+0n"] # this repository's minisign.pub
 
 [app.admin]
@@ -109,7 +109,7 @@ allow_unsigned = false
 
 [app.php-runtime]
 kind = "runtime"                       # the PHP runtime binary the php apps run; see docs/php.md
-source = "https://speedyspec.github.io/speedyspec-server/php-runtime/index.json"
+source = "https://releases.speedyspec.com/php-runtime/index.json"
 keys = ["RWT1iFxWT0DcUmOoHd7G9+GvpsUxaAPTOqtDr0GyVUvsJHHuBNRxI+0n"] # the same key as the server's
 update = "manual"
 
@@ -216,8 +216,8 @@ and `speedyspec-php-runtime-v<version>`): one binary per target (`x86_64-unknown
 indexes, which managed mode reads as the `source` of the apps `server` and `php-runtime` (the index names the app, so
 the ids must be these):
 
-- `https://speedyspec.github.io/speedyspec-server/server/index.json`
-- `https://speedyspec.github.io/speedyspec-server/php-runtime/index.json`
+- `https://releases.speedyspec.com/server/index.json`
+- `https://releases.speedyspec.com/php-runtime/index.json`
 
 Every binary is signed with the key in [`minisign.pub`](minisign.pub); its second line goes in both apps' `keys`. To
 check a download by hand:
@@ -253,9 +253,11 @@ First-time setup, once:
 
 1. Generate a key pair with `minisign -G -p minisign.pub -s minisign.key`, commit `minisign.pub`, and keep
    `minisign.key` and its password out of the repository.
-2. Add the repository secrets `MINISIGN_SECRET_KEY` (the whole contents of `minisign.key`) and `MINISIGN_PASSWORD`.
-   Without them, or without `minisign.pub`, nothing is published.
-3. Set *Settings → Pages → Source* to *GitHub Actions*, and turn on *Settings → Actions → General → Allow GitHub
+2. Add the secrets `MINISIGN_SECRET_KEY` (the whole contents of `minisign.key`) and `MINISIGN_PASSWORD`, to the
+   repository or to the organization (visible to this repository). Without them, or without `minisign.pub`, nothing
+   is published.
+3. Set *Settings → Pages → Source* to *GitHub Actions*, with the custom domain `releases.speedyspec.com` and
+   *Enforce HTTPS* on, and turn on *Settings → Actions → General → Allow GitHub
    Actions to create and approve pull requests* (release-please opens its pull request with the workflow's token).
 4. The server's first release is 0.1.0, release-please's first version for a Rust crate. The runtime's crate is
    already at 1.0.0, so its first release is asked for once: a commit that changes only `crates/speedyspec-php-runtime`

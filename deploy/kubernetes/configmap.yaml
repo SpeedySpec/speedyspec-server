@@ -14,7 +14,7 @@ data:
 
     [app.server]
     kind = "server"
-    source = "https://speedyspec.github.io/speedyspec-server/server/index.json"
+    source = "https://releases.speedyspec.com/server/index.json"
     keys = ["RWT1iFxWT0DcUmOoHd7G9+GvpsUxaAPTOqtDr0GyVUvsJHHuBNRxI+0n"]
 
     [app.admin]

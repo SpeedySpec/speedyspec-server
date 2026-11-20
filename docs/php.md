@@ -11,7 +11,7 @@ triple, like the server's, kept as `<release>/speedyspec-php-runtime` (in immuta
 directory). `speedyspec-php-runtime manifest` prints `{ "version", "contracts", "php" }`. Every php app runs on one
 runtime app (`app.<id>.runtime`, or the only one configured), and a php release can require its versions with
 `"php": { "runtime": "^1.4" }`. This repository publishes it (README, "Published releases of the server and the PHP runtime"):
-its `source` is `https://speedyspec.github.io/speedyspec-server/php-runtime/index.json`, for an app with the id
+its `source` is `https://releases.speedyspec.com/php-runtime/index.json`, for an app with the id
 `php-runtime`.
 
 - **The contract.** The server and the runtime share `speedyspec-runtime-contract`: the worker's start
