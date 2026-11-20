@@ -17,8 +17,8 @@ if [ "$#" -eq 0 ]; then
 fi
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# The host's own architecture by default: under emulation (linux/amd64 on an arm64 Mac) the static ICU crashes as
-# soon as intl is used, so a native container is the only one whose results mean anything.
+# The host's own architecture by default: a native container is the fastest. linux/amd64 also runs on an arm64 Mac
+# under emulation.
 case "$(uname -m)" in
     arm64|aarch64) native="linux/arm64" ;;
     *)             native="linux/amd64" ;;
