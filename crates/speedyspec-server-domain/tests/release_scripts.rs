@@ -149,3 +149,96 @@ fn unknown_component_exits_2() {
     let output = run("release-pending.sh", &[], &[]);
     assert_eq!(output.status.code(), Some(2), "{output:?}");
 }
+
+const TRIPLES: [&str; 3] = [
+    "x86_64-unknown-linux-musl",
+    "aarch64-unknown-linux-musl",
+    "aarch64-apple-darwin",
+];
+
+/// Every asset a complete release of `binary` has.
+fn complete_assets(binary: &str) -> Vec<String> {
+    let mut names: Vec<String> = TRIPLES
+        .iter()
+        .flat_map(|triple| {
+            [
+                format!("{binary}-{triple}"),
+                format!("{binary}-{triple}.minisig"),
+            ]
+        })
+        .collect();
+    names.push("SHA256SUMS".into());
+    names
+}
+
+/// What `release-publish-plan.sh` says for a release with these assets (as `gh release view --json assets` prints).
+fn publish_plan(binary: &str, names: &[String]) -> String {
+    let dir = tempfile::tempdir().unwrap();
+    let assets: Vec<serde_json::Value> = names
+        .iter()
+        .map(|name| serde_json::json!({ "name": name, "size": 1 }))
+        .collect();
+    let file = dir.path().join("assets.json");
+    std::fs::write(&file, serde_json::json!({ "assets": assets }).to_string()).unwrap();
+    let output = run(
+        "release-publish-plan.sh",
+        &[binary, file.to_str().unwrap()],
+        &[],
+    );
+    assert!(output.status.success(), "{output:?}");
+    stdout(&output).trim().to_string()
+}
+
+#[test]
+fn publish_complete_release_is_left_alone() {
+    let mut names = complete_assets("speedyspec-server");
+    names.push("notes.txt".into());
+    assert_eq!(publish_plan("speedyspec-server", &names), "complete");
+}
+
+#[test]
+fn publish_no_assets_is_empty() {
+    assert_eq!(publish_plan("speedyspec-server", &[]), "empty");
+}
+
+#[test]
+fn publish_one_missing_signature_is_incomplete() {
+    let names: Vec<String> = complete_assets("speedyspec-server")
+        .into_iter()
+        .filter(|name| name != "speedyspec-server-aarch64-unknown-linux-musl.minisig")
+        .collect();
+    assert_eq!(publish_plan("speedyspec-server", &names), "incomplete");
+}
+
+#[test]
+fn publish_missing_sums_is_incomplete() {
+    let names: Vec<String> = complete_assets("speedyspec-server")
+        .into_iter()
+        .filter(|name| name != "SHA256SUMS")
+        .collect();
+    assert_eq!(publish_plan("speedyspec-server", &names), "incomplete");
+}
+
+#[test]
+fn publish_another_binarys_assets_do_not_count() {
+    assert_eq!(
+        publish_plan(
+            "speedyspec-server",
+            &complete_assets("speedyspec-php-runtime")
+                .into_iter()
+                .filter(|name| name != "SHA256SUMS")
+                .collect::<Vec<_>>()
+        ),
+        "empty"
+    );
+}
+
+#[test]
+fn publish_usage_exits_2() {
+    assert_eq!(
+        run("release-publish-plan.sh", &["speedyspec-server"], &[])
+            .status
+            .code(),
+        Some(2)
+    );
+}
