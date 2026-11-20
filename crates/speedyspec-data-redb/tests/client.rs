@@ -7,7 +7,12 @@ use std::time::Duration;
 use speedyspec_data::{DbError, EngineConfig, NoSqlStore};
 use speedyspec_data_conformance::nosql_store_suite;
 use speedyspec_data_query::EngineRegistry;
-use speedyspec_data_redb::{OwnerConfig, RedbClient, RedbEngineFactory, RedbOwner, StopHandle};
+use std::os::unix::net::UnixListener;
+
+use speedyspec_data_redb::{
+    OwnerConfig, PROTOCOL_VERSION, RedbClient, RedbEngineFactory, RedbOwner, Request, Response,
+    StopHandle, read_frame, write_frame,
+};
 
 fn config(dir: &Path) -> OwnerConfig {
     OwnerConfig {
@@ -111,7 +116,7 @@ fn owner_restart_is_transparent_for_reads() {
 }
 
 #[test]
-fn increment_is_not_retried() {
+fn idle_connection_is_remade_before_increment() {
     let dir = tempfile::tempdir().unwrap();
     let cfg = config(dir.path());
     let owner = start(&cfg);
@@ -119,14 +124,60 @@ fn increment_is_not_retried() {
     assert_eq!(c.increment("ks", b"n", 1).unwrap(), 1);
     owner.stop();
     let owner = start(&cfg);
+    // Nothing was in flight when the owner went away: the increment goes to the new owner.
+    assert_eq!(c.increment("ks", b"n", 1).unwrap(), 2);
+    drop(c);
+    owner.stop();
+}
+
+#[test]
+fn increment_lost_in_flight_is_not_retried() {
+    let dir = tempfile::tempdir().unwrap();
+    let socket = dir.path().join("fake/owner.sock");
+    std::fs::create_dir_all(socket.parent().unwrap()).unwrap();
+    let listener = UnixListener::bind(&socket).unwrap();
+    // A fake owner that answers Hello, then hangs up on the first request without answering it.
+    let fake = std::thread::spawn(move || {
+        let mut requests = 0;
+        for stream in listener.incoming().take(2) {
+            let Ok(mut stream) = stream else { break };
+            if read_frame::<Request>(&mut stream).is_err()
+                || write_frame(
+                    &mut stream,
+                    &Response::Ready {
+                        version: PROTOCOL_VERSION,
+                    },
+                )
+                .is_err()
+            {
+                continue;
+            }
+            if read_frame::<Request>(&mut stream).is_ok() {
+                requests += 1;
+            }
+        }
+        requests
+    });
+    let c = RedbClient::new("redb", socket.clone(), Duration::from_secs(5)).unwrap();
     assert!(matches!(
         c.increment("ks", b"n", 1),
         Err(DbError::Connection { .. })
     ));
-    assert_eq!(c.get("ks", b"n").unwrap().as_deref(), Some(b"1".as_slice()));
-    assert_eq!(c.increment("ks", b"n", 1).unwrap(), 2);
     drop(c);
-    owner.stop();
+    // Wake the fake's second accept, so it can report.
+    let _ = std::os::unix::net::UnixStream::connect(&socket).map(|mut s| {
+        let _ = write_frame(
+            &mut s,
+            &Request::Hello {
+                version: PROTOCOL_VERSION,
+            },
+        );
+    });
+    assert_eq!(
+        fake.join().unwrap(),
+        1,
+        "the increment was sent more than once"
+    );
 }
 
 #[test]

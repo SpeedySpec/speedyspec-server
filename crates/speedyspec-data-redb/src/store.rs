@@ -7,8 +7,8 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use redb::{
-    Database, DatabaseError, ReadableDatabase, ReadableTable, TableDefinition, TableError,
-    TableHandle,
+    Database, DatabaseError, Durability, ReadableDatabase, ReadableTable, TableDefinition,
+    TableError, TableHandle,
 };
 use speedyspec_data::{Capabilities, DbError, KeyValues, NoSqlStore, UpsertForm};
 use speedyspec_data_counter::checked_increment;
@@ -104,7 +104,7 @@ impl RedbStore {
         keyspace: &str,
         f: impl FnOnce(&mut redb::Table<&'static [u8], &'static [u8]>) -> Result<T, DbError>,
     ) -> Result<T, DbError> {
-        let txn = self.db.begin_write().map_err(|e| self.storage(e))?;
+        let txn = self.volatile()?;
         let out = {
             let mut table = txn
                 .open_table(Def::new(keyspace))
@@ -126,6 +126,35 @@ impl RedbStore {
             let (expires, value) = open(g.value());
             live(expires, now_ms()).then(|| (expires, value.to_vec()))
         }))
+    }
+
+    /// A write transaction that commits without syncing to disk: it is a cache, so a crash may lose the writes
+    /// since the last durable commit (the sweep's and the owner's stop), never corrupt the file.
+    fn volatile(&self) -> Result<redb::WriteTransaction, DbError> {
+        let mut txn = self.db.begin_write().map_err(|e| self.storage(e))?;
+        txn.set_durability(Durability::None)
+            .map_err(|e| self.storage(e))?;
+        Ok(txn)
+    }
+
+    /// Makes every earlier write durable: one empty commit with immediate durability.
+    pub fn sync(&self) -> Result<(), DbError> {
+        let mut txn = self.db.begin_write().map_err(|e| self.storage(e))?;
+        txn.set_durability(Durability::Immediate)
+            .map_err(|e| self.storage(e))?;
+        txn.commit().map_err(|e| self.storage(e))
+    }
+
+    /// Sweeps batch after batch until one removes fewer than `batch`; how many it removed in all.
+    pub fn sweep_all_expired(&self, batch: usize) -> Result<usize, DbError> {
+        let mut total = 0;
+        loop {
+            let removed = self.sweep_expired(batch)?;
+            total += removed;
+            if removed < batch {
+                return Ok(total);
+            }
+        }
     }
 
     /// Removes up to `batch` expired entries across every keyspace; how many it removed.
@@ -307,7 +336,7 @@ impl NoSqlStore for RedbStore {
     }
 
     fn clear(&self, keyspace: &str) -> Result<(), DbError> {
-        let txn = self.db.begin_write().map_err(|e| self.storage(e))?;
+        let txn = self.volatile()?;
         txn.delete_table(Def::new(keyspace))
             .map_err(|e| self.storage(e))?;
         txn.commit().map_err(|e| self.storage(e))
