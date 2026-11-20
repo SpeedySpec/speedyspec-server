@@ -9,8 +9,8 @@ use speedyspec_wp_hooks::HookValue;
 use crate::Option as OptionEntity;
 use crate::api::{OptionsApi, isset, set_key, unset_key};
 use crate::{
-    Autoload, AutoloadRequest, OptionName, OptionsError, SerializedValue, autoload_values,
-    php_empty,
+    Autoload, AutoloadRequest, OptionName, OptionRepository, OptionsError, SerializedValue,
+    autoload_values, php_empty,
 };
 
 /// What a write function decided to write, and what it needs afterwards.
@@ -55,7 +55,7 @@ impl OptionsApi {
         deprecated: HookValue,
         autoload: HookValue,
     ) -> Result<bool, OptionsError> {
-        match self.plan_add(name, value, deprecated, autoload)? {
+        match self.plan_add(name, value, deprecated, autoload, true)? {
             Some(planned) => self.write_and_finish(&planned),
             None => Ok(false),
         }
@@ -76,7 +76,7 @@ impl OptionsApi {
 
     /// `delete_option( $option )`.
     pub fn delete_option(&self, name: &str) -> Result<bool, OptionsError> {
-        match self.plan_delete(name)? {
+        match self.plan_delete(name, true)? {
             Some(planned) => self.write_and_finish(&planned),
             None => Ok(false),
         }
@@ -89,21 +89,7 @@ impl OptionsApi {
 
     /// The one statement a planned write sends; its affected-row count.
     pub(crate) fn write(&self, planned: &PlannedWrite) -> Result<u64, OptionsError> {
-        let repo = &self.d.repository;
-        match planned {
-            PlannedWrite::Add { option, .. } => repo.add(option),
-            PlannedWrite::Update {
-                name,
-                stored,
-                autoload,
-                ..
-            } => repo.update(
-                name,
-                SerializedValue::for_update(stored)?.as_ref(),
-                autoload.as_ref(),
-            ),
-            PlannedWrite::Delete { name, .. } => repo.remove(name),
-        }
+        write_planned(&*self.d.repository, planned)
     }
 
     /// `add_option` up to its `INSERT`; `None` where it returns false.
@@ -113,6 +99,7 @@ impl OptionsApi {
         value: HookValue,
         deprecated: HookValue,
         autoload: HookValue,
+        fire_before: bool,
     ) -> Result<Option<PlannedWrite>, OptionsError> {
         if !php_empty(&deprecated.read()) {
             self.d
@@ -130,7 +117,7 @@ impl OptionsApi {
                 "5.5.0",
                 &renamed(&option, new),
             )?;
-            return self.plan_add(new, value, deprecated, autoload);
+            return self.plan_add(new, value, deprecated, autoload, fire_before);
         }
         self.d.protected.protect(option.as_str())?;
         let value = self.d.codec.clone_value(value);
@@ -154,17 +141,20 @@ impl OptionsApi {
             &stored,
             &AutoloadRequest::from_value(&autoload.read()),
         )?;
-        self.action("add_option", || vec![text(&option), value.clone()])?;
         let entity = OptionEntity {
             name: option,
             value: SerializedValue::for_insert(&stored.read())?,
             autoload,
         };
-        Ok(Some(PlannedWrite::Add {
+        let planned = PlannedWrite::Add {
             option: entity,
             value,
             stored,
-        }))
+        };
+        if fire_before {
+            self.before(&planned)?;
+        }
+        Ok(Some(planned))
     }
 
     /// `apply_filters( "default_option_{$option}", false, $option, false )`, the existence test both writers use.
@@ -183,6 +173,18 @@ impl OptionsApi {
         value: HookValue,
         autoload: HookValue,
     ) -> Result<Option<PlannedWrite>, OptionsError> {
+        self.plan_update_over(name, value, autoload, None, true)
+    }
+
+    /// `plan_update`, with the old value given when a unit of work already holds a write of this option.
+    pub(crate) fn plan_update_over(
+        &self,
+        name: &str,
+        value: HookValue,
+        autoload: HookValue,
+        known_old: Option<HookValue>,
+        fire_before: bool,
+    ) -> Result<Option<PlannedWrite>, OptionsError> {
         let Some(option) = OptionName::new(name) else {
             return Ok(None);
         };
@@ -194,12 +196,15 @@ impl OptionsApi {
                 "5.5.0",
                 &renamed(&option, new),
             )?;
-            return self.plan_update(new, value, autoload);
+            return self.plan_update_over(new, value, autoload, known_old, fire_before);
         }
         self.d.protected.protect(option.as_str())?;
         let value = self.d.codec.clone_value(value);
         let value = self.d.sanitizing.sanitize_option(&option, value)?;
-        let old = self.get_option(option.as_str(), None)?;
+        let old = match known_old {
+            Some(old) => old,
+            None => self.get_option(option.as_str(), None)?,
+        };
         let value = self.filter(&format!("pre_update_option_{option}"), value, || {
             vec![old.clone(), text(&option)]
         })?;
@@ -218,12 +223,15 @@ impl OptionsApi {
                 value,
                 HookValue::Str(String::new()),
                 autoload,
+                fire_before,
             );
         }
         let stored = self.d.codec.maybe_serialize(&value)?;
-        self.action("update_option", || {
-            vec![text(&option), old.clone(), value.clone()]
-        })?;
+        if fire_before {
+            self.action("update_option", || {
+                vec![text(&option), old.clone(), value.clone()]
+            })?;
+        }
         let column = if !matches!(autoload.read().as_ref(), HookValue::Null) {
             Some(self.d.autoload.determine(
                 option.as_str(),
@@ -255,7 +263,11 @@ impl OptionsApi {
     }
 
     /// `delete_option` up to its `DELETE`; `None` where it returns false (no such row).
-    pub(crate) fn plan_delete(&self, name: &str) -> Result<Option<PlannedWrite>, OptionsError> {
+    pub(crate) fn plan_delete(
+        &self,
+        name: &str,
+        fire_before: bool,
+    ) -> Result<Option<PlannedWrite>, OptionsError> {
         let Some(option) = OptionName::new(name) else {
             return Ok(None);
         };
@@ -263,11 +275,29 @@ impl OptionsApi {
         let Some(autoload) = self.d.repository.autoload_of(&option)? else {
             return Ok(None);
         };
-        self.action("delete_option", || vec![text(&option)])?;
-        Ok(Some(PlannedWrite::Delete {
+        let planned = PlannedWrite::Delete {
             name: option,
             autoload,
-        }))
+        };
+        if fire_before {
+            self.before(&planned)?;
+        }
+        Ok(Some(planned))
+    }
+
+    /// The action each write fires just before its statement: `add_option`, `update_option` or `delete_option`.
+    pub(crate) fn before(&self, planned: &PlannedWrite) -> Result<(), OptionsError> {
+        match planned {
+            PlannedWrite::Add { option, value, .. } => {
+                self.action("add_option", || vec![text(&option.name), value.clone()])
+            }
+            PlannedWrite::Update {
+                name, old, value, ..
+            } => self.action("update_option", || {
+                vec![text(name), old.clone(), value.clone()]
+            }),
+            PlannedWrite::Delete { name, .. } => self.action("delete_option", || vec![text(name)]),
+        }
     }
 
     fn autoloads(&self, autoload: &Autoload) -> Result<bool, OptionsError> {
@@ -398,5 +428,26 @@ impl OptionsApi {
                 Ok(true)
             }
         }
+    }
+}
+
+/// The one statement `planned` sends through `repo`; its affected-row count.
+pub(crate) fn write_planned(
+    repo: &dyn OptionRepository,
+    planned: &PlannedWrite,
+) -> Result<u64, OptionsError> {
+    match planned {
+        PlannedWrite::Add { option, .. } => repo.add(option),
+        PlannedWrite::Update {
+            name,
+            stored,
+            autoload,
+            ..
+        } => repo.update(
+            name,
+            SerializedValue::for_update(stored)?.as_ref(),
+            autoload.as_ref(),
+        ),
+        PlannedWrite::Delete { name, .. } => repo.remove(name),
     }
 }

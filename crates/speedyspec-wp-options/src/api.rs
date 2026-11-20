@@ -13,6 +13,7 @@ use crate::{
 };
 
 /// What the options API works through.
+#[derive(Clone)]
 pub struct OptionsDeps {
     pub hooks: Rc<HookApi>,
     pub cache: Rc<ObjectCache>,

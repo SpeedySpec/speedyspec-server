@@ -10,6 +10,7 @@ license.workspace = true
 speedyspec-container = { path = "../speedyspec-container" }
 speedyspec-cqrs = { path = "../speedyspec-cqrs" }
 speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-uow = { path = "../speedyspec-data-uow" }
 speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }

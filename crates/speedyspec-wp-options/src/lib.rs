@@ -18,6 +18,7 @@ mod messages;
 mod name;
 mod ports;
 mod read;
+mod staged;
 mod value;
 mod write;
 
@@ -45,4 +46,5 @@ pub use ports::{
     Deprecations, Installing, Multisite, OptionGroups, OptionRepository, ProtectedOptions,
     Sanitizing, ValueCodec,
 };
+pub use staged::Staged;
 pub use value::{SerializedValue, php_empty, php_string};

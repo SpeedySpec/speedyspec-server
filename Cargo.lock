@@ -4594,6 +4594,7 @@ dependencies = [
  "speedyspec-container",
  "speedyspec-cqrs",
  "speedyspec-data",
+ "speedyspec-data-uow",
  "speedyspec-php-serialize",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
