@@ -13,3 +13,9 @@ pub use builder::{Order, Query};
 mod partial;
 
 pub use partial::{Clause, Partial};
+
+mod passes;
+mod registry;
+
+pub use passes::{PassChain, PassContext, Rewrite, RewritePass, Rewritten};
+pub use registry::EngineRegistry;
