@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    bootstrap="bootstrap-object-cache.php"
+    colors="false"
+    cacheResult="false"
+    failOnWarning="false"
+    failOnDeprecation="false"
+    displayDetailsOnTestsThatTriggerDeprecations="true"
+    displayDetailsOnPhpunitDeprecations="false"
+>
+    <testsuites>
+        <testsuite name="wordpress-object-cache">
+            <file>wordpress/cache.php</file>
+        </testsuite>
+    </testsuites>
+    <groups>
+        <exclude>
+            <group>documented-break</group>
+        </exclude>
+    </groups>
+</phpunit>

@@ -150,6 +150,51 @@ abstract class WP_UnitTestCase extends TestCase
         $this->caught_doing_it_wrong = array();
     }
 
+    /**
+     * Empties the object cache between tests and declares the groups WordPress's test case declares, as WordPress's
+     * test case does.
+     */
+    public static function flush_cache()
+    {
+        global $wp_object_cache;
+
+        wp_cache_flush_runtime();
+
+        if (is_object($wp_object_cache) && method_exists($wp_object_cache, '__remoteset'))
+        {
+            $wp_object_cache->__remoteset();
+        }
+
+        wp_cache_flush();
+
+        wp_cache_add_global_groups(
+            array(
+                'blog-details',
+                'blog-id-cache',
+                'blog-lookup',
+                'blog_meta',
+                'global-posts',
+                'networks',
+                'network-queries',
+                'sites',
+                'site-details',
+                'site-options',
+                'site-queries',
+                'site-transient',
+                'theme_files',
+                'rss',
+                'users',
+                'user-queries',
+                'user_meta',
+                'useremail',
+                'userlogins',
+                'userslugs',
+            )
+        );
+
+        wp_cache_add_non_persistent_groups(array('counts', 'plugins', 'theme_json'));
+    }
+
     protected function assert_post_conditions()
     {
         $this->expectedDeprecated();
