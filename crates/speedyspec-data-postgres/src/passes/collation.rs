@@ -9,7 +9,9 @@ use speedyspec_data_query::{PassContext, Rewrite, RewritePass};
 use speedyspec_data_translate::object_name;
 use sqlparser::ast::{BinaryOperator, Expr, Ident, ObjectName, Value, VisitMut, VisitorMut};
 
-pub(crate) struct PgCollation;
+pub(crate) struct PgCollation {
+    pub(crate) schema: std::rc::Rc<crate::schema::SchemaCache>,
+}
 
 fn take(expr: &mut Expr) -> Expr {
     std::mem::replace(expr, Expr::value(Value::Null))
@@ -26,9 +28,40 @@ fn icu(expr: Expr) -> Expr {
     }
 }
 
-struct Collate;
+struct Collate<'a> {
+    schema: &'a crate::schema::SchemaCache,
+    tables: Vec<(String, String)>,
+}
 
-impl VisitorMut for Collate {
+impl Collate<'_> {
+    /// MySQL's LIKE reads a number as its text; PostgreSQL's wants text.
+    fn as_text(&self, expr: Expr) -> Expr {
+        let text = match &expr {
+            Expr::Value(_) | Expr::Collate { .. } => true,
+            Expr::Identifier(_) | Expr::CompoundIdentifier(_) => self
+                .schema
+                .type_of(&self.tables, &expr)
+                .is_none_or(|t| crate::types::is_text(&t)),
+            Expr::Function(_)
+            | Expr::Nested(_)
+            | Expr::Cast {
+                data_type: sqlparser::ast::DataType::Text,
+                ..
+            } => {
+                !matches!(&expr, Expr::Function(f) if speedyspec_data_translate::object_name(&f.name).starts_with("speedyspec_"))
+                    && !matches!(&expr, Expr::Nested(_))
+            }
+            _ => false,
+        };
+        if text {
+            expr
+        } else {
+            super::expressions::cast(expr, sqlparser::ast::DataType::Text)
+        }
+    }
+}
+
+impl VisitorMut for Collate<'_> {
     type Break = ();
 
     fn post_visit_expr(&mut self, expr: &mut Expr) -> ControlFlow<()> {
@@ -56,7 +89,7 @@ impl VisitorMut for Collate {
                     *expr = Expr::ILike {
                         negated: *negated,
                         any: *any,
-                        expr: Box::new(icu(take(e))),
+                        expr: Box::new(icu(self.as_text(take(e)))),
                         pattern: Box::new(take(pattern)),
                         escape_char: escape_char.take(),
                     };
@@ -75,7 +108,11 @@ impl VisitorMut for Collate {
                     (false, false) => BinaryOperator::PGRegexIMatch,
                     (false, true) => BinaryOperator::PGRegexNotIMatch,
                 };
-                let left = if sensitive { take(e) } else { icu(take(e)) };
+                let left = if sensitive {
+                    take(e)
+                } else {
+                    icu(self.as_text(take(e)))
+                };
                 *expr = Expr::BinaryOp {
                     left: Box::new(left),
                     op,
@@ -94,7 +131,11 @@ impl RewritePass for PgCollation {
     }
 
     fn rewrite(&self, stmt: &mut Statement, _cx: &PassContext) -> Result<Rewrite, DbError> {
-        let _ = stmt.tree_mut().visit(&mut Collate);
+        let tables = crate::schema::tables_in(stmt.tree());
+        let _ = stmt.tree_mut().visit(&mut Collate {
+            schema: &self.schema,
+            tables,
+        });
         Ok(Rewrite::Continue)
     }
 }

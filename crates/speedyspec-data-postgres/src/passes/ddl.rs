@@ -171,7 +171,13 @@ impl PgDdl {
     /// `CHANGE`/`MODIFY`: the type (with its collation), nullability and default set as the new definition says.
     fn change(&self, table: &str, old: &str, def: &ColumnDef) -> Result<Vec<Statement>, DbError> {
         let (column, _, _) = column_of(def, table_collation(&self.schema, table).as_deref())?;
-        if column.extra == "auto_increment" {
+        // Declaring AUTO_INCREMENT again on a column that has it (dbDelta does) changes nothing; adding it is not
+        // something PostgreSQL's identity can do in place.
+        let already = self.schema.columns(table).is_some_and(|c| {
+            c.iter()
+                .any(|c| c.name.eq_ignore_ascii_case(old) && c.extra == "auto_increment")
+        });
+        if column.extra == "auto_increment" && !already {
             return Err(unsupported("AUTO_INCREMENT added to an existing column"));
         }
         if column.extra.contains("on update") {
@@ -221,6 +227,16 @@ impl PgDdl {
                 AlterColumnOperation::SetNotNull
             },
         });
+        if column.extra == "auto_increment" {
+            // An identity column keeps its generated default.
+            let (mut tree, _) =
+                parse_one(&format!("ALTER TABLE {} DROP COLUMN x", sql_ident(table)))?.into_parts();
+            if let Ast::AlterTable(alter) = &mut tree {
+                alter.operations = ops;
+            }
+            out.push(Statement::new(tree, Vec::new()));
+            return Ok(out);
+        }
         ops.push(AlterTableOperation::AlterColumn {
             column_name: name,
             op: match effective_default(&column, false) {

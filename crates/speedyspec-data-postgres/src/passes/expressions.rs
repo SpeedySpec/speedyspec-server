@@ -148,10 +148,81 @@ struct Exprs<'a> {
 }
 
 impl Exprs<'_> {
+    /// A text column, or an expression PostgreSQL types as text (MySQL compares it with a number as a number).
     fn is_text_column(&self, expr: &Expr) -> bool {
-        self.schema
-            .type_of(&self.tables, expr)
-            .is_some_and(|t| matches!(t.family(), TypeFamily::Text | TypeFamily::Enum))
+        const TEXT_FUNCTIONS: &[&str] = &[
+            "to_char",
+            "lower",
+            "upper",
+            "concat",
+            "concat_ws",
+            "substring",
+            "substr",
+            "split_part",
+            "replace",
+            "btrim",
+            "trim",
+            "left",
+            "right",
+            "md5",
+            "string_agg",
+            "lpad",
+            "rpad",
+            "reverse",
+        ];
+        match expr {
+            Expr::Function(f)
+                if speedyspec_data_translate::object_name(&f.name)
+                    .eq_ignore_ascii_case("any_value") =>
+            {
+                super::functions::args(f)
+                    .first()
+                    .is_some_and(|a| self.is_text_column(a))
+            }
+            Expr::Function(f) => TEXT_FUNCTIONS.contains(
+                &speedyspec_data_translate::object_name(&f.name)
+                    .to_ascii_lowercase()
+                    .as_str(),
+            ),
+            Expr::BinaryOp {
+                op: BinaryOperator::StringConcat,
+                ..
+            } => true,
+            Expr::Nested(inner) => self.is_text_column(inner),
+            _ => self
+                .schema
+                .type_of(&self.tables, expr)
+                .is_some_and(|t| matches!(t.family(), TypeFamily::Text | TypeFamily::Enum)),
+        }
+    }
+
+    fn is_number_column(&self, expr: &Expr) -> bool {
+        self.schema.type_of(&self.tables, expr).is_some_and(|t| {
+            matches!(
+                t.family(),
+                TypeFamily::Integer | TypeFamily::Decimal { .. } | TypeFamily::Float
+            )
+        })
+    }
+
+    /// A string MySQL would read as a number and PostgreSQL refuses for a number column (`'abc'`, `'1x'`).
+    fn is_loose_string(&self, expr: &Expr) -> bool {
+        match expr {
+            Expr::Value(v) => match &v.value {
+                Value::SingleQuotedString(s) | Value::DoubleQuotedString(s) => {
+                    s.trim().parse::<f64>().is_err()
+                }
+                Value::Placeholder(p) => p
+                    .strip_prefix('?')
+                    .and_then(|n| n.parse::<usize>().ok())
+                    .and_then(|n| self.params.get(n.wrapping_sub(1)))
+                    .is_some_and(
+                        |v| matches!(v, DbValue::Text(s) if s.trim().parse::<f64>().is_err()),
+                    ),
+                _ => false,
+            },
+            _ => false,
+        }
     }
 
     fn is_number(&self, expr: &Expr) -> bool {
@@ -256,7 +327,11 @@ impl VisitorMut for Exprs<'_> {
     fn post_visit_expr(&mut self, expr: &mut Expr) -> ControlFlow<()> {
         use BinaryOperator as B;
         match expr {
-            Expr::Function(f) => match rewrite_call(f, &truthy) {
+            Expr::Function(f) => match rewrite_call(f, &truthy, &|e| {
+                self.schema
+                    .type_of(&self.tables, e)
+                    .is_some_and(|t| crate::types::is_temporal(&t))
+            }) {
                 Ok(Some(e)) => *expr = e,
                 Ok(None) => {}
                 Err(e) => {
@@ -316,11 +391,52 @@ impl VisitorMut for Exprs<'_> {
                 op: B::Eq | B::NotEq | B::Lt | B::LtEq | B::Gt | B::GtEq,
                 right,
             } => {
-                if self.is_text_column(left) && self.is_number(right) {
+                // A text side compared with a number, or a loose string compared with a number column, is read
+                // as MySQL reads a string as a number.
+                let text_left = self.is_text_column(left) && self.is_number(right);
+                let text_right = self.is_text_column(right) && self.is_number(left);
+                let loose_right = self.is_number_column(left) && self.is_loose_string(right);
+                let loose_left = self.is_number_column(right) && self.is_loose_string(left);
+                if text_left || loose_left {
                     self.double(left);
-                } else if self.is_text_column(right) && self.is_number(left) {
+                } else if text_right || loose_right {
                     self.double(right);
                 }
+            }
+            // MySQL does arithmetic on a string as on its leading number.
+            Expr::BinaryOp {
+                left,
+                op: B::Plus | B::Minus | B::Multiply | B::Divide | B::Modulo,
+                right,
+            } => {
+                if self.is_text_column(left) {
+                    self.double(left);
+                }
+                if self.is_text_column(right) {
+                    self.double(right);
+                }
+            }
+            Expr::Convert {
+                charset: Some(charset),
+                data_type: None,
+                expr: inner,
+                ..
+            } => {
+                let name = speedyspec_data_translate::object_name(charset).to_ascii_lowercase();
+                let inner = take(inner);
+                *expr = match name.as_str() {
+                    "utf8mb4" | "utf8" | "utf8mb3" | "utf16" | "utf16le" | "utf32" | "ucs2" => {
+                        inner
+                    }
+                    "binary" => template(
+                        "convert_to(__a0, 'UTF8')",
+                        vec![cast(inner, DataType::Text)],
+                    ),
+                    _ => {
+                        self.error = Some(unsupported("CONVERT ... USING a non-Unicode charset"));
+                        return ControlFlow::Break(());
+                    }
+                };
             }
             Expr::Between {
                 expr: e, low, high, ..
@@ -334,6 +450,17 @@ impl VisitorMut for Exprs<'_> {
                 target: InTarget::List(list),
                 ..
             } if list.iter().any(|x| self.is_number(x)) && self.is_text_column(e) => self.double(e),
+            Expr::In {
+                expr: e,
+                target: InTarget::List(list),
+                ..
+            } if self.is_number_column(e) => {
+                for item in list.iter_mut() {
+                    if self.is_loose_string(item) {
+                        self.double(item);
+                    }
+                }
+            }
             _ => {}
         }
         ControlFlow::Continue(())
@@ -358,6 +485,18 @@ impl RewritePass for PgExpressions {
             params: &params,
             error: None,
         };
+        if matches!(stmt.tree(), Ast::Call(_)) {
+            return Err(unsupported("CALL of a stored procedure"));
+        }
+        if matches!(
+            stmt.tree(),
+            Ast::ShowCreate {
+                obj_type: sqlparser::ast::ShowCreateObject::Procedure,
+                ..
+            }
+        ) {
+            return Err(unsupported("SHOW CREATE PROCEDURE"));
+        }
         let tree = stmt.tree_mut();
         match tree {
             Ast::Update(u) => u.selection = u.selection.take().map(truthy),

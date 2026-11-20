@@ -305,3 +305,82 @@ fn match_against_unsupported() {
 
 #[allow(dead_code)]
 fn _unused(_: Statement) {}
+
+#[test]
+fn corpus_number_and_text_coercions() {
+    let d = wp_dialect();
+    assert_pg(
+        &d,
+        "SELECT meta_id FROM wp_postmeta ORDER BY meta_value + 0 ASC",
+        vec![],
+        &[
+            r#"SELECT "meta_id" FROM "wp_postmeta" ORDER BY speedyspec_double("meta_value") + 0 ASC"#,
+        ],
+    );
+    assert_pg(
+        &d,
+        "SELECT ID FROM wp_posts WHERE ID IN ('yolo', 3)",
+        vec![],
+        &[r#"SELECT "ID" FROM "wp_posts" WHERE "ID" IN (speedyspec_double('yolo'), 3)"#],
+    );
+    assert_pg(
+        &d,
+        "SELECT ID FROM wp_posts WHERE ID = ?",
+        vec![DbValue::Text("abc".into())],
+        &[r#"SELECT "ID" FROM "wp_posts" WHERE "ID" = speedyspec_double($1)"#],
+    );
+    assert_pg(
+        &d,
+        "SELECT ID FROM wp_posts WHERE DATE_FORMAT(post_date, '%H.%i') >= 9.000000",
+        vec![],
+        &[
+            r#"SELECT "ID" FROM "wp_posts" WHERE speedyspec_double(to_char("post_date", 'HH24.MI')) >= 9.000000"#,
+        ],
+    );
+}
+
+#[test]
+fn date_functions_on_text() {
+    select(
+        "YEAR(post_title)",
+        r#"extract(YEAR FROM speedyspec_datetime("post_title"::text))::integer"#,
+    );
+    select(
+        "WEEKDAY(post_date)",
+        r#"(extract(ISODOW FROM "post_date")::integer - 1)"#,
+    );
+}
+
+#[test]
+fn like_on_a_number() {
+    assert_pg(
+        &wp_dialect(),
+        "SELECT ID FROM wp_posts WHERE ID LIKE '1%'",
+        vec![],
+        &[
+            r#"SELECT "ID" FROM "wp_posts" WHERE "ID"::text COLLATE "und-x-icu" ILIKE '1%' ESCAPE '\'"#,
+        ],
+    );
+}
+
+#[test]
+fn convert_using() {
+    select("CONVERT(post_title USING utf8mb4)", r#""post_title""#);
+    assert_eq!(
+        refused("SELECT CONVERT(post_title USING cp1251) FROM wp_posts"),
+        "CONVERT ... USING a non-Unicode charset"
+    );
+    assert_eq!(
+        refused("CALL some_procedure()"),
+        "CALL of a stored procedure"
+    );
+}
+
+#[test]
+fn left_of_bytes_and_procedures() {
+    select(
+        "LEFT(CONVERT(post_title USING binary), 10)",
+        r#"substring(convert_to("post_title"::text, 'UTF8') FROM 1 FOR 10)"#,
+    );
+    assert_eq!(refused("SHOW CREATE PROCEDURE p"), "SHOW CREATE PROCEDURE");
+}

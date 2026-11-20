@@ -78,6 +78,17 @@ impl VisitorMut for Zero<'_> {
                     self.fix(left);
                 }
             }
+            Expr::IsDistinctFrom(left, right) | Expr::IsNotDistinctFrom(left, right)
+                if matches!((&**left, &**right), (Expr::Tuple(_), Expr::Tuple(_))) =>
+            {
+                if let (Expr::Tuple(columns), Expr::Tuple(values)) = (&**left, &mut **right) {
+                    for (c, v) in columns.iter().zip(values.iter_mut()) {
+                        if self.is_date(c) {
+                            self.fix(v);
+                        }
+                    }
+                }
+            }
             Expr::IsDistinctFrom(left, right) | Expr::IsNotDistinctFrom(left, right) => {
                 if self.is_date(left) {
                     self.fix(right);

@@ -147,3 +147,12 @@ fn mysql_display_matches_84() {
 
 #[allow(dead_code)]
 fn _unused(_: Statement) {}
+
+#[test]
+fn change_keeps_existing_auto_increment() {
+    let change = emitted("ALTER TABLE wp_options CHANGE COLUMN option_id option_id bigint(20) unsigned NOT NULL auto_increment").unwrap();
+    assert_eq!(
+        change[0],
+        r#"ALTER TABLE "wp_options" ALTER COLUMN "option_id" TYPE BIGINT, ALTER COLUMN "option_id" SET NOT NULL"#
+    );
+}

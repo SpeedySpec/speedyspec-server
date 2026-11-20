@@ -145,9 +145,20 @@ fn quoted(s: &str) -> String {
 
 /// The PostgreSQL form of the MySQL call `f` (`truthy` turns a MySQL condition into a boolean); `None` when the call
 /// needs no change.
+/// A date argument as PostgreSQL's date functions take it: a date column or call as is, anything else (text, a
+/// string literal) read as MySQL reads a date string.
+fn date_arg(arg: Expr, temporal: &dyn Fn(&Expr) -> bool) -> Expr {
+    if temporal(&arg) || matches!(arg, Expr::Function(_)) {
+        arg
+    } else {
+        template("speedyspec_datetime(__a0::text)", vec![arg])
+    }
+}
+
 pub(crate) fn rewrite_call(
     f: &Function,
     truthy: &dyn Fn(Expr) -> Expr,
+    temporal: &dyn Fn(&Expr) -> bool,
 ) -> Result<Option<Expr>, DbError> {
     let name = speedyspec_data_translate::object_name(&f.name).to_ascii_lowercase();
     let a = args(f);
@@ -156,6 +167,7 @@ pub(crate) fn rewrite_call(
             .cloned()
             .ok_or_else(|| unsupported(&format!("{name} with too few arguments")))
     };
+    let date = |i: usize| arg(i).map(|e| date_arg(e, temporal));
     let t = |sql: &str, args: Vec<Expr>| Ok(Some(template(sql, args)));
     match name.as_str() {
         "now" | "current_timestamp" | "localtimestamp" | "sysdate" => {
@@ -165,7 +177,7 @@ pub(crate) fn rewrite_call(
         "curtime" | "current_time" => t("LOCALTIME(0)", vec![]),
         "utc_timestamp" => t("(now() AT TIME ZONE 'UTC')::timestamp(0)", vec![]),
         "unix_timestamp" if a.is_empty() => t("floor(extract(epoch FROM now()))::bigint", vec![]),
-        "unix_timestamp" => t("floor(extract(epoch FROM __a0))::bigint", vec![arg(0)?]),
+        "unix_timestamp" => t("floor(extract(epoch FROM __a0))::bigint", vec![date(0)?]),
         "from_unixtime" if a.len() == 1 => t(
             "(to_timestamp(__a0) AT TIME ZONE 'UTC')::timestamp(0)",
             vec![arg(0)?],
@@ -194,10 +206,11 @@ pub(crate) fn rewrite_call(
             };
             t(
                 &format!("extract({} FROM __a0)::integer", field.to_ascii_uppercase()),
-                vec![arg(0)?],
+                vec![date(0)?],
             )
         }
-        "dayofweek" => t("(extract(DOW FROM __a0)::integer + 1)", vec![arg(0)?]),
+        "dayofweek" => t("(extract(DOW FROM __a0)::integer + 1)", vec![date(0)?]),
+        "weekday" => t("(extract(ISODOW FROM __a0)::integer - 1)", vec![date(0)?]),
         "week" => {
             let mode = match a.get(1) {
                 None => 0,
@@ -206,13 +219,13 @@ pub(crate) fn rewrite_call(
             match mode {
                 0 => t(
                     "floor((extract(DOY FROM __a0) + 6 - extract(DOW FROM __a0)) / 7)::integer",
-                    vec![arg(0)?],
+                    vec![date(0)?],
                 ),
                 1 => t(
                     "CASE WHEN extract(ISOYEAR FROM __a0) < extract(YEAR FROM __a0) THEN 0 WHEN extract(ISOYEAR FROM __a0) > extract(YEAR FROM __a0) THEN 53 ELSE extract(WEEK FROM __a0)::integer END",
-                    vec![arg(0)?],
+                    vec![date(0)?],
                 ),
-                3 => t("extract(WEEK FROM __a0)::integer", vec![arg(0)?]),
+                3 => t("extract(WEEK FROM __a0)::integer", vec![date(0)?]),
                 other => Err(unsupported(&format!("WEEK mode {other}"))),
             }
         }
@@ -222,7 +235,7 @@ pub(crate) fn rewrite_call(
                 .to_string();
             t(
                 &format!("to_char(__a0, {})", quoted(&date_format(&format)?)),
-                vec![arg(0)?],
+                vec![date(0)?],
             )
         }
         "concat" => {
@@ -306,6 +319,10 @@ pub(crate) fn rewrite_call(
         }
         "rand" if a.is_empty() => t("random()", vec![]),
         "rand" => Err(unsupported("RAND(seed)")),
+        // LEFT of bytes (CONVERT … USING binary) counts bytes.
+        "left" if matches!(a.first(), Some(Expr::Function(g)) if speedyspec_data_translate::object_name(&g.name) == "convert_to") => {
+            t("substring(__a0 FROM 1 FOR __a1)", vec![arg(0)?, arg(1)?])
+        }
         "length" => t("octet_length(__a0)", vec![arg(0)?]),
         "lcase" => t("lower(__a0)", vec![arg(0)?]),
         "ucase" => t("upper(__a0)", vec![arg(0)?]),

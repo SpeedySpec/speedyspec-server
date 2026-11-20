@@ -152,3 +152,15 @@ fn expired_transients() {
     );
     assert_eq!(e[0].count, RowCount::CountColumn);
 }
+
+#[test]
+fn update_guard_with_a_zero_date() {
+    assert_pg(
+        &wp_dialect(),
+        "UPDATE wp_posts SET post_date_gmt = '0000-00-00 00:00:00', post_title = 't' WHERE ID = 1",
+        vec![],
+        &[
+            r#"UPDATE "wp_posts" SET "post_date_gmt" = '-infinity', "post_title" = 't' WHERE ("ID" = 1) AND ("post_date_gmt", "post_title" COLLATE "C") IS DISTINCT FROM ('-infinity', 't' COLLATE "C")"#,
+        ],
+    );
+}

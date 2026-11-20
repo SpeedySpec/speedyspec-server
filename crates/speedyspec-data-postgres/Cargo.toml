@@ -16,6 +16,8 @@ speedyspec-data-translate = { path = "../speedyspec-data-translate" }
 sqlparser = { version = "0.64", features = ["visitor"] }
 
 [dev-dependencies]
+speedyspec-data-corpus = { path = "../speedyspec-data-corpus" }
+sqlparser = { version = "0.64", features = ["visitor"] }
 speedyspec-data-conformance = { path = "../speedyspec-data-conformance" }
 bytes = "1"
 postgres = "0.19"

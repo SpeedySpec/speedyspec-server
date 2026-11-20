@@ -47,3 +47,23 @@ fn having_alias_and_order_by() {
         r#"SELECT "meta_key", COUNT(*) AS "c" FROM "wp_postmeta" GROUP BY "meta_key" HAVING COUNT(*) > 1 ORDER BY any_value("post_id")"#,
     );
 }
+
+#[test]
+fn distinct_ordered_by_an_unselected_column() {
+    same(
+        "SELECT DISTINCT(wp_posts.ID) FROM wp_posts WHERE 1=1 ORDER BY post_title LIMIT 0, 50",
+        r#"SELECT ("wp_posts"."ID") AS "(wp_posts.ID)" FROM "wp_posts" WHERE 1 = 1 GROUP BY "wp_posts"."ID" ORDER BY "post_title" LIMIT 50 OFFSET 0"#,
+    );
+}
+
+#[test]
+fn distinct_with_an_aggregate_groups_the_rest() {
+    same(
+        "SELECT DISTINCT post_type, COUNT(ID) AS n FROM wp_posts GROUP BY post_type ORDER BY post_title",
+        r#"SELECT "post_type", COUNT("ID") AS "n" FROM "wp_posts" GROUP BY "post_type" ORDER BY any_value("post_title")"#,
+    );
+    same(
+        "SELECT DISTINCT p.ID FROM wp_posts p JOIN wp_postmeta m ON m.post_id = p.ID ORDER BY m.meta_value + 0",
+        r#"SELECT "p"."ID" FROM "wp_posts" AS "p" JOIN "wp_postmeta" AS "m" ON "m"."post_id" = "p"."ID" GROUP BY "p"."ID" ORDER BY speedyspec_double(any_value("m"."meta_value")) + 0"#,
+    );
+}

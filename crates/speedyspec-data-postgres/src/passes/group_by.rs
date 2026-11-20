@@ -324,11 +324,62 @@ impl Loose<'_> {
     }
 }
 
+/// `SELECT DISTINCT a … ORDER BY b` with `b` not selected: PostgreSQL refuses it, MySQL sorts by any row's `b`.
+/// Grouping by the selected expressions gives the same rows, and the ORDER BY then reads `any_value(b)`.
+fn distinct_as_group_by(select: &mut Select, order: Option<&sqlparser::ast::OrderBy>) {
+    if !matches!(select.distinct, Some(sqlparser::ast::Distinct::Distinct)) {
+        return;
+    }
+    let Some(sqlparser::ast::OrderBy {
+        kind: sqlparser::ast::OrderByKind::Expressions(list),
+        ..
+    }) = order
+    else {
+        return;
+    };
+    let mut selected: Vec<Expr> = Vec::new();
+    let mut names: Vec<String> = Vec::new();
+    for item in &select.projection {
+        match item {
+            SelectItem::UnnamedExpr(e) => selected.push(e.clone()),
+            SelectItem::ExprWithAlias { expr, alias } => {
+                selected.push(expr.clone());
+                names.push(alias.value.to_ascii_lowercase());
+            }
+            _ => return,
+        }
+    }
+    let plain = |e: &Expr| match e {
+        Expr::Nested(inner) => (**inner).clone(),
+        other => other.clone(),
+    };
+    let text = |e: &Expr| plain(e).to_string().to_ascii_lowercase();
+    let listed = list.iter().all(|o| {
+        let t = text(&o.expr);
+        selected.iter().any(|s| text(s) == t) || names.contains(&t)
+    });
+    if listed {
+        return;
+    }
+    // Aggregates are what a group computes, never what it is grouped by.
+    let grouped: Vec<Expr> = selected
+        .iter()
+        .filter(|e| !contains_aggregate(e))
+        .map(plain)
+        .collect();
+    if grouped.is_empty() {
+        return;
+    }
+    select.distinct = None;
+    select.group_by = GroupByExpr::Expressions(grouped, Vec::new());
+}
+
 impl VisitorMut for Loose<'_> {
     type Break = ();
 
     fn pre_visit_query(&mut self, query: &mut Query) -> ControlFlow<()> {
         if let SetExpr::Select(select) = query.body.as_mut() {
+            distinct_as_group_by(select, query.order_by.as_ref());
             let aliases: Vec<String> = select
                 .projection
                 .iter()

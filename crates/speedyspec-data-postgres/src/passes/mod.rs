@@ -51,7 +51,9 @@ pub(crate) fn pg_chain(schema: &Rc<SchemaCache>) -> PassChain {
         schema: schema.clone(),
     }));
     chain.push(Box::new(PgExpressions::new(schema.clone())));
-    chain.push(Box::new(PgCollation));
+    chain.push(Box::new(PgCollation {
+        schema: schema.clone(),
+    }));
     chain.push(Box::new(PgZeroDates::new(schema.clone())));
     chain.push(Box::new(PgIdentifiers::new(schema.clone())));
     chain.push(Box::new(PgPlaceholders));
