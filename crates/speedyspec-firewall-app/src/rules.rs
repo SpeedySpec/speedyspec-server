@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use speedyspec_firewall::{
     BanStore, CounterStore, FirewallError, IpSet, LoginPolicy, PatternRule, RateLimit,
-    RequestFacts, Verdict,
+    RequestFacts, Verdict, client_key,
 };
 
 /// One link in the firewall's chain.
@@ -41,10 +41,12 @@ impl RequestRule for BanRule {
         "ban"
     }
     fn check(&self, facts: &RequestFacts) -> Result<Verdict, FirewallError> {
-        Ok(match self.0.banned(&format!("ip:{}", facts.client))? {
-            Some(reason) => forbidden(format!("banned: {reason}")),
-            None => Verdict::Continue,
-        })
+        Ok(
+            match self.0.banned(&format!("ip:{}", client_key(facts.client)))? {
+                Some(reason) => forbidden(format!("banned: {reason}")),
+                None => Verdict::Continue,
+            },
+        )
     }
 }
 
@@ -169,7 +171,10 @@ impl RequestRule for LoginLockoutRule {
             return Ok(Verdict::Continue);
         }
         Ok(
-            match self.bans.banned(&format!("login:{}", facts.client))? {
+            match self
+                .bans
+                .banned(&format!("login:{}", client_key(facts.client)))?
+            {
                 Some(_) => Verdict::Block {
                     status: 429,
                     retry_after: Some(self.policy.lockout),
@@ -192,15 +197,19 @@ impl RequestRule for RateLimitRule {
         "rate-limit"
     }
     fn check(&self, facts: &RequestFacts) -> Result<Verdict, FirewallError> {
-        let count = self
-            .counters
-            .hit(&format!("rate:{}", facts.client), self.limit.window)?;
+        let count = self.counters.hit(
+            &format!("rate:{}", client_key(facts.client)),
+            self.limit.window,
+        )?;
         if count <= self.limit.requests {
             return Ok(Verdict::Continue);
         }
         if let Some(ban_for) = self.limit.ban_for {
-            self.bans
-                .ban(&format!("ip:{}", facts.client), ban_for, "rate limit")?;
+            self.bans.ban(
+                &format!("ip:{}", client_key(facts.client)),
+                ban_for,
+                "rate limit",
+            )?;
         }
         Ok(Verdict::Block {
             status: 429,

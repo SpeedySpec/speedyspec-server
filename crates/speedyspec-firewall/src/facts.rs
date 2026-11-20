@@ -53,3 +53,16 @@ impl RequestFacts {
         })
     }
 }
+
+/// The key the firewall counts and bans a client under: the address itself for IPv4, and the /64 network for
+/// IPv6, because one IPv6 subscriber usually holds a whole /64 and could rotate through it.
+pub fn client_key(client: IpAddr) -> String {
+    match client.to_canonical() {
+        IpAddr::V4(v4) => v4.to_string(),
+        IpAddr::V6(v6) => {
+            let mut segments = v6.segments();
+            segments[4..].fill(0);
+            format!("{}/64", std::net::Ipv6Addr::from(segments))
+        }
+    }
+}

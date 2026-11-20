@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use doubles::*;
 use speedyspec_firewall::{BanStore, FirewallSettings, RawSettings, Verdict};
-use speedyspec_firewall_app::{Firewall, LoginGuard};
+use speedyspec_firewall_app::{Firewall, FirewallScope, LoginGuard};
 
 #[test]
 fn login_guard_locks_after_max_failures() {
@@ -36,7 +36,7 @@ fn login_guard_locks_after_max_failures() {
         Duration::from_secs(600)
     );
 
-    let firewall = Firewall::from_settings(&settings, counters, bans, log);
+    let firewall = Firewall::from_settings(&settings, FirewallScope::Public, counters, bans, log);
     match firewall.check(&facts("192.0.2.9", "POST", "/wp-login.php")) {
         Verdict::Block {
             status: 429,
@@ -53,4 +53,24 @@ fn login_guard_locks_after_max_failures() {
         firewall.check(&facts("192.0.2.10", "POST", "/wp-login.php")),
         Verdict::Continue
     );
+}
+
+#[test]
+fn login_guard_counts_ipv6_per_64() {
+    let counters = Rc::new(MemoryCounters::default());
+    let bans = Rc::new(MemoryBans::default());
+    let raw = RawSettings {
+        enabled: true,
+        login_max_failures: 2,
+        ..RawSettings::default()
+    };
+    let (settings, _) = FirewallSettings::from_raw(&raw);
+    let guard = LoginGuard::new(settings.login.unwrap(), counters, bans.clone());
+    guard
+        .record_failure("2001:db8::1".parse().unwrap())
+        .unwrap();
+    guard
+        .record_failure("2001:db8::2".parse().unwrap())
+        .unwrap();
+    assert!(bans.banned("login:2001:db8::/64").unwrap().is_some());
 }

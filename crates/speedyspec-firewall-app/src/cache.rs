@@ -5,7 +5,7 @@ use speedyspec_firewall::{
     BanStore, CounterStore, FirewallLog, FirewallSettings, RawSettings, SettingsSource,
 };
 
-use crate::firewall::Firewall;
+use crate::firewall::{Firewall, FirewallScope};
 use crate::login::LoginGuard;
 
 struct Built {
@@ -18,6 +18,7 @@ struct Built {
 /// skipped settings line once per rebuild.
 pub struct FirewallCache {
     source: Rc<dyn SettingsSource>,
+    scope: FirewallScope,
     counters: Rc<dyn CounterStore>,
     bans: Rc<dyn BanStore>,
     log: Rc<dyn FirewallLog>,
@@ -27,12 +28,14 @@ pub struct FirewallCache {
 impl FirewallCache {
     pub fn new(
         source: Rc<dyn SettingsSource>,
+        scope: FirewallScope,
         counters: Rc<dyn CounterStore>,
         bans: Rc<dyn BanStore>,
         log: Rc<dyn FirewallLog>,
     ) -> FirewallCache {
         FirewallCache {
             source,
+            scope,
             counters,
             bans,
             log,
@@ -81,6 +84,7 @@ impl FirewallCache {
             }
             let firewall = Firewall::from_settings(
                 &settings,
+                self.scope,
                 self.counters.clone(),
                 self.bans.clone(),
                 self.log.clone(),

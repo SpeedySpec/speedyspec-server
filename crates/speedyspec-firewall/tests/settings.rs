@@ -76,3 +76,18 @@ fn raw_settings_defaults_match_the_option_table() {
     assert!(!raw.block_xmlrpc);
     assert!(!raw.block_user_enumeration);
 }
+
+#[test]
+fn lengths_are_capped_at_thirty_days() {
+    let thirty_days = Duration::from_secs(30 * 24 * 60 * 60);
+    let raw = RawSettings {
+        rate_ban: i64::MAX,
+        rate_window: 10_000_000_000,
+        login_lockout: 99_999_999_999,
+        ..raw()
+    };
+    let (settings, _) = FirewallSettings::from_raw(&raw);
+    assert_eq!(settings.rate.unwrap().ban_for, Some(thirty_days));
+    assert_eq!(settings.rate.unwrap().window, thirty_days);
+    assert_eq!(settings.login.unwrap().lockout, thirty_days);
+}

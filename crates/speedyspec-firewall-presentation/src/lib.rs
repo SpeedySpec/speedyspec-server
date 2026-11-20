@@ -8,4 +8,5 @@ mod stage;
 
 pub use compose::{FirewallComposition, StderrLog};
 pub use hooks::register_hooks;
+pub use speedyspec_firewall_app::FirewallScope;
 pub use stage::{CurrentClient, FirewallStage};

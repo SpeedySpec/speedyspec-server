@@ -8,7 +8,7 @@ mod login;
 mod rules;
 
 pub use cache::FirewallCache;
-pub use firewall::Firewall;
+pub use firewall::{Firewall, FirewallScope};
 pub use login::LoginGuard;
 pub use rules::{
     AllowListRule, BanRule, BlockListRule, LoginLockoutRule, PatternRules, RateLimitRule,

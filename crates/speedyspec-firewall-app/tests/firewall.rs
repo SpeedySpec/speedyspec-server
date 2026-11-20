@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use doubles::*;
 use speedyspec_firewall::{BanStore, FirewallSettings, RawSettings, RequestFacts, Verdict};
-use speedyspec_firewall_app::{Firewall, FirewallCache};
+use speedyspec_firewall_app::{Firewall, FirewallCache, FirewallScope};
 
 fn raw() -> RawSettings {
     RawSettings {
@@ -33,6 +33,7 @@ impl World {
         assert!(issues.is_empty(), "{issues:?}");
         Firewall::from_settings(
             &settings,
+            FirewallScope::Public,
             self.counters.clone(),
             self.bans.clone(),
             self.log.clone(),
@@ -230,7 +231,13 @@ fn store_errors_fail_open() {
         rate_requests: 1,
         ..raw()
     });
-    let firewall = Firewall::from_settings(&settings, failing.clone(), failing, log.clone());
+    let firewall = Firewall::from_settings(
+        &settings,
+        FirewallScope::Public,
+        failing.clone(),
+        failing,
+        log.clone(),
+    );
     assert_eq!(
         firewall.check(&facts("192.0.2.7", "GET", "/")),
         Verdict::Continue
@@ -266,6 +273,7 @@ fn cache_rebuilds_only_when_raw_settings_change() {
     });
     let cache = FirewallCache::new(
         source.clone(),
+        FirewallScope::Public,
         world.counters.clone(),
         world.bans.clone(),
         world.log.clone(),
@@ -289,6 +297,7 @@ fn cache_load_error_gives_none_and_logs() {
     });
     let cache = FirewallCache::new(
         source,
+        FirewallScope::Public,
         world.counters.clone(),
         world.bans.clone(),
         world.log.clone(),
@@ -309,6 +318,7 @@ fn cache_login_guard_follows_settings() {
     });
     let cache = FirewallCache::new(
         source.clone(),
+        FirewallScope::Public,
         world.counters.clone(),
         world.bans.clone(),
         world.log.clone(),
@@ -317,4 +327,76 @@ fn cache_login_guard_follows_settings() {
     *source.raw.borrow_mut() = Ok(raw());
     assert!(cache.login_guard().is_some());
     assert!(cache.settings().unwrap().enabled);
+}
+
+#[test]
+fn ipv6_clients_share_counters_and_bans_per_64() {
+    let world = World::new();
+    let firewall = world.firewall(&RawSettings {
+        rate_requests: 2,
+        rate_ban: 300,
+        ..raw()
+    });
+    assert_eq!(
+        firewall.check(&facts("2001:db8:1:2::1", "GET", "/")),
+        Verdict::Continue
+    );
+    assert_eq!(
+        firewall.check(&facts("2001:db8:1:2::2", "GET", "/")),
+        Verdict::Continue
+    );
+    assert_eq!(
+        status(&firewall.check(&facts("2001:db8:1:2::3", "GET", "/"))),
+        Some(429)
+    );
+    assert_eq!(
+        status(&firewall.check(&facts("2001:db8:1:2:ffff::9", "GET", "/"))),
+        Some(403)
+    );
+    assert_eq!(
+        firewall.check(&facts("2001:db8:1:3::1", "GET", "/")),
+        Verdict::Continue
+    );
+}
+
+#[test]
+fn admin_scope_never_rate_limits_or_bans() {
+    let world = World::new();
+    world
+        .bans
+        .ban("ip:192.0.2.7", Duration::from_secs(60), "rate limit")
+        .unwrap();
+    let raw = RawSettings {
+        rate_requests: 1,
+        rate_ban: 300,
+        block: "198.51.100.0/24".into(),
+        ..raw()
+    };
+    let (settings, _) = FirewallSettings::from_raw(&raw);
+    let admin = Firewall::from_settings(
+        &settings,
+        FirewallScope::Admin,
+        world.counters.clone(),
+        world.bans.clone(),
+        world.log.clone(),
+    );
+    for _ in 0..5 {
+        assert_eq!(
+            admin.check(&facts("192.0.2.7", "GET", "/wp-json/wp-admin/v1/posts")),
+            Verdict::Continue
+        );
+    }
+    assert!(world.counters.counts.borrow().is_empty());
+    assert_eq!(
+        status(&admin.check(&facts("198.51.100.4", "GET", "/"))),
+        Some(403)
+    );
+    world
+        .bans
+        .ban("login:192.0.2.7", Duration::from_secs(60), "login failures")
+        .unwrap();
+    assert_eq!(
+        status(&admin.check(&facts("192.0.2.7", "POST", "/wp-login.php"))),
+        Some(429)
+    );
 }

@@ -11,7 +11,7 @@ mod ports;
 mod settings;
 mod verdict;
 
-pub use facts::RequestFacts;
+pub use facts::{RequestFacts, client_key};
 pub use ip_set::IpSet;
 pub use pattern::{Field, PatternRule};
 pub use ports::{BanStore, Clock, CounterStore, FirewallError, FirewallLog, SettingsSource};

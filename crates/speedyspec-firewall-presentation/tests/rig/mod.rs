@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use speedyspec_cache_memory::MemoryCache;
 use speedyspec_firewall::FirewallLog;
-use speedyspec_firewall_presentation::{FirewallComposition, FirewallStage};
+use speedyspec_firewall_presentation::{FirewallComposition, FirewallScope, FirewallStage};
 use speedyspec_native_stage::{NativeStage, StageOutcome, StageRequest};
 use speedyspec_wp_hooks::{HookApi, HookValue, IgnoreDeprecations};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
@@ -64,6 +64,7 @@ impl Rig {
             Options::new(options.clone()),
             Rc::new(MemoryCache::new()),
             &hooks,
+            FirewallScope::Public,
             log.clone(),
         )
         .unwrap();

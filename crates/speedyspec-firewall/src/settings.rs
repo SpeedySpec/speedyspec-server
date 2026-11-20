@@ -126,7 +126,10 @@ impl FirewallSettings {
     }
 }
 
-/// A window or ban length of at least one second.
+/// The longest window, ban or lockout: a typo must never ban a client for good.
+const MAX_SECONDS: i64 = 30 * 24 * 60 * 60;
+
+/// A window or ban length between one second and thirty days.
 fn seconds(value: i64) -> Duration {
-    Duration::from_secs(value.max(1) as u64)
+    Duration::from_secs(value.clamp(1, MAX_SECONDS) as u64)
 }

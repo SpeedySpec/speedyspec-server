@@ -9,6 +9,16 @@ use crate::rules::{
     RequestRule, UserEnumerationRule, XmlRpcRule,
 };
 
+/// Which kind of app a firewall guards.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FirewallScope {
+    /// The blog and the front-end API: every rule.
+    Public,
+    /// The admin API: no rate limit and no IP bans, so the block editor's bursts of requests can never lock the
+    /// site's owner out of their own admin. Lists, patterns and the login lockout still apply.
+    Admin,
+}
+
 /// The rules in order (Chain of Responsibility). `Allow` ends the chain; the first `Block` wins; a rule that fails
 /// is logged and counts as `Continue`, so the firewall fails open.
 pub struct Firewall {
@@ -24,6 +34,7 @@ impl Firewall {
     /// Only the rules the settings turn on, in the firewall's fixed order. Disabled settings give no rules.
     pub fn from_settings(
         settings: &FirewallSettings,
+        scope: FirewallScope,
         counters: Rc<dyn CounterStore>,
         bans: Rc<dyn BanStore>,
         log: Rc<dyn FirewallLog>,
@@ -33,7 +44,9 @@ impl Firewall {
             if !settings.allow.is_empty() {
                 rules.push(Rc::new(AllowListRule(settings.allow.clone())));
             }
-            rules.push(Rc::new(BanRule(bans.clone())));
+            if scope == FirewallScope::Public {
+                rules.push(Rc::new(BanRule(bans.clone())));
+            }
             if !settings.block.is_empty() {
                 rules.push(Rc::new(BlockListRule(settings.block.clone())));
             }
@@ -52,7 +65,7 @@ impl Firewall {
                     bans: bans.clone(),
                 }));
             }
-            if let Some(limit) = settings.rate {
+            if let (Some(limit), FirewallScope::Public) = (settings.rate, scope) {
                 rules.push(Rc::new(RateLimitRule {
                     limit,
                     counters,

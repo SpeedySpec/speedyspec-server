@@ -1,7 +1,7 @@
 use std::net::IpAddr;
 use std::rc::Rc;
 
-use speedyspec_firewall::{BanStore, CounterStore, FirewallError, LoginPolicy};
+use speedyspec_firewall::{BanStore, CounterStore, FirewallError, LoginPolicy, client_key};
 
 /// Counts a client's failed sign-ins and locks it out once they reach the policy's maximum.
 pub struct LoginGuard {
@@ -24,7 +24,7 @@ impl LoginGuard {
     }
 
     pub fn record_failure(&self, client: IpAddr) -> Result<(), FirewallError> {
-        let client = client.to_canonical();
+        let client = client_key(client);
         let failures = self
             .counters
             .hit(&format!("login:{client}"), self.policy.window)?;
