@@ -4,21 +4,25 @@ mod connection;
 mod dialect;
 mod error;
 mod exec;
+mod factory;
 mod introspect;
 mod passes;
 mod plan;
 mod result_names;
 mod schema;
+mod store;
 mod support;
 mod types;
 mod value;
 
 pub use dialect::PostgresDialect;
 pub use error::map_error;
+pub use factory::{PostgresEngine, PostgresEngineFactory};
 pub use introspect::PostgresIntrospector;
 pub use plan::{
     COUNT_ALIAS, ID_ALIAS, INSERTED_ALIAS, PgEmitted, PgPlan, RowCount, SEQUENCE_ALIAS,
 };
+pub use store::PostgresStore;
 pub use support::SUPPORT_SQL;
 pub use types::mysql_display;
 
@@ -41,6 +45,6 @@ pub mod __test {
         sql: &speedyspec_data::EmittedSql,
     ) -> Result<u64, speedyspec_data::DbError> {
         let engine = conn.engine().to_string();
-        crate::exec::execute(conn.client()?, &engine, sql)
+        crate::exec::execute(conn, &engine, sql)
     }
 }

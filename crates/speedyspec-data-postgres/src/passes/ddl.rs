@@ -74,7 +74,19 @@ fn default_expr(column: &CatalogueColumn, value: &str) -> Expr {
 }
 
 /// The PostgreSQL column for a catalogue column; `identity` for the table's `AUTO_INCREMENT` key.
-fn pg_column(column: &CatalogueColumn, identity: bool) -> Result<ColumnDef, DbError> {
+/// The default MySQL applies: the column's own, else, for a NOT NULL column outside the primary key, the value
+/// MySQL's non-strict mode (WordPress's) stores when an insert omits it.
+fn effective_default(column: &CatalogueColumn, keyed: bool) -> Option<String> {
+    match &column.default {
+        Some(d) => Some(d.clone()),
+        None if !column.nullable && !keyed && column.extra != "auto_increment" => {
+            Some(column.column_type.implicit_default().to_string())
+        }
+        None => None,
+    }
+}
+
+fn pg_column(column: &CatalogueColumn, identity: bool, keyed: bool) -> Result<ColumnDef, DbError> {
     if column.extra.contains("on update") {
         return Err(unsupported("ON UPDATE CURRENT_TIMESTAMP"));
     }
@@ -95,8 +107,8 @@ fn pg_column(column: &CatalogueColumn, identity: bool) -> Result<ColumnDef, DbEr
             generated_keyword: true,
         }));
     }
-    if let Some(d) = &column.default {
-        options.push(option(ColumnOption::Default(default_expr(column, d))));
+    if let Some(d) = effective_default(column, keyed || identity) {
+        options.push(option(ColumnOption::Default(default_expr(column, &d))));
     }
     if ty.base == "enum" {
         let values: Vec<String> = ty.args.iter().map(|a| a.to_string()).collect();
@@ -128,11 +140,30 @@ fn table_collation(schema: &SchemaCache, table: &str) -> Option<String> {
 }
 
 impl PgDdl {
-    fn create_table(columns: &mut [ColumnDef]) -> Result<(), DbError> {
+    fn create_table(
+        columns: &mut [ColumnDef],
+        constraints: &[TableConstraint],
+    ) -> Result<(), DbError> {
+        let keyed: Vec<String> = constraints
+            .iter()
+            .filter_map(|c| match c {
+                TableConstraint::PrimaryKey(pk) => Some(&pk.columns),
+                _ => None,
+            })
+            .flatten()
+            .map(|c| {
+                c.column
+                    .expr
+                    .to_string()
+                    .trim_matches(['`', '"'])
+                    .to_ascii_lowercase()
+            })
+            .collect();
         for def in columns.iter_mut() {
-            let (column, _, _) = column_of(def, None)?;
+            let (column, primary, _) = column_of(def, None)?;
             let identity = column.extra == "auto_increment";
-            *def = pg_column(&column, identity)?;
+            let key = primary || keyed.contains(&column.name.to_ascii_lowercase());
+            *def = pg_column(&column, identity, key)?;
         }
         Ok(())
     }
@@ -159,7 +190,7 @@ impl PgDdl {
                 sql_ident(&column.name)
             ))?);
         }
-        let pg = pg_column(&column, false)?;
+        let pg = pg_column(&column, false, false)?;
         let ty = pg.data_type.to_string().to_lowercase();
         // sqlparser has no COLLATE in ALTER COLUMN ... TYPE: the type is written out with it.
         let data_type = if is_text(&column.column_type) {
@@ -192,9 +223,9 @@ impl PgDdl {
         });
         ops.push(AlterTableOperation::AlterColumn {
             column_name: name,
-            op: match &column.default {
+            op: match effective_default(&column, false) {
                 Some(d) => AlterColumnOperation::SetDefault {
-                    value: default_expr(&column, d),
+                    value: default_expr(&column, &d),
                 },
                 None => AlterColumnOperation::DropDefault,
             },
@@ -225,7 +256,7 @@ impl RewritePass for PgDdl {
     fn rewrite(&self, stmt: &mut Statement, _cx: &PassContext) -> Result<Rewrite, DbError> {
         match stmt.tree_mut() {
             Ast::CreateTable(create) => {
-                Self::create_table(&mut create.columns)?;
+                Self::create_table(&mut create.columns, &create.constraints)?;
                 // The neutral DDL pass keeps only the primary key in CREATE TABLE.
                 create
                     .constraints
@@ -239,6 +270,8 @@ impl RewritePass for PgDdl {
                 }
             }
             Ast::Truncate(truncate) => truncate.identity = Some(TruncateIdentityOption::Restart),
+            // PostgreSQL finds a temporary table first by name; it has no DROP TEMPORARY.
+            Ast::Drop { temporary, .. } => *temporary = false,
             Ast::AlterTable(alter) => {
                 let table = object_name(&alter.name);
                 let [op] = alter.operations.as_slice() else {
@@ -253,7 +286,7 @@ impl RewritePass for PgDdl {
                         if column.extra == "auto_increment" || primary {
                             return Err(unsupported("AUTO_INCREMENT added to an existing table"));
                         }
-                        let pg = pg_column(&column, false)?;
+                        let pg = pg_column(&column, false, false)?;
                         if let AlterTableOperation::AddColumn { column_def, .. } =
                             &mut alter.operations[0]
                         {

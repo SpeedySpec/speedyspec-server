@@ -190,3 +190,17 @@ fn refuses_old_server() {
     assert!(check_server_version(160_000, "16.0").is_ok());
     let _ = LIVE;
 }
+
+#[test]
+#[ignore = "needs PostgreSQL: set SPEEDYSPEC_TEST_POSTGRES_URL"]
+fn support_functions_take_ci_text() {
+    let conn = schema("support_ci", &[]);
+    assert_eq!(
+        scalar(&conn, "speedyspec_double('12' COLLATE speedyspec_ci)"),
+        "12"
+    );
+    assert_eq!(
+        scalar(&conn, "speedyspec_signed('7x' COLLATE speedyspec_ci)"),
+        "7"
+    );
+}

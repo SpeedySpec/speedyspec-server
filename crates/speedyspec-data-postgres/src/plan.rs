@@ -27,6 +27,8 @@ pub enum RowCount {
     CountColumn,
     /// Run for its effect only.
     Hidden,
+    /// The count `FOUND_ROWS()` reports after the query before it.
+    FoundRows,
 }
 
 #[derive(Debug, Clone, PartialEq)]

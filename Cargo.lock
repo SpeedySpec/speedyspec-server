@@ -4314,8 +4314,10 @@ name = "speedyspec-data-postgres"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "indexmap",
  "postgres",
  "speedyspec-data",
+ "speedyspec-data-conformance",
  "speedyspec-data-query",
  "speedyspec-data-translate",
  "sqlparser",

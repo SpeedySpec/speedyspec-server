@@ -11,7 +11,10 @@ pub fn map_error(engine: &str, e: postgres::Error) -> DbError {
         return match code.as_str() {
             c if c.starts_with("23") => DbError::Constraint { engine, message },
             "40P01" | "40001" => DbError::Deadlock { engine, message },
-            c if c.starts_with("08") => DbError::Connection { engine, message },
+            // A lost connection, or a server shutting it (57P01 terminated by an administrator).
+            c if c.starts_with("08") || c.starts_with("57P0") => {
+                DbError::Connection { engine, message }
+            }
             _ => DbError::Engine {
                 engine,
                 code: Some(code),

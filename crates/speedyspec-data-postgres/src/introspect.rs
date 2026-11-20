@@ -55,10 +55,9 @@ impl PostgresIntrospector {
         };
         let mut conn = self.conn.borrow_mut();
         let engine = conn.engine().to_string();
-        let client = conn.client()?;
         let mut rows = Rows::default();
         for e in &emitted {
-            rows = exec::query(client, &engine, &e.sql)?;
+            rows = exec::query(&mut conn, &engine, &e.sql)?;
         }
         Ok(rows)
     }

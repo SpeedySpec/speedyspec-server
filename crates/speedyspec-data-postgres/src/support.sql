@@ -3,7 +3,7 @@ CREATE COLLATION IF NOT EXISTS speedyspec_ci (provider = icu, locale = 'und-u-ks
 
 -- CAST(x AS SIGNED): MySQL reads the leading integer, else 0.
 CREATE OR REPLACE FUNCTION speedyspec_signed(x text) RETURNS bigint LANGUAGE plpgsql IMMUTABLE RETURNS NULL ON NULL INPUT AS $$
-DECLARE p text := substring(btrim(x) from '^[+-]?[0-9]+');
+DECLARE p text := substring(btrim(x) COLLATE "C" from '^[+-]?[0-9]+');
 BEGIN
     IF p IS NULL THEN RETURN 0; END IF;
     RETURN p::bigint;
@@ -13,7 +13,7 @@ END $$;
 
 -- CAST(x AS DECIMAL): the leading number, else 0.
 CREATE OR REPLACE FUNCTION speedyspec_decimal(x text) RETURNS numeric LANGUAGE plpgsql IMMUTABLE RETURNS NULL ON NULL INPUT AS $$
-DECLARE p text := substring(btrim(x) from '^[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?');
+DECLARE p text := substring(btrim(x) COLLATE "C" from '^[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?');
 BEGIN
     IF p IS NULL THEN RETURN 0; END IF;
     RETURN p::numeric;
@@ -21,7 +21,7 @@ END $$;
 
 -- A string compared with a number: MySQL compares the string's leading number as a double.
 CREATE OR REPLACE FUNCTION speedyspec_double(x text) RETURNS double precision LANGUAGE plpgsql IMMUTABLE RETURNS NULL ON NULL INPUT AS $$
-DECLARE p text := substring(btrim(x) from '^[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?');
+DECLARE p text := substring(btrim(x) COLLATE "C" from '^[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?');
 BEGIN
     IF p IS NULL THEN RETURN 0; END IF;
     RETURN p::double precision;
@@ -47,4 +47,4 @@ CREATE OR REPLACE FUNCTION speedyspec_sysvar(name text) RETURNS text LANGUAGE sq
     SELECT current_setting('speedyspec.' || name, true)
 $$;
 
-COMMENT ON FUNCTION speedyspec_signed(text) IS 'speedyspec-support 2';
+COMMENT ON FUNCTION speedyspec_signed(text) IS 'speedyspec-support 3';

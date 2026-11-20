@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use speedyspec_data::{DbError, Dialect, DialectKind, Introspector, Prepared, Statement};
 use speedyspec_data_query::{PassChain, PassContext, Rewritten};
-use speedyspec_data_translate::number_placeholders;
+use speedyspec_data_translate::{number_placeholders, take_found_rows};
 
 use crate::passes::pg_chain;
 use crate::plan::{PgPlan, emitted};
@@ -34,29 +34,40 @@ impl PostgresDialect {
     pub fn plan(&self, stmt: &Statement) -> Result<PgPlan, DbError> {
         let mut stmt = stmt.clone();
         number_placeholders(&mut stmt);
+        let count = take_found_rows(&mut stmt);
         result_names::pin(&mut stmt);
         let cx = PassContext {
             target: DialectKind::Postgres,
             introspector: self.schema.introspector(),
         };
-        match self.chain.run(stmt, &cx)? {
-            Rewritten::Emulated(op) => Ok(PgPlan::Emulated(op)),
-            Rewritten::Statements(statements) => Ok(PgPlan::Sql(
-                statements
-                    .into_iter()
-                    .map(|s| {
-                        let (tree, params) = s.into_parts();
-                        emitted(
-                            speedyspec_data::EmittedSql {
-                                sql: tree.to_string(),
-                                params,
-                            },
-                            &tree,
-                        )
-                    })
-                    .collect(),
-            )),
+        let emit = |statements: Vec<Statement>| -> Vec<crate::plan::PgEmitted> {
+            statements
+                .into_iter()
+                .map(|s| {
+                    let (tree, params) = s.into_parts();
+                    emitted(
+                        speedyspec_data::EmittedSql {
+                            sql: tree.to_string(),
+                            params,
+                        },
+                        &tree,
+                    )
+                })
+                .collect()
+        };
+        let mut out = match self.chain.run(stmt, &cx)? {
+            Rewritten::Emulated(op) => return Ok(PgPlan::Emulated(op)),
+            Rewritten::Statements(statements) => emit(statements),
+        };
+        if let Some(count) = count
+            && let Rewritten::Statements(statements) = self.chain.run(count, &cx)?
+        {
+            out.extend(emit(statements).into_iter().map(|mut e| {
+                e.count = crate::plan::RowCount::FoundRows;
+                e
+            }));
         }
+        Ok(PgPlan::Sql(out))
     }
 }
 

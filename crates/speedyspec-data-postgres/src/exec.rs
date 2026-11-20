@@ -2,18 +2,23 @@
 
 use std::rc::Rc;
 
-use postgres::Client;
 use postgres::types::ToSql;
 use speedyspec_data::{DbError, EmittedSql, Row, Rows};
 
+use crate::connection::Connection;
 use crate::error::map_error;
 use crate::value::{PgCell, PgParam, mysql_column_info};
 
 /// The statement's rows.
-pub(crate) fn query(client: &mut Client, engine: &str, sql: &EmittedSql) -> Result<Rows, DbError> {
+pub(crate) fn query(
+    conn: &mut Connection,
+    engine: &str,
+    sql: &EmittedSql,
+) -> Result<Rows, DbError> {
     let params: Vec<PgParam> = sql.params.iter().map(PgParam).collect();
     let refs: Vec<&(dyn ToSql + Sync)> = params.iter().map(|p| p as &(dyn ToSql + Sync)).collect();
-    let statement = client.prepare(&sql.sql).map_err(|e| map_error(engine, e))?;
+    let statement = conn.prepare(&sql.sql)?;
+    let client = conn.client()?;
     // A statement names fewer parameters than the plan carries: bind only those it has.
     let refs = &refs[..statement.params().len().min(refs.len())];
     let rows = client
@@ -53,10 +58,15 @@ pub(crate) fn query(client: &mut Client, engine: &str, sql: &EmittedSql) -> Resu
 }
 
 /// The statement's affected-row count.
-pub(crate) fn execute(client: &mut Client, engine: &str, sql: &EmittedSql) -> Result<u64, DbError> {
+pub(crate) fn execute(
+    conn: &mut Connection,
+    engine: &str,
+    sql: &EmittedSql,
+) -> Result<u64, DbError> {
     let params: Vec<PgParam> = sql.params.iter().map(PgParam).collect();
     let refs: Vec<&(dyn ToSql + Sync)> = params.iter().map(|p| p as &(dyn ToSql + Sync)).collect();
-    let statement = client.prepare(&sql.sql).map_err(|e| map_error(engine, e))?;
+    let statement = conn.prepare(&sql.sql)?;
+    let client = conn.client()?;
     let refs = &refs[..statement.params().len().min(refs.len())];
     client
         .execute(&statement, refs)
