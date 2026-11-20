@@ -1,0 +1,9 @@
+[package]
+name = "speedyspec-cache"
+version = "0.1.0"
+description = "The Caching Store contract: byte values in groups, with expiry. No implementations."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]

@@ -101,7 +101,7 @@ keys = ["RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3"]
 kind = "static"                        # or "php"
 source = "https://releases.example.com/admin/index.json"
 keys = ["RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3"]
-keep = 3                               # kept releases, at least 1
+keep = 2                               # kept releases (default 2: the live one and the one to roll back to)
 update = "auto"                        # or "manual" (the server app defaults to manual)
 check_interval = "15m"
 prerelease = false
@@ -156,7 +156,7 @@ timeout = "5s"
 site_ttl = "2s"                        # how long the site state is remembered
 poll = "1s"                            # how often the revocation feed is read
 max_pending = 16                       # uncached session checks at once; more get 503
-# maintenance_apps = ["admin", "blog"] # the apps the admin API's maintenance covers (default: every app)
+# maintenance_apps = ["blog", "frontend-api"] # the apps the admin API's maintenance covers (default: every app; never the admin)
 
 [health]                               # each php app's health probes
 interval = "2s"

@@ -1,0 +1,10 @@
+[package]
+name = "speedyspec-cache-conformance"
+version = "0.1.0"
+description = "The conformance suite every Caching Store implementation runs."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-cache = { path = "../speedyspec-cache" }

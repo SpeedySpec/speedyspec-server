@@ -114,6 +114,10 @@ fn setup_for(
     let files: &[&str] = match area {
         "hooks" => &["wp-includes/plugin.php"],
         "wp-db" => &["wp-includes/plugin.php", "wp-includes/class-wpdb.php"],
+        "object-cache" => &[
+            "wp-includes/class-wp-object-cache.php",
+            "wp-includes/cache.php",
+        ],
         other => return Err(format!("the recorder does not know the area {other}")),
     };
     let abspath = format!("{}/", root.display());
@@ -125,7 +129,19 @@ fn setup_for(
     if support.exists() {
         code.push_str(&format!(" require {:?};", support.display().to_string()));
     }
+    // The stubs first: WordPress's cache calls them.
+    let stubs = area == "object-cache";
+    if stubs {
+        code.push_str(" wp_cache_init();");
+    }
     Ok(move |php: &Php| {
+        if stubs {
+            php.eval(
+                "speedyspec://compat/object-cache-stubs",
+                crate::OBJECT_CACHE_STUBS,
+            )
+            .map_err(|e| e.to_string())?;
+        }
         php.eval("speedyspec://compat/setup", &code)
             .map(|_| ())
             .map_err(|e| e.to_string())

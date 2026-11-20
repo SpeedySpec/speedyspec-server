@@ -1,0 +1,2775 @@
+{
+  "wordpress": "7.1.5",
+  "results": {
+    "add_existing_is_false": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "add_get": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "array_holding_object_shares_it": [
+      {
+        "returned": {
+          "callback": "$o"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              {
+                "callback": "$o"
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "callback": "$inner"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "foo",
+              "bravo"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "cache_property_shape": [
+      {
+        "returned": {
+          "callback": "$c"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "g",
+              {
+                "array": [
+                  [
+                    "k",
+                    "v"
+                  ],
+                  [
+                    5,
+                    "w"
+                  ]
+                ]
+              }
+            ],
+            [
+              "default",
+              {
+                "array": [
+                  [
+                    "x",
+                    1
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "close_is_true": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "decr_clamps_at_zero": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 0,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 0,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "delete_existing_and_missing": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "dynamic_property": [
+      {
+        "returned": {
+          "callback": "$c"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "bar",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "empty_group_is_default": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "expire_ignored": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "flush": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "flush_group_raw_group": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 2,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 3,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "flush_runtime": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "found_flag": [
+      {
+        "returned": {
+          "array": [
+            [
+              "value",
+              false
+            ],
+            [
+              "found",
+              false
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "value",
+              "v"
+            ],
+            [
+              "found",
+              true
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "value",
+              false
+            ],
+            [
+              "found",
+              false
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "get_miss_counts": [
+      {
+        "returned": {
+          "callback": "$c"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 2,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 0,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "get_multiple_with_invalid_key": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "a",
+              1
+            ],
+            [
+              "",
+              false
+            ]
+          ]
+        },
+        "invocations": [
+          {
+            "fixture": "_doing_it_wrong",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "WP_Object_Cache::get"
+                ],
+                [
+                  1,
+                  "Cache key must not be an empty string."
+                ],
+                [
+                  2,
+                  "6.1.0"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "global_groups_on_multisite": [
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "u",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "t",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "p",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "hit_miss_properties": [
+      {
+        "returned": {
+          "callback": "$c"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 1,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 1,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "incr_float_and_numeric_string": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "float": 2.5
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 12,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "float": 1.5
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "incr_int_overflow": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "float": 9.223372036854776e+18
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "float": 9.223372036854776e+18
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "incr_non_numeric_resets": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 1,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 0,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 0,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "incr_numeric": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 6,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 9,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 9,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "incr_offset_cast": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 3,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 4,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 3,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 3,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "instances_separate": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "callback": "$c"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "w",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "invalid_keys_doing_it_wrong": [
+      {
+        "returned": false,
+        "invocations": [
+          {
+            "fixture": "_doing_it_wrong",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "WP_Object_Cache::set"
+                ],
+                [
+                  1,
+                  "Cache key must not be an empty string."
+                ],
+                [
+                  2,
+                  "6.1.0"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [
+          {
+            "fixture": "_doing_it_wrong",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "WP_Object_Cache::set"
+                ],
+                [
+                  1,
+                  "Cache key must not be an empty string."
+                ],
+                [
+                  2,
+                  "6.1.0"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [
+          {
+            "fixture": "_doing_it_wrong",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "WP_Object_Cache::set"
+                ],
+                [
+                  1,
+                  "Cache key must be an integer or a non-empty string, NULL given."
+                ],
+                [
+                  2,
+                  "6.1.0"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [
+          {
+            "fixture": "_doing_it_wrong",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "WP_Object_Cache::set"
+                ],
+                [
+                  1,
+                  "Cache key must be an integer or a non-empty string, double given."
+                ],
+                [
+                  2,
+                  "6.1.0"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [
+          {
+            "fixture": "_doing_it_wrong",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "WP_Object_Cache::set"
+                ],
+                [
+                  1,
+                  "Cache key must be an integer or a non-empty string, boolean given."
+                ],
+                [
+                  2,
+                  "6.1.0"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [
+          {
+            "fixture": "_doing_it_wrong",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "WP_Object_Cache::set"
+                ],
+                [
+                  1,
+                  "Cache key must be an integer or a non-empty string, array given."
+                ],
+                [
+                  2,
+                  "6.1.0"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [
+          {
+            "fixture": "_doing_it_wrong",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "WP_Object_Cache::get"
+                ],
+                [
+                  1,
+                  "Cache key must not be an empty string."
+                ],
+                [
+                  2,
+                  "6.1.0"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [
+          {
+            "fixture": "_doing_it_wrong",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "WP_Object_Cache::add"
+                ],
+                [
+                  1,
+                  "Cache key must be an integer or a non-empty string, NULL given."
+                ],
+                [
+                  2,
+                  "6.1.0"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [
+          {
+            "fixture": "_doing_it_wrong",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "WP_Object_Cache::delete"
+                ],
+                [
+                  1,
+                  "Cache key must not be an empty string."
+                ],
+                [
+                  2,
+                  "6.1.0"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "multiple_ops": [
+      {
+        "returned": {
+          "array": [
+            [
+              "a",
+              true
+            ],
+            [
+              "b",
+              true
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "a",
+              false
+            ],
+            [
+              "c",
+              true
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "b",
+              true
+            ],
+            [
+              "d",
+              true
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "a",
+              1
+            ],
+            [
+              "b",
+              20
+            ],
+            [
+              "c",
+              3
+            ],
+            [
+              "d",
+              4
+            ],
+            [
+              "e",
+              false
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "a",
+              true
+            ],
+            [
+              "e",
+              false
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "a",
+              false
+            ],
+            [
+              "b",
+              20
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "non_persistent_groups_noop": [
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "numeric_string_key_is_int_key": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "w",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "object_cloned_on_set_and_get": [
+      {
+        "returned": {
+          "callback": "$o"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "callback": "$g1"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "callback": "$g2"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "foo",
+              "alpha"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "foo",
+              "charlie"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "object_refs_multiple": [
+      {
+        "returned": {
+          "callback": "$o"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "b",
+              true
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "a",
+              true
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "callback": "$gb"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "foo",
+              "alpha"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "callback": "$ga"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "foo",
+              "alpha"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "b",
+              {
+                "object": "stdClass"
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "callback": "$inner"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "callback": "$gb2"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "foo",
+              "alpha"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "callback": "$c"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "k",
+              true
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "k",
+              {
+                "object": "stdClass"
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "callback": "$cinner"
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "foo",
+              "bravo"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "replace_missing_is_false": [
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "w",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "reset_is_deprecated": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [
+          {
+            "fixture": "_deprecated_function",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "wp_cache_reset"
+                ],
+                [
+                  1,
+                  "3.5.0"
+                ],
+                [
+                  2,
+                  "wp_cache_switch_to_blog()"
+                ]
+              ]
+            }
+          },
+          {
+            "fixture": "_deprecated_function",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "reset"
+                ],
+                [
+                  1,
+                  "3.5.0"
+                ],
+                [
+                  2,
+                  "WP_Object_Cache::switch_to_blog()"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "set_overwrites": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": 2,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "stores_null_false_zero": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "value",
+              null
+            ],
+            [
+              "found",
+              true
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "value",
+              false
+            ],
+            [
+              "found",
+              true
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "value",
+              0
+            ],
+            [
+              "found",
+              true
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "supports_each_feature": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "suspend_addition": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "switch_to_blog_multisite": [
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "switch_to_blog_single_site_ignored": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ],
+    "zero_string_group_is_default": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        }
+      }
+    ]
+  }
+}

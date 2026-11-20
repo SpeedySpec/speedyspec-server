@@ -1,0 +1,13 @@
+[package]
+name = "speedyspec-cache-memory"
+version = "0.1.0"
+description = "A Caching Store in process memory."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-cache = { path = "../speedyspec-cache" }
+
+[dev-dependencies]
+speedyspec-cache-conformance = { path = "../speedyspec-cache-conformance" }
