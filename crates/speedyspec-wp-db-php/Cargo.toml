@@ -25,6 +25,7 @@ speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
 speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
 speedyspec-compat = { path = "../speedyspec-compat" }
 speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
+speedyspec-data-sqlite = { path = "../speedyspec-data-sqlite" }
 tempfile = "3"
 serde_json = "1"
 
@@ -34,6 +35,10 @@ harness = false
 
 [[test]]
 name = "replay"
+harness = false
+
+[[test]]
+name = "replay_sqlite"
 harness = false
 
 [[test]]
