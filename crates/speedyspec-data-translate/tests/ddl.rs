@@ -317,3 +317,15 @@ fn catalogue_ddl_parses_and_passes_through() {
         assert_eq!(split(&sql, &cx()).len(), 1, "{sql}");
     }
 }
+
+#[test]
+fn ddl_binary_table_collation_moves_to_columns() {
+    let stmts = split(
+        "CREATE TABLE t (a varchar(10), b int, c text COLLATE utf8mb4_unicode_ci) COLLATE utf8mb4_bin",
+        &cx(),
+    );
+    same(
+        &schema_part(&stmts)[0],
+        "CREATE TABLE t (a varchar(10) COLLATE utf8mb4_bin, b int, c text COLLATE utf8mb4_unicode_ci)",
+    );
+}

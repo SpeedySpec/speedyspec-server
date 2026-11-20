@@ -26,7 +26,7 @@ use speedyspec_data_query::PassChain;
 pub use admin::AdminPass;
 pub use catalogue::{
     CatalogueColumn, CatalogueIndex, CatalogueTable, ColumnPosition, IndexKind, SchemaChange,
-    catalogue_ddl, catalogue_table, catalogue_tables, catalogue_writes, column_key,
+    catalogue_ddl, catalogue_table, catalogue_tables, catalogue_writes, column_key, column_of,
     index_object_name, is_catalogue_table, read_catalogue,
 };
 pub use ddl::DdlPass;
@@ -38,6 +38,7 @@ pub use insert::InsertPass;
 pub use lexical::LexicalPass;
 pub use like::mysql_like;
 pub use mysql_type::{MySqlType, Temporal, TypeFamily};
+pub use names::{object_name, sql_ident, sql_literal};
 pub use params::number_placeholders;
 pub use row_limit::RowLimitPass;
 pub use session::SessionVars;

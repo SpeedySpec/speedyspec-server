@@ -17,3 +17,6 @@ speedyspec-data-translate = { path = "../speedyspec-data-translate" }
 sqlparser = { version = "0.64", features = ["visitor"] }
 unicode-normalization = "0.1.26"
 uuid = { version = "1.29.3", features = ["v4"] }
+
+[dev-dependencies]
+speedyspec-data-translate = { path = "../speedyspec-data-translate", features = ["testing"] }

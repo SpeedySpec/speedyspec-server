@@ -349,6 +349,29 @@ impl RewritePass for DdlPass {
                             .options
                             .retain(|o| !matches!(o.option, ColumnOption::Unique(_)));
                     }
+                    // The table options go, so a binary table collation moves onto the text columns that inherit it.
+                    if let Some(collation) = catalogue
+                        .collation
+                        .as_deref()
+                        .filter(|c| c.ends_with("_bin"))
+                    {
+                        for (column, entry) in c.columns.iter_mut().zip(&catalogue.columns) {
+                            let explicit = column
+                                .options
+                                .iter()
+                                .any(|o| matches!(o.option, ColumnOption::Collation(_)));
+                            if entry.collation.is_some() && !explicit {
+                                column.options.push(sqlparser::ast::ColumnOptionDef {
+                                    name: None,
+                                    option: ColumnOption::Collation(
+                                        sqlparser::ast::ObjectName::from(vec![
+                                            sqlparser::ast::Ident::new(collation),
+                                        ]),
+                                    ),
+                                });
+                            }
+                        }
+                    }
                 }
                 ddl.out.push(Statement::new(plain, stmt.params().to_vec()));
                 for index in &catalogue.indexes {

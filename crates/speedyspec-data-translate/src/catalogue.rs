@@ -166,8 +166,9 @@ fn is_current_timestamp(expr: &Expr) -> bool {
         || text.starts_with("LOCALTIMESTAMP")
 }
 
-/// A catalogue column from a column definition; `table_collation` is what text columns inherit.
-pub(crate) fn column_of(
+/// A catalogue column from a column definition; `table_collation` is what text columns inherit. The flags say whether
+/// the definition itself declares the column `PRIMARY KEY` and `UNIQUE`.
+pub fn column_of(
     def: &AstColumn,
     table_collation: Option<&str>,
 ) -> Result<(CatalogueColumn, bool, bool), DbError> {

@@ -3,7 +3,7 @@
 use sqlparser::ast::{Expr, ObjectName, Value};
 
 /// A table or variable name without its quotes, parts joined with `.`.
-pub(crate) fn object_name(name: &ObjectName) -> String {
+pub fn object_name(name: &ObjectName) -> String {
     name.0
         .iter()
         .filter_map(|p| p.as_ident())
@@ -33,7 +33,7 @@ pub(crate) fn literal_text(expr: &Expr) -> String {
 }
 
 /// A name as MySQL text: bare when it is a plain, non-keyword identifier, else backquoted.
-pub(crate) fn sql_ident(name: &str) -> String {
+pub fn sql_ident(name: &str) -> String {
     let plain = name
         .chars()
         .next()
@@ -52,7 +52,7 @@ pub(crate) fn sql_ident(name: &str) -> String {
 }
 
 /// A string as a MySQL literal.
-pub(crate) fn sql_literal(text: &str) -> String {
+pub fn sql_literal(text: &str) -> String {
     format!("'{}'", text.replace('\\', "\\\\").replace('\'', "''"))
 }
 
