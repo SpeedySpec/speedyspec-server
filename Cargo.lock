@@ -4495,6 +4495,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-firewall-infra-cache"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-file",
+ "speedyspec-cache-kv",
+ "speedyspec-cache-memory",
+ "speedyspec-data",
+ "speedyspec-data-file",
+ "speedyspec-data-memory",
+ "speedyspec-data-valkey",
+ "speedyspec-firewall",
+ "tempfile",
+]
+
+[[package]]
 name = "speedyspec-hooks"
 version = "0.1.0"
 dependencies = [

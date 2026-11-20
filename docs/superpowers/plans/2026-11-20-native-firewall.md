@@ -218,7 +218,7 @@
   - `#[ignore = "needs Valkey: set SPEEDYSPEC_TEST_VALKEY_URL"] valkey_counts`, which uses the Valkey store the way the workspace's existing Valkey tests do.
 - [ ] **Step 2:** Run `cargo test -p speedyspec-firewall-infra-cache`. Expect a FAIL.
 - [ ] **Step 3:** Implement the items above.
-- [ ] **Step 4:** Run `cargo test -p speedyspec-firewall-infra-cache`. Expect a PASS. Also run `SPEEDYSPEC_TEST_VALKEY_URL=redis://127.0.0.1:36379 cargo test -p speedyspec-firewall-infra-cache -- --ignored` with `valkey/valkey:8` running on port 36379. Expect a PASS.
+- [ ] **Step 4:** Run `cargo test -p speedyspec-firewall-infra-cache`. Expect a PASS. Also run `SPEEDYSPEC_TEST_VALKEY_URL=valkey://127.0.0.1:36379 cargo test -p speedyspec-firewall-infra-cache -- --ignored` with `valkey/valkey:8` running on port 36379. Expect a PASS.
 - [ ] **Step 5:** Commit: `feat(firewall): counters and bans on the caching store`.
 
 ### Task 5: Settings from the options API
