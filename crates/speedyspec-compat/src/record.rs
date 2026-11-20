@@ -40,15 +40,23 @@ pub fn record(area: &str, version: &str) -> Result<PathBuf, String> {
     })?;
     let catalogue: Catalogue = read_json(&dir.join("scenarios.json"))?;
 
-    eprintln!("fetching {}", release.url);
-    let tarball = ureq::get(&release.url)
-        .call()
-        .map_err(|e| format!("{}: {e}", release.url))?
-        .into_body()
-        .with_config()
-        .limit(LIMIT)
-        .read_to_vec()
-        .map_err(|e| format!("{}: {e}", release.url))?;
+    // A copy already on disk (`SPEEDYSPEC_COMPAT_TARBALL`) is used instead of fetching; the pin checks it the same.
+    let tarball = match std::env::var_os("SPEEDYSPEC_COMPAT_TARBALL") {
+        Some(path) => {
+            std::fs::read(&path).map_err(|e| format!("{}: {e}", Path::new(&path).display()))?
+        }
+        None => {
+            eprintln!("fetching {}", release.url);
+            ureq::get(&release.url)
+                .call()
+                .map_err(|e| format!("{}: {e}", release.url))?
+                .into_body()
+                .with_config()
+                .limit(LIMIT)
+                .read_to_vec()
+                .map_err(|e| format!("{}: {e}", release.url))?
+        }
+    };
     let digest = format!("{:x}", Sha256::digest(&tarball));
     if digest != release.sha256 {
         return Err(format!(
@@ -103,15 +111,26 @@ fn setup_for(
     area: &str,
     root: &Path,
 ) -> Result<impl Fn(&Php) -> Result<(), String> + 'static, String> {
-    let file = match area {
-        "hooks" => "wp-includes/plugin.php",
+    let abspath = format!("{}/", root.display());
+    let define = format!("define('ABSPATH', {abspath:?}); define('WPINC', 'wp-includes');");
+    let code = match area {
+        "hooks" => format!("{define} require ABSPATH . 'wp-includes/plugin.php';"),
+        // The stubs first: WordPress's cache calls them.
+        "object-cache" => format!(
+            "{define} require ABSPATH . 'wp-includes/class-wp-object-cache.php'; \
+             require ABSPATH . 'wp-includes/cache.php'; wp_cache_init();"
+        ),
         other => return Err(format!("the recorder does not know the area {other}")),
     };
-    let abspath = format!("{}/", root.display());
-    let code = format!(
-        "define('ABSPATH', {abspath:?}); define('WPINC', 'wp-includes'); require ABSPATH . {file:?};",
-    );
+    let stubs = area == "object-cache";
     Ok(move |php: &Php| {
+        if stubs {
+            php.eval(
+                "speedyspec://compat/object-cache-stubs",
+                crate::OBJECT_CACHE_STUBS,
+            )
+            .map_err(|e| e.to_string())?;
+        }
         php.eval("speedyspec://compat/setup", &code)
             .map(|_| ())
             .map_err(|e| e.to_string())

@@ -1,0 +1,45 @@
+[package]
+name = "speedyspec-wp-object-cache-php"
+version = "0.1.0"
+description = "WordPress's wp_cache_* functions and WP_Object_Cache in PHP, native over the Rust object cache."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
+
+[dev-dependencies]
+serde_json = "1"
+sha2 = "0.10"
+speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+tempfile = "3"
+ureq = "3"
+
+[[test]]
+name = "php"
+harness = false
+
+[[test]]
+name = "php_persistent"
+harness = false
+
+[[test]]
+name = "wordpress"
+harness = false
+
+[[test]]
+name = "wordpress_multisite"
+harness = false
