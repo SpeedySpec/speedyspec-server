@@ -1,0 +1,12 @@
+[package]
+name = "speedyspec-wp-object-cache"
+version = "0.1.0"
+description = "WordPress's object cache (WP_Object_Cache and wp_cache_*) in Rust, with an optional persistent second level."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+indexmap = "2"
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-hooks = { path = "../speedyspec-hooks" }
