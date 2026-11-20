@@ -4513,7 +4513,9 @@ version = "0.1.0"
 dependencies = [
  "indexmap",
  "speedyspec-cache",
+ "speedyspec-cache-memory",
  "speedyspec-hooks",
+ "speedyspec-php-serialize",
 ]
 
 [[package]]

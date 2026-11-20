@@ -33,6 +33,11 @@ pub struct ObjectCache {
 }
 
 /// PHP's `empty()`.
+pub(crate) fn empty_group(v: &Value) -> bool {
+    empty(v)
+}
+
+/// PHP's `empty()`.
 fn empty(v: &Value) -> bool {
     match v {
         Value::Null | Value::Bool(false) | Value::Int(0) => true,
@@ -105,6 +110,10 @@ impl ObjectCache {
         } else {
             array_key(group)
         }
+    }
+
+    pub(crate) fn prefixed(&self, key: &Key, group: &Key) -> Key {
+        self.id(key, group)
     }
 
     /// The entry's id: on multisite, outside the global groups, the blog prefix and the key.
@@ -182,10 +191,15 @@ impl ObjectCache {
         let Some((id, g)) = self.target(key, group, "add")? else {
             return Ok(false);
         };
-        if self.exists(&id, &g) || !self.second_add(&id, &g, &data, expire) {
+        if self.exists(&id, &g) {
             return Ok(false);
         }
-        self.write(id, g, data, expire, false);
+        // With a second level, its own atomic `add` decides (another worker may hold the key) and writes it.
+        match self.second_add(&id, &g, &data, expire) {
+            None => self.write(id, g, data, expire, false),
+            Some(false) => return Ok(false),
+            Some(true) => self.store(id, g, CacheValue::Php(data)),
+        }
         Ok(true)
     }
 
@@ -262,12 +276,11 @@ impl ObjectCache {
     }
 
     pub(crate) fn read(&self, id: &Key, g: &Key, force: bool) -> Option<Value> {
-        if !(force && self.persists(g)) && self.exists(id, g) {
-            if let Some(v) = self.decode_entry(id, g) {
+        if !(force && self.persists(g)) && self.exists(id, g)
+            && let Some(v) = self.decode_entry(id, g) {
                 self.hits.set(self.hits.get() + 1);
                 return Some(v);
             }
-        }
         if let Some(v) = self.second_get(id, g) {
             self.hits.set(self.hits.get() + 1);
             return Some(v);

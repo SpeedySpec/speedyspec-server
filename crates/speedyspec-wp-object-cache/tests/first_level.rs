@@ -196,7 +196,7 @@ fn incr_decr() {
     c.set(&s("max"), Value::Int(i64::MAX), &g, 0).unwrap();
     assert_eq!(
         c.incr(&s("max"), 1, &g).unwrap(),
-        Some(Value::Float(9.223372036854775808e18))
+        Some(Value::Float(9.223_372_036_854_776e18))
     );
     assert_eq!(c.incr(&s("absent"), 1, &g).unwrap(), None);
     c.set(&s("str"), s(" 7 "), &g, 0).unwrap();

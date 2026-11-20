@@ -29,11 +29,10 @@ fn numeric_text(text: &str) -> Option<Value> {
             return None;
         }
     }
-    if frac.is_none() && exponent.is_none() {
-        if let Ok(i) = t.parse::<i64>() {
+    if frac.is_none() && exponent.is_none()
+        && let Ok(i) = t.parse::<i64>() {
             return Some(Value::Int(i));
         }
-    }
     t.parse::<f64>().ok().map(Value::Float)
 }
 
