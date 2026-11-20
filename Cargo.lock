@@ -4047,6 +4047,21 @@ name = "speedyspec-cache"
 version = "0.1.0"
 
 [[package]]
+name = "speedyspec-cache-conformance"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+]
+
+[[package]]
+name = "speedyspec-cache-memory"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-conformance",
+]
+
+[[package]]
 name = "speedyspec-compat"
 version = "0.1.0"
 dependencies = [
