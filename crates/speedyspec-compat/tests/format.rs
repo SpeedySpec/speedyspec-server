@@ -20,6 +20,7 @@ fn result(returned: serde_json::Value) -> StepResult {
             wp_filters: json!([]),
             wp_current_filter: json!([]),
         },
+        state: serde_json::Value::Null,
     }
 }
 
@@ -134,4 +135,16 @@ fn listed_break_is_tolerated_and_unlisted_is_not() {
         (mismatches[0].scenario.as_str(), mismatches[0].step),
         ("two", 0)
     );
+}
+
+#[test]
+fn state_round_trips() {
+    let mut with = result(json!(1));
+    with.state = json!({ "last_query": "SELECT 1" });
+    let text = serde_json::to_string(&with).unwrap();
+    assert_eq!(serde_json::from_str::<StepResult>(&text).unwrap(), with);
+    let without = serde_json::to_string(&result(json!(1))).unwrap();
+    assert!(!without.contains("state"), "{without}");
+    let old: StepResult = serde_json::from_str(&without).unwrap();
+    assert_eq!(old.state, serde_json::Value::Null);
 }

@@ -67,3 +67,18 @@ fn errors_at_end_of_input_have_position() {
         other => panic!("{other:?}"),
     }
 }
+
+#[test]
+fn parse_message_does_not_repeat_the_position() {
+    match parse_one("SELEC 1") {
+        Err(DbError::Parse {
+            message,
+            line,
+            column,
+        }) => {
+            assert!(!message.contains("Line:"), "{message}");
+            assert_eq!((line, column), (1, 1));
+        }
+        other => panic!("{other:?}"),
+    }
+}

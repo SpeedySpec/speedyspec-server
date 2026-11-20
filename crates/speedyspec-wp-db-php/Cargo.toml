@@ -23,8 +23,15 @@ speedyspec-container-php = { path = "../speedyspec-container-php" }
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
 speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
 tempfile = "3"
+serde_json = "1"
 
 [[test]]
 name = "php"
+harness = false
+
+[[test]]
+name = "replay"
 harness = false

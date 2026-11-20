@@ -349,3 +349,41 @@ fn get_var_with_sql_runs_it() {
         Some(b"7".to_vec())
     );
 }
+
+#[test]
+fn get_col_leaves_get_vars_func_call() {
+    let r = rig();
+    r.store.answer(support::Answer::Rows(rows(
+        &["k"],
+        &[&[Some("a")], &[Some("b")]],
+    )));
+    r.db.get_col_sql(Some(b"SELECT k FROM t"), 0).unwrap();
+    let mut call = None;
+    r.state.read(&mut |s| call = s.func_call.clone());
+    assert_eq!(call.as_deref(), Some("$db->get_var(\"\", 0, 1)"));
+}
+
+#[test]
+fn reset_request_starts_like_a_new_wpdb() {
+    let r = rig();
+    r.db.set_prefix("wp_", true).unwrap();
+    r.db.set_blog_id(3, 1);
+    let mut types = indexmap::IndexMap::new();
+    types.insert("id".to_string(), "%d".to_string());
+    r.db.set_field_types(types);
+    r.db.reset_request();
+    assert!(r.db.field_types().is_empty());
+    assert_eq!(
+        r.db.with_tables(|t| (t.blogid(), t.base_prefix().map(str::to_string))),
+        (0, None)
+    );
+}
+
+#[test]
+fn parse_failure_counts_as_a_query() {
+    let r = rig();
+    let _ = r.db.query("SELEC 1");
+    let mut n = 0;
+    r.state.read(&mut |s| n = s.num_queries);
+    assert_eq!(n, 1);
+}

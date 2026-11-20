@@ -1,0 +1,19 @@
+{
+  "breaks": [
+    {
+      "scenario": "errors_syntax",
+      "step": 0,
+      "why": "parse_error_wording: every statement is parsed before it reaches the engine, so SQL sqlparser rejects fails with the parser's message (with its line and column) instead of MySQL's syntax error; the query still counts and print_error still runs"
+    },
+    {
+      "scenario": "dbh_is_not_mysqli",
+      "step": 0,
+      "why": "dbh_is_not_mysqli: the connection belongs to the engine and lives for the worker; $wpdb->dbh is a SpeedySpec\\WpDb\\Connection while connected, never a mysqli, so code passing it to mysqli_* functions fails"
+    },
+    {
+      "scenario": "placeholder_escape_filter",
+      "step": 1,
+      "why": "placeholder_escape_filter_not_registered: the placeholder escape is removed in Rust before the query filter runs, as WordPress's priority-0 remove_placeholder_escape callback would, so the query hook stays empty and keeps its fast path; has_filter('query') is false where WordPress registered the callback"
+    }
+  ]
+}

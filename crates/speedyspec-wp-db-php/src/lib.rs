@@ -196,6 +196,7 @@ impl NativeArea for WpDbArea {
     }
 
     fn request_start(&self) {
+        self.shared.global.reset_request();
         self.shared.memory.reset();
         self.shared.global.state().reset();
         self.shared.global.state().modify(&mut |s| {

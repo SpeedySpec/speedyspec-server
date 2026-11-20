@@ -112,30 +112,50 @@ impl WpDb {
             config: parts.config,
             escape,
             tables: RefCell::new(TableNames::new()),
-            settings: RefCell::new(Settings {
-                charset: String::new(),
-                collate: String::new(),
-                caps: None,
-                field_types: IndexMap::new(),
-                allow_unsafe_unquoted_parameters: true,
-                reconnect_retries: 5,
-                reconnect_delay: std::time::Duration::from_secs(1),
-                has_connected: false,
-                incompatible_modes: [
-                    "NO_ZERO_DATE",
-                    "ONLY_FULL_GROUP_BY",
-                    "STRICT_TRANS_TABLES",
-                    "STRICT_ALL_TABLES",
-                    "TRADITIONAL",
-                    "ANSI",
-                ]
-                .iter()
-                .map(|m| m.to_string())
-                .collect(),
-            }),
+            settings: RefCell::new(Settings::fresh()),
             query_hook: HookName::from("query"),
             statement_hook: HookName::from("speedyspec_query_statement"),
         }
+    }
+}
+
+impl Settings {
+    /// What a new `wpdb` object starts with.
+    fn fresh() -> Settings {
+        Settings {
+            charset: String::new(),
+            collate: String::new(),
+            caps: None,
+            field_types: IndexMap::new(),
+            allow_unsafe_unquoted_parameters: true,
+            reconnect_retries: 5,
+            reconnect_delay: std::time::Duration::from_secs(1),
+            has_connected: false,
+            incompatible_modes: [
+                "NO_ZERO_DATE",
+                "ONLY_FULL_GROUP_BY",
+                "STRICT_TRANS_TABLES",
+                "STRICT_ALL_TABLES",
+                "TRADITIONAL",
+                "ANSI",
+            ]
+            .iter()
+            .map(|m| m.to_string())
+            .collect(),
+        }
+    }
+}
+
+impl WpDb {
+    /// Starts a request as a new `wpdb` object would: table names, prefixes, field types and the charset settings
+    /// back to their defaults. The server's capabilities, read once, are kept.
+    pub fn reset_request(&self) {
+        let caps = self.settings.borrow().caps.clone();
+        *self.settings.borrow_mut() = Settings {
+            caps,
+            ..Settings::fresh()
+        };
+        *self.tables.borrow_mut() = TableNames::new();
     }
 
     /// The timed store, for Rust callers sharing the connection.
@@ -267,7 +287,11 @@ impl WpDb {
         });
         match parse_bytes(&sql) {
             Ok(stmt) => self.execute(stmt, class),
-            Err(e) => self.fail(WpDbError::Db(e), class),
+            Err(e) => {
+                // WordPress sends the text and MySQL rejects it; it counts as a query.
+                self.modify(|s| s.num_queries += 1);
+                self.fail(WpDbError::Db(e), class)
+            }
         }
     }
 

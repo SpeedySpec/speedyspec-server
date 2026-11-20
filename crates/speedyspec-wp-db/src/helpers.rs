@@ -318,8 +318,12 @@ impl WpDb {
         Ok(self.get_row(output, y))
     }
 
+    /// `wpdb::get_col`, which reads each row through `get_var` (leaving its `func_call`).
     pub fn get_col(&self, x: usize) -> Vec<Option<Vec<u8>>> {
         let rows = self.rows();
+        if !rows.is_empty() {
+            self.set_func_call(format!("$db->get_var(\"\", {x}, {})", rows.len() - 1));
+        }
         (0..rows.len()).map(|y| var(&rows, x, y)).collect()
     }
 

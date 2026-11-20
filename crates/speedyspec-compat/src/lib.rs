@@ -59,6 +59,9 @@ pub struct StepResult {
     pub returned: Value,
     pub invocations: Vec<Invocation>,
     pub globals: Globals,
+    /// The area's own snapshot after the step (`SpeedySpecCompat::$state`), when its support file sets one.
+    #[serde(default, skip_serializing_if = "Value::is_null")]
+    pub state: Value,
 }
 
 /// One callback fixture's invocation.

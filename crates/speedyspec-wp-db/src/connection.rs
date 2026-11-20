@@ -334,7 +334,7 @@ impl WpDb {
     /// `wpdb::supports_collation` (deprecated since 3.5.0).
     pub fn supports_collation(&self) -> bool {
         self.host.deprecated_function(
-            "wpdb::supports_collation",
+            "supports_collation",
             "3.5.0",
             "wpdb::has_cap( 'collation' )",
         );

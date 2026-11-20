@@ -81,7 +81,7 @@ fn charset_collate_text() {
     r.db.set_collate(String::new());
     assert_eq!(r.db.get_charset_collate(), "DEFAULT CHARACTER SET utf8mb4");
     assert!(r.db.supports_collation());
-    assert!(r.host.calls().iter().any(|c| matches!(c, HostCall::DeprecatedFunction(f, v, _) if f == "wpdb::supports_collation" && v == "3.5.0")));
+    assert!(r.host.calls().iter().any(|c| matches!(c, HostCall::DeprecatedFunction(f, v, _) if f == "supports_collation" && v == "3.5.0")));
     assert!(r.db.check_database_version("5.5.5", "7.1.5").is_ok());
     assert!(r.db.check_database_version("9.9", "7.1.5").is_err());
 }
