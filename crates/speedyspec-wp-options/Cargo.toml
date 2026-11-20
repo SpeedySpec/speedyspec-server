@@ -15,3 +15,7 @@ tracing = "0.1"
 
 [dev-dependencies]
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+
+[features]
+# The option repository suite every repository must pass.
+conformance = []

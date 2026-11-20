@@ -4600,6 +4600,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-options-memory"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "speedyspec-wp-options",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"

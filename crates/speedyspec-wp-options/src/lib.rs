@@ -5,6 +5,8 @@
 
 mod adapters;
 mod autoload;
+#[cfg(feature = "conformance")]
+pub mod conformance;
 mod entity;
 mod error;
 mod name;
