@@ -1,0 +1,17 @@
+[package]
+name = "speedyspec-firewall-infra-options"
+version = "0.1.0"
+description = "The firewall's settings, read through the ported options API."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-firewall = { path = "../speedyspec-firewall" }
+speedyspec-wp-options = { path = "../speedyspec-wp-options" }
+
+[dev-dependencies]
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
+speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }
