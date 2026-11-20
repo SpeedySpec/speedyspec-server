@@ -1,0 +1,15 @@
+[package]
+name = "speedyspec-data-mysql"
+version = "0.1.0"
+description = "The MySQL engine for speedyspec's data layer: SQL store, dialect, introspector and factory over the blocking mysql driver."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+mysql = { version = "28", default-features = false, features = ["minimal-rust"] }
+
+[dev-dependencies]
+speedyspec-data-conformance = { path = "../speedyspec-data-conformance" }
