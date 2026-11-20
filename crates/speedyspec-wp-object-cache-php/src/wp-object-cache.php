@@ -243,7 +243,8 @@ namespace
         public function __get($name)
         {
             $found = N\object_prop_get($this, (string) $name);
-            return 'ok' === $found[0] ? $found[1] : null;
+            // Not one of WordPress's properties: a dynamic one `__set()` made, as WordPress reads it.
+            return 'ok' === $found[0] ? $found[1] : $this->$name;
         }
 
         public function __set($name, $value)
@@ -257,12 +258,15 @@ namespace
         public function __isset($name)
         {
             $found = N\object_prop_get($this, (string) $name);
-            return 'ok' === $found[0] && null !== $found[1];
+            return 'ok' === $found[0] ? null !== $found[1] : isset($this->$name);
         }
 
         public function __unset($name)
         {
-            N\object_prop_set($this, (string) $name, null);
+            if (!N\object_prop_set($this, (string) $name, null))
+            {
+                unset($this->$name);
+            }
         }
 
         public function add($key, $data, $group = 'default', $expire = 0)

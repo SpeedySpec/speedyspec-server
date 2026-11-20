@@ -1,0 +1,1509 @@
+{
+  "area": "object-cache",
+  "scenarios": [
+    {
+      "name": "add_get",
+      "steps": [
+        {
+          "call": "wp_cache_add",
+          "args": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add_existing_is_false",
+      "steps": [
+        {
+          "call": "wp_cache_add",
+          "args": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_add",
+          "args": [
+            "k",
+            "w"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "stores_null_false_zero",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "a",
+            null
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "b",
+            false
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "c",
+            0
+          ]
+        },
+        {
+          "call": "speedyspec_compat_cache_get_found",
+          "args": [
+            "a"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_cache_get_found",
+          "args": [
+            "b"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_cache_get_found",
+          "args": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "replace_missing_is_false",
+      "steps": [
+        {
+          "call": "wp_cache_replace",
+          "args": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_replace",
+          "args": [
+            "k",
+            "w"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "set_overwrites",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            1
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            2
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete_existing_and_missing",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_delete",
+          "args": [
+            "k"
+          ]
+        },
+        {
+          "call": "wp_cache_delete",
+          "args": [
+            "k"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get_miss_counts",
+      "steps": [
+        {
+          "call": "speedyspec_compat_new_cache",
+          "as": "c"
+        },
+        {
+          "call": "$c->get",
+          "args": [
+            "nope"
+          ]
+        },
+        {
+          "call": "$c->get",
+          "args": [
+            "nope",
+            "g"
+          ]
+        },
+        {
+          "call": "$c->__get",
+          "args": [
+            "cache_misses"
+          ]
+        },
+        {
+          "call": "$c->__get",
+          "args": [
+            "cache_hits"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "found_flag",
+      "steps": [
+        {
+          "call": "speedyspec_compat_cache_get_found",
+          "args": [
+            "x"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "x",
+            "v"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_cache_get_found",
+          "args": [
+            "x"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_cache_get_found",
+          "args": [
+            "x",
+            "other"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "object_cloned_on_set_and_get",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "foo": "alpha"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            {
+              "var": "o"
+            }
+          ]
+        },
+        {
+          "call": "speedyspec_compat_prop_set",
+          "args": [
+            {
+              "var": "o"
+            },
+            "foo",
+            "bravo"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ],
+          "as": "g1"
+        },
+        {
+          "call": "speedyspec_compat_prop_set",
+          "args": [
+            {
+              "var": "g1"
+            },
+            "foo",
+            "charlie"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ],
+          "as": "g2"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "g2"
+            }
+          ]
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "g1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "array_holding_object_shares_it",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "foo": "alpha"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            {
+              "array": [
+                [
+                  0,
+                  {
+                    "var": "o"
+                  }
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "speedyspec_compat_prop_set",
+          "args": [
+            {
+              "var": "o"
+            },
+            "foo",
+            "bravo"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ],
+          "as": "arr"
+        },
+        {
+          "call": "current",
+          "args": [
+            {
+              "var": "arr"
+            }
+          ],
+          "as": "inner"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "inner"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "empty_group_is_default",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "v",
+            ""
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k",
+            "default"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "zero_string_group_is_default",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "v",
+            "0"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k",
+            "default"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k",
+            "0"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "numeric_string_key_is_int_key",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "5",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            5
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            7,
+            "w"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "7"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "05"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "invalid_keys_doing_it_wrong",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            " ",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            null,
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            1.5,
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            true,
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            [],
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            ""
+          ]
+        },
+        {
+          "call": "wp_cache_add",
+          "args": [
+            null,
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_delete",
+          "args": [
+            " "
+          ]
+        }
+      ]
+    },
+    {
+      "name": "incr_numeric",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "n",
+            5
+          ]
+        },
+        {
+          "call": "wp_cache_incr",
+          "args": [
+            "n"
+          ]
+        },
+        {
+          "call": "wp_cache_incr",
+          "args": [
+            "n",
+            3
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "n"
+          ]
+        },
+        {
+          "call": "wp_cache_incr",
+          "args": [
+            "missing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "incr_non_numeric_resets",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "n",
+            "abc"
+          ]
+        },
+        {
+          "call": "wp_cache_incr",
+          "args": [
+            "n"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "m",
+            [
+              1
+            ]
+          ]
+        },
+        {
+          "call": "wp_cache_decr",
+          "args": [
+            "m"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "m"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "decr_clamps_at_zero",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "n",
+            2
+          ]
+        },
+        {
+          "call": "wp_cache_decr",
+          "args": [
+            "n",
+            5
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "n"
+          ]
+        },
+        {
+          "call": "wp_cache_decr",
+          "args": [
+            "missing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "incr_float_and_numeric_string",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "f",
+            {
+              "float": 1.5
+            }
+          ]
+        },
+        {
+          "call": "wp_cache_incr",
+          "args": [
+            "f"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "s",
+            "10"
+          ]
+        },
+        {
+          "call": "wp_cache_incr",
+          "args": [
+            "s",
+            2
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "t",
+            "2.5"
+          ]
+        },
+        {
+          "call": "wp_cache_decr",
+          "args": [
+            "t"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "incr_int_overflow",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "m",
+            {
+              "int": "PHP_INT_MAX"
+            }
+          ]
+        },
+        {
+          "call": "wp_cache_incr",
+          "args": [
+            "m"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "m"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "incr_offset_cast",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "n",
+            1
+          ]
+        },
+        {
+          "call": "wp_cache_incr",
+          "args": [
+            "n",
+            "2"
+          ]
+        },
+        {
+          "call": "wp_cache_incr",
+          "args": [
+            "n",
+            1.9
+          ]
+        },
+        {
+          "call": "wp_cache_decr",
+          "args": [
+            "n",
+            "1x"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "n"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "multiple_ops",
+      "steps": [
+        {
+          "call": "wp_cache_add_multiple",
+          "args": [
+            {
+              "a": 1,
+              "b": 2
+            }
+          ]
+        },
+        {
+          "call": "wp_cache_add_multiple",
+          "args": [
+            {
+              "a": 9,
+              "c": 3
+            }
+          ]
+        },
+        {
+          "call": "wp_cache_set_multiple",
+          "args": [
+            {
+              "b": 20,
+              "d": 4
+            }
+          ]
+        },
+        {
+          "call": "wp_cache_get_multiple",
+          "args": [
+            [
+              "a",
+              "b",
+              "c",
+              "d",
+              "e"
+            ]
+          ]
+        },
+        {
+          "call": "wp_cache_delete_multiple",
+          "args": [
+            [
+              "a",
+              "e"
+            ]
+          ]
+        },
+        {
+          "call": "wp_cache_get_multiple",
+          "args": [
+            [
+              "a",
+              "b"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get_multiple_with_invalid_key",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "a",
+            1
+          ]
+        },
+        {
+          "call": "wp_cache_get_multiple",
+          "args": [
+            [
+              "a",
+              ""
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "flush",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "a",
+            1
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "b",
+            2,
+            "g"
+          ]
+        },
+        {
+          "call": "wp_cache_flush"
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "a"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "b",
+            "g"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "flush_runtime",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "a",
+            1
+          ]
+        },
+        {
+          "call": "wp_cache_flush_runtime"
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "a"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "flush_group_raw_group",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "a",
+            1,
+            "g"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "b",
+            2,
+            "h"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "c",
+            3,
+            ""
+          ]
+        },
+        {
+          "call": "wp_cache_flush_group",
+          "args": [
+            "g"
+          ]
+        },
+        {
+          "call": "wp_cache_flush_group",
+          "args": [
+            ""
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "a",
+            "g"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "b",
+            "h"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "supports_each_feature",
+      "steps": [
+        {
+          "call": "wp_cache_supports",
+          "args": [
+            "add_multiple"
+          ]
+        },
+        {
+          "call": "wp_cache_supports",
+          "args": [
+            "set_multiple"
+          ]
+        },
+        {
+          "call": "wp_cache_supports",
+          "args": [
+            "get_multiple"
+          ]
+        },
+        {
+          "call": "wp_cache_supports",
+          "args": [
+            "delete_multiple"
+          ]
+        },
+        {
+          "call": "wp_cache_supports",
+          "args": [
+            "flush_runtime"
+          ]
+        },
+        {
+          "call": "wp_cache_supports",
+          "args": [
+            "flush_group"
+          ]
+        },
+        {
+          "call": "wp_cache_supports",
+          "args": [
+            "other"
+          ]
+        },
+        {
+          "call": "wp_cache_supports",
+          "args": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "non_persistent_groups_noop",
+      "steps": [
+        {
+          "call": "wp_cache_add_non_persistent_groups",
+          "args": [
+            [
+              "a"
+            ]
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "v",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k",
+            "a"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "global_groups_on_multisite",
+      "steps": [
+        {
+          "call": "global:replace",
+          "args": [
+            "speedyspec_compat_multisite",
+            true
+          ]
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "speedyspec_compat_blog_id",
+            2
+          ]
+        },
+        {
+          "call": "wp_cache_init"
+        },
+        {
+          "call": "wp_cache_add_global_groups",
+          "args": [
+            [
+              "users"
+            ]
+          ]
+        },
+        {
+          "call": "wp_cache_add_global_groups",
+          "args": [
+            "terms"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "u",
+            "users"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "p",
+            "posts"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "t",
+            "terms"
+          ]
+        },
+        {
+          "call": "wp_cache_switch_to_blog",
+          "args": [
+            3
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k",
+            "users"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k",
+            "posts"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k",
+            "terms"
+          ]
+        },
+        {
+          "call": "wp_cache_switch_to_blog",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k",
+            "posts"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "switch_to_blog_single_site_ignored",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_switch_to_blog",
+          "args": [
+            5
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "switch_to_blog_multisite",
+      "steps": [
+        {
+          "call": "global:replace",
+          "args": [
+            "speedyspec_compat_multisite",
+            true
+          ]
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "speedyspec_compat_blog_id",
+            2
+          ]
+        },
+        {
+          "call": "wp_cache_init"
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_switch_to_blog",
+          "args": [
+            3
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        },
+        {
+          "call": "wp_cache_switch_to_blog",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reset_is_deprecated",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_reset"
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "suspend_addition",
+      "steps": [
+        {
+          "call": "wp_suspend_cache_addition",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "wp_cache_add",
+          "args": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "s",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "s"
+          ]
+        },
+        {
+          "call": "wp_suspend_cache_addition",
+          "args": [
+            false
+          ]
+        },
+        {
+          "call": "wp_cache_add",
+          "args": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "hit_miss_properties",
+      "steps": [
+        {
+          "call": "speedyspec_compat_new_cache",
+          "as": "c"
+        },
+        {
+          "call": "$c->set",
+          "args": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "$c->get",
+          "args": [
+            "k"
+          ]
+        },
+        {
+          "call": "$c->get",
+          "args": [
+            "x"
+          ]
+        },
+        {
+          "call": "$c->__get",
+          "args": [
+            "cache_hits"
+          ]
+        },
+        {
+          "call": "$c->__get",
+          "args": [
+            "cache_misses"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dynamic_property",
+      "steps": [
+        {
+          "call": "speedyspec_compat_new_cache",
+          "as": "c"
+        },
+        {
+          "call": "speedyspec_compat_prop_set",
+          "args": [
+            {
+              "var": "c"
+            },
+            "foo",
+            "bar"
+          ]
+        },
+        {
+          "call": "$c->__get",
+          "args": [
+            "foo"
+          ]
+        },
+        {
+          "call": "$c->__isset",
+          "args": [
+            "foo"
+          ]
+        },
+        {
+          "call": "$c->__unset",
+          "args": [
+            "foo"
+          ]
+        },
+        {
+          "call": "$c->__isset",
+          "args": [
+            "foo"
+          ]
+        },
+        {
+          "call": "$c->__isset",
+          "args": [
+            "cache_hits"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache_property_shape",
+      "steps": [
+        {
+          "call": "speedyspec_compat_new_cache",
+          "as": "c"
+        },
+        {
+          "call": "$c->set",
+          "args": [
+            "k",
+            "v",
+            "g"
+          ]
+        },
+        {
+          "call": "$c->set",
+          "args": [
+            5,
+            "w",
+            "g"
+          ]
+        },
+        {
+          "call": "$c->set",
+          "args": [
+            "x",
+            1
+          ]
+        },
+        {
+          "call": "$c->__get",
+          "args": [
+            "cache"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "close_is_true",
+      "steps": [
+        {
+          "call": "wp_cache_close"
+        }
+      ]
+    },
+    {
+      "name": "expire_ignored",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "v",
+            "",
+            1
+          ]
+        },
+        {
+          "call": "wp_cache_add",
+          "args": [
+            "k2",
+            "v",
+            "",
+            -5
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k2"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "instances_separate",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_new_cache",
+          "as": "c"
+        },
+        {
+          "call": "$c->get",
+          "args": [
+            "k"
+          ]
+        },
+        {
+          "call": "$c->set",
+          "args": [
+            "k",
+            "w"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "k"
+          ]
+        },
+        {
+          "call": "$c->get",
+          "args": [
+            "k"
+          ]
+        }
+      ]
+    }
+  ]
+}

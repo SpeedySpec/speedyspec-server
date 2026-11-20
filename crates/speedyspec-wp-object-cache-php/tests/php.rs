@@ -220,4 +220,16 @@ fn main() {
         mismatches.is_empty(),
         &mismatches[..mismatches.len().min(5)],
     );
+
+    // Each scenario runs in a fresh request, the same steps WordPress's own object cache was recorded with.
+    let mut runner = speedyspec_wp_object_cache_php::object_cache_scenario_runner(php);
+    let mismatches = speedyspec_compat::replay("object-cache", &mut runner);
+    for m in &mismatches {
+        eprintln!("mismatch: {m:?}");
+    }
+    check(
+        "replayed_scenarios_match_wordpress",
+        mismatches.is_empty(),
+        mismatches.len(),
+    );
 }
