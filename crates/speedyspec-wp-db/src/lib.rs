@@ -43,3 +43,13 @@ mod state;
 pub use host::{HostCall, MemoryWpdbHost, WpdbHost};
 pub use shape::{LastQuery, OutputShape, Shaped, WpRow, var};
 pub use state::{ColumnMeta, LoggedQuery, MemoryWpdbState, RequestState, WPDB_STATE, WpdbState};
+
+mod api;
+mod binary;
+mod connection;
+mod log;
+mod lookups;
+mod timed;
+
+pub use api::{QueryOutcome, WpDb, WpDbParts};
+pub use timed::{TimedSqlStore, Timing, microtime};
