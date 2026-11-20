@@ -9,7 +9,7 @@ use speedyspec_php::native::{self, NativeError};
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_wp_options::{
     AddOption, AutoloadValuesToAutoload, DeleteOption, DetermineOptionAutoloadValue,
-    FilterDefaultAutoloadValueViaOptionSize, GetOption, GetOptions, LoadAlloptions, OptionsError,
+    FilterDefaultAutoloadValueViaOptionSize, GetOption, LoadAlloptions, OptionsError,
     PrimeOptionCaches, PrimeOptionCachesByGroup, ProtectSpecialOption, SetOptionAutoload,
     SetOptionAutoloadValues, SetOptionsAutoload, UpdateOption, php_string,
 };
@@ -21,7 +21,6 @@ const NATIVE: &str = "SpeedySpec\\WpOptions\\Native\\";
 /// The handlers every native function dispatches through, each resolved once.
 pub(crate) struct Handlers {
     get_option: QueryRef<GetOption>,
-    get_options: QueryRef<GetOptions>,
     load_alloptions: QueryRef<LoadAlloptions>,
     determine: QueryRef<DetermineOptionAutoloadValue>,
     size: QueryRef<FilterDefaultAutoloadValueViaOptionSize>,
@@ -41,7 +40,6 @@ impl Handlers {
     pub(crate) fn new(c: &Rc<Container>) -> Handlers {
         Handlers {
             get_option: QueryRef::new(c.clone()),
-            get_options: QueryRef::new(c.clone()),
             load_alloptions: QueryRef::new(c.clone()),
             determine: QueryRef::new(c.clone()),
             size: QueryRef::new(c.clone()),
@@ -187,11 +185,6 @@ fn get_option(args: &[Value]) -> R {
     h(|h| ask(&h.get_option, GetOption { name: n, default }))?
 }
 
-fn get_options(args: &[Value]) -> R {
-    let names = names(&a(args, 0));
-    Ok(by_name(h(|h| ask(&h.get_options, GetOptions { names }))??))
-}
-
 fn add_option(args: &[Value]) -> R {
     let Some(n) = checked_name(&a(args, 0))? else {
         return Ok(Value::Bool(false));
@@ -307,7 +300,6 @@ fn protect(args: &[Value]) -> R {
 pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
     let entries: Vec<(&str, Native)> = vec![
         ("get_option", get_option),
-        ("get_options", get_options),
         ("add_option", add_option),
         ("update_option", update_option),
         ("delete_option", delete_option),

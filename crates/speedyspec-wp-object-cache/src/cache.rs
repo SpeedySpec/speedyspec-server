@@ -309,6 +309,29 @@ impl ObjectCache {
         Ok(self.read(&id, &g, force))
     }
 
+    /// `get`, with the value lent to `f` instead of copied: a hit or miss is counted as `get` counts it. `f` must
+    /// not call back into this cache.
+    pub fn get_with<R>(
+        &self,
+        key: &Value,
+        group: &Value,
+        force: bool,
+        f: impl FnOnce(Option<&Value>) -> R,
+    ) -> Result<R, ObjectCacheError> {
+        let Some((id, g)) = self.target(key, group, "get")? else {
+            return Ok(f(None));
+        };
+        if !(force && self.persists(&g)) {
+            let cache = self.cache.borrow();
+            if let Some(CacheValue::Php(v)) = cache.get(&g).and_then(|entries| entries.get(&id)) {
+                self.hits.set(self.hits.get() + 1);
+                return Ok(f(Some(v)));
+            }
+        }
+        let value = self.read(&id, &g, force);
+        Ok(f(value.as_ref()))
+    }
+
     pub(crate) fn read(&self, id: &Key, g: &Key, force: bool) -> Option<Value> {
         if !(force && self.persists(g))
             && self.has_entry(id, g)

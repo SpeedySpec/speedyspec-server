@@ -13,6 +13,17 @@ use crate::{
     autoload_values, php_empty,
 };
 
+/// What a unit of work already holds for an option, when a write of it is staged again.
+#[derive(Debug, Clone)]
+pub(crate) enum Staging {
+    /// Nothing staged: the database and caches decide.
+    Unknown,
+    /// A staged add or update leaves this value.
+    Present(HookValue),
+    /// A staged delete removes the option.
+    Absent,
+}
+
 /// What a write function decided to write, and what it needs afterwards.
 #[derive(Debug, Clone)]
 pub(crate) enum PlannedWrite {
@@ -101,6 +112,26 @@ impl OptionsApi {
         autoload: HookValue,
         fire_before: bool,
     ) -> Result<Option<PlannedWrite>, OptionsError> {
+        self.plan_add_in(
+            name,
+            value,
+            deprecated,
+            autoload,
+            fire_before,
+            &Staging::Unknown,
+        )
+    }
+
+    /// `plan_add`, knowing what a unit of work already holds for the option.
+    pub(crate) fn plan_add_in(
+        &self,
+        name: &str,
+        value: HookValue,
+        deprecated: HookValue,
+        autoload: HookValue,
+        fire_before: bool,
+        staging: &Staging,
+    ) -> Result<Option<PlannedWrite>, OptionsError> {
         if !php_empty(&deprecated.read()) {
             self.d
                 .deprecations
@@ -117,20 +148,34 @@ impl OptionsApi {
                 "5.5.0",
                 &renamed(&option, new),
             )?;
-            return self.plan_add(new, value, deprecated, autoload, fire_before);
+            return self.plan_add_in(
+                new,
+                value,
+                deprecated,
+                autoload,
+                fire_before,
+                &Staging::Unknown,
+            );
         }
         self.d.protected.protect(option.as_str())?;
         let value = self.d.codec.clone_value(value);
         let value = self.d.sanitizing.sanitize_option(&option, value)?;
-        let group = Self::group();
-        let notoptions = self
-            .cache()
-            .get(&HookValue::Str("notoptions".into()), &group, false)?;
-        let known_missing = notoptions.is_some_and(|n| isset(&n.read(), option.as_str()).is_some());
-        if !known_missing {
-            let default = self.default_option(&option)?;
-            if default.read() != self.get_option(option.as_str(), None)?.read() {
-                return Ok(None);
+        match staging {
+            Staging::Present(_) => return Ok(None),
+            Staging::Absent => {}
+            Staging::Unknown => {
+                let group = Self::group();
+                let notoptions =
+                    self.cache()
+                        .get(&HookValue::Str("notoptions".into()), &group, false)?;
+                let known_missing =
+                    notoptions.is_some_and(|n| isset(&n.read(), option.as_str()).is_some());
+                if !known_missing {
+                    let default = self.default_option(&option)?;
+                    if default.read() != self.get_option(option.as_str(), None)?.read() {
+                        return Ok(None);
+                    }
+                }
             }
         }
         let stored = self.d.codec.maybe_serialize(&value)?;
@@ -172,7 +217,7 @@ impl OptionsApi {
         value: HookValue,
         autoload: HookValue,
     ) -> Result<Option<PlannedWrite>, OptionsError> {
-        self.plan_update_over(name, value, autoload, None, true)
+        self.plan_update_over(name, value, autoload, &Staging::Unknown, true)
     }
 
     /// `plan_update`, with the old value given when a unit of work already holds a write of this option.
@@ -181,7 +226,7 @@ impl OptionsApi {
         name: &str,
         value: HookValue,
         autoload: HookValue,
-        known_old: Option<HookValue>,
+        staging: &Staging,
         fire_before: bool,
     ) -> Result<Option<PlannedWrite>, OptionsError> {
         let Some(option) = OptionName::new(name) else {
@@ -195,14 +240,16 @@ impl OptionsApi {
                 "5.5.0",
                 &renamed(&option, new),
             )?;
-            return self.plan_update_over(new, value, autoload, known_old, fire_before);
+            return self.plan_update_over(new, value, autoload, &Staging::Unknown, fire_before);
         }
         self.d.protected.protect(option.as_str())?;
         let value = self.d.codec.clone_value(value);
         let value = self.d.sanitizing.sanitize_option(&option, value)?;
-        let old = match known_old {
-            Some(old) => old,
-            None => self.get_option(option.as_str(), None)?,
+        let old = match staging {
+            Staging::Present(old) => old.clone(),
+            // `get_option()` of a missing option: its `default_option_{$option}` filter on `false`.
+            Staging::Absent => self.default_option(&option)?,
+            Staging::Unknown => self.get_option(option.as_str(), None)?,
         };
         let value = self.filter(&format!("pre_update_option_{option}"), value, || {
             vec![old.clone(), text(&option)]
@@ -217,12 +264,13 @@ impl OptionsApi {
             return Ok(None);
         }
         if self.default_option(&option)?.read() == old.read() {
-            return self.plan_add(
+            return self.plan_add_in(
                 option.as_str(),
                 value,
                 HookValue::Str(String::new()),
                 autoload,
                 fire_before,
+                staging,
             );
         }
         let stored = self.d.codec.maybe_serialize(&value)?;

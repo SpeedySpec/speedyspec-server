@@ -1,7 +1,7 @@
 //! The read path: `get_option`, `wp_load_alloptions`, `wp_prime_option_caches`, `wp_prime_option_caches_by_group`,
 //! `get_options` and `wp_protect_special_option`, in `option.php`'s order of checks, hooks, queries and cache calls.
 
-use speedyspec_wp_hooks::{HookValue, Key};
+use speedyspec_wp_hooks::{Count, HookName, HookValue, Key};
 
 use crate::api::{OptionsApi, isset, key_of, set_key, truthy};
 use crate::{OptionName, OptionsError, autoload_values, php_string};
@@ -47,8 +47,7 @@ impl OptionsApi {
         };
         let group = Self::group();
         let value = if !self.d.installing.installing() {
-            let alloptions = self.load_alloptions(false)?;
-            match isset(&alloptions.read(), n) {
+            match self.alloptions_value(n)? {
                 Some(value) => value,
                 None => {
                     let key = HookValue::Str("notoptions".into());
@@ -101,17 +100,12 @@ impl OptionsApi {
 
     /// `wp_load_alloptions( $force_cache )`.
     pub fn load_alloptions(&self, force_cache: bool) -> Result<HookValue, OptionsError> {
-        let pre = self.filter("pre_wp_load_alloptions", HookValue::Null, || {
-            vec![HookValue::Bool(force_cache)]
-        })?;
-        if matches!(pre.read().as_ref(), HookValue::Array(_)) {
+        if let Some(pre) = self.pre_alloptions(force_cache)? {
             return Ok(pre);
         }
-        let key = HookValue::Str("alloptions".into());
-        let group = Self::group();
         let cached = if self.caches_alloptions() {
             self.cache()
-                .get(&key, &group, force_cache)?
+                .get(&Self::alloptions_key(), &Self::group(), force_cache)?
                 .unwrap_or(HookValue::Bool(false))
         } else {
             HookValue::Bool(false)
@@ -119,26 +113,81 @@ impl OptionsApi {
         let alloptions = if truthy(&cached.read()) {
             cached
         } else {
-            let values = autoload_values(&self.d.autoload.values_to_autoload()?);
-            let mut rows = self.d.repository.autoloaded(&values)?;
-            if rows.is_empty() {
-                rows = self.d.repository.all()?;
-            }
-            let mut alloptions = HookValue::Array(Vec::new());
-            for (name, value) in rows {
-                set_key(&mut alloptions, &name, value.to_value());
-            }
-            if self.caches_alloptions() {
-                alloptions = self.filter("pre_cache_alloptions", alloptions, Vec::new)?;
-                // The cache keeps a copy (PHP arrays are values), never the PHP handle a callback returned: a handle
-                // written back into an array corrupts it (speedyspec-php's `write` copies a whole zval into a hash
-                // bucket, chain link included).
-                self.cache()
-                    .add(&key, alloptions.read().into_owned(), &group, 0)?;
-            }
-            alloptions
+            self.alloptions_from_db()?
         };
         self.filter("alloptions", alloptions, Vec::new)
+    }
+
+    /// `$alloptions[ $option ]` of `wp_load_alloptions()`, as `get_option()` reads it, without copying the whole
+    /// array: the cached array is read in place unless an `alloptions` callback needs it whole.
+    pub(crate) fn alloptions_value(&self, n: &str) -> Result<Option<HookValue>, OptionsError> {
+        if let Some(pre) = self.pre_alloptions(false)? {
+            return Ok(isset(&pre.read(), n));
+        }
+        let (key, group) = (Self::alloptions_key(), Self::group());
+        if self.caches_alloptions() {
+            // `Some(found)` when the cache holds a truthy alloptions, with the name's value in it.
+            let probe = self.cache().get_with(&key, &group, false, |v| {
+                v.filter(|v| truthy(v)).map(|v| isset(v, n))
+            })?;
+            if let Some(found) = probe {
+                let hook = HookName::from("alloptions");
+                if self.d.hooks.skip_if_empty(&hook, Count::Filters)? {
+                    return Ok(found);
+                }
+                let all = self
+                    .cache()
+                    .peek(&key, &group)
+                    .unwrap_or(HookValue::Bool(false));
+                return Ok(isset(
+                    &self.d.hooks.apply_filters(&hook, all, Vec::new())?.read(),
+                    n,
+                ));
+            }
+        }
+        let alloptions = self.alloptions_from_db()?;
+        Ok(isset(
+            &self.filter("alloptions", alloptions, Vec::new)?.read(),
+            n,
+        ))
+    }
+
+    /// `pre_wp_load_alloptions`: an array returned there is `wp_load_alloptions()`'s answer.
+    fn pre_alloptions(&self, force_cache: bool) -> Result<Option<HookValue>, OptionsError> {
+        let pre = self.filter("pre_wp_load_alloptions", HookValue::Null, || {
+            vec![HookValue::Bool(force_cache)]
+        })?;
+        Ok(matches!(pre.read().as_ref(), HookValue::Array(_)).then_some(pre))
+    }
+
+    /// The autoloaded rows (every row when none is), through `pre_cache_alloptions` into the cache.
+    fn alloptions_from_db(&self) -> Result<HookValue, OptionsError> {
+        let values = autoload_values(&self.d.autoload.values_to_autoload()?);
+        let mut rows = self.d.repository.autoloaded(&values)?;
+        if rows.is_empty() {
+            rows = self.d.repository.all()?;
+        }
+        let mut alloptions = HookValue::Array(Vec::new());
+        for (name, value) in rows {
+            set_key(&mut alloptions, &name, value.to_value());
+        }
+        if self.caches_alloptions() {
+            alloptions = self.filter("pre_cache_alloptions", alloptions, Vec::new)?;
+            // The cache keeps a copy (PHP arrays are values), never the PHP handle a callback returned: a handle
+            // written back into an array corrupts it (speedyspec-php's `write` copies a whole zval into a hash
+            // bucket, chain link included).
+            self.cache().add(
+                &Self::alloptions_key(),
+                alloptions.read().into_owned(),
+                &Self::group(),
+                0,
+            )?;
+        }
+        Ok(alloptions)
+    }
+
+    fn alloptions_key() -> HookValue {
+        HookValue::Str("alloptions".into())
     }
 
     /// `wp_prime_option_caches( $options )`: one query for the names no cache knows.

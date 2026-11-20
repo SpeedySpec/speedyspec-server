@@ -9,7 +9,7 @@ use speedyspec_data_uow::DefaultUnitOfWork;
 use speedyspec_wp_hooks::HookValue;
 
 use crate::api::OptionsApi;
-use crate::write::{PlannedWrite, write_planned};
+use crate::write::{PlannedWrite, Staging, write_planned};
 use crate::{OptionName, OptionRepository, OptionsError, SerializedValue};
 
 /// What staging a write did. The cases other than `Registered` are where the direct function returns false
@@ -33,6 +33,9 @@ struct StagedWrite {
     name: OptionName,
     planned: PlannedWrite,
     rows: Rc<Cell<u64>>,
+    /// The write replaces a staged delete with an upsert: both stagings' finishes see a row written, even when the
+    /// upsert left an identical row unchanged (0 rows).
+    replaces_delete: bool,
 }
 
 impl Identified for StagedWrite {
@@ -46,7 +49,6 @@ impl Identified for StagedWrite {
 /// The pending change: the option's write, applied at commit through the repository.
 struct OptionChange {
     engine: String,
-    kind: ChangeKind,
     repository: Rc<dyn OptionRepository>,
     slot: Rc<RefCell<StagedWrite>>,
 }
@@ -56,8 +58,9 @@ impl PendingChange for OptionChange {
         &self.engine
     }
 
+    /// The kind of the write as it stands now: a later staging may have merged into it.
     fn kind(&self) -> ChangeKind {
-        self.kind
+        kind_of(&self.slot.borrow().planned)
     }
 
     fn apply(&self, _handle: &EngineHandle) -> Result<(), DbError> {
@@ -68,7 +71,11 @@ impl PendingChange for OptionChange {
                 code: None,
                 message: e.to_string(),
             })?;
-        slot.rows.set(rows);
+        slot.rows.set(if slot.replaces_delete {
+            rows.max(1)
+        } else {
+            rows
+        });
         Ok(())
     }
 }
@@ -81,16 +88,8 @@ fn kind_of(planned: &PlannedWrite) -> ChangeKind {
     }
 }
 
-/// The value a staged write leaves, as the next staging of the same option sees it.
-fn staged_value(planned: &PlannedWrite) -> HookValue {
-    match planned {
-        PlannedWrite::Add { value, .. } | PlannedWrite::Update { value, .. } => value.clone(),
-        PlannedWrite::Delete { .. } => HookValue::Bool(false),
-    }
-}
-
-/// A second write of one option replaces the first: an update of a staged add stays an insert.
-fn merge(first: &PlannedWrite, next: PlannedWrite) -> Result<PlannedWrite, OptionsError> {
+/// upsert of the new row; a second update keeps the first one's explicit autoload when it sets none.
+fn merge(first: &PlannedWrite, next: PlannedWrite) -> Result<(PlannedWrite, bool), OptionsError> {
     Ok(match (first, next) {
         (
             PlannedWrite::Add { option, .. },
@@ -106,14 +105,52 @@ fn merge(first: &PlannedWrite, next: PlannedWrite) -> Result<PlannedWrite, Optio
             if let Some(autoload) = autoload {
                 option.autoload = autoload;
             }
-            PlannedWrite::Add {
-                option,
+            (
+                PlannedWrite::Add {
+                    option,
+                    value,
+                    stored,
+                },
+                false,
+            )
+        }
+        (PlannedWrite::Delete { .. }, next @ PlannedWrite::Add { .. }) => (next, true),
+        (
+            PlannedWrite::Update {
+                autoload: Some(first_autoload),
+                ..
+            },
+            PlannedWrite::Update {
+                name,
+                old,
                 value,
                 stored,
-            }
-        }
-        (_, next) => next,
+                autoload: None,
+            },
+        ) => (
+            PlannedWrite::Update {
+                name,
+                old,
+                value,
+                stored,
+                autoload: Some(first_autoload.clone()),
+            },
+            false,
+        ),
+        (_, next) => (next, false),
     })
+}
+
+fn staging_of(uow: &DefaultUnitOfWork, name: &OptionName) -> Staging {
+    match uow.identity_map().get::<StagedWrite>(name) {
+        None => Staging::Unknown,
+        Some(slot) => match &slot.borrow().planned {
+            PlannedWrite::Add { value, .. } | PlannedWrite::Update { value, .. } => {
+                Staging::Present(value.clone())
+            }
+            PlannedWrite::Delete { .. } => Staging::Absent,
+        },
+    }
 }
 
 impl OptionsApi {
@@ -128,11 +165,8 @@ impl OptionsApi {
         let Some(option) = OptionName::new(name) else {
             return Ok(Staged::Rejected);
         };
-        let known_old = uow
-            .identity_map()
-            .get::<StagedWrite>(&option)
-            .map(|s| staged_value(&s.borrow().planned));
-        match self.plan_update_over(name, value, autoload, known_old, false)? {
+        let staging = staging_of(uow, &option);
+        match self.plan_update_over(name, value, autoload, &staging, false)? {
             Some(planned) => self.stage(uow, planned),
             None => Ok(Staged::Unchanged),
         }
@@ -146,10 +180,21 @@ impl OptionsApi {
         value: HookValue,
         autoload: HookValue,
     ) -> Result<Staged, OptionsError> {
-        if OptionName::new(name).is_none() {
+        let Some(option) = OptionName::new(name) else {
             return Ok(Staged::Rejected);
+        };
+        let staging = staging_of(uow, &option);
+        if matches!(staging, Staging::Present(_)) {
+            return Ok(Staged::Exists);
         }
-        match self.plan_add(name, value, HookValue::Str(String::new()), autoload, false)? {
+        match self.plan_add_in(
+            name,
+            value,
+            HookValue::Str(String::new()),
+            autoload,
+            false,
+            &staging,
+        )? {
             Some(planned) => self.stage(uow, planned),
             None => Ok(Staged::Exists),
         }
@@ -161,10 +206,32 @@ impl OptionsApi {
         uow: &DefaultUnitOfWork,
         name: &str,
     ) -> Result<Staged, OptionsError> {
-        if OptionName::new(name).is_none() {
+        let Some(option) = OptionName::new(name) else {
             return Ok(Staged::Rejected);
-        }
-        match self.plan_delete(name, false)? {
+        };
+        let staged = uow
+            .identity_map()
+            .get::<StagedWrite>(&option)
+            .map(|slot| slot.borrow().planned.clone());
+        let planned = match staged {
+            Some(PlannedWrite::Delete { .. }) => return Ok(Staged::Missing),
+            // Staged here: the row the delete removes is the staged one, whatever the database holds now.
+            Some(PlannedWrite::Add { option: entity, .. }) => Some(PlannedWrite::Delete {
+                name: option,
+                autoload: entity.autoload,
+            }),
+            Some(PlannedWrite::Update {
+                autoload: Some(autoload),
+                ..
+            }) => Some(PlannedWrite::Delete {
+                name: option,
+                autoload,
+            }),
+            Some(PlannedWrite::Update { autoload: None, .. }) | None => {
+                self.plan_delete(name, false)?
+            }
+        };
+        match planned {
             Some(planned) => self.stage(uow, planned),
             None => Ok(Staged::Missing),
         }
@@ -181,8 +248,11 @@ impl OptionsApi {
         };
         let slot = match uow.identity_map().get::<StagedWrite>(&name) {
             Some(slot) => {
-                let merged = merge(&slot.borrow().planned, planned.clone())?;
-                slot.borrow_mut().planned = merged;
+                let (merged, replaces_delete) = merge(&slot.borrow().planned, planned.clone())?;
+                let mut staged = slot.borrow_mut();
+                staged.planned = merged;
+                staged.replaces_delete |= replaces_delete;
+                drop(staged);
                 slot
             }
             None => {
@@ -190,10 +260,10 @@ impl OptionsApi {
                     name,
                     planned: planned.clone(),
                     rows: Rc::new(Cell::new(0)),
+                    replaces_delete: false,
                 });
                 uow.register(Box::new(OptionChange {
                     engine: self.d.repository.engine(),
-                    kind: kind_of(&planned),
                     repository: self.d.repository.clone(),
                     slot: slot.clone(),
                 }));

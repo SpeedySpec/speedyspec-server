@@ -14,9 +14,22 @@ namespace
         return N\get_option(...func_get_args());
     }
 
+    /**
+     * Retrieves multiple options, as WordPress's own body does it.
+     *
+     *  The array is built here in PHP: a value a PHP `option_{$option}` filter returned must not be written into an
+     *  array from Rust (speedyspec-php's `convert::write` copies a whole zval into a hash bucket, chain link
+     *  included, which corrupts the array).
+     */
     function get_options($options)
     {
-        return N\get_options(...func_get_args());
+        wp_prime_option_caches($options);
+        $result = array();
+        foreach ($options as $option)
+        {
+            $result[$option] = get_option($option);
+        }
+        return $result;
     }
 
     function add_option($option, $value = '', $deprecated = '', $autoload = null)

@@ -212,3 +212,80 @@ fn staged_add_and_delete_commit() {
     assert_eq!(stored(&f, "new"), Some(b"n".to_vec()));
     assert_eq!(stored(&f, "gone"), None);
 }
+
+fn autoload_of(f: &Fixture, n: &str) -> Option<Autoload> {
+    use speedyspec_wp_options::{OptionName, OptionRepository};
+    f.repo.autoload_of(&OptionName::new(n).unwrap()).unwrap()
+}
+
+#[test]
+fn delete_then_update_writes_the_update() {
+    let f = fixture();
+    seed(&f, "x", "a", Autoload::On);
+    let u = uow();
+    assert_eq!(f.api.stage_delete(&u, "x").unwrap(), Staged::Registered);
+    assert_eq!(
+        f.api
+            .stage_update(&u, "x", s("b"), HookValue::Null)
+            .unwrap(),
+        Staged::Registered
+    );
+    u.commit().unwrap();
+    assert_eq!(stored(&f, "x"), Some(b"b".to_vec()));
+    assert_eq!(f.api.get_option("x", None).unwrap(), s("b"));
+}
+
+#[test]
+fn delete_then_add_writes_the_add() {
+    let f = fixture();
+    seed(&f, "x", "a", Autoload::On);
+    let u = uow();
+    f.api.stage_delete(&u, "x").unwrap();
+    assert_eq!(
+        f.api.stage_add(&u, "x", s("a"), HookValue::Null).unwrap(),
+        Staged::Registered
+    );
+    u.commit().unwrap();
+    assert_eq!(stored(&f, "x"), Some(b"a".to_vec()));
+    assert_eq!(f.api.get_option("x", None).unwrap(), s("a"));
+}
+
+#[test]
+fn add_then_delete_cancels() {
+    let f = fixture();
+    let u = uow();
+    assert_eq!(
+        f.api.stage_add(&u, "y", s("v"), HookValue::Null).unwrap(),
+        Staged::Registered
+    );
+    assert_eq!(f.api.stage_delete(&u, "y").unwrap(), Staged::Registered);
+    assert_eq!(
+        f.api.stage_add(&u, "z", s("v"), HookValue::Null).unwrap(),
+        Staged::Registered
+    );
+    assert_eq!(
+        f.api.stage_add(&u, "z", s("w"), HookValue::Null).unwrap(),
+        Staged::Exists
+    );
+    u.commit().unwrap();
+    assert_eq!(stored(&f, "y"), None);
+    assert_eq!(f.api.get_option("y", None).unwrap(), HookValue::Bool(false));
+}
+
+#[test]
+fn second_update_keeps_the_first_autoload() {
+    let f = fixture();
+    // Another autoloaded row: with none left, wp_load_alloptions() falls back to every row, as WordPress's does.
+    seed(&f, "keep", "k", Autoload::On);
+    seed(&f, "z", "a", Autoload::On);
+    let u = uow();
+    f.api.stage_update(&u, "z", s("b"), s("off")).unwrap();
+    f.api
+        .stage_update(&u, "z", s("c"), HookValue::Null)
+        .unwrap();
+    u.commit().unwrap();
+    assert_eq!(stored(&f, "z"), Some(b"c".to_vec()));
+    assert_eq!(autoload_of(&f, "z"), Some(Autoload::Off));
+    assert_eq!(in_alloptions(&f, "z"), None);
+    assert_eq!(cached(&f, "z"), Some(s("c")));
+}

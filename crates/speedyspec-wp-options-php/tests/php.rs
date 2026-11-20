@@ -221,4 +221,12 @@ fn main() {
         matches!(&r, Ok(Value::Array(keys)) if keys.len() == 2),
         &r,
     );
+    // A value a PHP option_{name} filter returned, placed in get_options()'s array beside a name in the same hash
+    // slot ('a' and 'q'), must not corrupt that array (the speedyspec-php zval-copy defect).
+    yes(
+        "get_options_with_php_filtered_values",
+        "add_option('a', '1'); add_option('q', '2'); add_filter('option_a', fn ($v) => $v);
+        $r = get_options(['a', 'q']); $r['q2'] = 3;
+        return $r['a'] === '1' && $r['q'] === '2' && count($r) === 3;",
+    );
 }

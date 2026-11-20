@@ -241,3 +241,27 @@ fn follows_the_current_cache() {
     f.api.get_option("a", None).unwrap();
     assert!(fresh.exists(&s("alloptions"), &options()));
 }
+
+#[test]
+fn cached_read_does_not_copy_alloptions() {
+    // A read of one cached option costs the same whatever else alloptions holds (WordPress reads it in place).
+    let time = |big: usize| {
+        let f = fixture();
+        for i in 0..50 {
+            seed(&f, &format!("o{i}"), "v", Autoload::On);
+        }
+        seed(&f, "big", &"x".repeat(big), Autoload::On);
+        f.api.get_option("o1", None).unwrap();
+        let started = std::time::Instant::now();
+        for _ in 0..200 {
+            f.api.get_option("o1", None).unwrap();
+        }
+        started.elapsed()
+    };
+    let small = time(10);
+    let large = time(4 * 1024 * 1024);
+    assert!(
+        large < small * 3 + std::time::Duration::from_millis(2),
+        "{small:?} vs {large:?}"
+    );
+}
