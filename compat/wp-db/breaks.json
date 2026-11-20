@@ -21,5 +21,18 @@
       "test": "Tests_DB::test_mysqli_flush_sync",
       "why": "parse_create_procedure: the test creates a stored procedure whose BEGIN ... END body sqlparser cannot parse, and every statement is parsed before it reaches the engine; the procedure is never created"
     }
-  ]
+  ],
+  "engine_breaks": {
+    "sqlite": [
+      {
+        "scenario": "errors_duplicate_key",
+        "step": 1,
+        "why": "duplicate_key_wording: SQLite reports a unique-key violation as 'UNIQUE constraint failed: <table>.<columns>' without the duplicate value, so MySQL's \"Duplicate entry '<value>' for key '<table>.<key>'\" cannot be rebuilt; the error is still a constraint error and the insert still fails"
+      },
+      {
+        "scenario": "charset_latin1",
+        "why": "latin1_columns_hold_utf8: SQLite stores text as UTF-8 whatever the column's MySQL charset, so a character latin1 cannot hold is kept instead of becoming '?' (and every later step's last_result shows it)"
+      }
+    ]
+  }
 }

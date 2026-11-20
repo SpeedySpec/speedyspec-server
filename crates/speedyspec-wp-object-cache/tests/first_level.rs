@@ -348,3 +348,29 @@ fn supports_exact_list() {
     assert!(!ObjectCache::supports("ADD_MULTIPLE"));
     assert!(!ObjectCache::supports("incr"));
 }
+
+#[test]
+fn exists_and_peek_count_nothing() {
+    let c = ObjectCache::new(ObjectCachePorts::rust(), None);
+    c.set(
+        &Value::Str("k".into()),
+        Value::Int(1),
+        &Value::Str("g".into()),
+        0,
+    )
+    .unwrap();
+    let (hits, misses) = (c.hits(), c.misses());
+    assert!(c.exists(&Value::Str("k".into()), &Value::Str("g".into())));
+    assert!(!c.exists(&Value::Str("nope".into()), &Value::Str("g".into())));
+    assert_eq!(
+        c.peek(&Value::Str("k".into()), &Value::Str("g".into())),
+        Some(Value::Int(1))
+    );
+    assert_eq!(
+        c.peek(&Value::Str("nope".into()), &Value::Str("g".into())),
+        None
+    );
+    // An invalid key is simply absent: no notice, no count.
+    assert!(!c.exists(&Value::Str("".into()), &Value::Str("g".into())));
+    assert_eq!((c.hits(), c.misses()), (hits, misses));
+}
