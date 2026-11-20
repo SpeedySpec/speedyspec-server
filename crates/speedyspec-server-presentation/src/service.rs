@@ -184,16 +184,21 @@ impl Gate {
         if is_internal(rel_path, &state.apps.internal_paths(&mount.app)) {
             return text(StatusCode::NOT_FOUND, "not found").into();
         }
-        // Maintenance comes before sign-in: everyone gets it, and its page needs nothing else.
-        let gate_unhealthy = mount.access == Access::SignedIn
-            && state.gate_app.as_ref().is_some_and(|gate| {
-                state
-                    .maintenance
-                    .sources(gate)
-                    .contains(&speedyspec_server_gate::MaintenanceSource::Health)
-            });
-        if state.maintenance.is_on(&mount.app) || gate_unhealthy {
+        // Maintenance comes before sign-in: everyone gets it, and its page needs nothing else. Planned maintenance
+        // (site, upgrade, operator) shows the page; failing health is an outage, not maintenance, so it answers a
+        // plain server error (Jacob, 2026-11-20).
+        let sources = state.maintenance.sources(&mount.app);
+        let health = speedyspec_server_gate::MaintenanceSource::Health;
+        if sources.iter().any(|source| *source != health) {
             return maintenance_answer(state, &mount.app).into();
+        }
+        let gate_unhealthy = mount.access == Access::SignedIn
+            && state
+                .gate_app
+                .as_ref()
+                .is_some_and(|gate| state.maintenance.sources(gate).contains(&health));
+        if sources.contains(&health) || gate_unhealthy {
+            return unhealthy_answer().into();
         }
         let gated = mount.access == Access::SignedIn;
         if gated {
@@ -272,6 +277,16 @@ fn maintenance_answer(state: &ServeState, app: &AppId) -> http::Response<Bytes> 
         HeaderValue::from_static(crate::handlers::RETRY_AFTER_SECONDS),
     );
     headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    response
+}
+
+/// What an app failing its health checks answers: 503 with a plain body and no `Retry-After`, since an outage has no
+/// expected end. It needs no PHP.
+fn unhealthy_answer() -> http::Response<Bytes> {
+    let mut response = text(StatusCode::SERVICE_UNAVAILABLE, "service unavailable");
+    response
+        .headers_mut()
+        .insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
     response
 }
 

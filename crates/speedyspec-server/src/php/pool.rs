@@ -50,6 +50,18 @@ pub const DRAIN_GRACE: Duration = Duration::from_secs(1);
 /// The server's environment variables a worker keeps; everything else of the server's is cleared.
 const WORKER_ENV_ALLOWLIST: &[&str] = &["PATH", "HOME", "USER", "TMPDIR", "TZ", "LANG", "LC_ALL"];
 
+/// The delay before trying again after a worker failed to start, doubling with each failure in a row up to
+/// [`START_BACKOFF_MAX`].
+const START_BACKOFF: Duration = Duration::from_millis(100);
+const START_BACKOFF_MAX: Duration = Duration::from_secs(10);
+
+/// The delay after `failures` failed starts in a row.
+fn start_backoff(failures: u32) -> Duration {
+    START_BACKOFF
+        .saturating_mul(1 << failures.saturating_sub(1).min(16))
+        .min(START_BACKOFF_MAX)
+}
+
 /// How long a new worker may take to answer `GET_VALUES`.
 const READY_TIMEOUT: Duration = Duration::from_secs(20);
 /// macOS and Linux limit a socket path to about 104 bytes.
@@ -112,6 +124,10 @@ struct State {
     internal_busy: [bool; 2],
     /// A replacement for each lane's internal worker is starting.
     internal_starting: [bool; 2],
+    /// Worker starts that failed in a row, and when the next may be tried: a worker that fails at once is started
+    /// again after a growing delay, never in a tight loop.
+    start_failures: u32,
+    retry_at: Option<Instant>,
 }
 
 impl State {
@@ -278,6 +294,8 @@ impl EmbeddedPhpPool {
                 internal: [None, None],
                 internal_busy: [false; 2],
                 internal_starting: [false; 2],
+                start_failures: 0,
+                retry_at: None,
             }),
             wake: tokio::sync::Notify::new(),
             internal_wake: tokio::sync::Notify::new(),
@@ -337,6 +355,8 @@ impl EmbeddedPhpPool {
                     internal: [None, None],
                     internal_busy: [false; 2],
                     internal_starting: [false; 2],
+                    start_failures: 0,
+                    retry_at: None,
                 }),
                 wake: tokio::sync::Notify::new(),
                 internal_wake: tokio::sync::Notify::new(),
@@ -516,10 +536,39 @@ impl EmbeddedPhpPool {
         }
     }
 
+    /// Starts a worker once the backoff from earlier failed starts has passed, and records how this start went. Runs
+    /// on a thread of its own, so the wait blocks no request.
+    fn spawn_after_backoff(&self) -> Result<Worker, String> {
+        let retry_at = self.inner.state.lock().unwrap().retry_at;
+        if let Some(wait) = retry_at.map(|at| at.saturating_duration_since(Instant::now())) {
+            std::thread::sleep(wait);
+        }
+        let started = self.spawn_worker();
+        let mut state = self.inner.state.lock().unwrap();
+        match &started {
+            Ok(_) => {
+                state.start_failures = 0;
+                state.retry_at = None;
+            }
+            Err(err) => {
+                state.start_failures = state.start_failures.saturating_add(1);
+                let wait = start_backoff(state.start_failures);
+                state.retry_at = Some(Instant::now() + wait);
+                drop(state);
+                log(
+                    "php_worker_start_failed",
+                    &self.inner,
+                    serde_json::json!({ "reason": err, "retry_in_ms": wait.as_millis() as u64 }),
+                );
+            }
+        }
+        started
+    }
+
     /// Starts a lane's internal worker again.
     fn replace_internal(&self, lane: InternalLane) {
         let i = lane as usize;
-        let started = self.spawn_worker();
+        let started = self.spawn_after_backoff();
         let mut state = self.inner.state.lock().unwrap();
         state.internal_starting[i] = false;
         match started {
@@ -658,7 +707,7 @@ impl EmbeddedPhpPool {
 
     /// Starts a replacement worker (its slot is already counted).
     fn replace(&self) {
-        match self.spawn_worker() {
+        match self.spawn_after_backoff() {
             Ok(worker) => {
                 let mut state = self.inner.state.lock().unwrap();
                 if state.draining {
@@ -955,6 +1004,96 @@ mod tests {
         assert!(second.is_err(), "a second visitor waits: max is 1");
         assert_eq!(pool.counts().0, 1, "only visitor workers are counted");
         drop(visitor);
+    }
+
+    /// A pool whose first `failures` worker starts fail at once, counting every start.
+    fn failing_pool(failures: usize) -> (EmbeddedPhpPool, Arc<std::sync::atomic::AtomicUsize>) {
+        let settings = PoolSettings {
+            min: 0,
+            max: 4,
+            max_requests: 100,
+            request_timeout: Duration::from_secs(5),
+            memory_limit: u64::MAX,
+            idle_timeout: Duration::from_secs(60),
+        };
+        let starts = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let counted = starts.clone();
+        let pool = EmbeddedPhpPool::with_spawner(settings, move |id| {
+            if counted.fetch_add(1, Ordering::SeqCst) < failures {
+                return Err("the PHP worker exited while starting (exit status: 1)".into());
+            }
+            let child = Command::new("sleep")
+                .arg("30")
+                .spawn()
+                .map_err(|e| e.to_string())?;
+            Ok((
+                PathBuf::from(format!("/nonexistent/worker-{id}.sock")),
+                child,
+            ))
+        });
+        (pool, starts)
+    }
+
+    /// A worker that fails at once is started again after a growing delay, not in a tight loop: in one second, a
+    /// handful of starts rather than thousands.
+    #[tokio::test]
+    async fn failing_internal_starts_back_off() {
+        let (pool, starts) = failing_pool(usize::MAX);
+        let waited = tokio::time::timeout(
+            Duration::from_secs(1),
+            pool.acquire_internal(InternalLane::Probe),
+        )
+        .await;
+        assert!(waited.is_err(), "no worker ever starts");
+        let starts = starts.load(Ordering::SeqCst);
+        assert!((2..=8).contains(&starts), "{starts} starts in one second");
+    }
+
+    /// As [`failing_internal_starts_back_off`], for visitors' workers, with several visitors waiting.
+    #[tokio::test]
+    async fn failing_visitor_starts_back_off() {
+        let (pool, starts) = failing_pool(usize::MAX);
+        let visitors: Vec<_> = (0..4)
+            .map(|_| {
+                let pool = pool.clone();
+                tokio::spawn(async move {
+                    tokio::time::timeout(Duration::from_secs(1), pool.acquire())
+                        .await
+                        .is_err()
+                })
+            })
+            .collect();
+        for visitor in visitors {
+            assert!(visitor.await.unwrap(), "no worker ever starts");
+        }
+        let starts = starts.load(Ordering::SeqCst);
+        assert!((2..=24).contains(&starts), "{starts} starts in one second");
+    }
+
+    /// A worker that starts after a few failures ends the backoff: the next start is not delayed.
+    #[tokio::test]
+    async fn a_successful_start_ends_the_backoff() {
+        let (pool, _) = failing_pool(3);
+        let lease = tokio::time::timeout(
+            Duration::from_secs(3),
+            pool.acquire_internal(InternalLane::Calls),
+        )
+        .await
+        .expect("started after the failures")
+        .unwrap();
+        pool.release(lease, Fate::TimedOut);
+        let started = Instant::now();
+        let again = tokio::time::timeout(
+            Duration::from_secs(1),
+            pool.acquire_internal(InternalLane::Calls),
+        )
+        .await;
+        assert!(matches!(again, Ok(Ok(_))));
+        assert!(
+            started.elapsed() < Duration::from_millis(100),
+            "{:?}",
+            started.elapsed()
+        );
     }
 
     /// A killed internal worker is replaced, and the next internal call gets the replacement.

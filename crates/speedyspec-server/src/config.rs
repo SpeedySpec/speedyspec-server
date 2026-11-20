@@ -18,7 +18,7 @@ pub const DEFAULT_CONFIG: &str = "/etc/speedyspec/server.toml";
 
 const DEFAULT_RUN_DIR: &str = "/run/speedyspec";
 const DEFAULT_STATIC_MEMORY: u64 = 512 * 1024 * 1024;
-const DEFAULT_KEEP: u32 = 3;
+const DEFAULT_KEEP: u32 = 2;
 const DEFAULT_CHECK_INTERVAL: Duration = Duration::from_secs(15 * 60);
 const DEFAULT_FALLBACK_GRACE: Duration = Duration::from_secs(60 * 60);
 
@@ -1428,7 +1428,7 @@ app = "blog"
             .replace("keep = 3\nupdate = \"auto\"", "")
             .replace("keep = 3\nupdate = \"manual\"", "");
         let config = Config::parse(&bare).unwrap();
-        assert_eq!(config.apps[&id("admin")].keep, 3);
+        assert_eq!(config.apps[&id("admin")].keep, 2);
         assert_eq!(config.apps[&id("admin")].update, UpdatePolicy::Auto);
         assert_eq!(config.apps[&id("server")].update, UpdatePolicy::Manual);
     }
