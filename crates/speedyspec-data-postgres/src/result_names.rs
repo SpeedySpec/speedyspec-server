@@ -24,6 +24,11 @@ impl VisitorMut for Pin {
                 },
                 other => other.to_string(),
             };
+            let name = if name.is_empty() {
+                crate::plan::EMPTY_NAME.to_string()
+            } else {
+                name
+            };
             let expr = std::mem::replace(expr, Expr::value(Value::Null));
             *item = SelectItem::ExprWithAlias {
                 expr,

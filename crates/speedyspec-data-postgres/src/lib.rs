@@ -6,6 +6,7 @@ mod error;
 mod exec;
 mod factory;
 mod introspect;
+mod origin;
 mod passes;
 mod plan;
 mod result_names;

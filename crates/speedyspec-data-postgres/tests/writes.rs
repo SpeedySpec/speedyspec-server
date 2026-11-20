@@ -164,3 +164,18 @@ fn update_guard_with_a_zero_date() {
         ],
     );
 }
+
+#[test]
+fn latin1_values_keep_only_latin1() {
+    let d = speedyspec_data_postgres::PostgresDialect::new(Some(std::rc::Rc::new(
+        speedyspec_data_translate::testing::StaticIntrospector::from_mysql_ddl(&[
+            "CREATE TABLE l (name varchar(20)) DEFAULT CHARSET=latin1",
+        ]),
+    )));
+    assert_pg(
+        &d,
+        "INSERT INTO l (name) VALUES (?)",
+        vec![t("x")],
+        &[r#"INSERT INTO "l" ("name") VALUES (speedyspec_latin1($1))"#],
+    );
+}

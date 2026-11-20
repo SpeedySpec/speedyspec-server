@@ -4318,6 +4318,7 @@ dependencies = [
  "postgres",
  "speedyspec-data",
  "speedyspec-data-conformance",
+ "speedyspec-data-corpus",
  "speedyspec-data-query",
  "speedyspec-data-translate",
  "sqlparser",
@@ -4685,6 +4686,7 @@ name = "speedyspec-wp-db-php"
 version = "0.1.0"
 dependencies = [
  "indexmap",
+ "postgres",
  "serde_json",
  "sha2 0.10.9",
  "speedyspec-compat",
@@ -4693,6 +4695,7 @@ dependencies = [
  "speedyspec-cqrs",
  "speedyspec-data",
  "speedyspec-data-mysql",
+ "speedyspec-data-postgres",
  "speedyspec-data-query",
  "speedyspec-data-sqlite",
  "speedyspec-hooks-memory",

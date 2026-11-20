@@ -28,6 +28,8 @@ pub struct PostgresStore {
     autocommit_off: Cell<bool>,
     found_rows: Cell<u64>,
     last_id: Cell<u64>,
+    /// (table OID, column number) → (table, column), forgotten after DDL.
+    origins: RefCell<std::collections::HashMap<(u32, i16), Option<(String, String)>>>,
 }
 
 /// `SET autocommit = 0|1`, which PostgreSQL has no variable for.
@@ -141,6 +143,7 @@ impl PostgresStore {
             autocommit_off: Cell::new(false),
             found_rows: Cell::new(0),
             last_id: Cell::new(0),
+            origins: RefCell::new(std::collections::HashMap::new()),
         };
         if let Ok(v) = store.introspector.server_version() {
             store.session.borrow_mut().set("version", &v);
@@ -168,6 +171,30 @@ impl PostgresStore {
         self.control(&sql.join("; "))
     }
 
+    /// The table and column a result column comes from.
+    fn origin(&self, oid: u32, attnum: i16) -> Option<(String, String)> {
+        if let Some(hit) = self.origins.borrow().get(&(oid, attnum)) {
+            return hit.clone();
+        }
+        let found = {
+            let mut conn = self.conn.borrow_mut();
+            conn.client().ok().and_then(|c| {
+                c.query_opt(
+                    "SELECT c.relname::text, a.attname::text FROM pg_class c JOIN pg_attribute a ON a.attrelid = c.oid \
+                     WHERE c.oid = $1 AND a.attnum = $2",
+                    &[&oid, &attnum],
+                )
+                .ok()
+                .flatten()
+                .map(|r| (r.get::<_, String>(0), r.get::<_, String>(1)))
+            })
+        };
+        self.origins
+            .borrow_mut()
+            .insert((oid, attnum), found.clone());
+        found
+    }
+
     fn control(&self, sql: &str) -> Result<(), DbError> {
         let mut conn = self.conn.borrow_mut();
         let engine = conn.engine().to_string();
@@ -180,6 +207,24 @@ impl PostgresStore {
     }
 
     fn after_error<T>(&self, result: Result<T, DbError>) -> Result<T, DbError> {
+        let result = result.map_err(|e| match e {
+            // MySQL's wording, which WordPress and plugins match on.
+            DbError::Engine {
+                engine,
+                code: Some(code),
+                message,
+            } if code == "42P01" => {
+                self.dialect.invalidate_schema();
+                let table = message.split('"').nth(1).unwrap_or_default().to_string();
+                let database = self.session.borrow().database().to_string();
+                DbError::Engine {
+                    engine,
+                    code: Some("1146".into()),
+                    message: format!("Table '{database}.{table}' doesn't exist"),
+                }
+            }
+            other => other,
+        });
         if let Err(e) = &result {
             match e {
                 DbError::Connection { .. } => {
@@ -226,11 +271,21 @@ impl PostgresStore {
                 exec.rows_affected += n;
                 None
             }),
-            _ => exec::query(&mut conn, &engine, &e.sql).map(Some),
+            _ => exec::query_with_origins(&mut conn, &engine, &e.sql).map(Some),
         };
         drop(conn);
         let rows = self.after_error(result)?;
-        let Some(rows) = rows else { return Ok(None) };
+        let Some((mut rows, origins)) = rows else {
+            return Ok(None);
+        };
+        if e.count == RowCount::Rows {
+            crate::origin::describe(
+                &mut rows,
+                &origins,
+                &|oid, attnum| self.origin(oid, attnum),
+                &|t| self.introspector.catalogue(t).ok().flatten(),
+            );
+        }
         let column = |name: &str| rows.columns.iter().position(|c| c.name == name);
         match e.count {
             RowCount::Returning | RowCount::Upsert => {
@@ -389,7 +444,9 @@ impl PostgresStore {
             self.reopen()?;
         }
         if kind == StatementKind::Ddl {
+            self.introspector.track_temporary(stmt)?;
             self.dialect.invalidate_schema();
+            self.origins.borrow_mut().clear();
             self.conn.borrow_mut().forget_statements();
             let _ = self.control("NOTIFY speedyspec_schema");
         }
@@ -507,6 +564,7 @@ impl SqlStore for PostgresStore {
             Ok(false) => {}
             Err(_) => self.conn.borrow_mut().mark_lost(),
         }
+        self.introspector.forget_temporary();
         self.session.borrow_mut().reset();
         self.found_rows.set(0);
         self.last_id.set(0);

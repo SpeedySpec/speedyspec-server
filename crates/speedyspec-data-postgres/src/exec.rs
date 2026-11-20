@@ -9,12 +9,24 @@ use crate::connection::Connection;
 use crate::error::map_error;
 use crate::value::{PgCell, PgParam, mysql_column_info};
 
+/// Where each result column comes from: its table's OID and its column number, when it is a plain column.
+pub(crate) type Origins = Vec<Option<(u32, i16)>>;
+
 /// The statement's rows.
 pub(crate) fn query(
     conn: &mut Connection,
     engine: &str,
     sql: &EmittedSql,
 ) -> Result<Rows, DbError> {
+    query_with_origins(conn, engine, sql).map(|(rows, _)| rows)
+}
+
+/// The statement's rows and their columns' origins.
+pub(crate) fn query_with_origins(
+    conn: &mut Connection,
+    engine: &str,
+    sql: &EmittedSql,
+) -> Result<(Rows, Origins), DbError> {
     let params: Vec<PgParam> = sql.params.iter().map(PgParam).collect();
     let refs: Vec<&(dyn ToSql + Sync)> = params.iter().map(|p| p as &(dyn ToSql + Sync)).collect();
     let statement = conn.prepare(&sql.sql)?;
@@ -24,11 +36,14 @@ pub(crate) fn query(
     let rows = client
         .query(&statement, refs)
         .map_err(|e| map_error(engine, e))?;
-    let names: Rc<[String]> = statement
-        .columns()
-        .iter()
-        .map(|c| c.name().to_string())
-        .collect();
+    let name = |c: &postgres::Column| {
+        if c.name() == crate::plan::EMPTY_NAME {
+            String::new()
+        } else {
+            c.name().to_string()
+        }
+    };
+    let names: Rc<[String]> = statement.columns().iter().map(name).collect();
     let mut values: Vec<Vec<speedyspec_data::DbValue>> = Vec::with_capacity(rows.len());
     for row in &rows {
         let mut out = Vec::with_capacity(names.len());
@@ -45,16 +60,26 @@ pub(crate) fn query(
         .map(|(i, c)| {
             let column: Vec<speedyspec_data::DbValue> =
                 values.iter().map(|r| r[i].clone()).collect();
-            mysql_column_info(c, None, &column, i)
+            let mut info = mysql_column_info(c, None, &column, i);
+            info.name = name(c);
+            info
         })
         .collect();
-    Ok(Rows {
-        columns,
-        rows: values
-            .into_iter()
-            .map(|v| Row::new(names.clone(), v))
-            .collect(),
-    })
+    let origins = statement
+        .columns()
+        .iter()
+        .map(|c| c.table_oid().zip(c.column_id()))
+        .collect();
+    Ok((
+        Rows {
+            columns,
+            rows: values
+                .into_iter()
+                .map(|v| Row::new(names.clone(), v))
+                .collect(),
+        },
+        origins,
+    ))
 }
 
 /// The statement's affected-row count.

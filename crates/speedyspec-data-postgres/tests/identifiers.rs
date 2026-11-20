@@ -105,3 +105,8 @@ fn plan_counts() {
     );
     assert_eq!(delete[0].count, RowCount::Affected);
 }
+
+#[test]
+fn empty_string_result_name() {
+    none("SELECT ''", r#"SELECT '' AS "__speedyspec_empty_name""#);
+}

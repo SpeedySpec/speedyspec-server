@@ -3,6 +3,9 @@
 use speedyspec_data::{EmittedSql, EmulatedOp};
 use sqlparser::ast::{Expr, Query, SelectItem, SetExpr, Statement as Ast};
 
+/// The name a column MySQL names `""` (`SELECT ''`) carries, since PostgreSQL has no empty name; the store
+/// gives it back as `""`.
+pub const EMPTY_NAME: &str = "__speedyspec_empty_name";
 /// The column of an `INSERT ... RETURNING` that carries the generated id.
 pub const ID_ALIAS: &str = "__speedyspec_id";
 /// The column of an upsert's `RETURNING` that says whether the row was inserted.

@@ -35,6 +35,32 @@ struct Zero<'a> {
 }
 
 impl Zero<'_> {
+    /// Whether the column holds latin1, whose values MySQL narrows to what latin1 can hold.
+    fn is_latin1(&self, expr: &Expr) -> bool {
+        let name = match expr {
+            Expr::Identifier(i) => i.value.clone(),
+            _ => return false,
+        };
+        self.tables.iter().any(|(_, t)| {
+            self.schema.columns(t).is_some_and(|cols| {
+                cols.iter().any(|c| {
+                    c.name.eq_ignore_ascii_case(&name)
+                        && c.collation
+                            .as_deref()
+                            .is_some_and(|k| k.starts_with("latin1"))
+                })
+            })
+        })
+    }
+
+    fn narrow(&self, value: &mut Expr) {
+        if matches!(value, Expr::Value(v) if matches!(v.value, Value::Null)) {
+            return;
+        }
+        let inner = std::mem::replace(value, Expr::value(Value::Null));
+        *value = super::functions::template("speedyspec_latin1(__a0)", vec![inner]);
+    }
+
     fn is_date(&self, expr: &Expr) -> bool {
         self.schema
             .type_of(&self.tables, expr)
@@ -152,10 +178,21 @@ impl RewritePass for PgZeroDates {
                             if zero.is_date(&column) {
                                 zero.fix(&mut a.value);
                             }
+                            if zero.is_latin1(&column) {
+                                zero.narrow(&mut a.value);
+                            }
                         }
                     }
                 }
                 Ast::Insert(insert) => {
+                    let latin1: Vec<bool> = insert
+                        .columns
+                        .iter()
+                        .map(|c| {
+                            let ident = c.0.last().and_then(|p| p.as_ident().cloned());
+                            ident.is_some_and(|i| zero.is_latin1(&Expr::Identifier(i)))
+                        })
+                        .collect();
                     let dates: Vec<bool> = insert
                         .columns
                         .iter()
@@ -168,9 +205,14 @@ impl RewritePass for PgZeroDates {
                         && let SetExpr::Values(values) = source.body.as_mut()
                     {
                         for row in &mut values.rows {
-                            for (value, date) in row.content.iter_mut().zip(&dates) {
+                            for ((value, date), narrow) in
+                                row.content.iter_mut().zip(&dates).zip(&latin1)
+                            {
                                 if *date {
                                     zero.fix(value);
+                                }
+                                if *narrow {
+                                    zero.narrow(value);
                                 }
                             }
                         }

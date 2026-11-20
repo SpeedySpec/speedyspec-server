@@ -17,6 +17,8 @@ use crate::plan::PgPlan;
 pub struct PostgresIntrospector {
     conn: Rc<RefCell<Connection>>,
     dialect: PostgresDialect,
+    /// This connection's temporary tables, as MySQL would describe them; never in the shared catalogue.
+    temporary: RefCell<std::collections::HashMap<String, CatalogueTable>>,
 }
 
 /// MySQL's name for a PostgreSQL type, for tables the catalogue does not record.
@@ -45,6 +47,7 @@ impl PostgresIntrospector {
         PostgresIntrospector {
             conn,
             dialect: PostgresDialect::new(None),
+            temporary: RefCell::new(std::collections::HashMap::new()),
         }
     }
 
@@ -62,8 +65,38 @@ impl PostgresIntrospector {
         Ok(rows)
     }
 
-    fn catalogue(&self, table: &str) -> Result<Option<CatalogueTable>, DbError> {
+    pub(crate) fn catalogue(&self, table: &str) -> Result<Option<CatalogueTable>, DbError> {
+        if let Some(temp) = self.temporary.borrow().get(table) {
+            // A temporary table hides the permanent one of its name, as in MySQL.
+            return Ok(Some(temp.clone()));
+        }
         read_catalogue(&|s| self.run(s), table)
+    }
+
+    /// Records or forgets a temporary table this connection made or dropped.
+    pub(crate) fn track_temporary(&self, stmt: &Statement) -> Result<(), DbError> {
+        match stmt.tree() {
+            sqlparser::ast::Statement::CreateTable(create) if create.temporary => {
+                let table = speedyspec_data_translate::catalogue_table(stmt.tree())?;
+                self.temporary
+                    .borrow_mut()
+                    .insert(table.name.clone(), table);
+            }
+            sqlparser::ast::Statement::Drop { names, .. } => {
+                for name in names {
+                    self.temporary
+                        .borrow_mut()
+                        .remove(&speedyspec_data_translate::object_name(name));
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    /// A connection reset ends its temporary tables.
+    pub(crate) fn forget_temporary(&self) {
+        self.temporary.borrow_mut().clear();
     }
 
     fn fixed(

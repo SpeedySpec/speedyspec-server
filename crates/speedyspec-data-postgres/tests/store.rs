@@ -323,3 +323,84 @@ fn implicit_default_applies() {
         Some("")
     );
 }
+
+#[test]
+#[ignore = "needs PostgreSQL: set SPEEDYSPEC_TEST_POSTGRES_URL"]
+fn errors_and_columns_read_as_mysql() {
+    let s = store("mysql_errors");
+    let missing = s
+        .query(&parse_one("SELECT * FROM wp_missing").unwrap())
+        .unwrap_err();
+    assert!(
+        matches!(&missing, DbError::Engine { message, .. } if message == "Table 'speedyspec_test.wp_missing' doesn't exist"),
+        "{missing:?}"
+    );
+    exec(
+        &*s,
+        "INSERT INTO wp_options (option_id, option_name) VALUES (1, 'a')",
+    );
+    let dup = s
+        .execute(
+            &parse_one("INSERT INTO wp_options (option_id, option_name) VALUES (1, 'b')").unwrap(),
+        )
+        .unwrap_err();
+    assert!(
+        matches!(&dup, DbError::Constraint { message, .. } if message == "Duplicate entry '1' for key 'wp_options.PRIMARY'"),
+        "{dup:?}"
+    );
+    let rows = query(&*s, "SELECT option_id, autoload FROM wp_options o");
+    let (id, autoload) = (&rows.columns[0], &rows.columns[1]);
+    assert_eq!(
+        (id.org_table.as_str(), id.org_name.as_str(), id.flags),
+        ("wp_options", "option_id", 49699)
+    );
+    assert_eq!((autoload.length, autoload.charset), (80, 246));
+    assert_eq!(query(&*s, "SELECT ''").columns[0].name, "");
+}
+
+#[test]
+#[ignore = "needs PostgreSQL: set SPEEDYSPEC_TEST_POSTGRES_URL"]
+fn latin1_column_stores_question_marks() {
+    let s = store("latin1");
+    exec(
+        &*s,
+        "CREATE TABLE l (name varchar(20)) DEFAULT CHARSET=latin1",
+    );
+    exec(&*s, "INSERT INTO l (name) VALUES ('café'), ('😀')");
+    let names: Vec<DbValue> = query(&*s, "SELECT name FROM l")
+        .rows
+        .iter()
+        .map(|r| r.values()[0].clone())
+        .collect();
+    assert_eq!(
+        names,
+        [DbValue::Text("café".into()), DbValue::Text("?".into())]
+    );
+}
+
+#[test]
+#[ignore = "needs PostgreSQL: set SPEEDYSPEC_TEST_POSTGRES_URL"]
+fn temporary_tables_are_described() {
+    let s = store("temporary");
+    exec(
+        &*s,
+        "CREATE TEMPORARY TABLE tmp_charset (a varchar(50) COLLATE utf8_bin) DEFAULT CHARSET=big5",
+    );
+    let columns = query(&*s, "SHOW FULL COLUMNS FROM tmp_charset");
+    assert_eq!(
+        columns.rows[0].get("Collation"),
+        Some(&DbValue::Text("utf8_bin".into()))
+    );
+    let tables: Vec<DbValue> = query(&*s, "SHOW TABLES")
+        .rows
+        .iter()
+        .map(|r| r.values()[0].clone())
+        .collect();
+    assert!(!tables.contains(&DbValue::Text("tmp_charset".into())));
+    exec(&*s, "DROP TEMPORARY TABLE tmp_charset");
+    assert!(
+        query(&*s, "SHOW FULL COLUMNS FROM tmp_charset")
+            .rows
+            .is_empty()
+    );
+}

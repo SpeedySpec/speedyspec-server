@@ -47,4 +47,9 @@ CREATE OR REPLACE FUNCTION speedyspec_sysvar(name text) RETURNS text LANGUAGE sq
     SELECT current_setting('speedyspec.' || name, true)
 $$;
 
-COMMENT ON FUNCTION speedyspec_signed(text) IS 'speedyspec-support 3';
+-- A value for a latin1 column: MySQL stores '?' for each character latin1 (Windows-1252) cannot hold.
+CREATE OR REPLACE FUNCTION speedyspec_latin1(x text) RETURNS text LANGUAGE sql IMMUTABLE RETURNS NULL ON NULL INPUT AS $$
+    SELECT regexp_replace(x COLLATE "C", '[^\u0001-\u007f\u00a0-\u00ff€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]', '?', 'g')
+$$;
+
+COMMENT ON FUNCTION speedyspec_signed(text) IS 'speedyspec-support 4';
