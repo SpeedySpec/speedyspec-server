@@ -6,15 +6,18 @@
 mod admin;
 mod catalogue;
 mod ddl;
+mod emulate;
 mod expressions;
 mod found_rows;
 mod hints;
 mod insert;
 mod lexical;
+mod like;
 mod mysql_type;
 mod names;
 mod params;
 mod row_limit;
+mod session;
 #[cfg(feature = "testing")]
 pub mod testing;
 
@@ -27,14 +30,17 @@ pub use catalogue::{
     index_object_name, is_catalogue_table, read_catalogue,
 };
 pub use ddl::DdlPass;
+pub use emulate::{answer_emulated, family_of, render_create_table};
 pub use expressions::{ExpressionPass, function_call};
 pub use found_rows::take_found_rows;
 pub use hints::HintsPass;
 pub use insert::InsertPass;
 pub use lexical::LexicalPass;
+pub use like::mysql_like;
 pub use mysql_type::{MySqlType, Temporal, TypeFamily};
 pub use params::number_placeholders;
 pub use row_limit::RowLimitPass;
+pub use session::SessionVars;
 
 /// The neutral passes, in order: administrative statements, DDL, lexical, hints, expressions, inserts.
 pub fn neutral_chain() -> PassChain {
