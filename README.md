@@ -95,7 +95,7 @@ headers = "x-forwarded"                # or "forwarded" (RFC 7239)
 [app.server]
 kind = "server"                        # exactly one; its release is this binary
 source = "https://speedyspec.github.io/speedyspec-server/server/index.json"
-keys = ["RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3"] # the key line of this repository's minisign.pub
+keys = ["RWT1iFxWT0DcUmOoHd7G9+GvpsUxaAPTOqtDr0GyVUvsJHHuBNRxI+0n"] # this repository's minisign.pub
 
 [app.admin]
 kind = "static"                        # or "php"
@@ -110,7 +110,7 @@ allow_unsigned = false
 [app.php-runtime]
 kind = "runtime"                       # the PHP runtime binary the php apps run; see docs/php.md
 source = "https://speedyspec.github.io/speedyspec-server/php-runtime/index.json"
-keys = ["RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3"] # the same key as the server's
+keys = ["RWT1iFxWT0DcUmOoHd7G9+GvpsUxaAPTOqtDr0GyVUvsJHHuBNRxI+0n"] # the same key as the server's
 update = "manual"
 
 [app.blog]
