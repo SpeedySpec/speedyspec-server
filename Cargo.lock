@@ -4143,6 +4143,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-data-counter"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+]
+
+[[package]]
+name = "speedyspec-data-memory"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-counter",
+ "speedyspec-data-query",
+]
+
+[[package]]
 name = "speedyspec-data-mysql"
 version = "0.1.0"
 dependencies = [
