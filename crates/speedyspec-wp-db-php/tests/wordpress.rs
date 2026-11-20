@@ -1,6 +1,7 @@
 //! WordPress's own database tests (tests/php/wordpress/db*.php, copied from wordpress-develop) pass against the
 //! native `wpdb`, run by the pinned PHPUnit inside the embedded PHP on MySQL. With `SPEEDYSPEC_DB_URL` set to a
-//! `sqlite://` URL they run on SQLite instead, where only the tests `compat/phpunit-sqlite.json` lists may fail. Tests marked `@group
+//! `sqlite://` or `postgres://` URL they run on that engine instead, where only the tests
+//! `compat/phpunit-<engine>.json` lists may fail. Tests marked `@group
 //! documented-break` or `@group needs-wordpress` are excluded, and each must be listed in compat/wp-db/breaks.json
 //! under `wordpress_tests`.
 
@@ -13,6 +14,7 @@ use speedyspec_container::Container;
 use speedyspec_container_php::ContainerArea;
 use speedyspec_data::EngineConfig;
 use speedyspec_data_mysql::MySqlEngineFactory;
+use speedyspec_data_postgres::PostgresEngineFactory;
 use speedyspec_data_query::EngineRegistry;
 use speedyspec_data_sqlite::SqliteEngineFactory;
 use speedyspec_hooks_memory::MemoryHooks;
@@ -131,9 +133,9 @@ fn failed_tests(log: &str) -> Vec<String> {
     out
 }
 
-/// The tests `compat/phpunit-sqlite.json` lists as failing on SQLite.
-fn expected_failures() -> Vec<String> {
-    let path = root().join("compat/phpunit-sqlite.json");
+/// The tests `compat/phpunit-<engine>.json` lists as failing on that engine.
+fn expected_failures(engine: &str) -> Vec<String> {
+    let path = root().join(format!("compat/phpunit-{engine}.json"));
     let Ok(text) = std::fs::read_to_string(path) else {
         return Vec::new();
     };
@@ -179,14 +181,29 @@ fn main() {
     let registry = Rc::new(EngineRegistry::new());
     registry.register_factory(Rc::new(MySqlEngineFactory));
     registry.register_factory(Rc::new(SqliteEngineFactory));
+    registry.register_factory(Rc::new(PostgresEngineFactory));
     let engine_url = std::env::var("SPEEDYSPEC_DB_URL").unwrap_or_else(|_| url.clone());
-    let sqlite = engine_url.starts_with("sqlite://");
+    let engine = engine_url
+        .split("://")
+        .next()
+        .unwrap_or("mysql")
+        .to_string();
+    // Another engine than MySQL: only the tests compat/phpunit-<engine>.json lists may fail.
+    let sqlite = engine != "mysql";
     let mut options = BTreeMap::new();
-    if sqlite {
+    if engine == "sqlite" {
         options.insert(
             "database".to_string(),
             url.rsplit('/').next().unwrap_or("wordpress").to_string(),
         );
+    }
+    if engine == "postgres" {
+        let mut admin =
+            postgres::Client::connect(&engine_url, postgres::NoTls).expect("PostgreSQL is up");
+        admin
+            .batch_execute("DROP SCHEMA IF EXISTS t_wp_phpunit CASCADE")
+            .unwrap();
+        options.insert("schema".to_string(), "t_wp_phpunit".to_string());
     }
     registry
         .configure(EngineConfig {
@@ -222,9 +239,9 @@ fn main() {
     })
     .expect("PHP boots");
     let junit = Path::new(env!("CARGO_TARGET_TMPDIR")).join(if sqlite {
-        "wordpress-db.sqlite.junit.xml"
+        format!("wordpress-db.{engine}.junit.xml")
     } else {
-        "wordpress-db.junit.xml"
+        "wordpress-db.junit.xml".to_string()
     });
     std::fs::remove_file(&junit).ok();
     let argv = vec![
@@ -254,19 +271,19 @@ fn main() {
     let (tests, failures, errors) = (total("tests"), total("failures"), total("errors"));
     if sqlite {
         let failed = failed_tests(&log);
-        let expected = expected_failures();
+        let expected = expected_failures(&engine);
         let unexpected: Vec<&String> = failed.iter().filter(|t| !expected.contains(t)).collect();
         let stale: Vec<&String> = expected.iter().filter(|t| !failed.contains(t)).collect();
         for t in &unexpected {
-            eprintln!("FAILED ON SQLITE: {t}");
+            eprintln!("FAILED ON {}: {t}", engine.to_ascii_uppercase());
         }
         check(
-            "wordpress_db_tests_pass_on_sqlite",
+            &format!("wordpress_db_tests_pass_on_{engine}"),
             tests >= FLOOR && unexpected.is_empty(),
             (tests, &unexpected),
         );
         check(
-            "phpunit_sqlite_entries_still_fail",
+            &format!("phpunit_{engine}_entries_still_fail"),
             stale.is_empty(),
             &stale,
         );
