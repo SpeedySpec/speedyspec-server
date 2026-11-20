@@ -47,6 +47,7 @@ pub use state::{ColumnMeta, LoggedQuery, MemoryWpdbState, RequestState, WPDB_STA
 mod api;
 mod binary;
 mod connection;
+mod helpers;
 mod log;
 mod lookups;
 mod timed;

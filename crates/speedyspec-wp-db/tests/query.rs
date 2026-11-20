@@ -264,12 +264,25 @@ fn connection_error_retries_once() {
 #[test]
 fn binary_text_reaches_store_as_bytes() {
     let r = rig();
-    r.db.query_bytes(b"INSERT INTO t (a) VALUES ('\xE9\x00\xFF')")
-        .unwrap();
+    // A latin1 table holds any byte, so the query-level charset check lets it through.
+    r.store.by_text.borrow_mut().push((
+        "SHOW FULL COLUMNS FROM `t`".into(),
+        rows(
+            &["Field", "Type", "Collation"],
+            &[&[Some("a"), Some("varchar(20)"), Some("latin1_swedish_ci")]],
+        ),
+    ));
+    let out =
+        r.db.query_bytes(b"INSERT INTO t (a) VALUES ('\xE9\x00\xFF')");
+    assert!(out.is_ok(), "{out:?} {:?}", r.store.texts());
     let seen = r.store.seen.borrow();
-    assert_eq!(seen[0].0, "INSERT INTO t (a) VALUES (?)");
+    let insert = seen
+        .iter()
+        .find(|(t, _, _)| t.starts_with("INSERT"))
+        .unwrap();
+    assert_eq!(insert.0, "INSERT INTO t (a) VALUES (?)");
     assert_eq!(
-        seen[0].2,
+        insert.2,
         vec![speedyspec_data::DbValue::Bytes(vec![0xE9, 0x00, 0xFF])]
     );
 }

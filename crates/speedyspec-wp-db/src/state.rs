@@ -47,7 +47,7 @@ pub struct RequestState {
     pub check_current_query: bool,
     pub error: Option<(String, String)>,
     pub time_start: Option<f64>,
-    pub table_charset: IndexMap<String, String>,
+    pub table_charset: IndexMap<String, Option<String>>,
     pub col_meta: IndexMap<String, Vec<ColumnMeta>>,
     pub ready: bool,
     pub dbh_present: bool,

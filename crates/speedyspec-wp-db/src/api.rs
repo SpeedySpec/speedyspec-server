@@ -237,9 +237,12 @@ impl WpDb {
         let func_call = format!("$db->query(\"{}\")", String::from_utf8_lossy(&sql));
         self.modify(|s| s.func_call = Some(func_call));
         if self.read(|s| s.check_current_query) && !sql.is_ascii() {
-            let stripped = self.strip_invalid_text_from_query(&sql)?;
+            // WordPress compares a WP_Error with the query too, so a failed lookup refuses the query as well.
+            let changed = self
+                .strip_invalid_text_from_query(&sql)
+                .map_or(true, |stripped| stripped != sql);
             self.flush();
-            if stripped != sql {
+            if changed {
                 let message = self
                     .host
                     .translate("WordPress database error: Could not perform query because it contains invalid data.");
