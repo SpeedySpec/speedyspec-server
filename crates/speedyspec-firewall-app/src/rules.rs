@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
-
 use speedyspec_firewall::{
-    BanStore, CounterStore, FirewallError, IpSet, LoginPolicy, PatternRule, RateLimit, RequestFacts, Verdict,
+    BanStore, CounterStore, FirewallError, IpSet, LoginPolicy, PatternRule, RateLimit,
+    RequestFacts, Verdict,
 };
 
 /// One link in the firewall's chain.
@@ -12,7 +12,11 @@ pub trait RequestRule {
 }
 
 fn forbidden(reason: impl Into<String>) -> Verdict {
-    Verdict::Block { status: 403, retry_after: None, reason: reason.into() }
+    Verdict::Block {
+        status: 403,
+        retry_after: None,
+        reason: reason.into(),
+    }
 }
 
 pub struct AllowListRule(pub IpSet);
@@ -22,7 +26,11 @@ impl RequestRule for AllowListRule {
         "allow-list"
     }
     fn check(&self, facts: &RequestFacts) -> Result<Verdict, FirewallError> {
-        Ok(if self.0.contains(facts.client) { Verdict::Allow } else { Verdict::Continue })
+        Ok(if self.0.contains(facts.client) {
+            Verdict::Allow
+        } else {
+            Verdict::Continue
+        })
     }
 }
 
@@ -47,7 +55,11 @@ impl RequestRule for BlockListRule {
         "block-list"
     }
     fn check(&self, facts: &RequestFacts) -> Result<Verdict, FirewallError> {
-        Ok(if self.0.contains(facts.client) { forbidden("block list") } else { Verdict::Continue })
+        Ok(if self.0.contains(facts.client) {
+            forbidden("block list")
+        } else {
+            Verdict::Continue
+        })
     }
 }
 
@@ -76,7 +88,11 @@ impl RequestRule for XmlRpcRule {
         "xmlrpc"
     }
     fn check(&self, facts: &RequestFacts) -> Result<Verdict, FirewallError> {
-        Ok(if facts.path == "/xmlrpc.php" { forbidden("xml-rpc") } else { Verdict::Continue })
+        Ok(if facts.path == "/xmlrpc.php" {
+            forbidden("xml-rpc")
+        } else {
+            Verdict::Continue
+        })
     }
 }
 
@@ -91,11 +107,16 @@ impl RequestRule for UserEnumerationRule {
             return Ok(Verdict::Continue);
         }
         let author_query = facts.query.split('&').any(|pair| {
-            pair.strip_prefix("author=").is_some_and(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
+            pair.strip_prefix("author=")
+                .is_some_and(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
         });
         let users_route =
             facts.path == "/wp-json/wp/v2/users" || facts.path.starts_with("/wp-json/wp/v2/users/");
-        Ok(if author_query || users_route { forbidden("user enumeration") } else { Verdict::Continue })
+        Ok(if author_query || users_route {
+            forbidden("user enumeration")
+        } else {
+            Verdict::Continue
+        })
     }
 }
 
@@ -109,17 +130,19 @@ impl RequestRule for LoginLockoutRule {
         "login-lockout"
     }
     fn check(&self, facts: &RequestFacts) -> Result<Verdict, FirewallError> {
-        if facts.method != "POST" || !self.policy.signin_paths.iter().any(|path| *path == facts.path) {
+        if facts.method != "POST" || !self.policy.signin_paths.contains(&facts.path) {
             return Ok(Verdict::Continue);
         }
-        Ok(match self.bans.banned(&format!("login:{}", facts.client))? {
-            Some(_) => Verdict::Block {
-                status: 429,
-                retry_after: Some(self.policy.lockout),
-                reason: "login lockout".into(),
+        Ok(
+            match self.bans.banned(&format!("login:{}", facts.client))? {
+                Some(_) => Verdict::Block {
+                    status: 429,
+                    retry_after: Some(self.policy.lockout),
+                    reason: "login lockout".into(),
+                },
+                None => Verdict::Continue,
             },
-            None => Verdict::Continue,
-        })
+        )
     }
 }
 
@@ -134,12 +157,15 @@ impl RequestRule for RateLimitRule {
         "rate-limit"
     }
     fn check(&self, facts: &RequestFacts) -> Result<Verdict, FirewallError> {
-        let count = self.counters.hit(&format!("rate:{}", facts.client), self.limit.window)?;
+        let count = self
+            .counters
+            .hit(&format!("rate:{}", facts.client), self.limit.window)?;
         if count <= self.limit.requests {
             return Ok(Verdict::Continue);
         }
         if let Some(ban_for) = self.limit.ban_for {
-            self.bans.ban(&format!("ip:{}", facts.client), ban_for, "rate limit")?;
+            self.bans
+                .ban(&format!("ip:{}", facts.client), ban_for, "rate limit")?;
         }
         Ok(Verdict::Block {
             status: 429,
@@ -148,4 +174,3 @@ impl RequestRule for RateLimitRule {
         })
     }
 }
-

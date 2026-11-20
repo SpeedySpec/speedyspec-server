@@ -1,10 +1,12 @@
 use std::rc::Rc;
 
-use speedyspec_firewall::{BanStore, CounterStore, FirewallLog, FirewallSettings, RequestFacts, Verdict};
+use speedyspec_firewall::{
+    BanStore, CounterStore, FirewallLog, FirewallSettings, RequestFacts, Verdict,
+};
 
 use crate::rules::{
-    AllowListRule, BanRule, BlockListRule, LoginLockoutRule, PatternRules, RateLimitRule, RequestRule,
-    UserEnumerationRule, XmlRpcRule,
+    AllowListRule, BanRule, BlockListRule, LoginLockoutRule, PatternRules, RateLimitRule,
+    RequestRule, UserEnumerationRule, XmlRpcRule,
 };
 
 /// The rules in order (Chain of Responsibility). `Allow` ends the chain; the first `Block` wins; a rule that fails
@@ -45,10 +47,17 @@ impl Firewall {
                 rules.push(Rc::new(UserEnumerationRule));
             }
             if let Some(policy) = &settings.login {
-                rules.push(Rc::new(LoginLockoutRule { policy: policy.clone(), bans: bans.clone() }));
+                rules.push(Rc::new(LoginLockoutRule {
+                    policy: policy.clone(),
+                    bans: bans.clone(),
+                }));
             }
             if let Some(limit) = settings.rate {
-                rules.push(Rc::new(RateLimitRule { limit, counters, bans }));
+                rules.push(Rc::new(RateLimitRule {
+                    limit,
+                    counters,
+                    bans,
+                }));
             }
         }
         Firewall::new(rules, log)

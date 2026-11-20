@@ -33,16 +33,31 @@ pub struct Rig {
 
 impl Rig {
     pub fn new(settings: &[(&str, HookValue)]) -> Rig {
-        let hooks = Rc::new(HookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)));
+        let hooks = Rc::new(HookApi::new(
+            Rc::new(MemoryHookStore::new()),
+            Rc::new(IgnoreDeprecations),
+        ));
         let object_cache = Rc::new(CurrentObjectCache::new(ObjectCachePorts::rust(), None));
         let options = Rc::new(OptionsApi::new(OptionsDeps::rust(
             hooks.clone(),
             object_cache,
             Rc::new(MemoryOptionRepository::new()),
         )));
-        options.update_option("speedyspec_firewall_enabled", HookValue::Bool(true), HookValue::Null).unwrap();
+        options
+            .update_option(
+                "speedyspec_firewall_enabled",
+                HookValue::Bool(true),
+                HookValue::Null,
+            )
+            .unwrap();
         for (name, value) in settings {
-            options.update_option(&format!("speedyspec_firewall_{name}"), value.clone(), HookValue::Null).unwrap();
+            options
+                .update_option(
+                    &format!("speedyspec_firewall_{name}"),
+                    value.clone(),
+                    HookValue::Null,
+                )
+                .unwrap();
         }
         let log = Rc::new(RecordingLog::default());
         let stage = FirewallComposition::build(
@@ -52,17 +67,29 @@ impl Rig {
             log.clone(),
         )
         .unwrap();
-        Rig { hooks, options, log, stage }
+        Rig {
+            hooks,
+            options,
+            log,
+            stage,
+        }
     }
 
     pub fn answer(&self, params: &[(&str, &str)]) -> StageOutcome {
-        let params: Vec<(String, String)> = params.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        let params: Vec<(String, String)> = params
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
         self.stage.answer(&StageRequest { params: &params })
     }
 }
 
 pub fn request(client: &str, method: &str, uri: &str) -> Vec<(&'static str, String)> {
-    vec![("REMOTE_ADDR", client.to_string()), ("REQUEST_METHOD", method.to_string()), ("REQUEST_URI", uri.to_string())]
+    vec![
+        ("REMOTE_ADDR", client.to_string()),
+        ("REQUEST_METHOD", method.to_string()),
+        ("REQUEST_URI", uri.to_string()),
+    ]
 }
 
 pub fn answer(rig: &Rig, client: &str, method: &str, uri: &str) -> StageOutcome {

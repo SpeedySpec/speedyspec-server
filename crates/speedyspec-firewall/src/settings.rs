@@ -83,9 +83,15 @@ impl FirewallSettings {
     pub fn from_raw(raw: &RawSettings) -> (FirewallSettings, Vec<SettingsIssue>) {
         let mut issues = Vec::new();
         let (allow, allow_issues) = IpSet::parse(&raw.allow);
-        issues.extend(allow_issues.into_iter().map(|issue| SettingsIssue { setting: "allow", ..issue }));
+        issues.extend(allow_issues.into_iter().map(|issue| SettingsIssue {
+            setting: "allow",
+            ..issue
+        }));
         let (block, block_issues) = IpSet::parse(&raw.block);
-        issues.extend(block_issues.into_iter().map(|issue| SettingsIssue { setting: "block", ..issue }));
+        issues.extend(block_issues.into_iter().map(|issue| SettingsIssue {
+            setting: "block",
+            ..issue
+        }));
         let (patterns, pattern_issues) = PatternRule::parse_lines(&raw.patterns);
         issues.extend(pattern_issues);
 

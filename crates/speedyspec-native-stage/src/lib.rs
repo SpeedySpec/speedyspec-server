@@ -17,7 +17,10 @@ pub struct StageRequest<'a> {
 impl StageRequest<'_> {
     /// The value of the param named exactly `name` (names are case-sensitive), or `None`.
     pub fn param(&self, name: &str) -> Option<&str> {
-        self.params.iter().find(|(key, _)| key == name).map(|(_, value)| value.as_str())
+        self.params
+            .iter()
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| value.as_str())
     }
 }
 

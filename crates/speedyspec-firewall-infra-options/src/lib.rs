@@ -17,9 +17,10 @@ impl OptionsSettingsSource {
 
     fn read<T: FromOptionValue>(&self, name: &str, default: T) -> Result<T, FirewallError> {
         let name = format!("{PREFIX}{name}");
-        let value = self.options.get::<T>(&name).map_err(|error: OptionsError| {
-            FirewallError(format!("reading {name}: {error:?}"))
-        })?;
+        let value = self
+            .options
+            .get::<T>(&name)
+            .map_err(|error: OptionsError| FirewallError(format!("reading {name}: {error:?}")))?;
         Ok(value.unwrap_or(default))
     }
 }
@@ -40,7 +41,8 @@ impl SettingsSource for OptionsSettingsSource {
             login_lockout: self.read("login_lockout", d.login_lockout)?,
             signin_paths: self.read("signin_paths", d.signin_paths)?,
             block_xmlrpc: self.read("block_xmlrpc", d.block_xmlrpc)?,
-            block_user_enumeration: self.read("block_user_enumeration", d.block_user_enumeration)?,
+            block_user_enumeration: self
+                .read("block_user_enumeration", d.block_user_enumeration)?,
         })
     }
 }

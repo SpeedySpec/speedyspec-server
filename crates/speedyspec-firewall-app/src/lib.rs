@@ -11,6 +11,6 @@ pub use cache::FirewallCache;
 pub use firewall::Firewall;
 pub use login::LoginGuard;
 pub use rules::{
-    AllowListRule, BanRule, BlockListRule, LoginLockoutRule, PatternRules, RateLimitRule, RequestRule,
-    UserEnumerationRule, XmlRpcRule,
+    AllowListRule, BanRule, BlockListRule, LoginLockoutRule, PatternRules, RateLimitRule,
+    RequestRule, UserEnumerationRule, XmlRpcRule,
 };

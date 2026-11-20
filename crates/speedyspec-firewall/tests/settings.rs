@@ -32,7 +32,10 @@ fn settings_parse_all_fields_and_report_issues_by_setting() {
     let login = settings.login.unwrap();
     assert_eq!(login.max_failures, 5);
     assert_eq!(login.lockout, Duration::from_secs(600));
-    assert_eq!(login.signin_paths, vec!["/wp-login.php".to_string(), "/auth/login".to_string()]);
+    assert_eq!(
+        login.signin_paths,
+        vec!["/wp-login.php".to_string(), "/auth/login".to_string()]
+    );
     assert!(settings.block_xmlrpc);
     assert!(!settings.block_user_enumeration);
     assert_eq!(issues.len(), 1);
@@ -46,7 +49,10 @@ fn rate_disabled_when_requests_not_positive() {
     assert!(FirewallSettings::from_raw(&raw).0.rate.is_none());
     let mut raw = self::raw();
     raw.rate_ban = 0;
-    assert_eq!(FirewallSettings::from_raw(&raw).0.rate.unwrap().ban_for, None);
+    assert_eq!(
+        FirewallSettings::from_raw(&raw).0.rate.unwrap().ban_for,
+        None
+    );
 }
 
 #[test]

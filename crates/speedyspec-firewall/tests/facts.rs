@@ -3,7 +3,10 @@ use std::net::{IpAddr, Ipv4Addr};
 use speedyspec_firewall::RequestFacts;
 
 fn params(pairs: &[(&str, &str)]) -> Vec<(String, String)> {
-    pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+    pairs
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect()
 }
 
 #[test]
@@ -50,5 +53,8 @@ fn facts_without_cookie_or_authorization_are_anonymous() {
 #[test]
 fn facts_without_remote_addr_is_an_error() {
     assert!(RequestFacts::from_params(&params(&[("REQUEST_URI", "/")])).is_err());
-    assert!(RequestFacts::from_params(&params(&[("REMOTE_ADDR", "nope"), ("REQUEST_URI", "/")])).is_err());
+    assert!(
+        RequestFacts::from_params(&params(&[("REMOTE_ADDR", "nope"), ("REQUEST_URI", "/")]))
+            .is_err()
+    );
 }

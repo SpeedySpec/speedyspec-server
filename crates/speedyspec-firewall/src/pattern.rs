@@ -32,7 +32,11 @@ impl PatternRule {
             }
             match parse_line(line) {
                 Ok(rule) => rules.push(rule),
-                Err(message) => issues.push(SettingsIssue { setting: "patterns", line: index + 1, message }),
+                Err(message) => issues.push(SettingsIssue {
+                    setting: "patterns",
+                    line: index + 1,
+                    message,
+                }),
             }
         }
         (rules, issues)
@@ -66,5 +70,9 @@ fn parse_line(line: &str) -> Result<PatternRule, String> {
         other => return Err(format!("unsupported status {other:?}; use 403 or 429")),
     };
     let regex = Regex::new(pattern).map_err(|error| format!("bad regex {pattern:?}: {error}"))?;
-    Ok(PatternRule { field, status, regex })
+    Ok(PatternRule {
+        field,
+        status,
+        regex,
+    })
 }

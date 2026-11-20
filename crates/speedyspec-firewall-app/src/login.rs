@@ -11,15 +11,29 @@ pub struct LoginGuard {
 }
 
 impl LoginGuard {
-    pub fn new(policy: LoginPolicy, counters: Rc<dyn CounterStore>, bans: Rc<dyn BanStore>) -> LoginGuard {
-        LoginGuard { policy, counters, bans }
+    pub fn new(
+        policy: LoginPolicy,
+        counters: Rc<dyn CounterStore>,
+        bans: Rc<dyn BanStore>,
+    ) -> LoginGuard {
+        LoginGuard {
+            policy,
+            counters,
+            bans,
+        }
     }
 
     pub fn record_failure(&self, client: IpAddr) -> Result<(), FirewallError> {
         let client = client.to_canonical();
-        let failures = self.counters.hit(&format!("login:{client}"), self.policy.window)?;
+        let failures = self
+            .counters
+            .hit(&format!("login:{client}"), self.policy.window)?;
         if failures >= self.policy.max_failures {
-            self.bans.ban(&format!("login:{client}"), self.policy.lockout, "login failures")?;
+            self.bans.ban(
+                &format!("login:{client}"),
+                self.policy.lockout,
+                "login failures",
+            )?;
         }
         Ok(())
     }

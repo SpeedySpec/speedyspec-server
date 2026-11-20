@@ -52,9 +52,9 @@ impl IpSet {
 fn canonical_net(net: IpNet) -> IpNet {
     match net {
         IpNet::V6(v6) => match v6.addr().to_ipv4_mapped() {
-            Some(v4) if v6.prefix_len() >= 96 => {
-                IpNet::new(IpAddr::V4(v4), v6.prefix_len() - 96).map(|n| n.trunc()).unwrap_or(net)
-            }
+            Some(v4) if v6.prefix_len() >= 96 => IpNet::new(IpAddr::V4(v4), v6.prefix_len() - 96)
+                .map(|n| n.trunc())
+                .unwrap_or(net),
             _ => net,
         },
         IpNet::V4(_) => net.trunc(),

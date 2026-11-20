@@ -1,7 +1,9 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use speedyspec_native_stage::{NativeResponse, NativeStage, StageChain, StageOutcome, StageRequest};
+use speedyspec_native_stage::{
+    NativeResponse, NativeStage, StageChain, StageOutcome, StageRequest,
+};
 
 struct Counting {
     calls: Cell<u32>,
@@ -16,7 +18,11 @@ impl NativeStage for Counting {
     fn answer(&self, _request: &StageRequest<'_>) -> StageOutcome {
         self.calls.set(self.calls.get() + 1);
         if self.respond {
-            StageOutcome::Respond(NativeResponse { status: 403, headers: Vec::new(), body: b"no\n".to_vec() })
+            StageOutcome::Respond(NativeResponse {
+                status: 403,
+                headers: Vec::new(),
+                body: b"no\n".to_vec(),
+            })
         } else {
             StageOutcome::Continue
         }
@@ -31,15 +37,27 @@ fn params() -> Vec<(String, String)> {
 fn empty_chain_continues() {
     let params = params();
     let chain = StageChain::new();
-    assert!(matches!(chain.answer(&StageRequest { params: &params }), StageOutcome::Continue));
+    assert!(matches!(
+        chain.answer(&StageRequest { params: &params }),
+        StageOutcome::Continue
+    ));
 }
 
 #[test]
 fn first_respond_wins_and_later_stages_are_not_called() {
     let params = params();
-    let passing = Rc::new(Counting { calls: Cell::new(0), respond: false });
-    let blocking = Rc::new(Counting { calls: Cell::new(0), respond: true });
-    let after = Rc::new(Counting { calls: Cell::new(0), respond: true });
+    let passing = Rc::new(Counting {
+        calls: Cell::new(0),
+        respond: false,
+    });
+    let blocking = Rc::new(Counting {
+        calls: Cell::new(0),
+        respond: true,
+    });
+    let after = Rc::new(Counting {
+        calls: Cell::new(0),
+        respond: true,
+    });
     let mut chain = StageChain::new();
     chain.push(passing.clone());
     chain.push(blocking.clone());

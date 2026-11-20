@@ -41,10 +41,17 @@ impl CacheCounterStore {
 
 impl CounterStore for CacheCounterStore {
     fn hit(&self, key: &str, window: Duration) -> Result<u64, FirewallError> {
-        let seconds = self.clock.now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+        let seconds = self
+            .clock
+            .now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
         let entry = format!("{key}:{}", seconds / window.as_secs().max(1));
         for _ in 0..2 {
-            self.cache.add(GROUP, &entry, b"0", Some(window * 2)).map_err(error)?;
+            self.cache
+                .add(GROUP, &entry, b"0", Some(window * 2))
+                .map_err(error)?;
             if let Some(count) = self.cache.increment(GROUP, &entry, 1).map_err(error)? {
                 return Ok(count.max(0) as u64);
             }
@@ -65,15 +72,23 @@ impl CacheBanStore {
 
 impl BanStore for CacheBanStore {
     fn ban(&self, key: &str, for_: Duration, reason: &str) -> Result<(), FirewallError> {
-        self.cache.set(GROUP, &format!("ban:{key}"), reason.as_bytes(), Some(for_)).map_err(error)
+        self.cache
+            .set(GROUP, &format!("ban:{key}"), reason.as_bytes(), Some(for_))
+            .map_err(error)
     }
 
     fn banned(&self, key: &str) -> Result<Option<String>, FirewallError> {
-        let value = self.cache.get(GROUP, &format!("ban:{key}")).map_err(error)?;
+        let value = self
+            .cache
+            .get(GROUP, &format!("ban:{key}"))
+            .map_err(error)?;
         Ok(value.map(|bytes| String::from_utf8_lossy(&bytes).into_owned()))
     }
 
     fn lift(&self, key: &str) -> Result<(), FirewallError> {
-        self.cache.delete(GROUP, &format!("ban:{key}")).map(|_| ()).map_err(error)
+        self.cache
+            .delete(GROUP, &format!("ban:{key}"))
+            .map(|_| ())
+            .map_err(error)
     }
 }

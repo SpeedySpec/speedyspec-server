@@ -18,7 +18,12 @@ pub struct RequestFacts {
 
 impl RequestFacts {
     pub fn from_params(params: &[(String, String)]) -> Result<RequestFacts, FirewallError> {
-        let param = |name: &str| params.iter().find(|(k, _)| k == name).map(|(_, v)| v.as_str());
+        let param = |name: &str| {
+            params
+                .iter()
+                .find(|(k, _)| k == name)
+                .map(|(_, v)| v.as_str())
+        };
         let remote = param("REMOTE_ADDR").ok_or_else(|| FirewallError("no REMOTE_ADDR".into()))?;
         let client = remote
             .parse::<IpAddr>()
@@ -27,7 +32,9 @@ impl RequestFacts {
         let uri = param("REQUEST_URI").unwrap_or("/");
         let (path, query) = uri.split_once('?').unwrap_or((uri, ""));
         let logged_in = param("HTTP_COOKIE").is_some_and(|cookies| {
-            cookies.split(';').any(|cookie| cookie.trim_start().starts_with("wordpress_logged_in_"))
+            cookies
+                .split(';')
+                .any(|cookie| cookie.trim_start().starts_with("wordpress_logged_in_"))
         });
         Ok(RequestFacts {
             client,

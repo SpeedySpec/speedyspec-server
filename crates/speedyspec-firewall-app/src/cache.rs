@@ -1,7 +1,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use speedyspec_firewall::{BanStore, CounterStore, FirewallLog, FirewallSettings, RawSettings, SettingsSource};
+use speedyspec_firewall::{
+    BanStore, CounterStore, FirewallLog, FirewallSettings, RawSettings, SettingsSource,
+};
 
 use crate::firewall::Firewall;
 use crate::login::LoginGuard;
@@ -29,7 +31,13 @@ impl FirewallCache {
         bans: Rc<dyn BanStore>,
         log: Rc<dyn FirewallLog>,
     ) -> FirewallCache {
-        FirewallCache { source, counters, bans, log, built: RefCell::new(None) }
+        FirewallCache {
+            source,
+            counters,
+            bans,
+            log,
+            built: RefCell::new(None),
+        }
     }
 
     pub fn current(&self) -> Option<Rc<Firewall>> {
@@ -47,7 +55,11 @@ impl FirewallCache {
             return None;
         }
         let policy = settings.login.clone()?;
-        Some(LoginGuard::new(policy, self.counters.clone(), self.bans.clone()))
+        Some(LoginGuard::new(
+            policy,
+            self.counters.clone(),
+            self.bans.clone(),
+        ))
     }
 
     fn refresh(&self) -> Option<(Rc<FirewallSettings>, Rc<Firewall>)> {
@@ -62,11 +74,22 @@ impl FirewallCache {
         if built.as_ref().is_none_or(|b| b.raw != raw) {
             let (settings, issues) = FirewallSettings::from_raw(&raw);
             for issue in &issues {
-                self.log.warn(&format!("settings: {} line {}: {}", issue.setting, issue.line, issue.message));
+                self.log.warn(&format!(
+                    "settings: {} line {}: {}",
+                    issue.setting, issue.line, issue.message
+                ));
             }
-            let firewall =
-                Firewall::from_settings(&settings, self.counters.clone(), self.bans.clone(), self.log.clone());
-            *built = Some(Built { raw, settings: Rc::new(settings), firewall: Rc::new(firewall) });
+            let firewall = Firewall::from_settings(
+                &settings,
+                self.counters.clone(),
+                self.bans.clone(),
+                self.log.clone(),
+            );
+            *built = Some(Built {
+                raw,
+                settings: Rc::new(settings),
+                firewall: Rc::new(firewall),
+            });
         }
         let current = built.as_ref().expect("built above");
         Some((current.settings.clone(), current.firewall.clone()))

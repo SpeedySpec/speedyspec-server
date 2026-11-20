@@ -15,20 +15,42 @@ pub fn register_hooks(
     log: Rc<dyn FirewallLog>,
 ) -> Result<(), HookError> {
     let login_cache = cache.clone();
-    let failed = Callback::rust("speedyspec_firewall_login_failed", move |_: &[HookValue]| {
-        if let (Some(guard), Some(client)) = (login_cache.login_guard(), current.get()) {
-            if let Err(error) = guard.record_failure(client) {
+    let failed = Callback::rust(
+        "speedyspec_firewall_login_failed",
+        move |_: &[HookValue]| {
+            if let (Some(guard), Some(client)) = (login_cache.login_guard(), current.get())
+                && let Err(error) = guard.record_failure(client)
+            {
                 log.warn(&format!("login guard: {error}"));
             }
-        }
-        Ok(HookValue::Null)
-    });
-    hooks.add_filter(&HookName::from("wp_login_failed"), failed, &HookValue::Int(10), 1)?;
+            Ok(HookValue::Null)
+        },
+    );
+    hooks.add_filter(
+        &HookName::from("wp_login_failed"),
+        failed,
+        &HookValue::Int(10),
+        1,
+    )?;
 
-    let xmlrpc = Callback::rust("speedyspec_firewall_xmlrpc_enabled", move |args: &[HookValue]| {
-        let blocked = cache.settings().is_some_and(|settings| settings.enabled && settings.block_xmlrpc);
-        Ok(if blocked { HookValue::Bool(false) } else { args.first().cloned().unwrap_or(HookValue::Null) })
-    });
-    hooks.add_filter(&HookName::from("xmlrpc_enabled"), xmlrpc, &HookValue::Int(99), 1)?;
+    let xmlrpc = Callback::rust(
+        "speedyspec_firewall_xmlrpc_enabled",
+        move |args: &[HookValue]| {
+            let blocked = cache
+                .settings()
+                .is_some_and(|settings| settings.enabled && settings.block_xmlrpc);
+            Ok(if blocked {
+                HookValue::Bool(false)
+            } else {
+                args.first().cloned().unwrap_or(HookValue::Null)
+            })
+        },
+    );
+    hooks.add_filter(
+        &HookName::from("xmlrpc_enabled"),
+        xmlrpc,
+        &HookValue::Int(99),
+        1,
+    )?;
     Ok(())
 }

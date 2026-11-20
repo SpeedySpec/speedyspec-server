@@ -11,7 +11,9 @@ fn facts(uri: &str, ua: &str) -> RequestFacts {
 
 #[test]
 fn pattern_rule_matches_field() {
-    let (rules, issues) = PatternRule::parse_lines("path 403 ^/wp-config\nua 429 (?i)sqlmap\nquery 403 union.+select");
+    let (rules, issues) = PatternRule::parse_lines(
+        "path 403 ^/wp-config\nua 429 (?i)sqlmap\nquery 403 union.+select",
+    );
     assert!(issues.is_empty());
     assert_eq!(rules.len(), 3);
     assert_eq!(rules[0].field, Field::Path);
@@ -25,9 +27,13 @@ fn pattern_rule_matches_field() {
 
 #[test]
 fn malformed_lines_are_skipped_and_reported() {
-    let (rules, issues) = PatternRule::parse_lines("path 403 ^/ok\nbody 403 x\npath 403 (\npath 500 x");
+    let (rules, issues) =
+        PatternRule::parse_lines("path 403 ^/ok\nbody 403 x\npath 403 (\npath 500 x");
     assert_eq!(rules.len(), 1);
-    assert_eq!(issues.iter().map(|i| i.line).collect::<Vec<_>>(), vec![2, 3, 4]);
+    assert_eq!(
+        issues.iter().map(|i| i.line).collect::<Vec<_>>(),
+        vec![2, 3, 4]
+    );
     assert!(issues.iter().all(|i| i.setting == "patterns"));
 
     let (set, issues) = speedyspec_firewall::IpSet::parse("999.1.1.1\n10.0.0.1");

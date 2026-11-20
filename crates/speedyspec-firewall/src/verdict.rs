@@ -8,5 +8,9 @@ pub enum Verdict {
     /// No objection; ask the next rule.
     Continue,
     /// Refuse the request.
-    Block { status: u16, retry_after: Option<Duration>, reason: String },
+    Block {
+        status: u16,
+        retry_after: Option<Duration>,
+        reason: String,
+    },
 }

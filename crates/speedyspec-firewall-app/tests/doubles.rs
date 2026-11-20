@@ -4,7 +4,9 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::time::Duration;
 
-use speedyspec_firewall::{BanStore, CounterStore, FirewallError, FirewallLog, RawSettings, SettingsSource};
+use speedyspec_firewall::{
+    BanStore, CounterStore, FirewallError, FirewallLog, RawSettings, SettingsSource,
+};
 
 #[derive(Default)]
 pub struct MemoryCounters {
@@ -27,11 +29,17 @@ pub struct MemoryBans {
 
 impl BanStore for MemoryBans {
     fn ban(&self, key: &str, for_: Duration, reason: &str) -> Result<(), FirewallError> {
-        self.bans.borrow_mut().insert(key.to_string(), (for_, reason.to_string()));
+        self.bans
+            .borrow_mut()
+            .insert(key.to_string(), (for_, reason.to_string()));
         Ok(())
     }
     fn banned(&self, key: &str) -> Result<Option<String>, FirewallError> {
-        Ok(self.bans.borrow().get(key).map(|(_, reason)| reason.clone()))
+        Ok(self
+            .bans
+            .borrow()
+            .get(key)
+            .map(|(_, reason)| reason.clone()))
     }
     fn lift(&self, key: &str) -> Result<(), FirewallError> {
         self.bans.borrow_mut().remove(key);
@@ -80,7 +88,12 @@ impl SettingsSource for FixedSettings {
     }
 }
 
-pub fn params(client: &str, method: &str, uri: &str, cookie: Option<&str>) -> Vec<(String, String)> {
+pub fn params(
+    client: &str,
+    method: &str,
+    uri: &str,
+    cookie: Option<&str>,
+) -> Vec<(String, String)> {
     let mut params = vec![
         ("REMOTE_ADDR".to_string(), client.to_string()),
         ("REQUEST_METHOD".to_string(), method.to_string()),

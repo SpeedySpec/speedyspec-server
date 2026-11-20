@@ -32,8 +32,16 @@ pub struct FirewallStage {
 }
 
 impl FirewallStage {
-    pub fn new(cache: Rc<FirewallCache>, current: CurrentClient, log: Rc<dyn FirewallLog>) -> FirewallStage {
-        FirewallStage { cache, current, log }
+    pub fn new(
+        cache: Rc<FirewallCache>,
+        current: CurrentClient,
+        log: Rc<dyn FirewallLog>,
+    ) -> FirewallStage {
+        FirewallStage {
+            cache,
+            current,
+            log,
+        }
     }
 }
 
@@ -56,7 +64,11 @@ impl NativeStage for FirewallStage {
             return StageOutcome::Continue;
         };
         match firewall.check(&facts) {
-            Verdict::Block { status, retry_after, .. } => StageOutcome::Respond(blocked(status, retry_after)),
+            Verdict::Block {
+                status,
+                retry_after,
+                ..
+            } => StageOutcome::Respond(blocked(status, retry_after)),
             Verdict::Allow | Verdict::Continue => StageOutcome::Continue,
         }
     }
@@ -65,7 +77,10 @@ impl NativeStage for FirewallStage {
 fn blocked(status: u16, retry_after: Option<Duration>) -> NativeResponse {
     let mut headers = vec![
         ("Cache-Control".to_string(), "no-store".to_string()),
-        ("Content-Type".to_string(), "text/plain; charset=utf-8".to_string()),
+        (
+            "Content-Type".to_string(),
+            "text/plain; charset=utf-8".to_string(),
+        ),
     ];
     let body = if status == 429 {
         if let Some(after) = retry_after {
@@ -76,5 +91,9 @@ fn blocked(status: u16, retry_after: Option<Duration>) -> NativeResponse {
     } else {
         b"Forbidden\n".to_vec()
     };
-    NativeResponse { status, headers, body }
+    NativeResponse {
+        status,
+        headers,
+        body,
+    }
 }

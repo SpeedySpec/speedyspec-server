@@ -17,7 +17,10 @@ fn ip_set_matches_ipv4_mapped_ipv6() {
         ("REQUEST_URI".to_string(), "/".to_string()),
     ];
     let facts = RequestFacts::from_params(&params).unwrap();
-    assert_eq!(facts.client, "10.0.0.5".parse::<std::net::IpAddr>().unwrap());
+    assert_eq!(
+        facts.client,
+        "10.0.0.5".parse::<std::net::IpAddr>().unwrap()
+    );
     let (set, _) = IpSet::parse("10.0.0.0/24");
     assert!(set.contains(facts.client));
     assert!(set.contains("::ffff:10.0.0.9".parse().unwrap()));
