@@ -4131,6 +4131,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-data-translate"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+ "speedyspec-data-query",
+ "sqlparser",
+]
+
+[[package]]
 name = "speedyspec-data-uow"
 version = "0.1.0"
 dependencies = [
