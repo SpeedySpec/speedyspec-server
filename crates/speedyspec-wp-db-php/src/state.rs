@@ -66,10 +66,10 @@ impl PhpWpdbState {
 
     fn load(&self) -> RequestState {
         let mut state = self.local.borrow().clone();
-        if let Ok(Value::Array(items)) = self.object.call("load", Vec::new()) {
-            if !items.is_empty() {
-                from_value(&items, &mut state);
-            }
+        if let Ok(Value::Array(items)) = self.object.call("load", Vec::new())
+            && !items.is_empty()
+        {
+            from_value(&items, &mut state);
         }
         state
     }
