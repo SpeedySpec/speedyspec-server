@@ -4,56 +4,94 @@ To: the owner of `crates/speedyspec-php-runtime` (the PHP runtime)
 From: the native firewall work, branch `feat/native-firewall`
 Spec: `wordpress-develop/docs/superpowers/specs/2026-11-19-native-plugin-features-design.md`, "Runtime request stages"
 
-The firewall is built and tested in its own crates. It is not live until the runtime calls it. This request asks
-for that call. Nothing in the runtime was changed by the firewall work.
+The firewall is built and tested in its own crates. It isn't live until the runtime calls it. This request asks for
+that call. The firewall work changed nothing in the runtime. Line numbers below refer to
+`crates/speedyspec-php-runtime/src/worker.rs` as of `6ea3887`.
+
+## Prerequisites
+
+The firewall needs two things that `run_worker` does not have yet. The database port's wiring notes already ask
+for both:
+
+- **The worker's options API.** An `Rc<OptionsApi>` built from the worker's `WpDb`, object cache and `HookApi`
+  (`OptionsArea::api()` in `speedyspec-wp-options-php`).
+- **A `Rc<dyn CachingStore>` for the firewall's counters and bans.** The spec ("Shared state") makes the database
+  the default store for these. Use `PersistentCacheSelector` to pick the routed engine:
+  - the SQL cache (`wp_speedyspec_cache`) by default;
+  - Valkey, ReDB or files when the operator routes it there.
+
+  With `[cluster]`, use Valkey or the database. A file store is per replica. Only if no store can be built, pass a
+  `MemoryCache`: the firewall then works per worker, which is weaker but safe.
 
 ## What to wire
 
-1. **Build the stage chain once per worker** in `crates/speedyspec-php-runtime/src/worker.rs`, at worker start,
-   next to the database and options wiring already requested by the database port's notes:
+1. **Take the `HookApi` before the hooks area is moved.** `let hooks = WpHooksArea::new(...)` (line ~201) is moved
+   into `areas` (line ~209). Take `let hook_api = hooks.api();` before that move.
+
+2. **Compose the firewall once, at worker start, before the first request.** The firewall's hook callbacks must
+   land in the hook store's worker-lifetime partition. Registered during a request, they would be dropped when the
+   request ends. `run_worker` returns `i32`, so handle the error there, not with `?`:
 
    ```rust
-   let firewall = speedyspec_firewall_presentation::FirewallComposition::build(
-       speedyspec_wp_options::Options::new(options_api.clone()), // the worker's OptionsApi
-       persistent_cache.clone(),                                  // the worker's Rc<dyn CachingStore>
-       &hook_api,                                                 // the worker's HookApi
-       std::rc::Rc::new(speedyspec_firewall_presentation::StderrLog),
-   )?;
-   let mut chain = speedyspec_native_stage::StageChain::new();
+   let scope = if is_admin_api(&spec.app) { FirewallScope::Admin } else { FirewallScope::Public };
+   let firewall = match FirewallComposition::build(
+       Options::new(options_api.clone()),
+       firewall_store.clone(),
+       &hook_api,
+       scope,
+       Rc::new(StderrLog),
+   ) {
+       Ok(stage) => stage,
+       Err(err) => {
+           log("php_worker_firewall_failed", &spec, &err.to_string()); // or the worker's own error log
+           return 1;
+       }
+   };
+   let mut chain = StageChain::new();
    chain.push(firewall);
    ```
 
-   The persistent cache is the one `PersistentCacheSelector` picks for the site. The firewall's counters and bans
-   live in its `speedyspec-firewall` group. Without a persistent cache, pass a `MemoryCache`: the firewall then
-   works per worker, which is weaker but safe.
+   Use `FirewallScope::Admin` for the admin API app and `FirewallScope::Public` for the blog and the front-end
+   API. The admin scope leaves out the rate limit and IP bans, so the block editor's bursts can never lock the
+   site's owner out. How the runtime knows which `spec.app` is the admin API is the runtime's call; a field on
+   `WorkerSpec` would do.
 
-2. **Ask the chain before PHP**, after `responder.next_request()` and before `php.serve(&mut request, &script)`:
+3. **Ask the chain for every request, inside the existing loop.** Do this after `FastCgiRequest` is built
+   (line ~268) and before the `match inside`, so that the report and `end_request` still run afterwards:
 
    ```rust
-   match chain.answer(&StageRequest { params: request.params() }) {
-       StageOutcome::Respond(response) => {
-           // Write response.status, response.headers and response.body through the FastCGI responder,
-           // end the request, and do not start PHP.
+   let outcome = chain.answer(&StageRequest { params: &request.params });
+   let (poisoned, peak) = match (outcome, inside) {
+       (StageOutcome::Respond(response), _) => {
+           let headers: Vec<String> =
+               response.headers.iter().map(|(name, value)| format!("{name}: {value}")).collect();
+           request.send_headers(response.status, &headers);
+           request.write(&response.body);
+           (false, 0)
        }
-       StageOutcome::Continue => { /* serve with PHP as today */ }
-   }
+       (StageOutcome::Continue, Some(script)) => { /* php.serve as today */ }
+       (StageOutcome::Continue, None) => { /* the 404 as today */ }
+   };
    ```
 
-   The stage reads only the params, never the body, so PHP still gets the whole body on `Continue`.
+   `WebRequest::send_headers` takes `"Name: value"` strings, hence the conversion. The stage reads only the
+   params, never the body, so PHP still gets the whole body on `Continue`.
 
-3. **Run the chain for every PHP app:** the blog, the front-end API and the admin API.
+4. **Ask the chain on every request, without exception.** The firewall's `wp_login_failed` callback counts a
+   failure against the client the stage saw last. A request that runs PHP without asking the chain would charge
+   the previous request's client.
 
-4. **Sign-in:**
-   - When the admin API's sign-in endpoint exists, add its path to the `speedyspec_firewall_signin_paths` option
+5. **Sign-in:**
+   - Once the admin API's sign-in endpoint exists, add its path to the `speedyspec_firewall_signin_paths` option
      (one path per line).
-   - Make the auth port fire `wp_login_failed` with the username, as WordPress does. The firewall's callback counts
-     the failure against the client the stage saw on the same request.
+   - Make the auth port fire `wp_login_failed` with the username, as WordPress does.
 
-## What the firewall needs from the request
+## What the firewall reads from the request
 
 - `REMOTE_ADDR`: the client address, as the server already resolves it through its trusted proxies. Without it,
   the firewall lets the request through and logs a warning.
-- `REQUEST_METHOD`, `REQUEST_URI`, `HTTP_USER_AGENT`, `HTTP_COOKIE` and `HTTP_AUTHORIZATION`, when present.
+- `REQUEST_METHOD`, `REQUEST_URI`, `HTTP_USER_AGENT`, `HTTP_COOKIE`, `HTTP_AUTHORIZATION` and `HTTP_X_WP_NONCE`,
+  when present.
 
 ## Deferred, and why
 

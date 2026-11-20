@@ -21,9 +21,19 @@ Wordfence and Solid Security.
 3. **Block list:** 403.
 4. **Patterns** on the path, query or user agent: the rule's own status, 403 or 429.
 5. **XML-RPC** (`/xmlrpc.php`): 403.
-6. **User enumeration**, for visitors who are not signed in (`?author=<digits>`, `/wp-json/wp/v2/users`): 403.
+6. **User enumeration**: 403 for `?author=<digits>` outside `/wp-admin/`. Also 403 for the REST users route
+   (`/wp-json/wp/v2/users` or `?rest_route=/wp/v2/users`), unless the request carries credentials WordPress checks
+   itself: HTTP Basic (application passwords), or a logged-in cookie with a REST nonce.
 7. **Login lockout:** a `POST` to a sign-in path while locked out gets 429.
 8. **Rate limit:** 429, with an optional ban.
+
+Two more rules decide who gets limited:
+
+- **Scope:** the admin API runs with `FirewallScope::Admin`, which has no rate limit and no IP bans, so the site's
+  owner can never be locked out of their own admin. The blog and the front-end API run with `FirewallScope::Public`.
+- **IPv6 grouping:** counters and bans key IPv4 clients by their address and IPv6 clients by their /64 network.
+
+Windows, bans and lockouts are capped at thirty days.
 
 ## Settings
 
