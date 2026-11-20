@@ -4246,6 +4246,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-php-serialize"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-hooks",
+]
+
+[[package]]
 name = "speedyspec-runtime-contract"
 version = "0.1.0"
 dependencies = [
