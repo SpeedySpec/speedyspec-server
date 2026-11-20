@@ -49,10 +49,16 @@ pub async fn try_get(
         .send_request(request)
         .await
         .map_err(|e| format!("send_request: {e:?}"))?;
-    stream
-        .finish()
-        .await
-        .map_err(|e| format!("finish: {e:?}"))?;
+    // A server may answer before the request's end arrives and then stop the request stream with H3_NO_ERROR
+    // (RFC 9114, section 4.1); the response still stands, so read it.
+    match stream.finish().await {
+        Ok(()) => {}
+        Err(h3::error::StreamError::RemoteTerminate {
+            code: h3::error::Code::H3_NO_ERROR,
+            ..
+        }) => {}
+        Err(e) => return Err(format!("finish: {e:?}")),
+    }
     let response = stream
         .recv_response()
         .await
