@@ -242,3 +242,234 @@ fn publish_usage_exits_2() {
         Some(2)
     );
 }
+
+const DOWNLOAD: &str = "https://github.com/SpeedySpec/speedyspec-server/releases/download";
+
+/// A GitHub release of `binary` at `tag` (as `gh api repos/.../releases` lists it), with every asset of a complete
+/// release except `missing`, and the checksum file its `SHA256SUMS` would hold.
+fn gh_release(
+    binary: &str,
+    tag: &str,
+    missing: &[&str],
+    draft: bool,
+    prerelease: bool,
+) -> (serde_json::Value, String) {
+    let assets: Vec<serde_json::Value> = complete_assets(binary)
+        .into_iter()
+        .filter(|name| !missing.contains(&name.as_str()))
+        .map(|name| {
+            serde_json::json!({
+                "name": name,
+                "browser_download_url": format!("{DOWNLOAD}/{tag}/{name}"),
+            })
+        })
+        .collect();
+    let mut sums: Vec<String> = TRIPLES
+        .iter()
+        .map(|triple| format!("{}  {binary}-{triple}", sha(tag, triple)))
+        .collect();
+    sums.sort_by(|a, b| a[66..].cmp(&b[66..]));
+    (
+        serde_json::json!({
+            "tag_name": tag,
+            "draft": draft,
+            "prerelease": prerelease,
+            "published_at": "2026-11-20T12:00:00Z",
+            "assets": assets,
+        }),
+        sums.join("\n") + "\n",
+    )
+}
+
+/// A made-up checksum, distinct per release and target.
+fn sha(tag: &str, triple: &str) -> String {
+    let seed = format!("{tag}{triple}");
+    let mut out = String::new();
+    let mut n: u64 = seed
+        .bytes()
+        .fold(7, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u64));
+    while out.len() < 64 {
+        n = n
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        out.push_str(&format!("{:016x}", n));
+    }
+    out.truncate(64);
+    out
+}
+
+/// The fixture releases, written as `pages` JSON arrays one after the other (as `gh api --paginate` prints them),
+/// and their `SHA256SUMS` files.
+fn fixtures(pages: usize) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    let releases = [
+        gh_release(
+            "speedyspec-server",
+            "speedyspec-server-v0.1.0",
+            &[],
+            false,
+            false,
+        ),
+        gh_release(
+            "speedyspec-server",
+            "speedyspec-server-v0.2.0",
+            &[],
+            false,
+            false,
+        ),
+        gh_release(
+            "speedyspec-server",
+            "speedyspec-server-v0.3.0",
+            &["speedyspec-server-aarch64-unknown-linux-musl.minisig"],
+            false,
+            false,
+        ),
+        gh_release(
+            "speedyspec-server",
+            "speedyspec-server-v0.4.0",
+            &[],
+            true,
+            false,
+        ),
+        gh_release(
+            "speedyspec-server",
+            "speedyspec-server-v0.5.0-rc.1",
+            &[],
+            false,
+            true,
+        ),
+        gh_release(
+            "speedyspec-php-runtime",
+            "speedyspec-php-runtime-v1.0.0",
+            &[],
+            false,
+            false,
+        ),
+        gh_release("speedyspec-cli", "v9.9.9", &[], false, false),
+        // A pre-release version GitHub was not told about.
+        gh_release(
+            "speedyspec-server",
+            "speedyspec-server-v0.6.0-beta.1",
+            &[],
+            false,
+            false,
+        ),
+    ];
+    let sums = dir.path().join("sums");
+    std::fs::create_dir(&sums).unwrap();
+    let mut listed: Vec<serde_json::Value> = Vec::new();
+    for (release, sum) in releases {
+        let tag = release["tag_name"].as_str().unwrap().to_string();
+        std::fs::write(sums.join(format!("{tag}.SHA256SUMS")), sum).unwrap();
+        listed.push(release);
+    }
+    let per_page = listed.len().div_ceil(pages);
+    let text: String = listed
+        .chunks(per_page)
+        .map(|page| serde_json::Value::Array(page.to_vec()).to_string() + "\n")
+        .collect();
+    std::fs::write(dir.path().join("releases.json"), text).unwrap();
+    dir
+}
+
+fn index(
+    dir: &Path,
+    component: &str,
+    app: &str,
+) -> (speedyspec_server_domain::ReleaseIndex, String) {
+    let releases = dir.join("releases.json");
+    let sums = dir.join("sums");
+    let output = run(
+        "release-index.sh",
+        &[component, app],
+        &[
+            ("RELEASE_INDEX_RELEASES", &releases),
+            ("RELEASE_INDEX_SUMS_DIR", &sums),
+        ],
+    );
+    assert!(output.status.success(), "{output:?}");
+    let parsed = speedyspec_server_domain::ReleaseIndex::parse(&output.stdout)
+        .unwrap_or_else(|err| panic!("{err}: {}", stdout(&output)));
+    (parsed, String::from_utf8_lossy(&output.stderr).into_owned())
+}
+
+fn versions(index: &speedyspec_server_domain::ReleaseIndex) -> Vec<String> {
+    index
+        .releases
+        .iter()
+        .map(|entry| entry.version.to_string())
+        .collect()
+}
+
+#[test]
+fn index_lists_complete_releases_and_parses() {
+    let dir = fixtures(1);
+    let (parsed, _) = index(dir.path(), "speedyspec-server", "server");
+    assert_eq!(parsed.app.as_str(), "server");
+    assert_eq!(versions(&parsed), ["0.2.0", "0.1.0"]);
+    let entry = &parsed.releases[0];
+    assert_eq!(entry.published, "2026-11-20T12:00:00Z");
+    let targets: Vec<&str> = entry.artifacts.iter().map(|a| a.target.as_str()).collect();
+    assert_eq!(targets, TRIPLES);
+    for artifact in &entry.artifacts {
+        let name = format!("speedyspec-server-{}", artifact.target);
+        assert_eq!(
+            artifact.url,
+            format!("{DOWNLOAD}/speedyspec-server-v0.2.0/{name}")
+        );
+        assert_eq!(
+            artifact.minisig.as_deref(),
+            Some(format!("{DOWNLOAD}/speedyspec-server-v0.2.0/{name}.minisig").as_str())
+        );
+        assert_eq!(
+            artifact.sha256,
+            sha("speedyspec-server-v0.2.0", &artifact.target)
+        );
+    }
+}
+
+#[test]
+fn index_skips_incomplete_drafts_prereleases_and_other_components() {
+    let dir = fixtures(1);
+    let (parsed, stderr) = index(dir.path(), "speedyspec-server", "server");
+    for absent in [
+        "0.3.0",
+        "0.4.0",
+        "0.5.0-rc.1",
+        "0.6.0-beta.1",
+        "1.0.0",
+        "9.9.9",
+    ] {
+        assert!(!versions(&parsed).contains(&absent.to_string()), "{absent}");
+    }
+    assert!(
+        stderr.contains("speedyspec-server-v0.3.0")
+            && stderr.contains("speedyspec-server-aarch64-unknown-linux-musl.minisig"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn index_runtime_is_separate() {
+    let dir = fixtures(1);
+    let (parsed, _) = index(dir.path(), "speedyspec-php-runtime", "php-runtime");
+    assert_eq!(parsed.app.as_str(), "php-runtime");
+    assert_eq!(versions(&parsed), ["1.0.0"]);
+}
+
+#[test]
+fn index_paged_releases_are_merged() {
+    let dir = fixtures(8);
+    let (parsed, _) = index(dir.path(), "speedyspec-server", "server");
+    assert_eq!(versions(&parsed), ["0.2.0", "0.1.0"]);
+}
+
+#[test]
+fn index_usage_exits_2() {
+    assert_eq!(
+        run("release-index.sh", &["speedyspec-server"], &[])
+            .status
+            .code(),
+        Some(2)
+    );
+}
