@@ -4214,9 +4214,11 @@ dependencies = [
  "regex",
  "rusqlite",
  "speedyspec-data",
+ "speedyspec-data-conformance",
  "speedyspec-data-query",
  "speedyspec-data-translate",
  "sqlparser",
+ "tempfile",
  "unicode-normalization",
  "uuid",
 ]

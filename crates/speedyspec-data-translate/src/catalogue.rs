@@ -79,7 +79,7 @@ pub fn catalogue_ddl() -> Vec<Statement> {
     [
         "CREATE TABLE IF NOT EXISTS _speedyspec_tables (table_name varchar(191) NOT NULL, `collation` varchar(64) NULL, PRIMARY KEY (table_name))",
         "CREATE TABLE IF NOT EXISTS _speedyspec_columns (table_name varchar(191) NOT NULL, ordinal int NOT NULL, column_name varchar(64) NOT NULL, column_type text NOT NULL, nullable tinyint NOT NULL, column_default text NULL, extra varchar(64) NOT NULL, `collation` varchar(64) NULL, PRIMARY KEY (table_name, column_name))",
-        "CREATE TABLE IF NOT EXISTS _speedyspec_indexes (table_name varchar(191) NOT NULL, index_name varchar(64) NOT NULL, kind varchar(16) NOT NULL, seq int NOT NULL, column_name varchar(64) NOT NULL, sub_part int NULL, PRIMARY KEY (table_name, index_name, seq))",
+        "CREATE TABLE IF NOT EXISTS _speedyspec_indexes (table_name varchar(191) NOT NULL, index_name varchar(64) NOT NULL, kind varchar(16) NOT NULL, seq int NOT NULL, column_name varchar(64) NOT NULL, sub_part int NULL, created int NOT NULL DEFAULT 0, PRIMARY KEY (table_name, index_name, seq))",
     ]
     .iter()
     .map(|sql| parse_one(sql).expect("the catalogue's own DDL parses"))
@@ -539,13 +539,19 @@ fn index_rows(table: &str, index: &CatalogueIndex) -> Option<Statement> {
     if index.parts.is_empty() {
         return None;
     }
+    // MySQL lists indexes in the order they were made; an uncorrelated subquery is read once per statement, so every
+    // part of the index gets the same number.
+    let created = format!(
+        "(SELECT COALESCE(MAX(created), 0) + 1 FROM _speedyspec_indexes WHERE table_name = {})",
+        sql_literal(table)
+    );
     let rows: Vec<String> = index
         .parts
         .iter()
         .enumerate()
         .map(|(i, (column, sub))| {
             format!(
-                "({}, {}, {}, {}, {}, {})",
+                "({}, {}, {}, {}, {}, {}, {created})",
                 sql_literal(table),
                 sql_literal(&index.name),
                 sql_literal(index.kind.as_str()),
@@ -556,7 +562,7 @@ fn index_rows(table: &str, index: &CatalogueIndex) -> Option<Statement> {
         })
         .collect();
     Some(stmt(format!(
-        "INSERT INTO _speedyspec_indexes (table_name, index_name, kind, seq, column_name, sub_part) VALUES {}",
+        "INSERT INTO _speedyspec_indexes (table_name, index_name, kind, seq, column_name, sub_part, created) VALUES {}",
         rows.join(", ")
     )))
 }
@@ -793,7 +799,7 @@ pub fn read_catalogue(
     .collect::<Result<Vec<_>, DbError>>()?;
     let mut indexes: Vec<CatalogueIndex> = Vec::new();
     for r in run(&stmt(format!(
-        "SELECT index_name, kind, seq, column_name, sub_part FROM _speedyspec_indexes WHERE table_name = {t} ORDER BY CASE WHEN kind = 'PRIMARY' THEN 0 ELSE 1 END, index_name, seq"
+        "SELECT index_name, kind, seq, column_name, sub_part FROM _speedyspec_indexes WHERE table_name = {t} ORDER BY CASE WHEN kind = 'PRIMARY' THEN 0 ELSE 1 END, created, index_name, seq"
     )))?
     .rows
     .iter()

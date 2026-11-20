@@ -180,9 +180,9 @@ fn catalogue_rows_for_wp_options() {
     for row in [
         "('wp_options', 1, 'option_id', 'bigint unsigned', 0, NULL, 'auto_increment', NULL)",
         "('wp_options', 2, 'option_name', 'varchar(191)', 0, '', '', 'utf8mb4_unicode_520_ci')",
-        "('wp_options', 'PRIMARY', 'PRIMARY', 1, 'option_id', NULL)",
-        "('wp_options', 'option_name', 'UNIQUE', 1, 'option_name', NULL)",
-        "('wp_options', 'autoload', 'INDEX', 1, 'autoload', NULL)",
+        "('wp_options', 'PRIMARY', 'PRIMARY', 1, 'option_id', NULL, (SELECT COALESCE(MAX(created), 0) + 1 FROM _speedyspec_indexes WHERE table_name = 'wp_options'))",
+        "('wp_options', 'option_name', 'UNIQUE', 1, 'option_name', NULL, (SELECT COALESCE(MAX(created), 0) + 1 FROM _speedyspec_indexes WHERE table_name = 'wp_options'))",
+        "('wp_options', 'autoload', 'INDEX', 1, 'autoload', NULL, (SELECT COALESCE(MAX(created), 0) + 1 FROM _speedyspec_indexes WHERE table_name = 'wp_options'))",
     ] {
         assert!(writes.contains(row), "{row} in\n{writes}");
     }

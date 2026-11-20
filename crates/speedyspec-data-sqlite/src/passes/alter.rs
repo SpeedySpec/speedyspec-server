@@ -425,6 +425,28 @@ impl RewritePass for SqliteAlter {
                 }
                 Ok(Rewrite::Split(out))
             }
+            Ast::Drop {
+                temporary: true, ..
+            } => {
+                // SQLite drops a temporary table by its schema, `temp`.
+                if let Ast::Drop {
+                    temporary, names, ..
+                } = stmt.tree_mut()
+                {
+                    *temporary = false;
+                    for name in names.iter_mut() {
+                        if name.0.len() == 1 {
+                            name.0.insert(
+                                0,
+                                sqlparser::ast::ObjectNamePart::Identifier(
+                                    sqlparser::ast::Ident::new("temp"),
+                                ),
+                            );
+                        }
+                    }
+                }
+                Ok(Rewrite::Continue)
+            }
             Ast::AlterTable(alter) => {
                 let table = object_name(&alter.name);
                 if is_catalogue_table(&table) || table.ends_with(REBUILD_SUFFIX) {
