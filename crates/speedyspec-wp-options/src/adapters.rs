@@ -142,6 +142,16 @@ impl Multisite for SiteConfiguration {
     fn network_id(&self) -> u64 {
         self.network_id
     }
+
+    /// One network as configured: its main site is blog 1, as WordPress installs it.
+    fn is_main_site(&self) -> bool {
+        !self.multisite || self.blog_id == 1
+    }
+
+    /// A configuration names one network, so it is the main one.
+    fn is_main_network(&self) -> bool {
+        true
+    }
 }
 
 /// `sanitize_option()` for options core does not sanitize itself: the `sanitize_option_{$option}` filter alone.

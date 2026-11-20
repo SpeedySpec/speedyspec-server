@@ -106,6 +106,16 @@ impl Multisite for PhpMultisite {
     fn network_id(&self) -> u64 {
         id("get_current_network_id")
     }
+
+    fn is_main_site(&self) -> bool {
+        !exists("is_main_site").unwrap_or(false)
+            || call("is_main_site", &[]).is_ok_and(|v| truthy(&v))
+    }
+
+    fn is_main_network(&self) -> bool {
+        !exists("is_main_network").unwrap_or(false)
+            || call("is_main_network", &[]).is_ok_and(|v| truthy(&v))
+    }
 }
 
 /// `sanitize_option()`: PHP's for the names core sanitizes; the filter alone, in Rust, for every other name.

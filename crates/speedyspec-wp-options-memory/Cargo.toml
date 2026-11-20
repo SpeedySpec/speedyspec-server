@@ -12,4 +12,7 @@ speedyspec-data = { path = "../speedyspec-data" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 
 [dev-dependencies]
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options", features = ["conformance"] }

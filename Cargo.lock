@@ -4797,6 +4797,9 @@ version = "0.1.0"
 dependencies = [
  "indexmap",
  "speedyspec-data",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-object-cache",
  "speedyspec-wp-options",
 ]
 

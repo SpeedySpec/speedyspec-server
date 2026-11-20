@@ -72,11 +72,15 @@ pub trait Installing {
     fn setup_config(&self) -> bool;
 }
 
-/// `is_multisite()`, `get_current_blog_id()` and `get_current_network_id()`.
+/// `is_multisite()`, `get_current_blog_id()`, `get_current_network_id()`, `is_main_site()` and `is_main_network()`.
 pub trait Multisite {
     fn is_multisite(&self) -> bool;
     fn blog_id(&self) -> u64;
     fn network_id(&self) -> u64;
+    /// `is_main_site()`.
+    fn is_main_site(&self) -> bool;
+    /// `is_main_network()`.
+    fn is_main_network(&self) -> bool;
 }
 
 /// `sanitize_option()`.

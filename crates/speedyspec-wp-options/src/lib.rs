@@ -17,6 +17,8 @@ mod facade;
 mod fired;
 mod messages;
 mod name;
+mod network;
+mod network_messages;
 mod ports;
 mod read;
 mod sitemeta;
@@ -45,6 +47,11 @@ pub use messages::{
     SetOptionAutoloadValues, SetOptionsAutoload, UpdateOption, register_options_handlers,
 };
 pub use name::OptionName;
+pub use network::{NetworkOptionsApi, NetworkPorts, resolve_network_id};
+pub use network_messages::{
+    AddNetworkOption, DeleteNetworkOption, GetNetworkOption, LoadCoreSiteOptions,
+    PrimeNetworkOptionCaches, UpdateNetworkOption, register_network_option_handlers,
+};
 pub use ports::{
     Deprecations, Installing, Multisite, OptionGroups, OptionRepository, ProtectedOptions,
     Sanitizing, ValueCodec,
