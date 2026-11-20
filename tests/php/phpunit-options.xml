@@ -11,6 +11,37 @@
     <testsuites>
         <testsuite name="wordpress-options">
             <directory suffix=".php">wordpress/option</directory>
+            <exclude>wordpress/option/transient.php</exclude>
+            <exclude>wordpress/option/siteTransient.php</exclude>
+            <exclude>wordpress/option/siteOption.php</exclude>
+            <exclude>wordpress/option/networkOption.php</exclude>
+            <exclude>wordpress/option/registration.php</exclude>
+            <exclude>wordpress/option/wpPrimeNetworkOptionCaches.php</exclude>
+            <exclude>wordpress/option/multisite.php</exclude>
+        </testsuite>
+        <!-- Phases 3 and 4: transients, site and network options, registered settings. -->
+        <testsuite name="wordpress-network-options">
+            <file>wordpress/option/transient.php</file>
+            <file>wordpress/option/siteTransient.php</file>
+            <file>wordpress/option/siteOption.php</file>
+            <file>wordpress/option/networkOption.php</file>
+            <file>wordpress/option/registration.php</file>
+            <file>wordpress/option/wpPrimeNetworkOptionCaches.php</file>
+        </testsuite>
+        <testsuite name="wordpress-multisite-options">
+            <file>wordpress/option/transient.php</file>
+            <file>wordpress/option/siteTransient.php</file>
+            <file>wordpress/option/siteOption.php</file>
+            <file>wordpress/option/networkOption.php</file>
+            <file>wordpress/option/registration.php</file>
+            <file>wordpress/option/wpPrimeNetworkOptionCaches.php</file>
+            <file>wordpress/option/multisite.php</file>
+        </testsuite>
+        <!-- With the object cache's second level on a file engine. -->
+        <testsuite name="wordpress-persistent-options">
+            <file>wordpress/option/transient.php</file>
+            <file>wordpress/option/siteTransient.php</file>
+            <file>wordpress/option/option.php</file>
         </testsuite>
     </testsuites>
     <groups>

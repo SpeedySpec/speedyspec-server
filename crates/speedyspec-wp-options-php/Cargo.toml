@@ -23,7 +23,10 @@ speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
 indexmap = "2"
 
 [dev-dependencies]
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache-routing = { path = "../speedyspec-cache-routing" }
 speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-data-file = { path = "../speedyspec-data-file" }
 speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
 speedyspec-data-query = { path = "../speedyspec-data-query" }
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }

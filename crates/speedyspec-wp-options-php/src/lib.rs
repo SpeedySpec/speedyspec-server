@@ -46,23 +46,30 @@ pub use settings::PhpArgsParsing;
 pub use settings_store::PhpSettingsStore;
 
 /// Runs the options scenarios through the native functions (the port side of `compat/options`), over `release`
-/// prepared next to it with `prepare_release`.
+/// prepared next to it with `prepare_release`. Each scenario's request is a multisite install while `multisite`
+/// holds true (the scenarios of the `-multisite` fixture), as the recorder's is.
 pub fn options_scenario_runner(
     php: speedyspec_php::Php,
     release: &std::path::Path,
+    multisite: Rc<std::cell::Cell<bool>>,
 ) -> Result<speedyspec_compat::PhpRunner, String> {
     let out = release.with_file_name("wordpress-options-port");
     let root = prepare_release(release, &out)?;
-    let code = format!(
-        "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', true); require {:?};",
-        format!("{}/", root.display()),
-        speedyspec_compat::compat_dir()
-            .join("options/setup.php")
-            .display()
-            .to_string()
-    );
+    let code = |multisite: bool| {
+        format!(
+            "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', true); \
+             define('SPEEDYSPEC_COMPAT_MULTISITE', {multisite}); require {:?};",
+            format!("{}/", root.display()),
+            speedyspec_compat::compat_dir()
+                .join("options/setup.php")
+                .display()
+                .to_string()
+        )
+    };
+    let (single, network) = (code(false), code(true));
     Ok(speedyspec_compat::PhpRunner::new(php, move |php| {
-        php.eval("speedyspec://compat/options-setup", &code)
+        let code = if multisite.get() { &network } else { &single };
+        php.eval("speedyspec://compat/options-setup", code)
             .map(|_| ())
             .map_err(|e| e.to_string())
     }))
