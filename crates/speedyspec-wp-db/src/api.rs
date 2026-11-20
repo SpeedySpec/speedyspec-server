@@ -355,6 +355,7 @@ impl WpDb {
     }
 
     fn run(&self, stmt: &Statement) -> Result<RunResult, DbError> {
+        let saving = self.before_run();
         let result = match stmt.kind() {
             StatementKind::Select | StatementKind::Show | StatementKind::Other => {
                 self.store.query(stmt).map(RunResult::Rows)
@@ -362,7 +363,7 @@ impl WpDb {
             _ => self.store.execute(stmt).map(RunResult::Exec),
         };
         self.modify(|s| s.num_queries += 1);
-        self.after_run(stmt);
+        self.after_run(stmt, saving);
         result
     }
 
