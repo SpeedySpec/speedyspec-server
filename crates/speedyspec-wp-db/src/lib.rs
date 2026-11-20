@@ -23,3 +23,9 @@ pub type WpValue = speedyspec_hooks::Value;
 mod tables;
 
 pub use tables::{TableEnv, TableNames, TableScope};
+
+mod fields;
+mod query_text;
+
+pub use fields::{ColLength, Field, FieldFormats, LengthKind, delete_sql, insert_sql, update_sql};
+pub use query_text::{QueryClass, get_table_from_query};
