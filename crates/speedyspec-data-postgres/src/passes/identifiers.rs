@@ -16,7 +16,7 @@ use sqlparser::ast::{
 use crate::schema::SchemaCache;
 
 /// Names PostgreSQL gives meaning to, which quoting would turn into ordinary identifiers.
-const UNQUOTED: &[&str] = &["excluded", "ctid", "xmax"];
+const UNQUOTED: &[&str] = &[];
 
 pub(crate) struct PgIdentifiers {
     schema: Rc<SchemaCache>,
@@ -149,6 +149,16 @@ struct Quote;
 
 impl VisitorMut for Quote {
     type Break = ();
+
+    fn pre_visit_table_factor(&mut self, factor: &mut TableFactor) -> ControlFlow<()> {
+        if let TableFactor::Table {
+            alias: Some(alias), ..
+        } = factor
+        {
+            alias.explicit = true;
+        }
+        ControlFlow::Continue(())
+    }
 
     fn pre_visit_ident(&mut self, ident: &mut Ident) -> ControlFlow<()> {
         if !UNQUOTED

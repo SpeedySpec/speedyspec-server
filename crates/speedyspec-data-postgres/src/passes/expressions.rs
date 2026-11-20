@@ -346,6 +346,10 @@ impl RewritePass for PgExpressions {
     }
 
     fn rewrite(&self, stmt: &mut Statement, _cx: &PassContext) -> Result<Rewrite, DbError> {
+        // The adapter's own statements (moving a sequence) are PostgreSQL already.
+        if crate::plan::count_of(stmt.tree()) == crate::plan::RowCount::Hidden {
+            return Ok(Rewrite::Continue);
+        }
         let tables = tables_in(stmt.tree());
         let params = stmt.params().to_vec();
         let mut exprs = Exprs {
