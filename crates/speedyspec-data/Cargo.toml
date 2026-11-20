@@ -1,0 +1,10 @@
+[package]
+name = "speedyspec-data"
+version = "0.1.0"
+description = "Data-access contracts for speedyspec: values, statements, SQL/NoSQL/Direct stores, engines and the unit of work. No implementations."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+sqlparser = { version = "0.64", features = ["visitor"] }
