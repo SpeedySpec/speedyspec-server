@@ -92,7 +92,7 @@ impl ValkeyStore {
         if Self::lost(&e) {
             return DbError::Connection {
                 engine: self.engine.clone(),
-                message: format!("valkey at {}: {}", self.host, format!("{:?}", e.kind())),
+                message: format!("valkey at {}: {:?}", self.host, e.kind()),
             };
         }
         let detail = e.detail().unwrap_or_default().to_string();
@@ -116,7 +116,7 @@ impl ValkeyStore {
             .get_connection_with_timeout(self.timeout)
             .map_err(|e| DbError::Connection {
                 engine: self.engine.clone(),
-                message: format!("valkey at {}: {}", self.host, format!("{:?}", e.kind())),
+                message: format!("valkey at {}: {:?}", self.host, e.kind()),
             })?;
         conn.set_read_timeout(Some(self.timeout))
             .map_err(|e| self.map(e))?;
