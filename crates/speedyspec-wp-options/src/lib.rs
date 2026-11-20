@@ -5,6 +5,7 @@
 
 mod adapters;
 mod autoload;
+mod autoload_policy;
 #[cfg(feature = "conformance")]
 pub mod conformance;
 mod entity;
@@ -18,6 +19,10 @@ pub use adapters::{
     NoOptionGroups, RustCodec, SiteConfiguration,
 };
 pub use autoload::{Autoload, AutoloadRequest, DEFAULT_AUTOLOAD_VALUES};
+pub use autoload_policy::{
+    AutoloadPolicy, WordPressAutoloadPolicy, autoload_values,
+    filter_default_autoload_value_via_option_size, register_default_filters,
+};
 pub use entity::Option;
 pub use error::OptionsError;
 pub use name::OptionName;
