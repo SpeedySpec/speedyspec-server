@@ -4592,8 +4592,11 @@ name = "speedyspec-wp-options"
 version = "0.1.0"
 dependencies = [
  "speedyspec-data",
+ "speedyspec-php-serialize",
  "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
  "speedyspec-wp-object-cache",
+ "tracing",
 ]
 
 [[package]]

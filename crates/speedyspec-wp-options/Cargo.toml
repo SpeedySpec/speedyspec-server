@@ -8,5 +8,10 @@ license.workspace = true
 
 [dependencies]
 speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
+tracing = "0.1"
+
+[dev-dependencies]
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
