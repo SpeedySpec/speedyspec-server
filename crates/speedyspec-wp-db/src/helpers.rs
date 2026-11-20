@@ -171,6 +171,21 @@ impl WpDb {
         self.run_helper(sql, values)
     }
 
+    /// `wpdb::_insert_replace_helper`: `type` must be `INSERT` or `REPLACE` in any case.
+    pub fn insert_replace_helper(
+        &self,
+        table: &str,
+        data: &[(String, WpValue)],
+        format: Option<&[String]>,
+        verb: &str,
+    ) -> Result<u64, WpDbError> {
+        self.modify(|s| s.insert_id = 0);
+        if !["INSERT", "REPLACE"].contains(&verb.to_uppercase().as_str()) {
+            return Err(WpDbError::ProcessFields(String::new()));
+        }
+        self.insert_replace(table, data, format, verb)
+    }
+
     /// `wpdb::insert`.
     pub fn insert(
         &self,
@@ -224,16 +239,28 @@ impl WpDb {
         self.read(|s| s.last_result.clone())
     }
 
+    /// The SQL a reader runs first, as `get_var` and its siblings decide it (`check_safe_collation` may clear
+    /// `check_current_query`); `None` when there is none. The caller runs it through `query` (or the `Query` handler).
+    pub fn reader_query(&self, query: Option<&[u8]>) -> Option<Vec<u8>> {
+        let q = query.filter(|q| !q.is_empty() && *q != b"0")?;
+        if self.read(|s| s.check_current_query) && self.check_safe_collation(q) {
+            self.modify(|s| s.check_current_query = false);
+        }
+        Some(q.to_vec())
+    }
+
     /// Runs the reader's SQL first, as `get_var` and its siblings do.
     fn run_reader_sql(&self, query: Option<&[u8]>) -> Result<(), WpDbError> {
-        if let Some(q) = query.filter(|q| !q.is_empty() && *q != b"0") {
-            if self.read(|s| s.check_current_query) && self.check_safe_collation(q) {
-                self.modify(|s| s.check_current_query = false);
-            }
+        if let Some(q) = self.reader_query(query) {
             // A failed query leaves `last_result` empty; the readers then answer from it, as WordPress does.
-            let _ = self.query_bytes(q);
+            let _ = self.query_bytes(&q);
         }
         Ok(())
+    }
+
+    /// Sets `func_call` as a reader does before its query.
+    pub fn set_func_call(&self, call: String) {
+        self.modify(|s| s.func_call = Some(call));
     }
 
     pub fn get_var(&self, x: usize, y: usize) -> Option<Vec<u8>> {
@@ -371,5 +398,44 @@ impl WpDb {
                 .and_then(|i| columns.get(i))
                 .map_or(WpValue::Null, one)
         }
+    }
+}
+
+impl WpDb {
+    /// The current `last_result`, read.
+    pub fn with_last_result<T>(&self, f: impl FnOnce(&[WpRow]) -> T) -> T {
+        let rows = self.rows();
+        f(&rows)
+    }
+
+    /// Changes whenever `last_result` is replaced or flushed.
+    pub fn result_generation(&self) -> u64 {
+        self.read(|s| s.result_generation)
+    }
+
+    /// Whether the request holds a connection (`! empty( $this->dbh )`).
+    pub fn read_dbh_present(&self) -> bool {
+        self.read(|s| s.dbh_present)
+    }
+
+    /// `show_errors` or `suppress_errors`.
+    pub fn read_bool(&self, name: &str) -> bool {
+        self.read(|s| match name {
+            "show_errors" => s.show_errors,
+            "suppress_errors" => s.suppress_errors,
+            _ => false,
+        })
+    }
+
+    /// `wpdb::strip_invalid_text` over fields PHP built.
+    pub fn strip_fields(&self, fields: &mut [Field]) -> Result<(), WpDbError> {
+        self.strip_context(|cx| {
+            CharsetRules::strip_invalid_text(fields, cx, &mut |sql| self.convert_row(sql))
+        })
+    }
+
+    /// `wpdb::strip_invalid_text_from_query`.
+    pub fn strip_query_text(&self, query: &[u8]) -> Result<Vec<u8>, WpDbError> {
+        self.strip_invalid_text_from_query(query)
     }
 }

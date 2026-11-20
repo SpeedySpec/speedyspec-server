@@ -28,7 +28,7 @@ fn select_sets_state() {
         b"SELECT a FROM t".to_vec()
     );
     assert_eq!(read(&*r.state, |s| s.num_queries), 1);
-    assert_eq!(read(&*r.state, |s| s.result_generation), 1);
+    assert_eq!(read(&*r.state, |s| s.result_generation), 2);
     assert_eq!(r.hooks.did_filter(&HookName::from("query")).unwrap(), 1);
     assert_eq!(QueryOutcome::Rows(Rc::new(vec![])).to_wp(), WpValue::Int(0));
 }

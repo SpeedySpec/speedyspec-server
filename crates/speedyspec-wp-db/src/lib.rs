@@ -58,3 +58,7 @@ pub use timed::{TimedSqlStore, Timing, microtime};
 mod messages;
 
 pub use messages::*;
+
+mod properties;
+
+pub use properties::{HIDDEN_PROPERTIES, TABLE_PROPERTIES};

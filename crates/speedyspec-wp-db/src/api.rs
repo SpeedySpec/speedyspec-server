@@ -446,6 +446,7 @@ impl WpDb {
     pub fn flush(&self) {
         self.modify(|s| {
             s.last_result = Rc::new(Vec::new());
+            s.result_generation += 1;
             s.col_info = None;
             s.last_query = None;
             s.rows_affected = 0;

@@ -4450,6 +4450,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-db-php"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "sha2 0.10.9",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-cqrs",
+ "speedyspec-data",
+ "speedyspec-data-query",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-wp-db",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "tempfile",
+]
+
+[[package]]
 name = "speedyspec-wp-hooks"
 version = "0.1.0"
 dependencies = [

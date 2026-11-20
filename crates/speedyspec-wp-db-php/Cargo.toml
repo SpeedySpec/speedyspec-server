@@ -1,0 +1,30 @@
+[package]
+name = "speedyspec-wp-db-php"
+version = "0.1.0"
+description = "WordPress's wpdb class and the $wpdb global in PHP, native over the Rust wpdb port."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+indexmap = "2"
+sha2 = "0.10"
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-wp-db = { path = "../speedyspec-wp-db" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+
+[dev-dependencies]
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+tempfile = "3"
+
+[[test]]
+name = "php"
+harness = false
