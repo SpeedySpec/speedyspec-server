@@ -13,6 +13,8 @@ pub(crate) struct SchemaCache {
     introspector: Option<Rc<dyn Introspector>>,
     columns: RefCell<HashMap<String, Columns>>,
     indexes: RefCell<HashMap<String, Indexes>>,
+    /// Whether the introspector failed since the last `take_failure`; what it failed to read is not cached.
+    failed: std::cell::Cell<bool>,
 }
 
 impl SchemaCache {
@@ -21,7 +23,13 @@ impl SchemaCache {
             introspector,
             columns: RefCell::new(HashMap::new()),
             indexes: RefCell::new(HashMap::new()),
+            failed: std::cell::Cell::new(false),
         }
+    }
+
+    /// Whether the introspector failed since the last call (a lost connection, say): the plan read too little.
+    pub(crate) fn take_failure(&self) -> bool {
+        self.failed.replace(false)
     }
 
     pub(crate) fn introspector(&self) -> Option<&dyn Introspector> {
@@ -33,12 +41,14 @@ impl SchemaCache {
         if let Some(hit) = self.columns.borrow().get(table) {
             return hit.clone();
         }
-        let found: Columns = self
-            .introspector
-            .as_ref()
-            .and_then(|i| i.columns(table).ok())
-            .filter(|c| !c.is_empty())
-            .map(Rc::from);
+        let found: Columns = match self.introspector.as_ref().map(|i| i.columns(table)) {
+            None => None,
+            Some(Ok(c)) => Some(c).filter(|c| !c.is_empty()).map(Rc::from),
+            Some(Err(_)) => {
+                self.failed.set(true);
+                return None;
+            }
+        };
         self.columns
             .borrow_mut()
             .insert(table.to_string(), found.clone());
@@ -49,11 +59,14 @@ impl SchemaCache {
         if let Some(hit) = self.indexes.borrow().get(table) {
             return hit.clone();
         }
-        let found: Indexes = self
-            .introspector
-            .as_ref()
-            .and_then(|i| i.indexes(table).ok())
-            .map(Rc::from);
+        let found: Indexes = match self.introspector.as_ref().map(|i| i.indexes(table)) {
+            None => None,
+            Some(Ok(i)) => Some(Rc::from(i)),
+            Some(Err(_)) => {
+                self.failed.set(true);
+                return None;
+            }
+        };
         self.indexes
             .borrow_mut()
             .insert(table.to_string(), found.clone());
@@ -98,7 +111,9 @@ pub(crate) fn tables_in(tree: &sqlparser::ast::Statement) -> Vec<(String, String
         && let TableObject::TableName(name) = &insert.table
     {
         let table = object_name(name);
-        tables.0.push((table.clone(), table));
+        tables.0.push((table.clone(), table.clone()));
+        // ON CONFLICT's `excluded` row has the table's columns.
+        tables.0.push(("excluded".to_string(), table));
     }
     tables.0
 }

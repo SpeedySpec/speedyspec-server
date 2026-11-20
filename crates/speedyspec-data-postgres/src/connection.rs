@@ -28,6 +28,8 @@ pub struct Connection {
     client: Option<Client>,
     /// Prepared statements by text, oldest evicted first.
     statements: IndexMap<String, Statement>,
+    /// How many sessions this connection has opened; a change tells the store a session was lost and replaced.
+    generation: u64,
 }
 
 const CACHED_STATEMENTS: usize = 256;
@@ -49,6 +51,7 @@ impl Connection {
             schema: schema.to_string(),
             client: None,
             statements: IndexMap::new(),
+            generation: 0,
         })
     }
 
@@ -150,8 +153,14 @@ impl Connection {
                 .map_err(|e| map_error(&engine, e))?;
             crate::support::ensure(&mut client, &engine)?;
             self.client = Some(client);
+            self.generation += 1;
         }
         Ok(self.client.as_mut().expect("connected above"))
+    }
+
+    /// The number of the current session (0 before the first).
+    pub(crate) fn generation(&self) -> u64 {
+        self.generation
     }
 
     pub(crate) fn mark_lost(&mut self) {

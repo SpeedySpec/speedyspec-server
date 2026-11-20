@@ -31,6 +31,12 @@ impl PostgresDialect {
         self.schema.clear();
     }
 
+    /// Whether reading the schema failed while planning since the last call; the plan may then lack what the schema
+    /// would have added (an insert's RETURNING, a guard).
+    pub(crate) fn take_schema_failure(&self) -> bool {
+        self.schema.take_failure()
+    }
+
     pub fn plan(&self, stmt: &Statement) -> Result<PgPlan, DbError> {
         let mut stmt = stmt.clone();
         number_placeholders(&mut stmt);

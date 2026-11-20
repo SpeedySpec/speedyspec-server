@@ -33,6 +33,8 @@ pub struct PostgresStore {
     last_id: Cell<u64>,
     /// (table OID, column number) → (table, column), forgotten after DDL.
     origins: RefCell<OriginCache>,
+    /// The connection's session number this store last set up.
+    session_seen: Cell<u64>,
 }
 
 /// `SET autocommit = 0|1`, which PostgreSQL has no variable for.
@@ -147,6 +149,7 @@ impl PostgresStore {
             found_rows: Cell::new(0),
             last_id: Cell::new(0),
             origins: RefCell::new(std::collections::HashMap::new()),
+            session_seen: Cell::new(0),
         };
         if let Ok(v) = store.introspector.server_version() {
             store.session.borrow_mut().set("version", &v);
@@ -241,6 +244,52 @@ impl PostgresStore {
             }
         }
         result
+    }
+
+    /// Plans `stmt` on a live session. A session that was lost and replaced since the last statement is set up again
+    /// (MySQL's session variables, no transaction, no temporary tables), and a plan made while the schema could not
+    /// be read is made again. A transaction the lost session held is gone: that is a `Connection` error.
+    fn plan_live(&self, stmt: &Statement) -> Result<PgPlan, DbError> {
+        let mut planned = self.dialect.plan(stmt);
+        for _ in 0..2 {
+            let failed = self.dialect.take_schema_failure()
+                || matches!(planned, Err(DbError::Connection { .. }));
+            let connected = {
+                let mut conn = self.conn.borrow_mut();
+                conn.client().map(|_| ())
+            };
+            self.after_error(connected)?;
+            let replaced = self.check_session()?;
+            if !(failed || replaced) {
+                break;
+            }
+            planned = self.dialect.plan(stmt);
+        }
+        planned
+    }
+
+    /// Whether the session was replaced since the last check; if so, sets the new one up as the store expects.
+    fn check_session(&self) -> Result<bool, DbError> {
+        let generation = self.conn.borrow().generation();
+        let seen = self.session_seen.replace(generation);
+        if seen == 0 || seen == generation {
+            return Ok(false);
+        }
+        let held = self.in_tx.replace(false);
+        self.introspector.forget_temporary();
+        self.dialect.invalidate_schema();
+        self.origins.borrow_mut().clear();
+        self.sync_session()?;
+        self.reopen()?;
+        if held {
+            return Err(DbError::Connection {
+                engine: self.name.clone(),
+                message:
+                    "the connection to PostgreSQL was lost; its open transaction was rolled back"
+                        .into(),
+            });
+        }
+        Ok(true)
     }
 
     fn reopen(&self) -> Result<(), DbError> {
@@ -349,7 +398,7 @@ impl PostgresStore {
             self.control("COMMIT")?;
             self.in_tx.set(false);
         }
-        let plan = match self.dialect.plan(stmt) {
+        let plan = match self.plan_live(stmt) {
             Ok(p) => p,
             Err(e) => {
                 self.reopen()?;
@@ -452,6 +501,10 @@ impl PostgresStore {
             self.origins.borrow_mut().clear();
             self.conn.borrow_mut().forget_statements();
             let _ = self.control("NOTIFY speedyspec_schema");
+        }
+        // MySQL starts a new transaction after DDL's implicit commit when autocommit is off.
+        if commits_implicitly(stmt) {
+            self.reopen()?;
         }
         exec.insert_id = ids.into_iter().filter(|i| *i > 0).min();
         if let Some(id) = exec.insert_id {
