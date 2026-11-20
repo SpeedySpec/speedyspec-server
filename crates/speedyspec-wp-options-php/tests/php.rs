@@ -309,6 +309,17 @@ fn main() {
         return 'x' === $wp_registered_settings['n']['default'] && $shared
             && in_array('n', $new_allowed_options['g'], true) && 'x' === get_option('n');",
     );
+    // A PHP filter that returns its expiration as a string (as get_option() gives one) is cast as WordPress casts it.
+    yes(
+        "string_expiration_from_filter",
+        "add_filter('expiration_of_transient_se', fn ($e) => '3600');
+        add_filter('expiration_of_transient_sz', fn ($e) => '0');
+        set_transient('se', 1, 60); set_transient('sz', 1, 60);
+        global $wpdb;
+        $t = (int) $wpdb->get_var(\"SELECT option_value FROM wp_options WHERE option_name = '_transient_timeout_se'\");
+        $z = $wpdb->get_var(\"SELECT COUNT(*) FROM wp_options WHERE option_name = '_transient_timeout_sz'\");
+        return $t >= time() + 3590 && '0' === $z;",
+    );
     let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
     let option_php = std::fs::read_to_string(release.join("wp-includes/option.php")).unwrap();
     let stripped = speedyspec_wp_options_php::strip_ported(&option_php).unwrap();

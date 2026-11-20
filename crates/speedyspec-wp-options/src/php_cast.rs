@@ -58,6 +58,14 @@ pub fn php_int(value: &HookValue) -> i64 {
         HookValue::Float(f) => float_to_int(*f),
         HookValue::Str(s) => string_int(s),
         HookValue::Bytes(b) => std::str::from_utf8(b).map(string_int).unwrap_or(0),
+        // A value a language bridge carries unconverted (a PHP filter's string) is cast as it reads.
+        HookValue::Opaque(_) => match value.read() {
+            std::borrow::Cow::Owned(read) if !matches!(read, HookValue::Opaque(_)) => {
+                php_int(&read)
+            }
+            std::borrow::Cow::Owned(_) => 0,
+            std::borrow::Cow::Borrowed(_) => 0,
+        },
         _ => 0,
     }
 }
@@ -97,6 +105,13 @@ pub(crate) fn less_than(value: &HookValue, now: i64) -> bool {
             let s = String::from_utf8_lossy(b);
             numeric(&s).map_or_else(|| *s < *now.to_string(), |f| f < now as f64)
         }
+        HookValue::Opaque(_) => match value.read() {
+            std::borrow::Cow::Owned(read) if !matches!(read, HookValue::Opaque(_)) => {
+                less_than(&read, now)
+            }
+            std::borrow::Cow::Owned(_) => false,
+            std::borrow::Cow::Borrowed(_) => false,
+        },
         _ => false,
     }
 }

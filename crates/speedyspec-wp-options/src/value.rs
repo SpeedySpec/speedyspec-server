@@ -116,6 +116,13 @@ pub fn php_empty(value: &HookValue) -> bool {
         HookValue::Str(s) => s.is_empty() || s == "0",
         HookValue::Bytes(b) => b.is_empty() || b == b"0",
         HookValue::Array(items) => items.is_empty(),
+        HookValue::Opaque(_) => match value.read() {
+            std::borrow::Cow::Owned(read) if !matches!(read, HookValue::Opaque(_)) => {
+                php_empty(&read)
+            }
+            std::borrow::Cow::Owned(_) => false,
+            std::borrow::Cow::Borrowed(_) => false,
+        },
         _ => false,
     }
 }
