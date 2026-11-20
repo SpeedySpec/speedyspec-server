@@ -4514,6 +4514,8 @@ dependencies = [
  "indexmap",
  "speedyspec-cache",
  "speedyspec-cache-memory",
+ "speedyspec-container",
+ "speedyspec-cqrs",
  "speedyspec-hooks",
  "speedyspec-php-serialize",
 ]

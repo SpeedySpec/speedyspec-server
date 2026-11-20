@@ -276,11 +276,13 @@ impl ObjectCache {
     }
 
     pub(crate) fn read(&self, id: &Key, g: &Key, force: bool) -> Option<Value> {
-        if !(force && self.persists(g)) && self.exists(id, g)
-            && let Some(v) = self.decode_entry(id, g) {
-                self.hits.set(self.hits.get() + 1);
-                return Some(v);
-            }
+        if !(force && self.persists(g))
+            && self.exists(id, g)
+            && let Some(v) = self.decode_entry(id, g)
+        {
+            self.hits.set(self.hits.get() + 1);
+            return Some(v);
+        }
         if let Some(v) = self.second_get(id, g) {
             self.hits.set(self.hits.get() + 1);
             return Some(v);

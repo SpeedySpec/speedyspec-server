@@ -22,3 +22,9 @@ pub use ports::{
     AdditionSuspension, CacheNotices, CodecError, LoggedNotices, NeverSuspended, ObjectCachePorts,
     SingleSite, SiteContext, ValueCodec,
 };
+
+mod current;
+mod messages;
+
+pub use current::CurrentObjectCache;
+pub use messages::*;

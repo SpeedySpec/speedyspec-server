@@ -115,16 +115,18 @@ impl ObjectCache {
 
     pub(crate) fn second_flush(&self) {
         if let Some(store) = &self.persistent
-            && let Err(e) = store.flush() {
-                self.ports.notices.persistence_miss("", "", &e.to_string());
-            }
+            && let Err(e) = store.flush()
+        {
+            self.ports.notices.persistence_miss("", "", &e.to_string());
+        }
     }
 
     pub(crate) fn second_flush_group(&self, g: &Key) {
         if let Some(store) = self.second(g)
-            && let Err(e) = store.flush_group(&key_text(g)) {
-                self.miss(g, &Key::Str(String::new()), &e.to_string());
-            }
+            && let Err(e) = store.flush_group(&key_text(g))
+        {
+            self.miss(g, &Key::Str(String::new()), &e.to_string());
+        }
     }
 
     /// `get_multiple`: every first-level miss read from the second level with one `get_many`.
