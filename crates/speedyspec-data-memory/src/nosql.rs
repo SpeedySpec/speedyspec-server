@@ -15,9 +15,9 @@ pub struct MemoryNoSqlStore {
     keyspaces: RefCell<HashMap<String, BTreeMap<Vec<u8>, Entry>>>,
 }
 
-/// When a TTL ends; under a millisecond lives a millisecond, as on Valkey.
-fn deadline(ttl: Duration) -> Instant {
-    Instant::now() + ttl.max(Duration::from_millis(1))
+/// When a TTL ends; under a millisecond lives a millisecond, as on Valkey; one past the clock's range never ends.
+fn deadline(ttl: Duration) -> Option<Instant> {
+    Instant::now().checked_add(ttl.max(Duration::from_millis(1)))
 }
 
 fn live(entry: &Entry) -> bool {
@@ -90,7 +90,7 @@ impl NoSqlStore for MemoryNoSqlStore {
                 space.remove(key);
             }
             _ => {
-                space.insert(key.to_vec(), (value.to_vec(), ttl.map(deadline)));
+                space.insert(key.to_vec(), (value.to_vec(), ttl.and_then(deadline)));
             }
         }
         Ok(())
