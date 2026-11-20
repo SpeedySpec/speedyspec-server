@@ -19,8 +19,12 @@ fn option(n: &str, value: &str, autoload: Autoload) -> OptionEntity {
     }
 }
 
+/// The names in `rows`, sorted: WordPress's queries have no `ORDER BY`, so an engine may return any order (MySQL
+/// returns `autoloaded` by its `autoload` index).
 fn names(rows: &[(String, SerializedValue)]) -> Vec<&str> {
-    rows.iter().map(|(n, _)| n.as_str()).collect()
+    let mut names: Vec<&str> = rows.iter().map(|(n, _)| n.as_str()).collect();
+    names.sort_unstable();
+    names
 }
 
 /// Runs every check against `repo`, which must start with an empty table. Panics naming the failing check.
@@ -73,8 +77,7 @@ pub fn option_repository_suite(repo: &dyn OptionRepository) {
     let some = repo
         .values_of(&["b".into(), "nope".into(), "a".into()])
         .expect("values_of");
-    let mut found = names(&some);
-    found.sort();
+    let found = names(&some);
     ensure("values_of", found == ["a", "b"], || format!("{found:?}"));
 
     let change = repo

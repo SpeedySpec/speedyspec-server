@@ -4612,6 +4612,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-options-sql"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+ "speedyspec-data-mysql",
+ "speedyspec-data-query",
+ "speedyspec-hooks",
+ "speedyspec-wp-db",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-object-cache",
+ "speedyspec-wp-options",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
