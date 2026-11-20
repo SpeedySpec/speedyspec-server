@@ -30,11 +30,13 @@ fi
 # --paginate prints one JSON array per page.
 jq -s 'add // []' "$work/pages.json" > "$work/releases.json"
 
+# A release's SHA256SUMS. Called only when the release lists one, so a failure is an error (a transient download
+# failure must not drop a published release from the index), not "incomplete".
 sums() {
     if [ -n "${RELEASE_INDEX_SUMS_DIR:-}" ]; then
-        cat "$RELEASE_INDEX_SUMS_DIR/$1.SHA256SUMS" 2>/dev/null || true
+        cat "$RELEASE_INDEX_SUMS_DIR/$1.SHA256SUMS"
     else
-        gh release download "$1" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --output - 2>/dev/null || true
+        gh release download "$1" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --output -
     fi
 }
 
@@ -57,7 +59,14 @@ jq -c --arg prefix "$component-v" '
         echo "release-index: skipping $tag: a pre-release" >&2
         continue
     fi
-    sums_text="$(sums "$tag")"
+    if ! jq -e 'any(.assets[]?; .name == "SHA256SUMS")' <<<"$release" >/dev/null; then
+        echo "release-index: skipping $tag: incomplete (no SHA256SUMS)" >&2
+        continue
+    fi
+    if ! sums_text="$(sums "$tag")"; then
+        echo "release-index: $tag lists SHA256SUMS, but it cannot be read" >&2
+        exit 1
+    fi
     artifacts="[]"
     why=""
     for triple in $triples; do

@@ -11,7 +11,9 @@
 #   pending=true|false
 #   tag=<component>-v<version>
 #   version=<version>
-# Tags must have been fetched (git fetch --tags). SPEEDYSPEC_REPO overrides the repository root.
+#   commit=<the commit that last changed .release-please-manifest.json: the merged release pull request>
+# The release is built and tagged at that commit, so a retry after a failed build builds what release-please tags.
+# Tags and enough history must have been fetched (git fetch --tags, and a checkout with fetch-depth: 0). SPEEDYSPEC_REPO overrides the repository root.
 set -euo pipefail
 
 if [ "$#" -ne 1 ]; then
@@ -44,4 +46,9 @@ elif git -C "$repo" rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
 else
     pending=true
 fi
-printf 'pending=%s\ntag=%s\nversion=%s\n' "$pending" "$tag" "$version"
+commit="$(git -C "$repo" log -1 --format=%H -- .release-please-manifest.json)"
+if [ -z "$commit" ]; then
+    echo "release-pending.sh: no commit has changed .release-please-manifest.json (a shallow checkout?)" >&2
+    exit 1
+fi
+printf 'pending=%s\ntag=%s\nversion=%s\ncommit=%s\n' "$pending" "$tag" "$version" "$commit"

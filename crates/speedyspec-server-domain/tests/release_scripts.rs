@@ -88,9 +88,9 @@ fn pending_after_a_merged_release_pr() {
         ("0.2.0", "1.0.0"),
         &["speedyspec-php-runtime-v1.0.0"],
     );
-    assert_eq!(
-        pending(dir.path(), "speedyspec-server"),
-        "pending=true\ntag=speedyspec-server-v0.2.0\nversion=0.2.0\n"
+    assert!(
+        pending(dir.path(), "speedyspec-server")
+            .starts_with("pending=true\ntag=speedyspec-server-v0.2.0\nversion=0.2.0\n"),
     );
 }
 
@@ -131,10 +131,38 @@ fn components_are_independent() {
         &["speedyspec-server-v0.2.0"],
     );
     assert!(pending(dir.path(), "speedyspec-server").starts_with("pending=false\n"));
-    assert_eq!(
-        pending(dir.path(), "speedyspec-php-runtime"),
-        "pending=true\ntag=speedyspec-php-runtime-v1.1.0\nversion=1.1.0\n"
+    assert!(
+        pending(dir.path(), "speedyspec-php-runtime")
+            .starts_with("pending=true\ntag=speedyspec-php-runtime-v1.1.0\nversion=1.1.0\n"),
     );
+}
+
+fn head(dir: &Path) -> String {
+    let output = Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    stdout(&output).trim().to_string()
+}
+
+/// The release commit is the one that last changed the manifest (the merged release pull request), not the newest
+/// one: a retry after a failed build must build, and tag, what release-please tags.
+#[test]
+fn pending_names_the_release_commit() {
+    let dir = repo(
+        "0.2.0",
+        "1.0.0",
+        ("0.2.0", "1.0.0"),
+        &["speedyspec-php-runtime-v1.0.0"],
+    );
+    let release = head(dir.path());
+    std::fs::write(dir.path().join("later.txt"), "a later push").unwrap();
+    git(dir.path(), &["add", "."]);
+    git(dir.path(), &["commit", "-qm", "later"]);
+    assert_ne!(head(dir.path()), release);
+    let out = pending(dir.path(), "speedyspec-server");
+    assert!(out.ends_with(&format!("commit={release}\n")), "{out}");
 }
 
 #[test]
@@ -485,8 +513,14 @@ fn read_json(path: &Path) -> serde_json::Value {
     .unwrap()
 }
 
-/// Every workspace crate, by directory (`crates/<name>`), with its name and version.
-fn workspace_crates() -> Vec<(String, String, String)> {
+/// The workspace, as the release config sees it: each crate's directory, name and version, and which crate depends
+/// on which (normal, build and dev dependencies alike, as release-please's `cargo-workspace` plugin counts them).
+struct Workspace {
+    crates: Vec<(String, String, String)>,
+    depends_on: Vec<(String, String)>,
+}
+
+fn workspace() -> Workspace {
     let output = Command::new(env!("CARGO"))
         .args(["metadata", "--format-version", "1", "--no-deps"])
         .current_dir(repo_root())
@@ -494,9 +528,8 @@ fn workspace_crates() -> Vec<(String, String, String)> {
         .unwrap();
     let metadata: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     let root = metadata["workspace_root"].as_str().unwrap().to_string();
-    let mut crates: Vec<(String, String, String)> = metadata["packages"]
-        .as_array()
-        .unwrap()
+    let packages = metadata["packages"].as_array().unwrap();
+    let mut crates: Vec<(String, String, String)> = packages
         .iter()
         .map(|p| {
             let dir = Path::new(p["manifest_path"].as_str().unwrap())
@@ -514,57 +547,186 @@ fn workspace_crates() -> Vec<(String, String, String)> {
         })
         .collect();
     crates.sort();
-    crates
+    let depends_on = packages
+        .iter()
+        .flat_map(|p| {
+            let name = p["name"].as_str().unwrap().to_string();
+            p["dependencies"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|dep| !dep["path"].is_null())
+                .map(move |dep| (name.clone(), dep["name"].as_str().unwrap().to_string()))
+        })
+        .collect();
+    Workspace { crates, depends_on }
 }
 
 const COMPONENTS: [&str; 2] = ["speedyspec-server", "speedyspec-php-runtime"];
 
-/// Every crate is a release-please package, so a change in any crate is seen, and the `cargo-workspace` plugin bumps
-/// the server or the runtime when a crate it is built from is bumped. Only those two publish GitHub releases.
-#[test]
-fn release_config_registers_every_crate() {
-    let config = read_json(&repo_root().join("release-please-config.json"));
-    let manifest = read_json(&repo_root().join(".release-please-manifest.json"));
-    let packages = config["packages"].as_object().unwrap();
-    let crates = workspace_crates();
-    assert_eq!(packages.len(), crates.len(), "{:?}", packages.keys());
-    for (dir, name, version) in &crates {
-        let entry = &packages
-            .get(dir)
-            .unwrap_or_else(|| panic!("{dir} is not a release-please package"));
-        assert_eq!(entry["component"], name.as_str(), "{dir}");
-        assert!(entry.get("additional-paths").is_none(), "{dir}");
-        if COMPONENTS.contains(&name.as_str()) {
-            assert_eq!(
-                entry["release-as"],
-                version.as_str(),
-                "{dir}: the first release"
-            );
-            assert!(entry.get("skip-github-release").is_none(), "{dir}");
-            assert_eq!(manifest[dir], "0.0.0", "{dir}: never released");
+impl Workspace {
+    /// The crates a component depends on, directly or not: a release of one of them is a release of that component.
+    fn released_with_a_component(&self) -> std::collections::BTreeSet<String> {
+        let mut seen = std::collections::BTreeSet::new();
+        let mut todo: Vec<String> = COMPONENTS.iter().map(|c| c.to_string()).collect();
+        while let Some(name) = todo.pop() {
+            for (from, to) in &self.depends_on {
+                if *from == name && seen.insert(to.clone()) {
+                    todo.push(to.clone());
+                }
+            }
+        }
+        seen
+    }
+}
+
+/// What is wrong with a release-please config and manifest for this workspace. Only what holds at every point in
+/// the release cycle is checked, since the release build runs this test at the release commit too: a component's
+/// manifest entry is 0.0.0 until its first release and its crate version after.
+fn release_config_errors(
+    workspace: &Workspace,
+    config: &serde_json::Value,
+    manifest: &serde_json::Value,
+) -> Vec<String> {
+    let mut errors = Vec::new();
+    let packages = config["packages"].as_object().cloned().unwrap_or_default();
+    let released = workspace.released_with_a_component();
+    for (dir, name, version) in &workspace.crates {
+        let is_component = COMPONENTS.contains(&name.as_str());
+        let Some(entry) = packages.get(dir) else {
+            if is_component || released.contains(name) {
+                errors.push(format!("{dir} is not a release-please package"));
+            }
+            continue;
+        };
+        if !is_component && !released.contains(name) {
+            // A library-only release pull request has no GitHub release, so release-please would never mark it
+            // released and would stop opening release pull requests.
+            errors.push(format!(
+                "{dir} is released with neither the server nor the runtime"
+            ));
+        }
+        if entry["component"] != name.as_str() {
+            errors.push(format!("{dir}: component is not {name}"));
+        }
+        for key in ["release-as", "additional-paths"] {
+            if entry.get(key).is_some() {
+                errors.push(format!("{dir}: {key}"));
+            }
+        }
+        if is_component {
+            if entry.get("skip-github-release").is_some() {
+                errors.push(format!("{dir}: skip-github-release"));
+            }
+            if manifest[dir] != "0.0.0" && manifest[dir] != version.as_str() {
+                errors.push(format!(
+                    "{dir}: the manifest has {}, the crate {version}",
+                    manifest[dir]
+                ));
+            }
         } else {
-            assert_eq!(entry["skip-github-release"], true, "{dir}");
-            assert_eq!(entry["skip-changelog"], true, "{dir}");
-            assert_eq!(manifest[dir], version.as_str(), "{dir}");
+            if entry["skip-github-release"] != true || entry["skip-changelog"] != true {
+                errors.push(format!(
+                    "{dir}: a library publishes no release or changelog"
+                ));
+            }
+            if manifest[dir] != version.as_str() {
+                errors.push(format!(
+                    "{dir}: the manifest has {}, the crate {version}",
+                    manifest[dir]
+                ));
+            }
         }
     }
-    assert_eq!(config["release-type"], "rust");
+    for dir in packages.keys() {
+        if !workspace.crates.iter().any(|(d, _, _)| d == dir) {
+            errors.push(format!("{dir} is not a workspace crate"));
+        }
+    }
+    if config.get("release-as").is_some() {
+        errors.push("release-as".into());
+    }
     let plugin = config["plugins"]
         .as_array()
-        .unwrap()
-        .iter()
-        .find(|plugin| plugin["type"] == "cargo-workspace")
-        .expect("the cargo-workspace plugin");
-    assert_ne!(
-        plugin["merge"], false,
-        "one release pull request for every crate"
-    );
-    for component in COMPONENTS {
-        assert!(
-            pending(&repo_root(), component).starts_with("pending=false\n"),
-            "{component}"
-        );
+        .and_then(|plugins| plugins.iter().find(|p| p["type"] == "cargo-workspace"));
+    match plugin {
+        None => errors.push("no cargo-workspace plugin".into()),
+        Some(plugin) if plugin["merge"] == false => {
+            errors.push("cargo-workspace must merge".into())
+        }
+        Some(_) => {}
     }
+    errors
+}
+
+fn release_config() -> (serde_json::Value, serde_json::Value) {
+    (
+        read_json(&repo_root().join("release-please-config.json")),
+        read_json(&repo_root().join(".release-please-manifest.json")),
+    )
+}
+
+/// Every crate a component is built from is a release-please package, so a change in any of them is seen, and the
+/// `cargo-workspace` plugin bumps the server or the runtime when a crate it is built from is bumped. Only those two
+/// publish GitHub releases.
+#[test]
+fn release_config_registers_every_crate() {
+    let (config, manifest) = release_config();
+    assert_eq!(
+        release_config_errors(&workspace(), &config, &manifest),
+        Vec::<String>::new()
+    );
+}
+
+/// The release build runs this suite at the release commit, where the manifest has the released versions.
+#[test]
+fn release_config_holds_after_a_release() {
+    let workspace = workspace();
+    let (config, mut manifest) = release_config();
+    for (dir, name, version) in &workspace.crates {
+        if COMPONENTS.contains(&name.as_str()) {
+            manifest[dir] = version.as_str().into();
+        }
+    }
+    assert_eq!(
+        release_config_errors(&workspace, &config, &manifest),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+fn release_config_refuses_what_would_stall_a_release() {
+    let workspace = workspace();
+    let (config, manifest) = release_config();
+    let mut orphan = config.clone();
+    orphan["packages"]["crates/speedyspec-cqrs-php"] = serde_json::json!({"component": "speedyspec-cqrs-php", "skip-github-release": true, "skip-changelog": true});
+    let mut orphan_manifest = manifest.clone();
+    orphan_manifest["crates/speedyspec-cqrs-php"] = "0.1.0".into();
+    assert!(
+        release_config_errors(&workspace, &orphan, &orphan_manifest)
+            .iter()
+            .any(|e| e.contains("released with neither")),
+        "a crate no component depends on"
+    );
+    let mut release_as = config.clone();
+    release_as["packages"]["crates/speedyspec-server"]["release-as"] = "0.1.0".into();
+    assert!(
+        release_config_errors(&workspace, &release_as, &manifest)
+            .iter()
+            .any(|e| e.contains("release-as")),
+        "release-as would propose the same version again after the first release"
+    );
+    let mut missing = config.clone();
+    missing["packages"]
+        .as_object_mut()
+        .unwrap()
+        .remove("crates/speedyspec-server-gate");
+    assert!(
+        release_config_errors(&workspace, &missing, &manifest)
+            .iter()
+            .any(|e| e.contains("speedyspec-server-gate is not a release-please package")),
+        "a crate the server is built from"
+    );
 }
 
 /// A repository with this release-please manifest and these tags.
@@ -631,4 +793,48 @@ fn library_tags_usage_exits_2() {
         run("release-tag-libraries.sh", &[], &[]).status.code(),
         Some(2)
     );
+}
+
+/// A release that lists a SHA256SUMS which cannot be read (a failed download) fails the index, rather than deploying
+/// one that silently leaves a published release out. One that has no SHA256SUMS at all is incomplete, and skipped.
+#[test]
+fn index_fails_when_a_listed_sha256sums_cannot_be_read() {
+    let dir = fixtures(1);
+    std::fs::remove_file(dir.path().join("sums/speedyspec-server-v0.1.0.SHA256SUMS")).unwrap();
+    let releases = dir.path().join("releases.json");
+    let sums = dir.path().join("sums");
+    let output = run(
+        "release-index.sh",
+        &["speedyspec-server", "server"],
+        &[
+            ("RELEASE_INDEX_RELEASES", &releases),
+            ("RELEASE_INDEX_SUMS_DIR", &sums),
+        ],
+    );
+    assert!(!output.status.success(), "{output:?}");
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("speedyspec-server-v0.1.0"),
+        "{output:?}"
+    );
+}
+
+#[test]
+fn index_skips_a_release_without_sha256sums() {
+    let dir = tempfile::tempdir().unwrap();
+    let (release, _) = gh_release(
+        "speedyspec-server",
+        "speedyspec-server-v0.1.0",
+        &["SHA256SUMS"],
+        false,
+        false,
+    );
+    std::fs::write(
+        dir.path().join("releases.json"),
+        serde_json::Value::Array(vec![release]).to_string(),
+    )
+    .unwrap();
+    std::fs::create_dir(dir.path().join("sums")).unwrap();
+    let (parsed, stderr) = index(dir.path(), "speedyspec-server", "server");
+    assert!(parsed.releases.is_empty());
+    assert!(stderr.contains("no SHA256SUMS"), "{stderr}");
 }

@@ -71,11 +71,6 @@
       "skip-github-release": true,
       "skip-changelog": true
     },
-    "crates/speedyspec-cqrs-php": {
-      "component": "speedyspec-cqrs-php",
-      "skip-github-release": true,
-      "skip-changelog": true
-    },
     "crates/speedyspec-fastcgi": {
       "component": "speedyspec-fastcgi",
       "skip-github-release": true,
@@ -108,7 +103,6 @@
     },
     "crates/speedyspec-php-runtime": {
       "component": "speedyspec-php-runtime",
-      "release-as": "1.0.0",
       "changelog-path": "CHANGELOG.md"
     },
     "crates/speedyspec-runtime-contract": {
@@ -118,7 +112,6 @@
     },
     "crates/speedyspec-server": {
       "component": "speedyspec-server",
-      "release-as": "0.1.0",
       "changelog-path": "CHANGELOG.md"
     },
     "crates/speedyspec-server-app": {

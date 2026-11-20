@@ -3,7 +3,6 @@
   "crates/speedyspec-container": "0.1.0",
   "crates/speedyspec-container-php": "0.1.0",
   "crates/speedyspec-cqrs": "0.1.0",
-  "crates/speedyspec-cqrs-php": "0.1.0",
   "crates/speedyspec-fastcgi": "0.1.0",
   "crates/speedyspec-hooks": "0.1.0",
   "crates/speedyspec-hooks-memory": "0.1.0",

@@ -255,9 +255,21 @@ First-time setup, once:
    `minisign.key` and its password out of the repository.
 2. Add the repository secrets `MINISIGN_SECRET_KEY` (the whole contents of `minisign.key`) and `MINISIGN_PASSWORD`.
    Without them, or without `minisign.pub`, nothing is published.
-3. Set *Settings → Pages → Source* to *GitHub Actions*.
-4. After the first server and runtime releases, remove `release-as` from both packages in
-   `release-please-config.json`.
+3. Set *Settings → Pages → Source* to *GitHub Actions*, and turn on *Settings → Actions → General → Allow GitHub
+   Actions to create and approve pull requests* (release-please opens its pull request with the workflow's token).
+4. The server's first release is 0.1.0, release-please's first version for a Rust crate. The runtime's crate is
+   already at 1.0.0, so its first release is asked for once: a commit that changes only `crates/speedyspec-php-runtime`
+   with the footer `Release-As: 1.0.0` (a footer applies to every package the commit touches, so keep it to that one
+   crate, and merge it with its message intact).
+
+A crate that neither the server nor the runtime is built from (today `speedyspec-cqrs-php`) is not a release-please
+package: changing it changes no binary. A test keeps that so, because a release pull request with only library
+crates would never be marked released, and release-please would stop opening new ones.
+
+Release pull requests are opened with the workflow's own token, so CI does not run on them; it runs on the merge.
+The release builds the release commit (the merged release pull request) and runs every test there first. If that
+commit cannot build, nothing is published and release-please waits for it: revert the release pull request's
+commit, remove the `autorelease: pending` label from that pull request, and release-please opens a new one.
 
 ## Upgrading the server, and the trial
 

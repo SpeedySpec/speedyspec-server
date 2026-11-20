@@ -40,13 +40,19 @@ jobs:
       runtime_version: ${{ steps.pick.outputs.runtime_version }}
       # JSON: [{component, version, tag}] for the publish matrix.
       releases: ${{ steps.pick.outputs.releases }}
+      # The release commit (the merged release pull request), which is built, and where the libraries are tagged.
       ref: ${{ steps.pick.outputs.ref }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The whole history: release-pending.sh finds the commit that last changed the manifest.
+          fetch-depth: 0
       - name: Fetch tags
         run: git fetch --tags --quiet origin
       - name: Pick
         id: pick
+        # bash -eo pipefail, so a failing script fails the job instead of reading as "not pending".
+        shell: bash
         env:
           EVENT: ${{ github.event_name }}
           TAG: ${{ inputs.tag }}
@@ -68,9 +74,17 @@ jobs:
                   esac
               fi
           else
-              eval "$(scripts/release-pending.sh speedyspec-server | sed 's/^/server_/')"
-              eval "$(scripts/release-pending.sh speedyspec-php-runtime | sed 's/^/runtime_/')"
+              server_out="$(scripts/release-pending.sh speedyspec-server)"
+              runtime_out="$(scripts/release-pending.sh speedyspec-php-runtime)"
+              while IFS='=' read -r key value; do printf -v "server_$key" '%s' "$value"; done <<<"$server_out"
+              while IFS='=' read -r key value; do printf -v "runtime_$key" '%s' "$value"; done <<<"$runtime_out"
+              if [ -z "${server_pending:-}" ] || [ -z "${runtime_pending:-}" ] || [ -z "${server_commit:-}" ]; then
+                  echo "release-pending.sh printed no answer" >&2
+                  exit 1
+              fi
               server="$server_pending" runtime="$runtime_pending"
+              # Both components are released by the same merged release pull request.
+              ref="$server_commit"
               [ "$server" = true ] && add speedyspec-server "$server_version" "$server_tag"
               [ "$runtime" = true ] && add speedyspec-php-runtime "$runtime_version" "$runtime_tag"
           fi
@@ -115,6 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write
       pull-requests: write
     steps:
       - uses: googleapis/release-please-action@v4
@@ -129,7 +144,8 @@ jobs:
       - name: Tag the library crates
         if: needs.pending.outputs.releases != '[]'
         env:
-          SHA: ${{ github.sha }}
+          # The release commit, where release-please tags the server and the runtime too.
+          SHA: ${{ needs.pending.outputs.ref }}
         run: |
           git fetch --tags --quiet origin
           tags="$(scripts/release-tag-libraries.sh "$SHA")"
