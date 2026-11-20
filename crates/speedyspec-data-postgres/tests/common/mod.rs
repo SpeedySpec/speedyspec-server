@@ -60,6 +60,15 @@ fn normal(sql: &str) -> String {
         .join("; ")
 }
 
+/// `actual` and `expected` are the same statement as PostgreSQL reads them.
+pub fn assert_same_pg(actual: &str, expected: &str) {
+    assert_eq!(
+        normal(actual),
+        normal(expected),
+        "\nactual:   {actual}\nexpected: {expected}"
+    );
+}
+
 /// Plans `mysql` with `params` and checks each emitted statement against `expected`, as PostgreSQL reads them.
 pub fn assert_pg(
     d: &PostgresDialect,

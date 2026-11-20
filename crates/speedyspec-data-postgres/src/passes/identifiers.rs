@@ -220,6 +220,28 @@ fn resolve_targets(stmt: &mut Ast, schema: &SchemaCache, tables: &[(String, Stri
     }
 }
 
+/// A type PgDdl writes out whole (`text COLLATE "x"`, which sqlparser cannot hold) stays as written.
+fn unquote_written_types(stmt: &mut Ast) {
+    if let Ast::AlterTable(alter) = stmt {
+        for op in &mut alter.operations {
+            if let sqlparser::ast::AlterTableOperation::AlterColumn {
+                op:
+                    sqlparser::ast::AlterColumnOperation::SetDataType {
+                        data_type: sqlparser::ast::DataType::Custom(name, _),
+                        ..
+                    },
+                ..
+            } = op
+            {
+                name.0
+                    .iter_mut()
+                    .filter_map(ident_mut)
+                    .for_each(|i| i.quote_style = None);
+            }
+        }
+    }
+}
+
 impl RewritePass for PgIdentifiers {
     fn name(&self) -> &'static str {
         "pg_identifiers"
@@ -245,6 +267,7 @@ impl RewritePass for PgIdentifiers {
             let _ = stmt.tree_mut().visit(&mut resolve);
         }
         let _ = stmt.tree_mut().visit(&mut Quote);
+        unquote_written_types(stmt.tree_mut());
         Ok(Rewrite::Continue)
     }
 }

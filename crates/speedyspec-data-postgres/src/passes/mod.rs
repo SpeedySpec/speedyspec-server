@@ -1,5 +1,6 @@
 //! The PostgreSQL passes, run after the neutral ones (Chain of Responsibility, each a Visitor over the tree).
 
+mod ddl;
 mod identifiers;
 mod placeholders;
 
@@ -10,6 +11,7 @@ use speedyspec_data_translate::{RowLimitPass, neutral_chain};
 
 use crate::schema::SchemaCache;
 
+pub(crate) use ddl::PgDdl;
 pub(crate) use identifiers::PgIdentifiers;
 pub(crate) use placeholders::PgPlaceholders;
 
@@ -17,6 +19,7 @@ pub(crate) use placeholders::PgPlaceholders;
 pub(crate) fn pg_chain(schema: &Rc<SchemaCache>) -> PassChain {
     let mut chain = neutral_chain();
     chain.push(Box::new(RowLimitPass::new("ctid")));
+    chain.push(Box::new(PgDdl::new(schema.clone())));
     chain.push(Box::new(PgIdentifiers::new(schema.clone())));
     chain.push(Box::new(PgPlaceholders));
     chain
