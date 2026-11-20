@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
+use speedyspec_data::{DbError, DbValue, Row, Statement, StatementKind, TxControl};
 use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::Parser;
-use speedyspec_data::{DbError, DbValue, Row, Statement, StatementKind, TxControl};
 
 #[test]
 fn to_mysql_text_matches_mysqli() {

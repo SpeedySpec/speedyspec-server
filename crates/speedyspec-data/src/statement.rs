@@ -106,9 +106,9 @@ impl Statement {
             S::Set(_) => StatementKind::Set,
             S::StartTransaction { .. } => StatementKind::Transaction(TxControl::Begin),
             S::Commit { .. } => StatementKind::Transaction(TxControl::Commit),
-            S::Rollback { savepoint: Some(_), .. } => {
-                StatementKind::Transaction(TxControl::RollbackTo)
-            }
+            S::Rollback {
+                savepoint: Some(_), ..
+            } => StatementKind::Transaction(TxControl::RollbackTo),
             S::Rollback { .. } => StatementKind::Transaction(TxControl::Rollback),
             S::Savepoint { .. } => StatementKind::Transaction(TxControl::Savepoint),
             S::ReleaseSavepoint { .. } => StatementKind::Transaction(TxControl::Release),

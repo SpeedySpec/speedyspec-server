@@ -23,15 +23,38 @@ impl fmt::Display for DialectKind {
 /// Every data-access failure.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DbError {
-    Connection { engine: String, message: String },
-    Parse { message: String, line: u64, column: u64 },
-    Unsupported { construct: String, dialect: DialectKind },
-    Constraint { engine: String, message: String },
-    Deadlock { engine: String, message: String },
-    Engine { engine: String, code: Option<String>, message: String },
+    Connection {
+        engine: String,
+        message: String,
+    },
+    Parse {
+        message: String,
+        line: u64,
+        column: u64,
+    },
+    Unsupported {
+        construct: String,
+        dialect: DialectKind,
+    },
+    Constraint {
+        engine: String,
+        message: String,
+    },
+    Deadlock {
+        engine: String,
+        message: String,
+    },
+    Engine {
+        engine: String,
+        code: Option<String>,
+        message: String,
+    },
     Transaction(String),
     Config(String),
-    WrongKind { engine: String, expected: &'static str },
+    WrongKind {
+        engine: String,
+        expected: &'static str,
+    },
     NoEngine(String),
 }
 
@@ -41,8 +64,15 @@ impl fmt::Display for DbError {
             DbError::Connection { engine, message } => {
                 write!(f, "connection to engine `{engine}` failed: {message}")
             }
-            DbError::Parse { message, line, column } => {
-                write!(f, "SQL parse error at line {line}, column {column}: {message}")
+            DbError::Parse {
+                message,
+                line,
+                column,
+            } => {
+                write!(
+                    f,
+                    "SQL parse error at line {line}, column {column}: {message}"
+                )
             }
             DbError::Unsupported { construct, dialect } => {
                 write!(f, "{construct} is not supported by the {dialect} dialect")
@@ -53,7 +83,11 @@ impl fmt::Display for DbError {
             DbError::Deadlock { engine, message } => {
                 write!(f, "deadlock on engine `{engine}`: {message}")
             }
-            DbError::Engine { engine, code, message } => match code {
+            DbError::Engine {
+                engine,
+                code,
+                message,
+            } => match code {
                 Some(code) => write!(f, "engine `{engine}` error {code}: {message}"),
                 None => write!(f, "engine `{engine}` error: {message}"),
             },
