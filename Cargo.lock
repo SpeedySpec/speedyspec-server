@@ -4144,6 +4144,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-cache-kv"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-conformance",
+ "speedyspec-data",
+ "speedyspec-data-counter",
+ "speedyspec-data-memory",
+ "speedyspec-data-redb",
+ "speedyspec-data-valkey",
+ "tempfile",
+]
+
+[[package]]
 name = "speedyspec-cache-memory"
 version = "0.1.0"
 dependencies = [
