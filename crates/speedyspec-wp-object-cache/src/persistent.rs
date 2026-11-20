@@ -160,7 +160,7 @@ impl ObjectCache {
             .iter()
             .filter_map(|k| array_key(k).ok())
             .map(|k| self.prefixed(&k, &g))
-            .filter(|id| force || !self.exists(id, &g))
+            .filter(|id| force || !self.has_entry(id, &g))
             .collect();
         if ids.is_empty() {
             return Ok(());

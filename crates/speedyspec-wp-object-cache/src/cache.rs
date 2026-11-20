@@ -125,7 +125,38 @@ impl ObjectCache {
         }
     }
 
-    pub(crate) fn exists(&self, id: &Key, group: &Key) -> bool {
+    /// Whether `key` is in the first level, counting no hit or miss and raising no notice (an invalid key is
+    /// absent). For callers that must know what a read would do without doing it.
+    pub fn exists(&self, key: &Value, group: &Value) -> bool {
+        self.quiet_id(key, group)
+            .is_some_and(|(id, g)| self.has_entry(&id, &g))
+    }
+
+    /// The first level's value for `key`, as [`ObjectCache::exists`] looks: no count, no notice. Bytes from the
+    /// second level not yet read are `None`.
+    pub fn peek(&self, key: &Value, group: &Value) -> Option<Value> {
+        let (id, g) = self.quiet_id(key, group)?;
+        match self.cache.borrow().get(&g)?.get(&id)? {
+            CacheValue::Php(v) => Some(v.clone()),
+            CacheValue::Bytes(_) => None,
+        }
+    }
+
+    fn quiet_id(&self, key: &Value, group: &Value) -> Option<(Key, Key)> {
+        let valid = match key {
+            Value::Int(_) => true,
+            Value::Str(s) => !php_trim_empty(s),
+            _ => false,
+        };
+        if !valid {
+            return None;
+        }
+        let key = array_key(key).ok()?;
+        let group = self.group(group).ok()?;
+        Some((self.id(&key, &group), group))
+    }
+
+    pub(crate) fn has_entry(&self, id: &Key, group: &Key) -> bool {
         self.cache
             .borrow()
             .get(group)
@@ -194,7 +225,7 @@ impl ObjectCache {
         let Some((id, g)) = self.target(key, group, "add")? else {
             return Ok(false);
         };
-        if self.exists(&id, &g) {
+        if self.has_entry(&id, &g) {
             return Ok(false);
         }
         // With a second level, its own atomic `add` decides (another worker may hold the key) and writes it.
@@ -230,7 +261,7 @@ impl ObjectCache {
         let Some((id, g)) = self.target(key, group, "replace")? else {
             return Ok(false);
         };
-        if !self.exists(&id, &g) && !self.second_has(&id, &g) {
+        if !self.has_entry(&id, &g) && !self.second_has(&id, &g) {
             return Ok(false);
         }
         self.write(id, g, data, expire, true);
@@ -278,9 +309,32 @@ impl ObjectCache {
         Ok(self.read(&id, &g, force))
     }
 
+    /// `get`, with the value lent to `f` instead of copied: a hit or miss is counted as `get` counts it. `f` must
+    /// not call back into this cache.
+    pub fn get_with<R>(
+        &self,
+        key: &Value,
+        group: &Value,
+        force: bool,
+        f: impl FnOnce(Option<&Value>) -> R,
+    ) -> Result<R, ObjectCacheError> {
+        let Some((id, g)) = self.target(key, group, "get")? else {
+            return Ok(f(None));
+        };
+        if !(force && self.persists(&g)) {
+            let cache = self.cache.borrow();
+            if let Some(CacheValue::Php(v)) = cache.get(&g).and_then(|entries| entries.get(&id)) {
+                self.hits.set(self.hits.get() + 1);
+                return Ok(f(Some(v)));
+            }
+        }
+        let value = self.read(&id, &g, force);
+        Ok(f(value.as_ref()))
+    }
+
     pub(crate) fn read(&self, id: &Key, g: &Key, force: bool) -> Option<Value> {
         if !(force && self.persists(g))
-            && self.exists(id, g)
+            && self.has_entry(id, g)
             && let Some(v) = self.decode_entry(id, g)
         {
             self.hits.set(self.hits.get() + 1);

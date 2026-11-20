@@ -294,6 +294,28 @@ fn collect<T: mysql::prelude::Protocol>(
     Ok((rows, exec))
 }
 
+/// mysqlnd's `NUM_FLAG`, which the client sets on numeric columns (the server never sends it).
+const NUM_FLAG: u32 = 32768;
+
+/// mysqlnd's `IS_NUM`: the integer and floating types up to `INT24` (but not `TIMESTAMP`), `YEAR` and `NEWDECIMAL`.
+fn is_numeric(t: ColumnType) -> bool {
+    use ColumnType::*;
+    matches!(
+        t,
+        MYSQL_TYPE_DECIMAL
+            | MYSQL_TYPE_TINY
+            | MYSQL_TYPE_SHORT
+            | MYSQL_TYPE_LONG
+            | MYSQL_TYPE_FLOAT
+            | MYSQL_TYPE_DOUBLE
+            | MYSQL_TYPE_NULL
+            | MYSQL_TYPE_LONGLONG
+            | MYSQL_TYPE_INT24
+            | MYSQL_TYPE_YEAR
+            | MYSQL_TYPE_NEWDECIMAL
+    )
+}
+
 fn column_info(c: &Column, max_length: u64) -> ColumnInfo {
     ColumnInfo {
         name: c.name_str().into_owned(),
@@ -306,7 +328,12 @@ fn column_info(c: &Column, max_length: u64) -> ColumnInfo {
         nullable: !c
             .flags()
             .contains(mysql::consts::ColumnFlags::NOT_NULL_FLAG),
-        flags: c.flags().bits() as u32,
+        flags: c.flags().bits() as u32
+            | if is_numeric(c.column_type()) {
+                NUM_FLAG
+            } else {
+                0
+            },
         decimals: c.decimals(),
         charset: c.character_set(),
     }

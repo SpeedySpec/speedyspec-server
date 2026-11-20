@@ -1,0 +1,12 @@
+[
+  {
+    "construct": "MATCH ... AGAINST",
+    "dialect": "sqlite",
+    "why": "SQLite full-text search is not wired up yet"
+  },
+  {
+    "construct": "CONVERT ... USING a non-Unicode charset",
+    "dialect": "sqlite",
+    "why": "SQLite keeps all text as UTF-8 and has no charset conversion; wpdb asks for it only for tables in a non-Unicode charset"
+  }
+]

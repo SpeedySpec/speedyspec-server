@@ -102,6 +102,14 @@ pub fn sql_store_suite(store: &dyn SqlStore, scratch_table: &str) {
         || format!("{:?}", rows.columns),
     );
 
+    // num_flag: numeric columns carry mysqli's NUM_FLAG (32768), as `wpdb::get_col_info('flags')` shows it.
+    let flagged = check(
+        "num_flag",
+        store.query(&sql("num_flag", &format!("SELECT id, name FROM {t}"))),
+    );
+    let flags: Vec<u32> = flagged.columns.iter().map(|c| c.flags & 32768).collect();
+    ensure("num_flag", flags == [32768, 0], || format!("{flags:?}"));
+
     // 4. changed_rows
     let same = check(
         "changed_rows",

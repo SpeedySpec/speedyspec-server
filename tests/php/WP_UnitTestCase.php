@@ -73,6 +73,12 @@ abstract class WP_UnitTestCase extends TestCase
         if (isset($GLOBALS['wpdb']))
         {
             $this->start_transaction();
+            // WordPress's own set_up reads options (resetting post types and taxonomies), so each test starts with
+            // alloptions loaded; the option tests count queries from there.
+            if (function_exists('wp_load_alloptions'))
+            {
+                wp_load_alloptions();
+            }
         }
         $this->expectDeprecated();
     }
@@ -128,6 +134,11 @@ abstract class WP_UnitTestCase extends TestCase
         }
     }
 
+    public function deprecated_argument_run($function_name, $message, $version)
+    {
+        $this->deprecated_function_run($function_name, '', $version, $message);
+    }
+
     public function deprecated_function_run_for_function($function_name, $replacement, $version, $message = '')
     {
         $this->deprecated_function_run($function_name, $replacement, $version, $message);
@@ -142,6 +153,11 @@ abstract class WP_UnitTestCase extends TestCase
         if (isset($GLOBALS['wpdb']))
         {
             $GLOBALS['wpdb']->query('ROLLBACK');
+            // The rolled-back rows must not outlive the test in the object cache either.
+            if (function_exists('wp_cache_flush'))
+            {
+                wp_cache_flush();
+            }
         }
         $this->_restore_hooks();
         $this->expected_deprecated = array();
@@ -230,6 +246,7 @@ abstract class WP_UnitTestCase extends TestCase
         add_action('deprecated_hook_run', array($this, 'deprecated_function_run'), 10, 4);
         add_action('deprecated_function_run', array($this, 'deprecated_function_run_for_function'), 10, 3);
         add_action('doing_it_wrong_run', array($this, 'doing_it_wrong_run'), 10, 3);
+        add_action('deprecated_argument_run', array($this, 'deprecated_argument_run'), 10, 3);
     }
 
     public function deprecated_function_run($function_name, $replacement, $version, $message = '')

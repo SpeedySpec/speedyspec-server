@@ -1,0 +1,25 @@
+[package]
+name = "speedyspec-wp-options"
+version = "0.1.0"
+description = "WordPress's options API (get_option, update_option and the rest) in Rust: the entity, its ports and the API."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-uow = { path = "../speedyspec-data-uow" }
+speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
+tracing = "0.1"
+
+[dev-dependencies]
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }
+
+[features]
+# The option repository suite every repository must pass.
+conformance = []
