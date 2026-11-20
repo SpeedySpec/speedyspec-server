@@ -1,0 +1,23 @@
+[package]
+name = "speedyspec-firewall-presentation"
+version = "0.1.0"
+description = "The firewall as a native request stage, its WordPress hook callbacks, and its composition root."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-firewall = { path = "../speedyspec-firewall" }
+speedyspec-firewall-app = { path = "../speedyspec-firewall-app" }
+speedyspec-firewall-infra-cache = { path = "../speedyspec-firewall-infra-cache" }
+speedyspec-firewall-infra-options = { path = "../speedyspec-firewall-infra-options" }
+speedyspec-native-stage = { path = "../speedyspec-native-stage" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-options = { path = "../speedyspec-wp-options" }
+
+[dev-dependencies]
+speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
+speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }

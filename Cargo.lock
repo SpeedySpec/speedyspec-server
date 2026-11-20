@@ -4523,6 +4523,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-firewall-presentation"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-memory",
+ "speedyspec-firewall",
+ "speedyspec-firewall-app",
+ "speedyspec-firewall-infra-cache",
+ "speedyspec-firewall-infra-options",
+ "speedyspec-native-stage",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-object-cache",
+ "speedyspec-wp-options",
+ "speedyspec-wp-options-memory",
+]
+
+[[package]]
 name = "speedyspec-hooks"
 version = "0.1.0"
 dependencies = [
