@@ -1,0 +1,21 @@
+[package]
+name = "speedyspec-data-redb"
+version = "0.1.0"
+description = "ReDB as a NoSQL Store: one owner process per site serves the file to every worker over a private socket."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+libc = "0.2"
+postcard = { version = "1", features = ["use-std"] }
+redb = "4"
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-counter = { path = "../speedyspec-data-counter" }
+
+[dev-dependencies]
+speedyspec-data-conformance = { path = "../speedyspec-data-conformance" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+tempfile = "3"

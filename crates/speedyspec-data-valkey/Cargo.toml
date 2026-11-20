@@ -1,0 +1,16 @@
+[package]
+name = "speedyspec-data-valkey"
+version = "0.1.0"
+description = "The Valkey NoSQL Store: keyspaces as key prefixes over one blocking connection."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+redis = { version = "0.32", default-features = false }
+speedyspec-data = { path = "../speedyspec-data" }
+
+[dev-dependencies]
+redis = { version = "0.32", default-features = false }
+speedyspec-data-conformance = { path = "../speedyspec-data-conformance" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
