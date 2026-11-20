@@ -30,8 +30,9 @@ pub struct ObjectCache {
     pub(crate) non_persistent: RefCell<IndexSet<Key>>,
     blog_prefix: RefCell<String>,
     multisite: Cell<bool>,
-    /// The second-level failure kinds already logged by this cache (one cache per request).
-    pub(crate) failures_logged: Cell<u8>,
+    /// The second level failed in this request (one cache per request), so the rest of the request skips it (an unreachable host would
+    /// otherwise make every call wait out its timeout). The next request's cache tries it again.
+    pub(crate) second_down: Cell<bool>,
 }
 
 /// PHP's `empty()`.
@@ -75,7 +76,7 @@ impl ObjectCache {
             non_persistent: RefCell::new(IndexSet::new()),
             blog_prefix: RefCell::new(prefix),
             multisite: Cell::new(multisite),
-            failures_logged: Cell::new(0),
+            second_down: Cell::new(false),
         }
     }
 

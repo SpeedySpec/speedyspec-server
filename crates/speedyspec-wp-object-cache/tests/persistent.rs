@@ -94,7 +94,7 @@ impl CacheNotices for Misses {
 }
 
 #[test]
-fn failing_second_level_logged_once_per_kind() {
+fn failing_second_level_logged_once() {
     let misses = Rc::new(Misses::default());
     let mut ports = ObjectCachePorts::rust();
     ports.notices = misses.clone();
@@ -105,6 +105,78 @@ fn failing_second_level_logged_once_per_kind() {
         assert!(cache.set(&k, Value::Int(i), &s("g"), 0).unwrap());
         assert_eq!(cache.get(&k, &s("g"), false).unwrap(), Some(Value::Int(i)));
     }
-    // One read failure and one write failure, not one per call.
-    assert_eq!(misses.0.borrow().len(), 2, "{:?}", misses.0.borrow());
+    // The first failure, not one per call: the rest of the request skips the second level.
+    assert_eq!(misses.0.borrow().len(), 1, "{:?}", misses.0.borrow());
+}
+
+/// A second level that fails every call and counts them, as an unreachable host does (each call waits out a timeout).
+#[derive(Default)]
+struct Unreachable(std::cell::Cell<usize>);
+impl Unreachable {
+    fn fail<T>(&self) -> Result<T, CacheError> {
+        self.0.set(self.0.get() + 1);
+        down()
+    }
+}
+impl CachingStore for Unreachable {
+    fn name(&self) -> &str {
+        "unreachable"
+    }
+    fn get(&self, _: &str, _: &str) -> Result<Option<Vec<u8>>, CacheError> {
+        self.fail()
+    }
+    fn get_many(&self, _: &str, _: &[&str]) -> Result<Vec<Option<Vec<u8>>>, CacheError> {
+        self.fail()
+    }
+    fn set(&self, _: &str, _: &str, _: &[u8], _: Option<Duration>) -> Result<(), CacheError> {
+        self.fail()
+    }
+    fn add(&self, _: &str, _: &str, _: &[u8], _: Option<Duration>) -> Result<bool, CacheError> {
+        self.fail()
+    }
+    fn replace(&self, _: &str, _: &str, _: &[u8], _: Option<Duration>) -> Result<bool, CacheError> {
+        self.fail()
+    }
+    fn delete(&self, _: &str, _: &str) -> Result<bool, CacheError> {
+        self.fail()
+    }
+    fn increment(&self, _: &str, _: &str, _: i64) -> Result<Option<i64>, CacheError> {
+        self.fail()
+    }
+    fn decrement(&self, _: &str, _: &str, _: i64) -> Result<Option<i64>, CacheError> {
+        self.fail()
+    }
+    fn flush(&self) -> Result<(), CacheError> {
+        self.fail()
+    }
+    fn flush_group(&self, _: &str) -> Result<(), CacheError> {
+        self.fail()
+    }
+}
+
+#[test]
+fn unreachable_second_level_is_skipped_for_the_rest_of_the_request() {
+    let store = Rc::new(Unreachable::default());
+    let cache = ObjectCache::new(ObjectCachePorts::rust(), Some(store.clone()));
+    for i in 0..50 {
+        let k = s(&format!("k{i}"));
+        assert_eq!(cache.get(&k, &s("g"), false).unwrap(), None);
+        assert!(cache.set(&k, Value::Int(i), &s("g"), 0).unwrap());
+        assert!(
+            cache
+                .add(&s(&format!("a{i}")), Value::Int(i), &s("g"), 0)
+                .unwrap()
+        );
+        assert_eq!(cache.get(&k, &s("g"), false).unwrap(), Some(Value::Int(i)));
+        assert!(cache.delete(&k, &s("g")).unwrap());
+    }
+    assert_eq!(
+        store.0.get(),
+        1,
+        "only the first call waits on the unreachable host"
+    );
+    // The next request tries the second level again.
+    let next = ObjectCache::new(ObjectCachePorts::rust(), Some(store.clone()));
+    assert_eq!(next.get(&s("k0"), &s("g"), false).unwrap(), None);
+    assert_eq!(store.0.get(), 2);
 }

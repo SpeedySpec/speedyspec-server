@@ -11,22 +11,19 @@ use speedyspec_hooks::{Key, Value};
 use crate::keys::{array_key, key_text};
 use crate::{CacheValue, CodecError, ObjectCache, ObjectCacheError};
 
-/// What the second level was asked to do when it failed.
-#[derive(Clone, Copy)]
-enum Failure {
-    Read = 1,
-    Write = 2,
-}
-
 fn expiry(expire: i64) -> Option<Duration> {
     (expire > 0).then(|| Duration::from_secs(expire as u64))
 }
 
 impl ObjectCache {
+    /// The second level, unless it already failed in this request.
+    fn reachable(&self) -> Option<&Rc<dyn CachingStore>> {
+        self.persistent.as_ref().filter(|_| !self.second_down.get())
+    }
+
     /// The second level for this group, if it has one.
     fn second(&self, group: &Key) -> Option<&Rc<dyn CachingStore>> {
-        self.persistent
-            .as_ref()
+        self.reachable()
             .filter(|_| !self.non_persistent.borrow().contains(group))
     }
 
@@ -40,13 +37,10 @@ impl ObjectCache {
             .persistence_miss(&key_text(group), &key_text(id), why);
     }
 
-    /// The second level failed: a miss (or a first-level-only write), logged once per request per kind, as a
-    /// persistent drop-in degrades when its server goes away.
-    fn failed(&self, kind: Failure, group: &Key, id: &Key, e: &CacheError) {
-        let bit = kind as u8;
-        let logged = self.failures_logged.get();
-        if logged & bit == 0 {
-            self.failures_logged.set(logged | bit);
+    /// The second level failed: a miss (or a first-level-only write), logged once, and the rest of the request skips
+    /// the second level, as a persistent drop-in's fail-graceful mode does.
+    fn failed(&self, group: &Key, id: &Key, e: &CacheError) {
+        if !self.second_down.replace(true) {
             self.miss(group, id, &e.to_string());
         }
     }
@@ -59,7 +53,7 @@ impl ObjectCache {
                     if let Err(e) =
                         store.set(&key_text(&group), &key_text(&id), &bytes, expiry(expire))
                     {
-                        self.failed(Failure::Write, &group, &id, &e);
+                        self.failed(&group, &id, &e);
                         self.forget_second(&id, &group);
                     }
                 }
@@ -87,7 +81,7 @@ impl ObjectCache {
         match store.add(&key_text(g), &key_text(id), &bytes, expiry(expire)) {
             Ok(added) => Some(added),
             Err(e) => {
-                self.failed(Failure::Write, g, id, &e);
+                self.failed(g, id, &e);
                 None
             }
         }
@@ -100,7 +94,7 @@ impl ObjectCache {
         match store.get(&key_text(g), &key_text(id)) {
             Ok(found) => found.is_some(),
             Err(e) => {
-                self.failed(Failure::Read, g, id, &e);
+                self.failed(g, id, &e);
                 false
             }
         }
@@ -116,7 +110,7 @@ impl ObjectCache {
             }
             Ok(None) => None,
             Err(e) => {
-                self.failed(Failure::Read, g, id, &e);
+                self.failed(g, id, &e);
                 None
             }
         }
@@ -127,7 +121,7 @@ impl ObjectCache {
         if let Some(store) = self.second(g)
             && let Err(e) = store.delete(&key_text(g), &key_text(id))
         {
-            self.failed(Failure::Write, g, id, &e);
+            self.failed(g, id, &e);
         }
     }
 
@@ -138,17 +132,17 @@ impl ObjectCache {
         store
             .delete(&key_text(g), &key_text(id))
             .unwrap_or_else(|e| {
-                self.failed(Failure::Write, g, id, &e);
+                self.failed(g, id, &e);
                 false
             })
     }
 
     pub(crate) fn second_flush(&self) {
-        if let Some(store) = &self.persistent
+        if let Some(store) = self.reachable()
             && let Err(e) = store.flush()
         {
             let none = Key::Str(String::new());
-            self.failed(Failure::Write, &none, &none, &e);
+            self.failed(&none, &none, &e);
         }
     }
 
@@ -156,7 +150,7 @@ impl ObjectCache {
         if let Some(store) = self.second(g)
             && let Err(e) = store.flush_group(&key_text(g))
         {
-            self.failed(Failure::Write, g, &Key::Str(String::new()), &e);
+            self.failed(g, &Key::Str(String::new()), &e);
         }
     }
 
@@ -194,7 +188,7 @@ impl ObjectCache {
                     }
                 }
             }
-            Err(e) => self.failed(Failure::Read, &g, &Key::Str(String::new()), &e),
+            Err(e) => self.failed(&g, &Key::Str(String::new()), &e),
         }
         Ok(())
     }
