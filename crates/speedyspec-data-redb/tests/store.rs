@@ -28,3 +28,21 @@ fn sweep_removes_expired() {
         Some(b"x".as_slice())
     );
 }
+
+#[test]
+fn huge_ttl_is_kept() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = RedbStore::open("redb", &dir.path().join("site.redb")).unwrap();
+    store
+        .put(
+            "ks",
+            b"far",
+            b"x",
+            Some(Duration::from_secs(i64::MAX as u64)),
+        )
+        .unwrap();
+    assert_eq!(
+        store.get("ks", b"far").unwrap().as_deref(),
+        Some(b"x".as_slice())
+    );
+}

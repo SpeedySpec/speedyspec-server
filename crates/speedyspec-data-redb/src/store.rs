@@ -29,7 +29,8 @@ fn now_ms() -> u64 {
 
 /// When a TTL ends; under a millisecond lives a millisecond, as on Valkey.
 fn expires_at(ttl: Option<Duration>) -> u64 {
-    ttl.map(|t| now_ms() + (t.as_millis() as u64).max(1))
+    // A far TTL saturates to the end of time rather than overflowing.
+    ttl.map(|t| now_ms().saturating_add(u64::try_from(t.as_millis()).unwrap_or(u64::MAX).max(1)))
         .unwrap_or(0)
 }
 
