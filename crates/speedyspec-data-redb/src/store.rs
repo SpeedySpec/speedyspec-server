@@ -164,21 +164,26 @@ impl RedbStore {
     }
 }
 
+/// What ReDB offers, through the store or the client alike.
+pub(crate) fn capabilities() -> Capabilities {
+    Capabilities {
+        transactions: false,
+        savepoints: false,
+        ordered_ranges: true,
+        expiry: true,
+        atomic_increment: true,
+        returning: false,
+        upsert: UpsertForm::None,
+    }
+}
+
 impl NoSqlStore for RedbStore {
     fn engine(&self) -> &str {
         &self.engine
     }
 
     fn capabilities(&self) -> Capabilities {
-        Capabilities {
-            transactions: false,
-            savepoints: false,
-            ordered_ranges: true,
-            expiry: true,
-            atomic_increment: true,
-            returning: false,
-            upsert: UpsertForm::None,
-        }
+        capabilities()
     }
 
     fn get(&self, keyspace: &str, key: &[u8]) -> Result<Option<Vec<u8>>, DbError> {
