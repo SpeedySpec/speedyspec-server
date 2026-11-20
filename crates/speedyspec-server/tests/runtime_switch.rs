@@ -204,9 +204,55 @@ fn bad_runtime_rolls_back_on_its_own() {
     site.host
         .publish_binary("rt", "1.9.0", script("1.9.0", Workers::Real).as_bytes());
     release_cmd(&site.config, &["install", "rt", "1.9.0"]);
+    let before_switch = site.server.log().len();
     release_cmd(&site.config, &["switch", "rt@1.9.0"]);
     // The blog's probes fail on 1.9.0: within a few rounds the runtime goes back to 1.0.0 on its own.
     wait_for(addr, "/blog/", "1.0.0 blog@1.0.0");
+    assert!(
+        site.server
+            .wait_for_event("runtime_trial_failed", Duration::from_secs(10)),
+        "{:?}",
+        site.server.log()
+    );
+    // Every worker started on 1.9.0 is stopped and reaped: none is left running, and none as a zombie.
+    let log = site.server.log();
+    let failed_at = log
+        .iter()
+        .position(|line| line.contains("runtime_trial_failed"))
+        .unwrap();
+    let on_bad: Vec<u32> = log[before_switch..failed_at]
+        .iter()
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .filter(|line| line["event"] == "php_worker_started")
+        .filter_map(|line| {
+            let details: serde_json::Value =
+                serde_json::from_str(line["details"].as_str()?).ok()?;
+            details["pid"].as_u64().map(|pid| pid as u32)
+        })
+        .collect();
+    assert!(!on_bad.is_empty(), "no workers started on 1.9.0: {log:?}");
+    let deadline = Instant::now() + Duration::from_secs(15);
+    loop {
+        let left: Vec<String> = on_bad
+            .iter()
+            .filter_map(|pid| {
+                let out = std::process::Command::new("ps")
+                    .args(["-o", "pid=,stat=", "-p", &pid.to_string()])
+                    .output()
+                    .unwrap();
+                let text = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                (!text.is_empty()).then_some(text)
+            })
+            .collect();
+        if left.is_empty() {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "workers from 1.9.0 still in the process table: {left:?}"
+        );
+        std::thread::sleep(Duration::from_millis(200));
+    }
     let (_, list, _) = command(&["release", "list", "rt", "--config", &site.config]);
     let row = list
         .lines()
