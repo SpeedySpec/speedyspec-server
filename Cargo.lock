@@ -4179,6 +4179,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-cache-routing"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-file",
+ "speedyspec-cache-kv",
+ "speedyspec-cache-sql",
+ "speedyspec-data",
+ "speedyspec-data-file",
+ "speedyspec-data-memory",
+ "speedyspec-data-query",
+ "tempfile",
+]
+
+[[package]]
 name = "speedyspec-cache-sql"
 version = "0.1.0"
 dependencies = [
