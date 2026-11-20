@@ -2,11 +2,12 @@
 
 use speedyspec_data::{EmittedSql, EmulatedOp, Statement, StatementKind};
 use sqlparser::ast::{
-    AlterTableOperation, ColumnDef, ColumnOption, RenameTableNameKind, Statement as Ast,
+    AlterTableOperation, ColumnDef, ColumnOption, Expr, FromTable, OnConflict, OnConflictAction,
+    OnInsert, RenameTableNameKind, SelectItem, SetExpr, Statement as Ast, TableFactor, TableObject,
 };
 
 use crate::passes::REBUILD_SUFFIX;
-use speedyspec_data_translate::object_name;
+use speedyspec_data_translate::{is_catalogue_table, object_name};
 
 /// How a step's affected-row count is read.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,26 +78,98 @@ fn take_on_update(columns: &mut [ColumnDef]) -> Vec<String> {
     names
 }
 
-fn rules(kind: StatementKind, returns_rows: bool) -> (CountRule, InsertIdRule, bool) {
-    match kind {
-        StatementKind::Ddl => (CountRule::None, InsertIdRule::None, false),
-        StatementKind::Insert | StatementKind::Replace => {
-            (CountRule::Changes, InsertIdRule::LastRowid, returns_rows)
+/// Whether a write to `name` is the engine's own bookkeeping, not a row MySQL would count.
+fn bookkeeping(name: &sqlparser::ast::ObjectName) -> bool {
+    let first = name
+        .0
+        .first()
+        .map(|p| p.to_string().trim_matches('"').to_ascii_lowercase());
+    let table = object_name(name);
+    first.as_deref() == Some("temp")
+        || table.eq_ignore_ascii_case("sqlite_sequence")
+        || is_catalogue_table(&table)
+}
+
+fn returns_rowid(returning: &Option<Vec<SelectItem>>) -> bool {
+    matches!(returning.as_deref(), Some([SelectItem::UnnamedExpr(Expr::Identifier(i))]) if i.value.eq_ignore_ascii_case("rowid"))
+}
+
+/// How a step's count and insert id are read; every step of a DDL statement reports none.
+fn rules(kind: StatementKind, tree: &Ast) -> (CountRule, InsertIdRule, bool) {
+    if kind == StatementKind::Ddl {
+        return (CountRule::None, InsertIdRule::None, false);
+    }
+    match tree {
+        Ast::Query(_) => (CountRule::None, InsertIdRule::None, true),
+        Ast::Insert(insert) => {
+            let TableObject::TableName(name) = &insert.table else {
+                return (CountRule::None, InsertIdRule::None, false);
+            };
+            if bookkeeping(name) {
+                return (CountRule::None, InsertIdRule::None, false);
+            }
+            let upsert = matches!(
+                &insert.on,
+                Some(OnInsert::OnConflict(OnConflict {
+                    action: OnConflictAction::DoUpdate(_),
+                    ..
+                }))
+            );
+            let single = match insert.source.as_deref().map(|q| q.body.as_ref()) {
+                Some(SetExpr::Values(values)) => values.rows.len() == 1,
+                Some(_) => false,
+                None => true,
+            };
+            let insert_id = if returns_rowid(&insert.returning) {
+                InsertIdRule::Returning
+            } else if single {
+                InsertIdRule::LastRowid
+            } else {
+                InsertIdRule::None
+            };
+            (
+                if upsert {
+                    CountRule::Upsert
+                } else {
+                    CountRule::Changes
+                },
+                insert_id,
+                false,
+            )
         }
-        StatementKind::Update | StatementKind::Delete => {
-            (CountRule::Changes, InsertIdRule::None, returns_rows)
+        Ast::Update(update) => match &update.table.relation {
+            TableFactor::Table { name, .. } if !bookkeeping(name) => {
+                (CountRule::Changes, InsertIdRule::None, false)
+            }
+            _ => (CountRule::None, InsertIdRule::None, false),
+        },
+        Ast::Delete(delete) => {
+            let tables = match &delete.from {
+                FromTable::WithFromKeyword(t) | FromTable::WithoutKeyword(t) => t,
+            };
+            let counted = tables.iter().any(
+                |t| matches!(&t.relation, TableFactor::Table { name, .. } if !bookkeeping(name)),
+            );
+            (
+                if counted {
+                    CountRule::Changes
+                } else {
+                    CountRule::None
+                },
+                InsertIdRule::None,
+                false,
+            )
         }
-        _ => (CountRule::None, InsertIdRule::None, returns_rows),
+        _ => (CountRule::None, InsertIdRule::None, false),
     }
 }
 
 /// The steps for the translated statements of one original statement of kind `kind`.
 pub(crate) fn emit(kind: StatementKind, statements: Vec<Statement>) -> Vec<SqliteStep> {
-    let mut sql: Vec<(String, Vec<speedyspec_data::DbValue>, bool)> = Vec::new();
+    let mut steps: Vec<SqliteStep> = Vec::new();
     // Triggers for a rebuild's staging table wait until it has the table's own name.
     let mut waiting: Vec<(String, String)> = Vec::new();
     for mut stmt in statements {
-        let returns_rows = matches!(stmt.tree(), Ast::Query(_));
         let mut triggers = Vec::new();
         match stmt.tree_mut() {
             Ast::CreateTable(create) => {
@@ -136,18 +209,25 @@ pub(crate) fn emit(kind: StatementKind, statements: Vec<Statement>) -> Vec<Sqlit
             _ => {}
         }
         let (tree, params) = stmt.into_parts();
-        sql.push((tree.to_string(), params, returns_rows));
-        sql.extend(triggers.into_iter().map(|t| (t, Vec::new(), false)));
+        let (count, insert_id, returns_rows) = rules(kind, &tree);
+        steps.push(SqliteStep {
+            sql: EmittedSql {
+                sql: tree.to_string(),
+                params,
+            },
+            count,
+            insert_id,
+            returns_rows,
+        });
+        steps.extend(triggers.into_iter().map(|t| SqliteStep {
+            sql: EmittedSql {
+                sql: t,
+                params: Vec::new(),
+            },
+            count: CountRule::None,
+            insert_id: InsertIdRule::None,
+            returns_rows: false,
+        }));
     }
-    sql.into_iter()
-        .map(|(text, params, returns_rows)| {
-            let (count, insert_id, returns_rows) = rules(kind, returns_rows);
-            SqliteStep {
-                sql: EmittedSql { sql: text, params },
-                count,
-                insert_id,
-                returns_rows,
-            }
-        })
-        .collect()
+    steps
 }

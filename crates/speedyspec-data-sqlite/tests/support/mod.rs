@@ -44,3 +44,25 @@ pub fn assert_sqlite_sql(actual: &str, expected: &str) {
 pub fn is_catalogue_write(sql: &str) -> bool {
     sql.contains("_speedyspec_")
 }
+
+/// The plan for `sql` with `params` bound, against a schema described by `ddl`.
+pub fn plan_with(sql: &str, params: Vec<speedyspec_data::DbValue>, ddl: &[&str]) -> SqlitePlan {
+    let introspector = StaticIntrospector::from_mysql_ddl(ddl);
+    let (tree, _) = parse_one(sql)
+        .unwrap_or_else(|e| panic!("{sql}: {e:?}"))
+        .into_parts();
+    let stmt = speedyspec_data::Statement::new(tree, params);
+    SqliteDialect::new()
+        .plan(&stmt, Some(&introspector))
+        .unwrap_or_else(|e| panic!("{sql}: {e:?}"))
+}
+
+/// The error planning `sql` gives.
+pub fn plan_error(sql: &str, ddl: &[&str]) -> speedyspec_data::DbError {
+    let introspector = StaticIntrospector::from_mysql_ddl(ddl);
+    let stmt = parse_one(sql).unwrap_or_else(|e| panic!("{sql}: {e:?}"));
+    match SqliteDialect::new().plan(&stmt, Some(&introspector)) {
+        Err(e) => e,
+        Ok(plan) => panic!("{sql}: expected an error, got {plan:?}"),
+    }
+}

@@ -6,8 +6,8 @@ use std::ops::ControlFlow;
 use speedyspec_data::{DbError, Statement};
 use speedyspec_data_query::{PassContext, Rewrite, RewritePass};
 use sqlparser::ast::{
-    AlterTableOperation, ColumnDef, ColumnOption, Expr, Ident, Statement as Ast, VisitMut,
-    VisitorMut,
+    AlterTableOperation, ColumnDef, ColumnOption, Expr, Ident, Statement as Ast, TableFactor,
+    VisitMut, VisitorMut,
 };
 
 /// Names SQLite gives meaning to, which quoting would turn into ordinary identifiers.
@@ -55,6 +55,16 @@ impl VisitorMut for Quote {
             .any(|u| u.eq_ignore_ascii_case(&ident.value));
         if !keep {
             ident.quote_style = Some('"');
+        }
+        ControlFlow::Continue(())
+    }
+
+    fn pre_visit_table_factor(&mut self, factor: &mut TableFactor) -> ControlFlow<()> {
+        if let TableFactor::Table {
+            alias: Some(alias), ..
+        } = factor
+        {
+            alias.explicit = true;
         }
         ControlFlow::Continue(())
     }

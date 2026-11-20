@@ -181,3 +181,25 @@ fn number_placeholders_is_idempotent() {
     number_placeholders(&mut stmt);
     assert_eq!(stmt.tree().to_string(), once);
 }
+
+/// `sqlparser` 0.64 lets MySQL's `BINARY x` take everything after it as its operand; MySQL binds it tighter than
+/// any binary operator.
+#[test]
+fn binary_prefix_binds_to_one_operand() {
+    use speedyspec_data_translate::BinaryPrefixPass;
+    check(
+        BinaryPrefixPass,
+        "SELECT * FROM t WHERE BINARY a = 'x' AND b LIKE BINARY 'y%' AND c = 1",
+        "SELECT * FROM t WHERE CAST(a AS BINARY) = 'x' AND b LIKE CAST('y%' AS BINARY) AND c = 1",
+    );
+    check(
+        BinaryPrefixPass,
+        "SELECT * FROM t WHERE m REGEXP BINARY 'p' OR z = 2",
+        "SELECT * FROM t WHERE m REGEXP CAST('p' AS BINARY) OR z = 2",
+    );
+    check(
+        BinaryPrefixPass,
+        "SELECT CAST(a AS BINARY) FROM t WHERE a = 1",
+        "SELECT CAST(a AS BINARY) FROM t WHERE a = 1",
+    );
+}
