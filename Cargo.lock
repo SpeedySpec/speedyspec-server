@@ -4150,6 +4150,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-data-file"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-query",
+ "tempfile",
+]
+
+[[package]]
 name = "speedyspec-data-memory"
 version = "0.1.0"
 dependencies = [

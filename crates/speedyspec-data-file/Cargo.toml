@@ -1,0 +1,17 @@
+[package]
+name = "speedyspec-data-file"
+version = "0.1.0"
+description = "The file Direct Store: a directory of files, written atomically, with exclusive locks."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+libc = "0.2"
+speedyspec-data = { path = "../speedyspec-data" }
+
+[dev-dependencies]
+libc = "0.2"
+speedyspec-data-conformance = { path = "../speedyspec-data-conformance" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+tempfile = "3"
