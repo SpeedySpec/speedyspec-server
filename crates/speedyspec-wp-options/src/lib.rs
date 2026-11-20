@@ -12,6 +12,9 @@ mod autoload_set;
 pub mod conformance;
 mod entity;
 mod error;
+mod facade;
+mod fired;
+mod messages;
 mod name;
 mod ports;
 mod read;
@@ -30,6 +33,13 @@ pub use autoload_policy::{
 };
 pub use entity::Option;
 pub use error::OptionsError;
+pub use facade::{FromOptionValue, Options};
+pub use messages::{
+    AddOption, AutoloadValuesToAutoload, DeleteOption, DetermineOptionAutoloadValue,
+    FilterDefaultAutoloadValueViaOptionSize, GetOption, GetOptions, LoadAlloptions,
+    PrimeOptionCaches, PrimeOptionCachesByGroup, ProtectSpecialOption, SetOptionAutoload,
+    SetOptionAutoloadValues, SetOptionsAutoload, UpdateOption, register_options_handlers,
+};
 pub use name::OptionName;
 pub use ports::{
     Deprecations, Installing, Multisite, OptionGroups, OptionRepository, ProtectedOptions,

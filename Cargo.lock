@@ -4591,6 +4591,8 @@ dependencies = [
 name = "speedyspec-wp-options"
 version = "0.1.0"
 dependencies = [
+ "speedyspec-container",
+ "speedyspec-cqrs",
  "speedyspec-data",
  "speedyspec-php-serialize",
  "speedyspec-wp-hooks",
