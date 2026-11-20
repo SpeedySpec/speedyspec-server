@@ -320,6 +320,31 @@ fn main() {
         $z = $wpdb->get_var(\"SELECT COUNT(*) FROM wp_options WHERE option_name = '_transient_timeout_sz'\");
         return $t >= time() + 3590 && '0' === $z;",
     );
+    // PHP code hooked on register_setting_args or register_setting sees the sanitize_callback as given.
+    yes(
+        "settings_args_filter_with_sanitize_callback",
+        "add_filter('register_setting_args', fn ($args) => $args);
+        $seen = null;
+        add_action('register_setting', function ($g, $n, $args) use (&$seen) { $seen = $args['sanitize_callback']; }, 10, 3);
+        register_setting('grp', 'sa', ['sanitize_callback' => 'strtoupper']);
+        return 'strtoupper' === $seen && 'ABC' === apply_filters('sanitize_option_sa', 'abc', 'sa', 'abc');",
+    );
+    yes(
+        "settings_sanitizer_injected_by_filter",
+        "add_filter('register_setting_args', function ($args, $defaults, $group, $name) {
+            if ('si' === $name) { $args['sanitize_callback'] = 'strrev'; }
+            return $args;
+        }, 10, 4);
+        register_setting('grp', 'si');
+        return has_filter('sanitize_option_si') !== false && 'cba' === apply_filters('sanitize_option_si', 'abc', 'si', 'abc');",
+    );
+    yes(
+        "settings_callable_args_reach_php_hooks",
+        "$seen = null;
+        add_action('register_setting', function ($g, $n, $args) use (&$seen) { $seen = $args['sanitize_callback']; }, 10, 3);
+        register_setting('grp', 'sc', 'strtolower');
+        return 'strtolower' === $seen && 'abc' === apply_filters('sanitize_option_sc', 'ABC', 'sc', 'ABC');",
+    );
     let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
     let option_php = std::fs::read_to_string(release.join("wp-includes/option.php")).unwrap();
     let stripped = speedyspec_wp_options_php::strip_ported(&option_php).unwrap();

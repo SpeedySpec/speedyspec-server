@@ -30,10 +30,17 @@ pub enum SettingArgsInput {
     Other(HookValue),
 }
 
-/// `wp_parse_args()` of arguments that are not an array (a query string, through PHP's `parse_str`): unported
-/// WordPress, so a port. The array it returns is then merged over the defaults.
+/// How the host language reads `register_setting`'s arguments (Strategy): `wp_parse_args()` of arguments that are not
+/// an array (a query string, through PHP's `parse_str`), and the callback a parsed `sanitize_callback` names. The
+/// arguments pass through `register_setting_args` and `register_setting` as given, so a PHP callable stays a PHP
+/// value until the registry adds it as a filter.
 pub trait ArgsParsing {
     fn parse_args(&self, args: &HookValue) -> HookValue;
+
+    /// The callback a non-empty `sanitize_callback` names: by default, a `Callback` carried opaquely.
+    fn sanitize_callback(&self, value: &HookValue) -> Option<Callback> {
+        callback_of(value)
+    }
 }
 
 /// Without PHP, arguments that are not an array count as none.
@@ -209,7 +216,7 @@ impl SettingsRegistry {
         let group = self.group("register_setting", group)?;
         self.store.allow(&group, name);
         if let Some(sanitize) = entry(&args, "sanitize_callback").filter(|v| !php_empty(v))
-            && let Some(cb) = callback_of(sanitize)
+            && let Some(cb) = self.parsing.sanitize_callback(sanitize)
         {
             self.hooks.add_filter(
                 &HookName::from(format!("sanitize_option_{name}").as_str()),
@@ -270,7 +277,7 @@ impl SettingsRegistry {
         }
         if let Some(args) = self.store.get(name) {
             if let Some(sanitize) = entry(&args, "sanitize_callback").filter(|v| !php_empty(v))
-                && let Some(cb) = callback_of(sanitize)
+                && let Some(cb) = self.parsing.sanitize_callback(sanitize)
             {
                 self.hooks.remove_filter(
                     &sanitize_hook,

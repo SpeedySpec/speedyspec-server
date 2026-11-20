@@ -1,10 +1,11 @@
 //! The settings functions, native. `register_setting`'s `$args`: a callable is its sanitize callback; an array is
-//! taken as it is (a callable `sanitize_callback` in it carried as a `Callback`); anything else reaches
-//! `register_setting_args` as given and is then parsed by `wp_parse_args` (`PhpArgsParsing`), as in WordPress.
-
-use std::rc::Rc;
+//! taken as it is; anything else reaches `register_setting_args` as given and is then parsed by `wp_parse_args`
+//! (`PhpArgsParsing`), as in WordPress. A `sanitize_callback` stays a PHP value through the hooks, so PHP code hooked
+//! on `register_setting_args` or `register_setting` sees it as given; `PhpArgsParsing` makes it a `Callback` only when
+//! the registry adds it as a filter.
 
 use speedyspec_php_ext::{Key, Value};
+use speedyspec_wp_hooks::Callback;
 use speedyspec_wp_hooks_php::php_callback;
 use speedyspec_wp_options::{
     ArgsParsing, FilterDefaultOption, GetRegisteredSettings, RegisterSetting, SettingArgsInput,
@@ -19,30 +20,16 @@ fn callable(v: &Value) -> bool {
     call("is_callable", std::slice::from_ref(v)).is_ok_and(|r| truthy(&r))
 }
 
-/// An args array with a non-empty `sanitize_callback` carried as a `Callback`, as the registry adds it.
-fn with_callbacks(array: Vec<(Key, Value)>) -> Value {
-    Value::Array(
-        array
-            .into_iter()
-            .map(|(k, v)| {
-                let sanitize =
-                    matches!(&k, Key::Str(s) if s == "sanitize_callback") && !php_empty(&v.read());
-                if sanitize {
-                    (k, Value::Opaque(Rc::new(php_callback(v))))
-                } else {
-                    (k, v)
-                }
-            })
-            .collect(),
-    )
-}
-
 fn args_input(args: Value) -> SettingArgsInput {
+    // WordPress: `if ( is_callable( $args ) ) { $args = array( 'sanitize_callback' => $args ); }`.
     if callable(&args) {
-        return SettingArgsInput::Callable(php_callback(args));
+        return SettingArgsInput::Array(Value::Array(vec![(
+            Key::Str("sanitize_callback".into()),
+            args,
+        )]));
     }
     match args.read().into_owned() {
-        Value::Array(items) => SettingArgsInput::Array(with_callbacks(items)),
+        array @ Value::Array(_) => SettingArgsInput::Array(array),
         other => SettingArgsInput::Other(other),
     }
 }
@@ -56,8 +43,16 @@ impl ArgsParsing for PhpArgsParsing {
             return Value::Array(Vec::new());
         }
         match call("wp_parse_args", std::slice::from_ref(args)).map(|v| v.read().into_owned()) {
-            Ok(Value::Array(items)) => with_callbacks(items),
+            Ok(array @ Value::Array(_)) => array,
             _ => Value::Array(Vec::new()),
+        }
+    }
+
+    /// A `Callback` already made, else the PHP callable the value is.
+    fn sanitize_callback(&self, value: &Value) -> Option<Callback> {
+        match value {
+            Value::Opaque(any) if any.is::<Callback>() => any.downcast_ref::<Callback>().cloned(),
+            other => callable(other).then(|| php_callback(other.clone())),
         }
     }
 }
