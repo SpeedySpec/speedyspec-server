@@ -74,3 +74,59 @@ impl SchemaCache {
         self.indexes.borrow_mut().clear();
     }
 }
+
+/// The statement's tables, each with the label it is referred to by: (label, table name).
+pub(crate) fn tables_in(tree: &sqlparser::ast::Statement) -> Vec<(String, String)> {
+    use speedyspec_data_translate::object_name;
+    use sqlparser::ast::{Statement as Ast, TableFactor, TableObject, Visit, Visitor};
+    struct Tables(Vec<(String, String)>);
+    impl Visitor for Tables {
+        type Break = ();
+        fn pre_visit_table_factor(&mut self, factor: &TableFactor) -> std::ops::ControlFlow<()> {
+            if let TableFactor::Table { name, alias, .. } = factor {
+                let table = object_name(name);
+                let label = alias
+                    .as_ref()
+                    .map_or_else(|| table.clone(), |a| a.name.value.clone());
+                self.0.push((label, table));
+            }
+            std::ops::ControlFlow::Continue(())
+        }
+    }
+    let mut tables = Tables(Vec::new());
+    let _ = tree.visit(&mut tables);
+    if let Ast::Insert(insert) = tree
+        && let TableObject::TableName(name) = &insert.table
+    {
+        let table = object_name(name);
+        tables.0.push((table.clone(), table));
+    }
+    tables.0
+}
+
+impl SchemaCache {
+    /// The MySQL type of the column `expr` names, within `tables`.
+    pub(crate) fn type_of(
+        &self,
+        tables: &[(String, String)],
+        expr: &sqlparser::ast::Expr,
+    ) -> Option<speedyspec_data_translate::MySqlType> {
+        use sqlparser::ast::Expr;
+        let find = |table: &str, column: &str| {
+            self.columns(table)?
+                .iter()
+                .find(|c| c.name.eq_ignore_ascii_case(column))
+                .and_then(|c| speedyspec_data_translate::MySqlType::parse(&c.sql_type).ok())
+        };
+        match expr {
+            Expr::Identifier(c) => tables.iter().find_map(|(_, t)| find(t, &c.value)),
+            Expr::CompoundIdentifier(parts) if parts.len() >= 2 => {
+                let label = &parts[parts.len() - 2].value;
+                let (_, table) = tables.iter().find(|(l, _)| l.eq_ignore_ascii_case(label))?;
+                find(table, &parts[parts.len() - 1].value)
+            }
+            Expr::Nested(inner) => self.type_of(tables, inner),
+            _ => None,
+        }
+    }
+}
