@@ -117,3 +117,42 @@ fn query_filter_fires() {
         );
     }
 }
+
+/// `wp_prime_network_option_caches()`'s query, as WordPress's `prepare()` makes it.
+#[test]
+#[ignore = "needs MySQL: set SPEEDYSPEC_TEST_MYSQL_URL"]
+fn prime_query_text_is_wordpress() {
+    let _one = TABLE.lock().unwrap_or_else(|e| e.into_inner());
+    let (repo, hooks) = rig();
+    repo.add(NetworkMeta {
+        network_id: 1,
+        key: "a".into(),
+        value: SerializedValue::new(b"v".to_vec()),
+    })
+    .unwrap();
+    let seen: Rc<RefCell<Vec<String>>> = Rc::default();
+    let log = seen.clone();
+    hooks
+        .add_filter(
+            &HookName::from("query"),
+            Callback::rust("see", move |args: &[HookValue]| {
+                if let HookValue::Str(q) = &args[0] {
+                    log.borrow_mut().push(q.clone());
+                }
+                Ok(args[0].clone())
+            }),
+            &HookValue::Int(10),
+            1,
+        )
+        .unwrap();
+    assert_eq!(
+        repo.find_many(1, &["a".into(), "b".into()]).unwrap().len(),
+        1
+    );
+    assert_eq!(
+        *seen.borrow(),
+        [
+            "SELECT meta_key, meta_value FROM wp_sitemeta WHERE meta_key IN ('a','b') AND site_id = 1"
+        ]
+    );
+}

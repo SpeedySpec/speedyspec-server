@@ -4,7 +4,7 @@
 
 use std::rc::Rc;
 
-use speedyspec_data::{DbError, DbValue, Statement};
+use speedyspec_data::{DbError, Statement};
 use speedyspec_data_query::Query;
 use speedyspec_wp_db::{QueryOutcome, WpDb, WpDbError, WpRow, WpValue};
 use speedyspec_wp_options::{NetworkMeta, SerializedValue, SitemetaRepository};
@@ -111,18 +111,23 @@ impl SitemetaRepository for SqlSitemetaRepository {
         if keys.is_empty() {
             return Ok(Vec::new());
         }
-        let rows = self.rows(
-            Query::table(&self.table())
-                .select(&["meta_key", "meta_value"])
-                .where_in(
-                    "meta_key",
-                    keys.iter()
-                        .map(|k| DbValue::Text(k.clone()))
-                        .collect::<Vec<DbValue>>(),
-                )
-                .where_eq("site_id", network_id)
-                .build(),
-        )?;
+        // wp_prime_network_option_caches(): prepare( "... IN (%s,%s) AND site_id = %d", ... ), as WordPress writes
+        // the `IN` list (the builder would write `'a', 'b'`), for the `query` filter sees the text.
+        let template = format!(
+            "SELECT meta_key, meta_value FROM {} WHERE meta_key IN ({}) AND site_id = %d",
+            self.table(),
+            vec!["%s"; keys.len()].join(",")
+        );
+        let mut args: Vec<WpValue> = keys.iter().map(|k| WpValue::Str(k.clone())).collect();
+        args.push(WpValue::Int(network_id));
+        let Some(sql) = self.wpdb.prepare(Some(template.as_bytes()), &args) else {
+            return Ok(Vec::new());
+        };
+        let rows = match self.wpdb.query_bytes(&sql) {
+            Ok(QueryOutcome::Rows(rows)) => rows,
+            Ok(_) => Rc::new(Vec::new()),
+            Err(e) => hidden(e).map(|()| Rc::new(Vec::new()))?,
+        };
         Ok(rows
             .iter()
             .filter_map(|r| {
