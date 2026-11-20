@@ -248,7 +248,6 @@ impl Reader<'_> {
                 None => {
                     let object = top.class.is_some();
                     top.key = Some(match value {
-                        PhpValue::Int(i) if object => PhpKey::Str(i.to_string().into_bytes()),
                         PhpValue::Int(i) => PhpKey::Int(i),
                         PhpValue::Str(s) if !object => match canonical_int(&s) {
                             Some(i) => PhpKey::Int(i),

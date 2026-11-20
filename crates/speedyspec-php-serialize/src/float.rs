@@ -21,7 +21,8 @@ pub fn php_float(f: f64) -> String {
     let digits: String = mantissa.chars().filter(char::is_ascii_digit).collect();
     let sign = if f < 0.0 { "-" } else { "" };
     let n = digits.len() as i32;
-    if (-4..15).contains(&exp) {
+    // serialize_precision -1: fixed form while the decimal point is within 17 digits (zend_gcvt).
+    if (-4..17).contains(&exp) {
         let body = if exp >= 0 {
             if n > exp + 1 {
                 format!(

@@ -34,7 +34,10 @@ fn floats() {
         (1.0, "d:1;"),
         (-0.0, "d:-0;"),
         (1e14, "d:100000000000000;"),
-        (1e15, "d:1.0E+15;"),
+        (1e15, "d:1000000000000000;"),
+        (9.9e16, "d:99000000000000000;"),
+        (1e17, "d:1.0E+17;"),
+        (-1.2345678901234568e17, "d:-1.2345678901234568E+17;"),
         (0.0001, "d:0.0001;"),
         (0.00001, "d:1.0E-5;"),
         (1.5e300, "d:1.5E+300;"),
@@ -116,7 +119,8 @@ fn key_normalisation() {
         unserialize(b"O:8:\"stdClass\":1:{i:1;i:2;}").unwrap(),
         PhpValue::Object {
             class: "stdClass".into(),
-            properties: vec![(PhpKey::Str(b"1".to_vec()), PhpValue::Int(2))]
+            // Kept as read: a `__serialize()` class's integer keys must re-serialize as `i:`.
+            properties: vec![(PhpKey::Int(1), PhpValue::Int(2))]
         }
     );
 }
@@ -152,4 +156,10 @@ fn errors() {
 #[test]
 fn trailing_bytes_ignored() {
     assert_eq!(unserialize(b"i:1;junk").unwrap(), PhpValue::Int(1));
+}
+
+#[test]
+fn object_integer_keys_round_trip() {
+    // `__serialize()` output (ArrayObject's) keeps integer keys.
+    round_trip(b"O:11:\"ArrayObject\":2:{i:0;i:0;i:1;a:0:{}}");
 }
