@@ -4612,6 +4612,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-options-php"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-cqrs",
+ "speedyspec-data",
+ "speedyspec-data-mysql",
+ "speedyspec-data-query",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-php-serialize",
+ "speedyspec-wp-db",
+ "speedyspec-wp-db-php",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-object-cache",
+ "speedyspec-wp-object-cache-php",
+ "speedyspec-wp-options",
+ "speedyspec-wp-options-sql",
+]
+
+[[package]]
 name = "speedyspec-wp-options-sql"
 version = "0.1.0"
 dependencies = [
