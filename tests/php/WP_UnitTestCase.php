@@ -26,6 +26,10 @@ abstract class WP_UnitTestCase extends TestCase
     /** @var array<string, string> */
     protected $caught_deprecated = array();
 
+    protected $expected_doing_it_wrong = array();
+
+    protected $caught_doing_it_wrong = array();
+
     private ?int $speedyspec_snapshot = null;
 
     private bool $speedyspec_error_handler = false;
@@ -66,7 +70,67 @@ abstract class WP_UnitTestCase extends TestCase
     public function set_up()
     {
         $this->_backup_hooks();
+        if (isset($GLOBALS['wpdb']))
+        {
+            $this->start_transaction();
+        }
         $this->expectDeprecated();
+    }
+
+    /**
+     * Runs each test in a transaction, with created and dropped tables made temporary, as WordPress's test case
+     * does, so a test's writes never outlive it.
+     */
+    public function start_transaction()
+    {
+        global $wpdb;
+        $wpdb->query('SET autocommit = 0;');
+        $wpdb->query('START TRANSACTION;');
+        add_filter('query', array($this, '_create_temporary_tables'));
+        add_filter('query', array($this, '_drop_temporary_tables'));
+    }
+
+    public function _create_temporary_tables($query)
+    {
+        if (0 === strpos(trim($query), 'CREATE TABLE'))
+        {
+            return substr_replace(trim($query), 'CREATE TEMPORARY TABLE', 0, 12);
+        }
+        return $query;
+    }
+
+    public function _drop_temporary_tables($query)
+    {
+        if (0 === strpos(trim($query), 'DROP TABLE'))
+        {
+            return substr_replace(trim($query), 'DROP TEMPORARY TABLE', 0, 10);
+        }
+        return $query;
+    }
+
+    /**
+     * Expects a `_doing_it_wrong()` notice from the named function in the running test.
+     */
+    public function setExpectedIncorrectUsage($doing_it_wrong)
+    {
+        $this->expected_doing_it_wrong[] = $doing_it_wrong;
+    }
+
+    public function doing_it_wrong_run($function_name, $message, $version)
+    {
+        if (!isset($this->caught_doing_it_wrong[$function_name]))
+        {
+            if ($version)
+            {
+                $message .= ' ' . sprintf('(This message was added in version %s.)', $version);
+            }
+            $this->caught_doing_it_wrong[$function_name] = $message;
+        }
+    }
+
+    public function deprecated_function_run_for_function($function_name, $replacement, $version, $message = '')
+    {
+        $this->deprecated_function_run($function_name, $replacement, $version, $message);
     }
 
     public function tear_down()
@@ -75,9 +139,60 @@ abstract class WP_UnitTestCase extends TestCase
             restore_error_handler();
             $this->speedyspec_error_handler = false;
         }
+        if (isset($GLOBALS['wpdb']))
+        {
+            $GLOBALS['wpdb']->query('ROLLBACK');
+        }
         $this->_restore_hooks();
         $this->expected_deprecated = array();
         $this->caught_deprecated = array();
+        $this->expected_doing_it_wrong = array();
+        $this->caught_doing_it_wrong = array();
+    }
+
+    /**
+     * Empties the object cache between tests and declares the groups WordPress's test case declares, as WordPress's
+     * test case does.
+     */
+    public static function flush_cache()
+    {
+        global $wp_object_cache;
+
+        wp_cache_flush_runtime();
+
+        if (is_object($wp_object_cache) && method_exists($wp_object_cache, '__remoteset'))
+        {
+            $wp_object_cache->__remoteset();
+        }
+
+        wp_cache_flush();
+
+        wp_cache_add_global_groups(
+            array(
+                'blog-details',
+                'blog-id-cache',
+                'blog-lookup',
+                'blog_meta',
+                'global-posts',
+                'networks',
+                'network-queries',
+                'sites',
+                'site-details',
+                'site-options',
+                'site-queries',
+                'site-transient',
+                'theme_files',
+                'rss',
+                'users',
+                'user-queries',
+                'user_meta',
+                'useremail',
+                'userlogins',
+                'userslugs',
+            )
+        );
+
+        wp_cache_add_non_persistent_groups(array('counts', 'plugins', 'theme_json'));
     }
 
     protected function assert_post_conditions()
@@ -109,7 +224,12 @@ abstract class WP_UnitTestCase extends TestCase
         if (preg_match_all('/@expectedDeprecated\s+(\S+)/', $doc, $matches)) {
             $this->expected_deprecated = array_merge($this->expected_deprecated, $matches[1]);
         }
+        if (preg_match_all('/@expectedIncorrectUsage\s+(\S+)/', $doc, $matches)) {
+            $this->expected_doing_it_wrong = array_merge($this->expected_doing_it_wrong, $matches[1]);
+        }
         add_action('deprecated_hook_run', array($this, 'deprecated_function_run'), 10, 4);
+        add_action('deprecated_function_run', array($this, 'deprecated_function_run_for_function'), 10, 3);
+        add_action('doing_it_wrong_run', array($this, 'doing_it_wrong_run'), 10, 3);
     }
 
     public function deprecated_function_run($function_name, $replacement, $version, $message = '')
@@ -132,7 +252,15 @@ abstract class WP_UnitTestCase extends TestCase
             $errors[] = "Unexpected deprecation notice for $unexpected.";
             $errors[] = $this->caught_deprecated[$unexpected];
         }
-        if (!empty($this->expected_deprecated) || !empty($this->caught_deprecated)) {
+        foreach (array_diff($this->expected_doing_it_wrong, array_keys($this->caught_doing_it_wrong)) as $not_caught) {
+            $errors[] = "Failed to assert that $not_caught triggered an incorrect usage notice.";
+        }
+        foreach (array_diff(array_keys($this->caught_doing_it_wrong), $this->expected_doing_it_wrong) as $unexpected) {
+            $errors[] = "Unexpected incorrect usage notice for $unexpected.";
+            $errors[] = $this->caught_doing_it_wrong[$unexpected];
+        }
+        if (!empty($this->expected_deprecated) || !empty($this->caught_deprecated)
+            || !empty($this->expected_doing_it_wrong) || !empty($this->caught_doing_it_wrong)) {
             $this->assertEmpty($errors, implode("\n", $errors));
         }
     }

@@ -4524,6 +4524,8 @@ dependencies = [
 name = "speedyspec-wp-object-cache-php"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
  "speedyspec-cache",
  "speedyspec-cache-memory",
  "speedyspec-compat",
@@ -4535,8 +4537,11 @@ dependencies = [
  "speedyspec-php",
  "speedyspec-php-ext",
  "speedyspec-php-serialize",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
  "speedyspec-wp-object-cache",
  "tempfile",
+ "ureq",
 ]
 
 [[package]]
