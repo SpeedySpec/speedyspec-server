@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
-use speedyspec_wp_object_cache::{ObjectCache, ObjectCachePorts};
+use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache, ObjectCachePorts};
 use speedyspec_wp_options::Option as OptionEntity;
 use speedyspec_wp_options::{
     Autoload, Deprecations, InstallingFlag, OptionName, OptionRepository, OptionsApi, OptionsDeps,
@@ -39,6 +39,7 @@ pub struct Fixture {
     pub api: OptionsApi,
     pub hooks: Rc<HookApi>,
     pub cache: Rc<ObjectCache>,
+    pub current: Rc<CurrentObjectCache>,
     pub repo: Rc<MemoryOptionRepository>,
     pub installing: Rc<InstallingFlag>,
     pub deprecations: Rc<RecordedDeprecations>,
@@ -50,17 +51,19 @@ pub fn fixture() -> Fixture {
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
-    let cache = Rc::new(ObjectCache::new(ObjectCachePorts::rust(), None));
+    let current = Rc::new(CurrentObjectCache::new(ObjectCachePorts::rust(), None));
+    let cache = current.current();
     let repo = Rc::new(MemoryOptionRepository::new());
     let installing = Rc::new(InstallingFlag::new());
     let deprecations = Rc::new(RecordedDeprecations::default());
-    let mut deps = OptionsDeps::rust(hooks.clone(), cache.clone(), repo.clone());
+    let mut deps = OptionsDeps::rust(hooks.clone(), current.clone(), repo.clone());
     deps.installing = installing.clone();
     deps.deprecations = deprecations.clone();
     Fixture {
         api: OptionsApi::new(deps),
         hooks,
         cache,
+        current,
         repo,
         installing,
         deprecations,

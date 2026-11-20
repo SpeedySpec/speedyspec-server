@@ -42,8 +42,7 @@ impl OptionsApi {
             push("pre_wp_load_alloptions".into());
             push("alloptions".into());
             let alloptions = self
-                .d
-                .cache
+                .cache()
                 .peek(&HookValue::Str("alloptions".into()), &group);
             let cached = alloptions
                 .as_ref()
@@ -55,11 +54,10 @@ impl OptionsApi {
             }
             let in_alloptions = alloptions.is_some_and(|a| isset(&a.read(), n).is_some());
             let known_missing = self
-                .d
-                .cache
+                .cache()
                 .peek(&HookValue::Str("notoptions".into()), &group)
                 .is_some_and(|m| isset(&m.read(), n).is_some());
-            let single = self.d.cache.peek(&HookValue::Str(n.to_string()), &group);
+            let single = self.cache().peek(&HookValue::Str(n.to_string()), &group);
             let single = single.is_some_and(|v| !matches!(v, HookValue::Bool(false)));
             if !in_alloptions && !known_missing && !single {
                 push("query".into());

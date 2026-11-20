@@ -53,29 +53,28 @@ impl OptionsApi {
                 None => {
                     let key = HookValue::Str("notoptions".into());
                     let mut notoptions = self
-                        .d
-                        .cache
+                        .cache()
                         .get(&key, &group, false)?
                         .unwrap_or(HookValue::Bool(false));
                     if !matches!(notoptions.read().as_ref(), HookValue::Array(_)) {
                         notoptions = HookValue::Array(Vec::new());
-                        self.d.cache.set(&key, notoptions.clone(), &group, 0)?;
+                        self.cache().set(&key, notoptions.clone(), &group, 0)?;
                     }
                     if isset(&notoptions.read(), n).is_some() {
                         return default_option(default);
                     }
-                    match self.d.cache.get(&name_value(), &group, false)? {
+                    match self.cache().get(&name_value(), &group, false)? {
                         Some(value) if !matches!(value, HookValue::Bool(false)) => value,
                         _ => match self.d.repository.value(&option, false)? {
                             Some(stored) => {
                                 let value = stored.to_value();
-                                self.d.cache.add(&name_value(), value.clone(), &group, 0)?;
+                                self.cache().add(&name_value(), value.clone(), &group, 0)?;
                                 value
                             }
                             None => {
                                 let mut notoptions = notoptions.read().into_owned();
                                 set_key(&mut notoptions, n, HookValue::Bool(true));
-                                self.d.cache.set(&key, notoptions, &group, 0)?;
+                                self.cache().set(&key, notoptions, &group, 0)?;
                                 return default_option(default);
                             }
                         },
@@ -111,8 +110,7 @@ impl OptionsApi {
         let key = HookValue::Str("alloptions".into());
         let group = Self::group();
         let cached = if self.caches_alloptions() {
-            self.d
-                .cache
+            self.cache()
                 .get(&key, &group, force_cache)?
                 .unwrap_or(HookValue::Bool(false))
         } else {
@@ -132,7 +130,7 @@ impl OptionsApi {
             }
             if self.caches_alloptions() {
                 alloptions = self.filter("pre_cache_alloptions", alloptions, Vec::new)?;
-                self.d.cache.add(&key, alloptions.clone(), &group, 0)?;
+                self.cache().add(&key, alloptions.clone(), &group, 0)?;
             }
             alloptions
         };
@@ -144,11 +142,10 @@ impl OptionsApi {
         let alloptions = self.load_alloptions(false)?.read().into_owned();
         let group = Self::group();
         let keys: Vec<HookValue> = names.iter().map(|n| HookValue::Str(n.clone())).collect();
-        let cached = self.d.cache.get_multiple(&keys, &group, false)?;
+        let cached = self.cache().get_multiple(&keys, &group, false)?;
         let notoptions_key = HookValue::Str("notoptions".into());
         let mut notoptions = self
-            .d
-            .cache
+            .cache()
             .get(&notoptions_key, &group, false)?
             .map(|v| v.read().into_owned())
             .unwrap_or(HookValue::Bool(false));
@@ -179,7 +176,7 @@ impl OptionsApi {
         }
         let found_count = found.len();
         let found_keys: Vec<Key> = found.iter().map(|(k, _)| k.clone()).collect();
-        self.d.cache.set_multiple(found, &group, 0)?;
+        self.cache().set_multiple(found, &group, 0)?;
         if found_count == to_prime.len() {
             return Ok(());
         }
@@ -191,7 +188,7 @@ impl OptionsApi {
             }
         }
         if update {
-            self.d.cache.set(&notoptions_key, notoptions, &group, 0)?;
+            self.cache().set(&notoptions_key, notoptions, &group, 0)?;
         }
         Ok(())
     }

@@ -68,14 +68,14 @@ impl OptionsApi {
         let alloptions_key = HookValue::Str("alloptions".into());
         if !on.is_empty() {
             let keys: Vec<HookValue> = on.iter().map(|n| HookValue::Str(n.clone())).collect();
-            self.d.cache.delete_multiple(&keys, &group)?;
-            self.d.cache.delete(&alloptions_key, &group)?;
+            self.cache().delete_multiple(&keys, &group)?;
+            self.cache().delete(&alloptions_key, &group)?;
         } else if !off.is_empty() {
             let mut all = self.load_alloptions(true)?.read().into_owned();
             for name in &off {
                 unset_key(&mut all, name);
             }
-            self.d.cache.set(&alloptions_key, all, &group, 0)?;
+            self.cache().set(&alloptions_key, all, &group, 0)?;
         }
         Ok(results)
     }

@@ -3,7 +3,7 @@
 use std::rc::Rc;
 
 use speedyspec_wp_hooks::{Count, HookApi, HookName, HookValue, Key};
-use speedyspec_wp_object_cache::ObjectCache;
+use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache};
 
 use crate::{
     AutoloadPolicy, Deprecations, FixedProtectedOptions, HookSanitizing, Installing,
@@ -16,7 +16,8 @@ use crate::{
 #[derive(Clone)]
 pub struct OptionsDeps {
     pub hooks: Rc<HookApi>,
-    pub cache: Rc<ObjectCache>,
+    /// The request's current object cache: `wp_cache_init()` and each request end select a new one.
+    pub cache: Rc<CurrentObjectCache>,
     pub repository: Rc<dyn OptionRepository>,
     pub autoload: Rc<dyn AutoloadPolicy>,
     pub codec: Rc<dyn ValueCodec>,
@@ -32,7 +33,7 @@ impl OptionsDeps {
     /// Every Rust adapter: a single site, blog 1, not installing.
     pub fn rust(
         hooks: Rc<HookApi>,
-        cache: Rc<ObjectCache>,
+        cache: Rc<CurrentObjectCache>,
         repository: Rc<dyn OptionRepository>,
     ) -> OptionsDeps {
         OptionsDeps {
@@ -95,6 +96,11 @@ impl OptionsApi {
             return Ok(());
         }
         Ok(self.d.hooks.do_action(&name, args())?)
+    }
+
+    /// The object cache current now.
+    pub(crate) fn cache(&self) -> Rc<ObjectCache> {
+        self.d.cache.current()
     }
 
     pub(crate) fn group() -> HookValue {

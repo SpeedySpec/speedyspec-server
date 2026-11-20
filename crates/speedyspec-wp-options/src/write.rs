@@ -124,8 +124,7 @@ impl OptionsApi {
         let value = self.d.sanitizing.sanitize_option(&option, value)?;
         let group = Self::group();
         let notoptions = self
-            .d
-            .cache
+            .cache()
             .get(&HookValue::Str("notoptions".into()), &group, false)?;
         let known_missing = notoptions.is_some_and(|n| isset(&n.read(), option.as_str()).is_some());
         if !known_missing {
@@ -313,11 +312,11 @@ impl OptionsApi {
         let notoptions_key = HookValue::Str("notoptions".into());
         let installing = self.d.installing.installing();
         let forget_notoption = |name: &OptionName| -> Result<(), OptionsError> {
-            if let Some(n) = self.d.cache.get(&notoptions_key, &group, false)? {
+            if let Some(n) = self.cache().get(&notoptions_key, &group, false)? {
                 let mut n = n.read().into_owned();
                 if matches!(n, HookValue::Array(_)) && isset(&n, name.as_str()).is_some() {
                     unset_key(&mut n, name.as_str());
-                    self.d.cache.set(&notoptions_key, n, &group, 0)?;
+                    self.cache().set(&notoptions_key, n, &group, 0)?;
                 }
             }
             Ok(())
@@ -337,9 +336,9 @@ impl OptionsApi {
                     if self.autoloads(&option.autoload)? {
                         let mut all = self.load_alloptions(true)?.read().into_owned();
                         set_key(&mut all, name.as_str(), stored.clone());
-                        self.d.cache.set(&alloptions_key, all, &group, 0)?;
+                        self.cache().set(&alloptions_key, all, &group, 0)?;
                     } else {
-                        self.d.cache.set(&n(name), stored.clone(), &group, 0)?;
+                        self.cache().set(&n(name), stored.clone(), &group, 0)?;
                     }
                 }
                 forget_notoption(name)?;
@@ -366,24 +365,24 @@ impl OptionsApi {
                             let mut all = self.load_alloptions(true)?.read().into_owned();
                             if isset(&all, name.as_str()).is_some() {
                                 set_key(&mut all, name.as_str(), stored.clone());
-                                self.d.cache.set(&alloptions_key, all, &group, 0)?;
+                                self.cache().set(&alloptions_key, all, &group, 0)?;
                             } else {
-                                self.d.cache.set(&n(name), stored.clone(), &group, 0)?;
+                                self.cache().set(&n(name), stored.clone(), &group, 0)?;
                             }
                         }
                         Some(a) if self.autoloads(a)? => {
-                            self.d.cache.delete(&n(name), &group)?;
+                            self.cache().delete(&n(name), &group)?;
                             let mut all = self.load_alloptions(true)?.read().into_owned();
                             set_key(&mut all, name.as_str(), stored.clone());
-                            self.d.cache.set(&alloptions_key, all, &group, 0)?;
+                            self.cache().set(&alloptions_key, all, &group, 0)?;
                         }
                         Some(_) => {
                             let mut all = self.load_alloptions(true)?.read().into_owned();
                             if isset(&all, name.as_str()).is_some() {
                                 unset_key(&mut all, name.as_str());
-                                self.d.cache.set(&alloptions_key, all, &group, 0)?;
+                                self.cache().set(&alloptions_key, all, &group, 0)?;
                             }
-                            self.d.cache.set(&n(name), stored.clone(), &group, 0)?;
+                            self.cache().set(&n(name), stored.clone(), &group, 0)?;
                         }
                     }
                 }
@@ -403,14 +402,13 @@ impl OptionsApi {
                             && isset(&all, name.as_str()).is_some()
                         {
                             unset_key(&mut all, name.as_str());
-                            self.d.cache.set(&alloptions_key, all, &group, 0)?;
+                            self.cache().set(&alloptions_key, all, &group, 0)?;
                         }
                     } else {
-                        self.d.cache.delete(&n(name), &group)?;
+                        self.cache().delete(&n(name), &group)?;
                     }
                     let mut notoptions = self
-                        .d
-                        .cache
+                        .cache()
                         .get(&notoptions_key, &group, false)?
                         .map(|v| v.read().into_owned())
                         .unwrap_or(HookValue::Bool(false));
@@ -418,7 +416,7 @@ impl OptionsApi {
                         notoptions = HookValue::Array(Vec::new());
                     }
                     set_key(&mut notoptions, name.as_str(), HookValue::Bool(true));
-                    self.d.cache.set(&notoptions_key, notoptions, &group, 0)?;
+                    self.cache().set(&notoptions_key, notoptions, &group, 0)?;
                 }
                 if rows == 0 {
                     return Ok(false);

@@ -9,7 +9,7 @@ use speedyspec_data_query::EngineRegistry;
 use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts, WpValue};
 use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
-use speedyspec_wp_object_cache::{ObjectCache, ObjectCachePorts};
+use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
 use speedyspec_wp_options::Option as OptionEntity;
 use speedyspec_wp_options::conformance::option_repository_suite;
 use speedyspec_wp_options::{
@@ -154,12 +154,9 @@ fn emptied_update_fails() {
     let r = rig();
     r.repo.add(&option("a", b"1", Autoload::On)).unwrap();
     r.repo.add(&option("b", b"2", Autoload::On)).unwrap();
-    let cache = Rc::new(ObjectCache::new(ObjectCachePorts::rust(), None));
-    let api = OptionsApi::new(OptionsDeps::rust(
-        r.hooks.clone(),
-        cache.clone(),
-        r.repo.clone(),
-    ));
+    let current = Rc::new(CurrentObjectCache::new(ObjectCachePorts::rust(), None));
+    let cache = current.current();
+    let api = OptionsApi::new(OptionsDeps::rust(r.hooks.clone(), current, r.repo.clone()));
     let before = api.load_alloptions(false).unwrap();
     on_query(&r.hooks, |q| match q {
         HookValue::Str(s) if s.starts_with("UPDATE ") => HookValue::Str(String::new()),

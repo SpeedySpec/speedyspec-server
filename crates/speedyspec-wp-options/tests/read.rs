@@ -229,3 +229,15 @@ fn numeric_names_are_integer_keys() {
     assert_eq!(all, HookValue::Array(vec![(Key::Int(123), s("n"))]));
     assert_eq!(f.api.get_option("123", None).unwrap(), s("n"));
 }
+
+#[test]
+fn follows_the_current_cache() {
+    // `wp_cache_init()` and each request end select a new cache: the options API must use the one current now.
+    let f = fixture();
+    seed(&f, "a", "1", Autoload::On);
+    f.api.get_option("a", None).unwrap();
+    let fresh = f.current.create();
+    f.current.select(fresh.clone());
+    f.api.get_option("a", None).unwrap();
+    assert!(fresh.exists(&s("alloptions"), &options()));
+}
