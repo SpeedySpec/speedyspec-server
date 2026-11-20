@@ -122,10 +122,8 @@ impl CachingStore for MemoryCache {
 
     fn delete(&self, group: &str, key: &str) -> Result<bool, CacheError> {
         let present = self.with_live(group, key, |e| e.is_some());
-        if present {
-            if let Some(entries) = self.groups.borrow_mut().get_mut(group) {
-                entries.remove(key);
-            }
+        if present && let Some(entries) = self.groups.borrow_mut().get_mut(group) {
+            entries.remove(key);
         }
         Ok(present)
     }
