@@ -1,5 +1,6 @@
 //! WordPress's own database tests (tests/php/wordpress/db*.php, copied from wordpress-develop) pass against the
-//! native `wpdb`, run by the pinned PHPUnit inside the embedded PHP on MySQL. Tests marked `@group
+//! native `wpdb`, run by the pinned PHPUnit inside the embedded PHP on MySQL. With `SPEEDYSPEC_DB_URL` set to a
+//! `sqlite://` URL they run on SQLite instead, where only the tests `compat/phpunit-sqlite.json` lists may fail. Tests marked `@group
 //! documented-break` or `@group needs-wordpress` are excluded, and each must be listed in compat/wp-db/breaks.json
 //! under `wordpress_tests`.
 
@@ -13,6 +14,7 @@ use speedyspec_container_php::ContainerArea;
 use speedyspec_data::EngineConfig;
 use speedyspec_data_mysql::MySqlEngineFactory;
 use speedyspec_data_query::EngineRegistry;
+use speedyspec_data_sqlite::SqliteEngineFactory;
 use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, NativeArea, Php};
 use speedyspec_php_ext::twins_area;
@@ -104,6 +106,48 @@ fn marked() -> Vec<String> {
     found
 }
 
+/// `Class::method` (with its data set) of every test case the JUnit log shows failing or erroring.
+fn failed_tests(log: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for case in log.split("<testcase ").skip(1) {
+        let head = case.split('>').next().unwrap_or_default();
+        if head.ends_with('/') {
+            continue;
+        }
+        let body = case.split("</testcase>").next().unwrap_or_default();
+        if !(body.contains("<failure") || body.contains("<error")) {
+            continue;
+        }
+        let attr = |name: &str| {
+            let marker = format!("{name}=\"");
+            head.find(&marker)
+                .map(|i| &head[i + marker.len()..])
+                .and_then(|rest| rest.split('"').next())
+                .unwrap_or_default()
+                .to_string()
+        };
+        out.push(format!("{}::{}", attr("class"), attr("name")).replace("&quot;", "\""));
+    }
+    out
+}
+
+/// The tests `compat/phpunit-sqlite.json` lists as failing on SQLite.
+fn expected_failures() -> Vec<String> {
+    let path = root().join("compat/phpunit-sqlite.json");
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    let value: serde_json::Value = serde_json::from_str(&text).unwrap();
+    value["expected_failures"]
+        .as_array()
+        .map(|list| {
+            list.iter()
+                .filter_map(|e| e["test"].as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 fn main() {
     let breaks: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(root().join("compat/wp-db/breaks.json")).unwrap(),
@@ -134,11 +178,21 @@ fn main() {
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new())).with_testing();
     let registry = Rc::new(EngineRegistry::new());
     registry.register_factory(Rc::new(MySqlEngineFactory));
+    registry.register_factory(Rc::new(SqliteEngineFactory));
+    let engine_url = std::env::var("SPEEDYSPEC_DB_URL").unwrap_or_else(|_| url.clone());
+    let sqlite = engine_url.starts_with("sqlite://");
+    let mut options = BTreeMap::new();
+    if sqlite {
+        options.insert(
+            "database".to_string(),
+            url.rsplit('/').next().unwrap_or("wordpress").to_string(),
+        );
+    }
     registry
         .configure(EngineConfig {
             name: "default".into(),
-            url: url.clone(),
-            options: BTreeMap::new(),
+            url: engine_url,
+            options,
         })
         .unwrap();
     let rest = url.trim_start_matches("mysql://");
@@ -167,7 +221,11 @@ fn main() {
         areas,
     })
     .expect("PHP boots");
-    let junit = Path::new(env!("CARGO_TARGET_TMPDIR")).join("wordpress-db.junit.xml");
+    let junit = Path::new(env!("CARGO_TARGET_TMPDIR")).join(if sqlite {
+        "wordpress-db.sqlite.junit.xml"
+    } else {
+        "wordpress-db.junit.xml"
+    });
     std::fs::remove_file(&junit).ok();
     let argv = vec![
         "--configuration".to_string(),
@@ -194,6 +252,26 @@ fn main() {
             .unwrap_or(-1)
     };
     let (tests, failures, errors) = (total("tests"), total("failures"), total("errors"));
+    if sqlite {
+        let failed = failed_tests(&log);
+        let expected = expected_failures();
+        let unexpected: Vec<&String> = failed.iter().filter(|t| !expected.contains(t)).collect();
+        let stale: Vec<&String> = expected.iter().filter(|t| !failed.contains(t)).collect();
+        for t in &unexpected {
+            eprintln!("FAILED ON SQLITE: {t}");
+        }
+        check(
+            "wordpress_db_tests_pass_on_sqlite",
+            tests >= FLOOR && unexpected.is_empty(),
+            (tests, &unexpected),
+        );
+        check(
+            "phpunit_sqlite_entries_still_fail",
+            stale.is_empty(),
+            &stale,
+        );
+        return;
+    }
     check(
         "wordpress_db_tests_pass",
         matches!(status, Ok(0)) && tests >= FLOOR && failures == 0 && errors == 0,

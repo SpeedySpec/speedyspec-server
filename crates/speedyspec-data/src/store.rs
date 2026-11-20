@@ -33,6 +33,12 @@ pub trait Introspector {
     fn columns(&self, table: &str) -> Result<Vec<ColumnDef>, DbError>;
     fn indexes(&self, table: &str) -> Result<Vec<IndexDef>, DbError>;
     fn table_collation(&self, table: &str) -> Result<Option<String>, DbError>;
+
+    /// MySQL's `Index_type` for an index (`BTREE`, `FULLTEXT`, `SPATIAL`); `None` when the engine does not say.
+    fn index_type(&self, table: &str, index: &str) -> Result<Option<String>, DbError> {
+        let _ = (table, index);
+        Ok(None)
+    }
 }
 
 /// A relational store. Statements only; a caller with SQL text parses it first.
