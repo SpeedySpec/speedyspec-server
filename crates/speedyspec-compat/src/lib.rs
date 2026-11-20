@@ -20,7 +20,7 @@ pub use php::{DRIVER, PhpRunner};
 
 /// The WordPress functions the object cache calls, declared the same on both sides of `compat/object-cache`.
 pub const OBJECT_CACHE_STUBS: &str = include_str!("object_cache_stubs.php");
-pub use record::{Source, record};
+pub use record::{Source, record, wordpress_release};
 
 /// A catalogue of scenarios for one area.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -62,6 +62,9 @@ pub struct StepResult {
     pub returned: Value,
     pub invocations: Vec<Invocation>,
     pub globals: Globals,
+    /// The area's own snapshot after the step (`SpeedySpecCompat::$state`), when its support file sets one.
+    #[serde(default, skip_serializing_if = "Value::is_null")]
+    pub state: Value,
 }
 
 /// One callback fixture's invocation.

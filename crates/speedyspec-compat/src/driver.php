@@ -30,6 +30,15 @@ final class SpeedySpecCompat
     /** @var array<string, mixed> Values kept by steps with `as`. */
     public static array $vars = [];
 
+    /** @var callable|null The area's own snapshot after each step (set by its support file). */
+    public static $state = null;
+
+    /** Whether each step reports the hook globals (an area whose behaviour is not hooks may turn it off). */
+    public static bool $report_globals = true;
+
+    /** @var string|null A per-request random string reported as `{placeholder}` (wpdb's placeholder escape). */
+    public static ?string $placeholder = null;
+
     /**
      * Creates, or finds again, the callable a fixture specification names.
      */
@@ -192,16 +201,27 @@ final class SpeedySpecCompat
         } catch (Throwable $e) {
             $returned = ['threw' => get_class($e), 'message' => $e->getMessage()];
         }
-        return ['returned' => $returned, 'invocations' => self::$invocations, 'globals' => self::globals()];
+        $report = ['returned' => $returned, 'invocations' => self::$invocations, 'globals' => self::globals()];
+        if (self::$state !== null) {
+            $report['state'] = self::normalise((self::$state)());
+        }
+        return $report;
     }
 
     private static function call(string $call, array $args, array $step): mixed
     {
         if ($call === 'new WP_Hook') {
             $value = new WP_Hook();
+        } elseif (str_starts_with($call, 'get:$')) {
+            [$var, $property] = explode('->', substr($call, 5), 2);
+            $value = self::target($var)->$property;
+        } elseif (str_starts_with($call, 'set:$')) {
+            [$var, $property] = explode('->', substr($call, 5), 2);
+            self::target($var)->$property = $args[0] ?? null;
+            $value = null;
         } elseif (str_starts_with($call, '$')) {
             [$var, $method] = explode('->', substr($call, 1), 2);
-            $value = self::$vars[$var]->$method(...$args);
+            $value = self::target($var)->$method(...$args);
         } elseif (str_starts_with($call, 'global:')) {
             $value = self::global(substr($call, 7), $args);
         } else {
@@ -214,6 +234,14 @@ final class SpeedySpecCompat
             }
         }
         return $value;
+    }
+
+    /**
+     * Finds the object a `$name` call is on: a value kept with `as`, else the global of that name.
+     */
+    private static function target(string $var): mixed
+    {
+        return array_key_exists($var, self::$vars) ? self::$vars[$var] : $GLOBALS[$var];
     }
 
     /**
@@ -276,6 +304,9 @@ final class SpeedySpecCompat
     public static function normalise(mixed $value): mixed
     {
         if (is_string($value)) {
+            if (self::$placeholder !== null && self::$placeholder !== '') {
+                $value = str_replace(self::$placeholder, '{placeholder}', $value);
+            }
             return self::key($value);
         }
         if ($value === null || is_bool($value) || is_int($value)) {
@@ -328,6 +359,9 @@ final class SpeedySpecCompat
 
     private static function globals(): array
     {
+        if (!self::$report_globals) {
+            return ['wp_filter' => null, 'wp_actions' => null, 'wp_filters' => null, 'wp_current_filter' => null];
+        }
         return [
             'wp_filter' => self::normalise($GLOBALS['wp_filter'] ?? null),
             'wp_actions' => self::normalise($GLOBALS['wp_actions'] ?? null),
@@ -376,6 +410,9 @@ if (!function_exists('_deprecated_hook')) {
 function speedyspec_compat_run(string $scenario): string
 {
     $scenario = json_decode($scenario, true, 512, JSON_THROW_ON_ERROR);
+    if (function_exists('speedyspec_compat_area_setup')) {
+        speedyspec_compat_area_setup();
+    }
     $report = [];
     foreach ($scenario['steps'] as $step) {
         $report[] = SpeedySpecCompat::step($step);

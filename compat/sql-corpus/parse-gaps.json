@@ -1,0 +1,22 @@
+[
+  {
+    "sql": "CREATE PROCEDURE `test_mysqli_flush_sync_procedure`() BEGIN\n\t\t\tSELECT ID FROM `wptests_posts` LIMIT 1;\n\t\tEND",
+    "issue": "not filed yet: sqlparser 0.64 does not parse a MySQL stored procedure body (BEGIN ... END)",
+    "from_test": true
+  },
+  {
+    "sql": "SHOW INDEXES FROM wptests_test_truncated_index WHERE Key_name='a_key';",
+    "issue": "not filed yet: sqlparser 0.64 does not parse SHOW INDEXES ... WHERE",
+    "from_test": true
+  },
+  {
+    "sql": "UPDATE `wptests_posts` SET `post_name` = 'burrito' WHERE",
+    "issue": "none needed: the statement is incomplete and MySQL rejects it too (a test of wpdb's error handling)",
+    "from_test": true
+  },
+  {
+    "sql": "],",
+    "issue": "TODO",
+    "from_test": true
+  }
+]

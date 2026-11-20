@@ -1,0 +1,2724 @@
+{
+  "area": "wp-db",
+  "scenarios": [
+    {
+      "name": "prepare_placeholders_00",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%5s",
+            "foo"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%5s",
+            [
+              "foo"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_01",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%1$d %%% % %%1$d%% %%%1$d%%",
+            1
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%1$d %%% % %%1$d%% %%%1$d%%",
+            [
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_02",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%-5s",
+            "foo"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%-5s",
+            [
+              "foo"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_03",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%05s",
+            "foo"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%05s",
+            [
+              "foo"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_04",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%'#5s",
+            "foo"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%'#5s",
+            [
+              "foo"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_05",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%.3s",
+            "foobar"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%.3s",
+            [
+              "foobar"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_06",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%.3f",
+            5.123456
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%.3f",
+            [
+              5.123456
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_07",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%.3f",
+            5.12
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%.3f",
+            [
+              5.12
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_08",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%s",
+            " %s "
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%s",
+            [
+              " %s "
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_09",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%1$s",
+            " %s "
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%1$s",
+            [
+              " %s "
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_10",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%1$s",
+            " %1$s "
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%1$s",
+            [
+              " %1$s "
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_11",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%d %1$d %%% %",
+            1
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%d %1$d %%% %",
+            [
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_12",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%d %2$s",
+            1,
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%d %2$s",
+            [
+              1,
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_13",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "'%s'",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "'%s'",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_14",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "\"%s\"",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "\"%s\"",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_15",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%s '%1$s'",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%s '%1$s'",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_16",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%s '%1$s'",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%s '%1$s'",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_17",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%s \"%1$s\"",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%s \"%1$s\"",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_18",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%s %%'%1$s'",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%s %%'%1$s'",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_19",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%s %%\"%1$s\"",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%s %%\"%1$s\"",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_20",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%s",
+            " %  s "
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%s",
+            [
+              " %  s "
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_21",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%f %%\"%1$f\"",
+            3
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%f %%\"%1$f\"",
+            [
+              3
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_22",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE second='%2$s' AND first='%1$s'",
+            "first arg",
+            "second arg"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE second='%2$s' AND first='%1$s'",
+            [
+              "first arg",
+              "second arg"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_23",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE second=%2$d AND first=%1$d",
+            1,
+            2
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE second=%2$d AND first=%1$d",
+            [
+              1,
+              2
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_24",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "'%'%%s",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "'%'%%s",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_25",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%s %d",
+            1
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%s %d",
+            [
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_26",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%s",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%s",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_27",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%%s",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%%s",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_28",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%%%s",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%%%s",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_29",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%s%%",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%s%%",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_30",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "'%'%%s%s",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "'%'%%s%s",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_31",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "'%'%%s %s",
+            "hello"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "'%'%%s %s",
+            [
+              "hello"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_32",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "'%-'#5s' '%'#-+-5s'",
+            "hello",
+            "foo"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "'%-'#5s' '%'#-+-5s'",
+            [
+              "hello",
+              "foo"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_33",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%f OR id = %d",
+            3,
+            5
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%f OR id = %d",
+            [
+              3,
+              5
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_34",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%f OR id = %d",
+            5
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%f OR id = %d",
+            [
+              5
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_35",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%f OR id = %d",
+            5
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%f OR id = %d",
+            [
+              5
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_36",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%%f OR id = %d",
+            5
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%%f OR id = %d",
+            [
+              5
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_37",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE id = %d AND content LIKE '%.4f'",
+            1,
+            2
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE id = %d AND content LIKE '%.4f'",
+            [
+              1,
+              2
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_38",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE id = %d AND content LIKE '%%.4f'",
+            1
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE id = %d AND content LIKE '%%.4f'",
+            [
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_39",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE id = %d AND content LIKE '%%%.4f'",
+            1
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE id = %d AND content LIKE '%%%.4f'",
+            [
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_40",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE id = %d AND content LIKE '%%%%.4f'",
+            1
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE id = %d AND content LIKE '%%%%.4f'",
+            [
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_41",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE id = %d AND content LIKE '%%%%%.4f'",
+            1
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE id = %d AND content LIKE '%%%%%.4f'",
+            [
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_42",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%.4f",
+            1
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%.4f",
+            [
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_43",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%.4f OR id = %d",
+            1,
+            5
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%.4f OR id = %d",
+            [
+              1,
+              5
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_44",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%.4f OR id = %d",
+            5
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%.4f OR id = %d",
+            [
+              5
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_45",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%.4f OR id = %d",
+            5
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%.4f OR id = %d",
+            [
+              5
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_46",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%%.4f OR id = %d",
+            5
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%%.4f OR id = %d",
+            [
+              5
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_47",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%%%.4f OR id = %d",
+            5
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%%%%%.4f OR id = %d",
+            [
+              5
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_48",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT * FROM %i WHERE %i = %d;",
+            "my_table",
+            "my_field",
+            321
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT * FROM %i WHERE %i = %d;",
+            [
+              "my_table",
+              "my_field",
+              321
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_49",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            "evil_`_field",
+            321
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            [
+              "evil_`_field",
+              321
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_50",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            "evil_````````_field",
+            321
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            [
+              "evil_````````_field",
+              321
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_51",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            "``evil_field``",
+            321
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            [
+              "``evil_field``",
+              321
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_52",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            "evil'field",
+            321
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            [
+              "evil'field",
+              321
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_53",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            "evil_\\``_field",
+            321
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            [
+              "evil_\\``_field",
+              321
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_54",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            "evil_%s_field",
+            321
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            [
+              "evil_%s_field",
+              321
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_55",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            "value`",
+            321
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i = %d;",
+            [
+              "value`",
+              321
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_56",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE `%i = %d;",
+            " AND evil_value",
+            321
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE `%i = %d;",
+            [
+              " AND evil_value",
+              321
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_57",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i` = %d;",
+            "evil_value -- ",
+            321
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i` = %d;",
+            [
+              "evil_value -- ",
+              321
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_58",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE `%i`` = %d;",
+            " AND true -- ",
+            321
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE `%i`` = %d;",
+            [
+              " AND true -- ",
+              321
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_59",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE ``%i` = %d;",
+            " AND true -- ",
+            321
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE ``%i` = %d;",
+            [
+              " AND true -- ",
+              321
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_60",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %2$i = %1$d;",
+            "1",
+            "two"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %2$i = %1$d;",
+            [
+              "1",
+              "two"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_61",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE '%i' = 1 AND \"%i\" = 2 AND `%i` = 3 AND ``%i`` = 4 AND %15i = 5",
+            "my_field1",
+            "my_field2",
+            "my_field3",
+            "my_field4",
+            "my_field5"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE '%i' = 1 AND \"%i\" = 2 AND `%i` = 3 AND ``%i`` = 4 AND %15i = 5",
+            [
+              "my_field1",
+              "my_field2",
+              "my_field3",
+              "my_field4",
+              "my_field5"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_62",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE id = %d AND %i LIKE %2$s LIMIT 1",
+            123,
+            "field -- ",
+            false
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE id = %d AND %i LIKE %2$s LIMIT 1",
+            [
+              123,
+              "field -- ",
+              false
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_63",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i LIKE %s LIMIT 1",
+            "field' -- ",
+            "field' -- "
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %i LIKE %s LIMIT 1",
+            [
+              "field' -- ",
+              "field' -- "
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_64",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %2$i IN ( %s , %s ) LIMIT 1",
+            "a",
+            "b"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %2$i IN ( %s , %s ) LIMIT 1",
+            [
+              "a",
+              "b"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_65",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %1$i = %1$s",
+            "a",
+            "b"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %1$i = %1$s",
+            [
+              "a",
+              "b"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_66",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %1$i = %1$s OR %2$i = %2$s",
+            "a",
+            "b"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %1$i = %1$s OR %2$i = %2$s",
+            [
+              "a",
+              "b"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_placeholders_67",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %1$i = %1$s OR %2$i = %1$s",
+            "a",
+            "b"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "WHERE %1$i = %1$s OR %2$i = %1$s",
+            [
+              "a",
+              "b"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_arg_count_0",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT * FROM wp_users WHERE id = %d AND user_login = %s",
+            1,
+            "admin",
+            "extra-arg"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_arg_count_1",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT * FROM wp_users WHERE id = %%%d AND user_login = %s",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_arg_count_2",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT * FROM wp_users WHERE id = %d AND user_login = %s",
+            [
+              1,
+              "admin",
+              "extra-arg"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_arg_count_3",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT * FROM wp_users WHERE id = %d AND %% AND user_login = %s",
+            1,
+            "admin",
+            "extra-arg"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_arg_count_4",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT * FROM wp_users WHERE id = %%%d AND %F AND %f AND user_login = %s",
+            1,
+            2.3,
+            "4.5",
+            "admin",
+            "extra-arg"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_arg_count_5",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT * FROM wp_users WHERE id = %d AND user_login = %s",
+            [
+              1
+            ],
+            "admin",
+            "extra-arg"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_arg_count_6",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT * FROM wp_users WHERE id = %d and user_nicename = %s and user_status = %d and user_login = %s",
+            1,
+            "admin",
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_arg_count_7",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT * FROM wp_users WHERE id = %d and user_nicename = %s and user_status = %d and user_login = %s",
+            [
+              1,
+              "admin",
+              0
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_arg_count_8",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT * FROM wp_users WHERE id = %d and %% and user_login = %s and user_status = %d and user_login = %s",
+            1,
+            "admin",
+            "extra-arg"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_identifier",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT * FROM %i WHERE %i = %s",
+            "my`table",
+            "col",
+            "v"
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT %1$i, %1$s",
+            "a"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_numbered",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "%2$s %1$s %2$d",
+            "a",
+            "5"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_null_and_no_placeholder",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            null
+          ]
+        },
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT 1"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_unsupported_value",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT %s",
+            {
+              "array": [
+                [
+                  "a",
+                  1
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prepare_percent_round_trip",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT name FROM wp_compat_items WHERE name LIKE %s",
+            "50%"
+          ],
+          "as": "q"
+        },
+        {
+          "call": "$wpdb->query",
+          "args": [
+            {
+              "var": "q"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "escaping",
+      "steps": [
+        {
+          "call": "$wpdb->_escape",
+          "args": [
+            "a'b\\c"
+          ]
+        },
+        {
+          "call": "$wpdb->_escape",
+          "args": [
+            {
+              "array": [
+                [
+                  "k",
+                  "x%y"
+                ],
+                [
+                  "n",
+                  {
+                    "array": [
+                      [
+                        "m",
+                        "o'p"
+                      ]
+                    ]
+                  }
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->_real_escape",
+          "args": [
+            "a\"b\n"
+          ]
+        },
+        {
+          "call": "$wpdb->_real_escape",
+          "args": [
+            {
+              "array": []
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->esc_like",
+          "args": [
+            "50%_\\"
+          ]
+        },
+        {
+          "call": "$wpdb->quote_identifier",
+          "args": [
+            "a`b"
+          ]
+        },
+        {
+          "call": "$wpdb->escape",
+          "args": [
+            "it's"
+          ]
+        },
+        {
+          "call": "$wpdb->_weak_escape",
+          "args": [
+            "x'y"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "helpers_insert",
+      "steps": [
+        {
+          "call": "$wpdb->insert",
+          "args": [
+            "wp_compat_items",
+            {
+              "name": "a",
+              "value": "1"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->insert",
+          "args": [
+            "wp_compat_items",
+            {
+              "name": "b",
+              "value": null
+            },
+            [
+              "%s",
+              "%s"
+            ]
+          ]
+        },
+        {
+          "call": "$wpdb->insert",
+          "args": [
+            "wp_compat_items",
+            {
+              "name": "c",
+              "value": 2
+            },
+            "%d"
+          ]
+        },
+        {
+          "call": "$wpdb->get_results",
+          "args": [
+            "SELECT * FROM wp_compat_items ORDER BY id",
+            "ARRAY_A"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "helpers_replace",
+      "steps": [
+        {
+          "call": "$wpdb->replace",
+          "args": [
+            "wp_compat_items",
+            {
+              "id": 5,
+              "name": "a",
+              "value": "x"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->replace",
+          "args": [
+            "wp_compat_items",
+            {
+              "id": 5,
+              "name": "b",
+              "value": "y"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->get_results",
+          "args": [
+            "SELECT * FROM wp_compat_items",
+            "ARRAY_N"
+          ]
+        },
+        {
+          "call": "$wpdb->_insert_replace_helper",
+          "args": [
+            "wp_compat_items",
+            {
+              "name": "z"
+            },
+            null,
+            "UPSERT"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "helpers_update_delete",
+      "steps": [
+        {
+          "call": "$wpdb->insert",
+          "args": [
+            "wp_compat_items",
+            {
+              "name": "a",
+              "value": "1"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->update",
+          "args": [
+            "wp_compat_items",
+            {
+              "value": "2"
+            },
+            {
+              "name": "a"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->update",
+          "args": [
+            "wp_compat_items",
+            {
+              "value": "2"
+            },
+            {
+              "name": "a"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->update",
+          "args": [
+            "wp_compat_items",
+            {
+              "value": null
+            },
+            {
+              "name": "a",
+              "value": "2"
+            },
+            null,
+            [
+              "%s",
+              "%s"
+            ]
+          ]
+        },
+        {
+          "call": "$wpdb->update",
+          "args": [
+            "wp_compat_items",
+            {
+              "value": "3"
+            },
+            {
+              "value": null
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->update",
+          "args": [
+            "wp_compat_items",
+            "nope",
+            {}
+          ]
+        },
+        {
+          "call": "$wpdb->delete",
+          "args": [
+            "wp_compat_items",
+            {
+              "name": "a"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->delete",
+          "args": [
+            "wp_compat_items",
+            {
+              "name": "missing"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "helpers_field_types",
+      "steps": [
+        {
+          "call": "set:$wpdb->field_types",
+          "args": [
+            {
+              "id": "%d"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->insert",
+          "args": [
+            "wp_compat_items",
+            {
+              "id": "7abc",
+              "name": "t"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->get_var",
+          "args": [
+            "SELECT id FROM wp_compat_items"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "readers_shapes",
+      "steps": [
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "INSERT INTO wp_compat_items (name, value) VALUES ('a', '1'), ('b', '2'), ('a', '3')"
+          ]
+        },
+        {
+          "call": "$wpdb->get_var",
+          "args": [
+            "SELECT name, value FROM wp_compat_items ORDER BY id"
+          ]
+        },
+        {
+          "call": "$wpdb->get_var",
+          "args": [
+            null,
+            1,
+            2
+          ]
+        },
+        {
+          "call": "$wpdb->get_var",
+          "args": [
+            null,
+            5,
+            0
+          ]
+        },
+        {
+          "call": "$wpdb->get_var",
+          "args": [
+            null,
+            0,
+            9
+          ]
+        },
+        {
+          "call": "$wpdb->get_row",
+          "args": [
+            "SELECT name, value FROM wp_compat_items ORDER BY id",
+            "ARRAY_A",
+            1
+          ]
+        },
+        {
+          "call": "$wpdb->get_row",
+          "args": [
+            "SELECT name, value FROM wp_compat_items ORDER BY id",
+            "ARRAY_N"
+          ]
+        },
+        {
+          "call": "$wpdb->get_row",
+          "args": [
+            "SELECT name, value FROM wp_compat_items ORDER BY id",
+            "OBJECT",
+            9
+          ]
+        },
+        {
+          "call": "$wpdb->get_row",
+          "args": [
+            null
+          ]
+        },
+        {
+          "call": "$wpdb->get_col",
+          "args": [
+            "SELECT name, value FROM wp_compat_items ORDER BY id",
+            1
+          ]
+        },
+        {
+          "call": "$wpdb->get_results",
+          "args": [
+            "SELECT name, value FROM wp_compat_items ORDER BY id",
+            "OBJECT_K"
+          ]
+        },
+        {
+          "call": "$wpdb->get_results",
+          "args": [
+            "SELECT name, value FROM wp_compat_items ORDER BY id",
+            "ARRAY_N"
+          ]
+        },
+        {
+          "call": "$wpdb->get_results",
+          "args": [
+            "SELECT name, value FROM wp_compat_items ORDER BY id",
+            "object"
+          ]
+        },
+        {
+          "call": "$wpdb->get_results",
+          "args": [
+            "SELECT name, value FROM wp_compat_items ORDER BY id",
+            "nope"
+          ]
+        },
+        {
+          "call": "$wpdb->get_results",
+          "args": [
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "col_info",
+      "steps": [
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "SELECT id, name, value FROM wp_compat_items"
+          ]
+        },
+        {
+          "call": "$wpdb->get_col_info",
+          "args": []
+        },
+        {
+          "call": "$wpdb->get_col_info",
+          "args": [
+            "type",
+            0
+          ]
+        },
+        {
+          "call": "$wpdb->get_col_info",
+          "args": [
+            "length",
+            1
+          ]
+        },
+        {
+          "call": "$wpdb->get_col_info",
+          "args": [
+            "table",
+            -1
+          ]
+        },
+        {
+          "call": "$wpdb->get_col_info",
+          "args": [
+            "charsetnr",
+            2
+          ]
+        },
+        {
+          "call": "$wpdb->get_col_info",
+          "args": [
+            "flags",
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get_var_empty_string",
+      "steps": [
+        {
+          "call": "$wpdb->get_var",
+          "args": [
+            "SELECT ''"
+          ]
+        },
+        {
+          "call": "$wpdb->get_var",
+          "args": [
+            "SELECT '0'"
+          ]
+        },
+        {
+          "call": "$wpdb->get_var",
+          "args": [
+            "SELECT NULL"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "duplicate_columns",
+      "steps": [
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "INSERT INTO wp_compat_items (name, value) VALUES ('a', 'x')"
+          ]
+        },
+        {
+          "call": "$wpdb->get_results",
+          "args": [
+            "SELECT a.id, b.name AS id, a.value FROM wp_compat_items a, wp_compat_items b",
+            "ARRAY_N"
+          ]
+        },
+        {
+          "call": "$wpdb->get_results",
+          "args": [
+            "SELECT a.id, b.name AS id, a.value FROM wp_compat_items a, wp_compat_items b",
+            "ARRAY_A"
+          ]
+        },
+        {
+          "call": "$wpdb->get_var",
+          "args": [
+            null,
+            1,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "query_returns",
+      "steps": [
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "SELECT 1"
+          ]
+        },
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "UPDATE wp_compat_items SET value = 'z'"
+          ]
+        },
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "CREATE TABLE IF NOT EXISTS wp_compat_extra (a int)"
+          ]
+        },
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "DROP TABLE wp_compat_extra"
+          ]
+        },
+        {
+          "call": "$wpdb->query",
+          "args": [
+            ""
+          ]
+        },
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "SHOW TABLES LIKE 'wp_compat_items'"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "query_comment_first_insert",
+      "steps": [
+        {
+          "call": "$wpdb->insert",
+          "args": [
+            "wp_compat_items",
+            {
+              "name": "a"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "/* tag */ INSERT INTO wp_compat_items (name) VALUES ('b')"
+          ]
+        },
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "(SELECT name FROM wp_compat_items)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "errors_missing_table",
+      "steps": [
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "SELECT * FROM wp_compat_missing"
+          ]
+        },
+        {
+          "call": "$wpdb->get_results",
+          "args": [
+            "SELECT * FROM wp_compat_missing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "errors_duplicate_key",
+      "steps": [
+        {
+          "call": "$wpdb->insert",
+          "args": [
+            "wp_compat_items",
+            {
+              "id": 1,
+              "name": "a"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->insert",
+          "args": [
+            "wp_compat_items",
+            {
+              "id": 1,
+              "name": "b"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "errors_show_errors",
+      "steps": [
+        {
+          "call": "$wpdb->show_errors",
+          "args": []
+        },
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "SELECT * FROM wp_compat_missing WHERE a = '<b>'"
+          ]
+        },
+        {
+          "call": "$wpdb->hide_errors",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "errors_suppress",
+      "steps": [
+        {
+          "call": "$wpdb->show_errors",
+          "args": []
+        },
+        {
+          "call": "$wpdb->suppress_errors",
+          "args": []
+        },
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "SELECT * FROM wp_compat_missing"
+          ]
+        },
+        {
+          "call": "$wpdb->suppress_errors",
+          "args": [
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "errors_syntax",
+      "steps": [
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "SELEC 1"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "errors_bad_output",
+      "steps": [
+        {
+          "call": "$wpdb->show_errors",
+          "args": []
+        },
+        {
+          "call": "$wpdb->get_row",
+          "args": [
+            "SELECT 1",
+            "nope"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "charset_latin1",
+      "steps": [
+        {
+          "call": "$wpdb->insert",
+          "args": [
+            "wp_compat_latin1",
+            {
+              "name": "café"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->insert",
+          "args": [
+            "wp_compat_latin1",
+            {
+              "name": "😀"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->get_col",
+          "args": [
+            "SELECT name FROM wp_compat_latin1"
+          ]
+        },
+        {
+          "call": "$wpdb->get_col_charset",
+          "args": [
+            "wp_compat_latin1",
+            "name"
+          ]
+        },
+        {
+          "call": "$wpdb->get_col_length",
+          "args": [
+            "wp_compat_items",
+            "name"
+          ]
+        },
+        {
+          "call": "$wpdb->strip_invalid_text_for_column",
+          "args": [
+            "wp_compat_items",
+            "name",
+            "xxxxxxxxxxxxxxxxxxxxxxxxx"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "charset_too_long",
+      "steps": [
+        {
+          "call": "$wpdb->insert",
+          "args": [
+            "wp_compat_items",
+            {
+              "name": "xxxxxxxxxxxxxxxxxxxxx"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->insert",
+          "args": [
+            "wp_compat_items",
+            {
+              "name": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+            }
+          ]
+        },
+        {
+          "call": "$wpdb->update",
+          "args": [
+            "wp_compat_items",
+            {
+              "name": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+            },
+            {
+              "id": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prefixes_and_tables",
+      "steps": [
+        {
+          "call": "$wpdb->set_prefix",
+          "args": [
+            "wp_"
+          ]
+        },
+        {
+          "call": "$wpdb->set_prefix",
+          "args": [
+            "xx_",
+            false
+          ]
+        },
+        {
+          "call": "$wpdb->set_prefix",
+          "args": [
+            "wp_"
+          ]
+        },
+        {
+          "call": "$wpdb->set_prefix",
+          "args": [
+            "bad-prefix"
+          ]
+        },
+        {
+          "call": "$wpdb->set_blog_id",
+          "args": [
+            3,
+            2
+          ]
+        },
+        {
+          "call": "$wpdb->get_blog_prefix",
+          "args": []
+        },
+        {
+          "call": "$wpdb->get_blog_prefix",
+          "args": [
+            4
+          ]
+        },
+        {
+          "call": "$wpdb->tables",
+          "args": []
+        },
+        {
+          "call": "$wpdb->tables",
+          "args": [
+            "blog"
+          ]
+        },
+        {
+          "call": "$wpdb->tables",
+          "args": [
+            "global"
+          ]
+        },
+        {
+          "call": "$wpdb->tables",
+          "args": [
+            "ms_global"
+          ]
+        },
+        {
+          "call": "$wpdb->tables",
+          "args": [
+            "old"
+          ]
+        },
+        {
+          "call": "$wpdb->tables",
+          "args": [
+            "blog",
+            false
+          ]
+        },
+        {
+          "call": "$wpdb->tables",
+          "args": [
+            "nope"
+          ]
+        },
+        {
+          "call": "$wpdb->tables",
+          "args": [
+            "blog",
+            true,
+            5
+          ]
+        },
+        {
+          "call": "get:$wpdb->options",
+          "args": []
+        },
+        {
+          "call": "set:$wpdb->options",
+          "args": [
+            "custom_options"
+          ]
+        },
+        {
+          "call": "get:$wpdb->options",
+          "args": []
+        },
+        {
+          "call": "$wpdb->set_blog_id",
+          "args": [
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "properties",
+      "steps": [
+        {
+          "call": "get:$wpdb->ready",
+          "args": []
+        },
+        {
+          "call": "get:$wpdb->is_mysql",
+          "args": []
+        },
+        {
+          "call": "get:$wpdb->charset",
+          "args": []
+        },
+        {
+          "call": "get:$wpdb->collate",
+          "args": []
+        },
+        {
+          "call": "$wpdb->get_charset_collate",
+          "args": []
+        },
+        {
+          "call": "$wpdb->has_cap",
+          "args": [
+            "collation"
+          ]
+        },
+        {
+          "call": "$wpdb->has_cap",
+          "args": [
+            "utf8mb4_520"
+          ]
+        },
+        {
+          "call": "$wpdb->has_cap",
+          "args": [
+            "nope"
+          ]
+        },
+        {
+          "call": "$wpdb->parse_db_host",
+          "args": [
+            "[::1]:3306"
+          ]
+        },
+        {
+          "call": "$wpdb->parse_db_host",
+          "args": [
+            "?::"
+          ]
+        },
+        {
+          "call": "$wpdb->supports_collation",
+          "args": []
+        },
+        {
+          "call": "set:$wpdb->custom_table",
+          "args": [
+            "wp_custom"
+          ]
+        },
+        {
+          "call": "get:$wpdb->custom_table",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "flush_clears",
+      "steps": [
+        {
+          "call": "$wpdb->query",
+          "args": [
+            "SELECT 1"
+          ]
+        },
+        {
+          "call": "$wpdb->flush",
+          "args": []
+        },
+        {
+          "call": "$wpdb->get_var",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "dbh_is_not_mysqli",
+      "steps": [
+        {
+          "call": "get:$wpdb->dbh",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "placeholder_escape_filter",
+      "steps": [
+        {
+          "call": "$wpdb->prepare",
+          "args": [
+            "SELECT %s",
+            "50%"
+          ]
+        },
+        {
+          "call": "has_filter",
+          "args": [
+            "query"
+          ]
+        }
+      ]
+    }
+  ]
+}

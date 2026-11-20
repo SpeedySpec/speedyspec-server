@@ -50,6 +50,11 @@ pub(crate) fn parse_error(error: ParserError) -> DbError {
         ParserError::RecursionLimitExceeded => "recursion limit exceeded".into(),
     };
     let (line, column) = position(&message).unwrap_or((0, 0));
+    // The position is carried apart; sqlparser's " at Line: N, Column: M" suffix would repeat it.
+    let message = match message.rfind(" at Line: ") {
+        Some(at) if line > 0 => message[..at].to_string(),
+        _ => message,
+    };
     DbError::Parse {
         message,
         line,
