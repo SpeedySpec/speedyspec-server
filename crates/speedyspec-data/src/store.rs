@@ -56,6 +56,9 @@ pub trait SqlStore {
     fn reset(&self) -> Result<(), DbError>;
 }
 
+/// Key-value pairs returned by `NoSqlStore::range`, in key order.
+pub type KeyValues = Vec<(Vec<u8>, Vec<u8>)>;
+
 /// A key-value store of byte keys and values in named keyspaces.
 pub trait NoSqlStore {
     fn engine(&self) -> &str;
@@ -84,7 +87,7 @@ pub trait NoSqlStore {
         start: Bound<&[u8]>,
         end: Bound<&[u8]>,
         limit: Option<usize>,
-    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>, DbError>;
+    ) -> Result<KeyValues, DbError>;
     fn increment(&self, keyspace: &str, key: &[u8], by: i64) -> Result<i64, DbError>;
     fn clear(&self, keyspace: &str) -> Result<(), DbError>;
 }

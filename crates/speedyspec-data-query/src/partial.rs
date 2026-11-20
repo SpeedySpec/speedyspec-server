@@ -26,7 +26,7 @@ pub enum Clause {
 
 #[derive(Debug, Clone, PartialEq)]
 enum Fragment {
-    Expr(Expr),
+    Expr(Box<Expr>),
     OrderBy(Vec<OrderByExpr>),
     GroupBy(Vec<Expr>),
     Projection(Vec<SelectItem>),
@@ -47,7 +47,7 @@ impl Partial {
         if parser.peek_token().token != sqlparser::tokenizer::Token::EOF {
             return Err(fragment_error(sql));
         }
-        Ok(Partial(Fragment::Expr(expr)))
+        Ok(Partial(Fragment::Expr(Box::new(expr))))
     }
 
     /// The terms of an `ORDER BY`, e.g. `post_date DESC`.
@@ -176,7 +176,7 @@ impl Query {
     /// Adds a condition with `AND`.
     pub fn and_where(&mut self, partial: Partial) -> &mut Query {
         match partial.0 {
-            Fragment::Expr(expr) => self.and_condition(expr),
+            Fragment::Expr(expr) => self.and_condition(*expr),
             _ => self.unsupported("a non-expression partial in WHERE"),
         }
         self
@@ -194,9 +194,9 @@ impl Query {
                     Some(existing) => Expr::BinaryOp {
                         left: Box::new(Expr::Nested(Box::new(existing))),
                         op: ast::BinaryOperator::Or,
-                        right: Box::new(expr),
+                        right: expr,
                     },
-                    None => expr,
+                    None => *expr,
                 })
             }
             None => self.unsupported("WHERE outside SELECT, UPDATE and DELETE"),
@@ -224,7 +224,7 @@ impl Query {
             return self;
         }
         match (clause, partial.0) {
-            (Clause::Where, Fragment::Expr(expr)) => self.and_condition(expr),
+            (Clause::Where, Fragment::Expr(expr)) => self.and_condition(*expr),
             (Clause::Projection, Fragment::Projection(items)) => match self.select_mut() {
                 Some(select) => select.projection = items,
                 None => self.unsupported("SELECT columns outside SELECT"),
@@ -241,7 +241,7 @@ impl Query {
             }
             (Clause::Having, Fragment::Expr(expr)) => {
                 if let Some(select) = self.select_mut() {
-                    select.having = Some(expr);
+                    select.having = Some(*expr);
                 }
             }
             (Clause::OrderBy, Fragment::OrderBy(terms)) => {
@@ -252,13 +252,13 @@ impl Query {
             (Clause::Limit, Fragment::Expr(expr)) => match &mut self.tree {
                 ast::Statement::Query(query) => {
                     query.limit_clause = Some(ast::LimitClause::LimitOffset {
-                        limit: Some(expr),
+                        limit: Some(*expr),
                         offset: None,
                         limit_by: vec![],
                     })
                 }
-                ast::Statement::Update(update) => update.limit = Some(expr),
-                ast::Statement::Delete(delete) => delete.limit = Some(expr),
+                ast::Statement::Update(update) => update.limit = Some(*expr),
+                ast::Statement::Delete(delete) => delete.limit = Some(*expr),
                 _ => self.unsupported("LIMIT outside SELECT, UPDATE and DELETE"),
             },
             (clause, _) => self.unsupported(&format!("a partial of another kind for {clause:?}")),

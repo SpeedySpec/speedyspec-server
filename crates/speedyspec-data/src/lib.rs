@@ -20,7 +20,9 @@ pub use engine::{Engine, EngineConfig, EngineFactory, EngineHandle, EngineKind, 
 pub use error::{DbError, DialectKind};
 pub use row::{ColumnInfo, ExecResult, Row, Rows};
 pub use statement::{EmittedSql, Statement, StatementKind, TxControl};
-pub use store::{ColumnDef, DirectStore, Health, IndexDef, Introspector, NoSqlStore, SqlStore};
+pub use store::{
+    ColumnDef, DirectStore, Health, IndexDef, Introspector, KeyValues, NoSqlStore, SqlStore,
+};
 pub use uow::{
     ChangeKind, CommitError, CommitReport, Identified, PendingChange, Repository, UnitOfWork,
 };

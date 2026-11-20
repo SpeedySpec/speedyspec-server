@@ -37,10 +37,10 @@ impl Query {
     /// `SELECT * FROM <table>`.
     pub fn table(table: &str) -> Query {
         let mut q = Query::skeleton("SELECT * FROM t");
-        if let Some(select) = q.select_mut() {
-            if let ast::TableFactor::Table { name, .. } = &mut select.from[0].relation {
-                *name = object_name(table);
-            }
+        if let Some(select) = q.select_mut()
+            && let ast::TableFactor::Table { name, .. } = &mut select.from[0].relation
+        {
+            *name = object_name(table);
         }
         q
     }
@@ -70,12 +70,11 @@ impl Query {
     /// `DELETE FROM <table>`.
     pub fn delete_from(table: &str) -> Query {
         let mut q = Query::skeleton("DELETE FROM t");
-        if let ast::Statement::Delete(delete) = &mut q.tree {
-            if let ast::FromTable::WithFromKeyword(from) = &mut delete.from {
-                if let ast::TableFactor::Table { name, .. } = &mut from[0].relation {
-                    *name = object_name(table);
-                }
-            }
+        if let ast::Statement::Delete(delete) = &mut q.tree
+            && let ast::FromTable::WithFromKeyword(from) = &mut delete.from
+            && let ast::TableFactor::Table { name, .. } = &mut from[0].relation
+        {
+            *name = object_name(table);
         }
         q
     }
@@ -88,16 +87,16 @@ impl Query {
         let mut next = 0;
         let mut short = false;
         let _ = visit_expressions_mut(&mut tree, |expr| {
-            if let Expr::Value(v) = expr {
-                if matches!(&v.value, Value::Placeholder(p) if p == "?") {
-                    match params.next() {
-                        Some(value) => {
-                            v.value = Value::Placeholder(format!("{MARK}{next}"));
-                            map.insert(next, value);
-                            next += 1;
-                        }
-                        None => short = true,
+            if let Expr::Value(v) = expr
+                && matches!(&v.value, Value::Placeholder(p) if p == "?")
+            {
+                match params.next() {
+                    Some(value) => {
+                        v.value = Value::Placeholder(format!("{MARK}{next}"));
+                        map.insert(next, value);
+                        next += 1;
                     }
+                    None => short = true,
                 }
             }
             ControlFlow::<()>::Continue(())
@@ -248,16 +247,15 @@ impl Query {
         let mut params = Vec::with_capacity(self.params.len());
         let mut missing = false;
         let _ = visit_expressions_mut(&mut tree, |expr| {
-            if let Expr::Value(v) = expr {
-                if let Value::Placeholder(p) = &v.value {
-                    if let Some(n) = p.strip_prefix(MARK).and_then(|n| n.parse::<usize>().ok()) {
-                        match self.params.get(&n) {
-                            Some(value) => params.push(value.clone()),
-                            None => missing = true,
-                        }
-                        v.value = Value::Placeholder("?".into());
-                    }
+            if let Expr::Value(v) = expr
+                && let Value::Placeholder(p) = &v.value
+                && let Some(n) = p.strip_prefix(MARK).and_then(|n| n.parse::<usize>().ok())
+            {
+                match self.params.get(&n) {
+                    Some(value) => params.push(value.clone()),
+                    None => missing = true,
                 }
+                v.value = Value::Placeholder("?".into());
             }
             ControlFlow::<()>::Continue(())
         });

@@ -18,6 +18,7 @@ fn takes_every_contract(
 }
 
 #[test]
+#[allow(clippy::type_complexity)]
 fn contracts_are_object_safe() {
     let _f: fn(
         &dyn SqlStore,

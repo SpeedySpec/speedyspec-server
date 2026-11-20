@@ -121,15 +121,15 @@ impl DefaultUnitOfWork {
                     engine: engine.clone(),
                     error,
                 })?;
-            if let Some(store) = handle.as_sql() {
-                if store.in_transaction() {
-                    return Err(CommitError::Failed {
-                        engine: engine.clone(),
-                        error: DbError::Transaction(format!(
-                            "a transaction opened outside the unit of work is open on {engine}"
-                        )),
-                    });
-                }
+            if let Some(store) = handle.as_sql()
+                && store.in_transaction()
+            {
+                return Err(CommitError::Failed {
+                    engine: engine.clone(),
+                    error: DbError::Transaction(format!(
+                        "a transaction opened outside the unit of work is open on {engine}"
+                    )),
+                });
             }
             handles.push(handle);
         }
