@@ -1,0 +1,9 @@
+[package]
+name = "speedyspec-native-stage"
+version = "0.1.0"
+description = "The contract for answering a request in Rust before PHP runs: stages, their outcome and a chain of them."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]

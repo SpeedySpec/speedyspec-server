@@ -4495,6 +4495,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-native-stage"
+version = "0.1.0"
+
+[[package]]
 name = "speedyspec-php"
 version = "0.1.0"
 dependencies = [
