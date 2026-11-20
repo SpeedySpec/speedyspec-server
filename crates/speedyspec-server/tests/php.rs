@@ -707,11 +707,17 @@ fn worker_secrets_stay_out_of_argv_and_the_server_environment_stays_out() {
     let addr = server.address();
     assert_eq!(get(addr, "/env.php"), (200, "absent from-dotenv".into()));
     let (_, pid) = get(addr, "/pid.php");
-    let ps = std::process::Command::new("ps")
-        .args(["-o", "command=", "-p", pid.trim()])
-        .output()
-        .unwrap();
-    let argv = String::from_utf8_lossy(&ps.stdout);
+    // Linux has the argv in /proc (its busybox ps cannot print one process's command); macOS has ps.
+    let argv = match std::fs::read(format!("/proc/{}/cmdline", pid.trim())) {
+        Ok(cmdline) => String::from_utf8_lossy(&cmdline).replace('\0', " "),
+        Err(_) => {
+            let ps = std::process::Command::new("ps")
+                .args(["-o", "command=", "-p", pid.trim()])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&ps.stdout).into_owned()
+        }
+    };
     assert!(!argv.trim().is_empty(), "ps saw the worker");
     assert!(
         !argv.contains("from-dotenv") && !argv.contains("release_dir"),
