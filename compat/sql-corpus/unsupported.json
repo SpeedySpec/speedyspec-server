@@ -8,5 +8,30 @@
     "construct": "CONVERT ... USING a non-Unicode charset",
     "dialect": "sqlite",
     "why": "SQLite keeps all text as UTF-8 and has no charset conversion; wpdb asks for it only for tables in a non-Unicode charset"
+  },
+  {
+    "construct": "RAND(seed)",
+    "dialect": "postgres",
+    "why": "PostgreSQL's setseed() seeds the whole session, not one call, so MySQL's repeatable RAND(n) has no faithful form"
+  },
+  {
+    "construct": "the MySQL type geomcollection",
+    "dialect": "postgres",
+    "why": "MySQL's spatial types need PostGIS, which the PostgreSQL engine does not assume"
+  },
+  {
+    "construct": "CALL of a stored procedure",
+    "dialect": "postgres",
+    "why": "MySQL stored procedures are not translated (their CREATE PROCEDURE bodies are a parse gap), so there is no procedure to call"
+  },
+  {
+    "construct": "CONVERT ... USING a non-Unicode charset",
+    "dialect": "postgres",
+    "why": "the engine keeps text as UTF-8 and does not convert to a non-Unicode charset; wpdb asks for it only for tables in such a charset"
+  },
+  {
+    "construct": "SHOW CREATE PROCEDURE",
+    "dialect": "postgres",
+    "why": "MySQL stored procedures are not translated, so there is no procedure to show"
   }
 ]
