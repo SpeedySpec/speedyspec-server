@@ -520,3 +520,105 @@ fn column_flags_like_mysql() {
     // NOT_NULL | BLOB, for a longtext.
     assert_eq!(rows.columns[1].flags, 17);
 }
+
+#[test]
+fn missing_column_is_an_error() {
+    let store = memory();
+    exec(&store, "INSERT INTO wp_options (option_name) VALUES ('a')");
+    assert!(
+        store
+            .query(&stmt("SELECT option_nam FROM wp_options"))
+            .is_err()
+    );
+    assert!(
+        store
+            .execute(&stmt(
+                "UPDATE wp_options SET option_value = 'gone' WHERE missing IS NOT NULL"
+            ))
+            .is_err()
+    );
+}
+
+#[test]
+fn multi_action_alter_applies_in_order() {
+    let store = memory();
+    exec(
+        &store,
+        "CREATE TABLE t (id int NOT NULL, x int, y int, z int, PRIMARY KEY (id), KEY y (y))",
+    );
+    exec(&store, "INSERT INTO t (id, x, y, z) VALUES (1, 2, 3, 4)");
+    exec(
+        &store,
+        "ALTER TABLE t ADD COLUMN a int, ADD COLUMN created datetime NOT NULL DEFAULT CURRENT_TIMESTAMP",
+    );
+    exec(&store, "INSERT INTO t (id, a) VALUES (2, 5)");
+    exec(&store, "ALTER TABLE t DROP COLUMN x, DROP COLUMN y");
+    let rows = query(&store, "SELECT * FROM t WHERE id = 1");
+    let names: Vec<&str> = rows.columns.iter().map(|c| c.name.as_str()).collect();
+    assert_eq!(names, ["id", "z", "a", "created"]);
+    let described: Vec<DbValue> = query(&store, "DESCRIBE t")
+        .rows
+        .iter()
+        .map(|r| r.values()[0].clone())
+        .collect();
+    assert_eq!(described, [t("id"), t("z"), t("a"), t("created")]);
+}
+
+#[test]
+fn temporary_tables_stay_out_of_the_catalogue() {
+    let dir = tempfile::tempdir().unwrap();
+    let url = format!("sqlite://{}", dir.path().join("site.db").display());
+    {
+        let a = SqliteStore::open(&config(&url, &[])).unwrap();
+        exec(&a, WP_OPTIONS);
+        exec(&a, "CREATE TEMPORARY TABLE wp_tmp (a int)");
+        exec(&a, "CREATE TEMPORARY TABLE wp_options (a int)");
+        exec(&a, "DROP TEMPORARY TABLE wp_options");
+    }
+    let b = SqliteStore::open(&config(&url, &[])).unwrap();
+    let tables: Vec<DbValue> = query(&b, "SHOW TABLES")
+        .rows
+        .iter()
+        .map(|r| r.values()[0].clone())
+        .collect();
+    assert_eq!(tables, [t("wp_options")]);
+    exec(&b, "CREATE TABLE IF NOT EXISTS wp_tmp (a int)");
+    exec(&b, "INSERT INTO wp_tmp (a) VALUES (1)");
+    let id_type = query(&b, "DESCRIBE wp_options").rows[0].values()[1].clone();
+    assert_eq!(id_type, t("bigint unsigned"));
+}
+
+#[test]
+fn start_transaction_commits_the_open_one() {
+    let store = memory();
+    exec(&store, "START TRANSACTION");
+    exec(&store, "INSERT INTO wp_options (option_name) VALUES ('a')");
+    exec(&store, "START TRANSACTION");
+    exec(&store, "ROLLBACK");
+    assert_eq!(
+        scalar(&store, "SELECT COUNT(*) FROM wp_options").as_deref(),
+        Some("1")
+    );
+    exec(&store, "SET autocommit = 0");
+    exec(&store, "START TRANSACTION");
+    exec(&store, "SET autocommit = 1");
+}
+
+#[test]
+fn replace_with_too_few_values_is_mysqls_error() {
+    let store = memory();
+    exec(
+        &store,
+        "CREATE TABLE r (id int NOT NULL, a varchar(10), u varchar(10), PRIMARY KEY (id), UNIQUE KEY u (u))",
+    );
+    for sql in [
+        "REPLACE INTO r VALUES (1)",
+        "REPLACE INTO r (id, a, u) VALUES (1)",
+    ] {
+        let err = store.execute(&stmt(sql)).unwrap_err();
+        assert!(
+            matches!(&err, DbError::Engine { code: Some(c), .. } if c == "1136"),
+            "{sql}: {err:?}"
+        );
+    }
+}

@@ -37,6 +37,10 @@ pub struct SqliteStore {
     found_rows: Cell<u64>,
     /// `SET autocommit = 0`: a transaction is always open, a new one after each commit or rollback.
     autocommit_off: Cell<bool>,
+    /// Running the actions of one multi-action ALTER TABLE, which commits once, at its end.
+    altering: Cell<bool>,
+    /// This connection's temporary tables, as MySQL would describe them; never in the shared catalogue.
+    temporary: RefCell<HashMap<String, CatalogueTable>>,
     catalogue: RefCell<HashMap<String, Option<CatalogueTable>>>,
 }
 
@@ -177,6 +181,8 @@ impl SqliteStore {
             version,
             found_rows: Cell::new(0),
             autocommit_off: Cell::new(false),
+            altering: Cell::new(false),
+            temporary: RefCell::new(HashMap::new()),
             catalogue: RefCell::new(HashMap::new()),
         };
         for stmt in catalogue_ddl() {
@@ -225,6 +231,10 @@ impl SqliteStore {
 
     /// The catalogue's record of `table`, cached until the next DDL statement.
     fn catalogue_of(&self, table: &str) -> Result<Option<CatalogueTable>, DbError> {
+        if let Some(temp) = self.temporary.borrow().get(table) {
+            // A temporary table hides the permanent one of its name, as in MySQL.
+            return Ok(Some(temp.clone()));
+        }
         let key = table.to_string();
         if let Some(hit) = self.catalogue.borrow().get(&key) {
             return Ok(hit.clone());
@@ -405,12 +415,69 @@ impl SqliteStore {
             .any(|c| c.extra == "auto_increment"))
     }
 
+    /// An `ALTER TABLE` of several actions, each planned against the schema the one before it left, as one
+    /// statement: MySQL applies the actions in order.
+    fn alter_in_order(&self, stmt: &Statement) -> Result<(Rows, ExecResult), DbError> {
+        let Ast::AlterTable(alter) = stmt.tree() else {
+            unreachable!("an ALTER TABLE")
+        };
+        if !self.conn.is_autocommit() {
+            self.control("COMMIT")?;
+        }
+        self.control("BEGIN IMMEDIATE")?;
+        for op in &alter.operations {
+            let mut one = alter.clone();
+            one.operations = vec![op.clone()];
+            let part = Statement::new(Ast::AlterTable(one), stmt.params().to_vec());
+            self.altering.set(true);
+            let result = self.run(&part);
+            self.altering.set(false);
+            if let Err(e) = result {
+                let _ = self.control("ROLLBACK");
+                self.catalogue.borrow_mut().clear();
+                return Err(e);
+            }
+        }
+        self.control("COMMIT")?;
+        self.reopen()?;
+        Ok((Rows::default(), ExecResult::default()))
+    }
+
+    /// Records or forgets a temporary table this connection made or dropped.
+    fn track_temporary(&self, stmt: &Statement) -> Result<(), DbError> {
+        match stmt.tree() {
+            Ast::CreateTable(create) if create.temporary => {
+                let table = speedyspec_data_translate::catalogue_table(stmt.tree())?;
+                self.temporary
+                    .borrow_mut()
+                    .insert(table.name.clone(), table);
+            }
+            Ast::Drop { names, .. } => {
+                for name in names {
+                    self.temporary.borrow_mut().remove(&object_name(name));
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
     fn run(&self, stmt: &Statement) -> Result<(Rows, ExecResult), DbError> {
         if let Some(on) = autocommit(stmt) {
             self.set_autocommit(on)?;
             return Ok((Rows::default(), ExecResult::default()));
         }
-        if commits_implicitly(stmt) && !self.conn.is_autocommit() {
+        if let Ast::AlterTable(alter) = stmt.tree()
+            && alter.operations.len() > 1
+        {
+            return self.alter_in_order(stmt);
+        }
+        let begins = stmt.kind() == StatementKind::Transaction(TxControl::Begin);
+        // MySQL commits the open transaction before DDL and before a new START TRANSACTION.
+        if (commits_implicitly(stmt) || begins)
+            && !self.conn.is_autocommit()
+            && !self.altering.get()
+        {
             self.control("COMMIT")?;
         }
         let plan = self.plan(stmt);
@@ -478,6 +545,7 @@ impl SqliteStore {
             self.reopen()?;
         }
         let outcomes = result?;
+        self.track_temporary(stmt)?;
         let auto = match insert_table(stmt) {
             Some(table) => self.auto_increment(&table)?,
             None => false,
@@ -660,10 +728,12 @@ impl SqlStore for SqliteStore {
         self.session.lock().expect("session").reset();
         self.found_rows.set(0);
         self.catalogue.borrow_mut().clear();
+        // A connection reset ends its temporary tables, as MySQL's does.
+        self.temporary.borrow_mut().clear();
         let scratch: Vec<String> = {
             let mut stmt = self
                 .conn
-                .prepare("SELECT name FROM temp.sqlite_master WHERE type = 'table' AND name LIKE 'speedyspec\\_%' ESCAPE '\\'")
+                .prepare("SELECT name FROM temp.sqlite_master WHERE type = 'table'")
                 .map_err(|e| self.error(e))?;
             stmt.query_map([], |r| r.get::<_, String>(0))
                 .map_err(|e| self.error(e))?

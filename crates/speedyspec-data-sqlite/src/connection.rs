@@ -41,6 +41,13 @@ pub fn open_connection(
             .map_err(engine_error)?;
     }
     conn.busy_timeout(busy_timeout).map_err(engine_error)?;
+    // Every name is double-quoted; SQLite must not read a quoted name that matches nothing as a string.
+    for flag in [
+        rusqlite::config::DbConfig::SQLITE_DBCONFIG_DQS_DML,
+        rusqlite::config::DbConfig::SQLITE_DBCONFIG_DQS_DDL,
+    ] {
+        conn.set_db_config(flag, false).map_err(engine_error)?;
+    }
     conn.pragma_update(None, "foreign_keys", "OFF")
         .map_err(engine_error)?;
     conn.execute_batch("ATTACH DATABASE ':memory:' AS information_schema")
