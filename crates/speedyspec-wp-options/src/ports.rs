@@ -92,13 +92,19 @@ pub trait Sanitizing {
     ) -> Result<HookValue, OptionsError>;
 }
 
-/// `_deprecated_argument()`. No phase-2 function calls `_doing_it_wrong()`, so it waits until one does.
+/// `_deprecated_argument()` and `_doing_it_wrong()`.
 pub trait Deprecations {
     fn deprecated_argument(
         &self,
         function: &str,
         version: &str,
         message: &str,
+    ) -> Result<(), OptionsError>;
+    fn doing_it_wrong(
+        &self,
+        function: &str,
+        message: &str,
+        version: &str,
     ) -> Result<(), OptionsError>;
 }
 

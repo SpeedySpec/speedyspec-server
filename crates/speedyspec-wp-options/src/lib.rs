@@ -23,6 +23,8 @@ mod network_messages;
 mod php_cast;
 mod ports;
 mod read;
+mod settings;
+mod settings_messages;
 mod sitemeta;
 mod staged;
 mod transient_messages;
@@ -61,6 +63,11 @@ pub use php_cast::php_int;
 pub use ports::{
     Deprecations, Installing, Multisite, OptionGroups, OptionRepository, ProtectedOptions,
     Sanitizing, ValueCodec,
+};
+pub use settings::{FILTER_DEFAULT_OPTION, SettingArgsInput, SettingsRegistry, SettingsStore};
+pub use settings_messages::{
+    FilterDefaultOption, GetRegisteredSettings, RegisterSetting, UnregisterSetting,
+    register_settings_handlers,
 };
 pub use sitemeta::{NetworkMeta, SitemetaRepository};
 pub use staged::Staged;

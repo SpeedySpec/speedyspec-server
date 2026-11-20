@@ -190,7 +190,7 @@ impl Sanitizing for HookSanitizing {
     }
 }
 
-/// `_deprecated_argument()` as a log line.
+/// `_deprecated_argument()` and `_doing_it_wrong()` as log lines.
 pub struct LogDeprecations;
 
 impl Deprecations for LogDeprecations {
@@ -201,6 +201,15 @@ impl Deprecations for LogDeprecations {
         message: &str,
     ) -> Result<(), OptionsError> {
         tracing::warn!(function, version, message, "deprecated argument");
+        Ok(())
+    }
+    fn doing_it_wrong(
+        &self,
+        function: &str,
+        message: &str,
+        version: &str,
+    ) -> Result<(), OptionsError> {
+        tracing::warn!(function, version, message, "doing it wrong");
         Ok(())
     }
 }

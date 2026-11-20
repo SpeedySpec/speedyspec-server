@@ -9,6 +9,7 @@ license.workspace = true
 [dependencies]
 speedyspec-container = { path = "../speedyspec-container" }
 speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+indexmap = "2"
 speedyspec-data = { path = "../speedyspec-data" }
 speedyspec-data-uow = { path = "../speedyspec-data-uow" }
 speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }

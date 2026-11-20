@@ -143,7 +143,7 @@ impl Sanitizing for PhpSanitizing {
     }
 }
 
-/// `_deprecated_argument()` when defined.
+/// `_deprecated_argument()` and `_doing_it_wrong()` when defined.
 pub struct PhpDeprecations;
 
 impl Deprecations for PhpDeprecations {
@@ -160,6 +160,25 @@ impl Deprecations for PhpDeprecations {
                     Value::Str(function.into()),
                     Value::Str(version.into()),
                     Value::Str(message.into()),
+                ],
+            )?;
+        }
+        Ok(())
+    }
+
+    fn doing_it_wrong(
+        &self,
+        function: &str,
+        message: &str,
+        version: &str,
+    ) -> Result<(), OptionsError> {
+        if exists("_doing_it_wrong")? {
+            call(
+                "_doing_it_wrong",
+                &[
+                    Value::Str(function.into()),
+                    Value::Str(message.into()),
+                    Value::Str(version.into()),
                 ],
             )?;
         }

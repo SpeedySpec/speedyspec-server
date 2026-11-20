@@ -9,6 +9,7 @@ license.workspace = true
 [dependencies]
 indexmap = "2"
 speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 
 [dev-dependencies]
