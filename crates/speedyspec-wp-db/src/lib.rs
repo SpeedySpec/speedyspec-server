@@ -19,3 +19,7 @@ pub use prepare::{DoingItWrong, Prepare, PrepareOutcome};
 
 /// A PHP value, as the Hook API carries it.
 pub type WpValue = speedyspec_hooks::Value;
+
+mod tables;
+
+pub use tables::{TableEnv, TableNames, TableScope};
