@@ -4596,6 +4596,7 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-object-cache",
+ "speedyspec-wp-options-memory",
  "tracing",
 ]
 

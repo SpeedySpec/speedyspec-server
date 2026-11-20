@@ -4,6 +4,7 @@
 //! `use speedyspec_wp_options::Option as OptionEntity;`, so `Option<T>` stays std's everywhere.
 
 mod adapters;
+mod api;
 mod autoload;
 mod autoload_policy;
 #[cfg(feature = "conformance")]
@@ -12,12 +13,14 @@ mod entity;
 mod error;
 mod name;
 mod ports;
+mod read;
 mod value;
 
 pub use adapters::{
     CORE_SANITIZED_OPTIONS, FixedProtectedOptions, HookSanitizing, InstallingFlag, LogDeprecations,
     NoOptionGroups, RustCodec, SiteConfiguration,
 };
+pub use api::{OptionsApi, OptionsDeps};
 pub use autoload::{Autoload, AutoloadRequest, DEFAULT_AUTOLOAD_VALUES};
 pub use autoload_policy::{
     AutoloadPolicy, WordPressAutoloadPolicy, autoload_values,
