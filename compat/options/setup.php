@@ -183,10 +183,9 @@ add_filter('wp_die_handler', static fn () => 'speedyspec_compat_wp_die');
 add_filter('wp_default_autoload_value', 'wp_filter_default_autoload_value_via_option_size', 5, 4);
 
 /**
- * Prepares each scenario once the driver is loaded: an emptied `wp_options` with three seeds, and the state each
- *  step reports.
+ * Creates `wp_options` if needed, empties it and seeds `siteurl`, `home` and `blogname` (autoload `on`).
  */
-function speedyspec_compat_area_setup(): void
+function speedyspec_compat_options_table(): void
 {
     global $wpdb;
     $wpdb->suppress_errors(true);
@@ -203,6 +202,16 @@ function speedyspec_compat_area_setup(): void
         $wpdb->insert($wpdb->options, ['option_name' => $name, 'option_value' => $value, 'autoload' => 'on']);
     }
     $wpdb->suppress_errors(false);
+}
+
+/**
+ * Prepares each scenario once the driver is loaded: an emptied `wp_options` with three seeds, and the state each
+ *  step reports.
+ */
+function speedyspec_compat_area_setup(): void
+{
+    global $wpdb;
+    speedyspec_compat_options_table();
     wp_cache_flush();
     SpeedySpecCompat::$report_globals = false;
     $last = $wpdb->num_queries;

@@ -30,7 +30,9 @@ speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
 speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
 speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
 serde_json = "1"
+sha2 = "0.10"
 tempfile = "3"
+ureq = "3"
 
 [[test]]
 name = "php"
@@ -38,4 +40,8 @@ harness = false
 
 [[test]]
 name = "compat"
+harness = false
+
+[[test]]
+name = "wordpress"
 harness = false
