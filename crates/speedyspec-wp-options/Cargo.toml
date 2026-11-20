@@ -1,0 +1,12 @@
+[package]
+name = "speedyspec-wp-options"
+version = "0.1.0"
+description = "WordPress's options API (get_option, update_option and the rest) in Rust: the entity, its ports and the API."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
