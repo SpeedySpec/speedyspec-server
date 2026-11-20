@@ -3974,6 +3974,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-data-uow"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+]
+
+[[package]]
 name = "speedyspec-fastcgi"
 version = "0.1.0"
 dependencies = [

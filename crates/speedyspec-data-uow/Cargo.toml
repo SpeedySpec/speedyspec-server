@@ -1,0 +1,11 @@
+[package]
+name = "speedyspec-data-uow"
+version = "0.1.0"
+description = "The unit of work and identity map for speedyspec's data layer: one transaction per engine, callbacks after commit."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-data = { path = "../speedyspec-data" }
+
