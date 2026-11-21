@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-db-php"
-version = "0.1.2"
+version = "0.1.3"
 description = "WordPress's wpdb class and the $wpdb global in PHP, native over the Rust wpdb port."
 edition.workspace = true
 rust-version.workspace = true
