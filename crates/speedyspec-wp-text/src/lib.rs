@@ -7,6 +7,7 @@ pub mod preg;
 pub mod strings;
 
 mod autop;
+mod balance;
 mod ent2ncr_table;
 mod small;
 mod strip;
@@ -21,3 +22,4 @@ pub use strip::{strip_tags, wp_strip_all_tags_core};
 pub use trim::{wp_html_excerpt, wp_trim_words_core};
 pub use autop::{AutopOptions, wp_replace_in_html_tags, wpautop_reference};
 pub use unautop::{Unautop, shortcode_unautop};
+pub use balance::force_balance_tags;
