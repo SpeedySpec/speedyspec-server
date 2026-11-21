@@ -321,3 +321,16 @@ fn rules_match_with_pcre_byte_semantics() {
         );
     }
 }
+
+/// PHP's `empty("0")` is true, so `parse_request` treats the path `0` as empty and tries only `$`.
+#[test]
+fn zero_path_is_empty_like_php() {
+    for s in strategies() {
+        let list = rules(&[
+            ("(.*)", "index.php?all=$matches[1]"),
+            ("$", "index.php?home=1"),
+        ]);
+        let r = resolve_with(s.as_ref(), list, "0", "", &Guard::accept());
+        assert_eq!(matched(&r), Some(("$", "home=1")));
+    }
+}
