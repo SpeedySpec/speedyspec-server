@@ -26,6 +26,8 @@ pub enum TextDiffError {
     InvalidUtf8,
     /// WordPress's "too different" ratio divided by zero; it throws a `DivisionByZeroError`.
     DivisionByZero,
+    /// A changed block of `orig` × `fin` lines is too large to pair; WordPress runs out of memory there.
+    TooLarge { orig: usize, fin: usize },
 }
 
 impl std::fmt::Display for TextDiffError {
@@ -35,6 +37,10 @@ impl std::fmt::Display for TextDiffError {
                 f.write_str("a changed line is not valid UTF-8, so it cannot be split into words")
             }
             TextDiffError::DivisionByZero => f.write_str("Division by zero"),
+            TextDiffError::TooLarge { orig, fin } => write!(
+                f,
+                "a changed block of {orig} lines against {fin} lines is too large to pair line by line"
+            ),
         }
     }
 }
@@ -46,6 +52,7 @@ impl From<RenderError> for TextDiffError {
         match e {
             RenderError::InvalidUtf8 => TextDiffError::InvalidUtf8,
             RenderError::DivisionByZero => TextDiffError::DivisionByZero,
+            RenderError::TooLarge { orig, fin } => TextDiffError::TooLarge { orig, fin },
         }
     }
 }
@@ -183,6 +190,24 @@ mod tests {
             .unwrap()
             .unwrap();
         assert!(!t.windows(8).any(|w| w == b"<caption"));
+    }
+
+    #[test]
+    fn a_huge_changed_block_fails_instead_of_exhausting_memory() {
+        let left: Vec<u8> = (0..2100)
+            .flat_map(|i| format!("left {i}\n").into_bytes())
+            .collect();
+        let right: Vec<u8> = (0..2100)
+            .flat_map(|i| format!("RIGHT {i}\n").into_bytes())
+            .collect();
+        let t = TextDiff::default().table(
+            &left,
+            &right,
+            &TableOptions::default(),
+            &RowLabels::default(),
+            &NoLineFilter,
+        );
+        assert!(matches!(t, Err(TextDiffError::TooLarge { .. })), "{t:?}");
     }
 
     #[test]

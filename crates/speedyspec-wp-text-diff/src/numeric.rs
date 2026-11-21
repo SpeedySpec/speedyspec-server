@@ -80,9 +80,9 @@ pub fn parse_numeric(s: &[u8]) -> Option<Numeric> {
     }
     if !is_double {
         if digits == 19 {
+            // strcmp() from the first significant digit to the end of the string: trailing whitespace counts.
             let first = end - digits;
-            let digit_text = &s[first..end];
-            let cmp = digit_text.cmp(b"9223372036854775808".as_slice());
+            let cmp = s[first..].cmp(b"9223372036854775808".as_slice());
             if !(cmp.is_lt() || (cmp.is_eq() && at(str_) == b'-')) {
                 return Some(Numeric::Float {
                     value: strtod(&s[str_..end]),

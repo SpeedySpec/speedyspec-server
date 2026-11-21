@@ -15,7 +15,15 @@ pub enum RenderError {
     InvalidUtf8,
     /// The "too different" ratio divided by zero (`DivisionByZeroError` in WordPress).
     DivisionByZero,
+    /// A changed block too large to pair line by line: WordPress runs out of memory here (see [`MAX_PAIRS`]).
+    TooLarge { orig: usize, fin: usize },
 }
+
+/// The most line pairs a changed block may have. Pairing scores every original line against every final line;
+/// WordPress keeps those scores in a PHP array of about 70 bytes per pair, so past about 4 million pairs it has
+/// run out of WordPress's 256 MB admin memory limit. Here the scores take 24 bytes each, but an unbounded block
+/// would still let one request take the whole process down, so it fails as WordPress would.
+pub const MAX_PAIRS: usize = 4_000_000;
 
 impl From<InvalidUtf8> for RenderError {
     fn from(_: InvalidUtf8) -> RenderError {
@@ -143,6 +151,12 @@ impl TableRenderer<'_> {
 
     /// `_changed()`: pairs the lines, word-diffs each pair, and writes the rows with blank padding.
     fn changed(&self, out: &mut Vec<u8>, orig: &[&[u8]], fin: &[&[u8]]) -> Result<(), RenderError> {
+        if orig.len().saturating_mul(fin.len()) > MAX_PAIRS {
+            return Err(RenderError::TooLarge {
+                orig: orig.len(),
+                fin: fin.len(),
+            });
+        }
         let (orig_matches, orig_rows, final_rows) = interleave(orig, fin);
 
         let mut orig_diffs: Vec<Option<Vec<u8>>> = vec![None; orig.len()];

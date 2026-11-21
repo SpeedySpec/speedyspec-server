@@ -32,4 +32,5 @@ pub use horde::HordeSequenceDiffer;
 pub use inline::{InlineDiff, InvalidUtf8, Segment, inline_diff};
 pub use numeric::{Numeric, parse_numeric, php_loose_eq};
 pub use speedyspec_wp_text_diff_contracts as contracts;
+pub use table::MAX_PAIRS;
 pub use words::{Words, is_word_char, split_words};

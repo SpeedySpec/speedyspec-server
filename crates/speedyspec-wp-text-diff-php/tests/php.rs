@@ -45,8 +45,8 @@ fn main() {
 
     // WordPress's functions around the facade; plugin.php is the native Hook API's.
     let load = format!(
-        "define('ABSPATH', {:?}); define('WPINC', 'wp-includes'); error_reporting(E_ALL & ~E_DEPRECATED);
-         foreach (array('load.php', 'functions.php', 'formatting.php', 'pomo/translations.php', 'l10n.php', 'pluggable.php') as $f) {{ require ABSPATH . WPINC . '/' . $f; }}",
+        "define('ABSPATH', {:?}); define('WPINC', 'wp-includes'); define('WP_DEBUG', true); error_reporting(E_ALL & ~E_DEPRECATED);
+         foreach (array('load.php', 'functions.php', 'formatting.php', 'kses.php', 'pomo/translations.php', 'l10n.php', 'pluggable.php') as $f) {{ require ABSPATH . WPINC . '/' . $f; }}",
         format!("{}/", release.display())
     );
     php.eval("speedyspec://test/load", &load)
@@ -99,6 +99,28 @@ fn main() {
     check(
         "renderer_arguments_use_wordpress_classes",
         !text(&r).contains(">a</td>") && text(&r).contains(">b</td>"),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/classes",
+        "return class_exists('Text_Diff', false) && class_exists('WP_Text_Diff_Renderer_Table', false);",
+    );
+    check(
+        "classes_load_as_in_wordpress",
+        matches!(r, Ok(HookValue::Bool(true))),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/unknown-arg",
+        "$seen = array(); set_error_handler(function ($no, $msg) use (&$seen) { $seen[] = $msg; return true; }, E_USER_DEPRECATED);
+         wp_text_diff('a', 'b', array('foo' => 1)); restore_error_handler();
+         return implode(' | ', $seen);",
+    );
+    check(
+        "unknown_arguments_keep_wordpress_deprecation",
+        text(&r).contains("foo"),
         &r,
     );
 

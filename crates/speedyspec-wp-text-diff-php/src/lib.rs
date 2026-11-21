@@ -110,5 +110,8 @@ fn native_wp_text_diff(
             "DivisionByZeroError",
             "Division by zero",
         )),
+        Err(e @ TextDiffError::TooLarge { .. }) => {
+            Err(NativeError::throw("Error", format!("wp_text_diff(): {e}")))
+        }
     }
 }

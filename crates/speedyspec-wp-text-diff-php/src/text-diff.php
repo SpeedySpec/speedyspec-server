@@ -5,10 +5,11 @@ namespace SpeedySpec\WpTextDiff
     /**
      * Whether the native table renders `$args` exactly as WordPress would.
      *
-     *  The native path covers string titles and every `show_split_view`. WordPress's renderer also copies any
-     *  argument named after one of its `_`-prefixed properties (`leading_context_lines`, `trailing_context_lines`,
-     *  `diff_threshold`), and prints titles of any type by string interpolation; those calls go to
-     *  {@link legacy_wp_text_diff()}, so their behaviour, warnings included, stays WordPress's.
+     *  The native path covers string titles and every `show_split_view`. WordPress's renderer also looks at every
+     *  other argument: one named after its `_`-prefixed properties (`leading_context_lines`, `trailing_context_lines`,
+     *  `diff_threshold`) changes the output, and any other triggers a deprecation notice; and it prints titles of any
+     *  type by string interpolation. Those calls go to {@link legacy_wp_text_diff()}, so their behaviour, warnings
+     *  included, stays WordPress's.
      *
      * @param array $args
      *   The arguments after `wp_parse_args()`.
@@ -20,9 +21,7 @@ namespace SpeedySpec\WpTextDiff
         return is_string($args['title'])
             && is_string($args['title_left'])
             && is_string($args['title_right'])
-            && !array_key_exists('leading_context_lines', $args)
-            && !array_key_exists('trailing_context_lines', $args)
-            && !array_key_exists('diff_threshold', $args);
+            && array() === array_diff_key($args, array_flip(array('title', 'title_left', 'title_right', 'show_split_view')));
     }
 
     /**
@@ -132,6 +131,12 @@ namespace
                 'show_split_view' => true,
             );
             $args = wp_parse_args($args, $defaults);
+
+            // As WordPress does: the classes are defined after the first call, for code that relies on it.
+            if (!class_exists('WP_Text_Diff_Renderer_Table', false))
+            {
+                require ABSPATH . WPINC . '/wp-diff.php';
+            }
 
             if (!\SpeedySpec\WpTextDiff\native_args($args))
             {
