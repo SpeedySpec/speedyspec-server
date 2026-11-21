@@ -196,8 +196,9 @@ impl I18nApi {
                 PhpValue::Str(domain.to_owned()),
             ]
         };
+        // A PHP callback's result arrives unconverted: read it to look at it, return it as it came.
         let pre = self.filter("pre_load_script_translations", PhpValue::Null, rest(&file))?;
-        if pre != PhpValue::Null {
+        if *pre.read() != PhpValue::Null {
             return Ok(pre);
         }
         let file = self.filter(
@@ -208,10 +209,11 @@ impl I18nApi {
                 PhpValue::Str(domain.to_owned()),
             ],
         )?;
-        if !php_truthy(&file) {
+        let read = file.read();
+        if !php_truthy(&read) {
             return Ok(PhpValue::Bool(false));
         }
-        let name = file_name(&file)?;
+        let name = file_name(&read)?;
         let path = Path::new(std::ffi::OsStr::from_bytes_lossless(&name));
         if !files.is_readable(path) {
             return Ok(PhpValue::Bool(false));
@@ -260,7 +262,7 @@ impl I18nApi {
                 handle,
                 domain,
             )?;
-            if php_truthy(&t) {
+            if php_truthy(&t.read()) {
                 return Ok(t);
             }
         }
@@ -301,7 +303,7 @@ impl I18nApi {
             relative.map(PhpValue::Str).unwrap_or(PhpValue::Bool(false)),
             vec![PhpValue::Str(src.to_owned()), PhpValue::Bool(is_module)],
         )?;
-        let relative = match &relative {
+        let relative = match relative.read().as_ref() {
             PhpValue::Str(s) => s.clone(),
             PhpValue::Bytes(b) => String::from_utf8_lossy(b).into_owned(),
             _ => return none(self),
@@ -310,7 +312,7 @@ impl I18nApi {
         if has_path {
             let t =
                 self.load_script_translations(files, at(&path, &md5_filename), handle, domain)?;
-            if php_truthy(&t) {
+            if php_truthy(&t.read()) {
                 return Ok(t);
             }
         }
@@ -324,7 +326,7 @@ impl I18nApi {
             handle,
             domain,
         )?;
-        if php_truthy(&t) {
+        if php_truthy(&t.read()) {
             return Ok(t);
         }
         none(self)

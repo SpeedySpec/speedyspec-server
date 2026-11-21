@@ -117,3 +117,79 @@ impl SwitchEffects for PhpSwitchEffects {
             .map_err(hook)
     }
 }
+
+/// A PHP value as PHP's string conversion gives it, for the scalar values these ports read.
+pub(crate) fn php_string(v: &Value) -> String {
+    match v {
+        Value::Str(s) => s.clone(),
+        Value::Bytes(b) => String::from_utf8_lossy(b).into_owned(),
+        Value::Int(n) => n.to_string(),
+        Value::Float(f) => f.to_string(),
+        Value::Bool(true) => "1".into(),
+        _ => String::new(),
+    }
+}
+
+/// What `_load_script_textdomain_from_src()` asks WordPress, in a PHP request.
+pub(crate) struct PhpScriptSources;
+
+impl speedyspec_wp_i18n_contracts::ScriptSources for PhpScriptSources {
+    fn determine_locale(&self) -> Result<String, PortError> {
+        call("determine_locale", &[]).map(|v| php_string(&v))
+    }
+
+    fn registry_path(&self, domain: &str, locale: &str) -> Result<Option<String>, PortError> {
+        let v = call(
+            "SpeedySpec\\WpI18n\\registry_get",
+            &[Value::Str(domain.to_owned()), Value::Str(locale.to_owned())],
+        )?;
+        Ok(match v {
+            Value::Bool(false) | Value::Null => None,
+            other => Some(php_string(&other)),
+        })
+    }
+
+    fn parse_url(
+        &self,
+        url: &str,
+    ) -> Result<Option<speedyspec_wp_i18n_contracts::UrlParts>, PortError> {
+        let v = call("wp_parse_url", &[Value::Str(url.to_owned())])?;
+        let Value::Array(items) = v else {
+            return Ok(None);
+        };
+        let part = |name: &str| {
+            items.iter().find_map(|(k, v)| match (k, v) {
+                (speedyspec_hooks::Key::Str(k), Value::Null) if k == name => None,
+                (speedyspec_hooks::Key::Str(k), v) if k == name => Some(php_string(v)),
+                _ => None,
+            })
+        };
+        Ok(Some(speedyspec_wp_i18n_contracts::UrlParts {
+            scheme: part("scheme"),
+            host: part("host"),
+            path: part("path"),
+        }))
+    }
+
+    fn content_url(&self) -> Result<String, PortError> {
+        call("content_url", &[]).map(|v| php_string(&v))
+    }
+
+    fn plugins_url(&self) -> Result<String, PortError> {
+        call("plugins_url", &[]).map(|v| php_string(&v))
+    }
+
+    fn site_url(&self) -> Result<String, PortError> {
+        call("site_url", &[]).map(|v| php_string(&v))
+    }
+
+    fn theme_root(&self) -> Result<String, PortError> {
+        call("get_theme_root", &[]).map(|v| php_string(&v))
+    }
+
+    fn lang_dir(&self) -> String {
+        call("constant", &[Value::Str("WP_LANG_DIR".into())])
+            .map(|v| php_string(&v))
+            .unwrap_or_default()
+    }
+}

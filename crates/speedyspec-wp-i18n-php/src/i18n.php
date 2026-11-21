@@ -203,6 +203,21 @@ namespace SpeedySpec\WpI18n
     }
 
     /**
+     * `$wp_textdomain_registry->get( $domain, $locale )`, for the native script translations.
+     *
+     * @param string $domain
+     *     The text domain.
+     * @param string $locale
+     *     The locale.
+     * @return string|false
+     *     The languages directory for the domain, or false.
+     */
+    function registry_get( $domain, $locale ) {
+        global $wp_textdomain_registry;
+        return $wp_textdomain_registry->get( $domain, $locale );
+    }
+
+    /**
      * Runs a `.l10n.php` file the Rust reader cannot parse, as WP_Translation_File_PHP::parse_file() does.
      *
      * @return array|string

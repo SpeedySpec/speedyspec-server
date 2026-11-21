@@ -57,6 +57,7 @@ impl NativeArea for I18nArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
         let mut f = hot::functions();
         f.extend(internal::functions());
+        f.extend(internal::wordpress_functions());
         f
     }
 

@@ -185,6 +185,23 @@ fn main() {
     );
 
     let r = php.eval(
+        "speedyspec://test/script",
+        "$f = sys_get_temp_dir() . '/speedyspec-script-' . getmypid() . '.json';
+         file_put_contents($f, '{\"v\":1}');
+         $first = load_script_translations($f, 'h', 'default');
+         file_put_contents($f, '{\"v\":22}');
+         $second = load_script_translations($f, 'h', 'default');
+         unlink($f);
+         return json_encode(array((new ReflectionFunction('load_script_translations'))->isInternal(),
+             (new ReflectionFunction('_load_script_textdomain_from_src'))->isInternal(), $first, $second));",
+    );
+    check(
+        "script_functions_are_native",
+        text(&r) == r#"[true,true,"{\"v\":1}","{\"v\":22}"]"#,
+        &r,
+    );
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

@@ -11,7 +11,7 @@ use speedyspec_wp_i18n::{
     TranslationController, bytes_value,
 };
 
-use crate::effects::{PhpSwitchEffects, port_error};
+use crate::effects::{PhpScriptSources, PhpSwitchEffects, native_error, php_string, port_error};
 use crate::state::{Shared, shared};
 
 const NATIVE: &str = "SpeedySpec\\WpI18n\\Native\\";
@@ -370,6 +370,47 @@ fn switcher_stack(a: &[Value]) -> R {
             })
             .collect(),
     ))
+}
+
+/// `load_script_translations( $file, $handle, $domain )`.
+fn load_script_translations(a: &[Value]) -> R {
+    let s = state()?;
+    s.api
+        .load_script_translations(
+            &s.script_files,
+            arg(a, 0),
+            &php_string(&arg(a, 1)),
+            &php_string(&arg(a, 2)),
+        )
+        .map_err(native_error)
+}
+
+/// `_load_script_textdomain_from_src( string $handle, string $src, string $domain, string $path, bool $is_module )`.
+fn load_script_textdomain_from_src(a: &[Value]) -> R {
+    let s = state()?;
+    let is_module = speedyspec_wp_i18n_contracts::php_truthy(&arg(a, 4));
+    s.api
+        .load_script_textdomain_from_src(
+            &PhpScriptSources,
+            &s.script_files,
+            &php_string(&arg(a, 0)),
+            &php_string(&arg(a, 1)),
+            &php_string(&arg(a, 2)),
+            &php_string(&arg(a, 3)),
+            is_module,
+        )
+        .map_err(native_error)
+}
+
+/// The natives declared under WordPress's own names.
+pub(crate) fn wordpress_functions() -> Vec<FunctionBuilder<'static>> {
+    vec![
+        native::function("load_script_translations", load_script_translations),
+        native::function(
+            "_load_script_textdomain_from_src",
+            load_script_textdomain_from_src,
+        ),
+    ]
 }
 
 pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {

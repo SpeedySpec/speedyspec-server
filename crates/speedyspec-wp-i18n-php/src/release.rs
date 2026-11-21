@@ -12,6 +12,8 @@ pub const PORTED_FUNCTIONS: &[&str] = &[
     "_x",
     "_n",
     "_nx",
+    "_load_script_textdomain_from_src",
+    "load_script_translations",
 ];
 
 const STUBBED: &[&str] = &[

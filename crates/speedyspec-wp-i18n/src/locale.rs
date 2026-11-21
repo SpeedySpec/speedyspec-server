@@ -110,7 +110,7 @@ pub fn locale_strings(
 
 /// A value as PHP would turn it into a string, for the cases translations produce (a filter may return anything).
 fn bytes(value: &PhpValue) -> Vec<u8> {
-    match value {
+    match value.read().as_ref() {
         PhpValue::Str(s) => s.as_bytes().to_vec(),
         PhpValue::Bytes(b) => b.clone(),
         PhpValue::Int(n) => n.to_string().into_bytes(),
