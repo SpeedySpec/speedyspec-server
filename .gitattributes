@@ -1,0 +1,2 @@
+# WordPress test data must keep its exact bytes (CR and CRLF line endings are part of what is tested).
+tests/php/wordpress/data/** -text

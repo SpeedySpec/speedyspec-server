@@ -1,0 +1,10 @@
+[package]
+name = "speedyspec-wp-text-memory"
+version = "0.1.0"
+description = "Fixed and in-memory adapters for the text ports, for tests and for Rust callers with no PHP."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
