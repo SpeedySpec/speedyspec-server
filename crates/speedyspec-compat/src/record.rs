@@ -192,10 +192,10 @@ fn setup_for(area: &str, root: &Path, multisite: bool) -> Result<Setup, String> 
             "wp-includes/class-wp-object-cache.php",
             "wp-includes/cache.php",
         ],
-        "options" | "formatting" => &[],
+        "options" | "formatting" | "shortcode" => &[],
         other => return Err(format!("the recorder does not know the area {other}")),
     };
-    if area == "options" || area == "formatting" {
+    if matches!(area, "options" | "formatting" | "shortcode") {
         // `setup.php` loads WordPress's files itself, for either side.
         let code = format!(
             "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', false); \
