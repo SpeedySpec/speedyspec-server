@@ -239,8 +239,9 @@ crate at its new version (`<crate>-v<version>`, a plain tag) so release-please c
 outside the crates (`php-version`, `scripts/build-php.sh`) release nothing by themselves: commit a PHP update together
 with a change to the runtime crate (its changelog is a good place to say which PHP it embeds).
 
-Merging the release pull request builds each bumped component for every target at the merge commit and runs its tests
-there; only when every build passes are the tags and the GitHub releases created. The binaries are then signed and
+Merging the release pull request builds each bumped component for every target at the merge commit and runs the
+tests of the crates it is built from there (`scripts/release-test-packages.sh`; CI tests the whole workspace, so a
+failing test in a crate neither component contains holds no release back); only when every build passes are the tags and the GitHub releases created. The binaries are then signed and
 uploaded, and both indexes are rebuilt from the GitHub releases and deployed to Pages. A failed build publishes
 nothing, and the next push to `main` tries again.
 
@@ -259,18 +260,15 @@ First-time setup, once:
 3. Set *Settings → Pages → Source* to *GitHub Actions*, with the custom domain `releases.speedyspec.com` and
    *Enforce HTTPS* on, and turn on *Settings → Actions → General → Allow GitHub
    Actions to create and approve pull requests* (release-please opens its pull request with the workflow's token).
-4. The server's first release is 0.1.0, release-please's first version for a Rust crate. The runtime's crate is
-   already at 1.0.0, so its first release is asked for once: a commit that changes only `crates/speedyspec-php-runtime`
-   with the footer `Release-As: 1.0.0` (a footer applies to every package the commit touches, so keep it to that one
-   crate, and merge it with its message intact).
 
 A crate that neither the server nor the runtime is built from (today `speedyspec-cqrs-php`) is not a release-please
 package: changing it changes no binary. A test keeps that so, because a release pull request with only library
 crates would never be marked released, and release-please would stop opening new ones.
 
 Release pull requests are opened with the workflow's own token, so CI does not run on them; it runs on the merge.
-The release builds the release commit (the merged release pull request) and runs every test there first. If that
-commit cannot build, nothing is published and release-please waits for it: revert the release pull request's
+The release builds the release commit (the merged release pull request) and runs its tests there first, with the
+release scripts of the commit that started the run: a later push retries the same commit with any fixed scripts. If
+that commit cannot build, nothing is published and release-please waits for it: revert the release pull request's
 commit, remove the `autorelease: pending` label from that pull request, and release-please opens a new one.
 
 ## Upgrading the server, and the trial

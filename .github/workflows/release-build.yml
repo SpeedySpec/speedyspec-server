@@ -78,16 +78,29 @@ jobs:
           SPEEDYSPEC_ALLOW_HOST_INSTALL: "1"
           GITHUB_TOKEN: ${{ github.token }}
         run: ${{ matrix.run }} scripts/build-php.sh
-      - name: Test the server
+      # The release scripts as of the commit that ran this workflow, not `ref`: a release whose build failed is built
+      # again at the same commit by a later push, and this lets that push carry fixes to the scripts too.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: .release-tools
+          sparse-checkout: scripts
+      - name: Check the server has no PHP
         if: inputs.component == 'speedyspec-server'
+        run: ${{ matrix.run }} scripts/check-no-php-in-server.sh
+      # Only the crates the component is built from: a failing test in a crate it does not contain must not hold its
+      # release back. CI tests the whole workspace.
+      - name: Test
+        env:
+          COMPONENT: ${{ inputs.component }}
         run: |
-          ${{ matrix.run }} scripts/check-no-php-in-server.sh
-          ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks
-      - name: Test the runtime
-        if: inputs.component == 'speedyspec-php-runtime'
-        run: |
-          ${{ matrix.run }} cargo test -p speedyspec-php --test extensions
-          ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks
+          ${{ matrix.run }} cargo metadata --format-version 1 --no-deps > "$RUNNER_TEMP/metadata.json"
+          packages="$(.release-tools/scripts/release-test-packages.sh "$COMPONENT" "$RUNNER_TEMP/metadata.json")"
+          args=()
+          for package in $packages; do args+=(-p "$package"); done
+          if grep -qx speedyspec-server <<<"$packages"; then args+=(--features speedyspec-server/test-hooks); fi
+          echo "testing: $packages" | tr '\n' ' '; echo
+          ${{ matrix.run }} cargo test "${args[@]}"
       - name: Build the release binary
         run: ${{ matrix.run }} cargo build --release --locked -p "$COMPONENT" ${{ matrix.target-flag }}
         env:
