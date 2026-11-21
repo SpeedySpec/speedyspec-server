@@ -349,3 +349,103 @@ fn empty_context_still_uses_the_context_filters() {
         Some(s("<arg 1>"))
     );
 }
+
+#[test]
+fn locale_strings_translate_the_default_domain_through_the_filters() {
+    use speedyspec_wp_i18n_contracts::LocaleStrings;
+    let (api, hooks) = api();
+    assert!(
+        api.controller()
+            .borrow_mut()
+            .load_file(&data("simple.mo"), "default", None)
+    );
+    let log = Rc::new(RefCell::new(Vec::new()));
+    hooks
+        .add_filter(
+            &HookName::new(s("gettext")),
+            recorder(log.clone(), "g"),
+            &HookValue::Int(10),
+            3,
+        )
+        .unwrap();
+    assert_eq!(
+        LocaleStrings::translate(&api, "baba").unwrap(),
+        s("dyado+g")
+    );
+    assert_eq!(
+        LocaleStrings::translate_with_context(&api, "ltr", "text direction").unwrap(),
+        s("ltr")
+    );
+    assert_eq!(
+        log.borrow()[0],
+        ("g".into(), vec![s("dyado"), s("baba"), s("default")])
+    );
+}
+
+#[test]
+fn filter_unhooked_returns_the_value_and_counts_the_run() {
+    let (api, hooks) = api();
+    let v = api
+        .filter("load_script_translations", s("json"), vec![s("file")])
+        .unwrap();
+    assert_eq!(v, s("json"));
+    assert_eq!(
+        hooks
+            .did_filter(&HookName::new(s("load_script_translations")))
+            .unwrap(),
+        1
+    );
+}
+
+#[test]
+fn filter_hooked_runs_callbacks_with_args() {
+    let (api, hooks) = api();
+    let log = Rc::new(RefCell::new(Vec::new()));
+    hooks
+        .add_filter(
+            &HookName::new(s("pre_load_script_translations")),
+            recorder(log.clone(), "p"),
+            &HookValue::Int(10),
+            4,
+        )
+        .unwrap();
+    let v = api
+        .filter(
+            "pre_load_script_translations",
+            s("x"),
+            vec![s("file"), s("handle"), s("default")],
+        )
+        .unwrap();
+    assert_eq!(v, s("x+p"));
+    assert_eq!(
+        log.borrow()[0],
+        (
+            "p".into(),
+            vec![s("x"), s("file"), s("handle"), s("default")]
+        )
+    );
+}
+
+#[test]
+fn action_increments_did_action_and_runs_callbacks() {
+    let (api, hooks) = api();
+    api.action("change_locale", vec![s("de_DE")]).unwrap();
+    let log = Rc::new(RefCell::new(Vec::new()));
+    // add_action() is add_filter(), as in WordPress.
+    hooks
+        .add_filter(
+            &HookName::new(s("change_locale")),
+            recorder(log.clone(), "a"),
+            &HookValue::Int(10),
+            1,
+        )
+        .unwrap();
+    api.action("change_locale", vec![s("es_ES")]).unwrap();
+    assert_eq!(
+        hooks
+            .did_action(&HookName::new(s("change_locale")))
+            .unwrap(),
+        2
+    );
+    assert_eq!(log.borrow()[0], ("a".into(), vec![s("es_ES")]));
+}

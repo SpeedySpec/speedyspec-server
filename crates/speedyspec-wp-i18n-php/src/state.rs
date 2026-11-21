@@ -6,7 +6,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use speedyspec_wp_hooks::HookApi;
-use speedyspec_wp_i18n::{FileHandle, I18nApi, TranslationController, TranslationFile};
+use speedyspec_wp_i18n::{
+    FileHandle, I18nApi, LocaleSwitcher, ScriptFiles, TranslationController, TranslationFile,
+};
 use speedyspec_wp_i18n_contracts::TranslationFileCache;
 use speedyspec_wp_i18n_files::StdFileProbe;
 use speedyspec_wp_i18n_memory::MemoryTranslationFileCache;
@@ -24,6 +26,10 @@ pub(crate) struct Shared {
     pub files: RefCell<Vec<Rc<FileHandle>>>,
     /// `spl_object_id` of each `WP_Translations` object, with its domain and controller id.
     pub translations: RefCell<HashMap<u32, (String, i64), foldhash::fast::RandomState>>,
+    /// Script translation JSON files, read once per worker.
+    pub script_files: ScriptFiles,
+    /// Each `WP_Locale_Switcher`'s stack, by `spl_object_id` (registered by its constructor).
+    pub switchers: RefCell<HashMap<u32, Rc<LocaleSwitcher>, foldhash::fast::RandomState>>,
     /// Calls the hot path served, and calls it left to WordPress's function.
     pub fast: Cell<u64>,
     pub slow: Cell<u64>,
@@ -54,11 +60,16 @@ impl Shared {
         Shared {
             api,
             reader,
-            probe,
+            probe: probe.clone(),
             cache,
             controllers: RefCell::new(Vec::new()),
             files: RefCell::new(Vec::new()),
             translations: RefCell::new(HashMap::default()),
+            switchers: RefCell::new(HashMap::default()),
+            script_files: ScriptFiles::new(
+                probe.clone(),
+                Rc::new(MemoryTranslationFileCache::<Vec<u8>>::default()),
+            ),
             generation: Cell::new(0),
             fast: Cell::new(0),
             slow: Cell::new(0),
@@ -74,6 +85,7 @@ impl Shared {
         self.controllers.borrow_mut().clear();
         self.files.borrow_mut().clear();
         self.translations.borrow_mut().clear();
+        self.switchers.borrow_mut().clear();
         self.generation.set(self.generation.get() + 1);
     }
 

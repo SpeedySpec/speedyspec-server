@@ -5504,7 +5504,9 @@ dependencies = [
  "foldhash",
  "hashbrown",
  "indexmap",
+ "md-5",
  "serde_json",
+ "speedyspec-hooks",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-i18n-contracts",
@@ -5515,6 +5517,9 @@ dependencies = [
 [[package]]
 name = "speedyspec-wp-i18n-contracts"
 version = "0.1.0"
+dependencies = [
+ "speedyspec-hooks",
+]
 
 [[package]]
 name = "speedyspec-wp-i18n-files"

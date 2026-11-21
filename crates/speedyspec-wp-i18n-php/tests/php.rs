@@ -133,6 +133,121 @@ fn main() {
     );
 
     let r = php.eval(
+        "speedyspec://test/wp-locale",
+        &format!(
+            "load_textdomain('default', {:?}, 'de_DE');
+             $served = SpeedySpec\\WpI18n\\Native\\locale_strings(true);
+             $cb = function ($t) {{ return $t; }};
+             add_filter('gettext', $cb);
+             $hooked = SpeedySpec\\WpI18n\\Native\\locale_strings(true);
+             $l = new WP_Locale();
+             remove_filter('gettext', $cb);
+             unload_textdomain('default');
+             $plugin = new class extends WP_Locale {{ public $extra; public function init() {{ parent::init(); $this->extra = 'x'; }} }};
+             return json_encode(array((new ReflectionClass('WP_Locale'))->getFileName(), count($served), $served[0], $served[64],
+                 $hooked, $l->weekday[0], $plugin->extra, $plugin->month['01']), JSON_UNESCAPED_SLASHES);",
+            root.join("crates/speedyspec-wp-i18n-files/tests/data/rtl.mo").display().to_string()
+        ),
+    );
+    check(
+        "wp_locale_is_native",
+        text(&r)
+            == r#"["speedyspec://wp-i18n",65,"\u05d9\u05d5\u05dd \u05e8\u05d0\u05e9\u05d5\u05df","rtl",null,"\u05d9\u05d5\u05dd \u05e8\u05d0\u05e9\u05d5\u05df","x","January"]"#,
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/switcher",
+        "global $wp_locale_switcher;
+         $saved = $wp_locale_switcher;
+         $wp_locale_switcher = new WP_Locale_Switcher();
+         $wp_locale_switcher->init();
+         $file = (new ReflectionClass('WP_Locale_Switcher'))->getFileName();
+         $once = function () use (&$once) { remove_action('change_locale', $once, 5); switch_to_locale('de_DE'); };
+         add_action('change_locale', $once, 5);
+         $nested = array(switch_to_locale('es_ES'), $wp_locale_switcher->get_switched_locale(), restore_previous_locale(), restore_current_locale());
+         $boom = function () { throw new DomainException('boom'); };
+         add_action('change_locale', $boom);
+         try { switch_to_locale('es_ES'); $thrown = 'none'; } catch (DomainException $e) { $thrown = get_class($e) . ':' . $e->getMessage(); }
+         remove_action('change_locale', $boom);
+         $after = array(is_locale_switched(), restore_current_locale(), is_locale_switched());
+         remove_filter('locale', array($wp_locale_switcher, 'filter_locale'));
+         remove_filter('determine_locale', array($wp_locale_switcher, 'filter_locale'));
+         $wp_locale_switcher = $saved;
+         unload_textdomain('default', true);
+         return json_encode(array($file, $nested, $thrown, $after), JSON_UNESCAPED_SLASHES);",
+    );
+    check(
+        "switcher_is_native",
+        text(&r)
+            == r#"["speedyspec://wp-i18n",[true,"de_DE","es_ES","en_US"],"DomainException:boom",[true,"en_US",false]]"#,
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/script",
+        "$f = sys_get_temp_dir() . '/speedyspec-script-' . getmypid() . '.json';
+         file_put_contents($f, '{\"v\":1}');
+         $first = load_script_translations($f, 'h', 'default');
+         file_put_contents($f, '{\"v\":22}');
+         $second = load_script_translations($f, 'h', 'default');
+         unlink($f);
+         return json_encode(array((new ReflectionFunction('load_script_translations'))->isInternal(),
+             (new ReflectionFunction('_load_script_textdomain_from_src'))->isInternal(), $first, $second));",
+    );
+    check(
+        "script_functions_are_native",
+        text(&r) == r#"[true,true,"{\"v\":1}","{\"v\":22}"]"#,
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/schema",
+        "$o = new stdClass();
+         $seen = array();
+         $cb = function ($t, $text, $context, $domain) use (&$seen) { $seen[] = \"$text|$context|$domain\"; return strtoupper($t); };
+         add_filter('gettext_with_context', $cb, 10, 4);
+         $out = translate_settings_using_i18n_schema(
+             (object) array('title' => 'block title', 'keywords' => array('kw'), '*' => 'star'),
+             array('title' => 'Notice', 'keywords' => array('a', 'b'), 'other' => $o, 7 => 'seven'),
+             'dom'
+         );
+         remove_filter('gettext_with_context', $cb, 10);
+         return json_encode(array((new ReflectionFunction('translate_settings_using_i18n_schema'))->isInternal(),
+             $out['title'], $out['keywords'], $out['other'] === $o, $out[7], $seen));",
+    );
+    check(
+        "schema_translation_is_native",
+        text(&r)
+            == r#"[true,"NOTICE",["A","B"],true,"SEVEN",["Notice|block title|dom","a|kw|dom","b|kw|dom","seven|star|dom"]]"#,
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/schema-throws",
+        "$cb = function () { throw new LengthException('no'); };
+         add_filter('gettext_with_context', $cb);
+         try { translate_settings_using_i18n_schema((object) array('a' => 'ctx'), array('a' => 'x'), 'dom'); $out = 'none'; }
+         catch (LengthException $e) { $out = get_class($e) . ':' . $e->getMessage(); }
+         remove_filter('gettext_with_context', $cb);
+         return $out;",
+    );
+    check(
+        "schema_translation_rethrows",
+        text(&r) == "LengthException:no",
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/schema-references",
+        "$x = 'a'; $y = 'p';
+         $r = translate_settings_using_i18n_schema((object) array('zz' => 'c', 'l' => array('c')), array('k' => &$x, 'l' => array(&$y)), 'd');
+         $r['k'] = 'b'; $r['l'][0] = 'q';
+         return $x . $y;",
+    );
+    check("schema_translation_copies_references", text(&r) == "ap", &r);
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

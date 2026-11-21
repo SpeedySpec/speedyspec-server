@@ -1,6 +1,6 @@
 //! A WordPress release prepared for the native translation functions, on top of the UTF-8 port's preparation:
-//! `l10n.php` without the six functions declared natively, and the translation controller, file and
-//! `WP_Translations` classes replaced by stubs (the facade declares them). `wp-settings.php` still `require`s them.
+//! `l10n.php` without the functions declared natively, and the translation controller, file, `WP_Translations`,
+//! `WP_Locale` and `WP_Locale_Switcher` classes replaced by stubs (the facade declares them). `wp-settings.php` still `require`s them.
 
 use std::path::{Path, PathBuf};
 
@@ -12,6 +12,9 @@ pub const PORTED_FUNCTIONS: &[&str] = &[
     "_x",
     "_n",
     "_nx",
+    "_load_script_textdomain_from_src",
+    "load_script_translations",
+    "translate_settings_using_i18n_schema",
 ];
 
 const STUBBED: &[&str] = &[
@@ -21,6 +24,9 @@ const STUBBED: &[&str] = &[
     "class-wp-translation-file-mo.php",
     "class-wp-translation-file-php.php",
 ];
+
+/// Files in `wp-includes/` itself that the facade declares.
+const STUBBED_INCLUDES: &[&str] = &["class-wp-locale.php", "class-wp-locale-switcher.php"];
 
 const STUB: &str = "<?php\n// Provided by speedyspec-wp-i18n-php.\n";
 
@@ -80,6 +86,9 @@ pub fn prepare_release(release: &Path, out: &Path) -> Result<PathBuf, String> {
     let l10n = includes.join("l10n.php");
     let stripped = strip_ported(&std::fs::read_to_string(&l10n).map_err(|e| err(&l10n, e))?)?;
     write_if_changed(&out_includes.join("l10n.php"), &stripped)?;
+    for name in STUBBED_INCLUDES {
+        write_if_changed(&out_includes.join(name), STUB)?;
+    }
     let dir = out_includes.join("l10n");
     if dir
         .symlink_metadata()

@@ -9,8 +9,9 @@ declare(strict_types=1);
  *
  *  The copied tests are WordPress 7.1.5's `tests/phpunit/tests/l10n/wpTranslationController.php` and
  *  `wpTranslations.php`, from wordpress-develop at tag 7.1.5, named after their classes and with static data
- *  providers for the pinned PHPUnit 11. The other l10n tests need users, options or themes from a database install
- *  (loadTextdomain.php creates a user before its first test) and are not run here.
+ *  providers for the pinned PHPUnit 11; phase 3 added the script translation, schema, list separator, word count,
+ *  WP_Locale and locale switcher tests. Users, the admin screen, themes and option writes are in-memory stand-ins
+ *  (includes/i18n-doubles.php).
  */
 
 require __DIR__ . '/bootstrap.php';
@@ -32,21 +33,10 @@ function _doing_it_wrong($function_name, $message, $version): void
     do_action('doing_it_wrong_run', $function_name, $message, $version);
 }
 
-function get_template_directory(): string
-{
-    return DIR_TESTDATA . '/themedir1/default';
-}
-
-function get_stylesheet_directory(): string
-{
-    return get_template_directory();
-}
+require __DIR__ . '/includes/i18n-doubles.php';
 
 require dirname(__DIR__, 2) . '/compat/i18n/load.php';
 require_once SPEEDYSPEC_I18N_ROOT . '/wp-includes/formatting.php';
-require_once SPEEDYSPEC_I18N_ROOT . '/wp-includes/class-wp-locale.php';
-require_once SPEEDYSPEC_I18N_ROOT . '/wp-includes/class-wp-locale-switcher.php';
-$GLOBALS['wp_locale']          = new WP_Locale();
-$GLOBALS['wp_locale_switcher'] = new WP_Locale_Switcher();
-$GLOBALS['wp_locale_switcher']->init();
 do_action('after_setup_theme');
+// WordPress's tests run after `init`, so enqueueing scripts raises no incorrect-usage notice.
+do_action('init');
