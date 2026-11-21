@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-container-php"
-version = "0.1.0"
+version = "0.1.1"
 description = "The service container from PHP: SpeedySpec\\Container\\Container, PHP bindings as request-long overrides of Rust ports, and PHP autowiring."
 edition.workspace = true
 rust-version.workspace = true
