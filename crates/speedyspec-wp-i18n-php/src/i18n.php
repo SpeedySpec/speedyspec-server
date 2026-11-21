@@ -28,6 +28,34 @@ namespace SpeedySpec\WpI18n\Legacy
         return translate( $text, $domain );
     }
 
+    // The two filters of each function, for a translation the native function found: the same calls, in the same
+    // order, with the same arguments as WordPress's. Each takes its function's own parameters; the translation is
+    // handed over by take_translation().
+
+    function filter_gettext( $text, $domain = 'default' ) {
+        $translation = \SpeedySpec\WpI18n\Native\take_translation();
+        $translation = apply_filters( 'gettext', $translation, $text, $domain );
+        return apply_filters( "gettext_{$domain}", $translation, $text, $domain );
+    }
+
+    function filter_gettext_with_context( $text, $context, $domain = 'default' ) {
+        $translation = \SpeedySpec\WpI18n\Native\take_translation();
+        $translation = apply_filters( 'gettext_with_context', $translation, $text, $context, $domain );
+        return apply_filters( "gettext_with_context_{$domain}", $translation, $text, $context, $domain );
+    }
+
+    function filter_ngettext( $single, $plural, $number, $domain = 'default' ) {
+        $translation = \SpeedySpec\WpI18n\Native\take_translation();
+        $translation = apply_filters( 'ngettext', $translation, $single, $plural, $number, $domain );
+        return apply_filters( "ngettext_{$domain}", $translation, $single, $plural, $number, $domain );
+    }
+
+    function filter_ngettext_with_context( $single, $plural, $number, $context, $domain = 'default' ) {
+        $translation = \SpeedySpec\WpI18n\Native\take_translation();
+        $translation = apply_filters( 'ngettext_with_context', $translation, $single, $plural, $number, $context, $domain );
+        return apply_filters( "ngettext_with_context_{$domain}", $translation, $single, $plural, $number, $context, $domain );
+    }
+
     function _x( $text, $context, $domain = 'default' ) {
         return translate_with_gettext_context( $text, $context, $domain );
     }

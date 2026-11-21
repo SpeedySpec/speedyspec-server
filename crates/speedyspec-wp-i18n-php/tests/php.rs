@@ -37,8 +37,8 @@ fn main() {
     let prepared = prepare_release(&release, &release.with_file_name("wordpress-i18n-port"))
         .expect("release prepared");
     let container = Rc::new(Container::new());
-    let hooks = WpHooksArea::new(container, Rc::new(MemoryHookStore::new()));
-    let i18n = I18nArea::new(hooks.api());
+    let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
+    let i18n = I18nArea::new(container, hooks.api());
     let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(Utf8Area), Rc::new(i18n)];
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),

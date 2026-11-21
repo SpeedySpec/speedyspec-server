@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName, HookValue};
+use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName, HookStore, HookValue};
 
 use crate::controller::TranslationController;
 use crate::plural::PluralError;
@@ -76,7 +76,9 @@ pub struct I18nApi {
     ngettext: HookName,
     ngettext_with_context: HookName,
     all: HookName,
-    names: RefCell<HashMap<String, Rc<DomainFilterNames>>>,
+    /// The hook store resolved once for this request, when the host resolves stores per call.
+    request_store: RefCell<Option<Rc<dyn HookStore>>>,
+    names: RefCell<HashMap<String, Rc<DomainFilterNames>, foldhash::fast::RandomState>>,
 }
 
 impl I18nApi {
@@ -89,7 +91,8 @@ impl I18nApi {
             ngettext: name("ngettext"),
             ngettext_with_context: name("ngettext_with_context"),
             all: name("all"),
-            names: RefCell::new(HashMap::new()),
+            request_store: RefCell::new(None),
+            names: RefCell::new(HashMap::default()),
         }
     }
 
@@ -147,14 +150,112 @@ impl I18nApi {
         }
     }
 
+    /// Uses `store` for the checks and counts of [`I18nApi::filters_empty`] and the `*_if_unhooked` calls until
+    /// set again (a host whose Hook API resolves its store on every access sets it once per request).
+    pub fn set_request_store(&self, store: Option<Rc<dyn HookStore>>) {
+        *self.request_store.borrow_mut() = store;
+    }
+
+    /// Whether a request store is set (for hosts checking their wiring).
+    pub fn has_request_store(&self) -> bool {
+        self.request_store.borrow().is_some()
+    }
+
+    fn store(&self) -> Rc<dyn HookStore> {
+        match &*self.request_store.borrow() {
+            Some(s) => s.clone(),
+            None => self.hooks.store().clone(),
+        }
+    }
+
+    /// Whether `names` have no callback (nor an `all` hook) in `store`.
+    fn unhooked(&self, store: &dyn HookStore, first: &HookName, second: &HookName) -> bool {
+        let has = |n: &HookName| n.key().map(|k| store.has_hook(k)).unwrap_or(true);
+        !has(&self.all) && !has(first) && !has(second)
+    }
+
+    /// Counts both filters as run, as `skip_if_empty` does for a filter with nothing hooked.
+    fn count(store: &dyn HookStore, first: &HookName, second: &HookName) {
+        for n in [first, second] {
+            if let Ok(k) = n.key() {
+                store.increment_did(Count::Filters, k);
+            }
+        }
+    }
+
     /// Whether neither filter of a call would run a callback (nor an `all` hook), without counting anything. A
     /// native function serves the call itself only then; otherwise it leaves the call to WordPress's PHP.
     pub fn filters_empty(&self, domain: &str, context: bool, plural: bool) -> bool {
         let (first, names) = self.pair(domain, context, plural);
         let second = Self::second(&names, context, plural);
-        let store = self.hooks.store();
-        let has = |n: &HookName| n.key().map(|k| store.has_hook(k)).unwrap_or(true);
-        !has(&self.all) && !has(first) && !has(second)
+        self.unhooked(&*self.store(), first, second)
+    }
+
+    /// For a translation found elsewhere (a plugin's `Translations` object): when neither filter of the call has a
+    /// callback, counts both as WordPress counts them and answers true; false (nothing counted) otherwise.
+    pub fn count_if_unhooked(&self, domain: &str, context: bool, plural: bool) -> bool {
+        let (first, names) = self.pair(domain, context, plural);
+        let second = Self::second(&names, context, plural);
+        let store = self.store();
+        if !self.unhooked(&*store, first, second) {
+            return false;
+        }
+        Self::count(&*store, first, second);
+        true
+    }
+
+    /// `translate()` or `translate_with_gettext_context()` when nothing is hooked to its filters: served and counted
+    /// as WordPress would; `None` (nothing counted) when a filter has a callback.
+    pub fn translate_if_unhooked<R>(
+        &self,
+        text: &[u8],
+        context: &[u8],
+        domain: &str,
+        out: impl FnOnce(Translated<'_>) -> R,
+    ) -> Option<R> {
+        let with_context = !context.is_empty();
+        let (first, names) = self.pair(domain, with_context, false);
+        let second = Self::second(&names, with_context, false);
+        let store = self.store();
+        if !self.unhooked(&*store, first, second) {
+            return None;
+        }
+        let mut controller = self.controller.borrow_mut();
+        let found = controller.translate(text, context, domain, None);
+        Self::count(&*store, first, second);
+        Some(match found {
+            Some(t) => out(Translated::Bytes(t)),
+            None => out(Translated::Arg(0)),
+        })
+    }
+
+    /// `_n()` or `_nx()` when nothing is hooked to its filters; `None` (nothing counted) when a filter has a
+    /// callback or the plural rule throws.
+    pub fn translate_plural_if_unhooked<R>(
+        &self,
+        single: &[u8],
+        plural: &[u8],
+        number: i64,
+        context: &[u8],
+        domain: &str,
+        out: impl FnOnce(Translated<'_>) -> R,
+    ) -> Option<R> {
+        let with_context = !context.is_empty();
+        let (first, names) = self.pair(domain, with_context, true);
+        let second = Self::second(&names, with_context, true);
+        let store = self.store();
+        if !self.unhooked(&*store, first, second) {
+            return None;
+        }
+        let mut controller = self.controller.borrow_mut();
+        let found = controller
+            .translate_plural(single, plural, number, context, domain, None)
+            .ok()?;
+        Self::count(&*store, first, second);
+        Some(match found {
+            Some(t) => out(Translated::Bytes(t)),
+            None => out(Translated::Arg(usize::from(number != 1))),
+        })
     }
 
     fn pair(

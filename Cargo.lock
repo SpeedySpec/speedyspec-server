@@ -5297,6 +5297,7 @@ dependencies = [
 name = "speedyspec-wp-i18n-php"
 version = "0.1.0"
 dependencies = [
+ "foldhash",
  "serde_json",
  "sha2 0.10.9",
  "speedyspec-compat",

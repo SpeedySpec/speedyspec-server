@@ -8,7 +8,10 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use indexmap::IndexMap;
+use indexmap::IndexMap as StdIndexMap;
+
+/// Ordered maps with a fast hasher: lookups by locale and domain run on every translation call.
+type IndexMap<K, V> = StdIndexMap<K, V, foldhash::fast::RandomState>;
 use speedyspec_wp_i18n_contracts::{
     FileProbe, RawTranslations, ReadError, TranslationFileCache, TranslationFileReader,
 };
@@ -90,7 +93,11 @@ pub enum FileRef<'a> {
 
 type Domains = IndexMap<String, Vec<Rc<FileHandle>>>;
 /// `loaded_files`: real path, then locale, then text domain; `None` where WordPress stores `false`.
-type LoadedFiles = HashMap<PathBuf, IndexMap<String, IndexMap<String, Option<Rc<FileHandle>>>>>;
+type LoadedFiles = HashMap<
+    PathBuf,
+    IndexMap<String, IndexMap<String, Option<Rc<FileHandle>>>>,
+    foldhash::fast::RandomState,
+>;
 
 /// `WP_Translation_Controller`.
 pub struct TranslationController {
@@ -115,8 +122,8 @@ impl TranslationController {
             probe,
             cache,
             current_locale: "en_US".to_owned(),
-            loaded_translations: IndexMap::new(),
-            loaded_files: HashMap::new(),
+            loaded_translations: IndexMap::default(),
+            loaded_files: HashMap::default(),
             key: Vec::with_capacity(128),
             found: None,
         }

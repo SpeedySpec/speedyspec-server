@@ -23,7 +23,7 @@ pub(crate) struct Shared {
     /// File objects made with `WP_Translation_File::create()`, by id.
     pub files: RefCell<Vec<Rc<FileHandle>>>,
     /// `spl_object_id` of each `WP_Translations` object, with its domain and controller id.
-    pub translations: RefCell<HashMap<u32, (String, i64)>>,
+    pub translations: RefCell<HashMap<u32, (String, i64), foldhash::fast::RandomState>>,
     /// Calls the hot path served, and calls it left to WordPress's function.
     pub fast: Cell<u64>,
     pub slow: Cell<u64>,
@@ -58,7 +58,7 @@ impl Shared {
             cache,
             controllers: RefCell::new(Vec::new()),
             files: RefCell::new(Vec::new()),
-            translations: RefCell::new(HashMap::new()),
+            translations: RefCell::new(HashMap::default()),
             generation: Cell::new(0),
             fast: Cell::new(0),
             slow: Cell::new(0),

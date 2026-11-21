@@ -123,8 +123,8 @@ fn main() {
 
     let phar = phpunit();
     let container = Rc::new(Container::new());
-    let hooks = WpHooksArea::new(container, Rc::new(MemoryHookStore::new())).with_testing();
-    let i18n = I18nArea::new(hooks.api());
+    let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new())).with_testing();
+    let i18n = I18nArea::new(container, hooks.api());
     let areas: Vec<Rc<dyn NativeArea>> = vec![
         twins_area(),
         Rc::new(hooks),

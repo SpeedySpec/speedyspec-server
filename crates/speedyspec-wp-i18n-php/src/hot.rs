@@ -8,6 +8,7 @@
 use speedyspec_php::ext_php_rs::args::Arg;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::ext_php_rs::ffi::{zend_call_known_function, zval};
+
 use speedyspec_php::ext_php_rs::flags::DataType;
 use speedyspec_php::ext_php_rs::types::{ZendStr, Zval};
 use speedyspec_php::ext_php_rs::zend::ExecuteData;
@@ -76,80 +77,173 @@ fn write(ret: &mut Zval, ex: &ExecuteData, t: Translated<'_>) {
     }
 }
 
+thread_local! {
+    /// The translation handed to the facade's filter helper (`take_translation()`).
+    static PENDING: std::cell::RefCell<Option<Zval>> = const { std::cell::RefCell::new(None) };
+}
+
+/// `take_translation()`: the translation the native function found, for the filter helper it is calling.
+extern "C" fn native_take_translation(_ex: &mut ExecuteData, ret: &mut Zval) {
+    if let Some(value) = PENDING.with(|p| p.borrow_mut().take()) {
+        zv::return_value(ret, value);
+    }
+}
+
 /// Serves the call when it can; false leaves it to WordPress's function.
 fn fast(ex: &ExecuteData, ret: &mut Zval, spec: Spec) -> bool {
     let Some(state) = shared() else { return false };
-    let Some(text) = zv::string_arg(ex, 0) else {
+    let leading = if spec.plural { 3 } else { 1 } + usize::from(spec.context.is_some());
+    if zv::num_args(ex) < leading {
+        return false;
+    }
+    // The domain must be a string to find its entry in $l10n, as WordPress's own lookup would.
+    let default_domain;
+    let domain_ptr = if zv::num_args(ex) > spec.domain {
+        match zv::string_arg(ex, spec.domain) {
+            Some(d) => d,
+            None => return false,
+        }
+    } else {
+        default_domain = zv::string_zval(b"default");
+        match default_domain.zend_str() {
+            Some(s) => s as *const _ as *mut _,
+            None => return false,
+        }
+    };
+    let Ok(domain) = std::str::from_utf8(zv::bytes(domain_ptr)) else {
         return false;
     };
-    let (plural, number) = if spec.plural {
-        let (Some(p), Some(n)) = (zv::string_arg(ex, 1), zv::long_arg(ex, 2)) else {
-            return false;
-        };
-        (Some(p), n)
-    } else {
-        (None, 0)
+    let Some(obj) = zv::l10n_entry(domain_ptr) else {
+        return false;
     };
-    let context: &[u8] = match spec.context {
-        Some(i) => match zv::string_arg(ex, i) {
-            Some(c) => zv::bytes(c),
-            None => return false,
-        },
-        None => b"",
-    };
-    let domain_string = if zv::num_args(ex) > spec.domain {
-        match zv::string_arg(ex, spec.domain) {
-            Some(d) => Some(d),
-            None => return false,
-        }
-    } else {
-        None
-    };
-    let domain: &str = match domain_string {
-        Some(d) => match std::str::from_utf8(zv::bytes(d)) {
-            Ok(s) => s,
-            Err(_) => return false,
-        },
-        None => "default",
-    };
-
-    // $l10n[$domain] must be the request controller's WP_Translations for this very domain.
-    let entry = match domain_string {
-        Some(d) => zv::l10n_entry(d),
-        None => {
-            let key = ZendStr::new("default", false);
-            zv::l10n_entry(key.as_ptr() as *mut _)
-        }
-    };
-    let Some(obj) = entry else { return false };
     let (handle, ce) = zv::object_parts(obj);
     let generation = state.generation.get();
     let wp_translations = zv::class(generation, "wp_translations");
-    if wp_translations.is_null() || ce != wp_translations {
-        return false;
-    }
-    match state.translations.borrow().get(&handle) {
-        Some((d, 0)) if d == domain => {}
-        _ => return false,
-    }
+    let ours = !wp_translations.is_null()
+        && ce == wp_translations
+        && matches!(state.translations.borrow().get(&handle), Some((d, 0)) if d == domain);
     let with_context = spec.context.is_some();
-    if !state.api.filters_empty(domain, with_context, spec.plural) {
-        return false;
+
+    // The common case: the request controller's own domain, string arguments, nothing hooked.
+    if ours {
+        let strings = zv::string_arg(ex, 0).zip(if spec.plural {
+            zv::string_arg(ex, 1).zip(zv::long_arg(ex, 2)).map(Some)
+        } else {
+            Some(None)
+        });
+        let context: Option<&[u8]> = match spec.context {
+            Some(i) => zv::string_arg(ex, i).map(|c| zv::bytes(c)),
+            None => Some(b""),
+        };
+        if let (Some((text, plural)), Some(context)) = (strings, context) {
+            let text = zv::bytes(text);
+            let served = match plural {
+                None => state
+                    .api
+                    .translate_if_unhooked(text, context, domain, |t| write(ret, ex, t)),
+                Some((p, n)) => state.api.translate_plural_if_unhooked(
+                    text,
+                    zv::bytes(p),
+                    n,
+                    context,
+                    domain,
+                    |t| write(ret, ex, t),
+                ),
+            };
+            if served.is_some() {
+                return true;
+            }
+            // Hooked: look the translation up here, and leave only the filters to PHP.
+            let found: Option<Option<Zval>> = {
+                let mut controller = state.api.controller().borrow_mut();
+                match plural {
+                    None => Some(
+                        controller
+                            .translate(text, context, domain, None)
+                            .map(zv::string_zval),
+                    ),
+                    Some((p, n)) => controller
+                        .translate_plural(text, zv::bytes(p), n, context, domain, None)
+                        .ok()
+                        .map(|t| t.map(zv::string_zval)),
+                }
+            };
+            // A plural rule that throws is left to WordPress's function.
+            let Some(found) = found else { return false };
+            let translation = match found {
+                Some(t) => t,
+                None => {
+                    let pick = if plural.is_some_and(|(_, n)| n != 1) {
+                        1
+                    } else {
+                        0
+                    };
+                    match zv::arg_copy(ex, pick) {
+                        Some(z) => z,
+                        None => return false,
+                    }
+                }
+            };
+            return filtered(ex, ret, spec, generation, translation);
+        }
     }
 
-    let text = zv::bytes(text);
-    let result = match plural {
-        None => state
-            .api
-            .translate(text, context, domain, |t| write(ret, ex, t)),
-        Some(p) => state
-            .api
-            .translate_plural(text, zv::bytes(p), number, context, domain, |t| {
-                write(ret, ex, t)
-            }),
+    // Otherwise: what $l10n[$domain]->translate() / translate_plural() returns, as WordPress calls it, with this
+    // call's leading arguments.
+    let function = zv::method(
+        obj,
+        if spec.plural {
+            "translate_plural"
+        } else {
+            "translate"
+        },
+    );
+    if function.is_null() {
+        return false;
+    }
+    let (args, _) = zv::frame_args(ex);
+    let translation = zv::call(function, obj, args, leading);
+    if zv::exception_pending() {
+        // The method threw, as it would have in WordPress, before any filter ran.
+        return true;
+    }
+    if state
+        .api
+        .count_if_unhooked(domain, with_context, spec.plural)
+    {
+        zv::return_value(ret, translation);
+        return true;
+    }
+    filtered(ex, ret, spec, generation, translation)
+}
+
+/// Runs the call's two filters (callbacks are hooked) on `translation`: WordPress's two apply_filters() calls,
+/// with the same arguments, in the facade's helper for this function, which takes the call's own arguments and the
+/// translation through take_translation().
+fn filtered(
+    ex: &ExecuteData,
+    ret: &mut Zval,
+    spec: Spec,
+    generation: u64,
+    translation: Zval,
+) -> bool {
+    let with_context = spec.context.is_some();
+    let helper = match (spec.plural, with_context) {
+        (false, false) => "speedyspec\\wpi18n\\legacy\\filter_gettext",
+        (false, true) => "speedyspec\\wpi18n\\legacy\\filter_gettext_with_context",
+        (true, false) => "speedyspec\\wpi18n\\legacy\\filter_ngettext",
+        (true, true) => "speedyspec\\wpi18n\\legacy\\filter_ngettext_with_context",
     };
-    // An error (a plural rule that throws) is left to WordPress's function, which throws it; nothing was counted.
-    result.is_ok()
+    let filter = zv::function(generation, helper);
+    if filter.is_null() {
+        return false;
+    }
+    PENDING.with(|p| *p.borrow_mut() = Some(translation));
+    let (args, n) = zv::frame_args(ex);
+    let value = zv::call(filter, std::ptr::null_mut(), args, n);
+    PENDING.with(|p| p.borrow_mut().take());
+    zv::return_value(ret, value);
+    true
 }
 
 /// Calls WordPress's own function with this call's arguments.
@@ -223,6 +317,11 @@ fn args(f: FunctionBuilder<'static>, required: &[&str]) -> FunctionBuilder<'stat
 
 pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
     vec![
+        FunctionBuilder::new(
+            "SpeedySpec\\WpI18n\\Native\\take_translation",
+            native_take_translation,
+        )
+        .returns(DataType::Mixed, false, true),
         args(
             FunctionBuilder::new("translate", native_translate),
             &["text"],

@@ -157,3 +157,76 @@ pub fn return_arg(ret: &mut Zval, ex: &ExecuteData, i: usize) {
         }
     }
 }
+
+/// A zval holding a new string; the caller owns its reference.
+pub fn string_zval(bytes: &[u8]) -> Zval {
+    let mut z = Zval::new();
+    z.set_zend_string(speedyspec_php::ext_php_rs::types::ZendStr::new(
+        bytes, false,
+    ));
+    z
+}
+
+/// A method of an object's class by lower-case name.
+pub fn method(obj: *const zend_object, lower: &str) -> *mut zend_function {
+    // SAFETY: a live object's class; its function table lives as long as the class.
+    unsafe {
+        let ce = (*obj).ce;
+        zend_hash_str_find_ptr_lc(
+            &raw const (*ce).function_table,
+            lower.as_ptr().cast::<c_char>(),
+            lower.len(),
+        )
+        .cast::<zend_function>()
+    }
+}
+
+/// Calls `function` (a method of `object` when given) with `count` argument slots from `params`, which must be a
+/// frame's own (see [`frame_args`]); the result, owned by the caller.
+pub fn call(function: *mut zend_function, object: *mut zend_object, params: *mut zval, count: usize) -> Zval {
+    let mut ret = Zval::new();
+    // SAFETY: a live function and object; the engine copies `params` into the new frame.
+    unsafe {
+        let scope = if object.is_null() {
+            std::ptr::null_mut()
+        } else {
+            (*object).ce
+        };
+        speedyspec_php::ext_php_rs::ffi::zend_call_known_function(
+            function,
+            object,
+            scope,
+            &raw mut ret as *mut zval,
+            count as u32,
+            params,
+            std::ptr::null_mut(),
+        );
+    }
+    ret
+}
+
+/// Whether a PHP exception is pending.
+pub fn exception_pending() -> bool {
+    // SAFETY: executor globals are live while a request runs.
+    unsafe { !(*ext_php_rs_executor_globals()).exception.is_null() }
+}
+
+/// Moves `value` into the engine's return slot (which holds nothing to release).
+pub fn return_value(ret: &mut Zval, value: Zval) {
+    let value = std::mem::ManuallyDrop::new(value);
+    // SAFETY: the reference `value` held moves to `ret`; `value` is never released.
+    unsafe { std::ptr::copy_nonoverlapping(&*value as *const Zval, ret as *mut Zval, 1) };
+}
+
+/// This call's argument slots (contiguous, as many as were passed), for passing on to another function exactly as
+/// they were passed here.
+pub fn frame_args(ex: &ExecuteData) -> (*mut zval, usize) {
+    (arg(ex, 0).unwrap_or(std::ptr::null_mut()), num_args(ex))
+}
+
+/// An owned copy of the argument's value (references followed), with its own reference.
+pub fn arg_copy(ex: &ExecuteData, i: usize) -> Option<Zval> {
+    let mut out = Zval::new();
+    return_arg(&mut out, ex, i);
+    Some(out)
+}

@@ -19,9 +19,11 @@ mod zv;
 
 use std::rc::Rc;
 
+use speedyspec_container::Container;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::{HookApi, HookStore};
+use speedyspec_wp_hooks_php::HOOK_STORE;
 use speedyspec_wp_i18n::I18nApi;
 
 pub use reader::PhpFallbackReader;
@@ -32,14 +34,16 @@ const FACADE: &str = include_str!("i18n.php");
 /// The native area of WordPress's translation functions.
 pub struct I18nArea {
     shared: Rc<state::Shared>,
+    container: Rc<Container>,
 }
 
 impl I18nArea {
-    /// The area over `hooks`, with a translation file cache that lives as long as the worker.
-    pub fn new(hooks: Rc<HookApi>) -> I18nArea {
+    /// The area over `hooks` (whose store is bound in `container`, as `WpHooksArea` binds it), with a translation
+    /// file cache that lives as long as the worker.
+    pub fn new(container: Rc<Container>, hooks: Rc<HookApi>) -> I18nArea {
         let shared = Rc::new(state::Shared::new(hooks));
         state::install(shared.clone());
-        I18nArea { shared }
+        I18nArea { shared, container }
     }
 
     /// The translation API for Rust callers.
@@ -57,12 +61,17 @@ impl NativeArea for I18nArea {
 
     fn request_start(&self) {
         self.shared.start_request();
+        // The Hook API resolves its store from the container on every access; the hot path resolves it once.
+        self.shared
+            .api
+            .set_request_store(self.container.make_port::<dyn HookStore>(HOOK_STORE).ok());
         if let Err(err) = speedyspec_php::eval("speedyspec://wp-i18n", FACADE) {
             eprintln!("speedyspec_wordpress: installing the translation functions failed: {err}");
         }
     }
 
     fn request_end(&self) {
+        self.shared.api.set_request_store(None);
         self.shared.end_request();
     }
 }

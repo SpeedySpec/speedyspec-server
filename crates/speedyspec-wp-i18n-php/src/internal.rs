@@ -317,6 +317,7 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
             Ok(Value::Array(vec![
                 (Key::Int(0), Value::Int(s.fast.get() as i64)),
                 (Key::Int(1), Value::Int(s.slow.get() as i64)),
+                (Key::Int(2), Value::Bool(s.api.has_request_store())),
             ]))
         }),
     ]

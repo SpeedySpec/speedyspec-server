@@ -253,3 +253,69 @@ fn filters_empty_does_not_count() {
         .unwrap();
     assert!(!api.filters_empty("other", false, false));
 }
+
+#[test]
+fn unhooked_calls_are_served_and_counted_on_the_request_store() {
+    let (api, hooks) = api();
+    api.set_request_store(Some(hooks.store().clone()));
+    assert_eq!(
+        api.translate_if_unhooked(b"baba", b"", "dom", owned),
+        Some(s("dyado"))
+    );
+    assert_eq!(
+        api.translate_if_unhooked(b"nope", b"", "dom", owned),
+        Some(s("<arg 0>"))
+    );
+    assert_eq!(
+        api.translate_plural_if_unhooked(b"cat", b"cats", 2, b"", "dom", owned),
+        Some(s("<arg 1>"))
+    );
+    assert_eq!(hooks.did_filter(&HookName::new(s("gettext"))).unwrap(), 2);
+    assert_eq!(
+        hooks.did_filter(&HookName::new(s("gettext_dom"))).unwrap(),
+        2
+    );
+    assert_eq!(
+        hooks.did_filter(&HookName::new(s("ngettext_dom"))).unwrap(),
+        1
+    );
+    let log = Rc::new(RefCell::new(Vec::new()));
+    hooks
+        .add_filter(
+            &HookName::new(s("gettext_dom")),
+            recorder(log, "gd"),
+            &HookValue::Int(10),
+            3,
+        )
+        .unwrap();
+    assert_eq!(api.translate_if_unhooked(b"baba", b"", "dom", owned), None);
+    assert_eq!(
+        hooks.did_filter(&HookName::new(s("gettext"))).unwrap(),
+        2,
+        "a call it does not serve counts nothing"
+    );
+}
+
+#[test]
+fn count_if_unhooked_counts_only_when_nothing_is_hooked() {
+    let (api, hooks) = api();
+    assert!(api.count_if_unhooked("dom", false, false));
+    assert_eq!(
+        hooks.did_filter(&HookName::new(s("gettext_dom"))).unwrap(),
+        1
+    );
+    let log = Rc::new(RefCell::new(Vec::new()));
+    hooks
+        .add_filter(
+            &HookName::new(s("gettext")),
+            recorder(log, "g"),
+            &HookValue::Int(10),
+            3,
+        )
+        .unwrap();
+    assert!(!api.count_if_unhooked("dom", false, false));
+    assert_eq!(
+        hooks.did_filter(&HookName::new(s("gettext_dom"))).unwrap(),
+        1
+    );
+}
