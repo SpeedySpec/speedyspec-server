@@ -1,0 +1,104 @@
+//! `process_text_diff_html` through the Hook API.
+
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use speedyspec_php::native::NativeError;
+use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName, HookValue};
+use speedyspec_wp_text_diff::contracts::{LineHtmlFilter, RowKind};
+
+/// The `process_text_diff_html` filter, as an adapter over [`HookApi`].
+///
+/// Each row asks the Hook API once: with no callback the run is only counted (`did_filter()` stays WordPress's) and
+/// PHP is not entered. A failing callback stops the filtering; the native function then rethrows the failure.
+pub struct HookLineFilter {
+    hooks: Rc<HookApi>,
+    name: HookName,
+    failure: RefCell<Option<NativeError>>,
+}
+
+impl HookLineFilter {
+    /// The filter over `hooks`.
+    pub fn new(hooks: Rc<HookApi>) -> HookLineFilter {
+        HookLineFilter {
+            hooks,
+            name: HookName::from("process_text_diff_html"),
+            failure: RefCell::new(None),
+        }
+    }
+
+    /// The failure that stopped the filtering, if any.
+    pub fn take_failure(&self) -> Option<NativeError> {
+        self.failure.borrow_mut().take()
+    }
+
+    fn fail(&self, error: NativeError) {
+        self.failure.borrow_mut().get_or_insert(error);
+    }
+}
+
+fn php_string(bytes: &[u8]) -> HookValue {
+    match std::str::from_utf8(bytes) {
+        Ok(s) => HookValue::Str(s.to_owned()),
+        Err(_) => HookValue::Bytes(bytes.to_vec()),
+    }
+}
+
+/// A Hook API failure as the native function's error: the PHP exception rethrown when there is one.
+pub(crate) fn native_error(err: HookError) -> NativeError {
+    match &err.payload {
+        Some(payload) => match payload.downcast_ref::<HookValue>() {
+            Some(exception) => NativeError::Rethrow(exception.clone()),
+            None => NativeError::Silent,
+        },
+        None => NativeError::throw("Error", err.message),
+    }
+}
+
+/// What PHP's string interpolation makes of a filter's result, for the values Rust can convert alone.
+fn to_bytes(value: &HookValue) -> Option<Vec<u8>> {
+    match value {
+        HookValue::Str(s) => Some(s.as_bytes().to_vec()),
+        HookValue::Bytes(b) => Some(b.clone()),
+        HookValue::Int(i) => Some(i.to_string().into_bytes()),
+        HookValue::Bool(true) => Some(b"1".to_vec()),
+        HookValue::Bool(false) | HookValue::Null => Some(Vec::new()),
+        _ => None,
+    }
+}
+
+impl LineHtmlFilter for HookLineFilter {
+    fn filter(&self, out: &mut Vec<u8>, from: usize, raw: &[u8], kind: RowKind) {
+        if self.failure.borrow().is_some() {
+            return;
+        }
+        match self.hooks.skip_if_empty(&self.name, Count::Filters) {
+            Ok(true) => return,
+            Ok(false) => {}
+            Err(e) => return self.fail(native_error(e)),
+        }
+        let processed = php_string(&out[from..]);
+        let args = vec![php_string(raw), HookValue::Str(kind.as_str().to_owned())];
+        let filtered = match self.hooks.apply_filters(&self.name, processed, args) {
+            Ok(v) => v,
+            Err(e) => return self.fail(native_error(e)),
+        };
+        let text = match to_bytes(&filtered.read()) {
+            Some(b) => b,
+            // Floats, arrays and objects: PHP converts them itself, with its own warnings and errors.
+            None => {
+                match speedyspec_php::call_catching(&HookValue::Str("strval".into()), &[filtered]) {
+                    Ok(v) => to_bytes(&v.read()).unwrap_or_default(),
+                    Err(failure) => {
+                        return self.fail(match failure.exception {
+                            Some(exception) => NativeError::Rethrow(exception),
+                            None => NativeError::Silent,
+                        });
+                    }
+                }
+            }
+        };
+        out.truncate(from);
+        out.extend_from_slice(&text);
+    }
+}
