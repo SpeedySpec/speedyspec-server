@@ -42,6 +42,9 @@ final class SpeedySpecCompat
     /** @var string|null A per-request random string reported as `{placeholder}` (wpdb's placeholder escape). */
     public static ?string $placeholder = null;
 
+    /** Whether a string that is not valid UTF-8 is reported as `{"bytes": base64}` (formatting needs exact bytes). */
+    public static bool $exact_bytes = false;
+
     /**
      * Creates, or finds again, the callable a fixture specification names.
      */
@@ -172,6 +175,9 @@ final class SpeedySpecCompat
 
     private static function arg(mixed $arg): mixed
     {
+        if (is_array($arg) && isset($arg['bytes']) && is_string($arg['bytes']) && count($arg) === 1) {
+            return base64_decode($arg['bytes'], true);
+        }
         if (is_array($arg) && isset($arg['callback']) && is_string($arg['callback'])) {
             return self::callable($arg);
         }
@@ -308,6 +314,9 @@ final class SpeedySpecCompat
     public static function normalise(mixed $value): mixed
     {
         if (is_string($value)) {
+            if (self::$exact_bytes && !mb_check_encoding($value, 'UTF-8')) {
+                return ['bytes' => base64_encode($value)];
+            }
             if (self::$placeholder !== null && self::$placeholder !== '') {
                 $value = str_replace(self::$placeholder, '{placeholder}', $value);
             }
