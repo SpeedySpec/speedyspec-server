@@ -1,0 +1,1041 @@
+[
+  {
+    "name": "wp_test_0",
+    "function": "esc_attr",
+    "args": [
+      "\"double quotes\""
+    ]
+  },
+  {
+    "name": "wp_test_1",
+    "function": "esc_attr",
+    "args": [
+      "'single quotes'"
+    ]
+  },
+  {
+    "name": "wp_test_2",
+    "function": "esc_attr",
+    "args": [
+      "'mixed' \"quotes\""
+    ]
+  },
+  {
+    "name": "wp_test_3",
+    "function": "esc_attr",
+    "args": [
+      "&quot;double quotes&quot;"
+    ]
+  },
+  {
+    "name": "wp_test_4",
+    "function": "esc_attr",
+    "args": [
+      "&#039;single quotes&#039;"
+    ]
+  },
+  {
+    "name": "wp_test_5",
+    "function": "esc_attr",
+    "args": [
+      "&#039;mixed&#039; &quot;quotes&quot;"
+    ]
+  },
+  {
+    "name": "wp_test_6",
+    "function": "esc_attr",
+    "args": [
+      "foo & bar &baz; &nbsp;"
+    ]
+  },
+  {
+    "name": "wp_test_0",
+    "function": "esc_html",
+    "args": [
+      "The quick brown fox."
+    ]
+  },
+  {
+    "name": "wp_test_1",
+    "function": "esc_html",
+    "args": [
+      "http://localhost/trunk/wp-login.php?action=logout&_wpnonce=cd57d75985"
+    ]
+  },
+  {
+    "name": "wp_test_2",
+    "function": "esc_html",
+    "args": [
+      "SELECT meta_key, meta_value FROM wp_trunk_sitemeta WHERE meta_key IN ('site_name', 'siteurl', 'active_sitewide_plugins', '_site_transient_timeout_theme_roots', '_site_transient_theme_roots', 'site_admins', 'can_compress_scripts', 'global_terms_enabled') AND site_id = 1"
+    ]
+  },
+  {
+    "name": "wp_test_3",
+    "function": "esc_html",
+    "args": [
+      "penn & teller & at&t"
+    ]
+  },
+  {
+    "name": "wp_test_4",
+    "function": "esc_html",
+    "args": [
+      "this > that < that <randomhtml />"
+    ]
+  },
+  {
+    "name": "wp_test_5",
+    "function": "esc_html",
+    "args": [
+      "&#038; &#x00A3; &#x22; &amp;"
+    ]
+  },
+  {
+    "name": "wp_test_0",
+    "function": "esc_js",
+    "args": [
+      "foo bar baz();"
+    ]
+  },
+  {
+    "name": "wp_test_1",
+    "function": "esc_js",
+    "args": [
+      "foo \"bar\" 'baz'"
+    ]
+  },
+  {
+    "name": "wp_test_2",
+    "function": "esc_js",
+    "args": [
+      "foo \\t bar \\\\ baz"
+    ]
+  },
+  {
+    "name": "wp_test_3",
+    "function": "esc_js",
+    "args": [
+      "foo & bar &baz; &nbsp;"
+    ]
+  },
+  {
+    "name": "wp_test_4",
+    "function": "esc_js",
+    "args": [
+      "foo &#x27; bar &#39; baz &#x26;"
+    ]
+  },
+  {
+    "name": "wp_test_5",
+    "function": "esc_js",
+    "args": [
+      "foo\rbar\nbaz\r"
+    ]
+  },
+  {
+    "name": "wp_test_6",
+    "function": "esc_js",
+    "args": [
+      "foo\r\nbar\nbaz\r\n"
+    ]
+  },
+  {
+    "name": "wp_test_0",
+    "function": "esc_textarea",
+    "args": [
+      {
+        "bytes": "RnJhbsOnYWlz"
+      }
+    ]
+  },
+  {
+    "name": "wp_test_0",
+    "function": "esc_xml",
+    "args": [
+      "penn & teller & at&t"
+    ]
+  },
+  {
+    "name": "wp_test_1",
+    "function": "esc_xml",
+    "args": [
+      "this > that < that <randomhtml />"
+    ]
+  },
+  {
+    "name": "wp_test_2",
+    "function": "esc_xml",
+    "args": [
+      "this &amp; is a &hellip; followed by &rsaquo; and more and a &nonexistent; entity"
+    ]
+  },
+  {
+    "name": "wp_test_3",
+    "function": "esc_xml",
+    "args": [
+      "&#038; &#x00A3; &#x22; &amp;"
+    ]
+  },
+  {
+    "name": "wp_test_basic",
+    "function": "_wp_specialchars",
+    "args": [
+      "&amp;&lt;hello world&gt;"
+    ]
+  },
+  {
+    "name": "wp_test_basic_double",
+    "function": "_wp_specialchars",
+    "args": [
+      "&amp;&lt;hello world&gt;",
+      0,
+      false,
+      true
+    ]
+  },
+  {
+    "name": "wp_test_entity_nbsp",
+    "function": "_wp_specialchars",
+    "args": [
+      "&nbsp;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_Uacute",
+    "function": "_wp_specialchars",
+    "args": [
+      "&Uacute;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_hellip",
+    "function": "_wp_specialchars",
+    "args": [
+      "&hellip;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_OElig",
+    "function": "_wp_specialchars",
+    "args": [
+      "&OElig;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_lang",
+    "function": "_wp_specialchars",
+    "args": [
+      "&lang;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_apos",
+    "function": "_wp_specialchars",
+    "args": [
+      "&apos;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_iacut",
+    "function": "_wp_specialchars",
+    "args": [
+      "&iacut;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_aposs",
+    "function": "_wp_specialchars",
+    "args": [
+      "&aposs;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_pos",
+    "function": "_wp_specialchars",
+    "args": [
+      "&pos;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_apo",
+    "function": "_wp_specialchars",
+    "args": [
+      "&apo;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_apoq",
+    "function": "_wp_specialchars",
+    "args": [
+      "&apo?;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_apodotstar",
+    "function": "_wp_specialchars",
+    "args": [
+      "&apo.*;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_dotstarapodotstar",
+    "function": "_wp_specialchars",
+    "args": [
+      "&.*apo.*;"
+    ]
+  },
+  {
+    "name": "wp_test_entity_apos_",
+    "function": "_wp_specialchars",
+    "args": [
+      "&apos ;"
+    ]
+  },
+  {
+    "name": "wp_test_entity__apos",
+    "function": "_wp_specialchars",
+    "args": [
+      "& apos;"
+    ]
+  },
+  {
+    "name": "wp_test_entity__apos_",
+    "function": "_wp_specialchars",
+    "args": [
+      "& apos ;"
+    ]
+  },
+  {
+    "name": "wp_test_quotes_single",
+    "function": "_wp_specialchars",
+    "args": [
+      "\"'hello!'\"",
+      "single"
+    ]
+  },
+  {
+    "name": "wp_test_quotes_double",
+    "function": "_wp_specialchars",
+    "args": [
+      "\"'hello!'\"",
+      "double"
+    ]
+  },
+  {
+    "name": "wp_test_quotes_true",
+    "function": "_wp_specialchars",
+    "args": [
+      "\"'hello!'\"",
+      true
+    ]
+  },
+  {
+    "name": "wp_test_quotes_default",
+    "function": "_wp_specialchars",
+    "args": [
+      "\"'hello!'\""
+    ]
+  },
+  {
+    "name": "wp_test_0",
+    "function": "backslashit",
+    "args": [
+      "a-!9a943bc"
+    ]
+  },
+  {
+    "name": "wp_test_1",
+    "function": "backslashit",
+    "args": [
+      "a943bc"
+    ]
+  },
+  {
+    "name": "wp_test_2",
+    "function": "backslashit",
+    "args": [
+      "95"
+    ]
+  },
+  {
+    "name": "wp_test_0",
+    "function": "wp_unslash",
+    "args": [
+      "I can\\'t see, isn\\'t that it?"
+    ]
+  },
+  {
+    "name": "wp_test_1",
+    "function": "wp_unslash",
+    "args": [
+      "I can\\'t see, isn\\\\\\'t that it?"
+    ]
+  },
+  {
+    "name": "wp_test_2",
+    "function": "wp_unslash",
+    "args": [
+      "I can\\'t see, isn\\\\\\\\\\'t that it?"
+    ]
+  },
+  {
+    "name": "wp_test_3",
+    "function": "wp_unslash",
+    "args": [
+      true
+    ]
+  },
+  {
+    "name": "wp_test_4",
+    "function": "wp_unslash",
+    "args": [
+      false
+    ]
+  },
+  {
+    "name": "wp_test_5",
+    "function": "wp_unslash",
+    "args": [
+      4
+    ]
+  },
+  {
+    "name": "wp_test_6",
+    "function": "wp_unslash",
+    "args": [
+      "foo"
+    ]
+  },
+  {
+    "name": "wp_test_keyed",
+    "function": "wp_unslash",
+    "args": [
+      {
+        "array": [
+          [
+            "a",
+            "I can\\'t see, isn\\'t that it?"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "invalid_utf8",
+    "function": "esc_html",
+    "args": [
+      {
+        "bytes": "YcBi"
+      }
+    ]
+  },
+  {
+    "name": "invalid_utf8",
+    "function": "esc_attr",
+    "args": [
+      {
+        "bytes": "YcBi"
+      }
+    ]
+  },
+  {
+    "name": "invalid_utf8",
+    "function": "esc_js",
+    "args": [
+      {
+        "bytes": "YcBi"
+      }
+    ]
+  },
+  {
+    "name": "invalid_utf8",
+    "function": "esc_xml",
+    "args": [
+      {
+        "bytes": "YcBi"
+      }
+    ]
+  },
+  {
+    "name": "invalid_utf8",
+    "function": "esc_textarea",
+    "args": [
+      {
+        "bytes": "YcBi"
+      }
+    ]
+  },
+  {
+    "name": "empty",
+    "function": "esc_html",
+    "args": [
+      ""
+    ]
+  },
+  {
+    "name": "empty",
+    "function": "esc_attr",
+    "args": [
+      ""
+    ]
+  },
+  {
+    "name": "empty",
+    "function": "esc_js",
+    "args": [
+      ""
+    ]
+  },
+  {
+    "name": "empty",
+    "function": "esc_xml",
+    "args": [
+      ""
+    ]
+  },
+  {
+    "name": "empty",
+    "function": "esc_textarea",
+    "args": [
+      ""
+    ]
+  },
+  {
+    "name": "empty",
+    "function": "tag_escape",
+    "args": [
+      ""
+    ]
+  },
+  {
+    "name": "refs_edges_html",
+    "function": "_wp_specialchars",
+    "args": [
+      "& &#; &#x; &#x110000; &#99999999999999999999; &#0; &#xD800; &#xFFFE; &Uacute &Uacute; &dollar; &apos; &AMP; &#65 &#x41;&",
+      3,
+      false,
+      false
+    ]
+  },
+  {
+    "name": "refs_edges_xml",
+    "function": "_wp_specialchars",
+    "args": [
+      "& &#; &#x; &#x110000; &#99999999999999999999; &#0; &#xD800; &#xFFFE; &Uacute &Uacute; &dollar; &apos; &AMP; &#65 &#x41;&",
+      16,
+      false,
+      false
+    ]
+  },
+  {
+    "name": "quote_styles_0",
+    "function": "_wp_specialchars",
+    "args": [
+      "<a href='x' title=\"y\">&</a>",
+      0,
+      false,
+      false
+    ]
+  },
+  {
+    "name": "quote_styles_2",
+    "function": "_wp_specialchars",
+    "args": [
+      "<a href='x' title=\"y\">&</a>",
+      2,
+      false,
+      false
+    ]
+  },
+  {
+    "name": "quote_styles_3",
+    "function": "_wp_specialchars",
+    "args": [
+      "<a href='x' title=\"y\">&</a>",
+      3,
+      false,
+      false
+    ]
+  },
+  {
+    "name": "quote_styles_single",
+    "function": "_wp_specialchars",
+    "args": [
+      "<a href='x' title=\"y\">&</a>",
+      "single",
+      false,
+      false
+    ]
+  },
+  {
+    "name": "quote_styles_double",
+    "function": "_wp_specialchars",
+    "args": [
+      "<a href='x' title=\"y\">&</a>",
+      "double",
+      false,
+      false
+    ]
+  },
+  {
+    "name": "quote_styles_16",
+    "function": "_wp_specialchars",
+    "args": [
+      "<a href='x' title=\"y\">&</a>",
+      16,
+      false,
+      false
+    ]
+  },
+  {
+    "name": "quote_styles_99",
+    "function": "_wp_specialchars",
+    "args": [
+      "<a href='x' title=\"y\">&</a>",
+      99,
+      false,
+      false
+    ]
+  },
+  {
+    "name": "quote_styles_none",
+    "function": "_wp_specialchars",
+    "args": [
+      "<a href='x' title=\"y\">&</a>",
+      null,
+      false,
+      false
+    ]
+  },
+  {
+    "name": "iso_8859_1",
+    "function": "_wp_specialchars",
+    "args": [
+      {
+        "bytes": "6TwmPg=="
+      },
+      3,
+      "ISO-8859-1",
+      false
+    ]
+  },
+  {
+    "name": "charset_unknown",
+    "function": "_wp_specialchars",
+    "args": [
+      {
+        "bytes": "YcBi"
+      },
+      3,
+      "x-klingon",
+      false
+    ]
+  },
+  {
+    "name": "charset_alias_utf_8",
+    "function": "htmlspecialchars",
+    "args": [
+      "é<",
+      3,
+      "utf-8",
+      true
+    ]
+  },
+  {
+    "name": "charset_alias_utf8",
+    "function": "htmlspecialchars",
+    "args": [
+      "é<",
+      3,
+      "UTF8",
+      true
+    ]
+  },
+  {
+    "name": "charset_alias_iso8859_1",
+    "function": "htmlspecialchars",
+    "args": [
+      "é<",
+      3,
+      "iso8859-1",
+      true
+    ]
+  },
+  {
+    "name": "charset_alias_windows_1252",
+    "function": "htmlspecialchars",
+    "args": [
+      "é<",
+      3,
+      "Windows-1252",
+      true
+    ]
+  },
+  {
+    "name": "charset_alias_cp1251",
+    "function": "htmlspecialchars",
+    "args": [
+      "é<",
+      3,
+      "cp1251",
+      true
+    ]
+  },
+  {
+    "name": "charset_alias_koi8_r",
+    "function": "htmlspecialchars",
+    "args": [
+      "é<",
+      3,
+      "KOI8-R",
+      true
+    ]
+  },
+  {
+    "name": "charset_alias_macroman",
+    "function": "htmlspecialchars",
+    "args": [
+      "é<",
+      3,
+      "MacRoman",
+      true
+    ]
+  },
+  {
+    "name": "hsc_0_true",
+    "function": "htmlspecialchars",
+    "args": [
+      "& &amp; &#39; &apos; &#x27; &#0; &#xFFFE; \" '",
+      0,
+      "UTF-8",
+      true
+    ]
+  },
+  {
+    "name": "hsc_0_false",
+    "function": "htmlspecialchars",
+    "args": [
+      "& &amp; &#39; &apos; &#x27; &#0; &#xFFFE; \" '",
+      0,
+      "UTF-8",
+      false
+    ]
+  },
+  {
+    "name": "hsc_2_true",
+    "function": "htmlspecialchars",
+    "args": [
+      "& &amp; &#39; &apos; &#x27; &#0; &#xFFFE; \" '",
+      2,
+      "UTF-8",
+      true
+    ]
+  },
+  {
+    "name": "hsc_2_false",
+    "function": "htmlspecialchars",
+    "args": [
+      "& &amp; &#39; &apos; &#x27; &#0; &#xFFFE; \" '",
+      2,
+      "UTF-8",
+      false
+    ]
+  },
+  {
+    "name": "hsc_3_true",
+    "function": "htmlspecialchars",
+    "args": [
+      "& &amp; &#39; &apos; &#x27; &#0; &#xFFFE; \" '",
+      3,
+      "UTF-8",
+      true
+    ]
+  },
+  {
+    "name": "hsc_3_false",
+    "function": "htmlspecialchars",
+    "args": [
+      "& &amp; &#39; &apos; &#x27; &#0; &#xFFFE; \" '",
+      3,
+      "UTF-8",
+      false
+    ]
+  },
+  {
+    "name": "hsc_19_true",
+    "function": "htmlspecialchars",
+    "args": [
+      "& &amp; &#39; &apos; &#x27; &#0; &#xFFFE; \" '",
+      19,
+      "UTF-8",
+      true
+    ]
+  },
+  {
+    "name": "hsc_19_false",
+    "function": "htmlspecialchars",
+    "args": [
+      "& &amp; &#39; &apos; &#x27; &#0; &#xFFFE; \" '",
+      19,
+      "UTF-8",
+      false
+    ]
+  },
+  {
+    "name": "decode_0",
+    "function": "wp_specialchars_decode",
+    "args": [
+      "&#039;&#0039;&#x27;&#X27;&#x0027;&quot;&#034;&#x22;&lt;&#060;&gt;&#062;&amp;&#038;&#x26;&amp;lt;&LT;",
+      0
+    ]
+  },
+  {
+    "name": "decode_2",
+    "function": "wp_specialchars_decode",
+    "args": [
+      "&#039;&#0039;&#x27;&#X27;&#x0027;&quot;&#034;&#x22;&lt;&#060;&gt;&#062;&amp;&#038;&#x26;&amp;lt;&LT;",
+      2
+    ]
+  },
+  {
+    "name": "decode_3",
+    "function": "wp_specialchars_decode",
+    "args": [
+      "&#039;&#0039;&#x27;&#X27;&#x0027;&quot;&#034;&#x22;&lt;&#060;&gt;&#062;&amp;&#038;&#x26;&amp;lt;&LT;",
+      3
+    ]
+  },
+  {
+    "name": "decode_single",
+    "function": "wp_specialchars_decode",
+    "args": [
+      "&#039;&#0039;&#x27;&#X27;&#x0027;&quot;&#034;&#x22;&lt;&#060;&gt;&#062;&amp;&#038;&#x26;&amp;lt;&LT;",
+      "single"
+    ]
+  },
+  {
+    "name": "decode_double",
+    "function": "wp_specialchars_decode",
+    "args": [
+      "&#039;&#0039;&#x27;&#X27;&#x0027;&quot;&#034;&#x22;&lt;&#060;&gt;&#062;&amp;&#038;&#x26;&amp;lt;&LT;",
+      "double"
+    ]
+  },
+  {
+    "name": "decode_7",
+    "function": "wp_specialchars_decode",
+    "args": [
+      "&#039;&#0039;&#x27;&#X27;&#x0027;&quot;&#034;&#x22;&lt;&#060;&gt;&#062;&amp;&#038;&#x26;&amp;lt;&LT;",
+      7
+    ]
+  },
+  {
+    "name": "xml_cdata_unterminated",
+    "function": "esc_xml",
+    "args": [
+      "a<![CDATA[b&"
+    ]
+  },
+  {
+    "name": "xml_cdata_two",
+    "function": "esc_xml",
+    "args": [
+      "<![CDATA[1]]>&<![CDATA[2]]>"
+    ]
+  },
+  {
+    "name": "xml_cdata_start_end",
+    "function": "esc_xml",
+    "args": [
+      "<![CDATA[x]]>"
+    ]
+  },
+  {
+    "name": "xml_cdata_close_first",
+    "function": "esc_xml",
+    "args": [
+      "]]> & <![CDATA[ok]]>"
+    ]
+  },
+  {
+    "name": "js_slashes",
+    "function": "esc_js",
+    "args": [
+      "a\\'b\\\\c\\0d"
+    ]
+  },
+  {
+    "name": "js_entity_quotes",
+    "function": "esc_js",
+    "args": [
+      "&#39; &#039; &#x27; &#X0027 &#39"
+    ]
+  },
+  {
+    "name": "js_crlf",
+    "function": "esc_js",
+    "args": [
+      "a\r\nb\rc\nd"
+    ]
+  },
+  {
+    "name": "tag_mixed",
+    "function": "tag_escape",
+    "args": [
+      "DiV-1_x:y<script>"
+    ]
+  },
+  {
+    "name": "tag_unicode",
+    "function": "tag_escape",
+    "args": [
+      "spàn"
+    ]
+  },
+  {
+    "name": "backslash_digit",
+    "function": "backslashit",
+    "args": [
+      "1abc"
+    ]
+  },
+  {
+    "name": "backslash_symbols",
+    "function": "backslashit",
+    "args": [
+      "a.b/C"
+    ]
+  },
+  {
+    "name": "entities2",
+    "function": "htmlentities2",
+    "args": [
+      "é & &amp; &#123; &abcde; © < > \""
+    ]
+  },
+  {
+    "name": "seems_valid",
+    "function": "seems_utf8",
+    "args": [
+      "héllo"
+    ]
+  },
+  {
+    "name": "seems_invalid",
+    "function": "seems_utf8",
+    "args": [
+      {
+        "bytes": "wA=="
+      }
+    ]
+  },
+  {
+    "name": "seems_five_byte",
+    "function": "seems_utf8",
+    "args": [
+      {
+        "bytes": "+IiIiIg="
+      }
+    ]
+  },
+  {
+    "name": "gpc",
+    "function": "addslashes_gpc",
+    "args": [
+      "it's \"q\" \\"
+    ]
+  },
+  {
+    "name": "unslash_array",
+    "function": "wp_unslash",
+    "args": [
+      {
+        "array": [
+          [
+            "a",
+            "x\\'y"
+          ],
+          [
+            0,
+            5
+          ],
+          [
+            "n",
+            {
+              "array": [
+                [
+                  0,
+                  "\\\\"
+                ]
+              ]
+            }
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "check_keep",
+    "function": "wp_check_invalid_utf8",
+    "args": [
+      {
+        "bytes": "YcBi"
+      },
+      false
+    ]
+  },
+  {
+    "name": "check_strip",
+    "function": "wp_check_invalid_utf8",
+    "args": [
+      {
+        "bytes": "YcBi"
+      },
+      true
+    ]
+  },
+  {
+    "name": "check_valid",
+    "function": "wp_check_invalid_utf8",
+    "args": [
+      "héllo",
+      false
+    ]
+  },
+  {
+    "name": "charset_unknown_special",
+    "function": "_wp_specialchars",
+    "args": [
+      {
+        "bytes": "YcA8"
+      },
+      3,
+      "x-klingon",
+      false
+    ]
+  },
+  {
+    "name": "charset_unknown",
+    "function": "htmlspecialchars",
+    "args": [
+      {
+        "bytes": "YcA8"
+      },
+      3,
+      "x-klingon",
+      true
+    ]
+  },
+  {
+    "name": "charset_sjis",
+    "function": "htmlspecialchars",
+    "args": [
+      {
+        "bytes": "gqA8"
+      },
+      3,
+      "Shift_JIS",
+      true
+    ]
+  }
+]
