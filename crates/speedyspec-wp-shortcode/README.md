@@ -10,7 +10,7 @@ same as WordPress's, apart from the two deliberate differences below.
 |---|---|
 | `speedyspec-wp-shortcode-contracts` | Plain types (`TagName`, `TagSet`, `ParsedAtts`, `ShortcodeMatch`), the ports and strategy traits, and WordPress's pattern strings (`get_shortcode_regex`, `get_shortcode_atts_regex`, `shortcode_tag_alternation`, `preg_quote`). It depends on nothing of ours except the hook value type. |
 | `speedyspec-wp-shortcode` (this crate) | `ShortcodeApi`, the scanners, the attribute parsers, `MemoryRegistry`, `HookApiFilters`, `NoFilters`, and the use-case messages. |
-| `speedyspec-wp-shortcode-php` | The PHP functions, native over `ShortcodeApi`; `PhpGlobalRegistry` over `$shortcode_tags`; `PhpShortcodeHandler`; adapters onto WordPress's own `_doing_it_wrong()`, kses and `wp_html_split()`. |
+| `speedyspec-wp-shortcode-php` | The PHP functions, native over `ShortcodeApi`; `PhpGlobalRegistry` over `$shortcode_tags`; `PhpShortcodeHandler`; `RustHtmlSplitter` onto `speedyspec-wp-html-split`; adapters onto WordPress's own `_doing_it_wrong()` and kses. |
 
 Other areas read the registered names through the `ShortcodeTagNames` port: `wpautop`, `shortcode_unautop` and
 `wptexturize`. They never depend on the registry.
@@ -29,6 +29,7 @@ Other areas read the registered names through the `ShortcodeTagNames` port: `wpa
 - **Adapter:**
   - `PhpShortcodeHandler` wraps a PHP callable.
   - `HookApiFilters` connects the filters to the Rust Hook API.
+  - `RustHtmlSplitter` connects `HtmlSplitter` to `speedyspec-wp-html-split`.
   - The `legacy` adapters connect to WordPress's PHP.
 - **Facade:** `ShortcodeApi` has one method per WordPress function. The PHP functions are one-line shims onto it.
 - **Command and Query:** every function is a message on `speedyspec-cqrs`'s buses, bound by

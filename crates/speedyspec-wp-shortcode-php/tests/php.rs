@@ -20,7 +20,6 @@ use speedyspec_wp_shortcode_php::ShortcodeArea;
 const WORDPRESS: &str = r#"
 function __($text, $domain = 'default') { return $text; }
 function _doing_it_wrong($function_name, $message, $version) { $GLOBALS['notices'][] = "$function_name|$message|$version"; }
-function wp_html_split($input) { return preg_split('/(<[^>]*>)/', $input, -1, PREG_SPLIT_DELIM_CAPTURE); }
 function wp_kses_attr_parse($element) { return false; }
 function wp_kses_one_attr($attr, $element) { return $attr; }
 "#;
@@ -42,6 +41,7 @@ const CASES: &[(&str, Case)] = &[
     ("recursive_array_result_converts_like_php", case_unconvertible_result),
     ("throwing_error_handler_escapes", case_throwing_error_handler),
     ("html_tags_with_empty_tagnames_uses_registry", case_html_tags_empty_tagnames),
+    ("html_split_is_rust", case_html_split_is_rust),
 ];
 
 fn run(php: &Php, code: &str) -> Result<Value, String> {
@@ -321,4 +321,16 @@ fn main() -> ExitCode {
     }
     drop(php);
     if failed == 0 { ExitCode::SUCCESS } else { ExitCode::FAILURE }
+}
+
+/// `wp_html_split()` runs in Rust, with no PHP function of that name: a `>` inside a comment does not end it, as it
+/// does not for `get_html_split_regex()`, so the shortcode in the comment stays unrun.
+fn case_html_split_is_rust(php: &Php) -> Result<(), String> {
+    reset(php)?;
+    expect_php(php, "return function_exists('wp_html_split');", Value::Bool(false))?;
+    expect_php(
+        php,
+        "add_shortcode('x', fn() => 'X'); return do_shortcode('<!-- a > [x] --> [x] <![CDATA[ > [x] ]]>');",
+        s("<!-- a > [x] --> X <![CDATA[ > [x] ]]>"),
+    )
 }

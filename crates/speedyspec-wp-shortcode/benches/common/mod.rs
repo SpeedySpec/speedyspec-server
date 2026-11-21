@@ -56,20 +56,11 @@ impl Diagnostics for Quiet {
     }
 }
 
-/// Splits on tags with `memchr`: close enough to `wp_html_split()` for timing (the real one is another crate's).
+/// `wp_html_split()`: the Rust port the PHP bridge binds.
 struct Split;
 impl HtmlSplitter for Split {
     fn split<'a>(&self, content: &'a [u8]) -> Vec<&'a [u8]> {
-        let mut out = Vec::new();
-        let mut at = 0;
-        while let Some(open) = memchr::memchr(b'<', &content[at..]).map(|i| at + i) {
-            let Some(close) = memchr::memchr(b'>', &content[open..]).map(|i| open + i + 1) else { break };
-            out.push(&content[at..open]);
-            out.push(&content[open..close]);
-            at = close;
-        }
-        out.push(&content[at..]);
-        out
+        speedyspec_wp_html_split::wp_html_split(content)
     }
 }
 
