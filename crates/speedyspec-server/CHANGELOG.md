@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.1.1](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-server-v0.1.0...speedyspec-server-v0.1.1) (2026-11-21)
+
 ## 0.1.0 (2026-11-21)
 
 
