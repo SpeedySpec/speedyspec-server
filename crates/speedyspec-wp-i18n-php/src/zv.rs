@@ -183,13 +183,20 @@ pub fn method(obj: *const zend_object, lower: &str) -> *mut zend_function {
 
 /// Calls `function` (a method of `object` when given) with `count` argument slots from `params`, which must be a
 /// frame's own (see [`frame_args`]); the result, owned by the caller.
-pub fn call(function: *mut zend_function, object: *mut zend_object, params: *mut zval, count: usize) -> Zval {
+pub fn call(
+    function: *mut zend_function,
+    object: *mut zend_object,
+    params: *mut zval,
+    count: usize,
+) -> Zval {
     let mut ret = Zval::new();
-    // SAFETY: a live function and object; the engine copies `params` into the new frame.
+    // SAFETY: a live function and object; the engine copies `params` into the new frame. The object is held for the
+    // call, as WordPress's own `$translations` local holds it: the method may replace its own entry in $l10n.
     unsafe {
         let scope = if object.is_null() {
             std::ptr::null_mut()
         } else {
+            (*object).gc.refcount += 1;
             (*object).ce
         };
         speedyspec_php::ext_php_rs::ffi::zend_call_known_function(
@@ -201,6 +208,12 @@ pub fn call(function: *mut zend_function, object: *mut zend_object, params: *mut
             params,
             std::ptr::null_mut(),
         );
+        if !object.is_null() {
+            (*object).gc.refcount -= 1;
+            if (*object).gc.refcount == 0 {
+                speedyspec_php::ext_php_rs::ffi::zend_objects_store_del(object);
+            }
+        }
     }
     ret
 }

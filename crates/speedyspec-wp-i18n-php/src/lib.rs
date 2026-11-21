@@ -61,6 +61,7 @@ impl NativeArea for I18nArea {
 
     fn request_start(&self) {
         self.shared.start_request();
+        hot::start_request();
         // The Hook API resolves its store from the container on every access; the hot path resolves it once.
         self.shared
             .api

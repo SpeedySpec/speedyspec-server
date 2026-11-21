@@ -86,6 +86,53 @@ fn main() {
     );
 
     let r = php.eval(
+        "speedyspec://test/empty-context",
+        "$seen = array(); $cb = function ($t) use (&$seen) { $seen[] = $t; return $t; };
+         add_filter('gettext_with_context', $cb);
+         $out = array(_x('baba', '', 'fast'), _nx('baba', 'babas', 2, '', 'fast'), count($seen));
+         remove_filter('gettext_with_context', $cb);
+         return json_encode($out);",
+    );
+    check(
+        "empty_context_runs_the_context_filters",
+        text(&r) == r#"["dyado","dyado",1]"#,
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/self-replacing",
+        "class SpeedySpec_Lazy extends Translations {
+             public function translate($singular, $context = null) {
+                 $GLOBALS['l10n']['lazy'] = new SpeedySpec_Lazy();
+                 $padding = str_repeat('x', 64);
+                 return 'L' . $singular;
+             }
+         }
+         $GLOBALS['l10n']['lazy'] = new SpeedySpec_Lazy();
+         $out = array();
+         for ($i = 0; $i < 200; $i++) { $out[] = __('w' . $i, 'lazy'); }
+         return json_encode(array($out[0], $out[199]));",
+    );
+    check(
+        "a_translations_object_may_replace_itself",
+        text(&r) == r#"["Lw0","Lw199"]"#,
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/reentry",
+        &format!(
+            "load_textdomain('re', {:?}, 'de_DE'); return json_encode(array(__('a', 're'), $GLOBALS['speedyspec_reentry']));",
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/reentrant.l10n.php").display().to_string()
+        ),
+    );
+    check(
+        "an_included_translation_file_may_translate",
+        text(&r) == r#"["b","dyado"]"#,
+        &r,
+    );
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

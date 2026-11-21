@@ -85,6 +85,34 @@ impl std::fmt::Debug for TranslationFile {
     }
 }
 
+/// The loaded file for `path` from `cache`, reading it with `reader` on a miss. A reader may run PHP (the
+/// `.l10n.php` fallback), which may translate, so callers holding a controller call this before borrowing it.
+pub fn cached_file(
+    reader: &dyn TranslationFileReader,
+    probe: &dyn FileProbe,
+    cache: &dyn TranslationFileCache<TranslationFile>,
+    path: &Path,
+) -> Option<Rc<TranslationFile>> {
+    let identity = probe.identity(path)?;
+    if let Some(file) = cache.get(&identity) {
+        return Some(file);
+    }
+    let file = Rc::new(match reader.read(path) {
+        Ok(raw) => TranslationFile::new(identity.clone(), raw),
+        // file_get_contents() failing leaves no error and no entries.
+        Err(ReadError::Unreadable) => {
+            TranslationFile::new(identity.clone(), RawTranslations::default())
+        }
+        // A PHP file this reader can't parse is, without PHP, as unusable as an invalid one.
+        Err(ReadError::Unsupported) => {
+            TranslationFile::failed(identity.clone(), ReadError::Invalid("Invalid data"))
+        }
+        Err(e) => TranslationFile::failed(identity.clone(), e),
+    });
+    cache.put(identity, file.clone());
+    Some(file)
+}
+
 /// What `unload_file()` takes: a path, or a file object.
 pub enum FileRef<'a> {
     Path(&'a Path),
@@ -158,27 +186,7 @@ impl TranslationController {
         if !matches!(ext, Some(b"mo" | b"php")) {
             return None;
         }
-        let identity = self.probe.identity(real)?;
-        let file = match self.cache.get(&identity) {
-            Some(file) => file,
-            None => {
-                let file = Rc::new(match self.reader.read(real) {
-                    Ok(raw) => TranslationFile::new(identity.clone(), raw),
-                    // file_get_contents() failing leaves no error and no entries.
-                    Err(ReadError::Unreadable) => {
-                        TranslationFile::new(identity.clone(), RawTranslations::default())
-                    }
-                    // A PHP file this reader can't parse is, without PHP, as unusable as an invalid one.
-                    Err(ReadError::Unsupported) => TranslationFile::failed(
-                        identity.clone(),
-                        ReadError::Invalid("Invalid data"),
-                    ),
-                    Err(e) => TranslationFile::failed(identity.clone(), e),
-                });
-                self.cache.put(identity, file.clone());
-                file
-            }
-        };
+        let file = cached_file(&*self.reader, &*self.probe, &*self.cache, real)?;
         Some(Rc::new(FileHandle {
             file,
             path: real.to_path_buf(),

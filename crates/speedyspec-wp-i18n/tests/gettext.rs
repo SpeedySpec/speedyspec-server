@@ -69,10 +69,10 @@ fn recorder(log: Log, name: &'static str) -> Callback {
 #[test]
 fn untranslated_returns_original_without_filters() {
     let (api, _) = api();
-    let r = api.translate(b"nothing here", b"", "dom", owned).unwrap();
+    let r = api.translate(b"nothing here", None, "dom", owned).unwrap();
     assert_eq!(r, s("<arg 0>"));
     assert_eq!(
-        api.translate(b"baba", b"", "dom", owned).unwrap(),
+        api.translate(b"baba", None, "dom", owned).unwrap(),
         s("dyado")
     );
 }
@@ -80,8 +80,8 @@ fn untranslated_returns_original_without_filters() {
 #[test]
 fn no_callbacks_counts_did_filter() {
     let (api, hooks) = api();
-    api.translate(b"baba", b"", "dom", owned).unwrap();
-    api.translate(b"baba", b"", "dom", owned).unwrap();
+    api.translate(b"baba", None, "dom", owned).unwrap();
+    api.translate(b"baba", None, "dom", owned).unwrap();
     assert_eq!(hooks.did_filter(&HookName::new(s("gettext"))).unwrap(), 2);
     assert_eq!(
         hooks.did_filter(&HookName::new(s("gettext_dom"))).unwrap(),
@@ -109,7 +109,7 @@ fn filters_fire_in_order_with_wordpress_args() {
             3,
         )
         .unwrap();
-    let r = api.translate(b"baba", b"", "dom", owned).unwrap();
+    let r = api.translate(b"baba", None, "dom", owned).unwrap();
     assert_eq!(r, s("dyado+g+gd"));
     let log = log.borrow();
     assert_eq!(log[0], ("g".into(), vec![s("dyado"), s("baba"), s("dom")]));
@@ -132,7 +132,7 @@ fn untranslated_text_is_filtered_as_the_original() {
         )
         .unwrap();
     assert_eq!(
-        api.translate(b"nope", b"", "dom", owned).unwrap(),
+        api.translate(b"nope", None, "dom", owned).unwrap(),
         s("nope+g")
     );
 }
@@ -149,7 +149,7 @@ fn context_filters_get_the_context() {
             4,
         )
         .unwrap();
-    api.translate(b"nope", b"ctx", "dom", owned).unwrap();
+    api.translate(b"nope", Some(b"ctx"), "dom", owned).unwrap();
     assert_eq!(
         log.borrow()[0].1,
         vec![s("nope"), s("nope"), s("ctx"), s("dom")]
@@ -164,18 +164,18 @@ fn context_filters_get_the_context() {
 fn plural_picks_the_form_and_filters_with_number() {
     let (api, hooks) = api();
     assert_eq!(
-        api.translate_plural(b"one dragon", b"%d dragons", 3, b"", "dom", owned)
+        api.translate_plural(b"one dragon", b"%d dragons", 3, None, "dom", owned)
             .unwrap(),
         s("twoey dragoney")
     );
     // Missing: English rules on the originals.
     assert_eq!(
-        api.translate_plural(b"cat", b"cats", 1, b"", "dom", owned)
+        api.translate_plural(b"cat", b"cats", 1, None, "dom", owned)
             .unwrap(),
         s("<arg 0>")
     );
     assert_eq!(
-        api.translate_plural(b"cat", b"cats", 2, b"", "dom", owned)
+        api.translate_plural(b"cat", b"cats", 2, None, "dom", owned)
             .unwrap(),
         s("<arg 1>")
     );
@@ -188,7 +188,7 @@ fn plural_picks_the_form_and_filters_with_number() {
             5,
         )
         .unwrap();
-    api.translate_plural(b"cat", b"cats", 2, b"", "dom", owned)
+    api.translate_plural(b"cat", b"cats", 2, None, "dom", owned)
         .unwrap();
     assert_eq!(
         log.borrow()[0].1,
@@ -212,7 +212,7 @@ fn filter_may_translate_again() {
                 depth.set(1);
                 let api = inner.upgrade().unwrap();
                 let nested = api
-                    .translate(b"baba", b"", "dom", owned)
+                    .translate(b"baba", None, "dom", owned)
                     .map_err(|e| speedyspec_wp_hooks::HookError::message(e.to_string()))?;
                 Ok(HookValue::Str(format!("{:?}|{:?}", args[0], nested)))
             }),
@@ -220,7 +220,7 @@ fn filter_may_translate_again() {
             1,
         )
         .unwrap();
-    let r = api.translate(b"baba", b"", "dom", owned).unwrap();
+    let r = api.translate(b"baba", None, "dom", owned).unwrap();
     assert!(
         matches!(r, HookValue::Str(ref v) if v.starts_with("Str(\"dyado\")|")),
         "{r:?}"
@@ -259,15 +259,15 @@ fn unhooked_calls_are_served_and_counted_on_the_request_store() {
     let (api, hooks) = api();
     api.set_request_store(Some(hooks.store().clone()));
     assert_eq!(
-        api.translate_if_unhooked(b"baba", b"", "dom", owned),
+        api.translate_if_unhooked(b"baba", None, "dom", owned),
         Some(s("dyado"))
     );
     assert_eq!(
-        api.translate_if_unhooked(b"nope", b"", "dom", owned),
+        api.translate_if_unhooked(b"nope", None, "dom", owned),
         Some(s("<arg 0>"))
     );
     assert_eq!(
-        api.translate_plural_if_unhooked(b"cat", b"cats", 2, b"", "dom", owned),
+        api.translate_plural_if_unhooked(b"cat", b"cats", 2, None, "dom", owned),
         Some(s("<arg 1>"))
     );
     assert_eq!(hooks.did_filter(&HookName::new(s("gettext"))).unwrap(), 2);
@@ -288,7 +288,7 @@ fn unhooked_calls_are_served_and_counted_on_the_request_store() {
             3,
         )
         .unwrap();
-    assert_eq!(api.translate_if_unhooked(b"baba", b"", "dom", owned), None);
+    assert_eq!(api.translate_if_unhooked(b"baba", None, "dom", owned), None);
     assert_eq!(
         hooks.did_filter(&HookName::new(s("gettext"))).unwrap(),
         2,

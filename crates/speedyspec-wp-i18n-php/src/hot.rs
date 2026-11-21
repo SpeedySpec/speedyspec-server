@@ -138,14 +138,17 @@ fn fast(ex: &ExecuteData, ret: &mut Zval, spec: Spec) -> bool {
         if let (Some((text, plural)), Some(context)) = (strings, context) {
             let text = zv::bytes(text);
             let served = match plural {
-                None => state
-                    .api
-                    .translate_if_unhooked(text, context, domain, |t| write(ret, ex, t)),
+                None => state.api.translate_if_unhooked(
+                    text,
+                    spec.context.map(|_| context),
+                    domain,
+                    |t| write(ret, ex, t),
+                ),
                 Some((p, n)) => state.api.translate_plural_if_unhooked(
                     text,
                     zv::bytes(p),
                     n,
-                    context,
+                    spec.context.map(|_| context),
                     domain,
                     |t| write(ret, ex, t),
                 ),
@@ -270,8 +273,20 @@ fn slow(ex: &ExecuteData, ret: &mut Zval, spec: Spec) {
     }
 }
 
+/// Clears what a request may have left behind (a bailout between handing over a translation and taking it).
+pub(crate) fn start_request() {
+    PENDING.with(|p| {
+        if let Ok(mut p) = p.try_borrow_mut() {
+            // Not dropped: it may point into the previous request's heap.
+            std::mem::forget(p.take());
+        }
+    });
+}
+
 fn serve(ex: &mut ExecuteData, ret: &mut Zval, spec: Spec) {
-    let served = fast(ex, ret, spec);
+    // A panic must not unwind into the engine: the call then goes to WordPress's own function.
+    let served = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| fast(ex, ret, spec)))
+        .unwrap_or(false);
     if let Some(s) = shared() {
         let counter = if served { &s.fast } else { &s.slow };
         counter.set(counter.get() + 1);

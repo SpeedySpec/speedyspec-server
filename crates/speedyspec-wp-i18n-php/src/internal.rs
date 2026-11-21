@@ -130,6 +130,7 @@ fn load_file(a: &[Value]) -> R {
     let file = path(a, 1)?;
     let domain = text(a, 2)?;
     let locale = opt_text(a, 3)?;
+    state()?.prefetch(&file, true);
     Ok(Value::Bool(c.borrow_mut().load_file(
         &file,
         &domain,
@@ -219,6 +220,7 @@ fn file_open(a: &[Value]) -> R {
     if file_type_of(a)?.is_none() {
         return Ok(Value::Bool(false));
     }
+    s.prefetch(&file, false);
     let Some(handle) = s.api.controller().borrow().open(&file) else {
         return Ok(Value::Bool(false));
     };

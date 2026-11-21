@@ -77,6 +77,26 @@ impl Shared {
         self.generation.set(self.generation.get() + 1);
     }
 
+    /// Reads `file` into the per-worker cache, if WordPress would read it, without holding any controller borrow: the
+    /// PHP `include` fallback runs PHP, which may translate.
+    pub fn prefetch(&self, file: &std::path::Path, resolve: bool) {
+        use speedyspec_wp_i18n_contracts::FileProbe;
+        let path = if resolve {
+            self.probe.realpath(file)
+        } else {
+            Some(file.to_path_buf())
+        };
+        let Some(path) = path else { return };
+        let bytes = path.as_os_str().as_encoded_bytes();
+        let ext = bytes
+            .iter()
+            .rposition(|b| *b == b'.')
+            .map(|i| &bytes[i + 1..]);
+        if matches!(ext, Some(b"mo" | b"php")) && self.probe.is_readable(&path) {
+            speedyspec_wp_i18n::cached_file(&*self.reader, &*self.probe, &*self.cache, &path);
+        }
+    }
+
     /// A new controller over the same reader, probe and file cache; its id.
     pub fn new_controller(&self) -> i64 {
         let c =

@@ -209,11 +209,12 @@ impl I18nApi {
     pub fn translate_if_unhooked<R>(
         &self,
         text: &[u8],
-        context: &[u8],
+        context: Option<&[u8]>,
         domain: &str,
         out: impl FnOnce(Translated<'_>) -> R,
     ) -> Option<R> {
-        let with_context = !context.is_empty();
+        let with_context = context.is_some();
+        let context = context.unwrap_or(b"");
         let (first, names) = self.pair(domain, with_context, false);
         let second = Self::second(&names, with_context, false);
         let store = self.store();
@@ -236,11 +237,12 @@ impl I18nApi {
         single: &[u8],
         plural: &[u8],
         number: i64,
-        context: &[u8],
+        context: Option<&[u8]>,
         domain: &str,
         out: impl FnOnce(Translated<'_>) -> R,
     ) -> Option<R> {
-        let with_context = !context.is_empty();
+        let with_context = context.is_some();
+        let context = context.unwrap_or(b"");
         let (first, names) = self.pair(domain, with_context, true);
         let second = Self::second(&names, with_context, true);
         let store = self.store();
@@ -332,11 +334,12 @@ impl I18nApi {
     pub fn translate<R>(
         &self,
         text: &[u8],
-        context: &[u8],
+        context: Option<&[u8]>,
         domain: &str,
         out: impl FnOnce(Translated<'_>) -> R,
     ) -> Result<R, I18nError> {
-        let with_context = !context.is_empty();
+        let with_context = context.is_some();
+        let context = context.unwrap_or(b"");
         let (first, names) = self.pair(domain, with_context, false);
         let second = Self::second(&names, with_context, false);
         let args = || {
@@ -379,11 +382,12 @@ impl I18nApi {
         single: &[u8],
         plural: &[u8],
         number: i64,
-        context: &[u8],
+        context: Option<&[u8]>,
         domain: &str,
         out: impl FnOnce(Translated<'_>) -> R,
     ) -> Result<R, I18nError> {
-        let with_context = !context.is_empty();
+        let with_context = context.is_some();
+        let context = context.unwrap_or(b"");
         let (first, names) = self.pair(domain, with_context, true);
         let second = Self::second(&names, with_context, true);
         let args = || {
