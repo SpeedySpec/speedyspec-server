@@ -4663,6 +4663,9 @@ version = "0.1.0"
 [[package]]
 name = "speedyspec-wp-shortcode-contracts"
 version = "0.1.0"
+dependencies = [
+ "speedyspec-hooks",
+]
 
 [[package]]
 name = "speedyspec-wp-shortcode-php"
