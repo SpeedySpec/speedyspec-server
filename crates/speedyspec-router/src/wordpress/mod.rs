@@ -4,7 +4,9 @@
 mod parse_str;
 mod php;
 mod query_template;
+mod rule_set;
 
 pub use parse_str::php_parse_str;
 pub use php::{php_addslashes, php_urldecode, php_urlencode};
 pub use query_template::QueryTemplate;
+pub use rule_set::RuleSetMatcher;

@@ -3,8 +3,10 @@ use std::collections::HashMap;
 use speedyspec_http::Method;
 use speedyspec_routing::{
     CompiledDispatch, DispatchStrategy, Params, Resolution, RouteData, RouteId, RouteMatch,
-    RouteName, Rule, RuleGuard,
+    RouteName, RuleGuard,
 };
+
+use crate::wordpress::RuleSetMatcher;
 
 /// What WordPress's rules match against: the requested path and file, as `WP::parse_request` computes them.
 ///
@@ -36,8 +38,8 @@ pub struct CompiledTable {
     dynamics: Vec<Dynamic>,
     dispatch: Box<dyn CompiledDispatch>,
     names: HashMap<RouteId, RouteName>,
-    pub(crate) before_rules: Vec<Rule>,
-    pub(crate) after_rules: Vec<Rule>,
+    before_rules: RuleSetMatcher,
+    after_rules: RuleSetMatcher,
 }
 
 /// True when a route registered for `methods` answers `method` (`HEAD` falls back to `GET`).
@@ -90,8 +92,8 @@ impl CompiledTable {
                 .iter()
                 .map(|(name, id)| (*id, name.clone()))
                 .collect(),
-            before_rules: data.before_rules.clone(),
-            after_rules: data.after_rules.clone(),
+            before_rules: RuleSetMatcher::compile(&data.before_rules, strategy)?,
+            after_rules: RuleSetMatcher::compile(&data.after_rules, strategy)?,
         })
     }
 
@@ -101,6 +103,17 @@ impl CompiledTable {
             name: self.names.get(&id).cloned(),
             params,
         })
+    }
+
+    /// Continues matching WordPress's rules (the after-routes slot) from rule `from`, after a guard PHP answered
+    /// rejected the rule before it.
+    pub fn resume(
+        &self,
+        subject: &WpSubject,
+        from: usize,
+        guard: &dyn RuleGuard,
+    ) -> Option<RouteMatch> {
+        self.after_rules.find(subject, from, guard)
     }
 
     /// Resolves a request: rules before routes, static routes, dynamic routes in registration order, rules after
@@ -114,7 +127,6 @@ impl CompiledTable {
         redirects: &[(RouteId, String, u16)],
         has_fallback: bool,
     ) -> Resolution {
-        let _ = guard;
         let redirect_or_route =
             |id: RouteId, params: Params| match redirects.iter().find(|(rid, _, _)| *rid == id) {
                 Some((_, location, status)) => Resolution::Redirect {
@@ -124,6 +136,12 @@ impl CompiledTable {
                 None => self.route(id, params),
             };
         let mut allowed = Vec::new();
+
+        if let Some(subject) = &request.wordpress
+            && let Some(found) = self.before_rules.find(subject, 0, guard)
+        {
+            return Resolution::Route(found);
+        }
 
         if let Some(routes) = self.statics.get(&request.path) {
             let exact = routes.iter().find(|(method, _)| *method == request.method);
@@ -153,6 +171,12 @@ impl CompiledTable {
             }
             allowed_by(&dynamic.methods, &mut allowed);
             from = index + 1;
+        }
+
+        if let Some(subject) = &request.wordpress
+            && let Some(found) = self.after_rules.find(subject, 0, guard)
+        {
+            return Resolution::Route(found);
         }
 
         if has_fallback && allowed.is_empty() {
