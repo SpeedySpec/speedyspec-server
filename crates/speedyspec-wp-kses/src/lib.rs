@@ -11,6 +11,7 @@ mod convert;
 mod defaults;
 mod globals;
 mod ports;
+mod safecss;
 
 pub use api::{KsesApi, KsesDeps};
 pub use convert::{allowed_from_value, allowed_to_value, rule_value};
