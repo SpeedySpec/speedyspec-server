@@ -378,18 +378,6 @@ abstract class WP_UnitTestCase extends TestCase
     }
 
     /**
-     * Asserts that two arrays hold the same keys and values, in any order, as WordPress's test case does.
-     */
-    public function assertSameSetsWithIndex($expected, $actual, $message = '')
-    {
-        $this->assertIsArray($expected, $message . ' Expected value must be an array.');
-        $this->assertIsArray($actual, $message . ' Value under test is not an array.');
-        ksort($expected);
-        ksort($actual);
-        $this->assertSame($expected, $actual, $message);
-    }
-
-    /**
      * Asserts that two arrays hold the same values, in any order.
      */
     public function assertSameSets($expected, $actual, $message = '')
