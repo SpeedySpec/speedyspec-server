@@ -84,6 +84,47 @@ fn block_tag(t: &[u8], p: usize, names: fn(&[u8]) -> bool) -> Option<usize> {
     memchr::memchr(b'>', rest).map(|at| j + at + 1)
 }
 
+/// `(</?BLOCK[^>]*>)\s*NEEDLE` replaced with `$1`, visiting the needle's occurrences instead of every `<`.
+///
+/// A match ends at an occurrence of `needle`; before it (past any spaces) is the tag's `>`. The tag can start at
+/// any `<` after the `>` before that one, since `[^>]*` stops at the first `>`, and every such start ends at the
+/// same `>`. Scanning left to right, PCRE takes the first of those starts whose name is a block: the first `<` in
+/// that window, at or after the last match, whose name check passes.
+fn tag_then<'a>(t: &'a [u8], needle: &[u8]) -> Cow<'a, [u8]> {
+    let mut out: Option<Vec<u8>> = None;
+    let mut copied = 0;
+    for b in memmem::find_iter(t, needle) {
+        if b < copied {
+            continue;
+        }
+        let mut e = b;
+        while e > copied && crate::scan::is_pcre_space(t[e - 1]) {
+            e -= 1;
+        }
+        if e == copied || t[e - 1] != b'>' {
+            continue;
+        }
+        let window = memchr::memrchr(b'>', &t[copied..e - 1]).map_or(copied, |at| copied + at + 1);
+        let Some(s) = memchr::memchr_iter(b'<', &t[window..e - 1])
+            .map(|at| window + at)
+            .find(|&s| block_tag(t, s, starts_with_block) == Some(e))
+        else {
+            continue;
+        };
+        let buffer = out.get_or_insert_with(|| Vec::with_capacity(t.len()));
+        buffer.extend_from_slice(&t[copied..s]);
+        buffer.extend_from_slice(&t[s..e]);
+        copied = b + needle.len();
+    }
+    match out {
+        None => Cow::Borrowed(t),
+        Some(mut buffer) => {
+            buffer.extend_from_slice(&t[copied..]);
+            Cow::Owned(buffer)
+        }
+    }
+}
+
 fn contains(t: &[u8], needle: &[u8]) -> bool {
     memmem::find(t, needle).is_some()
 }
@@ -470,17 +511,7 @@ pub fn wpautop(text: &[u8], options: AutopOptions) -> Cow<'_, [u8]> {
         })
     });
     // !(</?BLOCK[^>]*>)\s*</p>! → "$1"
-    text = step(text, |t| {
-        pass(t, b'<', |t, i, out| {
-            let end = block_tag(t, i, starts_with_block)?;
-            let close = skip_spaces(t, end);
-            if !t[close..].starts_with(b"</p>") {
-                return None;
-            }
-            out.extend_from_slice(&t[i..end]);
-            Some(close + 4)
-        })
-    });
+    text = step(text, |t| tag_then(t, b"</p>"));
 
     if options.br {
         if early & PRESERVE != 0 {
@@ -514,17 +545,7 @@ pub fn wpautop(text: &[u8], options: AutopOptions) -> Cow<'_, [u8]> {
 
     if contains(&text, b"<br />") {
         // !(</?BLOCK[^>]*>)\s*<br />! → "$1"
-        text = step(text, |t| {
-            pass(t, b'<', |t, i, out| {
-                let end = block_tag(t, i, starts_with_block)?;
-                let br = skip_spaces(t, end);
-                if !t[br..].starts_with(b"<br />") {
-                    return None;
-                }
-                out.extend_from_slice(&t[i..end]);
-                Some(br + 6)
-            })
-        });
+        text = step(text, |t| tag_then(t, b"<br />"));
         // !<br />(\s*</?(?:p|li|div|dl|dd|dt|th|pre|td|ul|ol)[^>]*>)! → "$1"
         text = step(text, |t| {
             pass_needle(t, b"<br />", |t, i, out| {
