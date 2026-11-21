@@ -47,3 +47,12 @@ fn to_php_string_scalars() {
     assert_eq!(to_php_string(&Value::Str("é".into())).unwrap(), "é".as_bytes());
     assert_eq!(to_php_string(&Value::Array(Vec::new())), None);
 }
+
+#[test]
+fn str_replace_sees_searches_created_at_the_edges() {
+    // A replacement that joins with the text beside it, or an empty one that brings two pieces together, creates
+    // a later search string; PHP's sequential str_replace then replaces it.
+    assert_eq!(&*StrReplace::new(pairs(&[("ab", "x"), ("xc", "Y")])).apply(b"abc"), b"Y");
+    assert_eq!(&*StrReplace::new(pairs(&[("b", ""), ("ac", "Y")])).apply(b"abc"), b"Y");
+    assert_eq!(&*StrReplace::new(pairs(&[("``", "'"), ("''", "CLOSE")])).apply(b"``'"), b"CLOSE");
+}

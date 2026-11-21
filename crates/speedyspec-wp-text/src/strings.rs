@@ -9,9 +9,11 @@ use speedyspec_hooks::Value as HookValue;
 /// PHP's `str_replace(array $search, array $replace, string $subject)`.
 ///
 /// PHP runs each pair over the whole result of the pair before, so a later search can match what an earlier
-/// replacement wrote. One aho-corasick pass gives the same result only when no replacement contains any search
-/// string and no two search strings can overlap; [`StrReplace::new`] checks that once and otherwise runs the pairs
-/// in order. Empty search strings are skipped, as PHP skips them.
+/// replacement wrote, including where a replacement joins with the text beside it or an empty one brings two pieces
+/// together. One aho-corasick pass gives the same result only when no replacement can create any search string that
+/// way and no two search strings can overlap; [`StrReplace::new`] checks that once and otherwise runs the pairs in
+/// order, skipping a pair whose search string is absent and can't be created. Empty search strings are skipped, as
+/// PHP skips them.
 pub struct StrReplace {
     pairs: Vec<(Vec<u8>, Vec<u8>)>,
     one_pass: Option<AhoCorasick>,
@@ -39,11 +41,25 @@ impl StrReplace {
     ///     The prepared replacement.
     pub fn new(pairs: Vec<(Vec<u8>, Vec<u8>)>) -> StrReplace {
         let pairs: Vec<_> = pairs.into_iter().filter(|(search, _)| !search.is_empty()).collect();
-        let independent = pairs.iter().enumerate().all(|(i, (a, replace))| {
-            pairs.iter().enumerate().all(|(j, (b, _))| {
-                !contains(replace, b) && (i == j || (!contains(a, b) && !overlaps(a, b)))
+        // A replacement can create a search string only where the two overlap or one contains the other (an
+        // empty replacement contains nothing but joins its neighbours, so it creates any later search string).
+        let creatable: Vec<bool> = pairs
+            .iter()
+            .enumerate()
+            .map(|(i, (search, _))| {
+                pairs[..i].iter().any(|(_, replace)| {
+                    contains(replace, search) || contains(search, replace) || overlaps(replace, search) || overlaps(search, replace)
+                })
             })
-        });
+            .collect();
+        // One pass is PHP's result only when no pair can create a later one's search string and no two search
+        // strings can overlap; and a later pair's replacement must not contain an earlier search string either.
+        let independent = !creatable.contains(&true)
+            && pairs.iter().enumerate().all(|(i, (a, replace))| {
+                pairs.iter().enumerate().all(|(j, (b, _))| {
+                    !contains(replace, b) && (i == j || (!contains(a, b) && !overlaps(a, b)))
+                })
+            });
         let one_pass = (independent && pairs.len() > 1).then(|| {
             AhoCorasick::builder()
                 .match_kind(MatchKind::LeftmostFirst)
@@ -56,16 +72,6 @@ impl StrReplace {
                 .build(pairs.iter().map(|(s, _)| s))
                 .expect("the search strings build an automaton")
         });
-        // A replacement can create a search string only where the two overlap or one contains the other.
-        let creatable = pairs
-            .iter()
-            .enumerate()
-            .map(|(i, (search, _))| {
-                pairs[..i].iter().any(|(_, replace)| {
-                    contains(replace, search) || contains(search, replace) || overlaps(replace, search) || overlaps(search, replace)
-                })
-            })
-            .collect();
         StrReplace { pairs, one_pass, detector, creatable }
     }
 

@@ -5680,6 +5680,7 @@ version = "0.1.0"
 dependencies = [
  "aho-corasick",
  "criterion 0.5.1",
+ "libc",
  "memchr",
  "pcre2",
  "proptest",
