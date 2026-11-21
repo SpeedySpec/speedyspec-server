@@ -8048,6 +8048,36 @@
         }
       }
     ],
+    "esc_xml/literal/xml_cdata_backtrack": [
+      {
+        "returned": "",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "esc_xml/literal/xml_cdata_backtrack_below": [
+      {
+        "returned": "&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[&lt;![CDATA[",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
     "esc_xml/literal/xml_cdata_close_first": [
       {
         "returned": "]]&gt; &amp; <![CDATA[ok]]>",

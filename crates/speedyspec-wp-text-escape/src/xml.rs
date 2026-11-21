@@ -11,6 +11,10 @@ use crate::specialchars::wp_specialchars;
 /// WordPress splits with a regex: each `<![CDATA[` up to the first `]]>` after it is kept, and each run of text
 /// before one (and whatever follows the last) is escaped on its own. An unterminated `<![CDATA[` is escaped.
 ///
+/// One deliberate difference: WordPress's regex can exhaust PHP's PCRE backtrack limit (hundreds of unterminated
+/// `<![CDATA[`, or about 1 MB of any text), and `esc_xml()` then returns `''`. This scan is linear and always
+/// returns the escaped text (`compat/formatting/breaks.json`, `xml_cdata_backtrack`).
+///
 /// @param text
 ///     The text, already through `wp_check_invalid_utf8()`.
 /// @param charset
