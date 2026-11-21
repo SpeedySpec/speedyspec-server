@@ -144,6 +144,6 @@ pub fn short(input: &[u8]) -> String {
 }
 
 /// The security oracle's exploit finder for the gate; none until the oracle exists.
-pub fn exploit_finder() -> Option<Box<dyn Fn(&[u8]) -> Option<String>>> {
+pub fn exploit_finder() -> Option<Box<speedyspec_wp_kses_testkit::ExploitFinder>> {
     None
 }
