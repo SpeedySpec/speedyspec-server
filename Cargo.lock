@@ -951,6 +951,8 @@ dependencies = [
  "num-traits",
  "oorandom",
  "page_size",
+ "plotters",
+ "rayon",
  "regex",
  "serde",
  "serde_json",
@@ -5034,6 +5036,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-http"
+version = "0.1.0"
+
+[[package]]
+name = "speedyspec-http-fastcgi"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-http",
+ "speedyspec-http-message",
+]
+
+[[package]]
+name = "speedyspec-http-message"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-http",
+]
+
+[[package]]
+name = "speedyspec-http-pipeline"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-http",
+ "speedyspec-http-message",
+ "speedyspec-native-stage",
+]
+
+[[package]]
 name = "speedyspec-native-stage"
 version = "0.1.0"
 
@@ -5095,6 +5125,65 @@ name = "speedyspec-php-serialize"
 version = "0.1.0"
 dependencies = [
  "speedyspec-hooks",
+]
+
+[[package]]
+name = "speedyspec-router"
+version = "0.1.0"
+dependencies = [
+ "criterion 0.8.2",
+ "fancy-regex",
+ "proptest",
+ "regex",
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-http",
+ "speedyspec-router-store-memory",
+ "speedyspec-routing",
+]
+
+[[package]]
+name = "speedyspec-router-php"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-hooks-memory",
+ "speedyspec-http",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-router-store-memory",
+ "speedyspec-routing",
+]
+
+[[package]]
+name = "speedyspec-router-presentation"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "speedyspec-http",
+ "speedyspec-http-message",
+ "speedyspec-http-pipeline",
+ "speedyspec-router",
+ "speedyspec-router-store-memory",
+ "speedyspec-routing",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-rewrite",
+]
+
+[[package]]
+name = "speedyspec-router-store-memory"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-routing",
+]
+
+[[package]]
+name = "speedyspec-routing"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-http",
 ]
 
 [[package]]
@@ -5601,6 +5690,47 @@ dependencies = [
  "speedyspec-wp-options",
  "speedyspec-wp-options-memory",
  "tempfile",
+]
+
+[[package]]
+name = "speedyspec-wp-rewrite"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "serde_json",
+ "speedyspec-container",
+ "speedyspec-cqrs",
+ "speedyspec-http",
+ "speedyspec-router",
+ "speedyspec-router-store-memory",
+ "speedyspec-routing",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-options",
+]
+
+[[package]]
+name = "speedyspec-wp-rewrite-php"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-cqrs",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-router",
+ "speedyspec-router-php",
+ "speedyspec-router-store-memory",
+ "speedyspec-routing",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-rewrite",
+ "ureq",
 ]
 
 [[package]]
