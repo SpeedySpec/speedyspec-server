@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{AttsParse, ParsedAtts, PhpValue, ShortcodeError, ShortcodeMatch, TagName, TagSet};
+use crate::{AttsParse, ParsedAtts, PhpKey, PhpValue, ShortcodeError, ShortcodeMatch, TagName, TagSet};
 
 /// One registered tag's callback: `call_user_func( $callback, $attr, $content, $tag )`.
 pub trait ShortcodeHandler {
@@ -127,6 +127,8 @@ pub trait Diagnostics {
     fn doing_it_wrong(&self, function: &str, message: DiagnosticMessage, version: &str);
     /// PHP's E_DEPRECATED for passing `null` as `$subject` to `function`.
     fn deprecated_null_subject(&self, function: &str);
+    /// PHP's E_WARNING for reading a missing array key, where WordPress reads one without `??`.
+    fn undefined_array_key(&self, key: &PhpKey);
 }
 
 /// `wp_html_split()`.

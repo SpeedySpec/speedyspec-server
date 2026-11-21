@@ -4800,6 +4800,7 @@ dependencies = [
 name = "speedyspec-wp-shortcode-php"
 version = "0.1.0"
 dependencies = [
+ "speedyspec-compat",
  "speedyspec-container",
  "speedyspec-cqrs",
  "speedyspec-hooks",

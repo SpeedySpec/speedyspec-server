@@ -100,6 +100,14 @@ impl Diagnostics for RecordingDiagnostics {
     fn deprecated_null_subject(&self, function: &str) {
         self.0.borrow_mut().push(format!("deprecated_null_subject:{function}").into_bytes());
     }
+
+    fn undefined_array_key(&self, key: &PhpKey) {
+        let key = match key {
+            PhpKey::Int(i) => i.to_string(),
+            PhpKey::Str(s) => format!("{s:?}"),
+        };
+        self.0.borrow_mut().push(format!("warning:Undefined array key {key}").into_bytes());
+    }
 }
 
 /// kses, answering from calls recorded against WordPress.

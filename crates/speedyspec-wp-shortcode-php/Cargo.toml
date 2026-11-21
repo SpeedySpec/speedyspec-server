@@ -11,6 +11,7 @@ speedyspec-container = { path = "../speedyspec-container" }
 speedyspec-cqrs = { path = "../speedyspec-cqrs" }
 speedyspec-hooks = { path = "../speedyspec-hooks" }
 speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-compat = { path = "../speedyspec-compat" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-shortcode = { path = "../speedyspec-wp-shortcode" }
 speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contracts" }
@@ -22,4 +23,8 @@ speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
 
 [[test]]
 name = "php"
+harness = false
+
+[[test]]
+name = "compat"
 harness = false

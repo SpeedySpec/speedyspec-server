@@ -24,7 +24,7 @@ use speedyspec_wp_hooks::HookApi;
 use speedyspec_wp_shortcode::{
     HandAttsParser, HandScanner, HookApiFilters, ShortcodeApi, ShortcodeDeps, register_shortcode_handlers,
 };
-use speedyspec_wp_shortcode_contracts::ShortcodeHandler;
+use speedyspec_wp_shortcode_contracts::{AttsParser, ShortcodeHandler, ShortcodeScanner};
 
 pub use handler::PhpShortcodeHandler;
 pub use registry::PhpGlobalRegistry;
@@ -33,6 +33,19 @@ use handler::{NamedRustHandler, RustHandlers};
 use legacy::{PhpDiagnostics, PhpHtmlSplitter, PhpKsesAttributes, PhpStringConversion};
 
 const FACADE: &str = include_str!("shortcodes.php");
+
+/// Runs the shortcode scenarios through the native functions (the port side of `compat/shortcode`), loading
+/// WordPress's formatting and kses files from `release`.
+pub fn shortcode_scenario_runner(php: speedyspec_php::Php, release: &std::path::Path) -> speedyspec_compat::PhpRunner {
+    let code = format!(
+        "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', true); require {:?};",
+        format!("{}/", release.display()),
+        speedyspec_compat::compat_dir().join("shortcode/setup.php").display().to_string()
+    );
+    speedyspec_compat::PhpRunner::new(php, move |php| {
+        php.eval("speedyspec://compat/shortcode-setup", &code).map(|_| ()).map_err(|e| e.to_string())
+    })
+}
 
 /// The native area of WordPress's shortcode functions.
 pub struct ShortcodeArea {
@@ -45,11 +58,21 @@ impl ShortcodeArea {
     /// The Shortcode API over `$shortcode_tags`, with the Hook API's filters and the PHP adapters, and its
     /// handlers registered in `container`.
     pub fn new(container: Rc<Container>, hooks: Rc<HookApi>) -> Self {
+        Self::with_strategies(container, hooks, Rc::new(HandScanner::new()), Rc::new(HandAttsParser::new()))
+    }
+
+    /// As [`ShortcodeArea::new`], with the scanner and attribute parser given.
+    pub fn with_strategies(
+        container: Rc<Container>,
+        hooks: Rc<HookApi>,
+        scanner: Rc<dyn ShortcodeScanner>,
+        atts: Rc<dyn AttsParser>,
+    ) -> Self {
         let rust = Rc::new(RustHandlers::default());
         let api = Rc::new(ShortcodeApi::new(ShortcodeDeps {
             registry: Rc::new(PhpGlobalRegistry::new(rust.clone())),
-            scanner: Rc::new(HandScanner::new()),
-            atts: Rc::new(HandAttsParser::new()),
+            scanner,
+            atts,
             filters: Rc::new(HookApiFilters::new(hooks)),
             diagnostics: Rc::new(PhpDiagnostics),
             html: Rc::new(PhpHtmlSplitter),

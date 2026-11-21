@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use speedyspec_wp_shortcode_contracts::{
-    AttsParser, DiagnosticMessage, Diagnostics, HtmlSplitter, InvalidTagName, KsesAttributes, MatchGroups, ParsedAtts,
+    AttKey, AttsParser, DiagnosticMessage, Diagnostics, HtmlSplitter, InvalidTagName, KsesAttributes, MatchGroups, ParsedAtts,
     PhpKey, PhpStrings, PhpValue, ShortcodeError, ShortcodeFilters, ShortcodeHandler, ShortcodeRegistry,
     ShortcodeScanner, TagName, TagSet, get_shortcode_regex, php_bytes, php_str_bytes,
 };
@@ -207,7 +207,7 @@ impl ShortcodeApi {
         Ok((out, count))
     }
 
-    /// `$m[ $i ]` as bytes, or `None` when it is absent or `null` (`$m[ $i ] ?? null`).
+    /// `$m[ $i ] ?? null` as bytes: `None` when absent or `null`, with no notice.
     fn group(&self, m: &PhpValue, i: i64) -> Result<Option<Vec<u8>>, ShortcodeError> {
         let PhpValue::Array(entries) = m else {
             return Ok(None);
@@ -221,21 +221,40 @@ impl ShortcodeApi {
         }
     }
 
+    /// `$m[ $i ]` as WordPress reads it, without `??`: a missing key raises PHP's warning and reads as `null`.
+    fn read_group(&self, m: &PhpValue, i: i64) -> Result<Option<Vec<u8>>, ShortcodeError> {
+        let present = matches!(m, PhpValue::Array(entries) if entries.iter().any(|(k, _)| *k == PhpKey::Int(i)));
+        if !present {
+            self.d.diagnostics.undefined_array_key(&PhpKey::Int(i));
+        }
+        self.group(m, i)
+    }
+
+    /// `'[' === $m[1] && ']' === $m[6]`, reading `$m[6]` only when `$m[1]` matched, as PHP short-circuits.
+    fn escaped(&self, m: &PhpValue) -> Result<bool, ShortcodeError> {
+        Ok(self.read_group(m, 1)?.as_deref() == Some(b"[") && self.read_group(m, 6)?.as_deref() == Some(b"]"))
+    }
+
     /// `do_shortcode_tag( $m )`. The result is the PHP value WordPress returns, unconverted.
     ///
     /// # Errors
     ///
     /// Any error from the handler, a filter or a string conversion.
     pub fn do_shortcode_tag(&self, m: &PhpValue) -> Result<PhpValue, ShortcodeError> {
-        let g1 = self.group(m, 1)?;
-        let g6 = self.group(m, 6)?;
-        if g1.as_deref() == Some(b"[") && g6.as_deref() == Some(b"]") {
-            return Ok(php_bytes(trim_one(&self.group(m, 0)?.unwrap_or_default())));
+        if self.escaped(m)? {
+            return Ok(php_bytes(trim_one(&self.read_group(m, 0)?.unwrap_or_default())));
         }
-        let tag = self.group(m, 2)?.unwrap_or_default();
-        let atts = self.shortcode_parse_atts(&self.group(m, 3)?.unwrap_or_default());
-        let handler = self.d.registry.handler(&tag).filter(|h| h.is_callable());
-        let Some(handler) = handler else {
+        let tag = self.read_group(m, 2)?.unwrap_or_default();
+        let atts = self.shortcode_parse_atts(&self.read_group(m, 3)?.unwrap_or_default());
+        let handler = self.d.registry.handler(&tag);
+        if handler.is_none() {
+            // `$shortcode_tags[ $tag ]` on a tag that is gone: PHP's key conversion applies to the notice too.
+            self.d.diagnostics.undefined_array_key(&match AttKey::from_php(tag.clone()) {
+                AttKey::Int(i) => PhpKey::Int(i),
+                AttKey::Str(s) => PhpKey::Str(String::from_utf8_lossy(&s).into_owned()),
+            });
+        }
+        let Some(handler) = handler.filter(|h| h.is_callable()) else {
             self.d.diagnostics.doing_it_wrong(
                 "do_shortcode_tag",
                 DiagnosticMessage {
@@ -257,21 +276,21 @@ impl ShortcodeApi {
             return Ok(early);
         }
         let content = self.group(m, 5)?;
+        let g1 = self.read_group(m, 1)?;
         let returned = handler.call(&atts, content.as_deref(), &tag)?;
         let mut output = g1.unwrap_or_default();
         output.extend(self.d.strings.to_php_string(&returned)?);
-        output.extend(g6.unwrap_or_default());
+        output.extend(self.read_group(m, 6)?.unwrap_or_default());
         self.d.filters.do_shortcode_tag(php_bytes(output), &tag, &attr, m)
     }
 
     /// `strip_shortcode_tag( $m )`.
     pub fn strip_shortcode_tag(&self, m: &PhpValue) -> PhpValue {
-        let g = |i| self.group(m, i).ok().flatten().unwrap_or_default();
-        let (g1, g6) = (g(1), g(6));
-        if g1 == b"[" && g6 == b"]" {
+        let g = |i| self.read_group(m, i).ok().flatten().unwrap_or_default();
+        if self.escaped(m).unwrap_or(false) {
             return php_bytes(trim_one(&g(0)));
         }
-        php_bytes([g1, g6].concat())
+        php_bytes([g(1), g(6)].concat())
     }
 
     /// `unescape_invalid_shortcodes( $content )`.
@@ -340,7 +359,8 @@ impl ShortcodeApi {
         );
         let filtered = self.d.filters.strip_shortcodes_tagnames(listed, content)?;
         let mut to_remove = Vec::new();
-        if let PhpValue::Array(entries) = &filtered {
+        // A PHP filter's result may arrive unread; look inside it as PHP would.
+        if let PhpValue::Array(entries) = &*filtered.read() {
             for (_, v) in entries {
                 to_remove.push(TagName::from_global(match php_str_bytes(v) {
                     Some(b) => b.to_vec(),

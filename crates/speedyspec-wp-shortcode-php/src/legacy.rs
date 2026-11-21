@@ -3,7 +3,7 @@
 
 use speedyspec_hooks::Value;
 use speedyspec_wp_shortcode_contracts::{
-    DiagnosticMessage, Diagnostics, HtmlSplitter, KsesAttributes, PhpStrings, PhpValue, ShortcodeError, php_bytes,
+    DiagnosticMessage, Diagnostics, HtmlSplitter, KsesAttributes, PhpKey, PhpStrings, PhpValue, ShortcodeError, php_bytes,
     php_str_bytes,
 };
 
@@ -58,6 +58,16 @@ impl Diagnostics for PhpDiagnostics {
     /// Raises the very deprecation WordPress raises, by making the same call.
     fn deprecated_null_subject(&self, function: &str) {
         let _ = speedyspec_php::call_catching(&Value::Str(function.into()), &[Value::Str("/x/".into()), Value::Null]);
+    }
+
+    /// Raises PHP's own warning, by reading the missing key.
+    fn undefined_array_key(&self, key: &PhpKey) {
+        let read = Value::Str(r"SpeedySpec\WpShortcode\Support\read_missing_key".into());
+        let key = match key {
+            PhpKey::Int(i) => Value::Int(*i),
+            PhpKey::Str(s) => Value::Str(s.clone()),
+        };
+        let _ = speedyspec_php::call_catching(&read, &[key]);
     }
 }
 

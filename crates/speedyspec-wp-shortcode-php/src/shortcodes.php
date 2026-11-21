@@ -1,4 +1,4 @@
-declare(strict_types=1);
+// Not strict: WordPress's shortcodes.php coerces arguments (str_contains( 42, '[' ) is allowed), and so must this.
 
 namespace SpeedySpec\WpShortcode\Support
 {
@@ -26,6 +26,15 @@ namespace SpeedySpec\WpShortcode\Support
     function clear_tags()
     {
         $GLOBALS['shortcode_tags'] = array();
+    }
+
+    /**
+     * Reads a key that is not there, so PHP raises its own "Undefined array key" warning where WordPress would.
+     */
+    function read_missing_key($key)
+    {
+        $none = array();
+        return $none[$key];
     }
 }
 
@@ -72,6 +81,9 @@ namespace
      */
     function has_shortcode($content, $tag)
     {
+        if (!str_contains($content, '[')) {
+            return false;
+        }
         return N\has_shortcode($content, $tag);
     }
 
@@ -80,6 +92,9 @@ namespace
      */
     function get_shortcode_tags_in_content($content)
     {
+        if (!str_contains($content, '[')) {
+            return array();
+        }
         return N\get_shortcode_tags_in_content($content);
     }
 
@@ -88,7 +103,7 @@ namespace
      */
     function apply_shortcodes($content, $ignore_html = false)
     {
-        return N\do_shortcode($content, $ignore_html);
+        return do_shortcode($content, $ignore_html);
     }
 
     /**
@@ -96,6 +111,9 @@ namespace
      */
     function do_shortcode($content, $ignore_html = false)
     {
+        if (!str_contains($content, '[')) {
+            return $content;
+        }
         return N\do_shortcode($content, $ignore_html);
     }
 
@@ -168,6 +186,9 @@ namespace
      */
     function strip_shortcodes($content)
     {
+        if (!str_contains($content, '[')) {
+            return $content;
+        }
         return N\strip_shortcodes($content);
     }
 
