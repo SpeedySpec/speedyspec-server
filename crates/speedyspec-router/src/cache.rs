@@ -44,8 +44,9 @@ impl TableCache {
         {
             return Ok(table.clone());
         }
+        // Data whose own fingerprint differs (a store with a key bug) is a miss, never another table.
         let stored = match self.store.get(&fingerprint) {
-            Ok(stored) => stored,
+            Ok(stored) => stored.filter(|data| crate::fingerprint_of(data) == fingerprint),
             Err(err) => {
                 self.log_store_error(&err);
                 None

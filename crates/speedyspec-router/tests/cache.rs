@@ -103,3 +103,50 @@ fn stored_data_compiles_like_direct() {
         );
     }
 }
+
+/// A store that answers another table's (valid) data for every fingerprint, as a store with a key bug would.
+struct WrongStore(speedyspec_routing::RouteData);
+
+impl speedyspec_routing::RouteTableStore for WrongStore {
+    fn get(
+        &self,
+        _fp: &speedyspec_routing::Fingerprint,
+    ) -> Result<Option<speedyspec_routing::RouteData>, speedyspec_routing::StoreError> {
+        Ok(Some(self.0.clone()))
+    }
+    fn put(
+        &self,
+        _fp: &speedyspec_routing::Fingerprint,
+        _data: &speedyspec_routing::RouteData,
+    ) -> Result<(), speedyspec_routing::StoreError> {
+        Ok(())
+    }
+    fn forget(
+        &self,
+        _fp: &speedyspec_routing::Fingerprint,
+    ) -> Result<(), speedyspec_routing::StoreError> {
+        Ok(())
+    }
+}
+
+#[test]
+fn stored_data_of_another_table_is_a_miss() {
+    let other = router(&["/other/{x}"]).data().unwrap();
+    let cache = TableCache::new(
+        Rc::new(WrongStore(other)),
+        Rc::new(ChunkedAlternation::default()),
+    );
+    let mine = router(&["/mine/{x}"]);
+    let table = cache
+        .table(mine.fingerprint().unwrap(), || mine.data())
+        .unwrap();
+    let request = RouteRequest {
+        method: Method::Get,
+        path: "/mine/1".into(),
+        wordpress: None,
+    };
+    assert!(matches!(
+        table.resolve(&request, &AcceptAll, &[], false),
+        speedyspec_routing::Resolution::Route(_)
+    ));
+}
