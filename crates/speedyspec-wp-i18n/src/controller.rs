@@ -108,10 +108,8 @@ pub fn cached_file_as(
 ) -> Option<Rc<TranslationFile>> {
     let identity = probe.identity(path)?;
     let cacheable = FileKind::of_path(path) == Some(kind);
-    if cacheable {
-        if let Some(file) = cache.get(&identity) {
-            return Some(file);
-        }
+    if cacheable && let Some(file) = cache.get(&identity) {
+        return Some(file);
     }
     let file = Rc::new(match reader.read_as(path, kind) {
         Ok(raw) => TranslationFile::new(identity.clone(), raw),
