@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-server-gate"
-version = "0.1.1"
+version = "0.1.2"
 description = "The admin gate, health and maintenance: framework-neutral, over ports the server's adapters implement."
 edition.workspace = true
 rust-version.workspace = true
