@@ -6,10 +6,12 @@
 pub mod preg;
 pub mod strings;
 
+mod autop;
 mod ent2ncr_table;
 mod small;
 mod strip;
 mod trim;
+mod unautop;
 
 pub use small::{
     DEFAULT_SPACES, capital_p_dangit, convert_chars, convert_invalid_entities, ent2ncr, format_for_editor_core,
@@ -17,3 +19,5 @@ pub use small::{
 };
 pub use strip::{strip_tags, wp_strip_all_tags_core};
 pub use trim::{wp_html_excerpt, wp_trim_words_core};
+pub use autop::{AutopOptions, wp_replace_in_html_tags, wpautop_reference};
+pub use unautop::{Unautop, shortcode_unautop};
