@@ -4679,6 +4679,14 @@ name = "speedyspec-http"
 version = "0.1.0"
 
 [[package]]
+name = "speedyspec-http-fastcgi"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-http",
+ "speedyspec-http-message",
+]
+
+[[package]]
 name = "speedyspec-http-message"
 version = "0.1.0"
 dependencies = [
