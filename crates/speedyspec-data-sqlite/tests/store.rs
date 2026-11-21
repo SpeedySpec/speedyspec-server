@@ -379,9 +379,10 @@ fn concurrent_writer_waits() {
     let url = format!("sqlite://{}", dir.path().join("site.db").display());
     let store = SqliteStore::open(&config(&url, &[])).unwrap();
     exec(&store, WP_OPTIONS);
-    // The writer holds the write lock for 200 ms after it signals that it has it; waiting on the signal, not on a
-    // fixed sleep, keeps a slow runner from starting the clock before the lock is taken.
-    let writer = |url: String| {
+    // The writer signals once it holds the write lock, then holds it until `release` answers: waiting on signals, not
+    // fixed sleeps, keeps a slow runner (or a busy handler that sleeps in coarse steps, as on macOS CI) from seeing the
+    // lock taken late or released early.
+    let writer = |url: String, release: std::sync::mpsc::Receiver<()>| {
         let (locked, holding) = std::sync::mpsc::channel();
         let thread = std::thread::spawn(move || {
             let other = SqliteStore::open(&config(&url, &[])).unwrap();
@@ -392,13 +393,20 @@ fn concurrent_writer_waits() {
                 ))
                 .unwrap();
             locked.send(()).unwrap();
-            std::thread::sleep(Duration::from_millis(200));
+            release.recv().unwrap();
             other.commit().unwrap();
         });
         holding.recv().unwrap();
         thread
     };
-    let thread = writer(url.clone());
+
+    // A writer with the default busy timeout waits for the lock: here the lock goes 200 ms after it is taken.
+    let (release, held) = std::sync::mpsc::channel();
+    let thread = writer(url.clone(), held);
+    let releaser = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(200));
+        release.send(()).unwrap();
+    });
     let start = Instant::now();
     exec(
         &store,
@@ -409,16 +417,19 @@ fn concurrent_writer_waits() {
         "{:?}",
         start.elapsed()
     );
+    releaser.join().unwrap();
     thread.join().unwrap();
 
+    // A writer whose busy timeout runs out first is refused: the lock stays held until its attempt has ended.
     exec(&store, "DELETE FROM wp_options");
     let impatient = SqliteStore::open(&config(&url, &[("busy_timeout_ms", "50")])).unwrap();
-    let thread = writer(url.clone());
-    let err = impatient
-        .execute(&stmt(
-            "INSERT INTO wp_options (option_name) VALUES ('mine')",
-        ))
-        .unwrap_err();
+    let (release, held) = std::sync::mpsc::channel();
+    let thread = writer(url.clone(), held);
+    let attempt = impatient.execute(&stmt(
+        "INSERT INTO wp_options (option_name) VALUES ('mine')",
+    ));
+    release.send(()).unwrap();
+    let err = attempt.unwrap_err();
     assert!(
         matches!(&err, DbError::Engine { code: Some(c), .. } if c == "SQLITE_BUSY"),
         "{err:?}"
