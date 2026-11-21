@@ -8,9 +8,11 @@
 //! - The registry is the `$shortcode_tags` global itself ([`PhpGlobalRegistry`]).
 //! - PHP callables run as handlers through [`PhpShortcodeHandler`]; Rust handlers are declared as native functions
 //!   with [`ShortcodeArea::register_rust_handler`], and the global holds their names.
-//! - Notices, kses and `wp_html_split()` go to WordPress's own PHP until their ports land ([`legacy`]).
+//! - `wp_html_split()` is the Rust port ([`RustHtmlSplitter`]).
+//! - Notices and kses go to WordPress's own PHP until their ports land ([`legacy`]).
 
 mod handler;
+mod html_split;
 pub mod legacy;
 mod native;
 mod registry;
@@ -27,10 +29,11 @@ use speedyspec_wp_shortcode::{
 use speedyspec_wp_shortcode_contracts::{AttsParser, ShortcodeHandler, ShortcodeScanner};
 
 pub use handler::PhpShortcodeHandler;
+pub use html_split::RustHtmlSplitter;
 pub use registry::PhpGlobalRegistry;
 
 use handler::{NamedRustHandler, RustHandlers};
-use legacy::{PhpDiagnostics, PhpHtmlSplitter, PhpKsesAttributes, PhpStringConversion};
+use legacy::{PhpDiagnostics, PhpKsesAttributes, PhpStringConversion};
 
 const FACADE: &str = include_str!("shortcodes.php");
 
@@ -55,8 +58,8 @@ pub struct ShortcodeArea {
 }
 
 impl ShortcodeArea {
-    /// The Shortcode API over `$shortcode_tags`, with the Hook API's filters and the PHP adapters, and its
-    /// handlers registered in `container`.
+    /// The Shortcode API over `$shortcode_tags`, with the Hook API's filters, the Rust `wp_html_split()` and the PHP
+    /// adapters, and its handlers registered in `container`.
     pub fn new(container: Rc<Container>, hooks: Rc<HookApi>) -> Self {
         Self::with_strategies(container, hooks, Rc::new(HandScanner::new()), Rc::new(HandAttsParser::new()))
     }
@@ -75,7 +78,7 @@ impl ShortcodeArea {
             atts,
             filters: Rc::new(HookApiFilters::new(hooks)),
             diagnostics: Rc::new(PhpDiagnostics),
-            html: Rc::new(PhpHtmlSplitter),
+            html: Rc::new(RustHtmlSplitter),
             kses: Rc::new(PhpKsesAttributes),
             strings: Rc::new(PhpStringConversion),
         }));
