@@ -1,0 +1,28 @@
+[package]
+name = "speedyspec-wp-rewrite-php"
+version = "0.1.0"
+description = "WordPress's rewrite API (WP_Rewrite, WP_MatchesMapRegex, rewrite.php) in PHP over the Rust port."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-router = { path = "../speedyspec-router" }
+speedyspec-router-store-memory = { path = "../speedyspec-router-store-memory" }
+speedyspec-routing = { path = "../speedyspec-routing" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-rewrite = { path = "../speedyspec-wp-rewrite" }
+
+[dev-dependencies]
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+
+[[test]]
+name = "php"
+harness = false
