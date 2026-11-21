@@ -279,6 +279,20 @@ fn main() {
     );
 
     let r = php.eval(
+        "speedyspec://test/mo",
+        &format!(
+            "$before = SpeedySpec\\WpI18n\\Native\\pomo_stats();
+             $mo = new MO(); $ok = $mo->import_from_file({f:?}); $bytes = $mo->export();
+             $sub = new class extends MO {{ public $seen = 0; public function &make_entry($o, $t) {{ ++$this->seen; $e = &parent::make_entry($o, $t); return $e; }} }};
+             $sub->import_from_file({f:?});
+             $missing = @(new MO())->import_from_file('/nonexistent.mo');
+             return json_encode(array($ok, count($mo->entries), strlen($bytes), $sub->seen, $missing, SpeedySpec\\WpI18n\\Native\\pomo_stats() - $before));",
+            f = root.join("tests/php/data/pomo/simple.mo").display().to_string()
+        ),
+    );
+    check("mo_is_native", text(&r) == "[true,2,202,2,false,3]", &r);
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

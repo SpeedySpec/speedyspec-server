@@ -81,6 +81,36 @@ fn write_if_changed(path: &Path, text: &str) -> Result<(), String> {
     std::fs::rename(&temp, path).map_err(|e| err(path, e))
 }
 
+/// Native fast paths put at the start of WordPress's own methods, by file in `wp-includes/pomo/` and method
+/// signature line. WordPress's body stays after each, for every case the fast path does not take.
+const POMO_FAST_PATHS: &[(&str, &str, &str)] = &[
+    (
+        "mo.php",
+        "\t\tpublic function import_from_file( $filename ) {\n",
+        "\t\t\t// SpeedySpec: the file read natively; the pairs go to make_headers() and make_entry() as\n\t\t\t// import_from_reader() hands them over. Anything the native reader leaves (a file it cannot open, an empty\n\t\t\t// table) runs WordPress's code below.\n\t\t\tif ( \\SpeedySpec\\WpI18n\\uses_native( $this, 'import_from_reader', 'MO' ) ) {\n\t\t\t\t$pairs = \\SpeedySpec\\WpI18n\\Native\\mo_pairs( (string) $filename );\n\t\t\t\tif ( null !== $pairs ) {\n\t\t\t\t\t$this->filename = (string) $filename;\n\t\t\t\t\tif ( false === $pairs ) {\n\t\t\t\t\t\treturn false;\n\t\t\t\t\t}\n\t\t\t\t\tforeach ( $pairs as $pair ) {\n\t\t\t\t\t\tif ( '' === $pair[0] ) {\n\t\t\t\t\t\t\t$this->set_headers( $this->make_headers( $pair[1] ) );\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t$entry                          = &$this->make_entry( $pair[0], $pair[1] );\n\t\t\t\t\t\t\t$this->entries[ $entry->key() ] = &$entry;\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\treturn true;\n\t\t\t\t}\n\t\t\t}\n\n",
+    ),
+    (
+        "mo.php",
+        "\t\tpublic function export_to_file_handle( $fh ) {\n",
+        "\t\t\t// SpeedySpec: WordPress's filtering, ordering and (overridable) per-entry strings, called as often and in the\n\t\t\t// order WordPress calls them, then one native pack and one write.\n\t\t\t$entries = array_filter( $this->entries, array( $this, 'is_entry_good_for_export' ) );\n\t\t\tksort( $entries );\n\t\t\t$originals = array();\n\t\t\tforeach ( $entries as $entry ) {\n\t\t\t\t$originals[] = $this->export_original( $entry );\n\t\t\t\t$this->export_original( $entry );\n\t\t\t}\n\t\t\t$exported_headers = $this->export_headers();\n\t\t\t$translations     = array();\n\t\t\tforeach ( $entries as $entry ) {\n\t\t\t\t$translations[] = $this->export_translations( $entry );\n\t\t\t\t$this->export_translations( $entry );\n\t\t\t}\n\t\t\t$packed = \\SpeedySpec\\WpI18n\\Native\\mo_pack( $originals, $translations, $exported_headers );\n\t\t\tif ( null !== $packed ) {\n\t\t\t\tfwrite( $fh, $packed );\n\t\t\t\treturn true;\n\t\t\t}\n\n",
+    ),
+];
+
+/// `source` with each of `fast_paths` (for `file`) put right after its method's signature line.
+pub fn patch_pomo(file: &str, source: &str) -> Result<String, String> {
+    let mut out = source.to_owned();
+    for (f, signature, body) in POMO_FAST_PATHS {
+        if *f != file {
+            continue;
+        }
+        let at = out
+            .find(signature)
+            .ok_or_else(|| format!("pomo/{file} has no `{}`", signature.trim()))?;
+        out.insert_str(at + signature.len(), body);
+    }
+    Ok(out)
+}
+
 /// Makes `out_includes/<dir>` a real directory: `stubbed` files written as stubs, the rest linked to the release's.
 fn stub_dir(
     includes: &Path,
@@ -101,8 +131,13 @@ fn stub_dir(
         let entry = entry.map_err(|e| err(&source_dir, e))?;
         let name = entry.file_name();
         let target = target_dir.join(&name);
-        if stubbed.contains(&name.to_string_lossy().as_ref()) {
+        let file = name.to_string_lossy();
+        if stubbed.contains(&file.as_ref()) {
             write_if_changed(&target, STUB)?;
+        } else if dir == "pomo" && POMO_FAST_PATHS.iter().any(|(f, _, _)| *f == file) {
+            let path = entry.path();
+            let source = std::fs::read_to_string(&path).map_err(|e| err(&path, e))?;
+            write_if_changed(&target, &patch_pomo(&file, &source)?)?;
         } else if target.symlink_metadata().is_err() {
             #[cfg(unix)]
             std::os::unix::fs::symlink(entry.path(), &target).map_err(|e| err(&target, e))?;

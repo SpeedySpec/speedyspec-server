@@ -11,6 +11,8 @@ use speedyspec_wp_i18n::{
     TEXT_DIRECTION, Translated, TranslationController, bytes_value,
 };
 
+use speedyspec_wp_i18n_files::mo_pomo::MoPairs;
+
 use crate::effects::{PhpScriptSources, PhpSwitchEffects, native_error, php_string, port_error};
 use crate::state::{Shared, shared};
 
@@ -462,6 +464,77 @@ fn plural_execute(a: &[Value]) -> R {
         .map_err(plural_error)
 }
 
+fn count_pomo() -> Result<(), NativeError> {
+    let s = state()?;
+    s.pomo.set(s.pomo.get() + 1);
+    Ok(())
+}
+
+/// `MO::import_from_reader( new POMO_FileReader( $filename ) )`'s pairs as `[original, translation]` arrays, or
+/// false; `null` when WordPress's own code must run (the file cannot be read, or its table is empty, where
+/// WordPress's reader throws).
+fn mo_pairs(a: &[Value]) -> R {
+    let Ok(bytes) = std::fs::read(path(a, 0)?) else {
+        return Ok(Value::Null);
+    };
+    count_pomo()?;
+    Ok(match speedyspec_wp_i18n_files::mo_pomo::mo_pairs(&bytes) {
+        MoPairs::Pairs(pairs) => Value::Array(
+            pairs
+                .iter()
+                .enumerate()
+                .map(|(i, (o, t))| {
+                    (
+                        Key::Int(i as i64),
+                        Value::Array(vec![
+                            (Key::Int(0), bytes_value(o)),
+                            (Key::Int(1), bytes_value(t)),
+                        ]),
+                    )
+                })
+                .collect(),
+        ),
+        MoPairs::False => Value::Bool(false),
+        MoPairs::ZeroLengthRead => Value::Null,
+    })
+}
+
+/// A value as PHP's string concatenation turns it into bytes; `None` for an array or object.
+fn concat_bytes(v: &Value) -> Option<Vec<u8>> {
+    Some(match v.read().as_ref() {
+        Value::Str(s) => s.as_bytes().to_vec(),
+        Value::Bytes(b) => b.clone(),
+        Value::Null | Value::Bool(false) => Vec::new(),
+        Value::Bool(true) => b"1".to_vec(),
+        Value::Int(n) => n.to_string().into_bytes(),
+        Value::Float(_) | Value::Array(_) | Value::Opaque(_) => return None,
+    })
+}
+
+fn list_bytes(v: Option<&Value>) -> Option<Vec<Vec<u8>>> {
+    match v?.read().as_ref() {
+        Value::Array(items) => items.iter().map(|(_, v)| concat_bytes(v)).collect(),
+        _ => None,
+    }
+}
+
+/// `MO::export_to_file_handle()`'s bytes from the strings WordPress's methods gave; `null` when one is not a
+/// scalar (WordPress's code then runs).
+fn mo_pack(a: &[Value]) -> R {
+    let (Some(originals), Some(translations), Some(headers)) = (
+        list_bytes(a.first()),
+        list_bytes(a.get(1)),
+        a.get(2).and_then(concat_bytes),
+    ) else {
+        return Ok(Value::Null);
+    };
+    count_pomo()?;
+    let pairs: Vec<(Vec<u8>, Vec<u8>)> = originals.into_iter().zip(translations).collect();
+    Ok(bytes_value(&speedyspec_wp_i18n_files::mo_pomo::mo_pack(
+        &pairs, &headers,
+    )))
+}
+
 /// The natives declared under WordPress's own names.
 pub(crate) fn wordpress_functions() -> Vec<FunctionBuilder<'static>> {
     vec![
@@ -480,6 +553,9 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
         f("register_translations", register_translations),
         f("locale_strings", locale_strings),
         f("plural_parse", plural_parse),
+        f("mo_pairs", mo_pairs),
+        f("mo_pack", mo_pack),
+        f("pomo_stats", |_| Ok(Value::Int(state()?.pomo.get() as i64))),
         f("plural_execute", plural_execute),
         f("switcher_new", switcher_new),
         f("switcher_stack", switcher_stack),

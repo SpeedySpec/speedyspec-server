@@ -218,6 +218,28 @@ namespace SpeedySpec\WpI18n
     }
 
     /**
+     * Whether `$object`'s `$method` is still `$class`'s own, so a native fast path standing for it may run. Decided
+     * once per class.
+     *
+     * @param object $object
+     *     The object whose method would run.
+     * @param string $method
+     *     The method the fast path replaces.
+     * @param string $class
+     *     The class that declares the replaced method.
+     * @return bool
+     *     True when no subclass overrides it.
+     */
+    function uses_native( $object, string $method, string $class ): bool {
+        static $decided = array();
+        $key = get_class( $object ) . '::' . $method;
+        if ( ! isset( $decided[ $key ] ) ) {
+            $decided[ $key ] = ( new \ReflectionMethod( $object, $method ) )->getDeclaringClass()->getName() === $class;
+        }
+        return $decided[ $key ];
+    }
+
+    /**
      * Runs a `.l10n.php` file the Rust reader cannot parse, as WP_Translation_File_PHP::parse_file() does.
      *
      * @return array|string
