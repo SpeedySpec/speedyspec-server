@@ -26,3 +26,7 @@ required-features = ["php"]
 [[bin]]
 name = "php-baseline"
 required-features = ["php"]
+
+[[bin]]
+name = "php-tables"
+required-features = ["php"]

@@ -1,5 +1,6 @@
 //! `formatting-scenarios`: rewrites `compat/formatting/scenarios.json` from WordPress's own PHPUnit data providers,
-//! as `compat/formatting/providers.json` lists them (see `compat/formatting/generate.php`).
+//! as `compat/formatting/providers.json` lists them, plus the hand-written cases in `compat/formatting/literals.json`
+//! (see `compat/formatting/generate.php`).
 
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -30,9 +31,10 @@ fn run() -> Result<(), String> {
     })
     .map_err(|e| e.to_string())?;
     let code = format!(
-        "define('SPEEDYSPEC_FORMATTING_PROVIDERS', {:?}); define('SPEEDYSPEC_FORMATTING_TESTS', {:?}); \
-         define('DIR_TESTDATA', {:?}); require {:?};",
+        "define('SPEEDYSPEC_FORMATTING_PROVIDERS', {:?}); define('SPEEDYSPEC_FORMATTING_LITERALS', {:?}); \
+         define('SPEEDYSPEC_FORMATTING_TESTS', {:?}); define('DIR_TESTDATA', {:?}); require {:?};",
         compat.join("providers.json").display().to_string(),
+        compat.join("literals.json").display().to_string(),
         tests.join("formatting").display().to_string(),
         tests.join("data").display().to_string(),
         compat.join("generate.php").display().to_string(),

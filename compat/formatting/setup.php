@@ -86,6 +86,79 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
         $GLOBALS['speedyspec_formatting_diagnostics'][] = ['trigger_error', $function_name, $message, $error_level];
     }
 
+    // Copied verbatim from WordPress 7.1.5's wp-includes/functions.php (is_utf8_charset, _canonical_charset,
+    // mbstring_binary_safe_encoding, reset_mbstring_encoding) and deprecated.php (addslashes_gpc). Those files cannot
+    // be required here: they need the real options API, which the stubs above stand in for.
+    function is_utf8_charset( $blog_charset = null ) {
+    	return _is_utf8_charset( $blog_charset ?? get_option( 'blog_charset' ) );
+    }
+
+    function _canonical_charset( $charset ) {
+    	if ( is_utf8_charset( $charset ) ) {
+    		return 'UTF-8';
+    	}
+
+    	/*
+    	 * Normalize the ISO-8859-1 family of languages.
+    	 *
+    	 * This is not required for htmlspecialchars(), as it properly recognizes all of
+    	 * the input character sets that here are transformed into "ISO-8859-1".
+    	 *
+    	 * @todo Should this entire check be removed since it's not required for the stated purpose?
+    	 * @todo Should WordPress transform other potential charset equivalents, such as "latin1"?
+    	 */
+    	if (
+    		( 0 === strcasecmp( 'iso-8859-1', $charset ) ) ||
+    		( 0 === strcasecmp( 'iso8859-1', $charset ) )
+    	) {
+    		return 'ISO-8859-1';
+    	}
+
+    	return $charset;
+    }
+
+    function mbstring_binary_safe_encoding( $reset = false ) {
+    	static $encodings  = array();
+    	static $overloaded = null;
+
+    	if ( is_null( $overloaded ) ) {
+    		if ( function_exists( 'mb_internal_encoding' )
+    			&& ( (int) ini_get( 'mbstring.func_overload' ) & 2 ) // phpcs:ignore PHPCompatibility.IniDirectives.RemovedIniDirectives.mbstring_func_overloadDeprecated
+    		) {
+    			$overloaded = true;
+    		} else {
+    			$overloaded = false;
+    		}
+    	}
+
+    	if ( false === $overloaded ) {
+    		return;
+    	}
+
+    	if ( ! $reset ) {
+    		$encoding = mb_internal_encoding();
+    		array_push( $encodings, $encoding );
+    		mb_internal_encoding( 'ISO-8859-1' );
+    	}
+
+    	if ( $reset && $encodings ) {
+    		$encoding = array_pop( $encodings );
+    		mb_internal_encoding( $encoding );
+    	}
+    }
+
+    function reset_mbstring_encoding() {
+    	mbstring_binary_safe_encoding( true );
+    }
+
+    function addslashes_gpc( $gpc ) {
+    	_deprecated_function( __FUNCTION__, '7.0.0', 'wp_slash()' );
+    	return wp_slash( $gpc );
+    }
+
+    require ABSPATH . WPINC . '/compat-utf8.php';
+    require ABSPATH . WPINC . '/compat.php';
+    require ABSPATH . WPINC . '/utf8.php';
     require ABSPATH . WPINC . '/plugin.php';
     require ABSPATH . WPINC . '/kses.php';
     require ABSPATH . WPINC . '/formatting.php';

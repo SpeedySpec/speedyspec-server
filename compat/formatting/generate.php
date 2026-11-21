@@ -7,7 +7,11 @@
  * expected values are ignored: the recording against stock WordPress is the expectation. An entry with
  * `whole_posts` makes one scenario per post in data/formatting/whole-posts.php.
  *
- * Expects SPEEDYSPEC_FORMATTING_PROVIDERS, SPEEDYSPEC_FORMATTING_TESTS and DIR_TESTDATA to be defined. Returns the
+ * literals.json adds hand-written cases: WordPress's literal test inputs and edge cases, already in the corpus
+ * encoding, as `<function>/literal/<name>`.
+ *
+ * Expects SPEEDYSPEC_FORMATTING_PROVIDERS, SPEEDYSPEC_FORMATTING_LITERALS, SPEEDYSPEC_FORMATTING_TESTS and
+ * DIR_TESTDATA to be defined. Returns the
  * catalogue as JSON.
  */
 
@@ -64,11 +68,21 @@ function speedyspec_formatting_scenarios(): string
             foreach ($entry['args'] as $column) {
                 $args[] = speedyspec_formatting_encode($row[$column]);
             }
+            foreach ($entry['extra'] ?? [] as $extra) {
+                $args[] = $extra;
+            }
             $scenarios[] = [
                 'name' => "$function/{$entry['provider']}/$key",
                 'steps' => [['call' => $function, 'args' => $args]],
             ];
         }
+    }
+    $literals = json_decode((string) file_get_contents(SPEEDYSPEC_FORMATTING_LITERALS), true, 512, JSON_THROW_ON_ERROR);
+    foreach ($literals as $literal) {
+        $scenarios[] = [
+            'name' => "{$literal['function']}/literal/{$literal['name']}",
+            'steps' => [['call' => $literal['function'], 'args' => $literal['args']]],
+        ];
     }
     return json_encode(
         ['area' => 'formatting', 'scenarios' => $scenarios],
