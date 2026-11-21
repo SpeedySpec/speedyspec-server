@@ -97,6 +97,11 @@ impl LocaleSwitcher {
         self.restore_previous_locale(effects)
     }
 
+    /// The stack, oldest first: each switch's locale and user id.
+    pub fn stack(&self) -> Vec<(PhpValue, PhpValue)> {
+        self.stack.borrow().clone()
+    }
+
     /// `is_switched()`.
     pub fn is_switched(&self) -> bool {
         !self.stack.borrow().is_empty()

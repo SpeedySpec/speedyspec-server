@@ -157,6 +157,34 @@ fn main() {
     );
 
     let r = php.eval(
+        "speedyspec://test/switcher",
+        "global $wp_locale_switcher;
+         $saved = $wp_locale_switcher;
+         $wp_locale_switcher = new WP_Locale_Switcher();
+         $wp_locale_switcher->init();
+         $file = (new ReflectionClass('WP_Locale_Switcher'))->getFileName();
+         $once = function () use (&$once) { remove_action('change_locale', $once, 5); switch_to_locale('de_DE'); };
+         add_action('change_locale', $once, 5);
+         $nested = array(switch_to_locale('es_ES'), $wp_locale_switcher->get_switched_locale(), restore_previous_locale(), restore_current_locale());
+         $boom = function () { throw new DomainException('boom'); };
+         add_action('change_locale', $boom);
+         try { switch_to_locale('es_ES'); $thrown = 'none'; } catch (DomainException $e) { $thrown = get_class($e) . ':' . $e->getMessage(); }
+         remove_action('change_locale', $boom);
+         $after = array(is_locale_switched(), restore_current_locale(), is_locale_switched());
+         remove_filter('locale', array($wp_locale_switcher, 'filter_locale'));
+         remove_filter('determine_locale', array($wp_locale_switcher, 'filter_locale'));
+         $wp_locale_switcher = $saved;
+         unload_textdomain('default', true);
+         return json_encode(array($file, $nested, $thrown, $after), JSON_UNESCAPED_SLASHES);",
+    );
+    check(
+        "switcher_is_native",
+        text(&r)
+            == r#"["speedyspec://wp-i18n",[true,"de_DE","es_ES","en_US"],"DomainException:boom",[true,"en_US",false]]"#,
+        &r,
+    );
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

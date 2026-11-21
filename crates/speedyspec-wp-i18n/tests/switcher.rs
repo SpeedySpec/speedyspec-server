@@ -156,6 +156,20 @@ fn restore_after_two_switches_returns_first() {
 }
 
 #[test]
+fn the_stack_lists_switches_oldest_first() {
+    let (sw, fx) = setup();
+    sw.switch_to_locale(&fx, &s("de_DE"), &NO_USER).unwrap();
+    sw.switch_to_user_locale(&fx, &PhpValue::Int(7))
+        .unwrap_or(false);
+    sw.switch_to_locale(&fx, &s("es_ES"), &PhpValue::Int(3))
+        .unwrap();
+    assert_eq!(
+        sw.stack(),
+        vec![(s("de_DE"), NO_USER), (s("es_ES"), PhpValue::Int(3))]
+    );
+}
+
+#[test]
 fn restore_empty_stack_returns_none() {
     let (sw, fx) = setup();
     assert_eq!(sw.restore_previous_locale(&fx).unwrap(), None);

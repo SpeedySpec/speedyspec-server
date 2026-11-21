@@ -7,10 +7,11 @@ use speedyspec_hooks::{Key, Value};
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_wp_i18n::{
-    FileRef, LOCALE_STRINGS, PhpKey, PluralError, TEXT_DIRECTION, Translated,
+    FileRef, LOCALE_STRINGS, LocaleSwitcher, PhpKey, PluralError, TEXT_DIRECTION, Translated,
     TranslationController, bytes_value,
 };
 
+use crate::effects::{PhpSwitchEffects, port_error};
 use crate::state::{Shared, shared};
 
 const NATIVE: &str = "SpeedySpec\\WpI18n\\Native\\";
@@ -304,12 +305,117 @@ fn locale_strings(a: &[Value]) -> R {
     Ok(Value::Array(out))
 }
 
+/// The switcher registered for the object in argument `i`.
+fn switcher(a: &[Value]) -> Result<Rc<LocaleSwitcher>, NativeError> {
+    let id = a
+        .first()
+        .and_then(speedyspec_php::object_id)
+        .ok_or_else(|| NativeError::throw("Error", "not a locale switcher"))?;
+    state()?
+        .switchers
+        .borrow()
+        .get(&(id as u32))
+        .cloned()
+        .ok_or_else(|| NativeError::throw("Error", "this WP_Locale_Switcher was not constructed"))
+}
+
+fn effects() -> Result<PhpSwitchEffects, NativeError> {
+    Ok(PhpSwitchEffects {
+        api: state()?.api.clone(),
+    })
+}
+
+fn arg(a: &[Value], i: usize) -> Value {
+    a.get(i).cloned().unwrap_or(Value::Null)
+}
+
+fn or_false(v: Option<Value>) -> Value {
+    v.unwrap_or(Value::Bool(false))
+}
+
+fn switcher_new(a: &[Value]) -> R {
+    let id = a
+        .first()
+        .and_then(speedyspec_php::object_id)
+        .ok_or_else(|| NativeError::throw("Error", "not a locale switcher"))?;
+    let available = match a.get(2) {
+        Some(Value::Array(items)) => items
+            .iter()
+            .filter_map(|(_, v)| match v {
+                Value::Str(s) => Some(s.clone()),
+                _ => None,
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+    state()?.switchers.borrow_mut().insert(
+        id as u32,
+        Rc::new(LocaleSwitcher::new(arg(a, 1), available)),
+    );
+    Ok(Value::Null)
+}
+
+/// The stack, oldest first, as WordPress keeps it: `[locale, user_id]` pairs.
+fn switcher_stack(a: &[Value]) -> R {
+    Ok(Value::Array(
+        switcher(a)?
+            .stack()
+            .into_iter()
+            .enumerate()
+            .map(|(i, (locale, user))| {
+                (
+                    Key::Int(i as i64),
+                    Value::Array(vec![(Key::Int(0), locale), (Key::Int(1), user)]),
+                )
+            })
+            .collect(),
+    ))
+}
+
 pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
     let f =
         |name: &str, body: fn(&[Value]) -> R| native::function(&format!("{NATIVE}{name}"), body);
     vec![
         f("register_translations", register_translations),
         f("locale_strings", locale_strings),
+        f("switcher_new", switcher_new),
+        f("switcher_stack", switcher_stack),
+        f("switcher_switch", |a| {
+            let sw = switcher(a)?;
+            sw.switch_to_locale(&effects()?, &arg(a, 1), &arg(a, 2))
+                .map(Value::Bool)
+                .map_err(port_error)
+        }),
+        f("switcher_switch_user", |a| {
+            let sw = switcher(a)?;
+            sw.switch_to_user_locale(&effects()?, &arg(a, 1))
+                .map(Value::Bool)
+                .map_err(port_error)
+        }),
+        f("switcher_restore", |a| {
+            let sw = switcher(a)?;
+            sw.restore_previous_locale(&effects()?)
+                .map(or_false)
+                .map_err(port_error)
+        }),
+        f("switcher_restore_current", |a| {
+            let sw = switcher(a)?;
+            sw.restore_current_locale(&effects()?)
+                .map(or_false)
+                .map_err(port_error)
+        }),
+        f("switcher_is_switched", |a| {
+            Ok(Value::Bool(switcher(a)?.is_switched()))
+        }),
+        f("switcher_locale", |a| {
+            Ok(or_false(switcher(a)?.switched_locale()))
+        }),
+        f("switcher_user_id", |a| {
+            Ok(or_false(switcher(a)?.switched_user_id()))
+        }),
+        f("switcher_filter", |a| {
+            Ok(switcher(a)?.filter_locale(arg(a, 1)))
+        }),
         f("controller_new", |_| {
             Ok(Value::Int(state()?.new_controller()))
         }),

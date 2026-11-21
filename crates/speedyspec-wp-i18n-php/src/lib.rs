@@ -10,6 +10,7 @@
 //! Rust controller, and `WP_Translations` as WordPress has it. Translation files are read once per worker and kept
 //! across requests (`MemoryTranslationFileCache`).
 
+mod effects;
 mod hot;
 mod internal;
 mod reader;

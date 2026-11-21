@@ -1,6 +1,6 @@
 //! A WordPress release prepared for the native translation functions, on top of the UTF-8 port's preparation:
-//! `l10n.php` without the functions declared natively, and the translation controller, file, `WP_Translations` and
-//! `WP_Locale` classes replaced by stubs (the facade declares them). `wp-settings.php` still `require`s them.
+//! `l10n.php` without the functions declared natively, and the translation controller, file, `WP_Translations`,
+//! `WP_Locale` and `WP_Locale_Switcher` classes replaced by stubs (the facade declares them). `wp-settings.php` still `require`s them.
 
 use std::path::{Path, PathBuf};
 
@@ -23,7 +23,7 @@ const STUBBED: &[&str] = &[
 ];
 
 /// Files in `wp-includes/` itself that the facade declares.
-const STUBBED_INCLUDES: &[&str] = &["class-wp-locale.php"];
+const STUBBED_INCLUDES: &[&str] = &["class-wp-locale.php", "class-wp-locale-switcher.php"];
 
 const STUB: &str = "<?php\n// Provided by speedyspec-wp-i18n-php.\n";
 

@@ -165,6 +165,44 @@ namespace SpeedySpec\WpI18n
     }
 
     /**
+     * WP_Locale_Switcher's private change_locale() before its `change_locale` action (which the native switcher
+     * fires): the loaded domains' translations reloaded in `$locale` (its private load_translations()), a new
+     * `$wp_locale`, the translation controller's locale, and PHPMailer's language. WordPress 7.1.5's code.
+     *
+     * @param string $locale
+     *     The locale switched to.
+     */
+    function switcher_change_locale( $locale ): void {
+        global $l10n, $wp_locale, $phpmailer;
+
+        $domains = $l10n ? array_keys( $l10n ) : array();
+
+        load_default_textdomain( $locale );
+
+        foreach ( $domains as $domain ) {
+            // The default text domain is handled by `load_default_textdomain()`.
+            if ( 'default' === $domain ) {
+                continue;
+            }
+
+            /*
+             * Unload current text domain but allow them to be reloaded
+             * after switching back or to another locale.
+             */
+            unload_textdomain( $domain, true );
+            get_translations_for_domain( $domain );
+        }
+
+        $wp_locale = new \WP_Locale();
+
+        \WP_Translation_Controller::get_instance()->set_locale( $locale );
+
+        if ( $phpmailer instanceof \WP_PHPMailer ) {
+            $phpmailer->setLanguage();
+        }
+    }
+
+    /**
      * Runs a `.l10n.php` file the Rust reader cannot parse, as WP_Translation_File_PHP::parse_file() does.
      *
      * @return array|string
@@ -1103,5 +1141,167 @@ namespace
 
     		return $word_count_type;
     	}
+    }
+
+    // WP_Locale_Switcher is WordPress 7.1.5's own class (GPL-2.0-or-later) over the native switcher; the work of its
+    // private load_translations() and change_locale() is SpeedySpec\WpI18n\switcher_change_locale().
+    /**
+     * Core class used for switching locales.
+     *
+     * @since 4.7.0
+     */
+    #[AllowDynamicProperties]
+    class WP_Locale_Switcher {
+    	/**
+    	 * Locale switching stack.
+    	 *
+    	 * @since 6.2.0
+    	 * @var array
+    	 */
+    	private $stack = array();
+
+    	/**
+    	 * Original locale.
+    	 *
+    	 * @since 4.7.0
+    	 * @var string
+    	 */
+    	private $original_locale;
+
+    	/**
+    	 * Holds all available languages.
+    	 *
+    	 * @since 4.7.0
+    	 * @var string[] An array of language codes (file names without the .mo extension).
+    	 */
+    	private $available_languages;
+
+    	/**
+    	 * Constructor.
+    	 *
+    	 * Stores the original locale as well as a list of all available languages.
+    	 *
+    	 * @since 4.7.0
+    	 */
+    	public function __construct() {
+    		$this->original_locale     = determine_locale();
+    		$this->available_languages = array_merge( array( 'en_US' ), get_available_languages() );
+    		// SpeedySpec: the stack and its decisions are native.
+    		\SpeedySpec\WpI18n\Native\switcher_new( $this, $this->original_locale, $this->available_languages );
+    	}
+
+    	/**
+    	 * Initializes the locale switcher.
+    	 *
+    	 * Hooks into the {@see 'locale'} and {@see 'determine_locale'} filters
+    	 * to change the locale on the fly.
+    	 *
+    	 * @since 4.7.0
+    	 */
+    	public function init() {
+    		add_filter( 'locale', array( $this, 'filter_locale' ) );
+    		add_filter( 'determine_locale', array( $this, 'filter_locale' ) );
+    	}
+
+    	/**
+    	 * Switches the translations according to the given locale.
+    	 *
+    	 * @since 4.7.0
+    	 *
+    	 * @param string    $locale  The locale to switch to.
+    	 * @param int|false $user_id Optional. User ID as context. Default false.
+    	 * @return bool True on success, false on failure.
+    	 */
+    	public function switch_to_locale( $locale, $user_id = false ) {
+    		$switched    = \SpeedySpec\WpI18n\Native\switcher_switch( $this, $locale, $user_id );
+    		$this->stack = \SpeedySpec\WpI18n\Native\switcher_stack( $this );
+    		return $switched;
+    	}
+
+    	/**
+    	 * Switches the translations according to the given user's locale.
+    	 *
+    	 * @since 6.2.0
+    	 *
+    	 * @param int $user_id User ID.
+    	 * @return bool True on success, false on failure.
+    	 */
+    	public function switch_to_user_locale( $user_id ) {
+    		$switched    = \SpeedySpec\WpI18n\Native\switcher_switch_user( $this, $user_id );
+    		$this->stack = \SpeedySpec\WpI18n\Native\switcher_stack( $this );
+    		return $switched;
+    	}
+
+    	/**
+    	 * Restores the translations according to the previous locale.
+    	 *
+    	 * @since 4.7.0
+    	 *
+    	 * @return string|false Locale on success, false on failure.
+    	 */
+    	public function restore_previous_locale() {
+    		$locale      = \SpeedySpec\WpI18n\Native\switcher_restore( $this );
+    		$this->stack = \SpeedySpec\WpI18n\Native\switcher_stack( $this );
+    		return $locale;
+    	}
+
+    	/**
+    	 * Restores the translations according to the original locale.
+    	 *
+    	 * @since 4.7.0
+    	 *
+    	 * @return string|false Locale on success, false on failure.
+    	 */
+    	public function restore_current_locale() {
+    		$locale      = \SpeedySpec\WpI18n\Native\switcher_restore_current( $this );
+    		$this->stack = \SpeedySpec\WpI18n\Native\switcher_stack( $this );
+    		return $locale;
+    	}
+
+    	/**
+    	 * Whether switch_to_locale() is in effect.
+    	 *
+    	 * @since 4.7.0
+    	 *
+    	 * @return bool True if the locale has been switched, false otherwise.
+    	 */
+    	public function is_switched() {
+    		return \SpeedySpec\WpI18n\Native\switcher_is_switched( $this );
+    	}
+
+    	/**
+    	 * Returns the locale currently switched to.
+    	 *
+    	 * @since 6.2.0
+    	 *
+    	 * @return string|false Locale if the locale has been switched, false otherwise.
+    	 */
+    	public function get_switched_locale() {
+    		return \SpeedySpec\WpI18n\Native\switcher_locale( $this );
+    	}
+
+    	/**
+    	 * Returns the user ID related to the currently switched locale.
+    	 *
+    	 * @since 6.2.0
+    	 *
+    	 * @return int|false User ID if set and if the locale has been switched, false otherwise.
+    	 */
+    	public function get_switched_user_id() {
+    		return \SpeedySpec\WpI18n\Native\switcher_user_id( $this );
+    	}
+
+    	/**
+    	 * Filters the locale of the WordPress installation.
+    	 *
+    	 * @since 4.7.0
+    	 *
+    	 * @param string $locale The locale of the WordPress installation.
+    	 * @return string The locale currently being switched to.
+    	 */
+    	public function filter_locale( $locale ) {
+    		return \SpeedySpec\WpI18n\Native\switcher_filter( $this, $locale );
+    	}
+
     }
 }
