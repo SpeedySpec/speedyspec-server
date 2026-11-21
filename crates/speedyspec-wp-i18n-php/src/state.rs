@@ -6,7 +6,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use speedyspec_wp_hooks::HookApi;
-use speedyspec_wp_i18n::{FileHandle, I18nApi, TranslationController, TranslationFile};
+use speedyspec_wp_i18n::{
+    FileHandle, I18nApi, LocaleSwitcher, ScriptFiles, TranslationController, TranslationFile,
+};
 use speedyspec_wp_i18n_contracts::TranslationFileCache;
 use speedyspec_wp_i18n_files::StdFileProbe;
 use speedyspec_wp_i18n_memory::MemoryTranslationFileCache;
@@ -24,6 +26,14 @@ pub(crate) struct Shared {
     pub files: RefCell<Vec<Rc<FileHandle>>>,
     /// `spl_object_id` of each `WP_Translations` object, with its domain and controller id.
     pub translations: RefCell<HashMap<u32, (String, i64), foldhash::fast::RandomState>>,
+    /// Script translation JSON files, read once per worker.
+    pub script_files: ScriptFiles,
+    /// Each `WP_Locale_Switcher`'s stack, by `spl_object_id` (registered by its constructor).
+    pub switchers: RefCell<HashMap<u32, Rc<LocaleSwitcher>, foldhash::fast::RandomState>>,
+    /// Native pomo reads and packs (for tests).
+    pub pomo: Cell<u64>,
+    /// Translation file exports made natively (for tests).
+    pub exports: Cell<u64>,
     /// Calls the hot path served, and calls it left to WordPress's function.
     pub fast: Cell<u64>,
     pub slow: Cell<u64>,
@@ -54,13 +64,20 @@ impl Shared {
         Shared {
             api,
             reader,
-            probe,
+            probe: probe.clone(),
             cache,
             controllers: RefCell::new(Vec::new()),
             files: RefCell::new(Vec::new()),
             translations: RefCell::new(HashMap::default()),
+            switchers: RefCell::new(HashMap::default()),
+            script_files: ScriptFiles::new(
+                probe.clone(),
+                Rc::new(MemoryTranslationFileCache::<Vec<u8>>::default()),
+            ),
             generation: Cell::new(0),
             fast: Cell::new(0),
+            exports: Cell::new(0),
+            pomo: Cell::new(0),
             slow: Cell::new(0),
         }
     }
@@ -74,12 +91,25 @@ impl Shared {
         self.controllers.borrow_mut().clear();
         self.files.borrow_mut().clear();
         self.translations.borrow_mut().clear();
+        self.switchers.borrow_mut().clear();
         self.generation.set(self.generation.get() + 1);
     }
 
     /// Reads `file` into the per-worker cache, if WordPress would read it, without holding any controller borrow: the
-    /// PHP `include` fallback runs PHP, which may translate.
+    /// PHP `include` fallback runs PHP, which may translate. `kind` is the type given, else the file's extension's.
     pub fn prefetch(&self, file: &std::path::Path, resolve: bool) {
+        if let Some(kind) = speedyspec_wp_i18n_contracts::FileKind::of_path(file) {
+            self.prefetch_as(file, resolve, kind);
+        }
+    }
+
+    /// As [`Shared::prefetch`], for a file read as `kind` whatever it is called.
+    pub fn prefetch_as(
+        &self,
+        file: &std::path::Path,
+        resolve: bool,
+        kind: speedyspec_wp_i18n_contracts::FileKind,
+    ) {
         use speedyspec_wp_i18n_contracts::FileProbe;
         let path = if resolve {
             self.probe.realpath(file)
@@ -87,14 +117,29 @@ impl Shared {
             Some(file.to_path_buf())
         };
         let Some(path) = path else { return };
-        let bytes = path.as_os_str().as_encoded_bytes();
-        let ext = bytes
-            .iter()
-            .rposition(|b| *b == b'.')
-            .map(|i| &bytes[i + 1..]);
-        if matches!(ext, Some(b"mo" | b"php")) && self.probe.is_readable(&path) {
-            speedyspec_wp_i18n::cached_file(&*self.reader, &*self.probe, &*self.cache, &path);
+        if self.probe.is_readable(&path) {
+            speedyspec_wp_i18n::cached_file_as(
+                &*self.reader,
+                &*self.probe,
+                &*self.cache,
+                &path,
+                kind,
+            );
         }
+    }
+
+    /// `path` read as `kind` with no controller borrowed (the PHP `include` fallback may translate), for a file its
+    /// name does not say is `kind`; `None` when it is not readable.
+    pub fn read_as(
+        &self,
+        path: &std::path::Path,
+        kind: speedyspec_wp_i18n_contracts::FileKind,
+    ) -> Option<Rc<TranslationFile>> {
+        use speedyspec_wp_i18n_contracts::FileProbe;
+        if !self.probe.is_readable(path) {
+            return None;
+        }
+        speedyspec_wp_i18n::cached_file_as(&*self.reader, &*self.probe, &*self.cache, path, kind)
     }
 
     /// A new controller over the same reader, probe and file cache; its id.

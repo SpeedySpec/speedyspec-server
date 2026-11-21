@@ -9,7 +9,9 @@ license.workspace = true
 [dependencies]
 foldhash = "0.2"
 indexmap = "2"
+md5 = { package = "md-5", version = "0.11.0" }
 hashbrown = { version = "0.17", default-features = false, features = ["default-hasher", "inline-more"] }
+speedyspec-hooks = { path = "../speedyspec-hooks" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-i18n-contracts = { path = "../speedyspec-wp-i18n-contracts" }
 

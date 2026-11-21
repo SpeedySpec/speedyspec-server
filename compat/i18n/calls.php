@@ -127,5 +127,9 @@ function speedyspec_i18n_calls(string $data): array {
         }
         return $out;
     });
+    require_once __DIR__ . '/calls-locale.php';
+    speedyspec_i18n_locale_calls(WP_LANG_DIR, $data, $r);
+    require_once __DIR__ . '/calls-pomo.php';
+    speedyspec_pomo_calls(dirname(__DIR__, 2), $data, $r);
     return $out;
 }

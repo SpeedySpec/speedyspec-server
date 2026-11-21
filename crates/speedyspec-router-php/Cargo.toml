@@ -1,0 +1,23 @@
+[package]
+name = "speedyspec-router-php"
+version = "0.1.1"
+description = "The route table store as a container port PHP may supply, and its PHP adapter."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-routing = { path = "../speedyspec-routing" }
+speedyspec-router-store-memory = { path = "../speedyspec-router-store-memory" }
+
+[dev-dependencies]
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-http = { path = "../speedyspec-http" }
+
+[[test]]
+name = "php"
+harness = false

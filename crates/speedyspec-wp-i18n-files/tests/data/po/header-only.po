@@ -1,0 +1,4 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: x\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 ? 0 : n ? 1 : 2);\n"

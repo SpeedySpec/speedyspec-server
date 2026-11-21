@@ -9,11 +9,27 @@
 //! The facade also declares `WP_Translation_Controller` and the `WP_Translation_File` classes as shells over the
 //! Rust controller, and `WP_Translations` as WordPress has it. Translation files are read once per worker and kept
 //! across requests (`MemoryTranslationFileCache`).
+//!
+//! Locale (phase 3): `WP_Locale` takes its translations from one native call when nothing could tell the
+//! difference; `WP_Locale_Switcher` is WordPress's class over the domain's `LocaleSwitcher`, with switching effects
+//! run through a PHP adapter; `_load_script_textdomain_from_src()` and `load_script_translations()` are native (JSON
+//! files read once per worker); and `translate_settings_using_i18n_schema()` walks PHP's own values natively. The
+//! functions that only forward to `$wp_locale`, `$wp_locale_switcher` or `wp_scripts()` stay WordPress's PHP.
+//!
+//! pomo (phase 4): `Plural_Forms` is declared by the facade with native parsing and integer evaluation;
+//! `WP_Translation_File` export is native; and the prepared release's `pomo/mo.php` and `pomo/po.php` are
+//! WordPress's own with native fast paths at the start of `MO::import_from_file()`,
+//! `MO::export_to_file_handle()`, `PO::import_from_file()` and `PO`'s string helpers, taken only when the methods
+//! they stand for are not overridden. `Translations`, `Gettext_Translations`, `NOOP_Translations`,
+//! `Translation_Entry` and the `POMO_*Reader` streams stay WordPress's PHP.
 
+mod effects;
+mod export;
 mod hot;
 mod internal;
 mod reader;
 mod release;
+mod schema;
 mod state;
 mod zv;
 
@@ -56,6 +72,9 @@ impl NativeArea for I18nArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
         let mut f = hot::functions();
         f.extend(internal::functions());
+        f.extend(internal::wordpress_functions());
+        f.extend(schema::functions());
+        f.extend(export::functions());
         f
     }
 

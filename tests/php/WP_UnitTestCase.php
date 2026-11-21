@@ -14,6 +14,13 @@ final class SpeedySpecDeprecationRaised extends RuntimeException
 }
 
 /**
+ * Raised in place of a PHP warning while a test expects one.
+ */
+final class SpeedySpecWarningRaised extends RuntimeException
+{
+}
+
+/**
  * Stands in for WordPress's WP_UnitTestCase, for its hook tests: the same set-up and tear-down names, hook backup
  * and restore over the Rust hook store, the deprecation expectations those tests use, and `assertSameSets()`.
  *
@@ -107,6 +114,10 @@ abstract class WP_UnitTestCase extends TestCase
                 wp_load_alloptions();
             }
         }
+        if (function_exists('speedyspec_doubles_snapshot'))
+        {
+            speedyspec_doubles_snapshot();
+        }
         $this->expectDeprecated();
     }
 
@@ -185,6 +196,19 @@ abstract class WP_UnitTestCase extends TestCase
             {
                 wp_cache_flush();
             }
+        }
+        // As WordPress's tear_down: the screen globals set_current_screen() writes, and no current user.
+        foreach (array('current_screen', 'taxnow', 'typenow') as $global)
+        {
+            $GLOBALS[$global] = null;
+        }
+        if (function_exists('wp_set_current_user'))
+        {
+            wp_set_current_user(0);
+        }
+        if (function_exists('speedyspec_doubles_restore'))
+        {
+            speedyspec_doubles_restore();
         }
         $this->_restore_hooks();
         $this->expected_deprecated = array();
@@ -332,6 +356,72 @@ abstract class WP_UnitTestCase extends TestCase
     }
 
     /**
+     * Expects a PHP warning (PHPUnit 9's `expectWarning()`): the first one ends the test as an exception.
+     */
+    public function expectWarning(): void
+    {
+        set_error_handler(
+            static function (int $errno, string $errstr): bool {
+                if ($errno & (E_WARNING | E_USER_WARNING)) {
+                    throw new SpeedySpecWarningRaised($errstr);
+                }
+                return false;
+            }
+        );
+        $this->speedyspec_error_handler = true;
+        $this->expectException(SpeedySpecWarningRaised::class);
+    }
+
+    public function expectWarningMessage(string $message): void
+    {
+        $this->expectExceptionMessage($message);
+    }
+
+    /**
+     * Asserts that two values are the same once Windows line endings are made Unix ones, as WordPress's test case
+     * does.
+     */
+    public function assertSameIgnoreEOL($expected, $actual, $message = '')
+    {
+        $unix = static function ($value) {
+            return is_string($value) ? str_replace("\r\n", "\n", $value) : $value;
+        };
+        if (null !== $expected)
+        {
+            $expected = map_deep($expected, $unix);
+        }
+        if (null !== $actual)
+        {
+            $actual = map_deep($actual, $unix);
+        }
+        $this->assertSame($expected, $actual, $message);
+    }
+
+    /**
+     * A new temporary file's name, as WordPress's test case makes one.
+     *
+     * @return string
+     *     The file's path; the file exists and is empty.
+     */
+    public function temp_filename()
+    {
+        $tmp_dir = '';
+        foreach (array('TMP', 'TMPDIR', 'TEMP') as $dir)
+        {
+            if (isset($_ENV[$dir]) && !empty($_ENV[$dir]))
+            {
+                $tmp_dir = $_ENV[$dir];
+                break;
+            }
+        }
+        if (empty($tmp_dir))
+        {
+            $tmp_dir = sys_get_temp_dir();
+        }
+        return tempnam(realpath($tmp_dir), 'wpunit');
+    }
+
+    /**
      * Asserts that two arrays hold the same values, in any order.
      */
     public function assertSameSets($expected, $actual, $message = '')
@@ -369,5 +459,30 @@ abstract class WP_UnitTestCase extends TestCase
         ksort($expected);
         ksort($actual);
         $this->assertEquals($expected, $actual, $message);
+    }
+
+    /**
+     * Asserts that two arrays hold the same keys and values, in any order.
+     */
+    public function assertSameSetsWithIndex($expected, $actual, $message = '')
+    {
+        $this->assertIsArray($expected, $message . ' Expected value must be an array.');
+        $this->assertIsArray($actual, $message . ' Value under test is not an array.');
+
+        ksort($expected);
+        ksort($actual);
+        $this->assertSame($expected, $actual, $message);
+    }
+
+    /**
+     * Sets the permalink structure and flushes the rewrite rules, as WordPress's test case does.
+     */
+    public function set_permalink_structure($structure = '')
+    {
+        global $wp_rewrite;
+
+        $wp_rewrite->init();
+        $wp_rewrite->set_permalink_structure($structure);
+        $wp_rewrite->flush_rules();
     }
 }

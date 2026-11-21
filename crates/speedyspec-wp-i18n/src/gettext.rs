@@ -17,6 +17,10 @@ use crate::plural::PluralError;
 pub enum I18nError {
     Hook(HookError),
     Plural(PluralError),
+    /// An adapter behind one of the contracts' ports failed.
+    Port(speedyspec_wp_i18n_contracts::PortError),
+    /// What PHP would throw as a `TypeError`, with its message.
+    Type(String),
 }
 
 impl fmt::Display for I18nError {
@@ -24,6 +28,8 @@ impl fmt::Display for I18nError {
         match self {
             I18nError::Hook(e) => write!(f, "{e}"),
             I18nError::Plural(e) => write!(f, "{e}"),
+            I18nError::Port(e) => write!(f, "{e}"),
+            I18nError::Type(m) => write!(f, "{m}"),
         }
     }
 }
@@ -148,6 +154,29 @@ impl I18nApi {
         } else {
             [name("ngettext"), name(&format!("ngettext_{domain}"))]
         }
+    }
+
+    /// `apply_filters( $hook, $value, ...$args )`, skipping (and counting) a filter with nothing hooked.
+    pub fn filter(
+        &self,
+        hook: &str,
+        value: HookValue,
+        args: Vec<HookValue>,
+    ) -> Result<HookValue, I18nError> {
+        let name = HookName::new(HookValue::Str(hook.to_owned()));
+        if self.hooks.skip_if_empty(&name, Count::Filters)? {
+            return Ok(value);
+        }
+        Ok(self.hooks.apply_filters(&name, value, args)?)
+    }
+
+    /// `do_action( $hook, ...$args )`, skipping (and counting) an action with nothing hooked.
+    pub fn action(&self, hook: &str, args: Vec<HookValue>) -> Result<(), I18nError> {
+        let name = HookName::new(HookValue::Str(hook.to_owned()));
+        if self.hooks.skip_if_empty(&name, Count::Actions)? {
+            return Ok(());
+        }
+        Ok(self.hooks.do_action(&name, args)?)
     }
 
     /// Uses `store` for the checks and counts of [`I18nApi::filters_empty`] and the `*_if_unhooked` calls until

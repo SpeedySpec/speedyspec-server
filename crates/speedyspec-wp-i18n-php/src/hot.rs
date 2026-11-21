@@ -89,6 +89,24 @@ extern "C" fn native_take_translation(_ex: &mut ExecuteData, ret: &mut Zval) {
     }
 }
 
+/// Whether `$l10n[$domain]` is exactly a `WP_Translations` over the request's controller for `domain`: then
+/// WordPress's lookup for the domain would end in the controller.
+pub(crate) fn entry_is_ours(domain: &str) -> bool {
+    let Some(state) = shared() else { return false };
+    let name = zv::string_zval(domain.as_bytes());
+    let Some(zs) = name.zend_str() else {
+        return false;
+    };
+    let Some(obj) = zv::l10n_entry(zs as *const _ as *mut _) else {
+        return false;
+    };
+    let (handle, ce) = zv::object_parts(obj);
+    let wp_translations = zv::class(state.generation.get(), "wp_translations");
+    !wp_translations.is_null()
+        && ce == wp_translations
+        && matches!(state.translations.borrow().get(&handle), Some((d, 0)) if d == domain)
+}
+
 /// Serves the call when it can; false leaves it to WordPress's function.
 fn fast(ex: &ExecuteData, ret: &mut Zval, spec: Spec) -> bool {
     let Some(state) = shared() else { return false };
