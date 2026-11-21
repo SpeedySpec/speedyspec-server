@@ -133,6 +133,30 @@ fn main() {
     );
 
     let r = php.eval(
+        "speedyspec://test/wp-locale",
+        &format!(
+            "load_textdomain('default', {:?}, 'de_DE');
+             $served = SpeedySpec\\WpI18n\\Native\\locale_strings(true);
+             $cb = function ($t) {{ return $t; }};
+             add_filter('gettext', $cb);
+             $hooked = SpeedySpec\\WpI18n\\Native\\locale_strings(true);
+             $l = new WP_Locale();
+             remove_filter('gettext', $cb);
+             unload_textdomain('default');
+             $plugin = new class extends WP_Locale {{ public $extra; public function init() {{ parent::init(); $this->extra = 'x'; }} }};
+             return json_encode(array((new ReflectionClass('WP_Locale'))->getFileName(), count($served), $served[0], $served[64],
+                 $hooked, $l->weekday[0], $plugin->extra, $plugin->month['01']), JSON_UNESCAPED_SLASHES);",
+            root.join("crates/speedyspec-wp-i18n-files/tests/data/rtl.mo").display().to_string()
+        ),
+    );
+    check(
+        "wp_locale_is_native",
+        text(&r)
+            == r#"["speedyspec://wp-i18n",65,"\u05d9\u05d5\u05dd \u05e8\u05d0\u05e9\u05d5\u05df","rtl",null,"\u05d9\u05d5\u05dd \u05e8\u05d0\u05e9\u05d5\u05df","x","January"]"#,
+        &r,
+    );
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

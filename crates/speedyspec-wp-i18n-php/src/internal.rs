@@ -6,7 +6,10 @@ use std::rc::Rc;
 use speedyspec_hooks::{Key, Value};
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
-use speedyspec_wp_i18n::{FileRef, PhpKey, PluralError, TranslationController, bytes_value};
+use speedyspec_wp_i18n::{
+    FileRef, LOCALE_STRINGS, PhpKey, PluralError, TEXT_DIRECTION, Translated,
+    TranslationController, bytes_value,
+};
 
 use crate::state::{Shared, shared};
 
@@ -260,11 +263,53 @@ fn file_plural_form(a: &[Value]) -> R {
     Ok(Value::Int(form))
 }
 
+/// `WP_Locale::init()`'s translations (and the text direction's when asked), served here only when WordPress's
+/// `__()` and `_x()` would end in the request's controller with nothing hooked; `null` leaves them to PHP.
+fn locale_strings(a: &[Value]) -> R {
+    let s = state()?;
+    let ask = matches!(a.first(), Some(Value::Bool(true)));
+    if !crate::hot::entry_is_ours("default")
+        || !s.api.filters_empty("default", false, false)
+        || !s.api.filters_empty("default", true, false)
+    {
+        return Ok(Value::Null);
+    }
+    let direction = (TEXT_DIRECTION.0, Some(TEXT_DIRECTION.1));
+    let lookups = LOCALE_STRINGS
+        .iter()
+        .copied()
+        .chain(ask.then_some(direction));
+    let mut out = Vec::with_capacity(LOCALE_STRINGS.len() + 1);
+    for (i, (text, context)) in lookups.enumerate() {
+        let value = s
+            .api
+            .translate_if_unhooked(
+                text.as_bytes(),
+                context.map(str::as_bytes),
+                "default",
+                |t| match t {
+                    Translated::Bytes(b) => bytes_value(b),
+                    Translated::Arg(_) => Value::Str(text.to_owned()),
+                    Translated::Value(v) => v,
+                },
+            )
+            .ok_or_else(|| {
+                NativeError::throw(
+                    "Error",
+                    "a gettext filter was hooked while WP_Locale was built",
+                )
+            })?;
+        out.push((Key::Int(i as i64), value));
+    }
+    Ok(Value::Array(out))
+}
+
 pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
     let f =
         |name: &str, body: fn(&[Value]) -> R| native::function(&format!("{NATIVE}{name}"), body);
     vec![
         f("register_translations", register_translations),
+        f("locale_strings", locale_strings),
         f("controller_new", |_| {
             Ok(Value::Int(state()?.new_controller()))
         }),
