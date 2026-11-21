@@ -94,6 +94,41 @@ const POMO_FAST_PATHS: &[(&str, &str, &str)] = &[
         "\t\tpublic function export_to_file_handle( $fh ) {\n",
         "\t\t\t// SpeedySpec: WordPress's filtering, ordering and (overridable) per-entry strings, called as often and in the\n\t\t\t// order WordPress calls them, then one native pack and one write.\n\t\t\t$entries = array_filter( $this->entries, array( $this, 'is_entry_good_for_export' ) );\n\t\t\tksort( $entries );\n\t\t\t$originals = array();\n\t\t\tforeach ( $entries as $entry ) {\n\t\t\t\t$originals[] = $this->export_original( $entry );\n\t\t\t\t$this->export_original( $entry );\n\t\t\t}\n\t\t\t$exported_headers = $this->export_headers();\n\t\t\t$translations     = array();\n\t\t\tforeach ( $entries as $entry ) {\n\t\t\t\t$translations[] = $this->export_translations( $entry );\n\t\t\t\t$this->export_translations( $entry );\n\t\t\t}\n\t\t\t$packed = \\SpeedySpec\\WpI18n\\Native\\mo_pack( $originals, $translations, $exported_headers );\n\t\t\tif ( null !== $packed ) {\n\t\t\t\tfwrite( $fh, $packed );\n\t\t\t\treturn true;\n\t\t\t}\n\n",
     ),
+    (
+        "po.php",
+        "\t\tpublic function import_from_file( $filename ) {\n",
+        "\t\t\t// SpeedySpec: the file parsed natively when read_entry(), read_line() and add_comment_to_entry() are PO's own;\n\t\t\t// each entry becomes a Translation_Entry and goes where WordPress's loop puts it. A file the native reader\n\t\t\t// cannot open runs WordPress's code below.\n\t\t\tif ( \\SpeedySpec\\WpI18n\\uses_native( $this, 'read_entry', 'PO' ) && \\SpeedySpec\\WpI18n\\uses_native( $this, 'read_line', 'PO' )\n\t\t\t\t&& \\SpeedySpec\\WpI18n\\uses_native( $this, 'add_comment_to_entry', 'PO' )\n\t\t\t) {\n\t\t\t\t$parsed = \\SpeedySpec\\WpI18n\\Native\\po_parse( (string) $filename );\n\t\t\t\tif ( null !== $parsed ) {\n\t\t\t\t\tforeach ( $parsed[0] as $fields ) {\n\t\t\t\t\t\t$entry = new Translation_Entry();\n\t\t\t\t\t\tforeach ( $fields as $name => $value ) {\n\t\t\t\t\t\t\t$entry->$name = $value;\n\t\t\t\t\t\t}\n\t\t\t\t\t\tif ( '' === $entry->singular ) {\n\t\t\t\t\t\t\t$this->set_headers( $this->make_headers( $entry->translations[0] ) );\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t$this->add_entry( $entry );\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\t$this->read_line( null, 'clear' );\n\t\t\t\t\tif ( $parsed[1] ) {\n\t\t\t\t\t\treturn false;\n\t\t\t\t\t}\n\t\t\t\t\tif ( ! $this->headers && ! $this->entries ) {\n\t\t\t\t\t\treturn false;\n\t\t\t\t\t}\n\t\t\t\t\treturn true;\n\t\t\t\t}\n\t\t\t}\n\n",
+    ),
+    (
+        "po.php",
+        "\t\tpublic static function poify( $input_string ) {\n",
+        "\t\t\t// SpeedySpec: strings take the native path.\n\t\t\tif ( is_string( $input_string ) ) {\n\t\t\t\treturn \\SpeedySpec\\WpI18n\\Native\\po_poify( $input_string );\n\t\t\t}\n\n",
+    ),
+    (
+        "po.php",
+        "\t\tpublic static function unpoify( $input_string ) {\n",
+        "\t\t\t// SpeedySpec: strings take the native path.\n\t\t\tif ( is_string( $input_string ) ) {\n\t\t\t\treturn \\SpeedySpec\\WpI18n\\Native\\po_unpoify( $input_string );\n\t\t\t}\n\n",
+    ),
+    (
+        "po.php",
+        "\t\tpublic static function prepend_each_line( $input_string, $with ) {\n",
+        "\t\t\t// SpeedySpec: strings take the native path.\n\t\t\tif ( is_string( $input_string ) && is_string( $with ) ) {\n\t\t\t\treturn \\SpeedySpec\\WpI18n\\Native\\po_prepend_each_line( $input_string, $with );\n\t\t\t}\n\n",
+    ),
+    (
+        "po.php",
+        "\t\tpublic static function comment_block( $text, $char = ' ' ) {\n",
+        "\t\t\t// SpeedySpec: strings take the native path.\n\t\t\tif ( is_string( $text ) && is_string( $char ) ) {\n\t\t\t\treturn \\SpeedySpec\\WpI18n\\Native\\po_comment_block( $text, $char );\n\t\t\t}\n\n",
+    ),
+    (
+        "po.php",
+        "\t\tpublic static function match_begin_and_end_newlines( $translation, $original ) {\n",
+        "\t\t\t// SpeedySpec: strings take the native path.\n\t\t\tif ( is_string( $translation ) && is_string( $original ) ) {\n\t\t\t\treturn \\SpeedySpec\\WpI18n\\Native\\po_match_newlines( $translation, $original );\n\t\t\t}\n\n",
+    ),
+    (
+        "po.php",
+        "\t\tpublic static function trim_quotes( $s ) {\n",
+        "\t\t\t// SpeedySpec: strings take the native path.\n\t\t\tif ( is_string( $s ) ) {\n\t\t\t\treturn \\SpeedySpec\\WpI18n\\Native\\po_trim_quotes( $s );\n\t\t\t}\n\n",
+    ),
 ];
 
 /// `source` with each of `fast_paths` (for `file`) put right after its method's signature line.

@@ -441,9 +441,12 @@ fn wordwrap(s: &[u8], width: usize) -> Vec<u8> {
 /// `PO_MAX_LINE_LEN`.
 const MAX_LINE_LEN: usize = 79;
 
-/// `PO::comment_block( $text, $char )`.
-pub fn comment_block(text: &[u8], ch: u8) -> Vec<u8> {
-    prepend_each_line(&wordwrap(text, MAX_LINE_LEN - 3), &[b'#', ch, b' '])
+/// `PO::comment_block( $text, $char )` (`$char` may be any string, as PHP allows).
+pub fn comment_block(text: &[u8], ch: &[u8]) -> Vec<u8> {
+    prepend_each_line(
+        &wordwrap(text, MAX_LINE_LEN - 3),
+        &[b"#", ch, b" "].concat(),
+    )
 }
 
 /// `PO::trim_quotes()`.
@@ -497,16 +500,16 @@ pub fn export_entry(entry: &PoEntry) -> Option<Vec<u8>> {
     let singular = entry.singular.as_deref().filter(|s| !s.is_empty())?;
     let mut po: Vec<Vec<u8>> = Vec::new();
     if !empty(&entry.translator_comments) {
-        po.push(comment_block(&entry.translator_comments, b' '));
+        po.push(comment_block(&entry.translator_comments, b" "));
     }
     if !empty(&entry.extracted_comments) {
-        po.push(comment_block(&entry.extracted_comments, b'.'));
+        po.push(comment_block(&entry.extracted_comments, b"."));
     }
     if !entry.references.is_empty() {
-        po.push(comment_block(&entry.references.join(&b' '), b':'));
+        po.push(comment_block(&entry.references.join(&b' '), b":"));
     }
     if !entry.flags.is_empty() {
-        po.push(comment_block(&entry.flags.join(&b", "[..]), b','));
+        po.push(comment_block(&entry.flags.join(&b", "[..]), b","));
     }
     if let Some(context) = entry.context.as_deref().filter(|c| !empty(c)) {
         po.push([&b"msgctxt "[..], &poify(context)].concat());

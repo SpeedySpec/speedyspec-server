@@ -11,7 +11,9 @@ use speedyspec_wp_i18n::{
     TEXT_DIRECTION, Translated, TranslationController, bytes_value,
 };
 
+use speedyspec_wp_i18n_contracts::PhpArrayKey;
 use speedyspec_wp_i18n_files::mo_pomo::MoPairs;
+use speedyspec_wp_i18n_files::po;
 
 use crate::effects::{PhpScriptSources, PhpSwitchEffects, native_error, php_string, port_error};
 use crate::state::{Shared, shared};
@@ -535,6 +537,67 @@ fn mo_pack(a: &[Value]) -> R {
     )))
 }
 
+fn arg_bytes(a: &[Value], i: usize) -> Result<Vec<u8>, NativeError> {
+    Ok(bytes(a, i)?.to_vec())
+}
+
+fn key_value(k: &PhpArrayKey) -> Key {
+    match k {
+        PhpArrayKey::Int(n) => Key::Int(*n),
+        PhpArrayKey::Str(s) => Key::Str(s.clone()),
+    }
+}
+
+/// `PO::import_from_file()`'s entries, each as the `Translation_Entry` properties `read_entry()` sets, and whether
+/// the loop ended on false: `[entries, failed]`. `null` when the file cannot be read (WordPress's code then runs).
+fn po_parse(a: &[Value]) -> R {
+    let Ok(file) = std::fs::read(path(a, 0)?) else {
+        return Ok(Value::Null);
+    };
+    count_pomo()?;
+    let parsed = speedyspec_wp_i18n_files::po::parse_po(&file);
+    let opt = |v: &Option<Vec<u8>>| v.as_deref().map_or(Value::Null, bytes_value);
+    let list = |items: &[Vec<u8>]| {
+        Value::Array(
+            items
+                .iter()
+                .enumerate()
+                .map(|(i, v)| (Key::Int(i as i64), bytes_value(v)))
+                .collect(),
+        )
+    };
+    let entries = parsed
+        .entries
+        .iter()
+        .enumerate()
+        .map(|(i, e)| {
+            let field = |name: &str, v: Value| (Key::Str(name.to_owned()), v);
+            let translations = Value::Array(
+                e.translations
+                    .iter()
+                    .map(|(k, v)| (key_value(k), bytes_value(v)))
+                    .collect(),
+            );
+            let fields = vec![
+                field("context", opt(&e.context)),
+                field("singular", opt(&e.singular)),
+                field("plural", opt(&e.plural)),
+                field("translations", translations),
+                field("is_plural", Value::Bool(e.is_plural)),
+                field("translator_comments", bytes_value(&e.translator_comments)),
+                field("extracted_comments", bytes_value(&e.extracted_comments)),
+                field("references", list(&e.references)),
+                field("flags", list(&e.flags)),
+            ];
+            (Key::Int(i as i64), Value::Array(fields))
+        })
+        .collect();
+    Ok(Value::Array(vec![
+        (Key::Int(0), Value::Array(entries)),
+        (Key::Int(1), Value::Bool(parsed.failed)),
+    ]))
+}
+
 /// The natives declared under WordPress's own names.
 pub(crate) fn wordpress_functions() -> Vec<FunctionBuilder<'static>> {
     vec![
@@ -555,6 +618,34 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
         f("plural_parse", plural_parse),
         f("mo_pairs", mo_pairs),
         f("mo_pack", mo_pack),
+        f("po_parse", po_parse),
+        f("po_poify", |a| {
+            Ok(bytes_value(&po::poify(&arg_bytes(a, 0)?)))
+        }),
+        f("po_unpoify", |a| {
+            Ok(bytes_value(&po::unpoify(&arg_bytes(a, 0)?)))
+        }),
+        f("po_prepend_each_line", |a| {
+            Ok(bytes_value(&po::prepend_each_line(
+                &arg_bytes(a, 0)?,
+                &arg_bytes(a, 1)?,
+            )))
+        }),
+        f("po_comment_block", |a| {
+            Ok(bytes_value(&po::comment_block(
+                &arg_bytes(a, 0)?,
+                &arg_bytes(a, 1)?,
+            )))
+        }),
+        f("po_match_newlines", |a| {
+            Ok(bytes_value(&po::match_begin_and_end_newlines(
+                &arg_bytes(a, 0)?,
+                &arg_bytes(a, 1)?,
+            )))
+        }),
+        f("po_trim_quotes", |a| {
+            Ok(bytes_value(po::trim_quotes(&arg_bytes(a, 0)?)))
+        }),
         f("pomo_stats", |_| Ok(Value::Int(state()?.pomo.get() as i64))),
         f("plural_execute", plural_execute),
         f("switcher_new", switcher_new),

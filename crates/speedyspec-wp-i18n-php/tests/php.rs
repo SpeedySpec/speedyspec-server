@@ -293,6 +293,21 @@ fn main() {
     check("mo_is_native", text(&r) == "[true,2,202,2,false,3]", &r);
 
     let r = php.eval(
+        "speedyspec://test/po",
+        &format!(
+            "$before = SpeedySpec\\WpI18n\\Native\\pomo_stats();
+             $po = new PO(); $ok = $po->import_from_file({f:?});
+             $after_native = SpeedySpec\\WpI18n\\Native\\pomo_stats() - $before;
+             $sub = new class extends PO {{ public $reads = 0; public function read_entry($f, $lineno = 0) {{ ++$this->reads; return parent::read_entry($f, $lineno); }} }};
+             $sub->import_from_file({f:?});
+             return json_encode(array($ok, count($po->entries), $after_native, $sub->reads, SpeedySpec\\WpI18n\\Native\\pomo_stats() - $before,
+                 PO::poify(\"a\\tb\\\"c\"), (new ReflectionMethod('PO', 'poify'))->getFileName() !== false));",
+            f = root.join("tests/php/data/pomo/simple.po").display().to_string()
+        ),
+    );
+    check("po_is_native", text(&r).starts_with("[true,6,1,8,1,"), &r);
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

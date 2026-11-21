@@ -118,7 +118,7 @@ fn po_static_helpers_match_wordpress() {
             "poify" => po::poify(&args[0]),
             "unpoify" => po::unpoify(&args[0]),
             "prepend_each_line" => po::prepend_each_line(&args[0], &args[1]),
-            "comment_block" => po::comment_block(&args[0], args[1][0]),
+            "comment_block" => po::comment_block(&args[0], &args[1]),
             "trim_quotes" => po::trim_quotes(&args[0]).to_vec(),
             "match_begin_and_end_newlines" => po::match_begin_and_end_newlines(&args[0], &args[1]),
             other => panic!("{other}"),
@@ -132,6 +132,12 @@ fn po_static_helpers_match_wordpress() {
                 .collect::<Vec<_>>()
         );
     }
+}
+
+#[test]
+fn comment_block_takes_any_marker() {
+    assert_eq!(po::comment_block(b"note", b""), b"# note");
+    assert_eq!(po::comment_block(b"note", b"~~"), b"#~~ note");
 }
 
 #[test]
