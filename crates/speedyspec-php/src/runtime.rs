@@ -703,7 +703,7 @@ pub fn set_global(name: &str, value: &Value) -> Result<(), PhpError> {
 /// # Safety
 ///
 /// A request is open, on the engine's thread.
-unsafe fn global_slot(name: &str) -> Option<*mut zval> {
+pub(crate) unsafe fn global_slot(name: &str) -> Option<*mut zval> {
     // SAFETY: the symbol table is live while a request is open; indirect and reference slots point to live zvals.
     unsafe {
         let table = &raw mut (*ext_php_rs_executor_globals()).symbol_table;

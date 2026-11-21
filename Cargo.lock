@@ -319,12 +319,27 @@ dependencies = [
 
 [[package]]
 name = "bit-set"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08807e080ed7f9d5433fa9b275196cfc35414f66a0c79d864dc51a0d825231a3"
+dependencies = [
+ "bit-vec 0.8.0",
+]
+
+[[package]]
+name = "bit-set"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56d87354e4229f54a44f7bf2435906a4656dba36026ab6eaca629a2c436a691c"
 dependencies = [
  "bit-vec 0.10.2",
 ]
+
+[[package]]
+name = "bit-vec"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
 
 [[package]]
 name = "bit-vec"
@@ -896,6 +911,32 @@ dependencies = [
 
 [[package]]
 name = "criterion"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2b12d017a929603d80db1831cd3a24082f8137ce19c69e6447f54f5fc8d692f"
+dependencies = [
+ "anes",
+ "cast",
+ "ciborium",
+ "clap",
+ "criterion-plot 0.5.0",
+ "is-terminal",
+ "itertools 0.10.5",
+ "num-traits",
+ "once_cell",
+ "oorandom",
+ "plotters",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "tinytemplate",
+ "walkdir",
+]
+
+[[package]]
+name = "criterion"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "950046b2aa2492f9a536f5f4f9a3de7b9e2476e575e05bd6c333371add4d98f3"
@@ -905,7 +946,7 @@ dependencies = [
  "cast",
  "ciborium",
  "clap",
- "criterion-plot",
+ "criterion-plot 0.8.2",
  "itertools 0.13.0",
  "num-traits",
  "oorandom",
@@ -915,6 +956,16 @@ dependencies = [
  "serde_json",
  "tinytemplate",
  "walkdir",
+]
+
+[[package]]
+name = "criterion-plot"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b50826342786a51a89e2da3a28f1c32b06e387201bc2d19791f622c673706b1"
+dependencies = [
+ "cast",
+ "itertools 0.10.5",
 ]
 
 [[package]]
@@ -939,6 +990,16 @@ version = "0.5.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98b0cc327b5bc766e7fda9c9260cc0fa81b43a8e240440422dff70788e3f9ef1"
 dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-deque"
+version = "0.8.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "622f3fc73690be383c7214310406f28a90e6edeadc3cea882f9d71e495b9711a"
+dependencies = [
+ "crossbeam-epoch",
  "crossbeam-utils",
 ]
 
@@ -1372,6 +1433,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
+name = "fancy-regex"
+version = "0.20.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a2e16b9a584b602f1e0e5e22c30ca0906786088c27500653e432d086def8b53"
+dependencies = [
+ "bit-set 0.8.0",
+ "regex-automata",
+ "regex-syntax",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1773,6 +1845,12 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
+
+[[package]]
+name = "hermit-abi"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e17592d60ebacc7d5e169f4663c5f84f9161cc90328abcfe8456f41e4dfcb284"
 
 [[package]]
 name = "hickory-net"
@@ -2204,10 +2282,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "is-terminal"
+version = "0.4.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
+dependencies = [
+ "hermit-abi",
+ "libc",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
+
+[[package]]
+name = "itertools"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
+]
 
 [[package]]
 name = "itertools"
@@ -3225,6 +3323,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
+name = "plotters"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5aeb6f403d7a4911efb1e33402027fc44f29b5bf6def3effcc22d7bb75f2b747"
+dependencies = [
+ "num-traits",
+ "plotters-backend",
+ "plotters-svg",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "plotters-backend"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df42e13c12958a16b3f7f4386b9ab1f3e7933914ecea48da7139435263a4172a"
+
+[[package]]
+name = "plotters-svg"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51bae2ac328883f7acdfea3d66a7c35751187f870bc81f94563733a154d7a670"
+dependencies = [
+ "plotters-backend",
+]
+
+[[package]]
 name = "portable-atomic"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3387,7 +3513,7 @@ version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8530004ccb15eae51c7e40009fbe317f341f804db54dc033eec1c50be28cfa0"
 dependencies = [
- "bit-set",
+ "bit-set 0.11.1",
  "bit-vec 0.10.2",
  "bitflags",
  "chacha20",
@@ -3569,6 +3695,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60aa6af80be32871323012e02e6e65f8a7cc7890931ae421d217ad8fe0df2ccf"
 dependencies = [
  "rand_core 0.10.1",
+]
+
+[[package]]
+name = "rayon"
+version = "1.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb39b166781f92d482534ef4b4b1b2568f42613b53e5b6c160e24cfbfa30926d"
+dependencies = [
+ "either",
+ "rayon-core",
+]
+
+[[package]]
+name = "rayon-core"
+version = "1.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
+dependencies = [
+ "crossbeam-deque",
+ "crossbeam-utils",
 ]
 
 [[package]]
@@ -4569,7 +4715,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-cache-routing"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "speedyspec-cache",
  "speedyspec-cache-file",
@@ -4584,7 +4730,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-cache-sql"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "postgres",
  "sha2 0.10.9",
@@ -4599,7 +4745,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-compat"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "flate2",
  "serde",
@@ -4668,7 +4814,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-data-corpus"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -4718,7 +4864,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-data-postgres"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "bytes",
  "indexmap",
@@ -4758,7 +4904,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-data-sqlite"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "chrono",
  "md-5",
@@ -4923,7 +5069,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-php-runtime"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "clap",
  "libc",
@@ -4962,7 +5108,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "bytes",
@@ -5011,7 +5157,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-app"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "semver",
  "sha2 0.10.9",
@@ -5026,7 +5172,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-domain"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "http",
  "semver",
@@ -5038,7 +5184,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-gate"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "http",
  "httpdate",
@@ -5065,7 +5211,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-access-dev"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "http",
  "speedyspec-server-domain",
@@ -5074,7 +5220,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-fs"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ruzstd",
  "semver",
@@ -5090,7 +5236,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-http"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "speedyspec-server-domain",
  "tempfile",
@@ -5100,7 +5246,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-kubernetes"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "http",
  "k8s-openapi",
@@ -5113,7 +5259,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-memory"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ruzstd",
  "semver",
@@ -5124,7 +5270,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-minisign"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "minisign",
  "minisign-verify",
@@ -5134,7 +5280,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-presentation"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "arc-swap",
  "bytes",
@@ -5153,7 +5299,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-static"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "blake3",
  "brotli 8.0.4",
@@ -5189,7 +5335,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-db-php"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "indexmap",
  "postgres",
@@ -5237,7 +5383,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-hooks-php"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
@@ -5251,6 +5397,15 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "ureq",
+]
+
+[[package]]
+name = "speedyspec-wp-html-split"
+version = "0.1.1"
+dependencies = [
+ "criterion 0.5.1",
+ "memchr",
+ "speedyspec-wp-text-corpus",
 ]
 
 [[package]]
@@ -5333,7 +5488,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-object-cache-php"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
@@ -5390,7 +5545,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-options-php"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "indexmap",
  "serde_json",
@@ -5424,7 +5579,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-options-sql"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "postgres",
  "speedyspec-cache",
@@ -5449,11 +5604,75 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-shortcode"
+version = "0.1.0"
+dependencies = [
+ "aho-corasick",
+ "criterion 0.5.1",
+ "fancy-regex",
+ "indexmap",
+ "memchr",
+ "proptest",
+ "regex",
+ "speedyspec-container",
+ "speedyspec-cqrs",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-shortcode-contracts",
+]
+
+[[package]]
+name = "speedyspec-wp-shortcode-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-hooks",
+]
+
+[[package]]
+name = "speedyspec-wp-shortcode-php"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-cqrs",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-shortcode",
+ "speedyspec-wp-shortcode-contracts",
+ "ureq",
+]
+
+[[package]]
+name = "speedyspec-wp-text-contracts"
+version = "0.1.0"
+
+[[package]]
+name = "speedyspec-wp-text-corpus"
+version = "0.1.1"
+dependencies = [
+ "base64 0.22.1",
+ "serde",
+ "serde_json",
+ "speedyspec-compat",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+]
+
+[[package]]
 name = "speedyspec-wp-text-diff"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
- "criterion",
+ "criterion 0.8.2",
  "foldhash",
  "hashbrown",
  "memchr",
@@ -5469,7 +5688,7 @@ version = "0.1.0"
 
 [[package]]
 name = "speedyspec-wp-text-diff-php"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "speedyspec-compat",
  "speedyspec-container",
@@ -5480,6 +5699,23 @@ dependencies = [
  "speedyspec-wp-hooks-php",
  "speedyspec-wp-text-diff",
  "speedyspec-wp-text-diff-contracts",
+]
+
+[[package]]
+name = "speedyspec-wp-text-escape"
+version = "0.1.0"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "speedyspec-hooks",
+ "speedyspec-wp-text-corpus",
+]
+
+[[package]]
+name = "speedyspec-wp-text-memory"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-wp-text-contracts",
 ]
 
 [[package]]

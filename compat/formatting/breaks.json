@@ -1,0 +1,19 @@
+{
+  "breaks": [
+    {
+      "scenario": "htmlspecialchars/literal/charset_sjis_invalid",
+      "step": 0,
+      "why": "East Asian multibyte charsets (Shift_JIS, BIG5, BIG5-HKSCS, GB2312, EUC-JP): PHP validates their byte sequences and returns an empty string for an invalid one; the port treats them as single-byte and escapes the bytes it is given. The output is still safe: none of < > & \" ' can be a trail byte in these sets. WordPress sites on these charsets are rare; see the design spec's breaks ledger."
+    },
+    {
+      "scenario": "htmlspecialchars/literal/charset_big5_invalid",
+      "step": 0,
+      "why": "East Asian multibyte charsets (Shift_JIS, BIG5, BIG5-HKSCS, GB2312, EUC-JP): PHP validates their byte sequences and returns an empty string for an invalid one; the port treats them as single-byte and escapes the bytes it is given. The output is still safe: none of < > & \" ' can be a trail byte in these sets. WordPress sites on these charsets are rare; see the design spec's breaks ledger."
+    },
+    {
+      "scenario": "htmlspecialchars/literal/charset_eucjp_invalid",
+      "step": 0,
+      "why": "East Asian multibyte charsets (Shift_JIS, BIG5, BIG5-HKSCS, GB2312, EUC-JP): PHP validates their byte sequences and returns an empty string for an invalid one; the port treats them as single-byte and escapes the bytes it is given. The output is still safe: none of < > & \" ' can be a trail byte in these sets. WordPress sites on these charsets are rare; see the design spec's breaks ledger."
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+[
+  {
+    "test": "wpHtmlSplit.php",
+    "class": "Tests_Formatting_wpHtmlSplit",
+    "provider": "data_basic_features",
+    "function": "wp_html_split",
+    "args": [
+      0
+    ]
+  },
+  {
+    "whole_posts": true,
+    "function": "wp_html_split"
+  },
+  {
+    "test": "escXml.php",
+    "class": "Tests_Formatting_EscXml",
+    "provider": "data_esc_xml_basics",
+    "function": "esc_xml",
+    "args": [
+      0
+    ]
+  },
+  {
+    "test": "escXml.php",
+    "class": "Tests_Formatting_EscXml",
+    "provider": "data_ignores_cdata_sections",
+    "function": "esc_xml",
+    "args": [
+      0
+    ]
+  },
+  {
+    "test": "wpSpecialchars.php",
+    "class": "Tests_Formatting_wpSpecialchars",
+    "provider": "data_double_encoding",
+    "function": "_wp_specialchars",
+    "args": [
+      0
+    ],
+    "extra": [
+      0,
+      false,
+      true
+    ]
+  },
+  {
+    "test": "wpSpecialchars.php",
+    "class": "Tests_Formatting_wpSpecialchars",
+    "provider": "data_no_double_encoding",
+    "function": "_wp_specialchars",
+    "args": [
+      0
+    ],
+    "extra": [
+      0,
+      false,
+      false
+    ]
+  },
+  {
+    "test": "wpSlash.php",
+    "class": "Tests_Formatting_wpSlash",
+    "provider": "data_wp_slash",
+    "function": "wp_slash",
+    "args": [
+      0
+    ]
+  },
+  {
+    "whole_posts": true,
+    "function": "esc_html"
+  },
+  {
+    "whole_posts": true,
+    "function": "esc_attr"
+  },
+  {
+    "whole_posts": true,
+    "function": "esc_textarea"
+  },
+  {
+    "whole_posts": true,
+    "function": "esc_js"
+  },
+  {
+    "whole_posts": true,
+    "function": "esc_xml"
+  },
+  {
+    "whole_posts": true,
+    "function": "wp_specialchars_decode"
+  },
+  {
+    "whole_posts": true,
+    "function": "htmlspecialchars"
+  }
+]

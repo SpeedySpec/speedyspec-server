@@ -40,7 +40,7 @@ use speedyspec_hooks::{Key, Value};
 use crate::boundary;
 
 /// `HASH_FLAG_PACKED` from `Zend/zend_hash.h`; bindgen does not export it.
-const HASH_FLAG_PACKED: u32 = 1 << 2;
+pub(crate) const HASH_FLAG_PACKED: u32 = 1 << 2;
 /// `GC_IMMUTABLE` (also `IS_STR_INTERNED`) from `Zend/zend_types.h`.
 const GC_IMMUTABLE: u32 = 1 << 6;
 /// Nesting deeper than this is refused rather than risking the Rust stack.
@@ -510,7 +510,7 @@ pub(crate) unsafe fn pop_last(ht: *mut zend_array) {
 /// # Safety
 ///
 /// `slot` points to a live hash table slot.
-unsafe fn is_hole(slot: *const zval) -> bool {
+pub(crate) unsafe fn is_hole(slot: *const zval) -> bool {
     // SAFETY: an indirect slot's `zv` points to a live zval.
     unsafe {
         let ty = u32::from(type_of(slot));

@@ -1,0 +1,13 @@
+{
+  "breaks": [
+    {
+      "scenario": "break_backtrack_limit",
+      "step": 2,
+      "why": "WordPress's PCRE runs out of JIT stack (or pcre.backtrack_limit) on this content, preg_replace_callback() returns null and do_shortcode() returns \"\" (with a strtr() deprecation). The port's scanners cannot fail this way and return the real result. Deliberate difference 1 of the shortcode design."
+    },
+    {
+      "scenario": "break_c_locale",
+      "why": "After setlocale( LC_CTYPE, a Latin-1 locale ), PHP's PCRE builds locale tables and \\w matches 0xE9, so WordPress leaves \"[a\\xE9]\" alone. The port always uses the C locale's classes and expands it. Deliberate difference 2 of the shortcode design. Because the port expands it, its attribute text \"\\xE9\" also raises WordPress's invalid-UTF-8 deprecation, which the later steps' notices carry."
+    }
+  ]
+}
