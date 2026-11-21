@@ -88,8 +88,8 @@ impl MemoryRewriteStateSource {
 }
 
 impl RewriteStateSource for MemoryRewriteStateSource {
-    fn load(&self) -> RewriteState {
-        self.state.borrow().clone()
+    fn load(&self) -> Result<RewriteState, RewriteError> {
+        Ok(self.state.borrow().clone())
     }
 
     fn store(&self, state: &RewriteState) {

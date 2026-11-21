@@ -57,7 +57,9 @@ impl RewriteService {
         };
         let callback = Callback::rust(DEFERRED_FLUSH, move |_: &[HookValue]| {
             let source = service.deps.state.clone();
-            let mut state = source.load();
+            let mut state = source
+                .load()
+                .map_err(|err| speedyspec_wp_hooks::HookError::message(err.0))?;
             service
                 .flush_rules(&mut state, source.as_ref(), true)
                 .map_err(|err| speedyspec_wp_hooks::HookError::message(err.0))?;

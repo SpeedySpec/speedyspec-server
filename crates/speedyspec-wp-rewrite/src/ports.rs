@@ -8,7 +8,8 @@ use crate::{RewriteError, RewriteState};
 
 /// Where `WP_Rewrite`'s state lives between calls (in PHP, the `$wp_rewrite` object).
 pub trait RewriteStateSource {
-    fn load(&self) -> RewriteState;
+    /// The current state; an error when it cannot be read, in which case the caller must not store over it.
+    fn load(&self) -> Result<RewriteState, RewriteError>;
     fn store(&self, state: &RewriteState);
     /// The object hooks receive as `$wp_rewrite` (`generate_rewrite_rules` passes it by reference).
     fn hook_value(&self) -> HookValue;

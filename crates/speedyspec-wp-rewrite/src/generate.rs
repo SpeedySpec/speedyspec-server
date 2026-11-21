@@ -213,7 +213,7 @@ impl RewriteService {
             &HookName::from("generate_rewrite_rules"),
             vec![source.hook_value()],
         )?;
-        *state = source.load();
+        *state = source.load()?;
 
         let rules = state.rules.clone().unwrap_or_default();
         let filtered = self

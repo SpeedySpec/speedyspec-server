@@ -28,7 +28,7 @@ macro_rules! rewrite_message {
             fn handle(&self, $m: $name) -> $result {
                 let $svc = self;
                 let $src = $m.source.clone();
-                let mut $state = $src.load();
+                let mut $state = $src.load()?;
                 let result = $body;
                 $src.store(&$state);
                 result
@@ -45,7 +45,7 @@ macro_rules! rewrite_message {
             fn handle(&self, $m: $name) -> $result {
                 let $svc = self;
                 let $src = $m.source.clone();
-                let mut $state = $src.load();
+                let mut $state = $src.load()?;
                 let result = $body;
                 $src.store(&$state);
                 result

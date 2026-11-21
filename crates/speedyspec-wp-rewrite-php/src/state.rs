@@ -2,7 +2,7 @@
 
 use speedyspec_php_ext::{Key, PhpObject, Value};
 use speedyspec_routing::{Endpoint, EndpointMask, Permastruct, PermastructArgs, RewriteTag};
-use speedyspec_wp_rewrite::{RewriteState, RewriteStateSource};
+use speedyspec_wp_rewrite::{RewriteError, RewriteState, RewriteStateSource};
 
 use crate::values::{int, items, key_text, list, rules, rules_value, strings_value, text, truthy};
 
@@ -262,14 +262,12 @@ pub fn vars_from_state(s: &RewriteState) -> (Value, Vec<String>) {
 }
 
 impl RewriteStateSource for PhpRewriteState {
-    fn load(&self) -> RewriteState {
-        match self.object.call("__speedyspec_vars", vec![]) {
-            Ok(vars) => state_from_vars(&vars),
-            Err(err) => {
-                eprintln!("speedyspec_wordpress: reading WP_Rewrite's properties failed: {err}");
-                RewriteState::default()
-            }
-        }
+    /// A property that does not convert is an error, never defaults: storing defaults back would blank the object.
+    fn load(&self) -> Result<RewriteState, RewriteError> {
+        self.object
+            .call("__speedyspec_vars", vec![])
+            .map(|vars| state_from_vars(&vars))
+            .map_err(|err| RewriteError(format!("reading WP_Rewrite's properties failed: {err}")))
     }
 
     fn store(&self, state: &RewriteState) {
@@ -302,10 +300,10 @@ impl PhpGlobalRewriteState {
 }
 
 impl RewriteStateSource for PhpGlobalRewriteState {
-    fn load(&self) -> RewriteState {
+    fn load(&self) -> Result<RewriteState, RewriteError> {
         PhpGlobalRewriteState::current()
-            .map(|s| s.load())
-            .unwrap_or_default()
+            .ok_or_else(|| RewriteError("there is no $wp_rewrite object".into()))?
+            .load()
     }
 
     fn store(&self, state: &RewriteState) {

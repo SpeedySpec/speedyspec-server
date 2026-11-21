@@ -163,7 +163,7 @@ fn call_method(
     macro_rules! direct {
         (|$state:ident| $body:expr) => {{
             #[allow(unused_mut)]
-            let mut $state = source.load();
+            let mut $state = source.load().map_err(rewrite_error)?;
             let result = $body;
             source.store(&$state);
             Ok(result)
@@ -238,10 +238,11 @@ fn call_method(
             let rules = query!(GetRewriteRules {
                 source: source.clone()
             })?;
-            let stored = source.load().rules;
-            Ok(match stored {
-                Some(_) => rules_or_empty(rules),
-                None => Value::Str(String::new()),
+            // Plain permalinks leave WordPress's `$this->rules` as '', which is what it returns.
+            Ok(if rules.is_empty() {
+                Value::Str(String::new())
+            } else {
+                rules_or_empty(rules)
             })
         }
         "rewrite_rules" => query!(GenerateAllRewriteRules { source }).map(rules_or_empty),
