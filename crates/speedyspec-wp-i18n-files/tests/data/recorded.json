@@ -42,6 +42,21 @@
         "headers": [],
         "error": "Invalid data"
     },
+    "divzero.mo": {
+        "entries": [
+            [
+                "Y2F0",
+                "S2F0emUAS2F0emVu"
+            ]
+        ],
+        "headers": [
+            [
+                "cGx1cmFsLWZvcm1z",
+                "bnBsdXJhbHM9MjsgcGx1cmFsPW4gJSAwOw=="
+            ]
+        ],
+        "error": null
+    },
     "duplicates.mo": {
         "entries": [
             [

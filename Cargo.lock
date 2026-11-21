@@ -5294,6 +5294,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-i18n-php"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-i18n",
+ "speedyspec-wp-i18n-contracts",
+ "speedyspec-wp-i18n-files",
+ "speedyspec-wp-i18n-memory",
+ "speedyspec-wp-utf8-php",
+ "ureq",
+]
+
+[[package]]
 name = "speedyspec-wp-object-cache"
 version = "0.1.0"
 dependencies = [

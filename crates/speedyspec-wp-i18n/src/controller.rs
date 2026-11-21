@@ -391,9 +391,25 @@ impl TranslationController {
         domain: &str,
         locale: Option<&str>,
     ) -> Result<Option<&[u8]>, PluralError> {
-        self.set_key(context, &[singular, plural]);
+        self.translate_plurals(&[singular, plural], n, context, domain, locale)
+    }
+
+    /// `translate_plural()` for any number of originals, as WordPress joins them all with `\0` for the first
+    /// lookup and falls back to the first alone.
+    pub fn translate_plurals(
+        &mut self,
+        plurals: &[&[u8]],
+        n: i64,
+        context: &[u8],
+        domain: &str,
+        locale: Option<&str>,
+    ) -> Result<Option<&[u8]>, PluralError> {
+        let Some(first_original) = plurals.first() else {
+            return Ok(None);
+        };
+        self.set_key(context, plurals);
         if !self.locate(domain, locale) {
-            self.set_key(context, &[singular]);
+            self.set_key(context, &[first_original]);
             if !self.locate(domain, locale) {
                 return Ok(None);
             }

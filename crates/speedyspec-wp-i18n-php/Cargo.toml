@@ -1,0 +1,32 @@
+[package]
+name = "speedyspec-wp-i18n-php"
+version = "0.1.0"
+description = "WordPress's translation functions in PHP over the Rust translations port: the native __() family, the translation controller and file classes, and a release prepared for them."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-i18n = { path = "../speedyspec-wp-i18n" }
+speedyspec-wp-i18n-contracts = { path = "../speedyspec-wp-i18n-contracts" }
+speedyspec-wp-i18n-files = { path = "../speedyspec-wp-i18n-files" }
+speedyspec-wp-i18n-memory = { path = "../speedyspec-wp-i18n-memory" }
+speedyspec-wp-utf8-php = { path = "../speedyspec-wp-utf8-php" }
+
+[dev-dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+serde_json = "1"
+sha2 = "0.10"
+ureq = "3"
+
+[[test]]
+name = "php"
+harness = false
