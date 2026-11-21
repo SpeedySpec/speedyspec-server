@@ -263,6 +263,22 @@ fn main() {
     );
 
     let r = php.eval(
+        "speedyspec://test/file-export",
+        &format!(
+            "$before = SpeedySpec\\WpI18n\\Native\\export_stats();
+             $mo = WP_Translation_File::transform({f:?}, 'mo');
+             $php = WP_Translation_File::transform({f:?}, 'php');
+             return json_encode(array(md5($mo), $php, SpeedySpec\\WpI18n\\Native\\export_stats() - $before));",
+            f = root.join("tests/php/data/l10n/simple.mo").display().to_string()
+        ),
+    );
+    check(
+        "translation_file_export_is_native",
+        text(&r).ends_with(",2]") && text(&r).contains("'messages'=>"),
+        &r,
+    );
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

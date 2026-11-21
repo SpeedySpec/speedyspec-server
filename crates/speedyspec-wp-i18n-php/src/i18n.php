@@ -501,6 +501,14 @@ namespace
             if ( ! $this->parsed ) {
                 $this->parse_file();
             }
+            if ( false === $this->uint32 ) {
+                $this->uint32 = 'V';
+            }
+            // SpeedySpec: the object's own headers and entries, written natively when they are all strings.
+            $exported = \SpeedySpec\WpI18n\Native\file_export_mo( $this->headers, $this->entries, $this->uint32 );
+            if ( null !== $exported ) {
+                return $exported;
+            }
             // WordPress 7.1.5's WP_Translation_File_MO::export().
             $headers_string = '';
             foreach ( $this->headers as $header => $value ) {
@@ -547,6 +555,11 @@ namespace
         public function export(): string {
             if ( ! $this->parsed ) {
                 $this->parse_file();
+            }
+            // SpeedySpec: the object's own headers and entries, written natively when they are all strings.
+            $exported = \SpeedySpec\WpI18n\Native\file_export_php( $this->headers, $this->entries );
+            if ( null !== $exported ) {
+                return $exported;
             }
             // WordPress 7.1.5's WP_Translation_File_PHP::export().
             $data = array_merge( $this->headers, array( 'messages' => $this->entries ) );

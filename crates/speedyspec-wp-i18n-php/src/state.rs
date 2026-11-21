@@ -30,6 +30,8 @@ pub(crate) struct Shared {
     pub script_files: ScriptFiles,
     /// Each `WP_Locale_Switcher`'s stack, by `spl_object_id` (registered by its constructor).
     pub switchers: RefCell<HashMap<u32, Rc<LocaleSwitcher>, foldhash::fast::RandomState>>,
+    /// Translation file exports made natively (for tests).
+    pub exports: Cell<u64>,
     /// Calls the hot path served, and calls it left to WordPress's function.
     pub fast: Cell<u64>,
     pub slow: Cell<u64>,
@@ -72,6 +74,7 @@ impl Shared {
             ),
             generation: Cell::new(0),
             fast: Cell::new(0),
+            exports: Cell::new(0),
             slow: Cell::new(0),
         }
     }

@@ -17,6 +17,7 @@
 //! functions that only forward to `$wp_locale`, `$wp_locale_switcher` or `wp_scripts()` stay WordPress's PHP.
 
 mod effects;
+mod export;
 mod hot;
 mod internal;
 mod reader;
@@ -66,6 +67,7 @@ impl NativeArea for I18nArea {
         f.extend(internal::functions());
         f.extend(internal::wordpress_functions());
         f.extend(schema::functions());
+        f.extend(export::functions());
         f
     }
 
