@@ -94,8 +94,8 @@ headers = "x-forwarded"                # or "forwarded" (RFC 7239)
 
 [app.server]
 kind = "server"                        # exactly one; its release is this binary
-source = "https://releases.example.com/server/index.json"
-keys = ["RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3"]
+source = "https://releases.speedyspec.com/server/index.json"
+keys = ["RWT1iFxWT0DcUmOoHd7G9+GvpsUxaAPTOqtDr0GyVUvsJHHuBNRxI+0n"] # this repository's minisign.pub
 
 [app.admin]
 kind = "static"                        # or "php"
@@ -109,7 +109,8 @@ allow_unsigned = false
 
 [app.php-runtime]
 kind = "runtime"                       # the PHP runtime binary the php apps run; see docs/php.md
-source = "https://releases.example.com/php-runtime/index.json"
+source = "https://releases.speedyspec.com/php-runtime/index.json"
+keys = ["RWT1iFxWT0DcUmOoHd7G9+GvpsUxaAPTOqtDr0GyVUvsJHHuBNRxI+0n"] # the same key as the server's
 update = "manual"
 
 [app.blog]
@@ -206,6 +207,71 @@ minisign signature and one of the app's `keys`.
   `<data_dir>/releases/server/<version>/`. From then on the keeper runs the confirmed binary from there. A later
   start from a binary newer than the confirmed one (a package upgraded in place) adopts it the same way, unless that
   version has failed before; an older one runs the confirmed binary instead.
+
+### Published releases of the server and the PHP runtime
+
+This repository publishes both, each with its own version, on its GitHub releases (tags `speedyspec-server-v<version>`
+and `speedyspec-php-runtime-v<version>`): one binary per target (`x86_64-unknown-linux-musl`,
+`aarch64-unknown-linux-musl`, `aarch64-apple-darwin`), its `.minisig`, and `SHA256SUMS`. GitHub Pages serves their
+indexes, which managed mode reads as the `source` of the apps `server` and `php-runtime` (the index names the app, so
+the ids must be these):
+
+- `https://releases.speedyspec.com/server/index.json`
+- `https://releases.speedyspec.com/php-runtime/index.json`
+
+Every binary is signed with the key in [`minisign.pub`](minisign.pub); its second line goes in both apps' `keys`. To
+check a download by hand:
+
+```bash
+minisign -V -p minisign.pub -m speedyspec-server-x86_64-unknown-linux-musl
+```
+
+```bash
+grep ' speedyspec-server-x86_64-unknown-linux-musl$' SHA256SUMS | sha256sum -c
+```
+
+### Releasing
+
+release-please keeps one release pull request open on `main`. Every crate is a release-please package, so a change
+in any of them is seen; the `cargo-workspace` plugin then bumps the server or the runtime whenever a crate it is built
+from is bumped. Only the server and the runtime get GitHub releases: after a release, the workflow tags each library
+crate at its new version (`<crate>-v<version>`, a plain tag) so release-please counts its commits from there. Changes
+outside the crates (`php-version`, `scripts/build-php.sh`) release nothing by themselves: commit a PHP update together
+with a change to the runtime crate (its changelog is a good place to say which PHP it embeds).
+
+Merging the release pull request builds each bumped component for every target at the merge commit and runs its tests
+there; only when every build passes are the tags and the GitHub releases created. The binaries are then signed and
+uploaded, and both indexes are rebuilt from the GitHub releases and deployed to Pages. A failed build publishes
+nothing, and the next push to `main` tries again.
+
+The *Release* workflow can also be run by hand: with a tag, it finishes a release whose publishing failed part-way
+(a release whose binaries, signatures and `SHA256SUMS` are all there is never changed: builds are not reproducible,
+so a replaced binary would fail every server's checksum; a bad release is fixed by the next version); with no tag, it
+only redeploys the indexes.
+
+First-time setup, once:
+
+1. Generate a key pair with `minisign -G -p minisign.pub -s minisign.key`, commit `minisign.pub`, and keep
+   `minisign.key` and its password out of the repository.
+2. Add the secrets `MINISIGN_SECRET_KEY` (the whole contents of `minisign.key`) and `MINISIGN_PASSWORD`, to the
+   repository or to the organization (visible to this repository). Without them, or without `minisign.pub`, nothing
+   is published.
+3. Set *Settings → Pages → Source* to *GitHub Actions*, with the custom domain `releases.speedyspec.com` and
+   *Enforce HTTPS* on, and turn on *Settings → Actions → General → Allow GitHub
+   Actions to create and approve pull requests* (release-please opens its pull request with the workflow's token).
+4. The server's first release is 0.1.0, release-please's first version for a Rust crate. The runtime's crate is
+   already at 1.0.0, so its first release is asked for once: a commit that changes only `crates/speedyspec-php-runtime`
+   with the footer `Release-As: 1.0.0` (a footer applies to every package the commit touches, so keep it to that one
+   crate, and merge it with its message intact).
+
+A crate that neither the server nor the runtime is built from (today `speedyspec-cqrs-php`) is not a release-please
+package: changing it changes no binary. A test keeps that so, because a release pull request with only library
+crates would never be marked released, and release-please would stop opening new ones.
+
+Release pull requests are opened with the workflow's own token, so CI does not run on them; it runs on the merge.
+The release builds the release commit (the merged release pull request) and runs every test there first. If that
+commit cannot build, nothing is published and release-please waits for it: revert the release pull request's
+commit, remove the `autorelease: pending` label from that pull request, and release-please opens a new one.
 
 ## Upgrading the server, and the trial
 

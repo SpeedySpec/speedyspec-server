@@ -1,0 +1,193 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "rust",
+  "pull-request-title-pattern": "chore: release ${version}",
+  "include-component-in-tag": true,
+  "bump-minor-pre-major": true,
+  "bootstrap-sha": "01fe06278c5aa9d3ab5dbb90d690ce1bd9b2f936",
+  "plugins": [
+    {
+      "type": "cargo-workspace"
+    }
+  ],
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "Features"
+    },
+    {
+      "type": "fix",
+      "section": "Bug Fixes"
+    },
+    {
+      "type": "perf",
+      "section": "Performance Improvements"
+    },
+    {
+      "type": "refactor",
+      "section": "Code Refactoring"
+    },
+    {
+      "type": "docs",
+      "section": "Documentation"
+    },
+    {
+      "type": "build",
+      "section": "Build System"
+    },
+    {
+      "type": "ci",
+      "section": "Continuous Integration"
+    },
+    {
+      "type": "chore",
+      "section": "Miscellaneous Chores",
+      "hidden": true
+    },
+    {
+      "type": "test",
+      "section": "Tests",
+      "hidden": true
+    }
+  ],
+  "packages": {
+    "crates/speedyspec-compat": {
+      "component": "speedyspec-compat",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-container": {
+      "component": "speedyspec-container",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-container-php": {
+      "component": "speedyspec-container-php",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-cqrs": {
+      "component": "speedyspec-cqrs",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-fastcgi": {
+      "component": "speedyspec-fastcgi",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-hooks": {
+      "component": "speedyspec-hooks",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-hooks-memory": {
+      "component": "speedyspec-hooks-memory",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-php": {
+      "component": "speedyspec-php",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-php-ext": {
+      "component": "speedyspec-php-ext",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-php-port-macros": {
+      "component": "speedyspec-php-port-macros",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-php-runtime": {
+      "component": "speedyspec-php-runtime",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "crates/speedyspec-runtime-contract": {
+      "component": "speedyspec-runtime-contract",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-server": {
+      "component": "speedyspec-server",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "crates/speedyspec-server-app": {
+      "component": "speedyspec-server-app",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-server-domain": {
+      "component": "speedyspec-server-domain",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-server-gate": {
+      "component": "speedyspec-server-gate",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-server-handoff": {
+      "component": "speedyspec-server-handoff",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-server-infra-access-dev": {
+      "component": "speedyspec-server-infra-access-dev",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-server-infra-fs": {
+      "component": "speedyspec-server-infra-fs",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-server-infra-http": {
+      "component": "speedyspec-server-infra-http",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-server-infra-kubernetes": {
+      "component": "speedyspec-server-infra-kubernetes",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-server-infra-memory": {
+      "component": "speedyspec-server-infra-memory",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-server-infra-minisign": {
+      "component": "speedyspec-server-infra-minisign",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-server-presentation": {
+      "component": "speedyspec-server-presentation",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-server-static": {
+      "component": "speedyspec-server-static",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-hooks": {
+      "component": "speedyspec-wp-hooks",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-hooks-memory": {
+      "component": "speedyspec-wp-hooks-memory",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-hooks-php": {
+      "component": "speedyspec-wp-hooks-php",
+      "skip-github-release": true,
+      "skip-changelog": true
+    }
+  }
+}
