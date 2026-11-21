@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-cache-routing"
-version = "0.1.0"
+version = "0.1.1"
 description = "Chooses the persistent Caching Store from the engine the object-cache use is routed to."
 edition.workspace = true
 rust-version.workspace = true

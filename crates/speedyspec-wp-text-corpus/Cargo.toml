@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-text-corpus"
-version = "0.1.0"
+version = "0.1.1"
 description = "The formatting corpus recorded from stock WordPress (compat/formatting), read with no PHP so each text crate can compare its output byte for byte; with the php feature, the tools that build the scenarios and time PHP."
 edition.workspace = true
 rust-version.workspace = true
