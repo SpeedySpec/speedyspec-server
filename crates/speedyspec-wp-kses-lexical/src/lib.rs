@@ -5,3 +5,6 @@
 //! kses's regexes run without `/u`, so `\s` is PCRE's ASCII set and invalid UTF-8 passes as in PHP.
 
 pub mod scan;
+mod text;
+
+pub use text::{array_lc, html_error, no_null, stripslashes};

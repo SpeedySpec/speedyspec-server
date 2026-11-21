@@ -5051,6 +5051,7 @@ dependencies = [
 name = "speedyspec-wp-kses-lexical"
 version = "0.1.0"
 dependencies = [
+ "indexmap",
  "memchr",
  "serde_json",
  "speedyspec-wp-kses-contracts",

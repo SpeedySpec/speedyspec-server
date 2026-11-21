@@ -7,6 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+indexmap = "2"
 memchr = "2"
 speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
 
