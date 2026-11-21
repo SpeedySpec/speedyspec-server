@@ -78,7 +78,7 @@ const ALL_METHODS: [Method; 7] = [
 pub struct Router<H, M = ()> {
     pub(crate) entries: Vec<Entry<H, M>>,
     groups: Vec<Group<M>>,
-    fallback: Option<H>,
+    fallback: Option<Target<H>>,
     before_rules: Vec<Rule>,
     after_rules: Vec<Rule>,
 }
@@ -215,7 +215,7 @@ impl<H, M: Clone> Router<H, M> {
 
     /// The handler for requests nothing else matches.
     pub fn fallback(&mut self, handler: H) {
-        self.fallback = Some(handler);
+        self.fallback = Some(Target::Handler(handler));
     }
 
     /// Sets the WordPress rule set in `slot`, replacing any earlier one.
@@ -271,16 +271,34 @@ impl<H, M: Clone> Router<H, M> {
         Ok(fingerprint_of(&self.data()?))
     }
 
+    /// What a resolved route leads to; [`RouteId::FALLBACK`] is the fallback.
+    ///
+    /// # Panics
+    ///
+    /// When `id` came from another router's table.
     pub fn target(&self, id: RouteId) -> &Target<H> {
+        if id == RouteId::FALLBACK {
+            return self
+                .fallback
+                .as_ref()
+                .expect("RouteId::FALLBACK resolves only when a fallback is set");
+        }
         &self.entries[id.0 as usize].target
     }
 
+    /// The route's middleware: its groups' in nesting order, then its own. The fallback has none.
     pub fn middleware_for(&self, id: RouteId) -> &[M] {
+        if id == RouteId::FALLBACK {
+            return &[];
+        }
         &self.entries[id.0 as usize].middleware
     }
 
     pub fn fallback_target(&self) -> Option<&H> {
-        self.fallback.as_ref()
+        match &self.fallback {
+            Some(Target::Handler(handler)) => Some(handler),
+            _ => None,
+        }
     }
 
     /// Every redirect route, for resolution.

@@ -15,3 +15,8 @@ mod url;
 pub use group::Group;
 pub use router::{CompileError, RouteBuilder, Router, RuleSlot, Target, fingerprint_of};
 pub use url::UrlError;
+mod cache;
+mod table;
+
+pub use cache::TableCache;
+pub use table::{CompiledTable, RouteRequest, WpSubject};

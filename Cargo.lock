@@ -4891,6 +4891,14 @@ dependencies = [
  "regex",
  "sha2 0.10.9",
  "speedyspec-http",
+ "speedyspec-router-store-memory",
+ "speedyspec-routing",
+]
+
+[[package]]
+name = "speedyspec-router-store-memory"
+version = "0.1.0"
+dependencies = [
  "speedyspec-routing",
 ]
 

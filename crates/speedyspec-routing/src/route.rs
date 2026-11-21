@@ -2,6 +2,11 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RouteId(pub u32);
 
+impl RouteId {
+    /// The fallback route, which has no position.
+    pub const FALLBACK: RouteId = RouteId(u32::MAX);
+}
+
 /// A route's name, used to generate its URL.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RouteName(String);
