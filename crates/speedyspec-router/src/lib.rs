@@ -6,4 +6,5 @@
 //! concepts are part of the core: ordered rule sets with query templates, guards and decode retry, and permastruct
 //! expansion.
 
+pub mod dispatch;
 pub mod pattern;

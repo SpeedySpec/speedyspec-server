@@ -10,3 +10,7 @@ license.workspace = true
 speedyspec-http = { path = "../speedyspec-http" }
 speedyspec-routing = { path = "../speedyspec-routing" }
 regex = "1"
+fancy-regex = "0.20.2"
+
+[dev-dependencies]
+proptest = "1.12.0"
