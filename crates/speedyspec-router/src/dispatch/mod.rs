@@ -16,13 +16,24 @@ pub use regex_set::RegexSetStrategy;
 
 use engine::Compiled;
 
+use crate::pcre::has_top_level_alternation;
+
 /// Patterns compiled one by one, shared by both strategies for resuming inside a chunk and for single-pattern
 /// chunks.
-struct Singles(Vec<Compiled>);
+struct Singles(Vec<Compiled>, Vec<bool>);
 
 impl Singles {
+    /// Compiles each pattern, noting which may join a chunk: a `regex`-crate pattern with no top-level alternation.
+    /// An alternative after the first is unanchored, so a combined alternation could prefer a later pattern matching
+    /// further left.
     fn compile(patterns: &[String]) -> Singles {
-        Singles(patterns.iter().map(|p| Compiled::new(p)).collect())
+        let compiled: Vec<Compiled> = patterns.iter().map(|p| Compiled::new(p)).collect();
+        let combinable = patterns
+            .iter()
+            .zip(&compiled)
+            .map(|(p, c)| matches!(c, Compiled::Regex(_)) && !has_top_level_alternation(p))
+            .collect();
+        Singles(compiled, combinable)
     }
 
     fn find_between(
@@ -38,18 +49,15 @@ impl Singles {
         (from..self.0.len()).find(|&i| matches!(self.0[i], Compiled::None))
     }
 
-    /// Runs of consecutive `regex`-crate patterns, at most `size` long; every other pattern is a run of one.
+    /// Runs of consecutive combinable patterns, at most `size` long; every other pattern is a run of one.
     fn runs(&self, size: usize) -> Vec<(usize, usize, bool)> {
         let size = size.max(1);
         let mut runs = Vec::new();
         let mut i = 0;
         while i < self.0.len() {
-            if matches!(self.0[i], Compiled::Regex(_)) {
+            if self.1[i] {
                 let start = i;
-                while i < self.0.len()
-                    && i - start < size
-                    && matches!(self.0[i], Compiled::Regex(_))
-                {
+                while i < self.0.len() && i - start < size && self.1[i] {
                     i += 1;
                 }
                 runs.push((start, i, true));
