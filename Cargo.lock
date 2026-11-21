@@ -4897,6 +4897,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-router-php"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-hooks-memory",
+ "speedyspec-http",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-router-store-memory",
+ "speedyspec-routing",
+]
+
+[[package]]
 name = "speedyspec-router-store-memory"
 version = "0.1.0"
 dependencies = [
