@@ -5041,6 +5041,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-html-split"
+version = "0.1.0"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "speedyspec-wp-object-cache"
 version = "0.1.0"
 dependencies = [
