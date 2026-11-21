@@ -69,10 +69,14 @@ pub fn shortcode_unautop<'a>(text: &'a [u8], tags: &[TagName], spaces: &[u8]) ->
     run(Pattern::try_php(&unautop_pattern(tags, spaces)).ok().as_ref(), text)
 }
 
+/// The cached pattern: the tags' generation and the spaces fragment it was built for, and the pattern (`None` when
+/// it doesn't compile).
+type CachedPattern = (u64, Vec<u8>, Option<Rc<Pattern>>);
+
 /// `shortcode_unautop()` with its compiled pattern kept until the tags or the spaces fragment change.
 #[derive(Default)]
 pub struct Unautop {
-    cache: RefCell<Option<(u64, Vec<u8>, Option<Rc<Pattern>>)>>,
+    cache: RefCell<Option<CachedPattern>>,
 }
 
 impl Unautop {

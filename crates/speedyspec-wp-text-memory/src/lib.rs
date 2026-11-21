@@ -6,7 +6,7 @@
 use std::cell::RefCell;
 
 use speedyspec_wp_text_contracts::{
-    Diagnostics, ErrorLevel, Locale, SiteSettings, TextError, TexturizeOverrides, Translator, WordCountType,
+    Diagnostics, ErrorLevel, Locale, ReplacementPairs, SiteSettings, TextError, TexturizeOverrides, Translator, WordCountType,
 };
 
 /// Site settings given up front.
@@ -164,10 +164,10 @@ impl Diagnostics for RecordingDiagnostics {
 
 /// A fixed `$wp_cockneyreplace`: `None` (the default) is WordPress with no plugin setting it.
 #[derive(Clone, Debug, Default)]
-pub struct FixedTexturizeOverrides(pub Option<Vec<(Vec<u8>, Vec<u8>)>>);
+pub struct FixedTexturizeOverrides(pub Option<ReplacementPairs>);
 
 impl TexturizeOverrides for FixedTexturizeOverrides {
-    fn cockney(&self) -> Result<Option<Vec<(Vec<u8>, Vec<u8>)>>, TextError> {
+    fn cockney(&self) -> Result<Option<ReplacementPairs>, TextError> {
         Ok(self.0.clone())
     }
 }

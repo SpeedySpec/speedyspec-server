@@ -111,7 +111,7 @@ fn wp_trim_words_by_characters() {
 #[test]
 fn wp_html_excerpt() {
     check("wp_html_excerpt", |h, args| {
-        let more = args.get(2).map(|m| common::text(m));
+        let more = args.get(2).map(common::text);
         s(h.api.wp_html_excerpt(text(args), common::php_int(&args[1]), more).unwrap())
     });
 }
