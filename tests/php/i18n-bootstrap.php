@@ -37,11 +37,6 @@ require __DIR__ . '/includes/i18n-doubles.php';
 
 require dirname(__DIR__, 2) . '/compat/i18n/load.php';
 require_once SPEEDYSPEC_I18N_ROOT . '/wp-includes/formatting.php';
-require_once SPEEDYSPEC_I18N_ROOT . '/wp-includes/class-wp-locale.php';
-require_once SPEEDYSPEC_I18N_ROOT . '/wp-includes/class-wp-locale-switcher.php';
-$GLOBALS['wp_locale']          = new WP_Locale();
-$GLOBALS['wp_locale_switcher'] = new WP_Locale_Switcher();
-$GLOBALS['wp_locale_switcher']->init();
 do_action('after_setup_theme');
 // WordPress's tests run after `init`, so enqueueing scripts raises no incorrect-usage notice.
 do_action('init');

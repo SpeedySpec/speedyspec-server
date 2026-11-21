@@ -12,7 +12,11 @@ if (!defined('ABSPATH')) {
 if (!defined('WPINC')) {
     define('WPINC', 'wp-includes');
 }
-foreach (array('WP_LANG_DIR' => '/languages', 'WP_PLUGIN_DIR' => '/plugins', 'WPMU_PLUGIN_DIR' => '/mu-plugins') as $speedyspec_const => $speedyspec_dir) {
+// The corpus's language directory is the WordPress tests' (tests/php/data/languages), which locale switching reads.
+if (!defined('WP_LANG_DIR')) {
+    define('WP_LANG_DIR', dirname(__DIR__, 2) . '/tests/php/data/languages');
+}
+foreach (array('WP_PLUGIN_DIR' => '/plugins', 'WPMU_PLUGIN_DIR' => '/mu-plugins') as $speedyspec_const => $speedyspec_dir) {
     if (!defined($speedyspec_const)) {
         define($speedyspec_const, SPEEDYSPEC_I18N_DATA . $speedyspec_dir);
     }
@@ -47,6 +51,13 @@ if (!function_exists('get_theme_root')) {
     // WordPress's answer with no extra theme directories registered.
     function get_theme_root($stylesheet_or_template = '') { return apply_filters('theme_root', WP_CONTENT_DIR . '/themes'); }
 }
+if (!function_exists('get_template_directory')) {
+    // The WordPress tests' default theme (theme.php is not loaded).
+    function get_template_directory() { return dirname(__DIR__, 2) . '/tests/php/data/themedir1/default'; }
+}
+if (!function_exists('get_stylesheet_directory')) {
+    function get_stylesheet_directory() { return get_template_directory(); }
+}
 if (!function_exists('wp_normalize_path')) {
     // WordPress's wp_normalize_path() for paths without a stream wrapper (functions.php is not loaded).
     function wp_normalize_path($path) {
@@ -54,6 +65,26 @@ if (!function_exists('wp_normalize_path')) {
         return ':' === substr($path, 1, 1) ? ucfirst($path) : $path;
     }
 }
+if (!function_exists('_deprecated_function')) {
+    function _deprecated_function($function_name, $version, $replacement = '') {}
+}
+if (!function_exists('_deprecated_argument')) {
+    function _deprecated_argument($function_name, $version, $message = '') {}
+}
+
+$files = array('load.php', 'compat.php', 'compat-utf8.php', 'utf8.php', 'cache.php', 'pomo/translations.php', 'pomo/mo.php',
+    'l10n/class-wp-translation-controller.php', 'l10n/class-wp-translations.php', 'l10n/class-wp-translation-file.php',
+    'l10n/class-wp-translation-file-mo.php', 'l10n/class-wp-translation-file-php.php', 'l10n.php',
+    'class-wp-textdomain-registry.php', 'formatting.php', 'http.php', 'link-template.php', 'class-wp-dependency.php',
+    'class-wp-dependencies.php', 'class-wp-scripts.php', 'functions.wp-scripts.php', 'class-wp-script-modules.php',
+    'script-modules.php', 'class-wp-locale.php', 'class-wp-locale-switcher.php');
+if (!function_exists('add_filter')) {
+    array_unshift($files, 'plugin.php');
+}
+foreach ($files as $f) {
+    require_once $root . WPINC . '/' . $f;
+}
+// After the files: the recorder loads WordPress's plugin.php, which declares it.
 if (!function_exists('plugin_basename')) {
     // WordPress's plugin_basename() (plugin.php), which the hooks port does not declare.
     function plugin_basename($file) {
@@ -72,24 +103,12 @@ if (!function_exists('plugin_basename')) {
         return trim($file, '/');
     }
 }
-if (!function_exists('_deprecated_function')) {
-    function _deprecated_function($function_name, $version, $replacement = '') {}
-}
-if (!function_exists('_deprecated_argument')) {
-    function _deprecated_argument($function_name, $version, $message = '') {}
-}
-
-$files = array('load.php', 'compat.php', 'compat-utf8.php', 'utf8.php', 'cache.php', 'pomo/translations.php', 'pomo/mo.php',
-    'l10n/class-wp-translation-controller.php', 'l10n/class-wp-translations.php', 'l10n/class-wp-translation-file.php',
-    'l10n/class-wp-translation-file-mo.php', 'l10n/class-wp-translation-file-php.php', 'l10n.php',
-    'class-wp-textdomain-registry.php', 'formatting.php', 'http.php', 'link-template.php', 'class-wp-dependency.php',
-    'class-wp-dependencies.php', 'class-wp-scripts.php', 'functions.wp-scripts.php', 'class-wp-script-modules.php',
-    'script-modules.php');
-if (!function_exists('add_filter')) {
-    array_unshift($files, 'plugin.php');
-}
-foreach ($files as $f) {
-    require_once $root . WPINC . '/' . $f;
-}
 wp_cache_init();
 $GLOBALS['wp_textdomain_registry'] = new WP_Textdomain_Registry();
+if (!isset($GLOBALS['wp_locale'])) {
+    $GLOBALS['wp_locale'] = new WP_Locale();
+}
+if (!isset($GLOBALS['wp_locale_switcher'])) {
+    $GLOBALS['wp_locale_switcher'] = new WP_Locale_Switcher();
+    $GLOBALS['wp_locale_switcher']->init();
+}

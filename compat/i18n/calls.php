@@ -127,5 +127,7 @@ function speedyspec_i18n_calls(string $data): array {
         }
         return $out;
     });
+    require_once __DIR__ . '/calls-locale.php';
+    speedyspec_i18n_locale_calls(WP_LANG_DIR, $data, $r);
     return $out;
 }
