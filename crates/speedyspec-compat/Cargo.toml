@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-compat"
-version = "0.2.0"
+version = "0.3.0"
 description = "Recorded compatibility: run a catalogue of scenarios against WordPress's original code, record the results, and replay them against the Rust ports."
 edition.workspace = true
 rust-version.workspace = true

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-options-php"
-version = "0.1.1"
+version = "0.1.2"
 description = "WordPress's option functions (get_option and the rest) as native PHP functions over the Rust options API."
 edition.workspace = true
 rust-version.workspace = true
