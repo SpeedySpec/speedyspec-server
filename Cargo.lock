@@ -4889,6 +4889,7 @@ dependencies = [
  "fancy-regex",
  "proptest",
  "regex",
+ "serde_json",
  "sha2 0.10.9",
  "speedyspec-http",
  "speedyspec-router-store-memory",
