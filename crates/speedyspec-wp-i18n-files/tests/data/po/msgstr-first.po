@@ -1,0 +1,2 @@
+msgstr "x"
+msgid "y"

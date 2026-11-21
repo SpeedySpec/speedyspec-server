@@ -1,0 +1,12 @@
+[package]
+name = "speedyspec-http-pipeline"
+version = "0.1.0"
+description = "The middleware pipeline the runtime passes every request through, and an adapter for native request stages."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-http = { path = "../speedyspec-http" }
+speedyspec-http-message = { path = "../speedyspec-http-message" }
+speedyspec-native-stage = { path = "../speedyspec-native-stage" }

@@ -1,0 +1,5 @@
+#~ msgid "old"
+#~ msgstr "alt"
+
+msgid "a"
+msgstr "b"

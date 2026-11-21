@@ -1,0 +1,32 @@
+[package]
+name = "speedyspec-wp-utf8-php"
+version = "0.1.1"
+description = "WordPress's UTF-8 functions (utf8.php, compat-utf8.php and compat.php's UTF-8 helpers) as native PHP functions over speedyspec-wp-utf8."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-wp-utf8 = { path = "../speedyspec-wp-utf8" }
+
+[dev-dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+serde_json = "1"
+sha2 = "0.10"
+ureq = "3"
+
+[[test]]
+name = "php"
+harness = false
+
+[[test]]
+name = "wordpress"
+harness = false

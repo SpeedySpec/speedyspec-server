@@ -125,16 +125,7 @@ pub fn record_for(area: &str, version: &str, multisite: bool) -> Result<PathBuf,
     let mut catalogue: Catalogue = read_json(&dir.join("scenarios.json"))?;
     catalogue.scenarios.retain(|s| s.multisite == multisite);
 
-    let root = unpacked(version, release)?;
-
-    let php = Php::boot(BootOptions {
-        hooks: Rc::new(MemoryHooks::new()),
-        preload: &[],
-        areas: Vec::new(),
-    })
-    .map_err(|e| e.to_string())?;
-    let setup = setup_for(area, &root, multisite)?;
-    let mut runner = PhpRunner::new(php, setup);
+    let mut runner = runner_for(area, version, release, multisite)?;
     let mut results = BTreeMap::new();
     let mut errors = Vec::new();
     for scenario in &catalogue.scenarios {
@@ -159,6 +150,37 @@ pub fn record_for(area: &str, version: &str, multisite: bool) -> Result<PathBuf,
     Ok(path)
 }
 
+/// A runner of `area`'s scenarios against WordPress `version`'s original code (single site), as the recorder runs
+/// them, for tests that need to see what WordPress does with a hand-made scenario.
+pub fn area_runner(area: &str, version: &str) -> Result<PhpRunner, String> {
+    let dir = compat_dir().join(area);
+    let source: Source = read_json(&dir.join("source.json"))?;
+    let release = source.releases.get(version).ok_or_else(|| {
+        format!(
+            "WordPress {version} is not pinned in {}",
+            dir.join("source.json").display()
+        )
+    })?;
+    runner_for(area, version, release, false)
+}
+
+fn runner_for(
+    area: &str,
+    version: &str,
+    release: &Release,
+    multisite: bool,
+) -> Result<PhpRunner, String> {
+    let root = unpacked(version, release)?;
+    let php = Php::boot(BootOptions {
+        hooks: Rc::new(MemoryHooks::new()),
+        preload: &[],
+        areas: Vec::new(),
+    })
+    .map_err(|e| e.to_string())?;
+    let setup = setup_for(area, &root, multisite)?;
+    Ok(PhpRunner::new(php, setup))
+}
+
 /// What prepares a fresh request for an area's scenarios.
 type Setup = Box<dyn Fn(&Php) -> Result<(), String>>;
 
@@ -170,10 +192,13 @@ fn setup_for(area: &str, root: &Path, multisite: bool) -> Result<Setup, String> 
             "wp-includes/class-wp-object-cache.php",
             "wp-includes/cache.php",
         ],
-        "options" | "kses" => &[],
+        "options" | "formatting" | "shortcode" | "rewrite" | "kses" => &[],
         other => return Err(format!("the recorder does not know the area {other}")),
     };
-    if area == "options" || area == "kses" {
+    if matches!(
+        area,
+        "options" | "formatting" | "shortcode" | "rewrite" | "kses"
+    ) {
         // `setup.php` loads WordPress's files itself, for either side.
         let code = format!(
             "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', false); \

@@ -1,0 +1,40 @@
+[package]
+name = "speedyspec-wp-shortcode"
+version = "0.1.1"
+description = "WordPress's Shortcode API (shortcodes.php) in Rust: the API, the scanners, the attribute parsers and the filters."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contracts" }
+indexmap = "2"
+fancy-regex = "0.20"
+aho-corasick = "1"
+memchr = "2"
+regex = { version = "1", default-features = false, features = ["std", "perf"] }
+
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-html-split = { path = "../speedyspec-wp-html-split" }
+proptest = "1"
+
+[[bench]]
+name = "scan"
+harness = false
+
+[[bench]]
+name = "atts"
+harness = false
+
+[[bench]]
+name = "tokens"
+harness = false
+
+[[bench]]
+name = "do_shortcode"
+harness = false
