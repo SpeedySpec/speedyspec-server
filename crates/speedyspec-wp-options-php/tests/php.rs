@@ -345,6 +345,18 @@ fn main() {
         register_setting('grp', 'sc', 'strtolower');
         return 'strtolower' === $seen && 'abc' === apply_filters('sanitize_option_sc', 'ABC', 'sc', 'ABC');",
     );
+    // A settings write PHP refuses is thrown, as WordPress's own `$new_allowed_options[ $group ][] = $name` throws,
+    // never only logged while the registration is lost.
+    yes(
+        "settings_write_failure_is_thrown",
+        "global $new_allowed_options;
+        $saved = $new_allowed_options;
+        $new_allowed_options = 'not an array';
+        try { register_setting('grp', 'thrown'); $thrown = false; }
+        catch (Throwable $e) { $thrown = true; }
+        $new_allowed_options = $saved;
+        return $thrown;",
+    );
     let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
     let option_php = std::fs::read_to_string(release.join("wp-includes/option.php")).unwrap();
     let stripped = speedyspec_wp_options_php::strip_ported(&option_php).unwrap();
