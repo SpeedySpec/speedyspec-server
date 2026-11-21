@@ -12,12 +12,13 @@ use speedyspec_wp_text_contracts::{
 };
 use speedyspec_wp_text_escape::Charset;
 
-use crate::autop::{AutopOptions, wpautop_reference};
+use crate::autop::AutopOptions;
+use crate::autop_fast::wpautop;
 use crate::balance::force_balance_tags;
 use crate::small::{DEFAULT_SPACES, capital_p_dangit, convert_chars, ent2ncr, format_for_editor_core};
 use crate::strings::{bytes_value, to_php_string};
 use crate::strip::wp_strip_all_tags_core;
-use crate::texturize::{PcreTexturizer, TexturizeScope, TexturizeTables, Texturizer};
+use crate::texturize::{HandTexturizer, TexturizeScope, TexturizeTables, Texturizer};
 use crate::trim::{wp_html_excerpt, wp_trim_words_core};
 use crate::unautop::Unautop;
 
@@ -114,7 +115,7 @@ fn php_list(items: &[&str]) -> HookValue {
 }
 
 impl TextApi {
-    /// A facade on `deps`, with the reference texturizer and `wpautop`.
+    /// A facade on `deps`, with the hand-written texturizer and `wpautop`.
     ///
     /// @param deps
     ///     The hooks and ports.
@@ -123,8 +124,8 @@ impl TextApi {
     pub fn new(deps: TextDeps) -> TextApi {
         TextApi {
             d: deps,
-            texturizer: Rc::new(PcreTexturizer::default()),
-            autop: wpautop_reference,
+            texturizer: Rc::new(HandTexturizer::default()),
+            autop: wpautop,
             unautop: Unautop::new(),
             statics: RefCell::new(Statics {
                 spaces: None,

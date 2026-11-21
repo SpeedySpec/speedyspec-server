@@ -22,7 +22,7 @@ static SPLIT_HTML: LazyLock<Pattern> = LazyLock::new(|| Pattern::php(&format!("/
 static AMPERSAND: LazyLock<Pattern> =
     LazyLock::new(|| Pattern::php(r"/&(?!#(?:\d+|x[a-f0-9]+);|[a-z1-4]{1,8};)/i"));
 static TIMES_PROBE: LazyLock<Pattern> = LazyLock::new(|| Pattern::php(r"/(?<=\d)x\d/"));
-static TIMES: LazyLock<Pattern> = LazyLock::new(|| Pattern::php(r"/\b(\d(?(?<=0)[\d\.,]+|[\d\.,]*))x(\d[\d\.,]*)\b/"));
+pub(crate) static TIMES: LazyLock<Pattern> = LazyLock::new(|| Pattern::php(r"/\b(\d(?(?<=0)[\d\.,]+|[\d\.,]*))x(\d[\d\.,]*)\b/"));
 
 /// The split and match patterns for one set of shortcode names.
 struct ShortcodePatterns {

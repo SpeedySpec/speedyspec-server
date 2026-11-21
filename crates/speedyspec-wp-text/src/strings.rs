@@ -15,6 +15,8 @@ use speedyspec_hooks::Value as HookValue;
 pub struct StrReplace {
     pairs: Vec<(Vec<u8>, Vec<u8>)>,
     one_pass: Option<AhoCorasick>,
+    /// Finds whether any search string occurs, so text with none is returned without a pass per pair.
+    detector: Option<AhoCorasick>,
 }
 
 fn contains(haystack: &[u8], needle: &[u8]) -> bool {
@@ -46,7 +48,13 @@ impl StrReplace {
                 .build(pairs.iter().map(|(s, _)| s))
                 .expect("the search strings build an automaton")
         });
-        StrReplace { pairs, one_pass }
+        let detector = (!independent && pairs.len() > 1).then(|| {
+            AhoCorasick::builder()
+                .match_kind(MatchKind::LeftmostFirst)
+                .build(pairs.iter().map(|(s, _)| s))
+                .expect("the search strings build an automaton")
+        });
+        StrReplace { pairs, one_pass, detector }
     }
 
     /// Replaces in `text`.
@@ -70,6 +78,11 @@ impl StrReplace {
             }
             out.extend_from_slice(&text[copied..]);
             return Cow::Owned(out);
+        }
+        if let Some(detector) = &self.detector
+            && !detector.is_match(text)
+        {
+            return Cow::Borrowed(text);
         }
         let mut current = Cow::Borrowed(text);
         for (search, replace) in &self.pairs {

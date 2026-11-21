@@ -23,6 +23,8 @@ pub struct TexturizeTables {
     pub(crate) double_prime: Vec<u8>,
     pub(crate) opening_single_quote: Vec<u8>,
     pub(crate) closing_single_quote: Vec<u8>,
+    pub(crate) en_dash: Vec<u8>,
+    pub(crate) em_dash: Vec<u8>,
     pub(crate) static_replace: StrReplace,
     pub(crate) apos_patterns: Vec<(Pattern, Vec<u8>)>,
     pub(crate) quote_patterns: Vec<(Pattern, Vec<u8>)>,
@@ -162,12 +164,20 @@ impl TexturizeTables {
 
         let dash_patterns = vec![
             (Pattern::php("/---/"), em_dash.clone()),
-            (pattern(&[b"/(?<=^|", sp, b")--(?=$|", sp, b")/"])?, em_dash),
+            (pattern(&[b"/(?<=^|", sp, b")--(?=$|", sp, b")/"])?, em_dash.clone()),
             (Pattern::php("/(?<!xn)--/"), en_dash.clone()),
-            (pattern(&[b"/(?<=^|", sp, b")-(?=$|", sp, b")/"])?, en_dash),
+            (pattern(&[b"/(?<=^|", sp, b")-(?=$|", sp, b")/"])?, en_dash.clone()),
         ];
 
+        // A translation with `$` or `\` would be read as a back reference where WordPress passes it to
+        // preg_replace(); only the PCRE path reproduces that.
+        let literal = [&opening_quote, &closing_quote, &apos, &prime, &double_prime, &opening_single_quote, &closing_single_quote, &en_dash, &em_dash]
+            .iter()
+            .all(|t| !t.iter().any(|&b| b == b'$' || b == b'\\'));
+        let all_patterns = all_patterns && literal;
         Ok(TexturizeTables {
+            en_dash,
+            em_dash,
             single_primes: PrimePatterns::new(b'\'', sp)?,
             double_primes: PrimePatterns::new(b'"', sp)?,
             opening_quote,
@@ -191,8 +201,9 @@ impl TexturizeTables {
         &self.spaces
     }
 
-    /// Whether a hand-written texturizer can run these tables: the spaces fragment is the default and no
-    /// translation dropped a dynamic pattern.
+    /// Whether a hand-written texturizer can run these tables: the spaces fragment is the default, no translation
+    /// dropped a dynamic pattern, and no translation holds `$` or `\`, which preg_replace() would read as a
+    /// back reference.
     pub fn hand_compatible(&self) -> bool {
         self.all_patterns && self.spaces == DEFAULT_SPACES
     }

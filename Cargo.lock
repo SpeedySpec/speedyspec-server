@@ -5679,8 +5679,10 @@ name = "speedyspec-wp-text"
 version = "0.1.0"
 dependencies = [
  "aho-corasick",
+ "criterion 0.5.1",
  "memchr",
  "pcre2",
+ "proptest",
  "speedyspec-hooks",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",

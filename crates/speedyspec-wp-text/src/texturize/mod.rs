@@ -6,10 +6,12 @@ use speedyspec_wp_shortcode_contracts::{TagName, shortcode_tag_alternation};
 
 use crate::preg::PregError;
 
+mod hand;
 mod pcre;
 mod primes;
 mod tables;
 
+pub use hand::HandTexturizer;
 pub use pcre::PcreTexturizer;
 pub use tables::TexturizeTables;
 
