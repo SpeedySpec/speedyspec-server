@@ -4659,6 +4659,10 @@ dependencies = [
 [[package]]
 name = "speedyspec-wp-shortcode"
 version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "speedyspec-wp-shortcode-contracts",
+]
 
 [[package]]
 name = "speedyspec-wp-shortcode-contracts"
