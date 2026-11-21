@@ -149,4 +149,16 @@ fn main() {
         text(&r),
     );
     println!("{}", text(&r));
+
+    // Not a check: the native function against WordPress's own PHP classes, same process, same calls.
+    let timing = format!(
+        "$c = json_decode(file_get_contents({:?}), true); $p = array();
+         foreach ($c as $x) {{ if (is_string($x['left']) && is_string($x['right']) && !isset($x['filter']) && !isset($x['throws'])) {{ $p[] = array($x['left'], $x['right']); }} }}
+         $time = function ($f) use ($p) {{ $best = INF; for ($k = 0; $k < 5; $k++) {{ $s = hrtime(true); foreach ($p as $q) {{ $f($q[0], $q[1]); }} $best = min($best, (hrtime(true) - $s) / 1e6); }} return $best; }};
+         $native = $time(fn ($l, $r) => wp_text_diff($l, $r));
+         $php = $time(fn ($l, $r) => \\SpeedySpec\\WpTextDiff\\legacy_wp_text_diff($l, $r, wp_parse_args(null, array('title' => '', 'title_left' => '', 'title_right' => '', 'show_split_view' => true))));
+         return sprintf('%d calls: native %.2f ms, WordPress PHP %.2f ms (%.1fx)', count($p), $native, $php, $php / $native);",
+        cases.display().to_string()
+    );
+    println!("{}", text(&php.eval("speedyspec://test/timing", &timing)));
 }

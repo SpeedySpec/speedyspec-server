@@ -35,8 +35,9 @@ pub fn escape_into(out: &mut Vec<u8>, s: &[u8]) {
     }
 }
 
-/// Valid UTF-8: copy clean runs whole, an entity for each special byte.
-fn escape_valid(out: &mut Vec<u8>, mut s: &[u8]) {
+/// Appends `htmlspecialchars( $s )` for `s` already known to be valid UTF-8: copy clean runs whole, an entity for
+/// each special byte.
+pub(crate) fn escape_valid(out: &mut Vec<u8>, mut s: &[u8]) {
     while let Some(i) = find_escaped(s) {
         out.extend_from_slice(&s[..i]);
         out.extend_from_slice(entity(s[i]));

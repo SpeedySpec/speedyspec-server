@@ -9,7 +9,7 @@
 use speedyspec_wp_text_diff_contracts::SequenceDiffer;
 
 use crate::blocks::{BlockEdit, CONTEXT, blocks};
-use crate::escape::escape_into;
+use crate::escape::escape_valid;
 use crate::tokens::trim_newlines;
 use crate::words::split_words;
 
@@ -36,6 +36,8 @@ pub enum InlineDiff {
 pub struct InvalidUtf8;
 
 /// The inline diff of `orig` against `fin`, words diffed with `differ`.
+///
+/// Words are escaped without checking UTF-8 again: [`split_words`] only returns valid text.
 pub fn inline_diff(
     orig: &[u8],
     fin: &[u8],
@@ -53,7 +55,7 @@ pub fn inline_diff(
     let encode = |tokens: &[&[u8]]| {
         let mut out = Vec::new();
         for t in tokens {
-            escape_into(&mut out, &trim_newlines(t));
+            escape_valid(&mut out, &trim_newlines(t));
         }
         out
     };
@@ -65,32 +67,24 @@ pub fn inline_diff(
                 BlockEdit::Deleted(r) => segments.push(Segment::Del(encode(&a[r]))),
                 BlockEdit::Changed(ro, rf) => {
                     // The words-level `_changed()`: move leading spaces both sides share out in front.
-                    let mut o: Vec<Vec<u8>> = a[ro]
-                        .iter()
-                        .map(|t| trim_newlines(t).into_owned())
-                        .collect();
-                    let mut f: Vec<Vec<u8>> = b[rf]
-                        .iter()
-                        .map(|t| trim_newlines(t).into_owned())
-                        .collect();
-                    let mut prefix = Vec::new();
-                    while o[0].first() == Some(&b' ') && f[0].first() == Some(&b' ') {
-                        prefix.push(b' ');
-                        o[0].remove(0);
-                        f[0].remove(0);
+                    let (o0, f0) = (trim_newlines(a[ro.start]), trim_newlines(b[rf.start]));
+                    let mut k = 0;
+                    while o0.get(k) == Some(&b' ') && f0.get(k) == Some(&b' ') {
+                        k += 1;
                     }
-                    if !prefix.is_empty() {
-                        segments.push(Segment::Text(prefix));
+                    if k > 0 {
+                        segments.push(Segment::Text(vec![b' '; k]));
                     }
-                    let enc = |v: &[Vec<u8>]| {
+                    let enc = |first: &[u8], rest: &[&[u8]]| {
                         let mut out = Vec::new();
-                        for t in v {
-                            escape_into(&mut out, t);
+                        escape_valid(&mut out, first);
+                        for t in rest {
+                            escape_valid(&mut out, &trim_newlines(t));
                         }
                         out
                     };
-                    segments.push(Segment::Del(enc(&o)));
-                    segments.push(Segment::Ins(enc(&f)));
+                    segments.push(Segment::Del(enc(&o0[k..], &a[ro.start + 1..ro.end])));
+                    segments.push(Segment::Ins(enc(&f0[k..], &b[rf.start + 1..rf.end])));
                 }
             }
         }

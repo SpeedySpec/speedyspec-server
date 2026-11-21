@@ -18,14 +18,16 @@ fn text() -> Vec<u8> {
 
 fn scans(c: &mut Criterion) {
     let s = text();
+    // 4 KB with nothing to find: each scan reads all of it.
+    let clean = b"The quick brown fox jumps over the lazy dog again ".repeat(80);
     c.bench_function("find_escaped/simd", |b| {
-        b.iter(|| simd::find_escaped(black_box(&s[..4000])))
+        b.iter(|| simd::find_escaped(black_box(&clean)))
     });
     c.bench_function("find_escaped/scalar", |b| {
-        b.iter(|| simd::scalar::find_escaped(black_box(&s[..4000])))
+        b.iter(|| simd::scalar::find_escaped(black_box(&clean)))
     });
     let words =
-        b"Supercalifragilisticexpialidocious_and_more_words_without_spaces_at_all_here!".repeat(20);
+        b"Supercalifragilisticexpialidocious_and_more_words_without_spaces_0123456789".repeat(54);
     c.bench_function("ascii_word_run/simd", |b| {
         b.iter(|| simd::ascii_word_run(black_box(&words)))
     });

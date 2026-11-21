@@ -9,7 +9,12 @@ use crate::numeric::{Numeric, numeric_equal, parse_numeric};
 
 /// Removes `"\r"` and `"\n"`, as Horde's `Text_Diff::trimNewlines()` does to every token before diffing.
 pub fn trim_newlines(token: &[u8]) -> Cow<'_, [u8]> {
-    if memchr::memchr2(b'\r', b'\n', token).is_none() {
+    let found = if token.len() < 32 {
+        token.iter().any(|&b| b == b'\r' || b == b'\n')
+    } else {
+        memchr::memchr2(b'\r', b'\n', token).is_some()
+    };
+    if !found {
         Cow::Borrowed(token)
     } else {
         Cow::Owned(
@@ -33,18 +38,18 @@ pub struct TokenTable {
 
 impl TokenTable {
     /// Interns both sides' trimmed tokens.
-    pub fn new(from: &[&[u8]], to: &[&[u8]]) -> TokenTable {
-        let mut ids: HashMap<Cow<'_, [u8]>, u32, FixedState> =
+    pub fn new<'a>(from: &[&'a [u8]], to: &[&'a [u8]]) -> TokenTable {
+        let mut ids: HashMap<Cow<'a, [u8]>, u32, FixedState> =
             HashMap::with_capacity_and_hasher(from.len() + to.len(), FixedState::default());
         let mut numeric = Vec::new();
-        let mut intern = |token: &[u8]| -> u32 {
+        let mut intern = |token: &'a [u8]| -> u32 {
             let trimmed = trim_newlines(token);
             if let Some(&id) = ids.get(trimmed.as_ref()) {
                 return id;
             }
             let id = numeric.len() as u32;
             numeric.push(maybe_numeric(&trimmed));
-            ids.insert(trimmed.into_owned().into(), id);
+            ids.insert(trimmed, id);
             id
         };
         let from: Vec<u32> = from.iter().map(|t| intern(t)).collect();
