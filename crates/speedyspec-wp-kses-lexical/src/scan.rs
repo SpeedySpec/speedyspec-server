@@ -35,31 +35,24 @@ pub enum TokenKind {
 /// The next match of `wp_kses_split()`'s token pattern at or after `from`: start, end (exclusive) and alternative.
 #[inline]
 pub fn next_token(s: &[u8], from: usize) -> Option<(usize, usize, TokenKind)> {
-    let mut at = from;
-    while at < s.len() {
-        let p = at + memchr::memchr2(b'<', b'>', &s[at..])?;
-        if s[p] == b'>' {
-            return Some((p, p + 1, TokenKind::StrayGt));
-        }
-        if let Some(end) = comment_end(s, p) {
-            return Some((p, end, TokenKind::Comment));
-        }
-        let next_gt = |from: usize| {
-            memchr::memchr(b'>', s.get(from..).unwrap_or_default()).map(|i| from + i + 1)
-        };
-        if s.get(p + 1) == Some(&b'/') && s.get(p + 2).is_some_and(|c| !c.is_ascii_alphabetic()) {
-            if let Some(end) = next_gt(p + 3) {
-                return Some((p, end, TokenKind::InvalidCloser));
-            }
-        }
-        if s.get(p + 1) == Some(&b'!') {
-            if let Some(end) = next_gt(p + 2) {
-                return Some((p, end, TokenKind::Declaration));
-            }
-        }
-        return Some((p, next_gt(p + 1).unwrap_or(s.len()), TokenKind::Tag));
+    let p = from + memchr::memchr2(b'<', b'>', s.get(from..)?)?;
+    if s[p] == b'>' {
+        return Some((p, p + 1, TokenKind::StrayGt));
     }
-    None
+    if let Some(end) = comment_end(s, p) {
+        return Some((p, end, TokenKind::Comment));
+    }
+    let next_gt =
+        |from: usize| memchr::memchr(b'>', s.get(from..).unwrap_or_default()).map(|i| from + i + 1);
+    let invalid_closer =
+        s.get(p + 1) == Some(&b'/') && s.get(p + 2).is_some_and(|c| !c.is_ascii_alphabetic());
+    if let Some(end) = next_gt(p + 3).filter(|_| invalid_closer) {
+        return Some((p, end, TokenKind::InvalidCloser));
+    }
+    if let Some(end) = next_gt(p + 2).filter(|_| s.get(p + 1) == Some(&b'!')) {
+        return Some((p, end, TokenKind::Declaration));
+    }
+    Some((p, next_gt(p + 1).unwrap_or(s.len()), TokenKind::Tag))
 }
 
 /// `<!--.*?(-->|$)` at `p`.
