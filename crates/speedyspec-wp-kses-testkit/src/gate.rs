@@ -11,9 +11,12 @@ pub enum Verdict {
     Fail(String),
 }
 
+/// Finds an exploit in an output, saying what it is.
+pub type ExploitFinder = dyn Fn(&[u8]) -> Option<String>;
+
 /// Judges one output against PHP's. A difference passes only when `exploit` (the security oracle) finds an exploit
 /// in PHP's output and none in the port's; with no oracle every difference fails.
-pub fn gate(php: &[u8], port: &[u8], exploit: Option<&dyn Fn(&[u8]) -> Option<String>>) -> Verdict {
+pub fn gate(php: &[u8], port: &[u8], exploit: Option<&ExploitFinder>) -> Verdict {
     if php == port {
         return Verdict::Same;
     }

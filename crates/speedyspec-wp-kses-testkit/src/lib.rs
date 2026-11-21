@@ -10,7 +10,7 @@ mod oracle;
 mod release;
 
 pub use convert::{allowed_from_php, bytes, from_bytes, rule_value};
-pub use gate::{Verdict, gate};
+pub use gate::{ExploitFinder, Verdict, gate};
 pub use oracle::{OracleResult, PhpOracle};
 pub use release::{WORDPRESS, wordpress_release};
 
