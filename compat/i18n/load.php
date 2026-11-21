@@ -12,17 +12,31 @@ if (!defined('ABSPATH')) {
 if (!defined('WPINC')) {
     define('WPINC', 'wp-includes');
 }
-define('WP_LANG_DIR', SPEEDYSPEC_I18N_DATA . '/languages');
-define('WP_PLUGIN_DIR', SPEEDYSPEC_I18N_DATA . '/plugins');
-define('WPMU_PLUGIN_DIR', SPEEDYSPEC_I18N_DATA . '/mu-plugins');
-define('HOUR_IN_SECONDS', 3600);
+foreach (array('WP_LANG_DIR' => '/languages', 'WP_PLUGIN_DIR' => '/plugins', 'WPMU_PLUGIN_DIR' => '/mu-plugins') as $speedyspec_const => $speedyspec_dir) {
+    if (!defined($speedyspec_const)) {
+        define($speedyspec_const, SPEEDYSPEC_I18N_DATA . $speedyspec_dir);
+    }
+}
+if (!defined('HOUR_IN_SECONDS')) {
+    define('HOUR_IN_SECONDS', 3600);
+}
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_WARNING & ~E_NOTICE);
 
-function get_option($option, $default_value = false) { return 'blog_charset' === $option ? 'UTF-8' : $default_value; }
-function get_site_option($option, $default_value = false) { return $default_value; }
-function _doing_it_wrong($function_name, $message, $version) { $GLOBALS['speedyspec_wrong'][] = $function_name; }
-function _deprecated_function($function_name, $version, $replacement = '') {}
-function _deprecated_argument($function_name, $version, $message = '') {}
+if (!function_exists('get_option')) {
+    function get_option($option, $default_value = false) { return 'blog_charset' === $option ? 'UTF-8' : $default_value; }
+}
+if (!function_exists('get_site_option')) {
+    function get_site_option($option, $default_value = false) { return $default_value; }
+}
+if (!function_exists('_doing_it_wrong')) {
+    function _doing_it_wrong($function_name, $message, $version) { $GLOBALS['speedyspec_wrong'][] = $function_name; }
+}
+if (!function_exists('_deprecated_function')) {
+    function _deprecated_function($function_name, $version, $replacement = '') {}
+}
+if (!function_exists('_deprecated_argument')) {
+    function _deprecated_argument($function_name, $version, $message = '') {}
+}
 
 $files = array('load.php', 'compat.php', 'compat-utf8.php', 'utf8.php', 'cache.php', 'pomo/translations.php', 'pomo/mo.php',
     'l10n/class-wp-translation-controller.php', 'l10n/class-wp-translations.php', 'l10n/class-wp-translation-file.php',

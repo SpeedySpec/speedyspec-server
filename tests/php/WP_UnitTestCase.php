@@ -343,4 +343,31 @@ abstract class WP_UnitTestCase extends TestCase
         sort($actual);
         $this->assertSame($expected, $actual, $message);
     }
+
+    /**
+     * Asserts that two arrays hold equal values, in any order (WordPress's `assertEqualSets()`).
+     */
+    public function assertEqualSets($expected, $actual, $message = '')
+    {
+        $this->assertIsArray($expected, $message . ' Expected value must be an array.');
+        $this->assertIsArray($actual, $message . ' Value under test is not an array.');
+
+        sort($expected);
+        sort($actual);
+        $this->assertEquals($expected, $actual, $message);
+    }
+
+    /**
+     * Asserts that two arrays hold equal values under equal keys, in any order (WordPress's
+     *  `assertEqualSetsWithIndex()`).
+     */
+    public function assertEqualSetsWithIndex($expected, $actual, $message = '')
+    {
+        $this->assertIsArray($expected, $message . ' Expected value must be an array.');
+        $this->assertIsArray($actual, $message . ' Value under test is not an array.');
+
+        ksort($expected);
+        ksort($actual);
+        $this->assertEquals($expected, $actual, $message);
+    }
 }
