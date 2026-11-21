@@ -147,6 +147,16 @@ impl I18nApi {
         }
     }
 
+    /// Whether neither filter of a call would run a callback (nor an `all` hook), without counting anything. A
+    /// native function serves the call itself only then; otherwise it leaves the call to WordPress's PHP.
+    pub fn filters_empty(&self, domain: &str, context: bool, plural: bool) -> bool {
+        let (first, names) = self.pair(domain, context, plural);
+        let second = Self::second(&names, context, plural);
+        let store = self.hooks.store();
+        let has = |n: &HookName| n.key().map(|k| store.has_hook(k)).unwrap_or(true);
+        !has(&self.all) && !has(first) && !has(second)
+    }
+
     fn pair(
         &self,
         domain: &str,
