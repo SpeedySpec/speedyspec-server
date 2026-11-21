@@ -78,13 +78,12 @@ fn post_context_adds_form_when_a_filter_adds_input() {
     let (hooks, api) = setup();
     filter(&hooks, "wp_kses_allowed_html", |a| {
         let mut v = a[0].clone();
-        if let HookValue::Array(items) = &mut v {
-            if !items
+        if let HookValue::Array(items) = &mut v
+            && !items
                 .iter()
                 .any(|(k, _)| matches!(k, Key::Str(s) if s == "input"))
-            {
-                items.push((Key::Str("input".into()), HookValue::Bool(true)));
-            }
+        {
+            items.push((Key::Str("input".into()), HookValue::Bool(true)));
         }
         v
     });
