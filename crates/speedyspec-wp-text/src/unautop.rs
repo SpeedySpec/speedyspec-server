@@ -23,6 +23,25 @@ fn unautop_pattern(tags: &[TagName], spaces: &[u8]) -> Vec<u8> {
     p
 }
 
+/// Whether some `[` follows `<p>` and default space tokens, which every match of the pattern needs.
+fn has_candidate(text: &[u8]) -> bool {
+    memchr::memchr_iter(b'[', text).any(|k| {
+        let mut end = k;
+        loop {
+            let before = &text[..end];
+            if matches!(before.last(), Some(b'\r' | b'\n' | b'\t' | b' ')) {
+                end -= 1;
+            } else if before.ends_with(b"\xC2\xA0") {
+                end -= 2;
+            } else if before.ends_with(b"&nbsp;") {
+                end -= 6;
+            } else {
+                return before.ends_with(b"<p>");
+            }
+        }
+    })
+}
+
 fn run<'a>(pattern: Option<&Pattern>, text: &'a [u8]) -> Cow<'a, [u8]> {
     // A pattern that doesn't compile, or a failed match, makes PHP's preg_replace return null: "" downstream.
     match pattern.map(|p| preg_replace(p, text, b"$1", None)) {
@@ -75,8 +94,11 @@ impl Unautop {
     /// @return
     ///     The text, borrowed when there are no tags or nothing matched.
     pub fn run<'a>(&self, text: &'a [u8], tags: &[TagName], generation: u64, spaces: &[u8]) -> Cow<'a, [u8]> {
-        // Every match has a `[`; text without one can't change.
+        // Every match has a `[` after `<p>` and spaces; text without one can't change.
         if tags.is_empty() || memchr::memchr(b'[', text).is_none() {
+            return Cow::Borrowed(text);
+        }
+        if spaces == crate::small::DEFAULT_SPACES && !has_candidate(text) {
             return Cow::Borrowed(text);
         }
         let pattern = {

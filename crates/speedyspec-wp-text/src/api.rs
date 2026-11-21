@@ -299,6 +299,11 @@ impl TextApi {
     /// @return
     ///     The text without `<p>` around lone shortcodes.
     pub fn shortcode_unautop<'a>(&self, text: &'a [u8]) -> Result<Cow<'a, [u8]>, TextError> {
+        // Every match has a `[`. Without one nothing can change, and once the spaces fragment is cached the rest
+        // of the call has no effect either (reading the tag names is a pure query), so it can be skipped.
+        if memchr::memchr(b'[', text).is_none() && self.statics.borrow().spaces.is_some() {
+            return Ok(Cow::Borrowed(text));
+        }
         let tags = self.d.shortcode_tags.tag_names();
         if tags.is_empty() {
             return Ok(Cow::Borrowed(text));

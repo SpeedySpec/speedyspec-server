@@ -62,3 +62,18 @@ fn unautop_quotes_tag_names() {
 fn unautop_without_tags_is_identity() {
     assert!(matches!(shortcode_unautop(b"<p>[gallery]</p>", &[], DEFAULT_SPACES), std::borrow::Cow::Borrowed(_)));
 }
+
+#[test]
+fn unautop_cache_matches_the_free_function() {
+    let tags = tags();
+    let unautop = speedyspec_wp_text::Unautop::new();
+    for text in [
+        &b"<p>[gallery]</p>"[..],
+        b"<p> \xC2\xA0&nbsp;[caption]x[/caption]&nbsp; </p>",
+        b"a [gallery] <p>x</p>",
+        b"<p>x[gallery]</p>",
+        b"<p>&nbsp;\n[video /]\t</p><p>[audio]</p>",
+    ] {
+        assert_eq!(unautop.run(text, &tags, 1, DEFAULT_SPACES), shortcode_unautop(text, &tags, DEFAULT_SPACES));
+    }
+}
