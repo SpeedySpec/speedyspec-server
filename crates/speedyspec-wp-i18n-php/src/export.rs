@@ -12,8 +12,11 @@ use speedyspec_wp_i18n_files::mo_pomo::{translation_file_mo, translation_file_ph
 use crate::state::shared;
 use crate::zv;
 
+/// An array of strings as `(key bytes, value bytes)`.
+type Strings = Vec<(Vec<u8>, Vec<u8>)>;
+
 /// An array of strings as `(key bytes, value bytes)`; `None` when it is not an array of strings.
-fn strings(z: &Zval) -> Option<Vec<(Vec<u8>, Vec<u8>)>> {
+fn strings(z: &Zval) -> Option<Strings> {
     let array = z.dereference().array()?;
     let mut out = Vec::with_capacity(array.len());
     for (k, v) in array.iter() {
@@ -34,7 +37,7 @@ fn count_export() {
     }
 }
 
-fn arrays(ex: &ExecuteData) -> Option<(Vec<(Vec<u8>, Vec<u8>)>, Vec<(Vec<u8>, Vec<u8>)>)> {
+fn arrays(ex: &ExecuteData) -> Option<(Strings, Strings)> {
     let headers = strings(&zv::arg_copy(ex, 0)?)?;
     let entries = strings(&zv::arg_copy(ex, 1)?)?;
     Some((headers, entries))
@@ -73,16 +76,16 @@ extern "C" fn native_export_stats(_ex: &mut ExecuteData, ret: &mut Zval) {
 pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
     let ns = "SpeedySpec\\WpI18n\\Native\\";
     vec![
-        FunctionBuilder::new(&format!("{ns}file_export_mo"), native_export_mo)
+        FunctionBuilder::new(format!("{ns}file_export_mo"), native_export_mo)
             .arg(Arg::new("headers", DataType::Mixed))
             .arg(Arg::new("entries", DataType::Mixed))
             .arg(Arg::new("uint32", DataType::Mixed))
             .returns(DataType::Mixed, false, true),
-        FunctionBuilder::new(&format!("{ns}file_export_php"), native_export_php)
+        FunctionBuilder::new(format!("{ns}file_export_php"), native_export_php)
             .arg(Arg::new("headers", DataType::Mixed))
             .arg(Arg::new("entries", DataType::Mixed))
             .returns(DataType::Mixed, false, true),
-        FunctionBuilder::new(&format!("{ns}export_stats"), native_export_stats).returns(
+        FunctionBuilder::new(format!("{ns}export_stats"), native_export_stats).returns(
             DataType::Long,
             false,
             false,
