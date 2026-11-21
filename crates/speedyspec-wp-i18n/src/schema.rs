@@ -31,13 +31,15 @@ pub trait SettingsTree: Sized + Clone {
     fn array(entries: Vec<(Key, Self)>) -> Self;
 }
 
-/// `translate_settings_using_i18n_schema( $i18n_schema, $settings, $textdomain )`. `translate` is
-/// `translate_with_gettext_context( $text, $context, $textdomain )`.
+/// `translate_with_gettext_context( $text, $context, $textdomain )`, as [`translate_settings`] calls it.
+pub type TranslateWithContext<'a, T> = dyn FnMut(&[u8], &[u8], &T) -> Result<T, I18nError> + 'a;
+
+/// `translate_settings_using_i18n_schema( $i18n_schema, $settings, $textdomain )`.
 pub fn translate_settings<T: SettingsTree>(
     schema: &T,
     settings: T,
     domain: &T,
-    translate: &mut dyn FnMut(&[u8], &[u8], &T) -> Result<T, I18nError>,
+    translate: &mut TranslateWithContext<'_, T>,
 ) -> Result<T, I18nError> {
     if schema.is_empty() || settings.is_empty() || domain.is_empty() {
         return Ok(settings);
