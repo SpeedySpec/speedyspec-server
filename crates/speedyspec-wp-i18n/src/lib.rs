@@ -16,7 +16,7 @@ pub use controller::{
 pub use file::TranslationFile;
 pub use gettext::{DomainFilterNames, I18nApi, I18nError, Translated, bytes_value};
 pub use locale::{LOCALE_STRINGS, LocaleData, TEXT_DIRECTION, WORD_COUNT_TYPE, locale_strings};
-pub use plural::{PluralError, PluralRule};
+pub use plural::{PluralError, PluralRule, PluralToken};
 pub use schema::{SchemaValue, SettingsTree, TranslateWithContext, translate_settings};
 pub use script::{Relative, ScriptFiles, json_filename, relative_path};
 pub use switcher::LocaleSwitcher;

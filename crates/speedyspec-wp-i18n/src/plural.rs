@@ -49,11 +49,21 @@ enum Op {
     Ternary,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum Token {
     Var,
     Value(i64),
     Op(Op),
+    /// An operator WordPress's `execute()` does not know (only from tokens a caller supplied).
+    Unknown(String),
+}
+
+/// One entry of `Plural_Forms::$tokens`, as WordPress keeps it: `['var']`, `['value', $n]` or `['op', $op]`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PluralToken {
+    Var,
+    Value(i64),
+    Op(String),
 }
 
 /// What the parse stack holds: an operator, or an open parenthesis.
@@ -266,16 +276,19 @@ impl PluralRule {
         let mut stack: Vec<V> = Vec::with_capacity(8);
         let pop = |stack: &mut Vec<V>| stack.pop().unwrap_or(V::Null);
         for token in &self.tokens {
-            let op = match *token {
+            let op = match token {
                 Token::Var => {
                     stack.push(V::Int(n));
                     continue;
                 }
                 Token::Value(v) => {
-                    stack.push(V::Int(v));
+                    stack.push(V::Int(*v));
                     continue;
                 }
-                Token::Op(op) => op,
+                Token::Op(op) => *op,
+                Token::Unknown(op) => {
+                    return Err(PluralError::Exception(format!("Unknown operator \"{op}\"")));
+                }
             };
             if op == Op::Ternary {
                 let v3 = pop(&mut stack);
@@ -318,6 +331,37 @@ impl PluralRule {
             ));
         }
         Ok(stack[0].int())
+    }
+
+    /// The program as `Plural_Forms::$tokens` holds it.
+    pub fn tokens(&self) -> Vec<PluralToken> {
+        self.tokens
+            .iter()
+            .map(|t| match t {
+                Token::Var => PluralToken::Var,
+                Token::Value(v) => PluralToken::Value(*v),
+                Token::Op(op) => PluralToken::Op(op.symbol().to_owned()),
+                Token::Unknown(op) => PluralToken::Op(op.clone()),
+            })
+            .collect()
+    }
+
+    /// A rule running `tokens` as `Plural_Forms::execute()` would, whatever they hold (a subclass may have set
+    /// them): an operator it does not know throws when reached.
+    pub fn from_tokens(tokens: &[PluralToken]) -> PluralRule {
+        PluralRule {
+            tokens: tokens
+                .iter()
+                .map(|t| match t {
+                    PluralToken::Var => Token::Var,
+                    PluralToken::Value(v) => Token::Value(*v),
+                    PluralToken::Op(op) => match Op::parse(op) {
+                        Some(op) => Token::Op(op),
+                        None => Token::Unknown(op.clone()),
+                    },
+                })
+                .collect(),
+        }
     }
 
     /// English: `n != 1`.

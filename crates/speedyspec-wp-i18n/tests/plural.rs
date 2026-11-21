@@ -78,3 +78,34 @@ fn non_ascii_symbol_is_an_error_not_a_panic() {
     let rule = PluralRule::from_header("nplurals=2; plural=n\u{a0}!= 1;");
     assert_eq!((rule.eval(1), rule.eval(2)), (Ok(0), Ok(1)));
 }
+
+#[test]
+fn tokens_are_wordpress_postfix_list() {
+    use speedyspec_wp_i18n::PluralToken as T;
+    let rule = speedyspec_wp_i18n::PluralRule::compile("n != 1").unwrap();
+    assert_eq!(rule.tokens(), vec![T::Var, T::Value(1), T::Op("!=".into())]);
+    let ternary = speedyspec_wp_i18n::PluralRule::compile("n ? 1 : 2").unwrap();
+    assert_eq!(
+        ternary.tokens(),
+        vec![T::Var, T::Value(1), T::Value(2), T::Op("?:".into())]
+    );
+}
+
+#[test]
+fn rules_rebuilt_from_tokens_evaluate_alike() {
+    use speedyspec_wp_i18n::{PluralError, PluralRule, PluralToken as T};
+    let expression =
+        "n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2";
+    let rule = PluralRule::compile(expression).unwrap();
+    let rebuilt = PluralRule::from_tokens(&rule.tokens());
+    for n in -3..200 {
+        assert_eq!(rule.eval(n), rebuilt.eval(n), "n = {n}");
+    }
+    let unknown = PluralRule::from_tokens(&[T::Var, T::Value(1), T::Op("^".into())]);
+    assert_eq!(
+        unknown.eval(3),
+        Err(PluralError::Exception("Unknown operator \"^\"".into()))
+    );
+    let lone_mod = PluralRule::from_tokens(&[T::Op("%".into())]);
+    assert_eq!(lone_mod.eval(3), Err(PluralError::DivisionByZero));
+}

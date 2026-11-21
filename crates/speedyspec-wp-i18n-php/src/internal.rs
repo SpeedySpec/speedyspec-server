@@ -7,8 +7,8 @@ use speedyspec_hooks::{Key, Value};
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_wp_i18n::{
-    FileRef, LOCALE_STRINGS, LocaleSwitcher, PhpKey, PluralError, TEXT_DIRECTION, Translated,
-    TranslationController, bytes_value,
+    FileRef, LOCALE_STRINGS, LocaleSwitcher, PhpKey, PluralError, PluralRule, PluralToken,
+    TEXT_DIRECTION, Translated, TranslationController, bytes_value,
 };
 
 use crate::effects::{PhpScriptSources, PhpSwitchEffects, native_error, php_string, port_error};
@@ -404,6 +404,64 @@ fn load_script_textdomain_from_src(a: &[Value]) -> R {
         .map_err(native_error)
 }
 
+/// `Plural_Forms::parse( $str )`: WordPress's token list, or its exception.
+fn plural_parse(a: &[Value]) -> R {
+    let expression = text(a, 0)?;
+    let rule = PluralRule::compile(&expression).map_err(plural_error)?;
+    Ok(Value::Array(
+        rule.tokens()
+            .into_iter()
+            .enumerate()
+            .map(|(i, t)| {
+                let token = match t {
+                    PluralToken::Var => vec![(Key::Int(0), Value::Str("var".into()))],
+                    PluralToken::Value(v) => vec![
+                        (Key::Int(0), Value::Str("value".into())),
+                        (Key::Int(1), Value::Int(v)),
+                    ],
+                    PluralToken::Op(op) => vec![
+                        (Key::Int(0), Value::Str("op".into())),
+                        (Key::Int(1), Value::Str(op)),
+                    ],
+                };
+                (Key::Int(i as i64), Value::Array(token))
+            })
+            .collect(),
+    ))
+}
+
+/// `Plural_Forms::execute( $n )` for an integer `n` over the object's own tokens; `null` when the tokens are not
+/// WordPress's shape (the facade then runs WordPress's PHP body).
+fn plural_execute(a: &[Value]) -> R {
+    let (Some(Value::Array(tokens)), Some(Value::Int(n))) =
+        (a.first().map(|v| v.read().into_owned()), a.get(1))
+    else {
+        return Ok(Value::Null);
+    };
+    let mut program = Vec::with_capacity(tokens.len());
+    for (_, token) in &tokens {
+        let Value::Array(parts) = token else {
+            return Ok(Value::Null);
+        };
+        let part = |i: i64| {
+            parts
+                .iter()
+                .find(|(k, _)| *k == Key::Int(i))
+                .map(|(_, v)| v)
+        };
+        program.push(match (part(0), part(1)) {
+            (Some(Value::Str(k)), _) if k == "var" => PluralToken::Var,
+            (Some(Value::Str(k)), Some(Value::Int(v))) if k == "value" => PluralToken::Value(*v),
+            (Some(Value::Str(k)), Some(Value::Str(op))) if k == "op" => PluralToken::Op(op.clone()),
+            _ => return Ok(Value::Null),
+        });
+    }
+    PluralRule::from_tokens(&program)
+        .eval(*n)
+        .map(Value::Int)
+        .map_err(plural_error)
+}
+
 /// The natives declared under WordPress's own names.
 pub(crate) fn wordpress_functions() -> Vec<FunctionBuilder<'static>> {
     vec![
@@ -421,6 +479,8 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
     vec![
         f("register_translations", register_translations),
         f("locale_strings", locale_strings),
+        f("plural_parse", plural_parse),
+        f("plural_execute", plural_execute),
         f("switcher_new", switcher_new),
         f("switcher_stack", switcher_stack),
         f("switcher_switch", |a| {

@@ -248,6 +248,21 @@ fn main() {
     check("schema_translation_copies_references", text(&r) == "ap", &r);
 
     let r = php.eval(
+        "speedyspec://test/plural-forms",
+        "$p = new Plural_Forms('n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2');
+         try { new Plural_Forms('n # 2'); $thrown = 'none'; } catch (Exception $e) { $thrown = get_class($e) . ':' . $e->getMessage(); }
+         $tampered = new class('n') extends Plural_Forms { public function parse($str) { $this->tokens = array(array('var'), array('value', 1), array('op', '^')); } };
+         try { $tampered->get(3); $odd = 'none'; } catch (Exception $e) { $odd = $e->getMessage(); }
+         return json_encode(array((new ReflectionClass('Plural_Forms'))->getFileName(), $p->get(22), $p->get('22'), $thrown, $odd), JSON_UNESCAPED_SLASHES);",
+    );
+    check(
+        "plural_forms_is_native",
+        text(&r)
+            == r##"["speedyspec://wp-i18n",1,1,"Exception:Unknown symbol \"#\"","Unknown operator \"^\""]"##,
+        &r,
+    );
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",
