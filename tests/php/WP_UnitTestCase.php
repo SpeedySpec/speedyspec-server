@@ -14,6 +14,13 @@ final class SpeedySpecDeprecationRaised extends RuntimeException
 }
 
 /**
+ * Raised in place of a PHP warning while a test expects one.
+ */
+final class SpeedySpecWarningRaised extends RuntimeException
+{
+}
+
+/**
  * Stands in for WordPress's WP_UnitTestCase, for its hook tests: the same set-up and tear-down names, hook backup
  * and restore over the Rust hook store, the deprecation expectations those tests use, and `assertSameSets()`.
  *
@@ -327,6 +334,28 @@ abstract class WP_UnitTestCase extends TestCase
     }
 
     public function expectDeprecationMessage(string $message): void
+    {
+        $this->expectExceptionMessage($message);
+    }
+
+    /**
+     * Expects a PHP warning (PHPUnit 9's `expectWarning()`): the first one ends the test as an exception.
+     */
+    public function expectWarning(): void
+    {
+        set_error_handler(
+            static function (int $errno, string $errstr): bool {
+                if ($errno & (E_WARNING | E_USER_WARNING)) {
+                    throw new SpeedySpecWarningRaised($errstr);
+                }
+                return false;
+            }
+        );
+        $this->speedyspec_error_handler = true;
+        $this->expectException(SpeedySpecWarningRaised::class);
+    }
+
+    public function expectWarningMessage(string $message): void
     {
         $this->expectExceptionMessage($message);
     }

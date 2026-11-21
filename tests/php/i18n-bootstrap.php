@@ -50,3 +50,5 @@ $GLOBALS['wp_locale']          = new WP_Locale();
 $GLOBALS['wp_locale_switcher'] = new WP_Locale_Switcher();
 $GLOBALS['wp_locale_switcher']->init();
 do_action('after_setup_theme');
+// WordPress's tests run after `init`, so enqueueing scripts raises no incorrect-usage notice.
+do_action('init');
