@@ -5403,6 +5403,21 @@ name = "speedyspec-wp-text-diff-contracts"
 version = "0.1.0"
 
 [[package]]
+name = "speedyspec-wp-text-diff-php"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-text-diff",
+ "speedyspec-wp-text-diff-contracts",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
