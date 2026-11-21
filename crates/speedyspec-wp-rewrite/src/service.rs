@@ -1,9 +1,13 @@
+use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
 
 use speedyspec_wp_hooks::{HookApi, HookError};
 
-use crate::{HomeUrl, PageUris, PostTypes, PublicQueryVars, RewriteOptions, WpLoaded};
+use crate::{
+    Multisite, PageUris, PostTypes, PublicQueryVars, RewriteOptions, RewriteStateSource, SiteUrls,
+    WpLoaded,
+};
 
 /// Why a rewrite operation failed: an option or a hook callback failed.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,22 +31,30 @@ impl From<HookError> for RewriteError {
 #[derive(Clone)]
 pub struct RewriteDeps {
     pub options: Rc<dyn RewriteOptions>,
-    pub home: Rc<dyn HomeUrl>,
+    pub urls: Rc<dyn SiteUrls>,
+    pub multisite: Rc<dyn Multisite>,
     pub loaded: Rc<dyn WpLoaded>,
     pub pages: Rc<dyn PageUris>,
     pub post_types: Rc<dyn PostTypes>,
     pub query_vars: Rc<dyn PublicQueryVars>,
     pub hooks: Rc<HookApi>,
+    /// The canonical state: in PHP, the `$wp_rewrite` global. Work deferred to `wp_loaded` uses it.
+    pub state: Rc<dyn RewriteStateSource>,
 }
 
 /// `WP_Rewrite`'s methods, each over a [`crate::RewriteState`] the caller holds.
 pub struct RewriteService {
     pub(crate) deps: RewriteDeps,
+    /// `flush_rules()`'s `static $do_hard_later`: a hard flush asked for before `wp_loaded`.
+    pub(crate) do_hard_later: Rc<Cell<Option<bool>>>,
 }
 
 impl RewriteService {
     pub fn new(deps: RewriteDeps) -> RewriteService {
-        RewriteService { deps }
+        RewriteService {
+            deps,
+            do_hard_later: Rc::new(Cell::new(None)),
+        }
     }
 
     pub fn deps(&self) -> &RewriteDeps {

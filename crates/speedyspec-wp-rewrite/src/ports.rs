@@ -14,9 +14,15 @@ pub trait RewriteStateSource {
     fn hook_value(&self) -> HookValue;
 }
 
-/// `home_url()`.
-pub trait HomeUrl {
+/// `home_url()` and `site_url()`.
+pub trait SiteUrls {
     fn home_url(&self) -> String;
+    fn site_url(&self) -> String;
+}
+
+/// `is_multisite() && is_main_site()`, which adds the signup and activation rules.
+pub trait Multisite {
+    fn is_multisite_main_site(&self) -> bool;
 }
 
 /// `did_action( 'wp_loaded' )`.

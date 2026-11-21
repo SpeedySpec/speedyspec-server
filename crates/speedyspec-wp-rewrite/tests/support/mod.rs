@@ -6,8 +6,8 @@ use std::rc::Rc;
 use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_rewrite::memory::{
-    FixedHomeUrl, FlagWpLoaded, MemoryPageUris, MemoryPostTypes, MemoryQueryVars,
-    MemoryRewriteOptions, MemoryRewriteStateSource,
+    FixedUrls, FlagWpLoaded, MemoryPageUris, MemoryPostTypes, MemoryQueryVars,
+    MemoryRewriteOptions, MemoryRewriteStateSource, SingleSite,
 };
 use speedyspec_wp_rewrite::{RewriteDeps, RewriteService, RewriteState};
 
@@ -24,6 +24,14 @@ pub struct Fixture {
 }
 
 pub fn fixture(permalink_structure: &str) -> Fixture {
+    fixture_with(
+        permalink_structure,
+        "https://example.test",
+        "https://example.test",
+    )
+}
+
+pub fn fixture_with(permalink_structure: &str, home: &str, site: &str) -> Fixture {
     let hooks = Rc::new(HookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
@@ -32,17 +40,22 @@ pub fn fixture(permalink_structure: &str) -> Fixture {
     options.set("permalink_structure", permalink_structure);
     let loaded = Rc::new(FlagWpLoaded::new(true));
     let query_vars = Rc::new(MemoryQueryVars::default());
+    let source = Rc::new(MemoryRewriteStateSource::new(RewriteState::default()));
     let deps = RewriteDeps {
         options: options.clone(),
-        home: Rc::new(FixedHomeUrl("https://example.test".into())),
+        urls: Rc::new(FixedUrls {
+            home: home.into(),
+            site: site.into(),
+        }),
+        multisite: Rc::new(SingleSite),
         loaded: loaded.clone(),
         pages: Rc::new(MemoryPageUris::default()),
         post_types: Rc::new(MemoryPostTypes::default()),
         query_vars: query_vars.clone(),
         hooks: hooks.clone(),
+        state: source.clone(),
     };
     let service = RewriteService::new(deps);
-    let source = Rc::new(MemoryRewriteStateSource::new(RewriteState::default()));
     Fixture {
         service,
         options,

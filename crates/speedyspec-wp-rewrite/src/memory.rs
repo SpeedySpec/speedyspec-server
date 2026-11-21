@@ -8,8 +8,8 @@ use speedyspec_routing::Rule;
 use speedyspec_wp_hooks::HookValue;
 
 use crate::{
-    HomeUrl, PageUris, PostTypes, PublicQueryVars, RewriteError, RewriteOptions, RewriteState,
-    RewriteStateSource, UriIndex, WpLoaded,
+    Multisite, PageUris, PostTypes, PublicQueryVars, RewriteError, RewriteOptions, RewriteState,
+    RewriteStateSource, SiteUrls, UriIndex, WpLoaded,
 };
 
 /// Options in a map; `rewrite_rules` kept as rules.
@@ -98,11 +98,27 @@ impl RewriteStateSource for MemoryRewriteStateSource {
     }
 }
 
-pub struct FixedHomeUrl(pub String);
+pub struct FixedUrls {
+    pub home: String,
+    pub site: String,
+}
 
-impl HomeUrl for FixedHomeUrl {
+impl SiteUrls for FixedUrls {
     fn home_url(&self) -> String {
-        self.0.clone()
+        self.home.clone()
+    }
+
+    fn site_url(&self) -> String {
+        self.site.clone()
+    }
+}
+
+/// A single-site install.
+pub struct SingleSite;
+
+impl Multisite for SingleSite {
+    fn is_multisite_main_site(&self) -> bool {
+        false
     }
 }
 

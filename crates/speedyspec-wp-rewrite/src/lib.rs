@@ -5,17 +5,24 @@
 //! matching through the router. The state stays in a plain [`RewriteState`]: in PHP it lives in the `$wp_rewrite`
 //! object plugins write to, and a [`RewriteStateSource`] moves it between the two.
 
+mod generate;
 pub mod memory;
+mod messages;
 mod ports;
 mod registration;
+mod routing;
+mod server_rules;
 mod service;
 mod state;
+mod storage;
 mod structures;
 
+pub use messages::*;
 pub use ports::{
-    HomeUrl, OptionsRewriteOptions, PageUris, PostTypes, PublicQueryVars, RewriteOptions,
-    RewriteStateSource, UriIndex, WpLoaded,
+    Multisite, OptionsRewriteOptions, PageUris, PostTypes, PublicQueryVars, RewriteOptions,
+    RewriteStateSource, SiteUrls, UriIndex, WpLoaded, rules_from_value, rules_to_value,
 };
 pub use registration::{EndpointQueryVar, RuleQuery};
+pub use routing::{WpOutcome, WpRouting};
 pub use service::{RewriteDeps, RewriteError, RewriteService};
 pub use state::RewriteState;
