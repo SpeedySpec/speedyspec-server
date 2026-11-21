@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-data-sqlite"
-version = "0.1.0"
+version = "0.1.1"
 description = "The SQLite engine: MySQL statements translated for SQLite, with MySQL's results, collation and functions."
 edition.workspace = true
 rust-version.workspace = true
