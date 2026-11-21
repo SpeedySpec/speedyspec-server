@@ -7,8 +7,10 @@ use speedyspec_routing::{
     DispatchStrategy, GuardAnswer, QueryValue, Resolution, RouteMatch, Rule, RuleGuard,
 };
 
+type Answer = Box<dyn Fn(&Rule, &[Option<String>]) -> GuardAnswer>;
+
 struct Guard {
-    answer: Box<dyn Fn(&Rule, &[Option<String>]) -> GuardAnswer>,
+    answer: Answer,
     seen: RefCell<Vec<String>>,
 }
 
