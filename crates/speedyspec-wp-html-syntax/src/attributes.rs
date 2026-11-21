@@ -55,7 +55,7 @@ fn attributes_of<'a>(html: &[u8], attr: &'a [u8]) -> Option<Vec<TagAttribute<'a>
     let mut at = 3;
     // `html` is `<wp ` + `attr` + `>`: a slice of it inside `attr` is `attr[start - 4..end - 4]`.
     let inner = |start: usize, end: usize| &attr[start - 4..end - 4];
-    let mut attributes: Vec<TagAttribute<'_>> = Vec::new();
+    let mut attributes: Vec<TagAttribute<'_>> = Vec::with_capacity(8);
     let mut seen: Option<std::collections::HashSet<Vec<u8>>> = None;
     loop {
         at += span_of(html, at, b" \t\x0C\r\n/");

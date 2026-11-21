@@ -40,6 +40,9 @@ pub struct KsesApi {
     protocols_read: RefCell<Option<Rc<Protocols>>>,
     /// The hook names kses uses, made once (each made anew would copy its name).
     hook_names: RefCell<Vec<(&'static str, Rc<HookName>)>>,
+    /// Buffers `attr_into` reuses across tags: (the attributes kept, one attribute's whole). Taken while in use, so
+    /// a filter that runs kses again gets fresh ones.
+    pub(crate) scratch: RefCell<(Vec<u8>, Vec<u8>)>,
     /// This API's own `Rc`, for the filter callbacks `kses_init_filters()` registers; empty unless built by
     /// [`KsesApi::shared`].
     pub(crate) me: RefCell<std::rc::Weak<KsesApi>>,
@@ -176,6 +179,7 @@ impl KsesApi {
             protocols: RefCell::new(Vec::new()),
             protocols_read: RefCell::new(None),
             hook_names: RefCell::new(Vec::new()),
+            scratch: RefCell::new((Vec::new(), Vec::new())),
             me: RefCell::new(std::rc::Weak::new()),
         }
     }

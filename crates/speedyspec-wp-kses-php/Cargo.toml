@@ -40,3 +40,7 @@ harness = false
 [[test]]
 name = "compat"
 harness = false
+
+[[test]]
+name = "bench_php"
+harness = false

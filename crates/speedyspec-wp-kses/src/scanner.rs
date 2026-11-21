@@ -14,7 +14,7 @@ use speedyspec_wp_kses_lexical::scan::{
     TokenKind, invalid_wrapper, next_token, tag_head, xhtml_slash,
 };
 use speedyspec_wp_kses_lexical::{
-    check_attr_val, hair_attrs, no_null, normalize_entities, stripslashes, write_whole,
+    HairAttr, check_attr_val, hair_attrs, no_null, normalize_entities, stripslashes, write_whole,
 };
 
 use crate::KsesApi;
@@ -390,55 +390,78 @@ impl KsesApi {
             .filter(|(_, r)| r.is_required())
             .map(|(n, _)| &**n)
             .collect();
-        let stripped = |out: &mut Vec<u8>| {
-            if slash.is_empty() {
+        let (mut kept, mut whole) = self.scratch.take();
+        kept.clear();
+        let result = self.attrs_kept(
+            element,
+            allowed,
+            &parsed,
+            &mut required,
+            &mut kept,
+            &mut whole,
+        );
+        let done = match result {
+            Ok(true) => {
                 out.push(b'<');
                 out.extend_from_slice(element);
+                // `<` and `>` are dropped from the attributes, a run at a time.
+                let mut rest = &kept[..];
+                while let Some(i) = memchr::memchr2(b'<', b'>', rest) {
+                    out.extend_from_slice(&rest[..i]);
+                    rest = &rest[i + 1..];
+                }
+                out.extend_from_slice(rest);
+                out.extend_from_slice(slash);
                 out.push(b'>');
+                Ok(())
             }
+            Ok(false) => {
+                if slash.is_empty() {
+                    out.push(b'<');
+                    out.extend_from_slice(element);
+                    out.push(b'>');
+                }
+                Ok(())
+            }
+            Err(e) => Err(e),
         };
-        let mut kept = Vec::new();
-        let mut whole = Vec::new();
-        for a in &parsed {
+        self.scratch.replace((kept, whole));
+        done
+    }
+
+    /// The attributes `attr_into` keeps, written to `kept`; false when a required attribute is missing or rejected
+    /// (the tag is then stripped of every attribute).
+    fn attrs_kept(
+        &self,
+        element: &[u8],
+        allowed: &AllowedHtml,
+        parsed: &[HairAttr<'_>],
+        required: &mut Vec<&[u8]>,
+        kept: &mut Vec<u8>,
+        whole: &mut Vec<u8>,
+    ) -> Result<bool, KsesError> {
+        for a in parsed {
             let name_low = lower(&a.name);
             let is_required = required.iter().any(|r| **r == *name_low);
             whole.clear();
             if a.vless {
                 whole.extend_from_slice(&a.name);
             } else {
-                write_whole(&mut whole, &a.name, &a.value);
+                write_whole(whole, &a.name, &a.value);
             }
-            match self.checked(&a.name, &a.value, &whole, a.vless, element, allowed)? {
-                Some((_, whole)) => {
+            match self.checked(&a.name, &a.value, whole, a.vless, element, allowed)? {
+                Some((_, checked)) => {
                     kept.push(b' ');
-                    kept.extend_from_slice(&whole);
+                    kept.extend_from_slice(&checked);
                     if is_required {
                         required.retain(|r| **r != *name_low);
                     }
                 }
-                None if is_required => {
-                    stripped(out);
-                    return Ok(());
-                }
+                None if is_required => return Ok(false),
                 None => {}
             }
         }
-        if !required.is_empty() {
-            stripped(out);
-            return Ok(());
-        }
-        out.push(b'<');
-        out.extend_from_slice(element);
-        // `<` and `>` are dropped from the attributes, a run at a time.
-        let mut rest = &kept[..];
-        while let Some(i) = memchr::memchr2(b'<', b'>', rest) {
-            out.extend_from_slice(&rest[..i]);
-            rest = &rest[i + 1..];
-        }
-        out.extend_from_slice(rest);
-        out.extend_from_slice(slash);
-        out.push(b'>');
-        Ok(())
+        Ok(required.is_empty())
     }
 
     /// `wp_kses_attr_check()`: `None` where PHP returns false (and blanks its by-reference arguments).

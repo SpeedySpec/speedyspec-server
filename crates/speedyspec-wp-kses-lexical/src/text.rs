@@ -71,7 +71,8 @@ fn remove_slash_zero(s: &[u8]) -> Vec<u8> {
 
 /// `wp_kses_stripslashes()`: `\"` becomes `"`, left to right.
 pub fn stripslashes(content: &[u8]) -> Cow<'_, [u8]> {
-    if memchr::memmem::find(content, b"\\\"").is_none() {
+    let quoted = memchr::memchr_iter(b'\\', content).any(|i| content.get(i + 1) == Some(&b'"'));
+    if !quoted {
         return Cow::Borrowed(content);
     }
     let mut out = Vec::with_capacity(content.len());
