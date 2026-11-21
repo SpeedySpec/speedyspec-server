@@ -5048,6 +5048,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-kses-lexical"
+version = "0.1.0"
+dependencies = [
+ "memchr",
+ "serde_json",
+ "speedyspec-wp-kses-contracts",
+ "speedyspec-wp-kses-testkit",
+]
+
+[[package]]
 name = "speedyspec-wp-kses-testkit"
 version = "0.1.0"
 dependencies = [
