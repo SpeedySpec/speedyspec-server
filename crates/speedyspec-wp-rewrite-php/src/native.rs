@@ -9,7 +9,7 @@ use speedyspec_cqrs::{HandlerRef, QueryRef};
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_php_ext::{PhpObject, Value};
-use speedyspec_router::wordpress::matches_map;
+use speedyspec_router::wordpress::matches_map_with;
 use speedyspec_routing::{EndpointMask, PermastructArgs, Rule, RulePriority};
 use speedyspec_wp_rewrite::{
     AddExternalRule, AddPermastruct, AddRewriteEndpoint, AddRewriteRule, AddRewriteTag,
@@ -385,20 +385,18 @@ fn native_call(args: &[Value]) -> Result<Value, NativeError> {
 
 fn native_matches_map(args: &[Value]) -> Result<Value, NativeError> {
     let subject = args.first().map(text).unwrap_or_default();
-    let entries = args.get(1).map(items).unwrap_or_default();
-    let max = entries
-        .iter()
-        .filter_map(|(k, _)| key_text(k).parse::<usize>().ok())
-        .max();
-    let mut captures: Vec<Option<String>> = vec![None; max.map_or(0, |m| m + 1)];
-    for (key, value) in entries {
-        if let Ok(i) = key_text(&key).parse::<usize>()
-            && !matches!(value, Value::Null)
-        {
-            captures[i] = Some(text(&value));
-        }
-    }
-    Ok(Value::Str(matches_map(&subject, &captures)))
+    // Sparse, as PHP's array may be: a huge integer key costs one entry, not an allocation up to it.
+    let captures: std::collections::HashMap<usize, String> = args
+        .get(1)
+        .map(items)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|(_, value)| !matches!(value, Value::Null))
+        .filter_map(|(key, value)| Some((key_text(&key).parse::<usize>().ok()?, text(&value))))
+        .collect();
+    Ok(Value::Str(matches_map_with(&subject, |n| {
+        captures.get(&n).map(String::as_str)
+    })))
 }
 
 fn query_value(value: &QueryValue) -> Value {

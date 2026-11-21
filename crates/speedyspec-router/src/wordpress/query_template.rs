@@ -17,7 +17,12 @@ pub struct QueryTemplate {
 
 /// `WP_MatchesMapRegex::apply( $subject, $matches )`: each `$matches[N]` replaced by the URL-encoded capture.
 pub fn matches_map(subject: &str, captures: &[Option<String>]) -> String {
-    QueryTemplate::references(subject).substitute(captures)
+    matches_map_with(subject, |n| captures.get(n).and_then(Option::as_deref))
+}
+
+/// [`matches_map`] over captures looked up by index, for sparse capture arrays (PHP's may have any integer key).
+pub fn matches_map_with<'a>(subject: &str, capture: impl Fn(usize) -> Option<&'a str>) -> String {
+    QueryTemplate::references(subject).substitute(capture)
 }
 
 impl QueryTemplate {
@@ -62,16 +67,16 @@ impl QueryTemplate {
 
     /// Substitutes `captures` (index 0 is the whole match), as `parse_request` builds `matched_query`.
     pub fn apply(&self, captures: &[Option<String>]) -> String {
-        php_addslashes(&self.substitute(captures))
+        php_addslashes(&self.substitute(|n| captures.get(n).and_then(Option::as_deref)))
     }
 
-    fn substitute(&self, captures: &[Option<String>]) -> String {
+    fn substitute<'a>(&self, capture: impl Fn(usize) -> Option<&'a str>) -> String {
         let mut out = String::new();
         for part in &self.parts {
             match part {
                 Part::Text(text) => out.push_str(text),
                 Part::Match(n) => {
-                    if let Some(Some(value)) = captures.get(*n) {
+                    if let Some(value) = capture(*n) {
                         out.push_str(&php_urlencode(value));
                     }
                 }

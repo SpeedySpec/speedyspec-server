@@ -269,6 +269,13 @@ fn main() {
         return $added && $r->extra_permastructs['typed'] === $permastruct && $r->endpoints[0] === $endpoint
             && $r->extra_permastructs['other']['with_front'] === true;"#,
     );
+    // A huge integer key must not make the port allocate up to it.
+    yes(
+        &php,
+        "matches_map_takes_huge_keys",
+        r#"return WP_MatchesMapRegex::apply('a=$matches[1]&b=$matches[9223372036854775807]', [1 => 'x', PHP_INT_MAX => 'y'])
+            === 'a=x&b=y';"#,
+    );
     let flushed = eval(
         &php,
         "do_action('wp_loaded'); flush_rewrite_rules(false); return true;",
