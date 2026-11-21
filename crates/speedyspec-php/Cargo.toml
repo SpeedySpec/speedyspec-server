@@ -27,3 +27,7 @@ harness = false
 [[test]]
 name = "extensions"
 harness = false
+
+[[test]]
+name = "global_array"
+harness = false
