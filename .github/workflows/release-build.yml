@@ -1,0 +1,114 @@
+name: release-build
+
+# Builds, tests and smoke-checks one component's release binaries, one per target, at `ref`, and uploads each as an
+# artifact named <component>-<triple>. Called by release.yml; publishes nothing itself.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit or tag to build
+        required: true
+        type: string
+      component:
+        description: speedyspec-server or speedyspec-php-runtime
+        required: true
+        type: string
+      version:
+        description: The version being released; the binary's manifest must report it
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # `name` matches ci.yml's php job, so both share the static PHP cache.
+          - name: linux-x86_64
+            triple: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            run: scripts/linux-php.sh
+            platform: linux/amd64
+            php-build: .php-build-linux
+            out: target-linux/x86_64-unknown-linux-musl/release
+            target-flag: ""
+          - name: linux-aarch64
+            triple: aarch64-unknown-linux-musl
+            os: ubuntu-24.04-arm
+            run: scripts/linux-php.sh
+            platform: linux/arm64
+            php-build: .php-build-linux-arm64
+            out: target-linux-arm64/aarch64-unknown-linux-musl/release
+            target-flag: ""
+          - name: macos-aarch64
+            triple: aarch64-apple-darwin
+            os: macos-15
+            run: ""
+            platform: ""
+            php-build: .php-build
+            out: target/aarch64-apple-darwin/release
+            target-flag: --target aarch64-apple-darwin
+    name: ${{ inputs.component }} (${{ matrix.triple }})
+    runs-on: ${{ matrix.os }}
+    env:
+      # Which container platform scripts/linux-php.sh runs (Linux rows only); it also sets the cargo target there.
+      SPEEDYSPEC_LINUX_PLATFORM: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: dtolnay/rust-toolchain@master
+        if: matrix.run == ''
+        with:
+          toolchain: "1.99"
+          targets: ${{ matrix.triple }}
+      - name: Cache static PHP
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ matrix.php-build }}/spc
+            ${{ matrix.php-build }}/buildroot
+          key: php-${{ matrix.name }}-${{ hashFiles('php-version', 'scripts/build-php.sh') }}
+      - name: Build static PHP
+        env:
+          SPEEDYSPEC_ALLOW_HOST_INSTALL: "1"
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ${{ matrix.run }} scripts/build-php.sh
+      - name: Test the server
+        if: inputs.component == 'speedyspec-server'
+        run: |
+          ${{ matrix.run }} scripts/check-no-php-in-server.sh
+          ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks
+      - name: Test the runtime
+        if: inputs.component == 'speedyspec-php-runtime'
+        run: |
+          ${{ matrix.run }} cargo test -p speedyspec-php --test extensions
+          ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks
+      - name: Build the release binary
+        run: ${{ matrix.run }} cargo build --release --locked -p "$COMPONENT" ${{ matrix.target-flag }}
+        env:
+          COMPONENT: ${{ inputs.component }}
+      - name: Smoke
+        env:
+          COMPONENT: ${{ inputs.component }}
+          VERSION: ${{ inputs.version }}
+          OUT: ${{ matrix.out }}
+        run: scripts/release-smoke.sh "$OUT/$COMPONENT" "$COMPONENT" "$VERSION"
+      - name: Stage
+        env:
+          COMPONENT: ${{ inputs.component }}
+          OUT: ${{ matrix.out }}
+          TRIPLE: ${{ matrix.triple }}
+        run: |
+          mkdir -p dist
+          cp "$OUT/$COMPONENT" "dist/$COMPONENT-$TRIPLE"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.component }}-${{ matrix.triple }}
+          path: dist/${{ inputs.component }}-${{ matrix.triple }}
+          if-no-files-found: error
+          retention-days: 7

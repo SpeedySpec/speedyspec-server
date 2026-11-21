@@ -51,7 +51,7 @@ docker build --quiet --platform "$platform" --tag "$image" - >/dev/null <<'EOF'
 FROM rust:1.99-alpine
 RUN apk add --no-cache \
     autoconf automake bash binutils bison build-base bzip2 ca-certificates \
-    clang-dev cmake curl file flex g++ gettext-dev git gzip libtool \
+    clang-dev cmake curl file flex g++ gettext-dev git gzip jq libtool \
     linux-headers m4 make patch perl pkgconf re2c tar unzip wget xz \
     && rustup component add rustfmt
 RUN printf '%s\n' \

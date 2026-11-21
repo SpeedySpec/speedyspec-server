@@ -10,7 +10,9 @@ The runtime is a separate binary, released as an app of its own with `kind = "ru
 triple, like the server's, kept as `<release>/speedyspec-php-runtime` (in immutable mode, `path` is that release
 directory). `speedyspec-php-runtime manifest` prints `{ "version", "contracts", "php" }`. Every php app runs on one
 runtime app (`app.<id>.runtime`, or the only one configured), and a php release can require its versions with
-`"php": { "runtime": "^1.4" }`.
+`"php": { "runtime": "^1.4" }`. This repository publishes it (README, "Published releases of the server and the PHP runtime"):
+its `source` is `https://releases.speedyspec.com/php-runtime/index.json`, for an app with the id
+`php-runtime`.
 
 - **The contract.** The server and the runtime share `speedyspec-runtime-contract`: the worker's start
   (`worker --spec-stdin`, the spec as JSON on standard input, so an app's credentials never show in the process list), FastCGI on the worker's 0600 socket, and the per-request report (an `FCGI_STDERR` record
