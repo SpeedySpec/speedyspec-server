@@ -6108,6 +6108,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-token-map"
+version = "0.1.0"
+dependencies = [
+ "memchr",
+ "serde_json",
+]
+
+[[package]]
+name = "speedyspec-wp-token-map-php"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-token-map",
+ "ureq",
+]
+
+[[package]]
 name = "speedyspec-wp-utf8"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,32 @@
+[package]
+name = "speedyspec-wp-token-map-php"
+version = "0.1.0"
+description = "WordPress's WP_Token_Map in PHP, with WordPress's HTML5 named character reference table answered natively by speedyspec-wp-token-map."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-wp-token-map = { path = "../speedyspec-wp-token-map" }
+
+[dev-dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+serde_json = "1"
+sha2 = "0.10"
+ureq = "3"
+
+[[test]]
+name = "php"
+harness = false
+
+[[test]]
+name = "wordpress"
+harness = false
