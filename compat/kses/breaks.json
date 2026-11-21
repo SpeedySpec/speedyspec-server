@@ -6,7 +6,18 @@
       "input": "<!--</<i>",
       "php": "Never returns. wp_kses_split2() repeats wp_kses() on a comment's text until it stops changing; `</<i>` becomes `</<i>>` and every later pass adds another `&gt;`, so the loop runs until PHP's time or memory limit.",
       "port": "Gives a comment or invalid-markup token at most 16 passes to settle and drops the token when it has not. Every corpus input settles within 2 passes.",
-      "reason": "No input may make kses do runaway work (design: Security). A post containing `<!--</<i>` would otherwise pin a server worker forever."
+      "reason": "No input may make kses do runaway work (design: Security). A post containing `<!--</<i>` would otherwise pin a server worker forever.",
+      "why": "No input may make kses do runaway work (design: Security). A post containing `<!--</<i>` would otherwise pin a server worker forever."
+    },
+    {
+      "scenario": "attribute_rules_malformed_tag_values",
+      "step": 0,
+      "category": "technical",
+      "input": "<em title=\"t\">e</em> with the allowlist entry 'em' => 1 (or 'strong' => 'yes')",
+      "php": "Throws TypeError: wp_kses_attr() passes a tag's value to array_filter() whenever it is neither empty() nor true, so a non-array value crashes the request.",
+      "port": "Keeps the tag with every attribute denied, as kses treats any other non-array value.",
+      "why": "A malformed allowlist entry should not crash kses; the port's output is the safest reading (no attributes)."
     }
-  ]
+  ],
+  "wordpress_tests": []
 }

@@ -2,9 +2,11 @@
 
 use std::rc::Rc;
 
-use speedyspec_hooks::Value;
+use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_kses_contracts::EntityNames;
-use speedyspec_wp_kses_lexical::{default_html_entity_names, default_xml_entity_names};
+use speedyspec_wp_kses_lexical::{
+    default_html_entity_name_list, default_html_entity_names, default_xml_entity_names,
+};
 
 use crate::{default_post_value, default_tags_value};
 
@@ -14,6 +16,8 @@ pub trait AllowedGlobals {
     fn post(&self) -> Value;
     fn tags(&self) -> Value;
     fn entity_names(&self) -> Rc<EntityNames>;
+    /// `$allowedentitynames` as the PHP value it is (`wp_kses_allowed_html( 'entities' )` returns it).
+    fn entity_names_value(&self) -> Value;
     fn xml_entity_names(&self) -> Rc<EntityNames>;
     /// Whether `CUSTOM_TAGS` is defined true.
     fn custom_tags(&self) -> bool;
@@ -48,6 +52,20 @@ impl AllowedGlobals for DefaultGlobals {
     }
     fn xml_entity_names(&self) -> Rc<EntityNames> {
         self.xml_entity_names.clone()
+    }
+    fn entity_names_value(&self) -> Value {
+        Value::Array(
+            default_html_entity_name_list()
+                .iter()
+                .enumerate()
+                .map(|(i, n)| {
+                    (
+                        Key::Int(i as i64),
+                        Value::Str(String::from_utf8_lossy(n).into_owned()),
+                    )
+                })
+                .collect(),
+        )
     }
     fn custom_tags(&self) -> bool {
         false

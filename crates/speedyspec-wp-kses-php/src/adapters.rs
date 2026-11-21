@@ -272,6 +272,13 @@ impl AllowedGlobals for PhpAllowedGlobals {
         self.entities.names()
     }
 
+    fn entity_names_value(&self) -> Value {
+        if !Self::running() {
+            return self.defaults.entity_names_value();
+        }
+        self.entities.value()
+    }
+
     fn xml_entity_names(&self) -> Rc<EntityNames> {
         if !Self::running() {
             return self.defaults.xml_entity_names();

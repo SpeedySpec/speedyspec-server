@@ -8,7 +8,7 @@ function add_filter() {}
 function add_action() {}
 require "$wp/wp-includes/kses.php";
 $emit = static function ( $const, $doc, array $names ) {
-	sort( $names, SORT_STRING );
+	// WordPress's own order: `wp_kses_allowed_html( 'entities' )` returns the global as it is.
 	echo "/// $doc\n";
 	echo "pub(crate) static $const: &[&[u8]] = &[\n";
 	foreach ( $names as $name ) {

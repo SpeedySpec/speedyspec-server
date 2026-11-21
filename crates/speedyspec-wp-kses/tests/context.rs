@@ -298,3 +298,22 @@ fn new_request_empties_the_protocol_list() {
     api.new_request();
     assert_eq!(api.allowed_protocols().unwrap().0.len(), 22);
 }
+
+/// `wp_kses_allowed_html( 'entities' )` is `$allowedentitynames` itself, in WordPress's order.
+#[test]
+fn entities_context_keeps_wordpress_order() {
+    let (_, api) = setup();
+    let HookValue::Array(items) = api.allowed_html_value(&Context::Entities).unwrap() else {
+        panic!("array")
+    };
+    let first: Vec<HookValue> = items.iter().take(3).map(|(_, v)| v.clone()).collect();
+    assert_eq!(
+        first,
+        vec![
+            HookValue::Str("nbsp".into()),
+            HookValue::Str("iexcl".into()),
+            HookValue::Str("cent".into())
+        ]
+    );
+    assert_eq!(items.len(), 253);
+}

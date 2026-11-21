@@ -7,8 +7,8 @@ use std::rc::Rc;
 use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
 use speedyspec_wp_kses_contracts::{
-    AllowedHtml, AttributeEscaper, Bytes, Context, KsesError, Payload, Protocols,
-    UnfilteredHtmlPolicy, UriAttributes, ValueCallback,
+    AllowedHtml, AttributeEscaper, Context, KsesError, Payload, Protocols, UnfilteredHtmlPolicy,
+    UriAttributes, ValueCallback,
 };
 
 use crate::{
@@ -203,7 +203,8 @@ impl KsesApi {
         self.d
             .hooks
             .apply_filters(&name, value(), args())
-            .map(Some)
+            // A value a PHP filter returned comes back unconverted; kses reads it.
+            .map(|v| Some(v.read().into_owned()))
             .map_err(hook_error)
     }
 
@@ -299,16 +300,7 @@ impl KsesApi {
     }
 
     fn entity_names_value(&self) -> Value {
-        let names = self.d.globals.entity_names();
-        let mut sorted: Vec<&Bytes> = names.0.iter().collect();
-        sorted.sort();
-        Value::Array(
-            sorted
-                .iter()
-                .enumerate()
-                .map(|(i, n)| (Key::Int(i as i64), bytes_value(n)))
-                .collect(),
-        )
+        self.d.globals.entity_names_value()
     }
 
     /// `wp_kses_allowed_html()` when the filter has listeners: every run goes through them.

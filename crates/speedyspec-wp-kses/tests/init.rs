@@ -127,3 +127,44 @@ fn handlers_are_bound() {
     let commands = CommandBus::new(container);
     commands.dispatch(KsesInitFilters {}).unwrap().unwrap();
 }
+
+/// Where the language bridge names a filter (PHP's own `wp_filter_kses`), `kses_init_filters()` registers that one,
+/// as WordPress registers the function by name.
+#[test]
+fn init_filters_prefer_the_bridges_named_functions() {
+    use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+    use speedyspec_wp_kses::ValueCallbacks;
+    struct Named;
+    impl ValueCallbacks for Named {
+        fn resolve(&self, _: &HookValue) -> Option<speedyspec_wp_kses_contracts::ValueCallback> {
+            None
+        }
+        fn named_filter(&self, name: &str) -> Option<Callback> {
+            let shown = format!("named {name}");
+            Some(Callback::rust(name, move |_: &[HookValue]| {
+                Ok(HookValue::Str(shown.clone()))
+            }))
+        }
+    }
+    let hooks = Rc::new(speedyspec_wp_hooks::HookApi::new(
+        Rc::new(speedyspec_wp_hooks_memory::MemoryHookStore::new()),
+        Rc::new(speedyspec_wp_hooks::IgnoreDeprecations),
+    ));
+    let api = speedyspec_wp_kses::KsesApi::shared(speedyspec_wp_kses::KsesDeps {
+        hooks: hooks.clone(),
+        escaper: Rc::new(common::Escaper),
+        policy: Rc::new(common::Policy(false)),
+        globals: Rc::new(speedyspec_wp_kses::DefaultGlobals::default()),
+        uploads: Rc::new(common::Uploads),
+        callbacks: Rc::new(Named),
+    });
+    api.kses_init_filters().unwrap();
+    let out = hooks
+        .apply_filters(
+            &HookName::from("title_save_pre"),
+            HookValue::Str("<b>x</b>".into()),
+            vec![],
+        )
+        .unwrap();
+    assert_eq!(out, HookValue::Str("named wp_filter_kses".into()));
+}

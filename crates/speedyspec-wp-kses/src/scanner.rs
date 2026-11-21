@@ -172,6 +172,11 @@ impl KsesApi {
         let allowed_value = || match allowed {
             AllowedSpec::Context(c) => bytes_value(c.as_bytes()),
             AllowedSpec::Explicit(a) => allowed_to_value(a),
+            AllowedSpec::Foreign { html, source } => source
+                .0
+                .downcast_ref::<Value>()
+                .cloned()
+                .unwrap_or_else(|| allowed_to_value(html)),
         };
         let protocols_value = || {
             Value::Array(
@@ -324,7 +329,7 @@ impl KsesApi {
     fn resolve_allowed(&self, allowed: &AllowedSpec) -> Result<Rc<AllowedHtml>, KsesError> {
         match allowed {
             AllowedSpec::Context(c) => self.allowed_html(c),
-            AllowedSpec::Explicit(a) => Ok(a.clone()),
+            AllowedSpec::Explicit(a) | AllowedSpec::Foreign { html: a, .. } => Ok(a.clone()),
         }
     }
 

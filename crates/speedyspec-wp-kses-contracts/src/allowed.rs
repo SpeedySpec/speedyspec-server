@@ -95,4 +95,10 @@ impl Context {
 pub enum AllowedSpec {
     Context(Context),
     Explicit(Rc<AllowedHtml>),
+    /// An array from another language: `html` is what kses reads, `source` the caller's own value, handed unchanged
+    /// to hooks that receive `$allowed_html` (a PHP array keeps its callables).
+    Foreign {
+        html: Rc<AllowedHtml>,
+        source: crate::Payload,
+    },
 }

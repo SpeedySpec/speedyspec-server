@@ -23,6 +23,29 @@ use speedyspec_wp_kses::{KsesApi, KsesDeps, register_kses_handlers};
 pub use adapters::{PhpAllowedGlobals, PhpEscaper, PhpPolicy, PhpUploads, PhpValueCallbacks};
 pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
 
+/// Runs the kses scenarios through the native functions (the port side of `compat/kses`), over `release` prepared
+/// next to it with [`prepare_release`].
+pub fn kses_scenario_runner(
+    php: speedyspec_php::Php,
+    release: &std::path::Path,
+) -> Result<speedyspec_compat::PhpRunner, String> {
+    let out = release.with_file_name("wordpress-kses-port");
+    let root = prepare_release(release, &out)?;
+    let code = format!(
+        "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', true); require {:?};",
+        format!("{}/", root.display()),
+        speedyspec_compat::compat_dir()
+            .join("kses/setup.php")
+            .display()
+            .to_string()
+    );
+    Ok(speedyspec_compat::PhpRunner::new(php, move |php| {
+        php.eval("speedyspec://compat/kses-setup", &code)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }))
+}
+
 /// The PHP declarations of [`PORTED_FUNCTIONS`], evaluated at the start of every request.
 pub const FACADE: &str = include_str!("kses.php");
 

@@ -26,8 +26,12 @@ impl KsesApi {
         })
     }
 
-    /// The callback WordPress registers as `$name`: the native function, keyed by the same id PHP uses.
+    /// The callback WordPress registers as `$name`: the bridge's own function of that name where there is one (PHP's
+    /// `wp_filter_kses`, as WordPress registers it), else the native function, keyed by the same id PHP uses.
     fn native(&self, name: &'static str) -> Result<Callback, KsesError> {
+        if let Some(named) = self.d.callbacks.named_filter(name) {
+            return Ok(named);
+        }
         let me = Rc::downgrade(&self.me()?);
         let run = by_name(name);
         Ok(Callback::rust(name, move |args: &[Value]| {

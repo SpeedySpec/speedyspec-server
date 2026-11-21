@@ -16,7 +16,9 @@ use speedyspec_wp_kses::{
     add_global_attributes, allow_note_mention_span, allow_pdf_objects, attr_rule,
     attr_rules_from_value, directive_binds_value_restricted_attribute, restricts_attribute_values,
 };
-use speedyspec_wp_kses_contracts::{AllowedSpec, Context, EntityContext, KsesError, Protocols};
+use speedyspec_wp_kses_contracts::{
+    AllowedSpec, Context, EntityContext, KsesError, Payload, Protocols,
+};
 use speedyspec_wp_kses_lexical as lexical;
 
 use crate::adapters::{PhpAllowedGlobals, PhpUploads};
@@ -279,16 +281,21 @@ fn globals() -> Result<Rc<PhpAllowedGlobals>, NativeError> {
 fn allowed_spec(v: &Value) -> Result<AllowedSpec, NativeError> {
     let v = v.read();
     match &*v {
+        // kses reads the converted array; hooks that receive `$allowed_html` get the caller's own array.
         Value::Array(_) => {
-            let allowed = h(|h| {
+            let source = v.clone().into_owned();
+            let html = h(|h| {
                 ask(
                     &h.allowed_from,
                     AllowedFrom {
-                        allowed: v.clone().into_owned(),
+                        allowed: source.clone(),
                     },
                 )
             })?;
-            Ok(AllowedSpec::Explicit(allowed))
+            Ok(AllowedSpec::Foreign {
+                html,
+                source: Payload(Rc::new(source)),
+            })
         }
         other => Ok(AllowedSpec::Context(Context::from_bytes(&bytes(other)))),
     }

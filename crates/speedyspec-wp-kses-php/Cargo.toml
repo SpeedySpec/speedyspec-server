@@ -8,6 +8,7 @@ license.workspace = true
 
 [dependencies]
 indexmap = "2"
+speedyspec-compat = { path = "../speedyspec-compat" }
 speedyspec-container = { path = "../speedyspec-container" }
 speedyspec-cqrs = { path = "../speedyspec-cqrs" }
 speedyspec-php = { path = "../speedyspec-php" }
@@ -19,13 +20,23 @@ speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
 speedyspec-wp-kses-lexical = { path = "../speedyspec-wp-kses-lexical" }
 
 [dev-dependencies]
-speedyspec-compat = { path = "../speedyspec-compat" }
 speedyspec-container-php = { path = "../speedyspec-container-php" }
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
 speedyspec-wp-kses-testkit = { path = "../speedyspec-wp-kses-testkit" }
+serde_json = "1"
+sha2 = "0.10"
 tempfile = "3"
+ureq = "3"
 
 [[test]]
 name = "php"
+harness = false
+
+[[test]]
+name = "wordpress"
+harness = false
+
+[[test]]
+name = "compat"
 harness = false

@@ -19,6 +19,11 @@ pub fn default_xml_entity_names() -> &'static EntityNames {
     NAMES.get_or_init(|| EntityNames(XML_ENTITY_NAMES.iter().map(|n| (*n).into()).collect()))
 }
 
+/// WordPress's default `$allowedentitynames` as the list it is, in WordPress's order.
+pub fn default_html_entity_name_list() -> &'static [&'static [u8]] {
+    HTML_ENTITY_NAMES
+}
+
 /// `valid_unicode()`: a code point XML allows.
 pub fn valid_unicode(i: u64) -> bool {
     matches!(i, 0x9 | 0xA | 0xD | 0x20..=0xD7FF | 0xE000..=0xFFFD | 0x10000..=0x10FFFF)

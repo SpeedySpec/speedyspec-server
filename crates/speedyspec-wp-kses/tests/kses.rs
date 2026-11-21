@@ -193,3 +193,39 @@ fn comment_that_never_settles_is_dropped() {
         .expect("kses did not finish");
     assert_eq!(out, vec![b"".to_vec(), b"ab".to_vec(), b"".to_vec()]);
 }
+
+/// An explicit allowlist that came from another language reaches `pre_kses` as the caller's own value (a PHP array
+/// with its value callbacks), not as one rebuilt from [`AllowedHtml`].
+#[test]
+fn pre_kses_sees_the_callers_own_allowlist() {
+    use speedyspec_wp_hooks::{Callback, HookName, HookValue, Key};
+    use speedyspec_wp_kses_contracts::Payload;
+    let (hooks, api) = common::setup();
+    let source = HookValue::Array(vec![(
+        Key::Str("b".into()),
+        HookValue::Str("callable-stays".into()),
+    )]);
+    let seen = std::rc::Rc::new(std::cell::RefCell::new(None));
+    let keep = seen.clone();
+    hooks
+        .add_filter(
+            &HookName::from("pre_kses"),
+            Callback::rust("seen", move |a: &[HookValue]| {
+                *keep.borrow_mut() = a.get(1).cloned();
+                Ok(a[0].clone())
+            }),
+            &HookValue::Int(10),
+            3,
+        )
+        .unwrap();
+    let html = api.allowed_from(&source).unwrap();
+    let spec = AllowedSpec::Foreign {
+        html,
+        source: Payload(std::rc::Rc::new(source.clone())),
+    };
+    assert_eq!(
+        api.kses(b"<b>x</b><i>y</i>", &spec, None).unwrap(),
+        b"<b>x</b>y"
+    );
+    assert_eq!(*seen.borrow(), Some(source));
+}
