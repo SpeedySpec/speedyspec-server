@@ -1,0 +1,11 @@
+[package]
+name = "speedyspec-firewall"
+version = "0.1.0"
+description = "The firewall's domain: request facts, IP sets, pattern rules, settings, verdicts and the ports it needs."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+ipnet = "2"
+regex = "1"

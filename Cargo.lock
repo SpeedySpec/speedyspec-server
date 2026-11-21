@@ -4596,6 +4596,67 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-firewall"
+version = "0.1.0"
+dependencies = [
+ "ipnet",
+ "regex",
+]
+
+[[package]]
+name = "speedyspec-firewall-app"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-firewall",
+]
+
+[[package]]
+name = "speedyspec-firewall-infra-cache"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-file",
+ "speedyspec-cache-kv",
+ "speedyspec-cache-memory",
+ "speedyspec-data",
+ "speedyspec-data-file",
+ "speedyspec-data-memory",
+ "speedyspec-data-valkey",
+ "speedyspec-firewall",
+ "tempfile",
+]
+
+[[package]]
+name = "speedyspec-firewall-infra-options"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-firewall",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-object-cache",
+ "speedyspec-wp-options",
+ "speedyspec-wp-options-memory",
+]
+
+[[package]]
+name = "speedyspec-firewall-presentation"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-memory",
+ "speedyspec-firewall",
+ "speedyspec-firewall-app",
+ "speedyspec-firewall-infra-cache",
+ "speedyspec-firewall-infra-options",
+ "speedyspec-native-stage",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-object-cache",
+ "speedyspec-wp-options",
+ "speedyspec-wp-options-memory",
+]
+
+[[package]]
 name = "speedyspec-hooks"
 version = "0.1.0"
 dependencies = [
@@ -4609,6 +4670,10 @@ version = "0.1.0"
 dependencies = [
  "speedyspec-hooks",
 ]
+
+[[package]]
+name = "speedyspec-native-stage"
+version = "0.1.0"
 
 [[package]]
 name = "speedyspec-php"
