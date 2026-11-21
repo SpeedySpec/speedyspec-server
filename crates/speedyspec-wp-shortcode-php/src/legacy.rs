@@ -1,9 +1,9 @@
-//! Adapters onto WordPress's own PHP: `_doing_it_wrong()` and `__()`, the kses functions and `wp_html_split()`
-//! (until their Rust ports land), and PHP's string conversion.
+//! Adapters onto WordPress's own PHP: `_doing_it_wrong()` and `__()` and the kses functions (until their Rust ports
+//! land), and PHP's string conversion.
 
 use speedyspec_hooks::Value;
 use speedyspec_wp_shortcode_contracts::{
-    DiagnosticMessage, Diagnostics, HtmlSplitter, KsesAttributes, PhpKey, PhpStrings, PhpValue, ShortcodeError, php_bytes,
+    DiagnosticMessage, Diagnostics, KsesAttributes, PhpKey, PhpStrings, PhpValue, ShortcodeError, php_bytes,
     php_str_bytes,
 };
 
@@ -69,17 +69,6 @@ impl Diagnostics for PhpDiagnostics {
             PhpKey::Str(s) => Value::Str(s.clone()),
         };
         speedyspec_php::call_catching(&read, &[key]).map(|_| ()).map_err(thrown)
-    }
-}
-
-/// `wp_html_split()` in WordPress's PHP.
-pub struct PhpHtmlSplitter;
-
-impl HtmlSplitter for PhpHtmlSplitter {
-    fn split<'a>(&self, content: &'a [u8]) -> Vec<&'a [u8]> {
-        call("wp_html_split", &[php_bytes(content.to_vec())])
-            .and_then(|parts| reslice(content, &parts))
-            .unwrap_or_else(|| vec![content])
     }
 }
 

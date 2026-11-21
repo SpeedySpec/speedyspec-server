@@ -15,6 +15,7 @@ speedyspec-compat = { path = "../speedyspec-compat" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-shortcode = { path = "../speedyspec-wp-shortcode" }
 speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contracts" }
+speedyspec-wp-html-split = { path = "../speedyspec-wp-html-split" }
 
 [dev-dependencies]
 serde_json = "1"

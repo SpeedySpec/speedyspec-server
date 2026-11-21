@@ -92,27 +92,25 @@ by the search for the rare `[`.
 
 ## The whole `do_shortcode()` (`benches/do_shortcode.rs`), with PHP for context
 
-Both Rust configurations produce identical output; the bench asserts it before timing. PHP is WordPress's own
+Both Rust configurations produce identical output; the bench asserts it before timing. Both split HTML with the
+real `wp_html_split` port (`speedyspec-wp-html-split`), the one `ShortcodeArea` binds. PHP is WordPress's own
 `shortcodes.php` on PHP 8.5.12 with the PCRE JIT on and opcache off, the median of 50 runs, with the same handlers.
 
 | File | Rust, hand + hand | Rust, fancy-regex + regex | PHP (WordPress) | Rust vs PHP |
 |---|---|---|---|---|
-| 01-no-bracket | 131 ns | 122 ns | 0.1 µs | about the same |
-| 02-brackets-no-tags | 2.12 µs | 2.25 µs | 5.7 µs | 2.7× |
-| 03-typical-post | 6.83 µs | 61.3 µs | 14.8 µs | 2.2× |
-| 04-long-post | 1.55 ms | 21.1 ms | 4.17 ms | 2.7× |
-| 05-one-megabyte | 0.643 ms | 14.2 ms | 4.22 ms | 6.6× |
-| 06-pathological | 5.82 ms | 2.56 s | 306 ms | 53× |
-| 07-in-attributes | 59.4 µs | 643 µs | 264 µs | 4.4× |
-| 08-page-builder | 2.30 ms | 6.54 ms | 2.43 ms | 1.06× |
+| 01-no-bracket | 117 ns | 120 ns | 0.1 µs | about the same |
+| 02-brackets-no-tags | 1.71 µs | 3.13 µs | 5.7 µs | 3.3× |
+| 03-typical-post | 7.87 µs | 77.6 µs | 14.8 µs | 1.9× |
+| 04-long-post | 1.48 ms | 20.7 ms | 4.17 ms | 2.8× |
+| 05-one-megabyte | 0.597 ms | 11.3 ms | 4.22 ms | 7.1× |
+| 06-pathological | 5.98 ms | 2.09 s | 306 ms | 51× |
+| 07-in-attributes | 54.4 µs | 540 µs | 264 µs | 4.9× |
+| 08-page-builder | 2.45 ms | 9.31 ms | 2.43 ms | about the same |
 
-Two caveats on the PHP column:
-- **Different `wp_html_split`.** The Rust benches split HTML with a `memchr` stand-in, because the real
-  `wp_html_split` is another crate's (`speedyspec-wp-html-split`). PHP runs WordPress's `preg_split`. kses parsing
-  is stubbed out on both sides.
-- **Context only.** PHP pays its own interpreter costs, so this column is not a like-for-like engine comparison.
+kses parsing is stubbed out on both sides. The PHP column is context only: PHP pays its own interpreter costs, so it
+is not a like-for-like engine comparison.
 
-**Where the time goes next.** File 08 is nearly level with PHP. The scan itself is 8.2 µs of its 2.3 ms; the rest is
+**Where the time goes next.** File 08 is level with PHP. The scan itself is 8.2 µs of its 2.45 ms; the rest is
 per-match work across about 400 nested `do_shortcode()` calls:
 - Each call copies the tag names and builds the token set.
 - Each match builds `$m` and the attributes as PHP values for the filters, even when `NoFilters` ignores them.
