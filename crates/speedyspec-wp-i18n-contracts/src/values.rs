@@ -19,7 +19,8 @@ pub struct FileIdentity {
 /// One entry of a translation file, as byte ranges into [`RawTranslations::bytes`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RawEntry {
-    /// The whole original: `context\x04singular`, then `\0plural` for a plural entry.
+    /// The lookup key: `context\x04singular`. The MO reader drops the plural part (after `\0`), as
+    /// `WP_Translation_File_MO` does; `.l10n.php` keys are used as written.
     pub key: Range<u32>,
     /// Every translation, joined by `\0`.
     pub value: Range<u32>,
