@@ -163,8 +163,12 @@ impl CompiledTable {
                     .params
                     .iter()
                     .zip(captures.iter().skip(1))
+                    // Decoded as Laravel hands parameters out; matching ran on the raw path, so an encoded `/`
+                    // stays inside its segment.
                     .filter_map(|(name, value)| {
-                        value.as_ref().map(|value| (name.clone(), value.clone()))
+                        value
+                            .as_ref()
+                            .map(|value| (name.clone(), crate::wordpress::php_rawurldecode(value)))
                     })
                     .collect();
                 return redirect_or_route(dynamic.id, Params(params));

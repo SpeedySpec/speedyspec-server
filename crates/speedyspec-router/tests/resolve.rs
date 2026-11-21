@@ -132,3 +132,16 @@ fn fallback_when_nothing_matches() {
         Some(RouteId::FALLBACK)
     );
 }
+
+/// Parameters arrive `rawurldecode`d, as Laravel hands them out: `%XX` decoded, `+` kept.
+#[test]
+fn route_parameters_are_raw_url_decoded() {
+    let mut router: Router<&str> = Router::new();
+    router.get("/a/{x}", "show");
+    match resolve(&router, Method::Get, "/a/caf%C3%A9%20x+y%2F") {
+        Resolution::Route(RouteMatch::Route { params, .. }) => {
+            assert_eq!(params.get("x"), Some("café x+y/"));
+        }
+        other => panic!("unexpected {other:?}"),
+    }
+}
