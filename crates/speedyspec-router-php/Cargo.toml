@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-router-php"
-version = "0.1.0"
+version = "0.1.1"
 description = "The route table store as a container port PHP may supply, and its PHP adapter."
 edition.workspace = true
 rust-version.workspace = true
