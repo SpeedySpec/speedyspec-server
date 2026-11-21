@@ -1,0 +1,9 @@
+[package]
+name = "speedyspec-http"
+version = "0.1.0"
+description = "Contracts for HTTP messages, factories, handlers and middleware, shaped after PSR-7, PSR-17, PSR-15 and PSR-18."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]

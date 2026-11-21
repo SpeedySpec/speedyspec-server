@@ -1,0 +1,4175 @@
+{
+  "area": "rewrite",
+  "scenarios": [
+    {
+      "name": "structure_plain",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/no-such-page/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/tag/red/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/type/aside/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/author/admin/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/archives/42"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/search/term/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/robots.txt"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/favicon.ico"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/sitemap.xml"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-atom.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/caf%C3%A9/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/café/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/comments/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/attachment/img/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/trackback/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/embed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/comment-page-2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/?x=1"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-register.php"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "structure_postname",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/no-such-page/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/tag/red/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/type/aside/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/author/admin/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/archives/42"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/search/term/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/robots.txt"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/favicon.ico"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/sitemap.xml"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-atom.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/caf%C3%A9/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/café/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/comments/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/attachment/img/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/trackback/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/embed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/comment-page-2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/?x=1"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-register.php"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "structure_day_and_name",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%day%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/no-such-page/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/tag/red/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/type/aside/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/author/admin/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/archives/42"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/search/term/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/robots.txt"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/favicon.ico"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/sitemap.xml"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-atom.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/caf%C3%A9/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/café/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/comments/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/attachment/img/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/trackback/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/embed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/comment-page-2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/?x=1"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-register.php"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "structure_month_and_name",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/no-such-page/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/tag/red/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/type/aside/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/author/admin/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/archives/42"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/search/term/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/robots.txt"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/favicon.ico"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/sitemap.xml"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-atom.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/caf%C3%A9/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/café/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/comments/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/attachment/img/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/trackback/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/embed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/comment-page-2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/?x=1"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-register.php"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "structure_numeric",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/archives/%post_id%",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/no-such-page/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/tag/red/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/type/aside/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/author/admin/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/archives/42"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/search/term/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/robots.txt"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/favicon.ico"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/sitemap.xml"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-atom.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/caf%C3%A9/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/café/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/comments/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/attachment/img/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/trackback/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/embed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/comment-page-2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/?x=1"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-register.php"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "structure_index_permalinks",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/index.php/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/hello-world/",
+            "/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/hello-world/2/",
+            "/hello-world/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/about/",
+            "/about/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/parent/child/",
+            "/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/no-such-page/",
+            "/no-such-page/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/category/news/",
+            "/category/news/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/category/news/page/2/",
+            "/category/news/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/category/parent/child/",
+            "/category/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/tag/red/",
+            "/tag/red/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/type/aside/",
+            "/type/aside/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/author/admin/",
+            "/author/admin/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/2024/",
+            "/2024/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/2024/05/",
+            "/2024/05/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/2024/05/06/",
+            "/2024/05/06/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/2024/05/06/hello-world/",
+            "/2024/05/06/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/2024/05/hello-world/",
+            "/2024/05/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/archives/42",
+            "/archives/42"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/feed/",
+            "/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/feed/atom/",
+            "/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/hello-world/feed/",
+            "/hello-world/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/category/news/feed/atom/",
+            "/category/news/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/search/term/",
+            "/search/term/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/robots.txt",
+            "/robots.txt"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/favicon.ico",
+            "/favicon.ico"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/sitemap.xml",
+            "/sitemap.xml"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/wp-atom.php",
+            "/wp-atom.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/caf%C3%A9/",
+            "/caf%C3%A9/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/café/",
+            "/café/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/page/2/",
+            "/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/comments/feed/",
+            "/comments/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/hello-world/attachment/img/",
+            "/hello-world/attachment/img/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/hello-world/trackback/",
+            "/hello-world/trackback/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/hello-world/embed/",
+            "/hello-world/embed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/about/comment-page-2/",
+            "/about/comment-page-2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/hello-world/?x=1",
+            "/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php/wp-register.php",
+            "/wp-register.php"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "structure_category_and_name",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%category%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/no-such-page/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/tag/red/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/type/aside/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/author/admin/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/archives/42"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/search/term/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/robots.txt"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/favicon.ico"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/sitemap.xml"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-atom.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/caf%C3%A9/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/café/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/comments/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/attachment/img/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/trackback/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/embed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/comment-page-2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/?x=1"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-register.php"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "structure_author_and_name",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%author%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/no-such-page/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/parent/child/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/tag/red/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/type/aside/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/author/admin/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/06/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/archives/42"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/feed/atom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/search/term/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/robots.txt"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/favicon.ico"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/sitemap.xml"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-atom.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/caf%C3%A9/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/café/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/page/2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/comments/feed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/attachment/img/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/trackback/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/embed/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/comment-page-2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/?x=1"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/index.php"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/wp-register.php"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "bases_and_page_on_front",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%postname%/",
+            {
+              "category_base": "topics",
+              "tag_base": "labels",
+              "page_on_front": "7"
+            }
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/topics/news/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/labels/red/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/comment-page-2/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "subdirectory_install",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%postname%/",
+            {},
+            "https://example.test/blog",
+            "https://example.test/blog/wp"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/blog/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/blog/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/blog/robots.txt"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/blog/category/news/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/elsewhere/"
+          ]
+        },
+        {
+          "call": "$wp_rewrite->mod_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->iis7_url_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->iis7_url_rewrite_rules",
+          "args": [
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_permalink",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            1
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_attachment",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            2
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_date",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            4
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_year",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            8
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_month",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            16
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_day",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            32
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_root",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            64
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_comments",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            128
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_search",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            256
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_categories",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            512
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_tags",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            1024
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_authors",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            2048
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_pages",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            4096
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_all_archives",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            3644
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_all",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%year%/%monthnum%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "json",
+            8191
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/json/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/category/news/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/json/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/2024/05/hello-world/attachment/img/json/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endpoint_query_vars",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "quiet",
+            4096,
+            false
+          ]
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "named",
+            4096,
+            "nv"
+          ]
+        },
+        {
+          "call": "add_rewrite_endpoint",
+          "args": [
+            "nulled",
+            4096,
+            null
+          ]
+        },
+        {
+          "call": "global:read",
+          "args": [
+            "wp"
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/named/1/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "extra_rules",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_rule",
+          "args": [
+            "top/([^/]+)/?$",
+            "index.php?top=$matches[1]",
+            "top"
+          ]
+        },
+        {
+          "call": "add_rewrite_rule",
+          "args": [
+            "bottom/?$",
+            "index.php?bottom=1"
+          ]
+        },
+        {
+          "call": "add_rewrite_rule",
+          "args": [
+            "arr/([^/]+)/?$",
+            {
+              "a": "$matches[1]",
+              "b": "1"
+            }
+          ]
+        },
+        {
+          "call": "add_rewrite_rule",
+          "args": [
+            "legacy/(.+?)$",
+            "legacy.php?path=$1"
+          ]
+        },
+        {
+          "call": "add_rewrite_rule",
+          "args": [
+            "top/([^/]+)/?$",
+            "index.php?top=$matches[1]&again=1",
+            "top"
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/top/x/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/bottom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/arr/v/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/legacy/a/b"
+          ]
+        },
+        {
+          "call": "$wp_rewrite->mod_rewrite_rules",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "tags_and_permastructs",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_rewrite_tag",
+          "args": [
+            "%book%",
+            "([^/]+)"
+          ]
+        },
+        {
+          "call": "add_rewrite_tag",
+          "args": [
+            "%genre%",
+            "(.+?)",
+            "genre_name="
+          ]
+        },
+        {
+          "call": "add_rewrite_tag",
+          "args": [
+            "bad",
+            "x"
+          ]
+        },
+        {
+          "call": "add_permastruct",
+          "args": [
+            "book",
+            "book/%book%",
+            {
+              "ep_mask": 1,
+              "paged": false
+            }
+          ]
+        },
+        {
+          "call": "add_permastruct",
+          "args": [
+            "genre",
+            "genre/%genre%",
+            false
+          ]
+        },
+        {
+          "call": "add_permastruct",
+          "args": [
+            "shelf",
+            "shelf/%genre%",
+            true,
+            4
+          ]
+        },
+        {
+          "call": "add_permastruct",
+          "args": [
+            "walk",
+            "walk/%book%",
+            {
+              "walk_dirs": false,
+              "feed": false,
+              "forcomments": true,
+              "endpoints": false,
+              "junk": 1
+            }
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/book/dune/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/genre/sci/fi/"
+          ]
+        },
+        {
+          "call": "remove_permastruct",
+          "args": [
+            "genre"
+          ]
+        },
+        {
+          "call": "remove_rewrite_tag",
+          "args": [
+            "%genre%"
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "$wp_rewrite->get_extra_permastruct",
+          "args": [
+            "book"
+          ]
+        },
+        {
+          "call": "$wp_rewrite->get_extra_permastruct",
+          "args": [
+            "genre"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add_feed",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_feed",
+          "args": [
+            "custom",
+            {
+              "callback": "return_arg",
+              "label": "feed:custom"
+            }
+          ]
+        },
+        {
+          "call": "add_feed",
+          "args": [
+            "rss2",
+            {
+              "callback": "return_arg",
+              "label": "feed:rss2"
+            }
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/feed/custom/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/custom/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "filters_and_actions",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "date_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:date_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "root_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:root_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "comments_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:comments_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "search_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:search_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "author_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:author_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "page_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:page_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "category_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:category_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_tag_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_tag_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_format_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_format_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "tag_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:tag_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "generate_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:generate_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "rewrite_rules_array",
+            {
+              "callback": "return_arg",
+              "label": "rec:rewrite_rules_array"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "flush_rewrite_rules_hard",
+            {
+              "callback": "return_arg",
+              "label": "rec:flush_rewrite_rules_hard"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "mod_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:mod_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "iis7_url_rewrite_rules",
+            {
+              "callback": "return_arg",
+              "label": "rec:iis7_url_rewrite_rules"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "permalink_structure_changed",
+            {
+              "callback": "return_arg",
+              "label": "rec:permalink_structure_changed"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": [
+            false
+          ]
+        },
+        {
+          "call": "$wp_rewrite->mod_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->iis7_url_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->set_permalink_structure",
+          "args": [
+            "/%year%/%postname%/"
+          ]
+        },
+        {
+          "call": "$wp_rewrite->set_permalink_structure",
+          "args": [
+            "/%year%/%postname%/"
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "getters_and_setters",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/blog/%post_id%/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_date_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_year_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_month_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_day_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_category_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_tag_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_author_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_search_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_page_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_feed_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_comment_feed_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->using_permalinks",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->using_index_permalinks",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->using_mod_rewrite_permalinks",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->preg_index",
+          "args": [
+            3
+          ]
+        },
+        {
+          "call": "$wp_rewrite->set_category_base",
+          "args": [
+            "topics"
+          ]
+        },
+        {
+          "call": "$wp_rewrite->set_tag_base",
+          "args": [
+            "labels"
+          ]
+        },
+        {
+          "call": "$wp_rewrite->page_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->generate_rewrite_rule",
+          "args": [
+            "/x/%postname%",
+            true
+          ]
+        },
+        {
+          "call": "$wp_rewrite->generate_rewrite_rules",
+          "args": [
+            "/y/%author%",
+            2048,
+            false,
+            true,
+            true,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "plain_permalinks_api",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_author_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->get_author_permastruct",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->wp_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->mod_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/hello-world/"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/?p=1"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "property_writes_and_verbose_rules",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "set:$wp_rewrite->author_base",
+          "args": [
+            "writer"
+          ]
+        },
+        {
+          "call": "set:$wp_rewrite->use_verbose_rules",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "flush_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "$wp_rewrite->mod_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/writer/admin/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rules_generated_on_first_read",
+      "steps": [
+        {
+          "call": "speedyspec_compat_configure",
+          "args": [
+            "/%postname%/",
+            {}
+          ]
+        },
+        {
+          "call": "speedyspec_compat_taxonomies",
+          "args": []
+        },
+        {
+          "call": "$wp_rewrite->wp_rewrite_rules",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "rewrite_rules"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_request",
+          "args": [
+            "/about/"
+          ]
+        }
+      ]
+    }
+  ]
+}

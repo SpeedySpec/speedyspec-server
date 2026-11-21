@@ -1,0 +1,2109 @@
+[
+    {
+        "name": "postname_structure",
+        "struct": "/%postname%/",
+        "rule": false,
+        "ep_mask": 1,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {},
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "[^/]+/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([^/]+)/embed/?$",
+                "index.php?name=$matches[1]&embed=true"
+            ],
+            [
+                "([^/]+)/trackback/?$",
+                "index.php?name=$matches[1]&tb=1"
+            ],
+            [
+                "([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?name=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "([^/]+)(?:/([0-9]+))?/?$",
+                "index.php?name=$matches[1]&page=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[^/]+/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ]
+        ]
+    },
+    {
+        "name": "date_structure",
+        "struct": "/%year%/%monthnum%/%day%/",
+        "rule": false,
+        "ep_mask": 4,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {},
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&paged=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&paged=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/embed/?$",
+                "index.php?year=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/?$",
+                "index.php?year=$matches[1]"
+            ]
+        ]
+    },
+    {
+        "name": "category_with_endpoints",
+        "struct": "/category/%category%",
+        "rule": false,
+        "ep_mask": 512,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {},
+        "endpoints": [
+            [
+                8191,
+                "json",
+                "json"
+            ],
+            [
+                2,
+                "print",
+                "print"
+            ]
+        ],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "category/%category%/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?%category%$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "category/%category%/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?%category%$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "category/%category%/embed/?$",
+                "index.php?%category%$matches[1]&embed=true"
+            ],
+            [
+                "category/%category%/page/?([0-9]{1,})/?$",
+                "index.php?%category%$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "category/%category%/json(/(.*))?/?$",
+                "index.php?%category%$matches[1]&json=$matches[3]"
+            ],
+            [
+                "category/%category%/?$",
+                "index.php?%category%$matches[1]"
+            ]
+        ]
+    },
+    {
+        "name": "forcomments",
+        "struct": "/comments/",
+        "rule": false,
+        "ep_mask": 128,
+        "paged": false,
+        "feed": true,
+        "forcomments": true,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {},
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "comments/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]&withcomments=1"
+            ],
+            [
+                "comments/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]&withcomments=1"
+            ],
+            [
+                "comments/embed/?$",
+                "index.php?&embed=true"
+            ]
+        ]
+    },
+    {
+        "name": "walk_dirs_false",
+        "struct": "/%year%/%monthnum%/%postname%/",
+        "rule": false,
+        "ep_mask": 1,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": false,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {},
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "[0-9]{4}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([^/]+)/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&name=$matches[3]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([^/]+)/trackback/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&name=$matches[3]&tb=1"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&name=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&name=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&name=$matches[3]&paged=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&name=$matches[3]&cpage=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([^/]+)(?:/([0-9]+))?/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&name=$matches[3]&page=$matches[4]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[^/]+/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[^/]+/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[^/]+/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ]
+        ]
+    },
+    {
+        "name": "index_permalinks",
+        "struct": "/index.php/%postname%/",
+        "rule": false,
+        "ep_mask": 1,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {},
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "index.php/[^/]+/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "index.php/[^/]+/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "index.php/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "index.php/[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "index.php/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "index.php/[^/]+/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "index.php/([^/]+)/embed/?$",
+                "index.php?name=$matches[1]&embed=true"
+            ],
+            [
+                "index.php/([^/]+)/trackback/?$",
+                "index.php?name=$matches[1]&tb=1"
+            ],
+            [
+                "index.php/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "index.php/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "index.php/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "index.php/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?name=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "index.php/([^/]+)(?:/([0-9]+))?/?$",
+                "index.php?name=$matches[1]&page=$matches[2]"
+            ],
+            [
+                "index.php/[^/]+/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "index.php/[^/]+/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "index.php/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "index.php/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "index.php/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "index.php/[^/]+/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ]
+        ]
+    },
+    {
+        "name": "no_trailing_slash",
+        "struct": "/%postname%",
+        "rule": false,
+        "ep_mask": 1,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {},
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "[^/]+/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([^/]+)/embed/?$",
+                "index.php?name=$matches[1]&embed=true"
+            ],
+            [
+                "([^/]+)/trackback/?$",
+                "index.php?name=$matches[1]&tb=1"
+            ],
+            [
+                "([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?name=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "([^/]+)(?:/([0-9]+))?/?$",
+                "index.php?name=$matches[1]&page=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[^/]+/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ]
+        ]
+    },
+    {
+        "name": "root_with_page_on_front",
+        "struct": "/",
+        "rule": false,
+        "ep_mask": 64,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "7",
+        "post_types": {},
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "page/?([0-9]{1,})/?$",
+                "index.php?&paged=$matches[1]"
+            ],
+            [
+                "comment-page-([0-9]{1,})/?$",
+                "index.php?&page_id=7&cpage=$matches[1]"
+            ]
+        ]
+    },
+    {
+        "name": "pagename",
+        "struct": "%pagename%",
+        "rule": false,
+        "ep_mask": 4096,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {},
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "[^/]+?/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[^/]+?/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[^/]+?/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+?/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+?/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[^/]+?/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([^/]+?)/embed/?$",
+                "index.php?pagename=$matches[1]&embed=true"
+            ],
+            [
+                "([^/]+?)/trackback/?$",
+                "index.php?pagename=$matches[1]&tb=1"
+            ],
+            [
+                "([^/]+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?pagename=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([^/]+?)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?pagename=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([^/]+?)/page/?([0-9]{1,})/?$",
+                "index.php?pagename=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([^/]+?)/comment-page-([0-9]{1,})/?$",
+                "index.php?pagename=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "([^/]+?)(?:/([0-9]+))?/?$",
+                "index.php?pagename=$matches[1]&page=$matches[2]"
+            ]
+        ]
+    },
+    {
+        "name": "attachment_endpoint_on_post",
+        "struct": "/%year%/%monthnum%/%day%/%postname%/",
+        "rule": false,
+        "ep_mask": 1,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {},
+        "endpoints": [
+            [
+                3,
+                "amp",
+                "amp"
+            ]
+        ],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/([^/]+)/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&name=$matches[4]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/([^/]+)/trackback/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&name=$matches[4]&tb=1"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&name=$matches[4]&feed=$matches[5]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&name=$matches[4]&feed=$matches[5]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&name=$matches[4]&paged=$matches[5]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&name=$matches[4]&cpage=$matches[5]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/([^/]+)/amp(/(.*))?/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&name=$matches[4]&amp=$matches[6]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/([^/]+)/amp(/(.*))?/?$",
+                "index.php?attachment=$matches[1]&amp=$matches[3]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/attachment/([^/]+)/amp(/(.*))?/?$",
+                "index.php?attachment=$matches[1]&amp=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/([^/]+)(?:/([0-9]+))?/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&name=$matches[4]&page=$matches[5]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}/[^/]+/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&paged=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/comment-page-([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&cpage=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/amp(/(.*))?/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&amp=$matches[5]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&paged=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/comment-page-([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&cpage=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/amp(/(.*))?/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&amp=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/embed/?$",
+                "index.php?year=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/comment-page-([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/amp(/(.*))?/?$",
+                "index.php?year=$matches[1]&amp=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/?$",
+                "index.php?year=$matches[1]"
+            ]
+        ]
+    },
+    {
+        "name": "custom_post_type",
+        "struct": "/book/%book%",
+        "rule": false,
+        "ep_mask": 0,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {
+            "book": false
+        },
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ],
+            [
+                "%book%",
+                "([^/]+)",
+                "book="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "book/[^/]+/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "book/[^/]+/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "book/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "book/[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "book/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "book/[^/]+/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "book/([^/]+)/embed/?$",
+                "index.php?book=$matches[1]&embed=true"
+            ],
+            [
+                "book/([^/]+)/trackback/?$",
+                "index.php?book=$matches[1]&tb=1"
+            ],
+            [
+                "book/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?book=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "book/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?book=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "book/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?book=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "book/([^/]+)(?:/([0-9]+))?/?$",
+                "index.php?book=$matches[1]&page=$matches[2]"
+            ],
+            [
+                "book/[^/]+/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "book/[^/]+/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "book/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "book/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "book/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "book/[^/]+/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ]
+        ]
+    },
+    {
+        "name": "hierarchical_custom_post_type",
+        "struct": "/guide/%guide%",
+        "rule": false,
+        "ep_mask": 0,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {
+            "guide": true
+        },
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ],
+            [
+                "%guide%",
+                "(.+?)",
+                "guide="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "guide/.+?/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "guide/.+?/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "guide/.+?/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "guide/.+?/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "guide/.+?/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "guide/.+?/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "guide/(.+?)/embed/?$",
+                "index.php?guide=$matches[1]&embed=true"
+            ],
+            [
+                "guide/(.+?)/trackback/?$",
+                "index.php?guide=$matches[1]&tb=1"
+            ],
+            [
+                "guide/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?guide=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "guide/(.+?)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?guide=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "guide/(.+?)/page/?([0-9]{1,})/?$",
+                "index.php?guide=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "guide/(.+?)(?:/([0-9]+))?/?$",
+                "index.php?guide=$matches[1]&page=$matches[2]"
+            ]
+        ]
+    },
+    {
+        "name": "generate_rewrite_rule",
+        "struct": "/author/%author%",
+        "rule": true,
+        "ep_mask": 0,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {},
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]"
+            ]
+        ]
+    },
+    {
+        "name": "no_tags",
+        "struct": "/plain/path",
+        "rule": false,
+        "ep_mask": 0,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "matches",
+        "page_on_front": "",
+        "post_types": {},
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "plain/path/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "plain/path/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "plain/path/embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "plain/path/page/?([0-9]{1,})/?$",
+                "index.php?&paged=$matches[1]"
+            ],
+            [
+                "plain/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "plain/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "plain/embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "plain/page/?([0-9]{1,})/?$",
+                "index.php?&paged=$matches[1]"
+            ]
+        ]
+    },
+    {
+        "name": "plain_matches",
+        "struct": "/%postname%/",
+        "rule": false,
+        "ep_mask": 1,
+        "paged": true,
+        "feed": true,
+        "forcomments": false,
+        "walk_dirs": true,
+        "matches": "",
+        "page_on_front": "",
+        "post_types": {},
+        "endpoints": [],
+        "tags": [
+            [
+                "%year%",
+                "([0-9]{4})",
+                "year="
+            ],
+            [
+                "%monthnum%",
+                "([0-9]{1,2})",
+                "monthnum="
+            ],
+            [
+                "%day%",
+                "([0-9]{1,2})",
+                "day="
+            ],
+            [
+                "%hour%",
+                "([0-9]{1,2})",
+                "hour="
+            ],
+            [
+                "%minute%",
+                "([0-9]{1,2})",
+                "minute="
+            ],
+            [
+                "%second%",
+                "([0-9]{1,2})",
+                "second="
+            ],
+            [
+                "%postname%",
+                "([^/]+)",
+                "name="
+            ],
+            [
+                "%post_id%",
+                "([0-9]+)",
+                "p="
+            ],
+            [
+                "%author%",
+                "([^/]+)",
+                "author_name="
+            ],
+            [
+                "%pagename%",
+                "([^/]+?)",
+                "pagename="
+            ],
+            [
+                "%search%",
+                "(.+)",
+                "s="
+            ]
+        ],
+        "feeds": [
+            "feed",
+            "rdf",
+            "rss",
+            "rss2",
+            "atom"
+        ],
+        "rules": [
+            [
+                "[^/]+/attachment/([^/]+)/?$",
+                "index.php?attachment=$1"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$1&tb=1"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$1&feed=$2"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$1&feed=$2"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$1&cpage=$2"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$1&embed=true"
+            ],
+            [
+                "([^/]+)/embed/?$",
+                "index.php?name=$1&embed=true"
+            ],
+            [
+                "([^/]+)/trackback/?$",
+                "index.php?name=$1&tb=1"
+            ],
+            [
+                "([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$1&feed=$2"
+            ],
+            [
+                "([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$1&feed=$2"
+            ],
+            [
+                "([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?name=$1&paged=$2"
+            ],
+            [
+                "([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?name=$1&cpage=$2"
+            ],
+            [
+                "([^/]+)(?:/([0-9]+))?/?$",
+                "index.php?name=$1&page=$2"
+            ],
+            [
+                "[^/]+/([^/]+)/?$",
+                "index.php?attachment=$1"
+            ],
+            [
+                "[^/]+/([^/]+)/trackback/?$",
+                "index.php?attachment=$1&tb=1"
+            ],
+            [
+                "[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$1&feed=$2"
+            ],
+            [
+                "[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$1&feed=$2"
+            ],
+            [
+                "[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$1&cpage=$2"
+            ],
+            [
+                "[^/]+/([^/]+)/embed/?$",
+                "index.php?attachment=$1&embed=true"
+            ]
+        ]
+    }
+]

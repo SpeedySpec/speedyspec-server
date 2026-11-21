@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 /**
- * Stands in for WordPress's test factory (tests/phpunit/includes/factory): networks, for the option tests, and users,
- * for the locale tests.
+ * Stands in for WordPress's test factory (tests/phpunit/includes/factory): networks, for the option tests; users, for
+ * the locale tests; and posts, for the routing tests.
  *
  * WordPress's network factory calls `populate_network()` (wp-admin's schema, with users and roles), which is not
  * loaded here; the option tests only need a network id that is not the current one. Sites and users are not made:
@@ -18,10 +18,14 @@ final class WP_UnitTest_Factory
     /** @var WP_UnitTest_Factory_For_User */
     public $user;
 
+    /** @var WP_UnitTest_Factory_For_Post */
+    public $post;
+
     public function __construct()
     {
         $this->network = new WP_UnitTest_Factory_For_Network();
         $this->user = new WP_UnitTest_Factory_For_User();
+        $this->post = new WP_UnitTest_Factory_For_Post();
     }
 }
 
@@ -78,5 +82,28 @@ final class WP_UnitTest_Factory_For_Network
             );
         }
         return $id;
+    }
+}
+
+/**
+ * Hands out post ids without storing posts: posts are not ported, and a test class whose `wpSetUpBeforeClass()`
+ *  makes posts it never reads (the rewrite endpoint tests, whose tests that visit posts are excluded) still runs.
+ */
+final class WP_UnitTest_Factory_For_Post
+{
+    private static int $next = 1;
+
+    /**
+     * Gives the next post id.
+     *
+     * @param array $args
+     *   Ignored: nothing is stored.
+     *
+     * @return int
+     *   A new post id.
+     */
+    public function create($args = array())
+    {
+        return self::$next++;
     }
 }
