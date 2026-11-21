@@ -6,8 +6,7 @@
 
 mod charset;
 mod decode;
-// HTML401_TABLE is for htmlentities2, which arrives in a later task.
-#[allow(dead_code)]
+mod entities2;
 mod html401;
 mod htmlspecialchars;
 mod js;
@@ -17,6 +16,7 @@ mod tag;
 
 pub use charset::{Charset, SingleByte, canonical_charset};
 pub use decode::{QuoteStyle, wp_specialchars_decode};
+pub use entities2::htmlentities2;
 pub use htmlspecialchars::{EntFlags, htmlspecialchars};
 pub use js::esc_js_after_specialchars;
 pub use legacy::seems_utf8_core;
