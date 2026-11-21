@@ -25,7 +25,7 @@ enum Chunk {
     Combined {
         start: usize,
         end: usize,
-        regex: regex::Regex,
+        regex: regex::bytes::Regex,
         alternatives: Vec<Alternative>,
     },
     Single {
@@ -76,7 +76,10 @@ impl ChunkedAlternation {
             });
             group += groups + 1;
         }
-        match regex::RegexBuilder::new(&source).build() {
+        match regex::bytes::RegexBuilder::new(&source)
+            .unicode(false)
+            .build()
+        {
             Ok(regex) => out.push(Chunk::Combined {
                 start,
                 end,
@@ -108,7 +111,7 @@ impl DispatchStrategy for ChunkedAlternation {
 }
 
 impl CompiledDispatch for CompiledChunks {
-    fn find(&self, subject: &str, from: usize) -> Option<(usize, Vec<Option<String>>)> {
+    fn find(&self, subject: &[u8], from: usize) -> Option<(usize, Vec<Option<String>>)> {
         for chunk in &self.chunks {
             let (start, end) = chunk.range();
             if end <= from {
@@ -143,9 +146,12 @@ impl CompiledDispatch for CompiledChunks {
                     };
                     let alternative = &alternatives[k];
                     let mut out = Vec::with_capacity(alternative.groups + 1);
-                    out.push(caps.get(0).map(|m| m.as_str().to_string()));
+                    let text = |m: regex::bytes::Match<'_>| {
+                        String::from_utf8_lossy(m.as_bytes()).into_owned()
+                    };
+                    out.push(caps.get(0).map(text));
                     for g in alternative.first_group..alternative.first_group + alternative.groups {
-                        out.push(caps.get(g).map(|m| m.as_str().to_string()));
+                        out.push(caps.get(g).map(text));
                     }
                     return Some((start + k, out));
                 }

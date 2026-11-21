@@ -27,7 +27,7 @@ impl Singles {
 
     fn find_between(
         &self,
-        subject: &str,
+        subject: &[u8],
         from: usize,
         end: usize,
     ) -> Option<(usize, Vec<Option<String>>)> {

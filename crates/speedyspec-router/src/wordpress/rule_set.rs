@@ -2,7 +2,7 @@ use speedyspec_routing::{
     CompiledDispatch, DispatchStrategy, GuardAnswer, RouteMatch, Rule, RuleGuard, RuleMatch,
 };
 
-use super::{QueryTemplate, php_parse_str, php_urldecode};
+use super::{QueryTemplate, php_parse_str, php_urldecode_bytes};
 use crate::WpSubject;
 
 /// A WordPress rule set, matched exactly as `WP::parse_request` matches it (Template Method over the steps below).
@@ -58,9 +58,12 @@ impl RuleSetMatcher {
         from: usize,
         end: usize,
     ) -> Option<(usize, Vec<Option<String>>)> {
-        let raw = self.dispatch.find(subject, from).filter(|(i, _)| *i < end);
-        let decoded_subject = php_urldecode(subject);
-        let decoded = if decoded_subject == subject {
+        let raw = self
+            .dispatch
+            .find(subject.as_bytes(), from)
+            .filter(|(i, _)| *i < end);
+        let decoded_subject = php_urldecode_bytes(subject);
+        let decoded = if decoded_subject == subject.as_bytes() {
             None
         } else {
             self.dispatch

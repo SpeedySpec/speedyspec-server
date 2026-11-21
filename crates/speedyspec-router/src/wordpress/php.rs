@@ -14,8 +14,13 @@ pub fn php_urlencode(value: &str) -> String {
 }
 
 /// PHP's `urldecode`: `+` as space, `%XX` decoded, a malformed escape kept as written. Invalid UTF-8 that results
-/// is replaced, since the router works on text.
+/// is replaced; [`php_urldecode_bytes`] keeps the bytes, as rule matching needs.
 pub fn php_urldecode(value: &str) -> String {
+    String::from_utf8_lossy(&php_urldecode_bytes(value)).into_owned()
+}
+
+/// PHP's `urldecode`, as bytes.
+pub fn php_urldecode_bytes(value: &str) -> Vec<u8> {
     let bytes = value.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
@@ -34,7 +39,7 @@ pub fn php_urldecode(value: &str) -> String {
         }
         i += 1;
     }
-    String::from_utf8_lossy(&out).into_owned()
+    out
 }
 
 /// PHP's `addslashes`: a backslash before `'`, `"` and `\`, and NUL as `\0`.

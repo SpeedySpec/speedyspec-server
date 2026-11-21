@@ -293,3 +293,31 @@ fn routes_win_over_after_rules_and_before_rules_win_over_routes() {
         Some("before=1")
     );
 }
+
+/// WordPress runs `preg_match( "#^$match#", ... )` without `/u`: shorthand classes are ASCII and `.` is one byte.
+#[test]
+fn rules_match_with_pcre_byte_semantics() {
+    for s in strategies() {
+        let words = rules(&[("product/(\\w+)/?$", "index.php?product=$matches[1]")]);
+        let r = resolve_with(s.as_ref(), words, "product/caf%C3%A9", "", &Guard::accept());
+        assert_eq!(
+            r,
+            Resolution::NotFound { allowed: vec![] },
+            "\\w must not match é"
+        );
+        let bytes = rules(&[("x/(.{2})$", "index.php?two=$matches[1]")]);
+        let r = resolve_with(s.as_ref(), bytes, "x/%C3%A9", "", &Guard::accept());
+        assert_eq!(
+            matched(&r).map(|m| m.1),
+            Some("two=%C3%A9"),
+            ". counts bytes"
+        );
+        let insensitive = rules(&[("(?i)CAFÉ$", "index.php?c=1")]);
+        let r = resolve_with(s.as_ref(), insensitive, "caf%C3%A9", "", &Guard::accept());
+        assert_eq!(
+            r,
+            Resolution::NotFound { allowed: vec![] },
+            "(?i) folds ASCII only"
+        );
+    }
+}

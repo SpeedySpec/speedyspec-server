@@ -1,5 +1,4 @@
 use proptest::prelude::*;
-use regex::Regex;
 use speedyspec_router::dispatch::{ChunkedAlternation, EngineChoice, RegexSetStrategy, engine_for};
 use speedyspec_routing::DispatchStrategy;
 
@@ -18,7 +17,7 @@ fn list(patterns: &[&str]) -> Vec<String> {
 fn first_match_wins_in_order() {
     for strategy in strategies() {
         let compiled = strategy.build(&list(&["^a.*", "^ab"])).unwrap();
-        assert_eq!(compiled.find("ab", 0).map(|(i, _)| i), Some(0));
+        assert_eq!(compiled.find(b"ab", 0).map(|(i, _)| i), Some(0));
     }
 }
 
@@ -28,7 +27,7 @@ fn captures_belong_to_the_winner() {
         let compiled = strategy
             .build(&list(&["^x/([0-9]+)$", "^([a-z]+)/([a-z]+)$", "^(.*)$"]))
             .unwrap();
-        let (index, caps) = compiled.find("ab/cd", 0).unwrap();
+        let (index, caps) = compiled.find(b"ab/cd", 0).unwrap();
         assert_eq!(index, 1);
         assert_eq!(
             caps,
@@ -42,7 +41,7 @@ fn unmatched_optional_group_is_none() {
     for strategy in strategies() {
         let compiled = strategy.build(&list(&["^a(?:/([0-9]+))?$"])).unwrap();
         assert_eq!(
-            compiled.find("a", 0).unwrap().1,
+            compiled.find(b"a", 0).unwrap().1,
             vec![Some("a".into()), None]
         );
     }
@@ -52,9 +51,9 @@ fn unmatched_optional_group_is_none() {
 fn find_from_skips_earlier() {
     for strategy in strategies() {
         let compiled = strategy.build(&list(&["^a", "^a", "^b", "^a"])).unwrap();
-        assert_eq!(compiled.find("a", 1).map(|(i, _)| i), Some(1));
-        assert_eq!(compiled.find("a", 2).map(|(i, _)| i), Some(3));
-        assert_eq!(compiled.find("a", 4), None);
+        assert_eq!(compiled.find(b"a", 1).map(|(i, _)| i), Some(1));
+        assert_eq!(compiled.find(b"a", 2).map(|(i, _)| i), Some(3));
+        assert_eq!(compiled.find(b"a", 4), None);
     }
 }
 
@@ -65,8 +64,8 @@ fn fancy_rule_keeps_order() {
         let compiled = strategy
             .build(&list(&["^nope", "^(?=foo)foo/bar", "^foo/.*"]))
             .unwrap();
-        assert_eq!(compiled.find("foo/bar", 0).map(|(i, _)| i), Some(1));
-        assert_eq!(compiled.find("foo/baz", 0).map(|(i, _)| i), Some(2));
+        assert_eq!(compiled.find(b"foo/bar", 0).map(|(i, _)| i), Some(1));
+        assert_eq!(compiled.find(b"foo/baz", 0).map(|(i, _)| i), Some(2));
     }
 }
 
@@ -82,7 +81,7 @@ fn uncompilable_rule_marks_needs_php() {
             .unwrap();
         assert_eq!(compiled.first_needs_php(0), Some(1));
         assert_eq!(compiled.first_needs_php(2), None);
-        assert_eq!(compiled.find("b", 0).map(|(i, _)| i), Some(2));
+        assert_eq!(compiled.find(b"b", 0).map(|(i, _)| i), Some(2));
     }
 }
 
@@ -96,7 +95,7 @@ fn oversized_chunk_is_split() {
         Box::new(RegexSetStrategy { chunk_size: 2000 }),
     ] {
         let compiled = strategy.build(&patterns).unwrap();
-        let (index, caps) = compiled.find("prefix-1999/hello", 0).unwrap();
+        let (index, caps) = compiled.find(b"prefix-1999/hello", 0).unwrap();
         assert_eq!(index, 1999);
         assert_eq!(caps[1].as_deref(), Some("hello"));
     }
@@ -104,15 +103,13 @@ fn oversized_chunk_is_split() {
 
 fn one_per_pattern(patterns: &[String], subject: &str) -> Option<(usize, Vec<Option<String>>)> {
     patterns.iter().enumerate().find_map(|(i, p)| {
-        let re = Regex::new(p).unwrap();
-        re.captures(subject).map(|c| {
-            (
-                i,
-                c.iter()
-                    .map(|m| m.map(|m| m.as_str().to_string()))
-                    .collect(),
-            )
-        })
+        let re = regex::bytes::RegexBuilder::new(p)
+            .unicode(false)
+            .build()
+            .unwrap();
+        let text = |m: regex::bytes::Match<'_>| String::from_utf8_lossy(m.as_bytes()).into_owned();
+        re.captures(subject.as_bytes())
+            .map(|c| (i, c.iter().map(|m| m.map(text)).collect()))
     })
 }
 
@@ -137,7 +134,7 @@ proptest! {
         let expected = one_per_pattern(&patterns, &subject);
         for strategy in strategies() {
             let compiled = strategy.build(&patterns).unwrap();
-            prop_assert_eq!(compiled.find(&subject, 0), expected.clone());
+            prop_assert_eq!(compiled.find(subject.as_bytes(), 0), expected.clone());
         }
     }
 }

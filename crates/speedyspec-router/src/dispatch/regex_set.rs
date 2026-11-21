@@ -18,7 +18,7 @@ enum Chunk {
     Set {
         start: usize,
         end: usize,
-        set: regex::RegexSet,
+        set: regex::bytes::RegexSet,
     },
     Single {
         index: usize,
@@ -36,7 +36,10 @@ impl RegexSetStrategy {
             out.push(Chunk::Single { index: start });
             return;
         }
-        match regex::RegexSet::new(&patterns[start..end]) {
+        match regex::bytes::RegexSetBuilder::new(&patterns[start..end])
+            .unicode(false)
+            .build()
+        {
             Ok(set) => out.push(Chunk::Set { start, end, set }),
             Err(_) => {
                 let middle = start + (end - start) / 2;
@@ -63,7 +66,7 @@ impl DispatchStrategy for RegexSetStrategy {
 }
 
 impl CompiledDispatch for CompiledSets {
-    fn find(&self, subject: &str, from: usize) -> Option<(usize, Vec<Option<String>>)> {
+    fn find(&self, subject: &[u8], from: usize) -> Option<(usize, Vec<Option<String>>)> {
         for chunk in &self.chunks {
             let (start, end) = match chunk {
                 Chunk::Set { start, end, .. } => (*start, *end),

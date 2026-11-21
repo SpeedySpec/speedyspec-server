@@ -156,7 +156,7 @@ impl CompiledTable {
         }
 
         let mut from = 0;
-        while let Some((index, captures)) = self.dispatch.find(&request.path, from) {
+        while let Some((index, captures)) = self.dispatch.find(request.path.as_bytes(), from) {
             let dynamic = &self.dynamics[index];
             if answers(&dynamic.methods, &request.method) {
                 let params = dynamic
