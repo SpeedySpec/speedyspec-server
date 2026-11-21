@@ -4,6 +4,7 @@
 //! ports that too ([`htmlspecialchars`]), with PHP's charset table ([`Charset`]) and HTML 4.01 entity names. The
 //! cores take bytes and return `Cow`, borrowing when nothing needs escaping.
 
+mod api;
 mod charset;
 mod decode;
 mod entities2;
@@ -16,6 +17,7 @@ mod specialchars;
 mod tag;
 mod xml;
 
+pub use api::{EscapeApi, text_error};
 pub use charset::{Charset, SingleByte, canonical_charset};
 pub use decode::{QuoteStyle, wp_specialchars_decode};
 pub use entities2::htmlentities2;
