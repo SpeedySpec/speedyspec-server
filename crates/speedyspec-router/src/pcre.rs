@@ -29,10 +29,11 @@ fn tokens(regex: &str) -> Vec<(usize, Token)> {
                 while i < bytes.len() && bytes[i] != b']' {
                     if bytes[i] == b'\\' {
                         i += 1;
-                    } else if bytes[i] == b'[' && bytes.get(i + 1) == Some(&b':') {
-                        if let Some(end) = regex[i + 2..].find(":]") {
-                            i += end + 3;
-                        }
+                    } else if bytes[i] == b'['
+                        && bytes.get(i + 1) == Some(&b':')
+                        && let Some(end) = regex[i + 2..].find(":]")
+                    {
+                        i += end + 3;
                     }
                     i += 1;
                 }
