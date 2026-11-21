@@ -29,8 +29,11 @@ macro_rules! rewrite_message {
                 let $svc = self;
                 let $src = $m.source.clone();
                 let mut $state = $src.load()?;
+                let before = $state.clone();
                 let result = $body;
-                $src.store(&$state);
+                if $state != before {
+                    $src.store(&$state);
+                }
                 result
             }
         }
@@ -46,8 +49,11 @@ macro_rules! rewrite_message {
                 let $svc = self;
                 let $src = $m.source.clone();
                 let mut $state = $src.load()?;
+                let before = $state.clone();
                 let result = $body;
-                $src.store(&$state);
+                if $state != before {
+                    $src.store(&$state);
+                }
                 result
             }
         }

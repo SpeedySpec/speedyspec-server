@@ -194,10 +194,10 @@ pub fn vars_from_state(s: &RewriteState) -> (Value, Vec<String>) {
         "use_verbose_page_rules",
         Value::Bool(s.use_verbose_page_rules),
     );
-    put(
-        "rules",
-        s.rules.as_ref().map_or(Value::Null, |r| rules_value(r)),
-    );
+    // Rules are written only when a method set them: load() leaves them out.
+    if let Some(rules) = &s.rules {
+        put("rules", rules_value(rules));
+    }
     put("extra_rules", rules_value(&s.extra_rules));
     put("extra_rules_top", rules_value(&s.extra_rules_top));
     put("non_wp_rules", rules_value(&s.non_wp_rules));
@@ -270,6 +270,17 @@ impl RewriteStateSource for PhpRewriteState {
             .map_err(|err| RewriteError(format!("reading WP_Rewrite's properties failed: {err}")))
     }
 
+    fn load_rules(&self) -> Result<Option<Vec<speedyspec_routing::Rule>>, RewriteError> {
+        let value = self
+            .object
+            .call("__speedyspec_rules", vec![])
+            .map_err(|err| RewriteError(format!("reading WP_Rewrite::$rules failed: {err}")))?;
+        Ok(match &value {
+            Value::Array(_) => Some(crate::values::rules(&value)),
+            _ => None,
+        })
+    }
+
     fn store(&self, state: &RewriteState) {
         let (vars, unset) = vars_from_state(state);
         if let Err(err) = self
@@ -304,6 +315,12 @@ impl RewriteStateSource for PhpGlobalRewriteState {
         PhpGlobalRewriteState::current()
             .ok_or_else(|| RewriteError("there is no $wp_rewrite object".into()))?
             .load()
+    }
+
+    fn load_rules(&self) -> Result<Option<Vec<speedyspec_routing::Rule>>, RewriteError> {
+        PhpGlobalRewriteState::current()
+            .ok_or_else(|| RewriteError("there is no $wp_rewrite object".into()))?
+            .load_rules()
     }
 
     fn store(&self, state: &RewriteState) {

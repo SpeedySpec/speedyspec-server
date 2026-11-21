@@ -224,6 +224,31 @@ fn main() {
         $m = speedyspec_rewrite_match_php($rules, 'caf%E9', 'caf%E9');
         return $threw && $m['matched_rule'] === "caf\xE9/?$" && $m['matched_query'] === 'latin=1';"#,
     );
+    yes(
+        &php,
+        "read_only_calls_write_nothing_back",
+        r#"class CountingRewrite extends WP_Rewrite {
+            public $assigns = 0;
+            public function __speedyspec_assign($vars, $unset) { $this->assigns++; parent::__speedyspec_assign($vars, $unset); }
+        }
+        $r = new CountingRewrite();
+        $r->assigns = 0;
+        $r->get_author_permastruct();
+        $r->get_author_permastruct();
+        $r->get_extra_permastruct('category');
+        $r->using_permalinks();
+        $r->using_index_permalinks();
+        $r->using_mod_rewrite_permalinks();
+        $r->preg_index(2);
+        return $r->assigns === 1;"#,
+    );
+    yes(
+        &php,
+        "methods_do_not_read_the_rules",
+        r#"$r = new WP_Rewrite();
+        $r->rules = array("caf\xE9/?$" => 'index.php?x=1');
+        return $r->get_feed_permastruct() === 'feed/%feed%' && $r->rules === array("caf\xE9/?$" => 'index.php?x=1');"#,
+    );
     let flushed = eval(
         &php,
         "do_action('wp_loaded'); flush_rewrite_rules(false); return true;",

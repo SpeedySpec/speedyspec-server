@@ -309,13 +309,26 @@ namespace
         }
 
         /**
-         * Hands the Rust port the object's properties; unset ones are left out.
+         * Hands the Rust port the object's properties; unset ones are left out, and so are the rules, which only
+         * rule generation reads (through __speedyspec_rules()).
          *
          * @internal
          */
         public function __speedyspec_vars()
         {
-            return get_object_vars($this);
+            $vars = get_object_vars($this);
+            unset($vars['rules']);
+            return $vars;
+        }
+
+        /**
+         * Hands the Rust port the rules alone.
+         *
+         * @internal
+         */
+        public function __speedyspec_rules()
+        {
+            return $this->rules;
         }
 
         /**
@@ -333,24 +346,48 @@ namespace
             }
         }
 
+        /**
+         * As WordPress has it: a read this frequent and this simple stays in PHP.
+         */
         public function using_permalinks()
         {
-            return N\call($this, __FUNCTION__, func_get_args());
+            return ! empty($this->permalink_structure);
         }
 
+        /**
+         * As WordPress has it: a read this frequent and this simple stays in PHP.
+         */
         public function using_index_permalinks()
         {
-            return N\call($this, __FUNCTION__, func_get_args());
+            if (empty($this->permalink_structure)) {
+                return false;
+            }
+
+            return preg_match('#^/*' . $this->index . '#', $this->permalink_structure);
         }
 
+        /**
+         * As WordPress has it: a read this frequent and this simple stays in PHP.
+         */
         public function using_mod_rewrite_permalinks()
         {
-            return N\call($this, __FUNCTION__, func_get_args());
+            return $this->using_permalinks() && ! $this->using_index_permalinks();
         }
 
+        /**
+         * As WordPress has it: a read this frequent and this simple stays in PHP.
+         */
         public function preg_index($number)
         {
-            return N\call($this, __FUNCTION__, func_get_args());
+            $match_prefix = '$';
+            $match_suffix = '';
+
+            if (! empty($this->matches)) {
+                $match_prefix = '$' . $this->matches . '[';
+                $match_suffix = ']';
+            }
+
+            return "$match_prefix$number$match_suffix";
         }
 
         /**

@@ -164,8 +164,11 @@ fn call_method(
         (|$state:ident| $body:expr) => {{
             #[allow(unused_mut)]
             let mut $state = source.load().map_err(rewrite_error)?;
+            let before = $state.clone();
             let result = $body;
-            source.store(&$state);
+            if $state != before {
+                source.store(&$state);
+            }
             Ok(result)
         }};
     }
@@ -285,16 +288,6 @@ fn call_method(
                 args: permastruct_args
             })
             .map(rules_or_empty)
-        }
-        "using_permalinks" => direct!(|st| Value::Bool(s.using_permalinks(&st))),
-        "using_index_permalinks" => {
-            direct!(|st| Value::Int(i64::from(s.using_index_permalinks(&st))))
-        }
-        "using_mod_rewrite_permalinks" => {
-            direct!(|st| Value::Bool(s.using_mod_rewrite_permalinks(&st)))
-        }
-        "preg_index" => {
-            direct!(|st| Value::Str(s.preg_index(&st, arg(args, 0).map_or(0, int) as usize)))
         }
         "page_rewrite_rules" => {
             direct!(|st| rules_or_empty(s.page_rewrite_rules(&mut st).map_err(rewrite_error)?))

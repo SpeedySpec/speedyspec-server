@@ -10,6 +10,10 @@ use crate::{RewriteError, RewriteState};
 pub trait RewriteStateSource {
     /// The current state; an error when it cannot be read, in which case the caller must not store over it.
     fn load(&self) -> Result<RewriteState, RewriteError>;
+    /// The rules alone (`load()` may leave them out, since only rule generation reads them back).
+    fn load_rules(&self) -> Result<Option<Vec<Rule>>, RewriteError> {
+        Ok(self.load()?.rules)
+    }
     fn store(&self, state: &RewriteState);
     /// The object hooks receive as `$wp_rewrite` (`generate_rewrite_rules` passes it by reference).
     fn hook_value(&self) -> HookValue;

@@ -214,6 +214,7 @@ impl RewriteService {
             vec![source.hook_value()],
         )?;
         *state = source.load()?;
+        state.rules = source.load_rules()?;
 
         let rules = state.rules.clone().unwrap_or_default();
         let filtered = self
