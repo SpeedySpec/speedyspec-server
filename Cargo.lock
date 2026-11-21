@@ -4675,6 +4675,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-http"
+version = "0.1.0"
+
+[[package]]
 name = "speedyspec-native-stage"
 version = "0.1.0"
 
