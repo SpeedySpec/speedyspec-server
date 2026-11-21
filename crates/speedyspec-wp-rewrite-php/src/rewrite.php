@@ -322,6 +322,19 @@ namespace
         }
 
         /**
+         * Hands the Rust port the permastructs and endpoints as PHP holds them, so a write keeps their types.
+         *
+         * @internal
+         */
+        public function __speedyspec_shapes()
+        {
+            return array(
+                isset($this->extra_permastructs) ? $this->extra_permastructs : array(),
+                isset($this->endpoints) ? $this->endpoints : array(),
+            );
+        }
+
+        /**
          * Hands the Rust port the rules alone.
          *
          * @internal

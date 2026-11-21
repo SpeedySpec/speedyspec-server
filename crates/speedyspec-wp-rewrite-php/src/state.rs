@@ -7,13 +7,36 @@ use speedyspec_wp_rewrite::{RewriteError, RewriteState, RewriteStateSource};
 use crate::values::{int, items, key_text, list, rules, rules_value, strings_value, text, truthy};
 
 /// The state of one `WP_Rewrite` object.
+///
+/// WordPress keeps permastruct arguments and endpoints as the caller gave them (`'yes'` stays `'yes'`, `''` stays
+/// `''`), while the state holds what they mean. [`RewriteStateSource::store`] therefore keeps each PHP value already on
+/// the object, or given to the method being run, whenever it means what the state holds.
 pub struct PhpRewriteState {
     object: PhpObject,
+    given_permastruct: Option<(String, Value)>,
+    given_endpoint: Option<Value>,
 }
 
 impl PhpRewriteState {
     pub fn new(object: PhpObject) -> PhpRewriteState {
-        PhpRewriteState { object }
+        PhpRewriteState {
+            object,
+            given_permastruct: None,
+            given_endpoint: None,
+        }
+    }
+
+    /// The arguments `add_permastruct( $name, … )` was given, after `array_intersect_key()` and `wp_parse_args()`
+    /// (WordPress's array without `struct`).
+    pub fn with_given_permastruct(mut self, name: String, args: Value) -> PhpRewriteState {
+        self.given_permastruct = Some((name, args));
+        self
+    }
+
+    /// The entry `add_endpoint()` appends, as WordPress builds it: `array( $places, $name, $query_var )`.
+    pub fn with_given_endpoint(mut self, entry: Value) -> PhpRewriteState {
+        self.given_endpoint = Some(entry);
+        self
     }
 }
 
@@ -54,6 +77,21 @@ fn permastruct_from(value: &Value) -> Permastruct {
         other => Permastruct {
             struct_: text(other),
             args: PermastructArgs::default(),
+        },
+    }
+}
+
+/// What one entry of `WP_Rewrite::$endpoints` (`array( $places, $name, $query_var )`) means.
+fn endpoint_from(entry: &Value) -> Endpoint {
+    let parts = list(entry);
+    let at = |i: usize| parts.get(i).cloned().unwrap_or(Value::Null);
+    Endpoint {
+        mask: EndpointMask(int(&at(0)) as u32),
+        name: text(&at(1)),
+        query_var: if truthy(&at(2)) {
+            text(&at(2))
+        } else {
+            String::new()
         },
     }
 }
@@ -125,24 +163,7 @@ pub fn state_from_vars(vars: &Value) -> RewriteState {
         })
         .unwrap_or_default();
     s.endpoints = get("endpoints")
-        .map(|v| {
-            list(v)
-                .iter()
-                .map(|e| {
-                    let parts = list(e);
-                    let at = |i: usize| parts.get(i).cloned().unwrap_or(Value::Null);
-                    Endpoint {
-                        mask: EndpointMask(int(&at(0)) as u32),
-                        name: text(&at(1)),
-                        query_var: if truthy(&at(2)) {
-                            text(&at(2))
-                        } else {
-                            String::new()
-                        },
-                    }
-                })
-                .collect()
-        })
+        .map(|v| list(v).iter().map(endpoint_from).collect())
         .unwrap_or_default();
     if let (Some(codes), Some(replaces), Some(queries)) = (
         get("rewritecode"),
@@ -216,19 +237,7 @@ pub fn vars_from_state(s: &RewriteState) -> (Value, Vec<String>) {
             s.endpoints
                 .iter()
                 .enumerate()
-                .map(|(i, e)| {
-                    let query_var = if e.query_var.is_empty() {
-                        Value::Bool(false)
-                    } else {
-                        Value::Str(e.query_var.clone())
-                    };
-                    let entry = vec![
-                        (Key::Int(0), Value::Int(i64::from(e.mask.0))),
-                        (Key::Int(1), Value::Str(e.name.clone())),
-                        (Key::Int(2), query_var),
-                    ];
-                    (Key::Int(i as i64), Value::Array(entry))
-                })
+                .map(|(i, e)| (Key::Int(i as i64), endpoint_value(e)))
                 .collect(),
         ),
     );
@@ -261,6 +270,91 @@ pub fn vars_from_state(s: &RewriteState) -> (Value, Vec<String>) {
     (Value::Array(vars), unset)
 }
 
+/// Replaces the permastructs and endpoints in `vars` (from [`vars_from_state`]) with PHP values that mean the same:
+/// first what the running method was given, then what the object holds (`current`:
+/// `array( $extra_permastructs, $endpoints )`).
+pub fn keep_php_values(
+    vars: &mut Value,
+    state: &RewriteState,
+    current: Option<&Value>,
+    given_permastruct: Option<&(String, Value)>,
+    given_endpoint: Option<&Value>,
+) {
+    let current = current.map(list).unwrap_or_default();
+    let current_permastructs = current.first().map(items).unwrap_or_default();
+    let current_endpoints = current.get(1).map(list).unwrap_or_default();
+    let permastructs = Value::Array(
+        state
+            .extra_permastructs
+            .iter()
+            .map(|(name, permastruct)| {
+                let given =
+                    given_permastruct
+                        .filter(|(given, _)| given == name)
+                        .map(|(_, args)| {
+                            let mut entries = items(args);
+                            entries.push((
+                                Key::Str("struct".into()),
+                                Value::Str(permastruct.struct_.clone()),
+                            ));
+                            Value::Array(entries)
+                        });
+                let held = current_permastructs
+                    .iter()
+                    .find(|(key, _)| key_text(key) == *name)
+                    .map(|(_, value)| value.clone());
+                let value = [given, held]
+                    .into_iter()
+                    .flatten()
+                    .find(|value| permastruct_from(value) == *permastruct)
+                    .unwrap_or_else(|| permastruct_value(permastruct));
+                (Key::Str(name.clone()), value)
+            })
+            .collect(),
+    );
+    let last = state.endpoints.len().checked_sub(1);
+    let endpoints = Value::Array(
+        state
+            .endpoints
+            .iter()
+            .enumerate()
+            .map(|(i, endpoint)| {
+                let given = given_endpoint.filter(|_| Some(i) == last).cloned();
+                let held = current_endpoints.get(i).cloned();
+                let value = [given, held]
+                    .into_iter()
+                    .flatten()
+                    .find(|value| endpoint_from(value) == *endpoint)
+                    .unwrap_or_else(|| endpoint_value(endpoint));
+                (Key::Int(i as i64), value)
+            })
+            .collect(),
+    );
+    if let Value::Array(entries) = vars {
+        for (key, value) in entries.iter_mut() {
+            match key_text(key).as_str() {
+                "extra_permastructs" => *value = permastructs.clone(),
+                "endpoints" => *value = endpoints.clone(),
+                _ => {}
+            }
+        }
+    }
+}
+
+/// The entry the state would write for `endpoint`: `false` for no query var.
+fn endpoint_value(endpoint: &Endpoint) -> Value {
+    let query_var = if endpoint.query_var.is_empty() {
+        Value::Bool(false)
+    } else {
+        Value::Str(endpoint.query_var.clone())
+    };
+    Value::Array(vec![
+        (Key::Int(0), Value::Int(i64::from(endpoint.mask.0))),
+        (Key::Int(1), Value::Str(endpoint.name.clone())),
+        (Key::Int(2), query_var),
+    ])
+}
+
 impl RewriteStateSource for PhpRewriteState {
     /// A property that does not convert is an error, never defaults: storing defaults back would blank the object.
     fn load(&self) -> Result<RewriteState, RewriteError> {
@@ -282,7 +376,15 @@ impl RewriteStateSource for PhpRewriteState {
     }
 
     fn store(&self, state: &RewriteState) {
-        let (vars, unset) = vars_from_state(state);
+        let (mut vars, unset) = vars_from_state(state);
+        let current = self.object.call("__speedyspec_shapes", vec![]).ok();
+        keep_php_values(
+            &mut vars,
+            state,
+            current.as_ref(),
+            self.given_permastruct.as_ref(),
+            self.given_endpoint.as_ref(),
+        );
         if let Err(err) = self
             .object
             .call("__speedyspec_assign", vec![vars, strings_value(&unset)])
