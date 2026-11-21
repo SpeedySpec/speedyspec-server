@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-server-infra-kubernetes"
-version = "0.1.2"
+version = "0.1.1"
 description = "SpeedySpec server leadership through a Kubernetes coordination.k8s.io/v1 Lease."
 edition.workspace = true
 rust-version.workspace = true
