@@ -9,6 +9,14 @@ use crate::{RewriteError, RewriteService, RewriteState, RewriteStateSource};
 /// `add_action( 'wp_loaded', array( $this, 'flush_rules' ) )` does.
 const DEFERRED_FLUSH: &str = "speedyspec_wp_rewrite_flush_rules";
 
+/// A rewrite failure inside a hook callback, keeping its cause for the caller of `do_action`.
+fn hook_error(err: RewriteError) -> speedyspec_wp_hooks::HookError {
+    speedyspec_wp_hooks::HookError {
+        message: err.message,
+        payload: err.cause,
+    }
+}
+
 impl RewriteService {
     /// `WP_Rewrite::wp_rewrite_rules()`: the stored rules, generated and saved when there are none.
     pub fn wp_rewrite_rules(
@@ -57,13 +65,11 @@ impl RewriteService {
         };
         let callback = Callback::rust(DEFERRED_FLUSH, move |_: &[HookValue]| {
             let source = service.deps.state.clone();
-            let mut state = source
-                .load()
-                .map_err(|err| speedyspec_wp_hooks::HookError::message(err.0))?;
+            let mut state = source.load().map_err(hook_error)?;
             // `do_action( 'wp_loaded' )` passes `''`: soft, unless `$do_hard_later` says otherwise.
             service
                 .flush_rules(&mut state, source.as_ref(), false)
-                .map_err(|err| speedyspec_wp_hooks::HookError::message(err.0))?;
+                .map_err(hook_error)?;
             source.store(&state);
             Ok(HookValue::Null)
         });

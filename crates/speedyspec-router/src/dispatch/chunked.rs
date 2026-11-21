@@ -6,11 +6,17 @@ use super::Singles;
 #[derive(Debug, Clone, Copy)]
 pub struct ChunkedAlternation {
     pub chunk_size: usize,
+    /// The engine's compiled-size limit for one chunk; `None` keeps the `regex` crate's default. A chunk over it is
+    /// halved until each part fits.
+    pub size_limit: Option<usize>,
 }
 
 impl Default for ChunkedAlternation {
     fn default() -> ChunkedAlternation {
-        ChunkedAlternation { chunk_size: 10 }
+        ChunkedAlternation {
+            chunk_size: 10,
+            size_limit: None,
+        }
     }
 }
 
@@ -50,6 +56,7 @@ struct CompiledChunks {
 impl ChunkedAlternation {
     /// Combines `start..end`, halving the run when the engine refuses the combination (its size limit).
     fn combine(
+        &self,
         singles: &Singles,
         patterns: &[String],
         start: usize,
@@ -76,10 +83,12 @@ impl ChunkedAlternation {
             });
             group += groups + 1;
         }
-        match regex::bytes::RegexBuilder::new(&source)
-            .unicode(false)
-            .build()
-        {
+        let mut builder = regex::bytes::RegexBuilder::new(&source);
+        builder.unicode(false);
+        if let Some(limit) = self.size_limit {
+            builder.size_limit(limit);
+        }
+        match builder.build() {
             Ok(regex) => out.push(Chunk::Combined {
                 start,
                 end,
@@ -88,8 +97,8 @@ impl ChunkedAlternation {
             }),
             Err(_) => {
                 let middle = start + (end - start) / 2;
-                ChunkedAlternation::combine(singles, patterns, start, middle, out);
-                ChunkedAlternation::combine(singles, patterns, middle, end, out);
+                self.combine(singles, patterns, start, middle, out);
+                self.combine(singles, patterns, middle, end, out);
             }
         }
     }
@@ -101,7 +110,7 @@ impl DispatchStrategy for ChunkedAlternation {
         let mut chunks = Vec::new();
         for (start, end, combinable) in singles.runs(self.chunk_size) {
             if combinable {
-                ChunkedAlternation::combine(&singles, patterns, start, end, &mut chunks);
+                self.combine(&singles, patterns, start, end, &mut chunks);
             } else {
                 chunks.push(Chunk::Single { index: start });
             }

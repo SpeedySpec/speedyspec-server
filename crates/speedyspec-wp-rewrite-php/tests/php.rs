@@ -269,6 +269,31 @@ fn main() {
         return $added && $r->extra_permastructs['typed'] === $permastruct && $r->endpoints[0] === $endpoint
             && $r->extra_permastructs['other']['with_front'] === true;"#,
     );
+    // A huge integer key must not make the port allocate up to it.
+    yes(
+        &php,
+        "matches_map_takes_huge_keys",
+        r#"return WP_MatchesMapRegex::apply('a=$matches[1]&b=$matches[9223372036854775807]', [1 => 'x', PHP_INT_MAX => 'y'])
+            === 'a=x&b=y';"#,
+    );
+    // A PHP callback's exception reaches the caller unchanged, as it does in WordPress.
+    yes(
+        &php,
+        "callback_exception_is_rethrown_unchanged",
+        r#"$thrown = new DomainException('boom');
+        $throw = function () use ($thrown) { throw $thrown; };
+        add_filter('rewrite_rules_array', $throw);
+        $r = new WP_Rewrite();
+        $r->init();
+        try {
+            $r->rewrite_rules();
+            $caught = null;
+        } catch (Throwable $e) {
+            $caught = $e;
+        }
+        remove_filter('rewrite_rules_array', $throw);
+        return $caught === $thrown;"#,
+    );
     let flushed = eval(
         &php,
         "do_action('wp_loaded'); flush_rewrite_rules(false); return true;",

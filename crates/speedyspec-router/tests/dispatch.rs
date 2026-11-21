@@ -4,8 +4,8 @@ use speedyspec_routing::DispatchStrategy;
 
 fn strategies() -> Vec<Box<dyn DispatchStrategy>> {
     vec![
-        Box::new(ChunkedAlternation { chunk_size: 10 }),
-        Box::new(RegexSetStrategy { chunk_size: 10 }),
+        Box::new(ChunkedAlternation::default()),
+        Box::new(RegexSetStrategy::default()),
     ]
 }
 
@@ -85,19 +85,40 @@ fn uncompilable_rule_marks_needs_php() {
     }
 }
 
+/// A chunk the engine refuses (its compiled size over `size_limit`) is halved until each part compiles, and every
+/// pattern still matches as on its own.
 #[test]
 fn oversized_chunk_is_split() {
     let patterns: Vec<String> = (0..2000)
         .map(|i| format!("^prefix-{i}/([a-z0-9-]+)/?$"))
         .collect();
+    let limit = 64 * 1024;
+    // The whole chunk cannot compile under the limit, so a match proves it was split.
+    assert!(
+        regex::bytes::RegexSetBuilder::new(&patterns)
+            .unicode(false)
+            .size_limit(limit)
+            .build()
+            .is_err()
+    );
     for strategy in [
-        Box::new(ChunkedAlternation { chunk_size: 2000 }) as Box<dyn DispatchStrategy>,
-        Box::new(RegexSetStrategy { chunk_size: 2000 }),
+        Box::new(ChunkedAlternation {
+            chunk_size: 2000,
+            size_limit: Some(limit),
+        }) as Box<dyn DispatchStrategy>,
+        Box::new(RegexSetStrategy {
+            chunk_size: 2000,
+            size_limit: Some(limit),
+        }),
     ] {
         let compiled = strategy.build(&patterns).unwrap();
-        let (index, caps) = compiled.find(b"prefix-1999/hello", 0).unwrap();
-        assert_eq!(index, 1999);
-        assert_eq!(caps[1].as_deref(), Some("hello"));
+        for subject in ["prefix-0/a", "prefix-1000/b-2", "prefix-1999/hello"] {
+            assert_eq!(
+                compiled.find(subject.as_bytes(), 0),
+                one_per_pattern(&patterns, subject),
+                "{subject}"
+            );
+        }
     }
 }
 

@@ -15,7 +15,7 @@ struct Unreadable {
 
 impl RewriteStateSource for Unreadable {
     fn load(&self) -> Result<RewriteState, RewriteError> {
-        Err(RewriteError("the properties do not convert".into()))
+        Err(RewriteError::new("the properties do not convert"))
     }
 
     fn store(&self, _state: &RewriteState) {

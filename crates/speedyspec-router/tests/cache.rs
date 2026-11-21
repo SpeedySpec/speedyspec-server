@@ -150,3 +150,44 @@ fn stored_data_of_another_table_is_a_miss() {
         speedyspec_routing::Resolution::Route(_)
     ));
 }
+
+/// App routes and WordPress's rules share one cache: alternating between two tables must not recompile either.
+#[test]
+fn alternating_tables_are_both_kept() {
+    let cache = cache(Rc::new(MemoryRouteTableStore::new()));
+    let first = router(&["/a/{x}"]);
+    let second = router(&["/b/{x}"]);
+    let one = cache
+        .table(first.fingerprint().unwrap(), || first.data())
+        .unwrap();
+    cache
+        .table(second.fingerprint().unwrap(), || second.data())
+        .unwrap();
+    let again = cache
+        .table(first.fingerprint().unwrap(), || first.data())
+        .unwrap();
+    assert!(Rc::ptr_eq(&one, &again));
+}
+
+/// Past its capacity the cache drops the least recently used table.
+#[test]
+fn least_recently_used_table_is_dropped() {
+    let cache = TableCache::with_capacity(
+        Rc::new(MemoryRouteTableStore::new()),
+        Rc::new(ChunkedAlternation::default()),
+        2,
+    );
+    let routers = [
+        router(&["/a/{x}"]),
+        router(&["/b/{x}"]),
+        router(&["/c/{x}"]),
+    ];
+    let get =
+        |r: &Router<&'static str>| cache.table(r.fingerprint().unwrap(), || r.data()).unwrap();
+    let a = get(&routers[0]);
+    let b = get(&routers[1]);
+    get(&routers[0]);
+    get(&routers[2]);
+    assert!(Rc::ptr_eq(&a, &get(&routers[0])));
+    assert!(!Rc::ptr_eq(&b, &get(&routers[1])));
+}

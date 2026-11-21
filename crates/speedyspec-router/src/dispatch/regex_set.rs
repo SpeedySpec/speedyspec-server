@@ -6,11 +6,17 @@ use super::Singles;
 #[derive(Debug, Clone, Copy)]
 pub struct RegexSetStrategy {
     pub chunk_size: usize,
+    /// The engine's compiled-size limit for one chunk; `None` keeps the `regex` crate's default. A chunk over it is
+    /// halved until each part fits.
+    pub size_limit: Option<usize>,
 }
 
 impl Default for RegexSetStrategy {
     fn default() -> RegexSetStrategy {
-        RegexSetStrategy { chunk_size: 10 }
+        RegexSetStrategy {
+            chunk_size: 10,
+            size_limit: None,
+        }
     }
 }
 
@@ -31,20 +37,22 @@ struct CompiledSets {
 }
 
 impl RegexSetStrategy {
-    fn combine(patterns: &[String], start: usize, end: usize, out: &mut Vec<Chunk>) {
+    fn combine(&self, patterns: &[String], start: usize, end: usize, out: &mut Vec<Chunk>) {
         if end - start == 1 {
             out.push(Chunk::Single { index: start });
             return;
         }
-        match regex::bytes::RegexSetBuilder::new(&patterns[start..end])
-            .unicode(false)
-            .build()
-        {
+        let mut builder = regex::bytes::RegexSetBuilder::new(&patterns[start..end]);
+        builder.unicode(false);
+        if let Some(limit) = self.size_limit {
+            builder.size_limit(limit);
+        }
+        match builder.build() {
             Ok(set) => out.push(Chunk::Set { start, end, set }),
             Err(_) => {
                 let middle = start + (end - start) / 2;
-                RegexSetStrategy::combine(patterns, start, middle, out);
-                RegexSetStrategy::combine(patterns, middle, end, out);
+                self.combine(patterns, start, middle, out);
+                self.combine(patterns, middle, end, out);
             }
         }
     }
@@ -56,7 +64,7 @@ impl DispatchStrategy for RegexSetStrategy {
         let mut chunks = Vec::new();
         for (start, end, combinable) in singles.runs(self.chunk_size) {
             if combinable {
-                RegexSetStrategy::combine(patterns, start, end, &mut chunks);
+                self.combine(patterns, start, end, &mut chunks);
             } else {
                 chunks.push(Chunk::Single { index: start });
             }

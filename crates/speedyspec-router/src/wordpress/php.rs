@@ -21,12 +21,22 @@ pub fn php_urldecode(value: &str) -> String {
 
 /// PHP's `urldecode`, as bytes.
 pub fn php_urldecode_bytes(value: &str) -> Vec<u8> {
+    percent_decode(value, true)
+}
+
+/// PHP's `rawurldecode`: `%XX` decoded, `+` kept, a malformed escape kept as written; invalid UTF-8 that results is
+/// replaced.
+pub fn php_rawurldecode(value: &str) -> String {
+    String::from_utf8_lossy(&percent_decode(value, false)).into_owned()
+}
+
+fn percent_decode(value: &str, plus_is_space: bool) -> Vec<u8> {
     let bytes = value.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
     while i < bytes.len() {
         match bytes[i] {
-            b'+' => out.push(b' '),
+            b'+' if plus_is_space => out.push(b' '),
             b'%' if i + 2 < bytes.len()
                 && (bytes[i + 1] as char).is_ascii_hexdigit()
                 && (bytes[i + 2] as char).is_ascii_hexdigit() =>
