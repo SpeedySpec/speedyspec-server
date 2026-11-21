@@ -1,0 +1,10 @@
+# Translator says
+#. Extracted note
+#: src/a.php:10 src/b.php:20
+#: src/c.php:30
+#, fuzzy, php-format
+#| msgid "older"
+msgid "a"
+msgstr "b"
+
+# Only a comment

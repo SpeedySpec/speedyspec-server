@@ -1,0 +1,2 @@
+msgid "tab\there \"q\" back\\slash\a"
+msgstr "\\n literal"

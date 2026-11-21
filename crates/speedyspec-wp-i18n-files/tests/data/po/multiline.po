@@ -1,0 +1,6 @@
+msgid ""
+"line1\n"
+"line2"
+msgstr ""
+"eins\n"
+"zwei"
