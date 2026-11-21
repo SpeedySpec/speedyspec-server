@@ -838,3 +838,102 @@ fn index_skips_a_release_without_sha256sums() {
     assert!(parsed.releases.is_empty());
     assert!(stderr.contains("no SHA256SUMS"), "{stderr}");
 }
+
+/// Runs `release-test-packages.sh` on `cargo metadata` output and returns the crates it names, in order.
+fn test_packages(component: &str, metadata: &Path) -> Vec<String> {
+    let output = run(
+        "release-test-packages.sh",
+        &[component, metadata.to_str().unwrap()],
+        &[],
+    );
+    assert!(output.status.success(), "{output:?}");
+    stdout(&output).lines().map(str::to_string).collect()
+}
+
+fn metadata_package(name: &str, deps: &[(&str, Option<&str>, bool)]) -> serde_json::Value {
+    serde_json::json!({
+        "name": name,
+        "dependencies": deps
+            .iter()
+            .map(|(dep, kind, path)| serde_json::json!({
+                "name": dep,
+                "kind": kind,
+                "path": if *path { serde_json::Value::from(format!("/w/crates/{dep}")) } else { serde_json::Value::Null },
+            }))
+            .collect::<Vec<_>>(),
+    })
+}
+
+#[test]
+fn test_packages_are_the_crates_a_component_is_built_from() {
+    let dir = tempfile::tempdir().unwrap();
+    let metadata = dir.path().join("metadata.json");
+    let packages = vec![
+        metadata_package(
+            "speedyspec-server",
+            &[
+                ("a", None, true),
+                ("serde", None, false),
+                ("c", Some("dev"), true),
+            ],
+        ),
+        metadata_package("a", &[("b", None, true), ("e", Some("build"), true)]),
+        metadata_package("b", &[]),
+        metadata_package("c", &[]),
+        metadata_package("d", &[("a", None, true)]),
+        metadata_package("e", &[]),
+    ];
+    std::fs::write(
+        &metadata,
+        serde_json::json!({ "packages": packages }).to_string(),
+    )
+    .unwrap();
+    assert_eq!(
+        test_packages("speedyspec-server", &metadata),
+        ["a", "b", "e", "speedyspec-server"]
+    );
+}
+
+#[test]
+fn test_packages_reject_a_crate_not_in_the_workspace() {
+    let dir = tempfile::tempdir().unwrap();
+    let metadata = dir.path().join("metadata.json");
+    std::fs::write(
+        &metadata,
+        serde_json::json!({ "packages": [metadata_package("a", &[])] }).to_string(),
+    )
+    .unwrap();
+    let output = run(
+        "release-test-packages.sh",
+        &["speedyspec-server", metadata.to_str().unwrap()],
+        &[],
+    );
+    assert!(!output.status.success(), "{output:?}");
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("speedyspec-server"),
+        "{output:?}"
+    );
+}
+
+#[test]
+fn test_packages_leave_out_crates_neither_component_is_built_from() {
+    let output = Command::new(env!("CARGO"))
+        .args(["metadata", "--format-version", "1", "--no-deps"])
+        .current_dir(repo_root())
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let dir = tempfile::tempdir().unwrap();
+    let metadata = dir.path().join("metadata.json");
+    std::fs::write(&metadata, &output.stdout).unwrap();
+
+    let server = test_packages("speedyspec-server", &metadata);
+    assert!(server.iter().any(|p| p == "speedyspec-server-domain"), "{server:?}");
+    assert!(server.iter().all(|p| p != "speedyspec-php"), "{server:?}");
+    assert!(server.iter().all(|p| p != "speedyspec-data-sqlite"), "{server:?}");
+
+    let runtime = test_packages("speedyspec-php-runtime", &metadata);
+    assert!(runtime.iter().any(|p| p == "speedyspec-php"), "{runtime:?}");
+    assert!(runtime.iter().all(|p| p != "speedyspec-server"), "{runtime:?}");
+    assert!(runtime.iter().all(|p| p != "speedyspec-data-sqlite"), "{runtime:?}");
+}
