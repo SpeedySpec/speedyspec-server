@@ -5553,6 +5553,7 @@ dependencies = [
  "speedyspec-cqrs",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-html-split",
  "speedyspec-wp-shortcode-contracts",
 ]
 
@@ -5580,6 +5581,7 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
+ "speedyspec-wp-html-split",
  "speedyspec-wp-shortcode",
  "speedyspec-wp-shortcode-contracts",
  "ureq",
