@@ -1,0 +1,9 @@
+[package]
+name = "speedyspec-wp-text-diff-contracts"
+version = "0.1.0"
+description = "Contracts for WordPress's text diff: edit operations, table options, and the differ and line filter ports."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
