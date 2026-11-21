@@ -159,15 +159,15 @@ fn setup_for(area: &str, root: &Path) -> Result<Setup, String> {
             "wp-includes/class-wp-object-cache.php",
             "wp-includes/cache.php",
         ],
-        "options" => &[],
+        "options" | "shortcode" => &[],
         other => return Err(format!("the recorder does not know the area {other}")),
     };
-    if area == "options" {
+    if matches!(area, "options" | "shortcode") {
         // `setup.php` loads WordPress's files itself, for either side.
         let code = format!(
             "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', false); require {:?};",
             format!("{}/", root.display()),
-            compat_dir().join("options/setup.php").display().to_string()
+            compat_dir().join(area).join("setup.php").display().to_string()
         );
         return Ok(Box::new(move |php: &Php| {
             php.eval("speedyspec://compat/setup", &code)
