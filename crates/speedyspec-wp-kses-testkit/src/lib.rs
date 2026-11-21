@@ -5,13 +5,15 @@
 //! same `isset`/`empty`/`is_array` rules kses applies.
 
 mod convert;
+mod gate;
 mod oracle;
 mod release;
 
 pub use convert::{allowed_from_php, bytes, from_bytes, rule_value};
+pub use gate::{Verdict, gate};
 pub use oracle::{OracleResult, PhpOracle};
 pub use release::{WORDPRESS, wordpress_release};
 
 mod corpus;
 
-pub use corpus::{css_cases, posts, protocols_value, xss_attacks};
+pub use corpus::{CORPUS_SETS, corpus, css_cases, posts, protocols_value, xss_attacks};

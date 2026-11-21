@@ -153,3 +153,66 @@ pub fn posts() -> Vec<Vec<u8>> {
     posts.extend(blocks.iter().filter_map(|p| std::fs::read(p).ok()));
     posts
 }
+
+fn b64_list(path: &Path) -> Vec<Vec<u8>> {
+    use base64::Engine;
+    let json: Vec<String> = serde_json::from_str(
+        &std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display())),
+    )
+    .expect("a JSON list of base64 strings");
+    json.iter()
+        .filter_map(|b| base64::engine::general_purpose::STANDARD.decode(b).ok())
+        .collect()
+}
+
+/// Inputs whose bytes are not valid UTF-8, or hold NUL and control bytes, in markup and text.
+fn invalid_bytes() -> Vec<Vec<u8>> {
+    [
+        &b"a\xC3(b"[..],
+        b"\x80<p>x</p>",
+        b"<p title=\"\xff\">x</p>",
+        b"<a href=\"\xC0\xAFjavascript:x\">y</a>",
+        b"<\xE2\x80p>x",
+        b"x\x00y<b\x00>z</b\x00>",
+        b"<p>\\0\\00\\\\0</p>",
+        b"<a href=\"java\x00script:x\">y</a>",
+        b"<p\x01 class=x>y</p>",
+        b"<img src=x\x0Bonerror=alert(1)>",
+        b"<p>\xF0\x9F\x92\xA9</p>",
+        b"<p title=\"\xF0\x9F\x92\">x</p>",
+        b"\xEF\xBB\xBF<p>bom</p>",
+        b"<a title=\"\xED\xA0\x80\">surrogate</a>",
+        b"<p>\r\n\r</p>",
+        b"&#0;&#x0;&#xD800;&#xFFFE;",
+    ]
+    .iter()
+    .map(|s| s.to_vec())
+    .collect()
+}
+
+/// A named set of test inputs: `whole-posts`, `block-fixtures`, `xss-attacks`, `html-api-inputs`, `html5lib`,
+/// `invalid-bytes`, and later `attacks` and `bombs`.
+pub fn corpus(name: &str) -> Vec<Vec<u8>> {
+    let dir = corpus_dir();
+    match name {
+        "whole-posts" => b64_list(&dir.join("wordpress/whole-posts.json")),
+        "block-fixtures" => {
+            posts().split_off(b64_list(&dir.join("wordpress/whole-posts.json")).len())
+        }
+        "xss-attacks" => xss_attacks(),
+        "html-api-inputs" => b64_list(&dir.join("wordpress/html-api-inputs.json")),
+        "html5lib" => b64_list(&dir.join("html5lib/tree-construction-data.json")),
+        "invalid-bytes" => invalid_bytes(),
+        other => panic!("no corpus set named {other}"),
+    }
+}
+
+/// Every corpus set's name.
+pub const CORPUS_SETS: &[&str] = &[
+    "whole-posts",
+    "block-fixtures",
+    "xss-attacks",
+    "html-api-inputs",
+    "html5lib",
+    "invalid-bytes",
+];

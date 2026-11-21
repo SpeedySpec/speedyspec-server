@@ -5056,6 +5056,7 @@ dependencies = [
  "indexmap",
  "memchr",
  "serde_json",
+ "sha2 0.10.9",
  "speedyspec-container",
  "speedyspec-cqrs",
  "speedyspec-hooks",

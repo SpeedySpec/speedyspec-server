@@ -20,5 +20,6 @@ speedyspec-wp-kses-lexical = { path = "../speedyspec-wp-kses-lexical" }
 stacker = "0.1"
 
 [dev-dependencies]
+sha2 = "0.10"
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
 speedyspec-wp-kses-testkit = { path = "../speedyspec-wp-kses-testkit" }

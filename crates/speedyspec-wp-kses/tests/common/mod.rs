@@ -142,3 +142,8 @@ pub fn short(input: &[u8]) -> String {
         format!("{cut:?}")
     }
 }
+
+/// The security oracle's exploit finder for the gate; none until the oracle exists.
+pub fn exploit_finder() -> Option<Box<dyn Fn(&[u8]) -> Option<String>>> {
+    None
+}
