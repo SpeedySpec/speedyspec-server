@@ -349,3 +349,35 @@ fn empty_context_still_uses_the_context_filters() {
         Some(s("<arg 1>"))
     );
 }
+
+#[test]
+fn locale_strings_translate_the_default_domain_through_the_filters() {
+    use speedyspec_wp_i18n_contracts::LocaleStrings;
+    let (api, hooks) = api();
+    assert!(
+        api.controller()
+            .borrow_mut()
+            .load_file(&data("simple.mo"), "default", None)
+    );
+    let log = Rc::new(RefCell::new(Vec::new()));
+    hooks
+        .add_filter(
+            &HookName::new(s("gettext")),
+            recorder(log.clone(), "g"),
+            &HookValue::Int(10),
+            3,
+        )
+        .unwrap();
+    assert_eq!(
+        LocaleStrings::translate(&api, "baba").unwrap(),
+        s("dyado+g")
+    );
+    assert_eq!(
+        LocaleStrings::translate_with_context(&api, "ltr", "text direction").unwrap(),
+        s("ltr")
+    );
+    assert_eq!(
+        log.borrow()[0],
+        ("g".into(), vec![s("dyado"), s("baba"), s("default")])
+    );
+}
