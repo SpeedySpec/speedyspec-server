@@ -1,4 +1,10 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::{Attributes, Headers, HttpError, Method, StatusCode};
+
+/// A body shared by every copy of a message, as PSR-7 streams are shared between message instances.
+pub type SharedBody = Rc<RefCell<Box<dyn Body>>>;
 
 /// A message body (PSR-7's `StreamInterface`), read once into memory when asked.
 pub trait Body {
@@ -49,7 +55,7 @@ pub trait Uri {
 pub trait Message: Sized {
     fn protocol_version(&self) -> &str;
     fn headers(&self) -> &Headers;
-    fn body_mut(&mut self) -> &mut dyn Body;
+    fn body(&self) -> SharedBody;
     fn with_protocol_version(self, version: &str) -> Self;
     fn with_header(self, name: &str, values: Vec<String>) -> Result<Self, HttpError>;
     fn with_added_header(self, name: &str, values: Vec<String>) -> Result<Self, HttpError>;
@@ -100,6 +106,7 @@ pub trait UploadedFile {
     fn error(&self) -> i32;
     fn client_filename(&self) -> Option<&str>;
     fn client_media_type(&self) -> Option<&str>;
-    fn stream(&mut self) -> Result<&mut dyn Body, HttpError>;
+    /// The file's contents, unless it was moved or failed to upload.
+    fn stream(&self) -> Result<SharedBody, HttpError>;
     fn move_to(&mut self, target: &std::path::Path) -> Result<(), HttpError>;
 }

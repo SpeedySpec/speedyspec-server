@@ -25,7 +25,7 @@ pub use factory::{
     UriFactory,
 };
 pub use headers::Headers;
-pub use message::{Body, Message, Request, Response, ServerRequest, UploadedFile, Uri};
+pub use message::{Body, Message, Request, Response, ServerRequest, SharedBody, UploadedFile, Uri};
 pub use method::Method;
 pub use server::{Handler, Middleware};
 pub use status::StatusCode;
