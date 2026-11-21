@@ -1,0 +1,2 @@
+# A WordPress test fixture that must keep its Windows line endings.
+tests/php/data/pomo/windows-line-endings.po -text
