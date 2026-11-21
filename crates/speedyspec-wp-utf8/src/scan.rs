@@ -50,7 +50,9 @@ pub fn scan_utf8(bytes: &[u8], at: usize, max_bytes: Option<usize>, max_code_poi
     let mut i = at;
 
     while i < end && count <= max_count {
-        let ascii = bytes[i..end].iter().take_while(|b| **b < 0x80).count();
+        // WordPress 7.1.5 bounds the ASCII run by the code points still wanted (`min( $end - $i, $max_count - $count )`).
+        let window = (end - i).min(max_count - count);
+        let ascii = bytes[i..i + window].iter().take_while(|b| **b < 0x80).count();
         if count + ascii >= max_count {
             out.at = i + (max_count - count);
             out.code_points = max_count;

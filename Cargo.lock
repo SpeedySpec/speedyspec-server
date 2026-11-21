@@ -5421,7 +5421,6 @@ dependencies = [
 name = "speedyspec-wp-utf8"
 version = "0.1.0"
 dependencies = [
- "memchr",
  "simdutf8",
 ]
 

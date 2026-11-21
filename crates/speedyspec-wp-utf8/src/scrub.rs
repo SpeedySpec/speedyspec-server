@@ -27,30 +27,33 @@ pub fn scrub_utf8(bytes: &[u8]) -> Cow<'_, [u8]> {
     }
 }
 
-/// `wp_has_noncharacters` as WordPress runs it on PHP with PCRE: a `/u` match, so invalid UTF-8 is never a match.
+/// `wp_has_noncharacters`, as WordPress 7.1.5 matches it: the noncharacters' UTF-8 byte sequences, anywhere in the
+/// bytes, so malformed UTF-8 elsewhere does not hide them.
+///
+/// The pattern is `\xEF(?:\xB7[\x90-\xAF]|\xBF[\xBE\xBF])` or
+/// `(?:\xF0[\x9F\xAF\xBF]|[\xF1-\xF3][\x8F\x9F\xAF\xBF]|\xF4\x8F)\xBF[\xBE\xBF]`.
 pub fn has_noncharacters(bytes: &[u8]) -> bool {
-    if !is_valid_utf8(bytes) {
-        return false;
-    }
-    // Every noncharacter is encoded with a lead byte of EF or F0..F4; text without them has none.
-    if memchr::memchr3(0xEF, 0xF0, 0xF1, bytes).is_none() && memchr::memchr3(0xF2, 0xF3, 0xF4, bytes).is_none() {
-        return false;
-    }
-    has_noncharacters_reference(bytes)
-}
-
-/// `_wp_has_noncharacters_fallback`: scans past invalid sequences, so noncharacters in invalid text are found.
-pub fn has_noncharacters_reference(bytes: &[u8]) -> bool {
-    let mut at = 0;
-    while at < bytes.len() {
-        let s = scan_utf8(bytes, at, None, None);
-        if s.has_noncharacters {
+    let at = |i: usize| bytes.get(i).copied();
+    let mut from = 0;
+    // Every match starts with EF or F0..F4; nothing else can begin one.
+    while let Some(off) = bytes[from..].iter().position(|b| matches!(b, 0xEF..=0xF4)) {
+        let i = from + off;
+        let b2 = at(i + 1);
+        let tail = |j: usize| at(j) == Some(0xBF) && matches!(at(j + 1), Some(0xBE | 0xBF));
+        let hit = match bytes[i] {
+            0xEF => match b2 {
+                Some(0xB7) => matches!(at(i + 2), Some(0x90..=0xAF)),
+                Some(0xBF) => matches!(at(i + 2), Some(0xBE | 0xBF)),
+                _ => false,
+            },
+            0xF0 => matches!(b2, Some(0x9F | 0xAF | 0xBF)) && tail(i + 2),
+            0xF1..=0xF3 => matches!(b2, Some(0x8F | 0x9F | 0xAF | 0xBF)) && tail(i + 2),
+            _ => b2 == Some(0x8F) && tail(i + 2),
+        };
+        if hit {
             return true;
         }
-        at = s.at + s.invalid_length;
-        if s.invalid_length == 0 {
-            break;
-        }
+        from = i + 1;
     }
     false
 }

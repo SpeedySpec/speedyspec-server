@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use speedyspec_wp_utf8::{check_invalid_utf8, has_noncharacters, has_noncharacters_reference, scrub_utf8};
+use speedyspec_wp_utf8::{check_invalid_utf8, has_noncharacters, scrub_utf8};
 
 const FFFD: &str = "\u{FFFD}";
 
@@ -22,20 +22,23 @@ fn scrub_replaces_each_maximal_subpart() {
 }
 
 #[test]
-fn noncharacters_public_is_false_on_invalid() {
-    assert!(!has_noncharacters(b"\xEF\xB7\x90\xFF"));
-    assert!(has_noncharacters_reference(b"\xEF\xB7\x90\xFF"));
+fn noncharacters_match_bytes_even_in_invalid_text() {
+    // WordPress 7.1.5 matches the UTF-8 byte sequences directly, so malformed bytes elsewhere don't hide them.
+    for b in [&b"\xEF\xB7\x90\xFF"[..], b"\xFF\xEF\xBF\xBE", b"\xE2\xEF\xBF\xBE", b"\xF0\x9F\xBF\xBE", b"\xF4\x8F\xBF\xBF"] {
+        assert!(has_noncharacters(b), "{b:x?}");
+    }
+    for b in [&b"\xF4\x9F\xBF\xBF"[..], b"\xEF\xB7\x8F", b"\xEF\xB7\xB0", b"abc", b""] {
+        assert!(!has_noncharacters(b), "{b:x?}");
+    }
 }
 
 #[test]
 fn noncharacters_found_in_valid_text() {
     for s in ["\u{FDD0}", "a\u{FFFE}", "\u{1FFFF}", "x\u{10FFFE}y"] {
         assert!(has_noncharacters(s.as_bytes()), "{s:?}");
-        assert!(has_noncharacters_reference(s.as_bytes()), "{s:?}");
     }
     for s in ["", "abc", "\u{FDCF}\u{FDF0}\u{FFFD}", "😀"] {
         assert!(!has_noncharacters(s.as_bytes()), "{s:?}");
-        assert!(!has_noncharacters_reference(s.as_bytes()), "{s:?}");
     }
 }
 
