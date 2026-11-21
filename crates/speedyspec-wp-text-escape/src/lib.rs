@@ -10,11 +10,15 @@ mod decode;
 #[allow(dead_code)]
 mod html401;
 mod htmlspecialchars;
+mod js;
+mod legacy;
 mod slash;
 mod tag;
 
 pub use charset::{Charset, SingleByte, canonical_charset};
 pub use decode::{QuoteStyle, wp_specialchars_decode};
 pub use htmlspecialchars::{EntFlags, htmlspecialchars};
+pub use js::esc_js_after_specialchars;
+pub use legacy::seems_utf8_core;
 pub use slash::{addslashes, backslashit, stripslashes, wp_slash_value, wp_unslash_value};
 pub use tag::tag_escape_core;
