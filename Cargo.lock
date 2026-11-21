@@ -5080,6 +5080,7 @@ dependencies = [
 name = "speedyspec-wp-options-sql"
 version = "0.1.0"
 dependencies = [
+ "postgres",
  "speedyspec-cache",
  "speedyspec-cache-file",
  "speedyspec-cache-kv",
@@ -5087,7 +5088,9 @@ dependencies = [
  "speedyspec-data",
  "speedyspec-data-file",
  "speedyspec-data-mysql",
+ "speedyspec-data-postgres",
  "speedyspec-data-query",
+ "speedyspec-data-sqlite",
  "speedyspec-data-valkey",
  "speedyspec-hooks",
  "speedyspec-wp-db",
