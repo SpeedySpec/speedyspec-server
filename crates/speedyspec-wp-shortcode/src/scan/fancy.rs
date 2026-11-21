@@ -12,8 +12,11 @@ use speedyspec_wp_shortcode_contracts::{
 /// as `\xHH` instead of with `preg_quote()`, because `fancy-regex` reads `\<` and `\>` as word boundaries.
 #[derive(Default)]
 pub struct FancyRegexScanner {
-    cache: RefCell<Option<(u64, Vec<TagName>, Rc<Regex>)>>,
+    cache: RefCell<Option<Compiled>>,
 }
+
+/// The regex for one tag set, keyed by the registry generation and the names.
+type Compiled = (u64, Vec<TagName>, Rc<Regex>);
 
 /// Far above PHP's `pcre.backtrack_limit`; the pattern's possessive groups keep real content well under it.
 const BACKTRACK_LIMIT: usize = 10_000_000;

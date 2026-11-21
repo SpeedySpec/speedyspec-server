@@ -4781,6 +4781,7 @@ dependencies = [
  "indexmap",
  "memchr",
  "proptest",
+ "regex",
  "speedyspec-wp-shortcode-contracts",
 ]
 

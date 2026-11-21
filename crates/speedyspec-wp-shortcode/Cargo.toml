@@ -12,6 +12,7 @@ indexmap = "2"
 fancy-regex = "0.20"
 aho-corasick = "1"
 memchr = "2"
+regex = { version = "1", default-features = false, features = ["std", "perf"] }
 
 [dev-dependencies]
 proptest = "1"
