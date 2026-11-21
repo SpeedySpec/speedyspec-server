@@ -57,6 +57,43 @@ fn main() {
         .expect("WordPress's token map loads");
 
     let r = php.eval(
+        "speedyspec://test/native",
+        "global $html5_named_character_references;
+         $m = $html5_named_character_references;
+         $before = SpeedySpec\\WpTokenMap\\Native\\stats();
+         $len = null; $a = $m->read_token('notin;x', 0, $len);
+         $b = $m->contains('notin;');
+         $after_html5 = SpeedySpec\\WpTokenMap\\Native\\stats() - $before;
+         $own = WP_Token_Map::from_array(array('cat' => 'x'));
+         $own->read_token('cat', 0); $own->contains('cat');
+         $edge_len = 'unset'; @$m->read_token('a&', 2, $edge_len);
+         $after_others = SpeedySpec\\WpTokenMap\\Native\\stats() - $before;
+         return json_encode(array((new ReflectionClass('WP_Token_Map'))->getFileName(), $a, $len, $b, $after_html5, $after_others, $edge_len), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);",
+    );
+    check(
+        "html5_table_reads_natively",
+        text(&r) == r#"["speedyspec://wp-token-map","∉",6,true,2,2,"unset"]"#,
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/changed-table",
+        "global $html5_named_character_references;
+         $state = (function () { return array('storage_version' => '6.6.0-trunk', 'key_length' => $this->key_length, 'groups' => $this->groups,
+             'large_words' => $this->large_words, 'small_words' => $this->small_words, 'small_mappings' => $this->small_mappings); })
+             ->call($html5_named_character_references);
+         $same = WP_Token_Map::from_precomputed_table($state);
+         $state['small_mappings'][0] = 'changed';
+         $changed = WP_Token_Map::from_precomputed_table($state);
+         $before = SpeedySpec\\WpTokenMap\\Native\\stats();
+         $changed->read_token('notin;', 0);
+         $mid = SpeedySpec\\WpTokenMap\\Native\\stats() - $before;
+         $same->read_token('notin;', 0);
+         return json_encode(array($mid, SpeedySpec\\WpTokenMap\\Native\\stats() - $before));",
+    );
+    check("other_maps_run_wordpress_code", text(&r) == "[0,1]", &r);
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

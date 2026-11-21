@@ -151,3 +151,18 @@ fn to_array_round_trips() {
         Some(("🐈".as_bytes(), 3))
     );
 }
+
+#[test]
+fn words_list_their_strings() {
+    let map = TokenMap::from_array(
+        &[
+            (b"lt".to_vec(), b"<".to_vec()),
+            (b"abc".to_vec(), b"1".to_vec()),
+        ],
+        2,
+    )
+    .unwrap();
+    let v = map.view();
+    assert_eq!(v.small_mappings.slices(), vec![&b"<"[..]]);
+    assert_eq!(v.large_words.slices(), vec![&b"\x01c\x011"[..]]);
+}

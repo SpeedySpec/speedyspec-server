@@ -3,6 +3,7 @@
 //! [`TokenMapArea`] is the native area for the token map: WordPress's class, with the HTML5 named character
 //! reference table WordPress builds (`$html5_named_character_references`) answered natively.
 
+mod native;
 mod release;
 
 use speedyspec_php::NativeArea;
@@ -13,8 +14,16 @@ pub use release::prepare_release;
 /// The native area of WordPress's token map.
 pub struct TokenMapArea;
 
+const FACADE: &str = include_str!("token-map.php");
+
 impl NativeArea for TokenMapArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
-        Vec::new()
+        native::functions()
+    }
+
+    fn request_start(&self) {
+        if let Err(err) = speedyspec_php::eval("speedyspec://wp-token-map", FACADE) {
+            eprintln!("speedyspec_wordpress: installing the token map failed: {err}");
+        }
     }
 }

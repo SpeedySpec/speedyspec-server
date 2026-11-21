@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 
 /// Files in `wp-includes/` the facade declares.
-const STUBBED: &[&str] = &[];
+const STUBBED: &[&str] = &["class-wp-token-map.php"];
 
 const STUB: &str = "<?php\n// Provided by speedyspec-wp-token-map-php.\n";
 

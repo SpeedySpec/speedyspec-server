@@ -41,6 +41,11 @@ pub enum Words<'a> {
 }
 
 impl<'a> Words<'a> {
+    /// Every string, in order.
+    pub fn slices(&self) -> Vec<&'a [u8]> {
+        (0..self.len()).map(|i| self.get(i)).collect()
+    }
+
     fn get(&self, i: usize) -> &'a [u8] {
         match self {
             Words::Owned(w) => &w[i],
