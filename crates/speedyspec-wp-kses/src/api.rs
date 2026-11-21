@@ -34,6 +34,9 @@ pub struct KsesApi {
     allowed_cache: AllowedCache,
     default_uris: Rc<UriAttributes>,
     protocols: RefCell<Vec<Value>>,
+    /// This API's own `Rc`, for the filter callbacks `kses_init_filters()` registers; empty unless built by
+    /// [`KsesApi::shared`].
+    pub(crate) me: RefCell<std::rc::Weak<KsesApi>>,
 }
 
 pub(crate) fn hook_error(e: HookError) -> KsesError {
@@ -141,7 +144,15 @@ impl KsesApi {
                 URI_ATTRIBUTES.iter().map(|u| u.as_bytes().into()).collect(),
             )),
             protocols: RefCell::new(Vec::new()),
+            me: RefCell::new(std::rc::Weak::new()),
         }
+    }
+
+    /// A shared API, which can register its own functions on filters (`kses_init_filters()`).
+    pub fn shared(deps: KsesDeps) -> Rc<KsesApi> {
+        let api = Rc::new(KsesApi::new(deps));
+        *api.me.borrow_mut() = Rc::downgrade(&api);
+        api
     }
 
     pub fn deps(&self) -> &KsesDeps {

@@ -51,6 +51,56 @@ impl UploadsLocation for Uploads {
     }
 }
 
+pub fn setup_shared(unfiltered: bool) -> (Rc<HookApi>, Rc<KsesApi>) {
+    let hooks = Rc::new(HookApi::new(
+        Rc::new(MemoryHookStore::new()),
+        Rc::new(IgnoreDeprecations),
+    ));
+    let api = KsesApi::shared(KsesDeps {
+        hooks: hooks.clone(),
+        escaper: Rc::new(Escaper),
+        policy: Rc::new(Policy(unfiltered)),
+        globals: Rc::new(DefaultGlobals::default()),
+        uploads: Rc::new(Uploads),
+        callbacks: Rc::new(NoValueCallbacks),
+    });
+    (hooks, api)
+}
+
+/// An oracle value as a hook value.
+pub fn hook_value(v: &serde_json::Value) -> HookValue {
+    use serde_json::Value as Json;
+    use speedyspec_wp_hooks::Key;
+    match v {
+        Json::Null => HookValue::Null,
+        Json::Bool(b) => HookValue::Bool(*b),
+        Json::Number(n) => n
+            .as_i64()
+            .map(HookValue::Int)
+            .unwrap_or(HookValue::Float(n.as_f64().unwrap_or(0.0))),
+        Json::Object(o) if o.contains_key("array") => HookValue::Array(
+            o["array"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|kv| {
+                    let key = match &kv[0] {
+                        Json::Number(n) => Key::Int(n.as_i64().unwrap()),
+                        k => Key::Str(
+                            String::from_utf8(speedyspec_wp_kses_testkit::from_bytes(k)).unwrap(),
+                        ),
+                    };
+                    (key, hook_value(&kv[1]))
+                })
+                .collect(),
+        ),
+        other => match String::from_utf8(speedyspec_wp_kses_testkit::from_bytes(other)) {
+            Ok(s) => HookValue::Str(s),
+            Err(e) => HookValue::Bytes(e.into_bytes()),
+        },
+    }
+}
+
 pub fn setup() -> (Rc<HookApi>, KsesApi) {
     let hooks = Rc::new(HookApi::new(
         Rc::new(MemoryHookStore::new()),
