@@ -3,8 +3,11 @@ use std::rc::Rc;
 use std::sync::Mutex;
 
 use speedyspec_data::EngineConfig;
+use speedyspec_data::EngineFactory;
 use speedyspec_data_mysql::MySqlEngineFactory;
+use speedyspec_data_postgres::PostgresEngineFactory;
 use speedyspec_data_query::EngineRegistry;
+use speedyspec_data_sqlite::SqliteEngineFactory;
 use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts};
 use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
@@ -24,15 +27,53 @@ const SITEMETA: &str = "CREATE TABLE wp_sitemeta (meta_id bigint(20) unsigned NO
     PRIMARY KEY (meta_id), KEY meta_key (meta_key(191)), KEY site_id (site_id)) \
     DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
-fn rig() -> Rc<WpDb> {
-    let url = std::env::var("SPEEDYSPEC_TEST_MYSQL_URL").expect("set SPEEDYSPEC_TEST_MYSQL_URL");
+/// The engines `delete_expired_transients()` must run on.
+enum Engine {
+    MySql,
+    Sqlite,
+    Postgres,
+}
+
+/// The PostgreSQL schema these tests own, dropped and made afresh for each test.
+const PG_SCHEMA: &str = "t_expired_transients";
+
+fn rig(engine: Engine) -> Rc<WpDb> {
+    let (factory, url, options): (Rc<dyn EngineFactory>, String, BTreeMap<String, String>) =
+        match engine {
+            Engine::MySql => (
+                Rc::new(MySqlEngineFactory),
+                std::env::var("SPEEDYSPEC_TEST_MYSQL_URL").expect("set SPEEDYSPEC_TEST_MYSQL_URL"),
+                BTreeMap::new(),
+            ),
+            Engine::Sqlite => (
+                Rc::new(SqliteEngineFactory),
+                "sqlite://:memory:".into(),
+                BTreeMap::from([("database".into(), "speedyspec_test".into())]),
+            ),
+            Engine::Postgres => {
+                let url = std::env::var("SPEEDYSPEC_TEST_POSTGRES_URL")
+                    .expect("set SPEEDYSPEC_TEST_POSTGRES_URL");
+                let mut admin =
+                    postgres::Client::connect(&url, postgres::NoTls).expect("PostgreSQL is up");
+                admin
+                    .batch_execute(&format!(
+                        "DROP SCHEMA IF EXISTS {PG_SCHEMA} CASCADE; CREATE SCHEMA {PG_SCHEMA}"
+                    ))
+                    .unwrap();
+                (
+                    Rc::new(PostgresEngineFactory),
+                    url,
+                    BTreeMap::from([("schema".into(), PG_SCHEMA.into())]),
+                )
+            }
+        };
     let registry = EngineRegistry::new();
-    registry.register_factory(Rc::new(MySqlEngineFactory));
+    registry.register_factory(factory);
     registry
         .configure(EngineConfig {
             name: "default".into(),
             url,
-            options: BTreeMap::new(),
+            options,
         })
         .unwrap();
     let hooks = Rc::new(HookApi::new(
@@ -83,11 +124,9 @@ fn names(db: &WpDb, sql: &str) -> Vec<String> {
         .collect()
 }
 
-#[test]
-#[ignore = "needs MySQL: set SPEEDYSPEC_TEST_MYSQL_URL"]
-fn purges_only_expired_pairs() {
+fn purges_only_expired_pairs(engine: Engine) {
     let _one = TABLES.lock().unwrap_or_else(|e| e.into_inner());
-    let db = rig();
+    let db = rig(engine);
     for (name, value) in ROWS {
         db.query(&format!("INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('{name}', '{value}', 'off')"))
             .unwrap();
@@ -129,11 +168,9 @@ fn purges_only_expired_pairs() {
     );
 }
 
-#[test]
-#[ignore = "needs MySQL: set SPEEDYSPEC_TEST_MYSQL_URL"]
-fn purges_sitemeta() {
+fn purges_sitemeta(engine: Engine) {
     let _one = TABLES.lock().unwrap_or_else(|e| e.into_inner());
-    let db = rig();
+    let db = rig(engine);
     for (key, value) in [
         ("_site_transient_a", "A"),
         ("_site_transient_timeout_a", "999"),
@@ -157,4 +194,38 @@ fn purges_sitemeta() {
             "_site_transient_timeout_b"
         ]
     );
+}
+
+#[test]
+#[ignore = "needs MySQL: set SPEEDYSPEC_TEST_MYSQL_URL"]
+fn purges_only_expired_pairs_on_mysql() {
+    purges_only_expired_pairs(Engine::MySql);
+}
+
+#[test]
+#[ignore = "needs MySQL: set SPEEDYSPEC_TEST_MYSQL_URL"]
+fn purges_sitemeta_on_mysql() {
+    purges_sitemeta(Engine::MySql);
+}
+
+#[test]
+fn purges_only_expired_pairs_on_sqlite() {
+    purges_only_expired_pairs(Engine::Sqlite);
+}
+
+#[test]
+fn purges_sitemeta_on_sqlite() {
+    purges_sitemeta(Engine::Sqlite);
+}
+
+#[test]
+#[ignore = "needs PostgreSQL: set SPEEDYSPEC_TEST_POSTGRES_URL"]
+fn purges_only_expired_pairs_on_postgres() {
+    purges_only_expired_pairs(Engine::Postgres);
+}
+
+#[test]
+#[ignore = "needs PostgreSQL: set SPEEDYSPEC_TEST_POSTGRES_URL"]
+fn purges_sitemeta_on_postgres() {
+    purges_sitemeta(Engine::Postgres);
 }
