@@ -106,7 +106,7 @@ fn invalid_utf8_content_passes_through() {
 #[test]
 fn invalid_utf8_atts_report_deprecation() {
     let h = harness();
-    assert!(h.api.shortcode_parse_atts(b"\xff a=1").is_empty());
+    assert!(h.api.shortcode_parse_atts(b"\xff a=1").unwrap().is_empty());
     assert_eq!(show(&h.diagnostics.0.borrow()[0]), "deprecated_null_subject:preg_match_all");
 }
 

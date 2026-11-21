@@ -90,23 +90,26 @@ fn replace(hay: &[u8], from: &[u8], to: &[u8]) -> Vec<u8> {
 }
 
 impl Diagnostics for RecordingDiagnostics {
-    fn doing_it_wrong(&self, function: &str, message: DiagnosticMessage, version: &str) {
+    fn doing_it_wrong(&self, function: &str, message: DiagnosticMessage, version: &str) -> Result<(), ShortcodeError> {
         let mut line = format!("doing_it_wrong:{function}|").into_bytes();
         line.extend(sprintf(message.template, &message.args));
         line.extend(format!("|{version}").into_bytes());
         self.0.borrow_mut().push(line);
+        Ok(())
     }
 
-    fn deprecated_null_subject(&self, function: &str) {
+    fn deprecated_null_subject(&self, function: &str) -> Result<(), ShortcodeError> {
         self.0.borrow_mut().push(format!("deprecated_null_subject:{function}").into_bytes());
+        Ok(())
     }
 
-    fn undefined_array_key(&self, key: &PhpKey) {
+    fn undefined_array_key(&self, key: &PhpKey) -> Result<(), ShortcodeError> {
         let key = match key {
             PhpKey::Int(i) => i.to_string(),
             PhpKey::Str(s) => format!("{s:?}"),
         };
         self.0.borrow_mut().push(format!("warning:Undefined array key {key}").into_bytes());
+        Ok(())
     }
 }
 

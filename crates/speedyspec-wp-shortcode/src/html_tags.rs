@@ -58,6 +58,14 @@ impl ShortcodeApi {
         ignore_html: bool,
         tags: &TagSet,
     ) -> Result<Vec<u8>, ShortcodeError> {
+        // `get_shortcode_regex( array() )` falls back to every registered name, as `empty( $tagnames )` is true.
+        let registered;
+        let tags = if tags.names().is_empty() {
+            registered = TagSet::new(self.deps().registry.tag_names(), self.deps().registry.generation());
+            &registered
+        } else {
+            tags
+        };
         let content = normalize_entities(content);
         let mut out = Vec::with_capacity(content.len());
         for element in self.deps().html.split(&content) {

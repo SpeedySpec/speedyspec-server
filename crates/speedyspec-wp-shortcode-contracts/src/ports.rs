@@ -122,13 +122,20 @@ pub struct DiagnosticMessage {
 }
 
 /// WordPress's developer notices.
+///
+/// Each may fail: an error handler can turn a notice into an exception, which must leave the shortcode function as
+/// it leaves WordPress's.
 pub trait Diagnostics {
     /// `_doing_it_wrong( $function, $message, $version )`.
-    fn doing_it_wrong(&self, function: &str, message: DiagnosticMessage, version: &str);
+    ///
+    /// # Errors
+    ///
+    /// What a listener or error handler threw; so for every method here.
+    fn doing_it_wrong(&self, function: &str, message: DiagnosticMessage, version: &str) -> Result<(), ShortcodeError>;
     /// PHP's E_DEPRECATED for passing `null` as `$subject` to `function`.
-    fn deprecated_null_subject(&self, function: &str);
+    fn deprecated_null_subject(&self, function: &str) -> Result<(), ShortcodeError>;
     /// PHP's E_WARNING for reading a missing array key, where WordPress reads one without `??`.
-    fn undefined_array_key(&self, key: &PhpKey);
+    fn undefined_array_key(&self, key: &PhpKey) -> Result<(), ShortcodeError>;
 }
 
 /// `wp_html_split()`.

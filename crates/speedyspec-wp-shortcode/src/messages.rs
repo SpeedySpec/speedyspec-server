@@ -68,11 +68,11 @@ message!(query DoShortcodeTag { m: PhpValue } -> R<PhpValue>, |a, m| a.do_shortc
 message!(query DoShortcodesInHtmlTags { content: Vec<u8>, ignore_html: bool, tags: TagSet } -> R<Vec<u8>>,
     |a, m| a.do_shortcodes_in_html_tags(&m.content, m.ignore_html, &m.tags));
 message!(query UnescapeInvalidShortcodes { content: Vec<u8> } -> Vec<u8>, |a, m| a.unescape_invalid_shortcodes(&m.content));
-message!(query ShortcodeParseAtts { text: Vec<u8> } -> ParsedAtts, |a, m| a.shortcode_parse_atts(&m.text));
+message!(query ShortcodeParseAtts { text: Vec<u8> } -> R<ParsedAtts>, |a, m| a.shortcode_parse_atts(&m.text));
 message!(query ShortcodeAtts { pairs: PhpValue, atts: PhpValue, shortcode: Vec<u8> } -> R<PhpValue>,
     |a, m| a.shortcode_atts(&m.pairs, &m.atts, &m.shortcode));
 message!(query StripShortcodes { content: Vec<u8> } -> R<Vec<u8>>, |a, m| a.strip_shortcodes(&m.content));
-message!(query StripShortcodeTag { m: PhpValue } -> PhpValue, |a, m| a.strip_shortcode_tag(&m.m));
+message!(query StripShortcodeTag { m: PhpValue } -> R<PhpValue>, |a, m| a.strip_shortcode_tag(&m.m));
 
 macro_rules! bind_all {
     ($container:expr, $api:expr; commands: $($c:ty),*; queries: $($q:ty),*) => {

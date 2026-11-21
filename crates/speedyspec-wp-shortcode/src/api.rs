@@ -60,19 +60,27 @@ impl ShortcodeApi {
     pub fn add_shortcode(&self, tag: &[u8], handler: Rc<dyn ShortcodeHandler>) {
         match TagName::new(tag) {
             Ok(name) => self.d.registry.add(name, handler),
-            Err(InvalidTagName::Empty) => self.d.diagnostics.doing_it_wrong(
+            Err(InvalidTagName::Empty) => self.notice(self.d.diagnostics.doing_it_wrong(
                 "add_shortcode",
                 DiagnosticMessage { template: "Invalid shortcode name: Empty name given.", args: vec![] },
                 "4.4.0",
-            ),
-            Err(InvalidTagName::Reserved) => self.d.diagnostics.doing_it_wrong(
+            )),
+            Err(InvalidTagName::Reserved) => self.notice(self.d.diagnostics.doing_it_wrong(
                 "add_shortcode",
                 DiagnosticMessage {
                     template: "Invalid shortcode name: %1$s. Do not use spaces or reserved characters: %2$s",
                     args: vec![tag.to_vec(), b"& / < > [ ] =".to_vec()],
                 },
                 "4.4.0",
-            ),
+            )),
+        }
+    }
+
+    /// Reports a notice whose listener threw, from a function with no error channel (`add_shortcode()` returns
+    /// nothing): the exception is lost here, as it has nowhere to go.
+    fn notice(&self, result: Result<(), ShortcodeError>) {
+        if let Err(err) = result {
+            eprintln!("speedyspec_wordpress: a notice's listener failed: {err}");
         }
     }
 
@@ -197,7 +205,7 @@ impl ShortcodeApi {
             let groups = m.groups_in(haystack).to_value();
             let result = match callback {
                 Callback::Do => self.do_shortcode_tag(&groups)?,
-                Callback::Strip => self.strip_shortcode_tag(&groups),
+                Callback::Strip => self.strip_shortcode_tag(&groups)?,
             };
             out.extend(self.d.strings.to_php_string(&result)?);
             last = m.end;
@@ -225,7 +233,7 @@ impl ShortcodeApi {
     fn read_group(&self, m: &PhpValue, i: i64) -> Result<Option<Vec<u8>>, ShortcodeError> {
         let present = matches!(m, PhpValue::Array(entries) if entries.iter().any(|(k, _)| *k == PhpKey::Int(i)));
         if !present {
-            self.d.diagnostics.undefined_array_key(&PhpKey::Int(i));
+            self.d.diagnostics.undefined_array_key(&PhpKey::Int(i))?;
         }
         self.group(m, i)
     }
@@ -245,14 +253,14 @@ impl ShortcodeApi {
             return Ok(php_bytes(trim_one(&self.read_group(m, 0)?.unwrap_or_default())));
         }
         let tag = self.read_group(m, 2)?.unwrap_or_default();
-        let atts = self.shortcode_parse_atts(&self.read_group(m, 3)?.unwrap_or_default());
+        let atts = self.shortcode_parse_atts(&self.read_group(m, 3)?.unwrap_or_default())?;
         let handler = self.d.registry.handler(&tag);
         if handler.is_none() {
             // `$shortcode_tags[ $tag ]` on a tag that is gone: PHP's key conversion applies to the notice too.
             self.d.diagnostics.undefined_array_key(&match AttKey::from_php(tag.clone()) {
                 AttKey::Int(i) => PhpKey::Int(i),
                 AttKey::Str(s) => PhpKey::Str(String::from_utf8_lossy(&s).into_owned()),
-            });
+            })?;
         }
         let Some(handler) = handler.filter(|h| h.is_callable()) else {
             self.d.diagnostics.doing_it_wrong(
@@ -262,7 +270,7 @@ impl ShortcodeApi {
                     args: vec![tag],
                 },
                 "4.3.0",
-            );
+            )?;
             return Ok(match m {
                 PhpValue::Array(entries) => {
                     entries.iter().find(|(k, _)| *k == PhpKey::Int(0)).map(|(_, v)| v.clone()).unwrap_or(PhpValue::Null)
@@ -285,12 +293,17 @@ impl ShortcodeApi {
     }
 
     /// `strip_shortcode_tag( $m )`.
-    pub fn strip_shortcode_tag(&self, m: &PhpValue) -> PhpValue {
-        let g = |i| self.read_group(m, i).ok().flatten().unwrap_or_default();
-        if self.escaped(m).unwrap_or(false) {
-            return php_bytes(trim_one(&g(0)));
+    ///
+    /// # Errors
+    ///
+    /// What an error handler threw for a missing group.
+    pub fn strip_shortcode_tag(&self, m: &PhpValue) -> Result<PhpValue, ShortcodeError> {
+        if self.escaped(m)? {
+            return Ok(php_bytes(trim_one(&self.read_group(m, 0)?.unwrap_or_default())));
         }
-        php_bytes([g(1), g(6)].concat())
+        let g1 = self.read_group(m, 1)?.unwrap_or_default();
+        let g6 = self.read_group(m, 6)?.unwrap_or_default();
+        Ok(php_bytes([g1, g6].concat()))
     }
 
     /// `unescape_invalid_shortcodes( $content )`.
@@ -299,12 +312,16 @@ impl ShortcodeApi {
     }
 
     /// `shortcode_parse_atts( $text )`, raising PHP's deprecation when WordPress does (invalid UTF-8).
-    pub fn shortcode_parse_atts(&self, text: &[u8]) -> ParsedAtts {
+    ///
+    /// # Errors
+    ///
+    /// What an error handler threw for the deprecation.
+    pub fn shortcode_parse_atts(&self, text: &[u8]) -> Result<ParsedAtts, ShortcodeError> {
         let parsed = self.d.atts.parse(text);
         if parsed.null_subject {
-            self.d.diagnostics.deprecated_null_subject("preg_match_all");
+            self.d.diagnostics.deprecated_null_subject("preg_match_all")?;
         }
-        parsed.atts
+        Ok(parsed.atts)
     }
 
     /// `shortcode_atts( $pairs, $atts, $shortcode )`.

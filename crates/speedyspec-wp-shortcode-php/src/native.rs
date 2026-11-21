@@ -180,7 +180,9 @@ pub(crate) fn functions(h: Rc<Handlers>) -> Vec<FunctionBuilder<'static>> {
         f("unescape_invalid_shortcodes", Box::new(|h, a| {
             Ok(php_bytes(ask(&h.unescape, UnescapeInvalidShortcodes { content: bytes(a, 0)? })?))
         })),
-        f("shortcode_parse_atts", Box::new(|h, a| Ok(ask(&h.parse, ShortcodeParseAtts { text: bytes(a, 0)? })?.to_value()))),
+        f("shortcode_parse_atts", Box::new(|h, a| {
+            Ok(ask(&h.parse, ShortcodeParseAtts { text: bytes(a, 0)? })?.map_err(native_error)?.to_value())
+        })),
         f("shortcode_atts", Box::new(|h, a| {
             let out = ask(&h.atts, ShortcodeAtts { pairs: arg(a, 0), atts: arg(a, 1), shortcode: bytes(a, 2)? })?;
             out.map_err(native_error)
@@ -191,7 +193,7 @@ pub(crate) fn functions(h: Rc<Handlers>) -> Vec<FunctionBuilder<'static>> {
             }
             Ok(php_bytes(ask(&h.strip, StripShortcodes { content: bytes(a, 0)? })?.map_err(native_error)?))
         })),
-        f("strip_shortcode_tag", Box::new(|h, a| ask(&h.strip_tag, StripShortcodeTag { m: arg(a, 0) }))),
+        f("strip_shortcode_tag", Box::new(|h, a| ask(&h.strip_tag, StripShortcodeTag { m: arg(a, 0) })?.map_err(native_error))),
     ]
 }
 

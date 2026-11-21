@@ -5,18 +5,29 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use speedyspec_hooks::{Key, Value};
-use speedyspec_php::{CallFailure, Callable};
+use speedyspec_php::{CallFailure, Callable, PhpError};
 use speedyspec_wp_shortcode_contracts::{
     AttKey, ParsedAtts, PhpValue, ShortcodeError, ShortcodeHandler, Thrown, php_bytes,
 };
 
-/// A PHP failure as a shortcode error: an exception keeps its object, so it is rethrown unchanged; PHP unwinding
-/// (a bailout or `exit()`) carries `null`, so nothing is thrown.
+/// A PHP failure as a shortcode error.
+///
+/// - An exception keeps its object, so it is rethrown unchanged.
+/// - PHP unwinding (a fatal error, `exit()`, a destroyed fiber) carries `null`, so nothing is thrown.
+/// - Anything else (a result that cannot reach Rust, a refused call) is a plain error, thrown as `Error`: never a
+///   silent unwinding, which would lose the output without a word.
 pub(crate) fn thrown(failure: CallFailure) -> ShortcodeError {
-    ShortcodeError::Thrown(Thrown {
-        message: failure.error.to_string(),
-        payload: Rc::new(failure.exception.unwrap_or(Value::Null)),
-    })
+    let message = failure.error.to_string();
+    match (failure.exception, &failure.error) {
+        (Some(exception), _) => ShortcodeError::Thrown(Thrown { message, payload: Rc::new(exception) }),
+        (None, PhpError::Fatal { .. } | PhpError::Exit(_)) => {
+            ShortcodeError::Thrown(Thrown { message, payload: Rc::new(Value::Null) })
+        }
+        (None, PhpError::Exception { class, .. }) if class == "GracefulExit" => {
+            ShortcodeError::Thrown(Thrown { message, payload: Rc::new(Value::Null) })
+        }
+        (None, _) => ShortcodeError::Handler(message),
+    }
 }
 
 /// A PHP callable stored in `$shortcode_tags`, as a handler (an Adapter).

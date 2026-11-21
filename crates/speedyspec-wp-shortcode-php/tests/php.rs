@@ -39,6 +39,9 @@ const CASES: &[(&str, Case)] = &[
     ("doing_it_wrong_reaches_php", case_doing_it_wrong),
     ("handler_exception_propagates", case_handler_exception),
     ("array_result_converts_like_php", case_array_result),
+    ("recursive_array_result_converts_like_php", case_unconvertible_result),
+    ("throwing_error_handler_escapes", case_throwing_error_handler),
+    ("html_tags_with_empty_tagnames_uses_registry", case_html_tags_empty_tagnames),
 ];
 
 fn run(php: &Php, code: &str) -> Result<Value, String> {
@@ -251,6 +254,41 @@ fn case_array_result(php: &Php) -> Result<(), String> {
             (speedyspec_hooks::Key::Int(1), s("Array to string conversion")),
         ]),
     )
+}
+
+fn case_unconvertible_result(php: &Php) -> Result<(), String> {
+    reset(php)?;
+    expect_php(
+        php,
+        r#"add_shortcode('rec', function () { $a = []; $a[] = &$a; return $a; });
+           set_error_handler(fn() => true, E_WARNING);
+           try { $r = do_shortcode('x[rec]y'); } finally { restore_error_handler(); }
+           return $r;"#,
+        s("xArrayy"),
+    )
+}
+
+fn case_throwing_error_handler(php: &Php) -> Result<(), String> {
+    reset(php)?;
+    expect_php(
+        php,
+        r#"add_shortcode('t', fn() => 'T');
+           set_error_handler(function ($no, $msg) { throw new ErrorException($msg, 0, $no); }, E_DEPRECATED | E_WARNING);
+           $seen = [];
+           try { do_shortcode("[t \xff a=1]"); $seen[] = 'rendered'; } catch (ErrorException $e) { $seen[] = $e->getMessage(); }
+           try { do_shortcode_tag(['[t]', '', 't', '']); $seen[] = 'rendered'; } catch (ErrorException $e) { $seen[] = $e->getMessage(); }
+           restore_error_handler();
+           return $seen;"#,
+        Value::Array(vec![
+            (speedyspec_hooks::Key::Int(0), s("preg_match_all(): Passing null to parameter #2 ($subject) of type string is deprecated")),
+            (speedyspec_hooks::Key::Int(1), s("Undefined array key 6")),
+        ]),
+    )
+}
+
+fn case_html_tags_empty_tagnames(php: &Php) -> Result<(), String> {
+    reset(php)?;
+    expect_php(php, "add_shortcode('q', fn() => 'Q'); return do_shortcodes_in_html_tags('<[q]>', false, []);", s("<Q>"))
 }
 
 fn main() -> ExitCode {

@@ -42,32 +42,33 @@ fn reslice<'a>(whole: &'a [u8], pieces: &Value) -> Option<Vec<&'a [u8]>> {
 /// WordPress's notices through its own functions, so translations and `doing_it_wrong_run` behave as before.
 pub struct PhpDiagnostics;
 
+/// Calls a WordPress or PHP function whose exceptions must reach the caller, as they would in WordPress.
+fn call_through(function: &str, args: &[Value]) -> Result<Value, ShortcodeError> {
+    speedyspec_php::call_catching(&Value::Str(function.into()), args).map_err(thrown)
+}
+
 impl Diagnostics for PhpDiagnostics {
-    fn doing_it_wrong(&self, function: &str, message: DiagnosticMessage, version: &str) {
-        let Some(template) = call("__", &[Value::Str(message.template.into())]) else {
-            return;
-        };
+    fn doing_it_wrong(&self, function: &str, message: DiagnosticMessage, version: &str) -> Result<(), ShortcodeError> {
+        let template = call_through("__", &[Value::Str(message.template.into())])?;
         let mut args = vec![template];
         args.extend(message.args.into_iter().map(php_bytes));
-        let Some(text) = call("sprintf", &args) else {
-            return;
-        };
-        call("_doing_it_wrong", &[Value::Str(function.into()), text, Value::Str(version.into())]);
+        let text = call_through("sprintf", &args)?;
+        call_through("_doing_it_wrong", &[Value::Str(function.into()), text, Value::Str(version.into())]).map(|_| ())
     }
 
     /// Raises the very deprecation WordPress raises, by making the same call.
-    fn deprecated_null_subject(&self, function: &str) {
-        let _ = speedyspec_php::call_catching(&Value::Str(function.into()), &[Value::Str("/x/".into()), Value::Null]);
+    fn deprecated_null_subject(&self, function: &str) -> Result<(), ShortcodeError> {
+        call_through(function, &[Value::Str("/x/".into()), Value::Null]).map(|_| ())
     }
 
     /// Raises PHP's own warning, by reading the missing key.
-    fn undefined_array_key(&self, key: &PhpKey) {
+    fn undefined_array_key(&self, key: &PhpKey) -> Result<(), ShortcodeError> {
         let read = Value::Str(r"SpeedySpec\WpShortcode\Support\read_missing_key".into());
         let key = match key {
             PhpKey::Int(i) => Value::Int(*i),
             PhpKey::Str(s) => Value::Str(s.clone()),
         };
-        let _ = speedyspec_php::call_catching(&read, &[key]);
+        speedyspec_php::call_catching(&read, &[key]).map(|_| ()).map_err(thrown)
     }
 }
 

@@ -45,9 +45,15 @@ pub fn criterion() -> Criterion {
 
 struct Quiet;
 impl Diagnostics for Quiet {
-    fn doing_it_wrong(&self, _: &str, _: DiagnosticMessage, _: &str) {}
-    fn deprecated_null_subject(&self, _: &str) {}
-    fn undefined_array_key(&self, _: &PhpKey) {}
+    fn doing_it_wrong(&self, _: &str, _: DiagnosticMessage, _: &str) -> Result<(), ShortcodeError> {
+        Ok(())
+    }
+    fn deprecated_null_subject(&self, _: &str) -> Result<(), ShortcodeError> {
+        Ok(())
+    }
+    fn undefined_array_key(&self, _: &PhpKey) -> Result<(), ShortcodeError> {
+        Ok(())
+    }
 }
 
 /// Splits on tags with `memchr`: close enough to `wp_html_split()` for timing (the real one is another crate's).
