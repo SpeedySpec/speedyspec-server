@@ -6,3 +6,5 @@ mod shared;
 
 pub use hand::HandAttsParser;
 pub use regex::RegexAttsParser;
+
+pub(crate) use shared::is_space as is_pcre_space;
