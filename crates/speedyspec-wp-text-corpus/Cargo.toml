@@ -14,8 +14,13 @@ speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory", optional = true
 speedyspec-php = { path = "../speedyspec-php", optional = true }
 speedyspec-hooks = { path = "../speedyspec-hooks", optional = true }
 speedyspec-compat = { path = "../speedyspec-compat", optional = true }
+speedyspec-wp-text-memory = { path = "../speedyspec-wp-text-memory", optional = true }
+speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts", optional = true }
 
 [features]
+# Converting recorded values to and from the Hook API's, and recorded diagnostics, for crates that test PHP-shaped
+# functions.
+values = ["dep:speedyspec-hooks", "dep:speedyspec-wp-text-memory", "dep:speedyspec-wp-text-contracts"]
 # The scenario generator and the PHP baseline, which need the embedded PHP.
 php = ["dep:speedyspec-php", "dep:speedyspec-hooks-memory", "dep:speedyspec-hooks", "dep:speedyspec-compat"]
 
