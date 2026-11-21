@@ -335,6 +335,29 @@ impl NoSqlStore for RedbStore {
         })
     }
 
+    fn adjust_existing(
+        &self,
+        keyspace: &str,
+        key: &[u8],
+        by: i64,
+        floor: Option<i64>,
+    ) -> Result<Option<i64>, DbError> {
+        self.write(keyspace, |table| {
+            let Some((expires, value)) = self.current(table, key)? else {
+                return Ok(None);
+            };
+            let (next, _) = checked_increment(&self.engine, Some(&value), by)?;
+            let next = floor.map_or(next, |f| next.max(f));
+            table
+                .insert(
+                    key,
+                    envelope(next.to_string().as_bytes(), expires).as_slice(),
+                )
+                .map_err(|e| self.storage(e))?;
+            Ok(Some(next))
+        })
+    }
+
     fn clear(&self, keyspace: &str) -> Result<(), DbError> {
         let txn = self.volatile()?;
         txn.delete_table(Def::new(keyspace))

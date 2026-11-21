@@ -287,6 +287,28 @@ impl NoSqlStore for RedbClient {
         }
     }
 
+    fn adjust_existing(
+        &self,
+        keyspace: &str,
+        key: &[u8],
+        by: i64,
+        floor: Option<i64>,
+    ) -> Result<Option<i64>, DbError> {
+        // Never retried, as an increment: a lost answer cannot say whether it was applied.
+        match self.call(
+            false,
+            &Request::AdjustExisting {
+                keyspace: keyspace.into(),
+                key: key.to_vec(),
+                by,
+                floor,
+            },
+        )? {
+            Response::MaybeCounter(n) => Ok(n),
+            other => Err(self.unexpected(other)),
+        }
+    }
+
     fn clear(&self, keyspace: &str) -> Result<(), DbError> {
         match self.call(
             true,

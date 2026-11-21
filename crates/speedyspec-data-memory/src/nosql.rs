@@ -155,6 +155,26 @@ impl NoSqlStore for MemoryNoSqlStore {
         Ok(next)
     }
 
+    fn adjust_existing(
+        &self,
+        keyspace: &str,
+        key: &[u8],
+        by: i64,
+        floor: Option<i64>,
+    ) -> Result<Option<i64>, DbError> {
+        let Some((value, expires)) = self.entry(keyspace, key) else {
+            return Ok(None);
+        };
+        let (next, _) = checked_increment(&self.engine, Some(&value), by)?;
+        let next = floor.map_or(next, |f| next.max(f));
+        self.keyspaces
+            .borrow_mut()
+            .entry(keyspace.to_string())
+            .or_default()
+            .insert(key.to_vec(), (next.to_string().into_bytes(), expires));
+        Ok(Some(next))
+    }
+
     fn clear(&self, keyspace: &str) -> Result<(), DbError> {
         self.keyspaces.borrow_mut().remove(keyspace);
         Ok(())

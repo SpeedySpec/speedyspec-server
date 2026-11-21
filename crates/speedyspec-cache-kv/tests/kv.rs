@@ -119,3 +119,97 @@ fn flush_group_removes_old_generations_on_ordered_stores() {
         Some(b"kept".as_slice())
     );
 }
+
+/// A store that deletes an entry right after it is read, as another process's `delete` landing between two calls.
+struct DeletedAfterRead {
+    inner: Rc<dyn NoSqlStore>,
+    entry: Vec<u8>,
+}
+
+impl NoSqlStore for DeletedAfterRead {
+    fn engine(&self) -> &str {
+        self.inner.engine()
+    }
+    fn capabilities(&self) -> speedyspec_data::Capabilities {
+        self.inner.capabilities()
+    }
+    fn get(&self, ks: &str, key: &[u8]) -> Result<Option<Vec<u8>>, speedyspec_data::DbError> {
+        let got = self.inner.get(ks, key)?;
+        if key == self.entry.as_slice() {
+            self.inner.delete(ks, key)?;
+        }
+        Ok(got)
+    }
+    fn get_many(
+        &self,
+        ks: &str,
+        keys: &[&[u8]],
+    ) -> Result<Vec<Option<Vec<u8>>>, speedyspec_data::DbError> {
+        self.inner.get_many(ks, keys)
+    }
+    fn put(
+        &self,
+        ks: &str,
+        key: &[u8],
+        value: &[u8],
+        ttl: Option<Duration>,
+    ) -> Result<(), speedyspec_data::DbError> {
+        self.inner.put(ks, key, value, ttl)
+    }
+    fn put_if_absent(
+        &self,
+        ks: &str,
+        key: &[u8],
+        value: &[u8],
+        ttl: Option<Duration>,
+    ) -> Result<bool, speedyspec_data::DbError> {
+        self.inner.put_if_absent(ks, key, value, ttl)
+    }
+    fn delete(&self, ks: &str, key: &[u8]) -> Result<bool, speedyspec_data::DbError> {
+        self.inner.delete(ks, key)
+    }
+    fn range(
+        &self,
+        ks: &str,
+        start: std::ops::Bound<&[u8]>,
+        end: std::ops::Bound<&[u8]>,
+        limit: Option<usize>,
+    ) -> Result<speedyspec_data::KeyValues, speedyspec_data::DbError> {
+        self.inner.range(ks, start, end, limit)
+    }
+    fn increment(&self, ks: &str, key: &[u8], by: i64) -> Result<i64, speedyspec_data::DbError> {
+        self.inner.increment(ks, key, by)
+    }
+    fn adjust_existing(
+        &self,
+        ks: &str,
+        key: &[u8],
+        by: i64,
+        floor: Option<i64>,
+    ) -> Result<Option<i64>, speedyspec_data::DbError> {
+        self.inner.adjust_existing(ks, key, by, floor)
+    }
+    fn clear(&self, ks: &str) -> Result<(), speedyspec_data::DbError> {
+        self.inner.clear(ks)
+    }
+}
+
+/// An entry deleted while it is being incremented never comes back holding the increment.
+#[test]
+fn increment_never_recreates_a_deleted_entry() {
+    let inner = memory();
+    let store = Rc::new(DeletedAfterRead {
+        inner: inner.clone(),
+        entry: keys::entry(b"g", 0, b"n"),
+    });
+    let cache = KvCache::new(store, "cache");
+    KvCache::new(inner.clone(), "cache")
+        .set("g", "n", b"10", None)
+        .unwrap();
+    let got = cache.increment("g", "n", 5).unwrap();
+    let stored = KvCache::new(inner, "cache").get("g", "n").unwrap();
+    assert!(
+        stored.as_deref() != Some(b"5".as_slice()),
+        "the deleted entry came back holding the increment: got {got:?}"
+    );
+}
