@@ -5,3 +5,11 @@
 
 pub mod preg;
 pub mod strings;
+
+mod ent2ncr_table;
+mod small;
+
+pub use small::{
+    DEFAULT_SPACES, capital_p_dangit, convert_chars, convert_invalid_entities, ent2ncr, format_for_editor_core,
+    normalize_whitespace,
+};
