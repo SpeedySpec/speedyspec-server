@@ -77,6 +77,7 @@ fn rules(v: &Value, resolve: &dyn Fn(&Value) -> Option<ValueCallback>) -> AttrRu
                 })
                 .collect(),
         ),
+        v if empty(v) => AttrRules::AllowedFalsy,
         _ => AttrRules::Allowed,
     }
 }
@@ -154,6 +155,7 @@ pub fn allowed_to_value(allowed: &AllowedHtml) -> Value {
                                 let v = match rules {
                                     AttrRules::Denied => Value::Str(String::new()),
                                     AttrRules::Allowed => Value::Bool(true),
+                                    AttrRules::AllowedFalsy => Value::Bool(false),
                                     AttrRules::Rules(list) => Value::Array(
                                         list.iter()
                                             .map(|rule| match rule {

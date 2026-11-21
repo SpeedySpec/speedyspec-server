@@ -81,3 +81,14 @@ pub fn filter(hooks: &HookApi, name: &str, run: impl Fn(&[HookValue]) -> HookVal
         )
         .unwrap();
 }
+
+/// The start of an input, for failure messages.
+pub fn short(input: &[u8]) -> String {
+    let text = String::from_utf8_lossy(input);
+    let cut: String = text.chars().take(160).collect();
+    if cut.len() < text.len() {
+        format!("{cut:?}…")
+    } else {
+        format!("{cut:?}")
+    }
+}

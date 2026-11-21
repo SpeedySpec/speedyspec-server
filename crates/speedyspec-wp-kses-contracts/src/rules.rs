@@ -73,8 +73,11 @@ impl PartialEq for AttrRule {
 pub enum AttrRules {
     /// PHP `''` or `null`: the attribute is removed.
     Denied,
-    /// Any other non-array value: allowed with no checks.
+    /// Any other truthy non-array value: allowed with no checks.
     Allowed,
+    /// `false`, `0` or `'0'`: still allowed (kses tests only `isset` and `''`), but `empty()` where kses asks, as
+    /// for `data-*`.
+    AllowedFalsy,
     /// An array: every rule must pass.
     Rules(Vec<AttrRule>),
 }

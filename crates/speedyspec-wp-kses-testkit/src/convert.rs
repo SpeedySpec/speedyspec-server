@@ -102,6 +102,7 @@ fn rules(v: &Value, resolve: &dyn Fn(&[u8]) -> Option<ValueCallback>) -> AttrRul
                 })
                 .collect(),
         ),
+        v if empty(v) => AttrRules::AllowedFalsy,
         _ => AttrRules::Allowed,
     }
 }

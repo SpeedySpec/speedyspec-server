@@ -14,4 +14,4 @@ pub use release::{WORDPRESS, wordpress_release};
 
 mod corpus;
 
-pub use corpus::{css_cases, protocols_value, xss_attacks};
+pub use corpus::{css_cases, posts, protocols_value, xss_attacks};

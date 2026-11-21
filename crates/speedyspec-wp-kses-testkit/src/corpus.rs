@@ -131,3 +131,25 @@ pub fn css_cases() -> Vec<Vec<u8>> {
     }
     cases
 }
+
+/// WordPress's `whole-posts.php` posts and the block fixtures: representative post content.
+pub fn posts() -> Vec<Vec<u8>> {
+    use base64::Engine;
+    let dir = corpus_dir().join("wordpress");
+    let json: Vec<String> = serde_json::from_str(
+        &std::fs::read_to_string(dir.join("whole-posts.json")).expect("whole-posts.json"),
+    )
+    .expect("json");
+    let mut posts: Vec<Vec<u8>> = json
+        .iter()
+        .filter_map(|b| base64::engine::general_purpose::STANDARD.decode(b).ok())
+        .collect();
+    let mut blocks: Vec<_> = std::fs::read_dir(dir.join("blocks"))
+        .expect("blocks")
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .collect();
+    blocks.sort();
+    posts.extend(blocks.iter().filter_map(|p| std::fs::read(p).ok()));
+    posts
+}

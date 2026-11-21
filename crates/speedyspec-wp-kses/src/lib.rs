@@ -12,6 +12,7 @@ mod defaults;
 mod globals;
 mod ports;
 mod safecss;
+mod scanner;
 
 pub use api::{KsesApi, KsesDeps};
 pub use convert::{allowed_from_value, allowed_to_value, rule_value};
@@ -20,3 +21,6 @@ pub use defaults::{
 };
 pub use globals::{AllowedGlobals, DefaultGlobals};
 pub use ports::{NoValueCallbacks, UploadsLocation, ValueCallbacks};
+pub use scanner::{
+    CheckedAttr, directive_binds_value_restricted_attribute, restricts_attribute_values,
+};

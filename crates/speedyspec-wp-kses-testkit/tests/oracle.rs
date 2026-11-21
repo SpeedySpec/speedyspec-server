@@ -56,7 +56,7 @@ fn globals_dump_has_post_tags() {
 fn odd_shapes_convert() {
     let php_array = json!({"array": [
         ["x", {"array": [
-            ["one", 1], ["empty", {"b64": ""}], ["null", null], ["yes", {"b64": "eWVz"}], ["arr", {"array": []}],
+            ["one", 1], ["false", false], ["zero", 0], ["empty", {"b64": ""}], ["null", null], ["yes", {"b64": "eWVz"}], ["arr", {"array": []}],
             ["data", {"array": [["value_callback", {"b64": "X3dwX2tzZXNfYWxsb3dfcGRmX29iamVjdHM="}]]}]
         ]}],
         ["br", true]
@@ -68,6 +68,8 @@ fn odd_shapes_convert() {
         panic!("x")
     };
     assert_eq!(x[&b"one"[..]], AttrRules::Allowed);
+    assert_eq!(x[&b"false"[..]], AttrRules::AllowedFalsy);
+    assert_eq!(x[&b"zero"[..]], AttrRules::AllowedFalsy);
     assert_eq!(x[&b"empty"[..]], AttrRules::Denied);
     assert_eq!(x[&b"null"[..]], AttrRules::Denied);
     assert_eq!(x[&b"yes"[..]], AttrRules::Allowed);

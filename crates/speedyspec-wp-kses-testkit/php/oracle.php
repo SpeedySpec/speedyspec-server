@@ -9,6 +9,9 @@ define( 'ABSPATH', $wp . '/' );
 define( 'WPINC', 'wp-includes' );
 
 require __DIR__ . '/stubs.php';
+require "$wp/wp-includes/compat-utf8.php";
+require "$wp/wp-includes/compat.php";
+require "$wp/wp-includes/utf8.php";
 
 /** Defines WordPress's own copy of each named function from a release file. */
 function oracle_load_functions( $file, array $names ) {
@@ -23,7 +26,7 @@ function oracle_load_functions( $file, array $names ) {
 }
 
 oracle_load_functions( "$wp/wp-includes/formatting.php", array( '_wp_specialchars', 'wp_check_invalid_utf8', 'esc_attr', 'map_deep' ) );
-oracle_load_functions( "$wp/wp-includes/functions.php", array( 'wp_allowed_protocols' ) );
+oracle_load_functions( "$wp/wp-includes/functions.php", array( 'wp_allowed_protocols', 'is_utf8_charset', '_canonical_charset' ) );
 require "$wp/wp-includes/class-wp-token-map.php";
 foreach ( array( 'html5-named-character-references', 'class-wp-html-attribute-token', 'class-wp-html-span', 'class-wp-html-doctype-info', 'class-wp-html-text-replacement', 'class-wp-html-decoder', 'class-wp-html-tag-processor' ) as $html_api_file ) {
 	require "$wp/wp-includes/html-api/$html_api_file.php";

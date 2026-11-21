@@ -1,0 +1,175 @@
+mod common;
+
+use serde_json::Value as Json;
+use speedyspec_wp_kses_contracts::{AllowedSpec, Context};
+use speedyspec_wp_kses_testkit::{PhpOracle, bytes, from_bytes, posts, xss_attacks};
+
+const EDGES: &[&[u8]] = &[
+    b"",
+    b"plain",
+    b"<",
+    b">",
+    b"a > b",
+    b"<p>a</p>",
+    b"<P CLASS=x>a</P>",
+    b"<p onclick=x>a</p>",
+    b"<a href=\"javascript:x\">a</a>",
+    b"<!-- c -->",
+    b"<!-- <script>x</script> -->",
+    b"<!---->",
+    b"<!-- a -- b --->",
+    b"<!--",
+    b"<!--x\ny-->",
+    b"</1>",
+    b"</1<b>x</b>>",
+    b"<!x <b>y</b>>",
+    b"<!X>",
+    b"<br/>",
+    b"<br / >",
+    b"<img src=x onerror=y>",
+    b"<img src=\"a.png\" alt=\"&quot;\" />",
+    b"<a href=\"http://a\" title='\"'>x</a>",
+    b"<p style=\"color:red;background:url(javascript:x)\">a</p>",
+    b"<p style=\"color: red\">a</p>",
+    b"<span style=\"&#99;olor:red\">x</span>",
+    b"<div data-x=\"1\" data-Y=\"2\" data-=\"3\">x</div>",
+    b"<div data-wp-bind--href=\"x\">x</div>",
+    b"<object data=\"x.pdf\"></object>",
+    b"<object type=\"application/pdf\" data=\"http://example.org:8080/a.pdf\"></object>",
+    b"a\x00b<p\x00>c</p>",
+    b"<p>\\\"q\\\"</p>",
+    b"&&amp;&#65;&bogus;",
+    b"<p title=\"a&b\">x</p>",
+    b"<a href=x\x0Bonclick=y>",
+    b"<scr<script>ipt>alert(1)</script>",
+    b"<a\nhref\n=\nx>",
+    b"<a href=\"x\" href=\"y\">",
+    b"<p class=\"<x>\">",
+    b"<<p>>",
+    b"<p<p>>",
+    b"</p</p>>",
+    b"< p>",
+    b"</ p>",
+    b"<p/>",
+    b"<input type=text>",
+    b"<form action=x><input></form>",
+    b"<a href='feed:javascript:x'>",
+    b"<a rel=\"nofollow\" target=\"_blank\">x</a>",
+    b"<abbr title=x>y</abbr>",
+    b"<td colspan=2 rowspan=\"3\">",
+    b"<ol start=\"5\" reversed>",
+    b"<a href=\"a\xC3(b\">x</a>",
+    b"\xff\xfe<p>x</p>",
+];
+
+fn inputs() -> Vec<Vec<u8>> {
+    let mut v: Vec<Vec<u8>> = EDGES.iter().map(|s| s.to_vec()).collect();
+    v.extend(xss_attacks());
+    v.extend(posts().into_iter().take(60));
+    v
+}
+
+#[test]
+fn matches_php() {
+    let mut php = PhpOracle::start().unwrap();
+    for input in inputs() {
+        for ctx in ["post", "data", "strip", "user_description"] {
+            let (_, api) = common::setup();
+            let r = php
+                .call("wp_kses", vec![bytes(&input), Json::String(ctx.into())])
+                .unwrap();
+            let ours = api
+                .kses(
+                    &input,
+                    &AllowedSpec::Context(Context::from_bytes(ctx.as_bytes())),
+                    None,
+                )
+                .unwrap();
+            assert_eq!(
+                String::from_utf8_lossy(&ours),
+                String::from_utf8_lossy(&from_bytes(&r.returned)),
+                "{ctx}: {}",
+                common::short(&input)
+            );
+        }
+    }
+}
+
+#[test]
+fn hook_counts_match_php() {
+    let mut php = PhpOracle::start().unwrap();
+    for input in posts()
+        .into_iter()
+        .take(20)
+        .chain(xss_attacks().into_iter().take(40))
+    {
+        let (hooks, api) = common::setup();
+        let r = php
+            .call("wp_kses", vec![bytes(&input), Json::String("post".into())])
+            .unwrap();
+        api.kses(&input, &AllowedSpec::Context(Context::Post), None)
+            .unwrap();
+        // `attribute_escape` is fired by esc_attr(), behind the AttributeEscaper port the text port owns.
+        for (hook, count) in r.filters.iter().filter(|(h, _)| h != "attribute_escape") {
+            assert_eq!(
+                common::did_filter(&hooks, hook),
+                *count as i64,
+                "{hook} for {}",
+                common::short(&input)
+            );
+        }
+    }
+}
+
+#[test]
+fn deep_invalid_closers_on_a_small_stack() {
+    let mut input = b"</1".repeat(20_000);
+    input.push(b'>');
+    let mut php = PhpOracle::start().unwrap();
+    let expected = from_bytes(
+        &php.call("wp_kses", vec![bytes(&input), Json::String("post".into())])
+            .unwrap()
+            .returned,
+    );
+    let ours = std::thread::Builder::new()
+        .stack_size(256 * 1024)
+        .spawn(move || {
+            let (_, api) = common::setup();
+            api.kses(&input, &AllowedSpec::Context(Context::Post), None)
+                .unwrap()
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+    assert_eq!(ours, expected);
+}
+
+#[test]
+fn required_attribute_drops_the_tag() {
+    use speedyspec_wp_hooks::{HookValue, Key};
+    use speedyspec_wp_kses::allowed_from_value;
+    use std::rc::Rc;
+    let allowed = HookValue::Array(vec![(
+        Key::Str("a".into()),
+        HookValue::Array(vec![(
+            Key::Str("href".into()),
+            HookValue::Array(vec![(Key::Str("required".into()), HookValue::Bool(true))]),
+        )]),
+    )]);
+    let allowed = Rc::new(allowed_from_value(&allowed, &|_| None).unwrap());
+    let (_, api) = common::setup();
+    assert_eq!(
+        api.kses(
+            b"<a title=x>y</a>",
+            &AllowedSpec::Explicit(allowed.clone()),
+            None
+        )
+        .unwrap(),
+        b"<a>y</a>"
+    );
+    assert_eq!(
+        api.kses(b"<a href=x>y</a>", &AllowedSpec::Explicit(allowed), None)
+            .unwrap(),
+        b"<a href=\"x\">y</a>"
+    );
+}
