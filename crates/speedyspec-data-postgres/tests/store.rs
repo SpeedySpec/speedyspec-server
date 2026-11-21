@@ -404,3 +404,20 @@ fn temporary_tables_are_described() {
             .is_empty()
     );
 }
+
+/// MySQL's way to say "every row after an offset": a row count of 2^64 - 1, past PostgreSQL's bigint.
+#[test]
+#[ignore = "needs PostgreSQL: set SPEEDYSPEC_TEST_POSTGRES_URL"]
+fn limit_past_i64_means_every_row() {
+    let store = store("limit_past_i64");
+    exec(
+        &*store,
+        "INSERT INTO wp_options (option_name, option_value) VALUES ('a', '1'), ('b', '2'), ('c', '3')",
+    );
+    for sql in [
+        "SELECT option_name FROM wp_options ORDER BY option_name LIMIT 1, 18446744073709551615",
+        "SELECT option_name FROM wp_options ORDER BY option_name LIMIT 18446744073709551615 OFFSET 1",
+    ] {
+        assert_eq!(query(&*store, sql).rows.len(), 2, "{sql}");
+    }
+}

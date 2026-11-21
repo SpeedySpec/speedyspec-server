@@ -626,3 +626,39 @@ fn replace_with_too_few_values_is_mysqls_error() {
         );
     }
 }
+
+/// Opening a store on a file that is already set up writes nothing: a schema change on every open takes the write
+/// lock and makes every other connection re-prepare its statements.
+#[test]
+fn reopening_does_not_change_the_schema() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("site.db");
+    let url = format!("sqlite://{}", path.display());
+    let first = SqliteStore::open(&config(&url, &[])).unwrap();
+    exec(&first, WP_OPTIONS);
+    let version = |conn: &rusqlite::Connection| -> i64 {
+        conn.query_row("PRAGMA schema_version", [], |r| r.get(0))
+            .unwrap()
+    };
+    let watcher = rusqlite::Connection::open(&path).unwrap();
+    let before = version(&watcher);
+    let _second = SqliteStore::open(&config(&url, &[])).unwrap();
+    let _third = SqliteStore::open(&config(&url, &[])).unwrap();
+    assert_eq!(version(&watcher), before);
+}
+
+/// MySQL's way to say "every row after an offset": a row count of 2^64 - 1, which SQLite's 64-bit LIMIT refuses.
+#[test]
+fn limit_past_i64_means_every_row() {
+    let store = memory();
+    exec(
+        &store,
+        "INSERT INTO wp_options (option_name, option_value) VALUES ('a', '1'), ('b', '2'), ('c', '3')",
+    );
+    for sql in [
+        "SELECT option_name FROM wp_options ORDER BY option_name LIMIT 1, 18446744073709551615",
+        "SELECT option_name FROM wp_options ORDER BY option_name LIMIT 18446744073709551615 OFFSET 1",
+    ] {
+        assert_eq!(query(&store, sql).rows.len(), 2, "{sql}");
+    }
+}

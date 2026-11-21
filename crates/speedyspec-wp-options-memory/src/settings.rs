@@ -4,7 +4,7 @@ use std::cell::RefCell;
 
 use indexmap::IndexMap;
 use speedyspec_wp_hooks::HookValue;
-use speedyspec_wp_options::{OptionGroups, SettingsStore};
+use speedyspec_wp_options::{OptionGroups, OptionsError, SettingsStore};
 
 /// A group's allowed names: PHP's next free index, and each entry with its index.
 type Allowed = (i64, Vec<(i64, String)>);
@@ -39,27 +39,31 @@ impl SettingsStore for MemorySettingsStore {
         self.registered.borrow().get(name).cloned()
     }
 
-    fn put(&self, name: &str, args: HookValue) {
+    fn put(&self, name: &str, args: HookValue) -> Result<(), OptionsError> {
         self.registered.borrow_mut().insert(name.to_string(), args);
+        Ok(())
     }
 
-    fn remove(&self, name: &str) {
+    fn remove(&self, name: &str) -> Result<(), OptionsError> {
         self.registered.borrow_mut().shift_remove(name);
+        Ok(())
     }
 
-    fn allow(&self, group: &str, name: &str) {
+    fn allow(&self, group: &str, name: &str) -> Result<(), OptionsError> {
         let mut allowed = self.allowed.borrow_mut();
         let (next, names) = allowed.entry(group.to_string()).or_default();
         names.push((*next, name.to_string()));
         *next += 1;
+        Ok(())
     }
 
-    fn disallow(&self, group: &str, name: &str) {
+    fn disallow(&self, group: &str, name: &str) -> Result<(), OptionsError> {
         if let Some((_, names)) = self.allowed.borrow_mut().get_mut(group)
             && let Some(at) = names.iter().position(|(_, n)| n == name)
         {
             names.remove(at);
         }
+        Ok(())
     }
 }
 

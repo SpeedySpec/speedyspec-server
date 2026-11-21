@@ -79,30 +79,36 @@ impl KvCache {
         ))
     }
 
-    /// Adds `by` to a live entry; a value the store cannot count (not canonical, or overflowing) is counted here.
+    /// Adds `by` to a live entry in one atomic store call, floored at `floor` when given; an absent entry stays
+    /// absent. A value the store cannot count (not canonical, or overflowing) is counted here.
     fn adjust(
         &self,
         group: &str,
         key: &str,
         by: i64,
-    ) -> Result<Option<(Vec<u8>, i64)>, CacheError> {
+        floor: Option<i64>,
+    ) -> Result<Option<i64>, CacheError> {
         let entry = self.entry(group, key)?;
-        let Some(current) = self
+        match self
             .store
-            .get(&self.keyspace, &entry)
-            .map_err(|e| self.backend(e))?
-        else {
-            return Ok(None);
-        };
-        match self.store.increment(&self.keyspace, &entry, by) {
-            Ok(n) => Ok(Some((entry, n))),
+            .adjust_existing(&self.keyspace, &entry, by, floor)
+        {
+            Ok(n) => Ok(n),
             Err(e) if matches!(engine_code(&e), Some("not-integer" | "overflow")) => {
+                let Some(current) = self
+                    .store
+                    .get(&self.keyspace, &entry)
+                    .map_err(|e| self.backend(e))?
+                else {
+                    return Ok(None);
+                };
                 let n = number(group, key, &current)?.saturating_add(by);
+                let n = floor.map_or(n, |f| n.max(f));
                 // The store cannot report the entry's expiry, so a value it could not count is written without one.
                 self.store
                     .put(&self.keyspace, &entry, n.to_string().as_bytes(), None)
                     .map_err(|e| self.backend(e))?;
-                Ok(Some((entry, n)))
+                Ok(Some(n))
             }
             Err(e) => Err(self.backend(e)),
         }
@@ -221,24 +227,12 @@ impl CachingStore for KvCache {
     }
 
     fn increment(&self, group: &str, key: &str, by: i64) -> Result<Option<i64>, CacheError> {
-        Ok(self.adjust(group, key, by)?.map(|(_, n)| n))
+        self.adjust(group, key, by, None)
     }
 
-    /// Floors at 0: a result below zero is raised back by the difference, which keeps the entry's expiry.
+    /// Floors at 0, as memcached does, in the same atomic call.
     fn decrement(&self, group: &str, key: &str, by: i64) -> Result<Option<i64>, CacheError> {
-        let Some((entry, n)) = self.adjust(group, key, by.saturating_neg())? else {
-            return Ok(None);
-        };
-        if n >= 0 {
-            return Ok(Some(n));
-        }
-        match self
-            .store
-            .increment(&self.keyspace, &entry, n.saturating_neg())
-        {
-            Ok(back) => Ok(Some(back.max(0))),
-            Err(e) => Err(self.backend(e)),
-        }
+        self.adjust(group, key, by.saturating_neg(), Some(0))
     }
 
     fn flush(&self) -> Result<(), CacheError> {

@@ -327,6 +327,14 @@ fn answer(store: &RedbStore, request: Request) -> Response {
             store.increment(&keyspace, &key, by).map(Response::Counter)
         }
         Request::Clear { keyspace } => store.clear(&keyspace).map(|()| Response::Done),
+        Request::AdjustExisting {
+            keyspace,
+            key,
+            by,
+            floor,
+        } => store
+            .adjust_existing(&keyspace, &key, by, floor)
+            .map(Response::MaybeCounter),
     };
     result.unwrap_or_else(|e| match e {
         DbError::Engine {

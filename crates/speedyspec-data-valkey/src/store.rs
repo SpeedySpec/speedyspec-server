@@ -296,6 +296,36 @@ impl NoSqlStore for ValkeyStore {
         self.with(false, |c| redis::cmd("INCRBY").arg(&k).arg(by).query(c))
     }
 
+    fn adjust_existing(
+        &self,
+        keyspace: &str,
+        key: &[u8],
+        by: i64,
+        floor: Option<i64>,
+    ) -> Result<Option<i64>, DbError> {
+        // One script, so the existence check, the INCRBY (which keeps the TTL and reports a value that is not an
+        // integer, or an overflow, as INCRBY does) and the floor run as one step on the server.
+        const ADJUST: &str = "if redis.call('EXISTS', KEYS[1]) == 0 then return false end \
+            local n = redis.call('INCRBY', KEYS[1], ARGV[1]) \
+            if ARGV[2] ~= '' then \
+              local floor = tonumber(ARGV[2]) \
+              if n < floor then redis.call('SET', KEYS[1], ARGV[2], 'KEEPTTL') return floor end \
+            end \
+            return n";
+        let k = self.key(keyspace, key)?;
+        let floor = floor.map(|f| f.to_string()).unwrap_or_default();
+        // Never retried: an adjustment is not idempotent.
+        self.with(false, |c| {
+            redis::cmd("EVAL")
+                .arg(ADJUST)
+                .arg(1)
+                .arg(&k)
+                .arg(by)
+                .arg(&floor)
+                .query::<Option<i64>>(c)
+        })
+    }
+
     fn clear(&self, keyspace: &str) -> Result<(), DbError> {
         let mut pattern = self.key(keyspace, b"")?;
         pattern.push(b'*');

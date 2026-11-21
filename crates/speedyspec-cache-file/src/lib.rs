@@ -4,4 +4,4 @@ mod cache;
 mod layout;
 
 pub use cache::FileCache;
-pub use layout::{entry_path, group_dir};
+pub use layout::{entry_path, group_dir, lock_path};

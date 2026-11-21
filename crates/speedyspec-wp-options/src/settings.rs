@@ -10,15 +10,17 @@ use speedyspec_wp_hooks::{Callback, CallbackId, HookApi, HookName, HookValue, Ke
 use crate::{Deprecations, OptionsError, php_empty};
 
 /// The registered settings and the allowed options per group.
+/// A write the host refuses (PHP throwing on a global a plugin replaced) is an error the caller passes on, as
+/// WordPress's own assignment would throw.
 pub trait SettingsStore {
     fn registered(&self) -> IndexMap<String, HookValue>;
     fn get(&self, name: &str) -> Option<HookValue>;
-    fn put(&self, name: &str, args: HookValue);
-    fn remove(&self, name: &str);
+    fn put(&self, name: &str, args: HookValue) -> Result<(), OptionsError>;
+    fn remove(&self, name: &str) -> Result<(), OptionsError>;
     /// `$new_allowed_options[ $group ][] = $name`.
-    fn allow(&self, group: &str, name: &str);
+    fn allow(&self, group: &str, name: &str) -> Result<(), OptionsError>;
     /// `array_search( $name, $new_allowed_options[ $group ], true )`, then `unset`: PHP's index holes stay.
-    fn disallow(&self, group: &str, name: &str);
+    fn disallow(&self, group: &str, name: &str) -> Result<(), OptionsError>;
 }
 
 /// `register_setting()`'s `$args`: an array, a callable that becomes its `sanitize_callback`, or anything else (a
@@ -214,7 +216,7 @@ impl SettingsRegistry {
             }
         }
         let group = self.group("register_setting", group)?;
-        self.store.allow(&group, name);
+        self.store.allow(&group, name)?;
         if let Some(sanitize) = entry(&args, "sanitize_callback").filter(|v| !php_empty(v))
             && let Some(cb) = self.parsing.sanitize_callback(sanitize)
         {
@@ -247,7 +249,7 @@ impl SettingsRegistry {
             &HookName::from("register_setting"),
             vec![s(&group), s(name), args.clone()],
         )?;
-        self.store.put(name, args);
+        self.store.put(name, args)?;
         Ok(())
     }
 
@@ -259,7 +261,7 @@ impl SettingsRegistry {
         deprecated: Option<Callback>,
     ) -> Result<(), OptionsError> {
         let group = self.group("unregister_setting", group)?;
-        self.store.disallow(&group, name);
+        self.store.disallow(&group, name)?;
         let sanitize_hook = HookName::from(format!("sanitize_option_{name}").as_str());
         let ten = HookValue::Int(10);
         if let Some(cb) = deprecated {
@@ -296,7 +298,7 @@ impl SettingsRegistry {
                 &HookName::from("unregister_setting"),
                 vec![s(&group), s(name)],
             )?;
-            self.store.remove(name);
+            self.store.remove(name)?;
         }
         Ok(())
     }

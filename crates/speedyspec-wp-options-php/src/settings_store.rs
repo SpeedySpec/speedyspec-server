@@ -9,7 +9,7 @@ use indexmap::IndexMap;
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_wp_hooks::Callback;
 use speedyspec_wp_hooks_php::php_callback;
-use speedyspec_wp_options::{SettingsStore, php_empty};
+use speedyspec_wp_options::{OptionsError, SettingsStore, php_empty};
 
 use crate::adapters::call;
 use crate::ports::plain;
@@ -25,10 +25,9 @@ fn text(k: &Key) -> String {
     }
 }
 
-fn helper(name: &str, args: &[Value]) {
-    if let Err(e) = call(&format!("{HELPERS}{name}"), args) {
-        eprintln!("speedyspec_wordpress: {name} failed: {e}");
-    }
+/// Runs a settings helper; a PHP exception it throws is the caller's to rethrow.
+fn helper(name: &str, args: &[Value]) -> Result<(), OptionsError> {
+    call(&format!("{HELPERS}{name}"), args).map(|_| ())
 }
 
 /// `$args` with each entry as PHP holds it (a carried `Callback` back to its PHP callable).
@@ -72,25 +71,25 @@ impl SettingsStore for PhpSettingsStore {
         ))
     }
 
-    fn put(&self, name: &str, args: Value) {
-        helper("settings_put", &[Value::Str(name.into()), to_php(args)]);
+    fn put(&self, name: &str, args: Value) -> Result<(), OptionsError> {
+        helper("settings_put", &[Value::Str(name.into()), to_php(args)])
     }
 
-    fn remove(&self, name: &str) {
-        helper("settings_remove", &[Value::Str(name.into())]);
+    fn remove(&self, name: &str) -> Result<(), OptionsError> {
+        helper("settings_remove", &[Value::Str(name.into())])
     }
 
-    fn allow(&self, group: &str, name: &str) {
+    fn allow(&self, group: &str, name: &str) -> Result<(), OptionsError> {
         helper(
             "settings_allow",
             &[Value::Str(group.into()), Value::Str(name.into())],
-        );
+        )
     }
 
-    fn disallow(&self, group: &str, name: &str) {
+    fn disallow(&self, group: &str, name: &str) -> Result<(), OptionsError> {
         helper(
             "settings_disallow",
             &[Value::Str(group.into()), Value::Str(name.into())],
-        );
+        )
     }
 }

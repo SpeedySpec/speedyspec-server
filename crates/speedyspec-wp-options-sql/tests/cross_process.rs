@@ -21,8 +21,12 @@ use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbPa
 use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
-use speedyspec_wp_options::{OptionsApi, OptionsDeps};
-use speedyspec_wp_options_sql::SqlOptionRepository;
+use speedyspec_wp_options::{
+    ExternalObjectCache, FixedProtectedOptions, HookSanitizing, InstallingFlag, NetworkOptionsApi,
+    NetworkPorts, OptionsApi, OptionsDeps, SiteConfiguration, SystemClock, TransientPorts,
+    TransientsApi,
+};
+use speedyspec_wp_options_sql::{SqlExpiredTransients, SqlOptionRepository, SqlSitemetaRepository};
 
 /// The backends share one `wp_options`: one at a time.
 static TABLE: Mutex<()> = Mutex::new(());
@@ -33,9 +37,19 @@ const SCHEMA: &str = "CREATE TABLE wp_options (option_id bigint(20) unsigned NOT
     KEY autoload (autoload)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
 struct Rig {
-    api: OptionsApi,
+    api: Rc<OptionsApi>,
+    transients: TransientsApi,
     current: Rc<CurrentObjectCache>,
     queries: Rc<Cell<u32>>,
+}
+
+/// A site with a persistent object cache, as `wp_using_ext_object_cache()` answers when the runtime has one.
+struct External;
+
+impl ExternalObjectCache for External {
+    fn using(&self) -> bool {
+        true
+    }
 }
 
 fn s(v: &str) -> HookValue {
@@ -119,8 +133,43 @@ fn rig(backend: &str, dir: &Path, fresh: bool) -> Rig {
         ObjectCachePorts::rust(),
         Some(store),
     ));
-    let repo = Rc::new(SqlOptionRepository::new(db, "default".into()));
-    let api = OptionsApi::new(OptionsDeps::rust(hooks.clone(), current.clone(), repo));
+    let repo = Rc::new(SqlOptionRepository::new(db.clone(), "default".into()));
+    let api = Rc::new(OptionsApi::new(OptionsDeps::rust(
+        hooks.clone(),
+        current.clone(),
+        repo,
+    )));
+    let site = Rc::new(SiteConfiguration {
+        multisite: false,
+        blog_id: 1,
+        network_id: 1,
+    });
+    let installing = Rc::new(InstallingFlag::new());
+    let network = Rc::new(NetworkOptionsApi::new(
+        api.clone(),
+        Rc::new(SqlSitemetaRepository::new(db.clone())),
+        current.clone(),
+        hooks.clone(),
+        NetworkPorts {
+            multisite: site.clone(),
+            installing: installing.clone(),
+            sanitizing: Rc::new(HookSanitizing::new(hooks.clone())),
+            protected: Rc::new(FixedProtectedOptions),
+        },
+    ));
+    let transients = TransientsApi::new(
+        api.clone(),
+        network,
+        current.clone(),
+        hooks.clone(),
+        TransientPorts {
+            external: Rc::new(External),
+            installing,
+            multisite: site,
+            clock: Rc::new(SystemClock),
+            expired: Rc::new(SqlExpiredTransients::new(db)),
+        },
+    );
     let queries = Rc::new(Cell::new(0));
     let counter = queries.clone();
     hooks
@@ -136,6 +185,7 @@ fn rig(backend: &str, dir: &Path, fresh: bool) -> Rig {
         .unwrap();
     Rig {
         api,
+        transients,
         current,
         queries,
     }
@@ -174,6 +224,16 @@ fn child_writer() {
             .unwrap(),
         "add_auto" => r.api.add_option("ss_auto", s("x"), s(""), s("on")).unwrap(),
         "delete" => r.api.delete_option("ss_cross").unwrap(),
+        "transients" => {
+            let hour = HookValue::Int(3600);
+            r.transients.set_transient("ss_t", s("tv"), &hour).unwrap()
+                && r.transients
+                    .set_site_transient("ss_st", s("sv"), &hour)
+                    .unwrap()
+                && r.transients
+                    .set_transient("ss_short", s("x"), &HookValue::Int(1))
+                    .unwrap()
+        }
         other => panic!("unknown step {other}"),
     };
     assert!(ok, "{step} wrote nothing");
@@ -235,6 +295,35 @@ fn cross_process(backend: &str) {
             .iter()
             .any(|(k, v)| *k == Key::Str("ss_auto".into()) && *v == s("x")),
         "{backend}: alloptions_invalidated: {all:?}"
+    );
+
+    // transients_shared: with a persistent object cache, a transient another process set is read from the second
+    // level (no SQL, no wp_options row), and its expiry travels with it.
+    child(backend, dir.path(), "transients");
+    r.current.end_request();
+    r.queries.set(0);
+    assert_eq!(
+        r.transients.get_transient("ss_t").unwrap(),
+        s("tv"),
+        "{backend}: transients_shared"
+    );
+    assert_eq!(
+        r.transients.get_site_transient("ss_st").unwrap(),
+        s("sv"),
+        "{backend}: site transient shared"
+    );
+    assert_eq!(r.queries.get(), 0, "{backend}: transients_shared read SQL");
+    assert_eq!(
+        r.api.get_option("_transient_ss_t", None).unwrap(),
+        HookValue::Bool(false),
+        "{backend}: the transient was written to wp_options"
+    );
+    std::thread::sleep(Duration::from_millis(2100));
+    r.current.end_request();
+    assert_eq!(
+        r.transients.get_transient("ss_short").unwrap(),
+        HookValue::Bool(false),
+        "{backend}: the expiry did not reach the second level"
     );
 
     // delete_seen

@@ -95,6 +95,16 @@ pub trait NoSqlStore {
         limit: Option<usize>,
     ) -> Result<KeyValues, DbError>;
     fn increment(&self, keyspace: &str, key: &[u8], by: i64) -> Result<i64, DbError>;
+    /// Atomic: adds `by` to the key's integer value and keeps its expiry; `None`, creating nothing, when the key is
+    /// absent. With `floor`, a result below it is stored and returned as `floor`. Errors as `increment`'s
+    /// (`not-integer`, `overflow`).
+    fn adjust_existing(
+        &self,
+        keyspace: &str,
+        key: &[u8],
+        by: i64,
+        floor: Option<i64>,
+    ) -> Result<Option<i64>, DbError>;
     fn clear(&self, keyspace: &str) -> Result<(), DbError>;
 }
 

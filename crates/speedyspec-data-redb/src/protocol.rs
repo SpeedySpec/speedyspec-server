@@ -62,6 +62,13 @@ pub enum Request {
     Clear {
         keyspace: String,
     },
+    // Appended, so the earlier variants keep their wire numbers.
+    AdjustExisting {
+        keyspace: String,
+        key: Vec<u8>,
+        by: i64,
+        floor: Option<i64>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -75,6 +82,8 @@ pub enum Response {
     Entries(Vec<(Vec<u8>, Vec<u8>)>),
     Counter(i64),
     Error { code: String, message: String },
+    // Appended, so the earlier variants keep their wire numbers.
+    MaybeCounter(Option<i64>),
 }
 
 fn connection(e: std::io::Error) -> DbError {

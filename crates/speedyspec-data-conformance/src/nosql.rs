@@ -192,6 +192,87 @@ pub fn nosql_store_suite(store: &dyn NoSqlStore, keyspace: &str) {
         || format!("{kept:?}"),
     );
 
+    // 8b. adjust_existing: atomic, never creates a key, keeps the TTL, floors when asked.
+    let got = check(
+        store,
+        "adjust_existing",
+        store.adjust_existing(k, b"absent", 3, None),
+    );
+    ensure(store, "adjust_existing", got.is_none(), || {
+        format!("{got:?}")
+    });
+    let created = check(store, "adjust_existing", store.get(k, b"absent"));
+    ensure(store, "adjust_existing", created.is_none(), || {
+        format!("an absent key was created: {created:?}")
+    });
+    check(store, "adjust_existing", store.put(k, b"a", b"10", None));
+    let got = check(
+        store,
+        "adjust_existing",
+        store.adjust_existing(k, b"a", 5, None),
+    );
+    ensure(store, "adjust_existing", got == Some(15), || {
+        format!("{got:?}")
+    });
+    let got = check(
+        store,
+        "adjust_existing",
+        store.adjust_existing(k, b"a", -20, Some(0)),
+    );
+    ensure(store, "adjust_existing", got == Some(0), || {
+        format!("{got:?}")
+    });
+    let stored = check(store, "adjust_existing", store.get(k, b"a"));
+    ensure(
+        store,
+        "adjust_existing",
+        stored.as_deref() == Some(b"0".as_slice()),
+        || format!("{stored:?}"),
+    );
+    let got = check(
+        store,
+        "adjust_existing",
+        store.adjust_existing(k, b"a", -3, None),
+    );
+    ensure(store, "adjust_existing", got == Some(-3), || {
+        format!("{got:?}")
+    });
+    check(store, "adjust_existing", store.put(k, b"bad", b"abc", None));
+    let result = store.adjust_existing(k, b"bad", 1, None);
+    ensure(
+        store,
+        "adjust_existing",
+        engine_code(&result) == Some("not-integer"),
+        || format!("{result:?}"),
+    );
+    check(
+        store,
+        "adjust_existing",
+        store.put(k, b"max", max.as_bytes(), None),
+    );
+    let result = store.adjust_existing(k, b"max", 1, None);
+    ensure(
+        store,
+        "adjust_existing",
+        engine_code(&result) == Some("overflow"),
+        || format!("{result:?}"),
+    );
+    check(
+        store,
+        "adjust_existing",
+        store.put(k, b"ttl", b"1", Some(Duration::from_millis(200))),
+    );
+    check(
+        store,
+        "adjust_existing",
+        store.adjust_existing(k, b"ttl", 1, None),
+    );
+    std::thread::sleep(Duration::from_millis(300));
+    let kept = check(store, "adjust_existing", store.get(k, b"ttl"));
+    ensure(store, "adjust_existing", kept.is_none(), || {
+        format!("the adjust dropped the TTL: {kept:?}")
+    });
+
     // 9. expiry
     check(
         store,

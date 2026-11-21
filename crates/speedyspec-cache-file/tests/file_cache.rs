@@ -163,8 +163,87 @@ fn flush_removes_leftover_trash() {
     cache.set("g", "k", b"v", None).unwrap();
     std::fs::create_dir_all(dir.path().join("object-cache/.trash-1-2/x")).unwrap();
     cache.flush().unwrap();
+    // Only the group locks stay: removing a lock file another process holds would split the lock.
     let left: Vec<_> = std::fs::read_dir(dir.path().join("object-cache"))
         .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .filter(|n| n != ".locks")
         .collect();
     assert!(left.is_empty(), "{left:?}");
+}
+
+/// Runs `f` on another thread while this one holds `group`'s lock for 200 ms; how long `f` took.
+fn waits_for_the_group_lock(
+    root: &Path,
+    group: &str,
+    f: impl FnOnce(FileCache) + Send + 'static,
+) -> std::time::Duration {
+    use speedyspec_data_file::FileClient;
+    let holder = store(root);
+    let client = holder
+        .as_any()
+        .downcast_ref::<FileClient>()
+        .unwrap()
+        .clone();
+    let lock = client
+        .lock(&speedyspec_cache_file::lock_path("object-cache", group))
+        .unwrap();
+    let root = root.to_path_buf();
+    let (started, running) = std::sync::mpsc::channel();
+    let thread = std::thread::spawn(move || {
+        let other = store(&root);
+        let cache = FileCache::new(&other, "object-cache").unwrap();
+        started.send(()).unwrap();
+        let start = std::time::Instant::now();
+        f(cache);
+        start.elapsed()
+    });
+    running.recv().unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    drop(lock);
+    thread.join().unwrap()
+}
+
+/// `flush_group` takes the group's lock, and the lock lives outside the group's directory, so a holder in another
+/// process keeps it across the flush (two `add`s of one key can never both succeed).
+#[test]
+fn flush_group_waits_for_the_group_lock() {
+    let dir = tempfile::tempdir().unwrap();
+    let cache = FileCache::new(&store(dir.path()), "object-cache").unwrap();
+    cache.set("g", "k", b"v", None).unwrap();
+    let took = waits_for_the_group_lock(dir.path(), "g", |c| c.flush_group("g").unwrap());
+    assert!(took >= std::time::Duration::from_millis(100), "{took:?}");
+    assert_eq!(cache.get("g", "k").unwrap(), None);
+}
+
+/// The sweep takes each group's lock, so it never removes an entry a locked writer has just replaced.
+#[test]
+fn purge_expired_waits_for_the_group_lock() {
+    let dir = tempfile::tempdir().unwrap();
+    let cache = FileCache::new(&store(dir.path()), "object-cache").unwrap();
+    cache
+        .set("g", "k", b"v", Some(std::time::Duration::from_millis(1)))
+        .unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(5));
+    let took = waits_for_the_group_lock(dir.path(), "g", |c| {
+        assert_eq!(c.purge_expired().unwrap(), 1);
+    });
+    assert!(took >= std::time::Duration::from_millis(100), "{took:?}");
+}
+
+/// A read holds no lock, so it leaves an expired entry for a locked writer or the sweep to remove; it only answers
+/// that the entry is gone.
+#[test]
+fn get_leaves_an_expired_entry_in_place() {
+    let dir = tempfile::tempdir().unwrap();
+    let cache = FileCache::new(&store(dir.path()), "object-cache").unwrap();
+    cache
+        .set("g", "k", b"v", Some(std::time::Duration::from_millis(1)))
+        .unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(5));
+    assert_eq!(cache.get("g", "k").unwrap(), None);
+    let path = dir.path().join(entry_path("object-cache", "g", "k"));
+    assert!(path.exists(), "the read removed {}", path.display());
+    assert!(cache.add("g", "k", b"new", None).unwrap());
+    assert_eq!(cache.get("g", "k").unwrap().as_deref(), Some(&b"new"[..]));
 }

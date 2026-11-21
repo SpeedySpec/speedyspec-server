@@ -13,6 +13,12 @@ use sqlparser::ast::{
 /// `IS NOT DISTINCT FROM`, `||` (MySQL's `OR`) to `OR`, and MySQL's default `ESCAPE '\'` on every `LIKE`.
 pub struct LexicalPass;
 
+/// A literal row count no signed 64-bit `LIMIT` holds.
+fn past_i64(expr: &Expr) -> bool {
+    matches!(expr, Expr::Value(ValueWithSpan { value: Value::Number(n, _), .. })
+        if n.parse::<u128>().is_ok_and(|n| n > i64::MAX as u128))
+}
+
 struct Lexical;
 
 impl VisitorMut for Lexical {
@@ -42,6 +48,16 @@ impl VisitorMut for Lexical {
                 }),
                 limit_by: Vec::new(),
             });
+        }
+        // MySQL's "every row after an offset" is a row count of 2^64 - 1, past every other engine's 64-bit limit:
+        // it means no limit. A dialect that cannot write OFFSET alone spells the missing limit its own way.
+        if let Some(LimitClause::LimitOffset { limit, offset, .. }) = &mut query.limit_clause
+            && limit.as_ref().is_some_and(past_i64)
+        {
+            *limit = None;
+            if offset.is_none() {
+                query.limit_clause = None;
+            }
         }
         ControlFlow::Continue(())
     }

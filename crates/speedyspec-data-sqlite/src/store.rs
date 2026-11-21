@@ -188,13 +188,25 @@ impl SqliteStore {
         for stmt in catalogue_ddl() {
             store.run(&stmt)?;
         }
-        // TRUNCATE resets counters in sqlite_sequence, which SQLite creates with the first AUTOINCREMENT table.
-        store
+        // TRUNCATE resets counters in sqlite_sequence, which SQLite creates with the first AUTOINCREMENT table. Made
+        // only when missing: the CREATE and DROP change the schema, which takes the write lock and makes every other
+        // connection re-prepare its statements.
+        let has_sequence: bool = store
             .conn
-            .execute_batch(
-                "CREATE TABLE IF NOT EXISTS _speedyspec_sequence (id INTEGER PRIMARY KEY AUTOINCREMENT); DROP TABLE _speedyspec_sequence;",
+            .query_row(
+                "SELECT EXISTS (SELECT 1 FROM main.sqlite_master WHERE name = 'sqlite_sequence')",
+                [],
+                |r| r.get(0),
             )
             .map_err(|e| store.error(e))?;
+        if !has_sequence {
+            store
+                .conn
+                .execute_batch(
+                    "CREATE TABLE IF NOT EXISTS _speedyspec_sequence (id INTEGER PRIMARY KEY AUTOINCREMENT); DROP TABLE _speedyspec_sequence;",
+                )
+                .map_err(|e| store.error(e))?;
+        }
         Ok(store)
     }
 
