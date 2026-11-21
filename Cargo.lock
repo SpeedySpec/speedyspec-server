@@ -5378,6 +5378,7 @@ name = "speedyspec-wp-rewrite-php"
 version = "0.1.0"
 dependencies = [
  "serde_json",
+ "sha2 0.10.9",
  "speedyspec-compat",
  "speedyspec-container",
  "speedyspec-container-php",
@@ -5393,6 +5394,7 @@ dependencies = [
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
  "speedyspec-wp-rewrite",
+ "ureq",
 ]
 
 [[package]]

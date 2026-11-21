@@ -14,9 +14,13 @@ final class WP_UnitTest_Factory
     /** @var WP_UnitTest_Factory_For_Network */
     public $network;
 
+    /** @var WP_UnitTest_Factory_For_Post */
+    public $post;
+
     public function __construct()
     {
         $this->network = new WP_UnitTest_Factory_For_Network();
+        $this->post = new WP_UnitTest_Factory_For_Post();
     }
 }
 
@@ -53,5 +57,28 @@ final class WP_UnitTest_Factory_For_Network
             );
         }
         return $id;
+    }
+}
+
+/**
+ * Hands out post ids without storing posts: posts are not ported, and a test class whose `wpSetUpBeforeClass()`
+ *  makes posts it never reads (the rewrite endpoint tests, whose tests that visit posts are excluded) still runs.
+ */
+final class WP_UnitTest_Factory_For_Post
+{
+    private static int $next = 1;
+
+    /**
+     * Gives the next post id.
+     *
+     * @param array $args
+     *   Ignored: nothing is stored.
+     *
+     * @return int
+     *   A new post id.
+     */
+    public function create($args = array())
+    {
+        return self::$next++;
     }
 }
