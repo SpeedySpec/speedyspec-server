@@ -89,6 +89,8 @@ pub enum FileRef<'a> {
 }
 
 type Domains = IndexMap<String, Vec<Rc<FileHandle>>>;
+/// `loaded_files`: real path, then locale, then text domain; `None` where WordPress stores `false`.
+type LoadedFiles = HashMap<PathBuf, IndexMap<String, IndexMap<String, Option<Rc<FileHandle>>>>>;
 
 /// `WP_Translation_Controller`.
 pub struct TranslationController {
@@ -97,7 +99,7 @@ pub struct TranslationController {
     cache: Rc<dyn TranslationFileCache<TranslationFile>>,
     current_locale: String,
     loaded_translations: IndexMap<String, Domains>,
-    loaded_files: HashMap<PathBuf, IndexMap<String, IndexMap<String, Option<Rc<FileHandle>>>>>,
+    loaded_files: LoadedFiles,
     key: Vec<u8>,
     found: Option<(Rc<FileHandle>, Range<u32>)>,
 }
