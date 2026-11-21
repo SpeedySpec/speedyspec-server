@@ -89,3 +89,19 @@ fn matches_map_substitutes_without_stripping_or_slashes() {
         "index.php?x='y'"
     );
 }
+
+/// `preg_replace('!^.+\?!', '', $query)` is greedy on the first line: it trims through the last `?` there.
+/// Expected values are PHP's own.
+#[test]
+fn strips_through_the_last_question_mark_of_the_first_line() {
+    let cases = [
+        ("index.php?a=1?b=2", "b=2"),
+        ("?a?b", "b"),
+        ("?a", "?a"),
+        ("x?a\ny?b", "a\\ny?b"),
+    ];
+    for (query, expected) in cases {
+        let applied = QueryTemplate::parse(query).apply(&[Some(String::new())]);
+        assert_eq!(applied.replace('\n', "\\n"), expected, "{query:?}");
+    }
+}
