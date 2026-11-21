@@ -111,20 +111,27 @@ static WPNL: LazyLock<StrReplace> = LazyLock::new(|| {
     StrReplace::new(vec![(b" <!-- wpnl --> ".to_vec(), b"\n".to_vec()), (b"<!-- wpnl -->".to_vec(), b"\n".to_vec())])
 });
 /// Which of `needles` occur in `text`, as bits. Every needle but `"\r"` starts with `<`, so the scan visits only
-/// the `<` bytes.
+/// the `<` bytes, and compares only the needles whose second byte matches.
 fn presence(needles: &[&[u8]], text: &[u8]) -> u32 {
     let all = (1u32 << needles.len()) - 1;
     let mut found = 0u32;
+    let mut by_second: [u32; 256] = [0; 256];
     for (n, needle) in needles.iter().enumerate() {
-        if needle[0] != b'<' && memchr::memchr(needle[0], text).is_some() {
-            found |= 1 << n;
+        if needle[0] != b'<' {
+            if memchr::memchr(needle[0], text).is_some() {
+                found |= 1 << n;
+            }
+        } else {
+            by_second[usize::from(needle[1])] |= 1 << n;
         }
     }
     for i in memchr::memchr_iter(b'<', text) {
-        let rest = &text[i..];
-        let Some(&second) = rest.get(1) else { continue };
-        for (n, needle) in needles.iter().enumerate() {
-            if found & (1 << n) == 0 && needle.get(1) == Some(&second) && rest.starts_with(needle) {
+        let Some(&second) = text.get(i + 1) else { continue };
+        let mut candidates = by_second[usize::from(second)] & !found;
+        while candidates != 0 {
+            let n = candidates.trailing_zeros() as usize;
+            candidates &= candidates - 1;
+            if text[i..].starts_with(needles[n]) {
                 found |= 1 << n;
             }
         }
@@ -157,6 +164,13 @@ fn has_p_blockquote(text: &[u8]) -> bool {
         matches!(text.get(i + 1), Some(b'p' | b'P'))
             && text.get(i + 2) == Some(&b'>')
             && text.get(i..i + 14).is_some_and(|r| r.eq_ignore_ascii_case(b"<p><blockquote"))
+    })
+}
+
+/// A `<blockquote` in any case: `<p><blockquote` can only appear later if the input has one.
+fn has_blockquote(text: &[u8]) -> bool {
+    memchr::memchr_iter(b'<', text).any(|i| {
+        matches!(text.get(i + 1), Some(b'b' | b'B')) && text.get(i..i + 11).is_some_and(|r| r.eq_ignore_ascii_case(b"<blockquote"))
     })
 }
 
@@ -274,6 +288,7 @@ pub fn wpautop(text: &[u8], options: AutopOptions) -> Cow<'_, [u8]> {
     }
     let p = &*PATTERNS;
     let early = presence(&EARLY, text);
+    let blockquote = has_blockquote(text);
     let mut text = [text, b"\n"].concat();
     let mut pre_tags: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
 
@@ -441,7 +456,7 @@ pub fn wpautop(text: &[u8], options: AutopOptions) -> Cow<'_, [u8]> {
             })
         });
     }
-    if has_p_blockquote(&text) {
+    if blockquote && has_p_blockquote(&text) {
         text = pattern(text, &p.p_blockquote, b"<blockquote$1><p>");
     }
     text = step(text, |t| replace_one(t, b"</blockquote></p>", b"</p></blockquote>"));

@@ -257,8 +257,13 @@ impl TextApi {
         };
         let no_tags = self.filter(&self.names.no_texturize_tags, php_list(&["pre", "code", "kbd", "style", "script", "tt"]), Vec::new)?;
         let no_shortcodes = self.filter(&self.names.no_texturize_shortcodes, php_list(&["code"]), Vec::new)?;
-        let Some(bytes) = to_php_string(text) else {
-            return Ok(text.clone());
+        let bytes: Cow<'_, [u8]> = match text {
+            HookValue::Str(s) => Cow::Borrowed(s.as_bytes()),
+            HookValue::Bytes(b) => Cow::Borrowed(b),
+            other => match to_php_string(other) {
+                Some(converted) => Cow::Owned(converted),
+                None => return Ok(text.clone()),
+            },
         };
         let no_tags = string_list(&no_tags);
         let no_shortcodes = string_list(&no_shortcodes);
@@ -283,8 +288,8 @@ impl TextApi {
     ///     Whether single line breaks become `<br />`.
     /// @return
     ///     The text with paragraphs.
-    pub fn wpautop(&self, text: &[u8], br: bool) -> Result<Vec<u8>, TextError> {
-        Ok((self.autop)(text, AutopOptions { br }).into_owned())
+    pub fn wpautop<'a>(&self, text: &'a [u8], br: bool) -> Result<Cow<'a, [u8]>, TextError> {
+        Ok((self.autop)(text, AutopOptions { br }))
     }
 
     /// `shortcode_unautop( $text )`, with the registered shortcodes.
@@ -293,13 +298,13 @@ impl TextApi {
     ///     The text.
     /// @return
     ///     The text without `<p>` around lone shortcodes.
-    pub fn shortcode_unautop(&self, text: &[u8]) -> Result<Vec<u8>, TextError> {
+    pub fn shortcode_unautop<'a>(&self, text: &'a [u8]) -> Result<Cow<'a, [u8]>, TextError> {
         let tags = self.d.shortcode_tags.tag_names();
         if tags.is_empty() {
-            return Ok(text.to_vec());
+            return Ok(Cow::Borrowed(text));
         }
         let spaces = self.wp_spaces_regexp()?;
-        Ok(self.unautop.run(text, &tags, self.d.shortcode_tags.generation(), &spaces).into_owned())
+        Ok(self.unautop.run(text, &tags, self.d.shortcode_tags.generation(), &spaces))
     }
 
     /// `capital_P_dangit( $text )`, reading the current filter.
@@ -308,11 +313,11 @@ impl TextApi {
     ///     The text.
     /// @return
     ///     The corrected text.
-    pub fn capital_p_dangit(&self, text: &[u8]) -> Result<Vec<u8>, TextError> {
+    pub fn capital_p_dangit<'a>(&self, text: &'a [u8]) -> Result<Cow<'a, [u8]>, TextError> {
         let current = self.d.hooks.current_filter();
         let in_title = matches!(&current, Some(HookValue::Str(f)) if f == "the_title" || f == "wp_title");
         if in_title {
-            return Ok(capital_p_dangit(text, true, b"").into_owned());
+            return Ok(capital_p_dangit(text, true, b""));
         }
         let cached = self.statics.borrow().opening_double_quote.clone();
         let quote = match cached {
@@ -323,7 +328,7 @@ impl TextApi {
                 quote
             }
         };
-        Ok(capital_p_dangit(text, false, &quote).into_owned())
+        Ok(capital_p_dangit(text, false, &quote))
     }
 
     /// `convert_chars( $content, $deprecated )`.
@@ -334,11 +339,11 @@ impl TextApi {
     ///     The deprecated second argument; a non-empty one is reported.
     /// @return
     ///     The converted text.
-    pub fn convert_chars(&self, content: &[u8], deprecated: &HookValue) -> Result<Vec<u8>, TextError> {
+    pub fn convert_chars<'a>(&self, content: &'a [u8], deprecated: &HookValue) -> Result<Cow<'a, [u8]>, TextError> {
         if !php_empty(deprecated) {
             self.d.diagnostics.deprecated_argument("convert_chars", "0.71", "")?;
         }
-        Ok(convert_chars(content).into_owned())
+        Ok(convert_chars(content))
     }
 
     /// `balanceTags( $text, $force )`.
@@ -349,11 +354,11 @@ impl TextApi {
     ///     Balance even when the `use_balanceTags` option is off.
     /// @return
     ///     The HTML, balanced when forced or when the option is on.
-    pub fn balance_tags(&self, text: &[u8], force: bool) -> Result<Vec<u8>, TextError> {
+    pub fn balance_tags<'a>(&self, text: &'a [u8], force: bool) -> Result<Cow<'a, [u8]>, TextError> {
         if force || self.d.settings.use_balance_tags()? {
-            return Ok(force_balance_tags(text).into_owned());
+            return Ok(force_balance_tags(text));
         }
-        Ok(text.to_vec())
+        Ok(Cow::Borrowed(text))
     }
 
     /// `ent2ncr( $text )`, with its `pre_ent2ncr` short circuit.

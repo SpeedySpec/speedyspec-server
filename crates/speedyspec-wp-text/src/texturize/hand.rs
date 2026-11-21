@@ -12,7 +12,7 @@ use speedyspec_wp_shortcode_contracts::TagName;
 
 use crate::preg::{PregError, preg_replace};
 use crate::scan::{pass, then};
-use crate::strings::{PHP_TRIM_DEFAULT, php_trim, replace_one};
+use crate::strings::{PHP_TRIM_DEFAULT, find_short, php_trim, replace_one, rfind_short};
 
 use super::pcre::{PcreTexturizer, TIMES};
 use super::tables::{APOS_FLAG, OPEN_Q_FLAG, OPEN_SQ_FLAG};
@@ -280,7 +280,7 @@ fn primes(haystack: &[u8], needle: u8, prime: &[u8], open_quote: &[u8], close_qu
     let mut rest = haystack;
     let mut key = 0;
     loop {
-        let (sentence, next) = match memchr::memmem::find(rest, open_quote) {
+        let (sentence, next) = match find_short(rest, open_quote) {
             Some(at) => (&rest[..at], Some(&rest[at + open_quote.len()..])),
             None => (rest, None),
         };
@@ -290,7 +290,7 @@ fn primes(haystack: &[u8], needle: u8, prime: &[u8], open_quote: &[u8], close_qu
         if memchr(needle, sentence).is_none() {
             out.extend_from_slice(sentence);
         } else {
-            let closing = !close_quote.is_empty() && memchr::memmem::find(sentence, close_quote).is_some();
+            let closing = find_short(sentence, close_quote).is_some();
             let mut s: Vec<u8>;
             if key != 0 && !closing {
                 let mut found = 0;
@@ -300,7 +300,7 @@ fn primes(haystack: &[u8], needle: u8, prime: &[u8], open_quote: &[u8], close_qu
                     s = closed.into_owned();
                     if closed_count == 0 {
                         let flag_period = [PRIME_FLAG, b"."].concat();
-                        let pos = memchr::memmem::rfind(&s, &flag_period).or_else(|| memchr::memmem::rfind(&s, PRIME_FLAG)).unwrap_or(0);
+                        let pos = rfind_short(&s, &flag_period).or_else(|| rfind_short(&s, PRIME_FLAG)).unwrap_or(0);
                         s.splice(pos..(pos + PRIME_FLAG.len()).min(s.len()), close_quote.iter().copied());
                     }
                     s = prime_pass(&s);

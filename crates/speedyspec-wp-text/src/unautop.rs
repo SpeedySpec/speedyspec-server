@@ -44,7 +44,7 @@ fn run<'a>(pattern: Option<&Pattern>, text: &'a [u8]) -> Cow<'a, [u8]> {
 /// @return
 ///     The text, borrowed when there are no tags or nothing matched.
 pub fn shortcode_unautop<'a>(text: &'a [u8], tags: &[TagName], spaces: &[u8]) -> Cow<'a, [u8]> {
-    if tags.is_empty() {
+    if tags.is_empty() || memchr::memchr(b'[', text).is_none() {
         return Cow::Borrowed(text);
     }
     run(Pattern::try_php(&unautop_pattern(tags, spaces)).ok().as_ref(), text)
@@ -75,7 +75,8 @@ impl Unautop {
     /// @return
     ///     The text, borrowed when there are no tags or nothing matched.
     pub fn run<'a>(&self, text: &'a [u8], tags: &[TagName], generation: u64, spaces: &[u8]) -> Cow<'a, [u8]> {
-        if tags.is_empty() {
+        // Every match has a `[`; text without one can't change.
+        if tags.is_empty() || memchr::memchr(b'[', text).is_none() {
             return Cow::Borrowed(text);
         }
         let pattern = {

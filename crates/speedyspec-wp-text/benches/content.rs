@@ -1,9 +1,16 @@
 //! The content filters over the corpus's whole posts and a long page, in bytes per second, comparable with the PHP
 //! baseline (`php-baseline <function>`). Each function's output on the bench inputs is checked against WordPress's
 //! before it is timed.
+//!
+//! Times are thread CPU time, not wall time, so a busy machine skews them less; compare them with the baseline's
+//! CPU-time rates.
 
+use std::borrow::Cow;
 use std::rc::Rc;
 
+use std::time::Duration;
+
+use criterion::measurement::{Measurement, ValueFormatter, WallTime};
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use speedyspec_hooks::Value;
 use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
@@ -14,6 +21,50 @@ use speedyspec_wp_text_corpus::{Php, cases, from_value, inputs, page};
 use speedyspec_wp_text_memory::{
     EnglishTranslator, FixedShortcodeTags, FixedSiteSettings, FixedTexturizeOverrides, RecordingDiagnostics,
 };
+
+/// The calling thread's CPU time.
+fn thread_cpu() -> Duration {
+    let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+    // SAFETY: clock_gettime writes one timespec through a valid pointer.
+    unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut ts) };
+    Duration::new(ts.tv_sec as u64, ts.tv_nsec as u32)
+}
+
+/// Criterion's measurement as thread CPU time.
+struct CpuTime;
+
+static WALL: WallTime = WallTime;
+
+impl Measurement for CpuTime {
+    type Intermediate = Duration;
+    type Value = Duration;
+
+    fn start(&self) -> Duration {
+        thread_cpu()
+    }
+
+    fn end(&self, start: Duration) -> Duration {
+        thread_cpu() - start
+    }
+
+    fn add(&self, a: &Duration, b: &Duration) -> Duration {
+        *a + *b
+    }
+
+    fn zero(&self) -> Duration {
+        Duration::ZERO
+    }
+
+    fn to_f64(&self, value: &Duration) -> f64 {
+        value.as_nanos() as f64
+    }
+
+    fn formatter(&self) -> &dyn ValueFormatter {
+        WALL.formatter()
+    }
+}
+
+type Bench = Criterion<CpuTime>;
 
 fn api() -> TextApi {
     let tags = ["wp_caption", "caption", "gallery", "playlist", "audio", "video", "embed"]
@@ -34,9 +85,9 @@ fn whole_posts(function: &str) -> Vec<Vec<u8>> {
     inputs(function).into_iter().filter(|(s, _)| s.contains("/whole_posts/")).map(|(_, b)| b).collect()
 }
 
-fn bench(c: &mut Criterion, function: &str, run: &dyn Fn(&[u8]) -> Vec<u8>) {
+fn bench(c: &mut Bench, function: &str, run: &dyn Fn(&[u8]) -> Cow<'_, [u8]>) {
     for case in cases(function).iter().filter(|c| c.scenario.contains("/whole_posts/")) {
-        assert_eq!(Php::Str(run(case.args[0].bytes().unwrap())), case.returned, "{}", case.scenario);
+        assert_eq!(Php::Str(run(case.args[0].bytes().unwrap()).into_owned()), case.returned, "{}", case.scenario);
     }
     let posts = whole_posts(function);
     let mut group = c.benchmark_group(function);
@@ -61,22 +112,22 @@ fn text(value: Value) -> Vec<u8> {
     }
 }
 
-fn content(c: &mut Criterion) {
+fn content(c: &mut Bench) {
     let api = api();
-    bench(c, "wptexturize", &|t| text(api.wptexturize(&speedyspec_wp_text::strings::bytes_value(t.to_vec()), false).unwrap()));
+    bench(c, "wptexturize", &|t| Cow::Owned(text(api.wptexturize(&speedyspec_wp_text::strings::bytes_value(t.to_vec()), false).unwrap())));
     bench(c, "wpautop", &|t| api.wpautop(t, true).unwrap());
     bench(c, "shortcode_unautop", &|t| api.shortcode_unautop(t).unwrap());
     bench(c, "capital_P_dangit", &|t| api.capital_p_dangit(t).unwrap());
-    bench(c, "convert_chars", &|t| convert_chars(t).into_owned());
-    bench(c, "force_balance_tags", &|t| force_balance_tags(t).into_owned());
-    bench(c, "wp_strip_all_tags", &|t| wp_strip_all_tags_core(t, false).into_owned());
+    bench(c, "convert_chars", &convert_chars);
+    bench(c, "force_balance_tags", &force_balance_tags);
+    bench(c, "wp_strip_all_tags", &|t| wp_strip_all_tags_core(t, false));
 
     // the_content's formatting chain, as default-filters.php orders it (convert_smilies waits for plan 4).
     let chain = |t: &[u8]| {
         let t = text(api.wptexturize(&speedyspec_wp_text::strings::bytes_value(t.to_vec()), false).unwrap());
-        let t = api.wpautop(&t, true).unwrap();
-        let t = api.shortcode_unautop(&t).unwrap();
-        api.capital_p_dangit(&t).unwrap()
+        let t = api.wpautop(&t, true).unwrap().into_owned();
+        let t = api.shortcode_unautop(&t).unwrap().into_owned();
+        api.capital_p_dangit(&t).unwrap().into_owned()
     };
     let posts = whole_posts("wptexturize");
     let mut group = c.benchmark_group("the_content_chain");
@@ -94,5 +145,9 @@ fn content(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, content);
+criterion_group! {
+    name = benches;
+    config = Criterion::default().with_measurement(CpuTime);
+    targets = content
+}
 criterion_main!(benches);

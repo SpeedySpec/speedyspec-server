@@ -97,8 +97,8 @@ fn pre_ent2ncr_short_circuits() {
 #[test]
 fn capital_p_outside_a_title() {
     let h = api::harness();
-    assert_eq!(h.api.capital_p_dangit(b"Wordpress").unwrap(), b"Wordpress");
-    assert_eq!(h.api.capital_p_dangit(b"(Wordpress").unwrap(), b"(WordPress");
+    assert_eq!(&*h.api.capital_p_dangit(b"Wordpress").unwrap(), b"Wordpress");
+    assert_eq!(&*h.api.capital_p_dangit(b"(Wordpress").unwrap(), b"(WordPress");
 }
 
 /// Shortcode names that a test can change between calls.
@@ -118,9 +118,9 @@ impl ShortcodeTagNames for Changing {
 fn unautop_sees_new_tags() {
     let tags = Rc::new(Changing(RefCell::new(vec![TagName::new(b"gallery").unwrap()])));
     let h = api::harness_with(FixedSiteSettings::default(), tags.clone());
-    assert_eq!(h.api.shortcode_unautop(b"<p>[later]</p>").unwrap(), b"<p>[later]</p>");
+    assert_eq!(&*h.api.shortcode_unautop(b"<p>[later]</p>").unwrap(), b"<p>[later]</p>");
     tags.0.borrow_mut().push(TagName::new(b"later").unwrap());
-    assert_eq!(h.api.shortcode_unautop(b"<p>[later]</p>").unwrap(), b"[later]");
+    assert_eq!(&*h.api.shortcode_unautop(b"<p>[later]</p>").unwrap(), b"[later]");
 }
 
 #[test]

@@ -41,33 +41,33 @@ fn wptexturize() {
 fn wpautop() {
     check("wpautop", |h, args| {
         let br = args.get(1).is_none_or(|b| !common::php_empty(b));
-        s(h.api.wpautop(text(args), br).unwrap())
+        s(h.api.wpautop(text(args), br).unwrap().into_owned())
     });
 }
 
 #[test]
 fn shortcode_unautop() {
-    check("shortcode_unautop", |h, args| s(h.api.shortcode_unautop(text(args)).unwrap()));
+    check("shortcode_unautop", |h, args| s(h.api.shortcode_unautop(text(args)).unwrap().into_owned()));
 }
 
 #[test]
 fn capital_p_dangit() {
-    check("capital_P_dangit", |h, args| s(h.api.capital_p_dangit(text(args)).unwrap()));
+    check("capital_P_dangit", |h, args| s(h.api.capital_p_dangit(text(args)).unwrap().into_owned()));
 }
 
 #[test]
 fn convert_chars() {
     check("convert_chars", |h, args| {
-        s(h.api.convert_chars(text(args), &args.get(1).map_or(Value::Str(String::new()), to_value)).unwrap())
+        s(h.api.convert_chars(text(args), &args.get(1).map_or(Value::Str(String::new()), to_value)).unwrap().into_owned())
     });
 }
 
 #[test]
 fn balance_tags() {
     check("balanceTags", |h, args| {
-        s(h.api.balance_tags(text(args), !common::php_empty(&args[1])).unwrap())
+        s(h.api.balance_tags(text(args), !common::php_empty(&args[1])).unwrap().into_owned())
     });
-    check("force_balance_tags", |h, args| s(h.api.balance_tags(text(args), true).unwrap()));
+    check("force_balance_tags", |h, args| s(h.api.balance_tags(text(args), true).unwrap().into_owned()));
 }
 
 #[test]
@@ -212,7 +212,7 @@ fn capital_p_dangit_inside_a_title_filter() {
                 &HookName::from(hook),
                 Callback::rust("capital_P_dangit", move |args: &[HookValue]| {
                     let HookValue::Str(text) = &args[0] else { panic!("a string") };
-                    Ok(HookValue::Bytes(api.capital_p_dangit(text.as_bytes()).unwrap()))
+                    Ok(HookValue::Bytes(api.capital_p_dangit(text.as_bytes()).unwrap().into_owned()))
                 }),
                 &HookValue::Int(11),
                 1,

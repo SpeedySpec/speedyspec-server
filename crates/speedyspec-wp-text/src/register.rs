@@ -136,12 +136,12 @@ fn callback(api: &Rc<TextApi>, function: &'static str) -> Callback {
             other => {
                 let text = text_arg(other, args)?;
                 bytes_value(match other {
-                    "wpautop" => api.wpautop(&text, true).map_err(hook_error)?,
-                    "shortcode_unautop" => api.shortcode_unautop(&text).map_err(hook_error)?,
-                    "convert_chars" => api.convert_chars(&text, &HookValue::Null).map_err(hook_error)?,
+                    "wpautop" => api.wpautop(&text, true).map_err(hook_error)?.into_owned(),
+                    "shortcode_unautop" => api.shortcode_unautop(&text).map_err(hook_error)?.into_owned(),
+                    "convert_chars" => api.convert_chars(&text, &HookValue::Null).map_err(hook_error)?.into_owned(),
                     "convert_invalid_entities" => convert_invalid_entities(&text).into_owned(),
-                    "capital_P_dangit" => api.capital_p_dangit(&text).map_err(hook_error)?,
-                    "balanceTags" => api.balance_tags(&text, false).map_err(hook_error)?,
+                    "capital_P_dangit" => api.capital_p_dangit(&text).map_err(hook_error)?.into_owned(),
+                    "balanceTags" => api.balance_tags(&text, false).map_err(hook_error)?.into_owned(),
                     "force_balance_tags" => force_balance_tags(&text).into_owned(),
                     unknown => unreachable!("no callback for {unknown}"),
                 })

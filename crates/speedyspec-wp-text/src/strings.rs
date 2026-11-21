@@ -15,8 +15,10 @@ use speedyspec_hooks::Value as HookValue;
 pub struct StrReplace {
     pairs: Vec<(Vec<u8>, Vec<u8>)>,
     one_pass: Option<AhoCorasick>,
-    /// Finds whether any search string occurs, so text with none is returned without a pass per pair.
+    /// Finds which search strings occur, so a pass runs only for those (and for those an earlier pass may create).
     detector: Option<AhoCorasick>,
+    /// For each pair, whether an earlier pair's replacement could create its search string.
+    creatable: Vec<bool>,
 }
 
 fn contains(haystack: &[u8], needle: &[u8]) -> bool {
@@ -50,11 +52,21 @@ impl StrReplace {
         });
         let detector = (!independent && pairs.len() > 1).then(|| {
             AhoCorasick::builder()
-                .match_kind(MatchKind::LeftmostFirst)
+                .match_kind(MatchKind::Standard)
                 .build(pairs.iter().map(|(s, _)| s))
                 .expect("the search strings build an automaton")
         });
-        StrReplace { pairs, one_pass, detector }
+        // A replacement can create a search string only where the two overlap or one contains the other.
+        let creatable = pairs
+            .iter()
+            .enumerate()
+            .map(|(i, (search, _))| {
+                pairs[..i].iter().any(|(_, replace)| {
+                    contains(replace, search) || contains(search, replace) || overlaps(replace, search) || overlaps(search, replace)
+                })
+            })
+            .collect();
+        StrReplace { pairs, one_pass, detector, creatable }
     }
 
     /// Replaces in `text`.
@@ -79,19 +91,40 @@ impl StrReplace {
             out.extend_from_slice(&text[copied..]);
             return Cow::Owned(out);
         }
-        if let Some(detector) = &self.detector
-            && !detector.is_match(text)
-        {
-            return Cow::Borrowed(text);
+        let mut present = vec![true; self.pairs.len()];
+        if let Some(detector) = &self.detector {
+            present.fill(false);
+            for m in detector.find_overlapping_iter(text) {
+                present[m.pattern().as_usize()] = true;
+            }
+            if !present.contains(&true) {
+                return Cow::Borrowed(text);
+            }
         }
         let mut current = Cow::Borrowed(text);
-        for (search, replace) in &self.pairs {
+        for (i, (search, replace)) in self.pairs.iter().enumerate() {
+            if !present[i] && !self.creatable[i] {
+                continue;
+            }
             if let Cow::Owned(changed) = replace_one(&current, search, replace) {
                 current = Cow::Owned(changed);
             }
         }
         current
     }
+}
+
+/// The first occurrence of a short `needle`, checking only where its first byte occurs: for needles that are rare,
+/// cheaper than building a searcher.
+pub(crate) fn find_short(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    let first = *needle.first()?;
+    memchr::memchr_iter(first, haystack).find(|&at| haystack[at..].starts_with(needle))
+}
+
+/// The last occurrence of a short `needle`, as [`find_short`] finds the first.
+pub(crate) fn rfind_short(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    let first = *needle.first()?;
+    memchr::memrchr_iter(first, haystack).find(|&at| haystack[at..].starts_with(needle))
 }
 
 /// PHP's `str_replace()` with one search string: every non-overlapping occurrence, left to right.
@@ -105,8 +138,20 @@ impl StrReplace {
 /// @return
 ///     The result, borrowed when `search` doesn't occur.
 pub fn replace_one<'a>(text: &'a [u8], search: &[u8], replace: &[u8]) -> Cow<'a, [u8]> {
-    if search.is_empty() {
+    // A one-byte check first: building a searcher costs more than most texts take to scan.
+    if search.is_empty() || memchr::memchr(search[0], text).is_none() {
         return Cow::Borrowed(text);
+    }
+    if search.len() == 1 {
+        let mut out = Vec::with_capacity(text.len() + replace.len() * 4);
+        let mut copied = 0;
+        for at in memchr::memchr_iter(search[0], text) {
+            out.extend_from_slice(&text[copied..at]);
+            out.extend_from_slice(replace);
+            copied = at + 1;
+        }
+        out.extend_from_slice(&text[copied..]);
+        return Cow::Owned(out);
     }
     let mut found = memmem::find_iter(text, search).peekable();
     if found.peek().is_none() {

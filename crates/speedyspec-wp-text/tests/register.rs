@@ -152,6 +152,6 @@ fn the_content_chain_runs() {
     };
     let autop = api.wpautop(texturized.as_bytes(), true).unwrap();
     let unautop = api.shortcode_unautop(&autop).unwrap();
-    let expected = api.capital_p_dangit(&unautop).unwrap();
+    let expected = api.capital_p_dangit(&unautop).unwrap().into_owned();
     assert_eq!(out, HookValue::Str(String::from_utf8(expected).unwrap()));
 }
