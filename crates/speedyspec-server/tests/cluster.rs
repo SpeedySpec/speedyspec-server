@@ -458,8 +458,11 @@ fn rolling_upgrade_stops_and_reverts_on_one_failed_trial() {
         assert!(
             wait_for(Duration::from_secs(20), || pods
                 .generation(name)
-                .is_some_and(|g| g.1 == "0.1.0" && g.2 == "confirmed")),
-            "{name} is not back on 0.1.0: {:?}",
+                .is_some_and(
+                    |g| g.1 == env!("CARGO_PKG_VERSION") && g.2 == "confirmed"
+                )),
+            "{name} is not back on {}: {:?}",
+            env!("CARGO_PKG_VERSION"),
             pods.generation(name)
         );
     }

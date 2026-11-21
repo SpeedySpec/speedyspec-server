@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-server-infra-memory"
-version = "0.1.2"
+version = "0.1.1"
 description = "In-memory release doubles for SpeedySpec server tests, and a tar.zst archive builder."
 edition.workspace = true
 rust-version.workspace = true
