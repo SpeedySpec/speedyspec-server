@@ -7,7 +7,7 @@ use speedyspec_cache::{CacheError, CachingStore};
 use speedyspec_data::{DbError, DirectStore};
 use speedyspec_data_file::{FileClient, FileLock};
 
-use crate::layout::{entry_path, group_dir, name};
+use crate::layout::{entry_path, group_dir, lock_path, name, named_lock_path};
 
 pub struct FileCache {
     client: FileClient,
@@ -97,15 +97,18 @@ impl FileCache {
         }
     }
 
-    /// The live entry; an expired one is removed.
-    fn read(&self, group: &str, key: &str) -> Result<Option<Entry>, CacheError> {
+    /// The live entry. An expired one is removed only under the group's lock (`locked`): a read without it could
+    /// remove an entry a locked writer has just replaced.
+    fn read(&self, group: &str, key: &str, locked: bool) -> Result<Option<Entry>, CacheError> {
         let path = entry_path(&self.dir, group, key);
         let Some(bytes) = self.client.read(&path).map_err(|e| self.backend(e))? else {
             return Ok(None);
         };
         match decode(&bytes, &name(group, key)) {
             Some((expires, _)) if expires != 0 && now_ms() >= expires => {
-                self.client.remove(&path).map_err(|e| self.backend(e))?;
+                if locked {
+                    self.client.remove(&path).map_err(|e| self.backend(e))?;
+                }
                 Ok(None)
             }
             other => Ok(other),
@@ -136,10 +139,19 @@ impl FileCache {
         self.write(group, key, expires_at(expiry), value)
     }
 
-    /// The group's lock, held for a read-modify-write so two processes never interleave on one group.
+    /// The group's lock, held for a read-modify-write, a flush or a sweep so two processes never interleave on one
+    /// group. It lives outside the group's directory, so a flush that moves the directory aside keeps every holder
+    /// on the same lock.
     fn lock(&self, group: &str) -> Result<FileLock, CacheError> {
         self.client
-            .lock(&format!("{}/.lock", group_dir(&self.dir, group)))
+            .lock(&lock_path(&self.dir, group))
+            .map_err(|e| self.backend(e))
+    }
+
+    /// The lock of the group whose directory is `name` (`g-…`), for the flush and the sweep, which see only names.
+    fn lock_named(&self, name: &str) -> Result<FileLock, CacheError> {
+        self.client
+            .lock(&named_lock_path(&self.dir, name))
             .map_err(|e| self.backend(e))
     }
 
@@ -169,7 +181,7 @@ impl FileCache {
         f: impl FnOnce(i64) -> i64,
     ) -> Result<Option<i64>, CacheError> {
         let _lock = self.lock(group)?;
-        let Some((expires, value)) = self.read(group, key)? else {
+        let Some((expires, value)) = self.read(group, key, true)? else {
             return Ok(None);
         };
         let n = f(number(group, key, &value)?);
@@ -186,8 +198,9 @@ impl FileCache {
         let now = now_ms();
         let mut removed = 0;
         let list = |dir: &str| self.client.list(dir).map_err(|e| self.backend(e));
-        for group in list(&self.dir)?.into_iter().filter(|g| g.starts_with("g-")) {
-            let group = format!("{}/{group}", self.dir);
+        for name in list(&self.dir)?.into_iter().filter(|g| g.starts_with("g-")) {
+            let _lock = self.lock_named(&name)?;
+            let group = format!("{}/{name}", self.dir);
             for shard in list(&group)?.into_iter().filter(|s| !s.starts_with('.')) {
                 let shard = format!("{group}/{shard}");
                 for entry in list(&shard)?.into_iter().filter(|e| !e.starts_with('.')) {
@@ -218,7 +231,7 @@ impl CachingStore for FileCache {
     }
 
     fn get(&self, group: &str, key: &str) -> Result<Option<Vec<u8>>, CacheError> {
-        Ok(self.read(group, key)?.map(|(_, v)| v))
+        Ok(self.read(group, key, false)?.map(|(_, v)| v))
     }
 
     fn get_many(&self, group: &str, keys: &[&str]) -> Result<Vec<Option<Vec<u8>>>, CacheError> {
@@ -243,7 +256,7 @@ impl CachingStore for FileCache {
         expiry: Option<Duration>,
     ) -> Result<bool, CacheError> {
         let _lock = self.lock(group)?;
-        if self.read(group, key)?.is_some() {
+        if self.read(group, key, true)?.is_some() {
             return Ok(false);
         }
         self.store(group, key, value, expiry)?;
@@ -258,7 +271,7 @@ impl CachingStore for FileCache {
         expiry: Option<Duration>,
     ) -> Result<bool, CacheError> {
         let _lock = self.lock(group)?;
-        if self.read(group, key)?.is_none() {
+        if self.read(group, key, true)?.is_none() {
             return Ok(false);
         }
         self.store(group, key, value, expiry)?;
@@ -266,7 +279,7 @@ impl CachingStore for FileCache {
     }
 
     fn delete(&self, group: &str, key: &str) -> Result<bool, CacheError> {
-        let live = self.read(group, key)?.is_some();
+        let live = self.read(group, key, false)?.is_some();
         self.client
             .remove(&entry_path(&self.dir, group, key))
             .map_err(|e| self.backend(e))?;
@@ -285,6 +298,7 @@ impl CachingStore for FileCache {
     fn flush(&self) -> Result<(), CacheError> {
         for entry in self.client.list(&self.dir).map_err(|e| self.backend(e))? {
             if entry.starts_with("g-") {
+                let _lock = self.lock_named(&entry)?;
                 self.discard(&format!("{}/{entry}", self.dir))?;
             } else if entry.starts_with(".trash-") {
                 // A flush a crash interrupted.
@@ -297,6 +311,7 @@ impl CachingStore for FileCache {
     }
 
     fn flush_group(&self, group: &str) -> Result<(), CacheError> {
+        let _lock = self.lock(group)?;
         self.discard(&group_dir(&self.dir, group))
     }
 }

@@ -30,3 +30,16 @@ pub fn entry_path(dir: &str, group: &str, key: &str) -> String {
         &digest[2..]
     )
 }
+
+/// `<dir>/.locks/g-<first 32 hex of sha256(group)>.lock`: outside the group's directory, so a flush that moves the
+/// directory aside leaves every holder on the same lock.
+pub fn lock_path(dir: &str, group: &str) -> String {
+    let group_dir = group_dir(dir, group);
+    let name = group_dir.rsplit('/').next().unwrap_or_default();
+    named_lock_path(dir, name)
+}
+
+/// The lock of the group whose directory under `dir` is `name` (`g-…`).
+pub(crate) fn named_lock_path(dir: &str, name: &str) -> String {
+    format!("{dir}/.locks/{name}.lock")
+}
