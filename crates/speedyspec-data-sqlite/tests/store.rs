@@ -646,3 +646,19 @@ fn reopening_does_not_change_the_schema() {
     let _third = SqliteStore::open(&config(&url, &[])).unwrap();
     assert_eq!(version(&watcher), before);
 }
+
+/// MySQL's way to say "every row after an offset": a row count of 2^64 - 1, which SQLite's 64-bit LIMIT refuses.
+#[test]
+fn limit_past_i64_means_every_row() {
+    let store = memory();
+    exec(
+        &store,
+        "INSERT INTO wp_options (option_name, option_value) VALUES ('a', '1'), ('b', '2'), ('c', '3')",
+    );
+    for sql in [
+        "SELECT option_name FROM wp_options ORDER BY option_name LIMIT 1, 18446744073709551615",
+        "SELECT option_name FROM wp_options ORDER BY option_name LIMIT 18446744073709551615 OFFSET 1",
+    ] {
+        assert_eq!(query(&store, sql).rows.len(), 2, "{sql}");
+    }
+}
