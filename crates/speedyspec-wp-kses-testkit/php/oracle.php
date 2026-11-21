@@ -78,6 +78,25 @@ while ( false !== ( $line = fgets( STDIN ) ) ) {
 				'allowedentitynames'    => oracle_encode( $GLOBALS['allowedentitynames'] ),
 				'allowedxmlentitynames' => oracle_encode( $GLOBALS['allowedxmlentitynames'] ),
 			);
+		} elseif ( 'html_decode' === $fn ) {
+			$returned = oracle_encode( WP_HTML_Decoder::decode( $args[0], $args[1] ) );
+		} elseif ( 'html_attributes' === $fn ) {
+			// The attributes of "<wp {$attr}>" as wp_kses_hair() reads them: comparable name => true or decoded value.
+			$processor = new WP_HTML_Tag_Processor( "<wp {$args[0]}>" );
+			$processor->next_token();
+			$names = $processor->get_attribute_names_with_prefix( '' );
+			if ( null === $names ) {
+				$returned = null;
+			} else {
+				$pairs = array();
+				foreach ( $names as $name ) {
+					$pairs[] = array( $name, $processor->get_attribute( $name ) );
+				}
+				$returned = oracle_encode( $pairs );
+			}
+		} elseif ( 'html_named_references' === $fn ) {
+			global $html5_named_character_references;
+			$returned = oracle_encode( $html5_named_character_references->to_array() );
 		} elseif ( 'preg' === $fn ) {
 			$ok       = preg_match( $args[0], $args[1], $m, PREG_OFFSET_CAPTURE );
 			$returned = oracle_encode( false === $ok ? null : ( $ok ? $m : array() ) );
