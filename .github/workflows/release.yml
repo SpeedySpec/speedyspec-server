@@ -131,16 +131,24 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+    # The release is tagged at the release commit, which is behind main when an earlier build failed and a later push
+    # retries it. GitHub refuses GITHUB_TOKEN any tag whose commit's workflow files differ from main's ("Resource not
+    # accessible by integration"), since that needs the workflows permission GITHUB_TOKEN can't have. RELEASE_TOKEN is
+    # a fine-grained token (or GitHub App token) for this repository with Contents, Workflows and Pull requests set to
+    # read and write. Without it, releases still work whenever the release commit is main's head.
     steps:
       - uses: googleapis/release-please-action@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
       # Library crates are release-please packages without GitHub releases; release-please finds where each was last
       # released from its tag, so tag them at the merged release (only when this push merged one).
       - uses: actions/checkout@v4
         if: needs.pending.outputs.releases != '[]'
+        with:
+          # The tags below are pushed at the release commit too, so they need the same token.
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
       - name: Tag the library crates
         if: needs.pending.outputs.releases != '[]'
         env:
