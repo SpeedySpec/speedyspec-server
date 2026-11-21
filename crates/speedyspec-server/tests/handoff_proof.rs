@@ -279,21 +279,27 @@ async fn quic_endpoint_hands_over() {
     assert_eq!(read_line(&channel), "ready");
 
     endpoint.close(UPGRADING.into(), b"server upgrading, reconnect");
+    // `close` only queues the close on each connection's driver task. Stopping the server first would race it: the
+    // server closes its connections itself (with its own code) as it stops. So the client must have the upgrading
+    // close before the server stops.
+    match tokio::time::timeout(Duration::from_secs(5), open.closed())
+        .await
+        .unwrap()
+    {
+        quinn::ConnectionError::ApplicationClosed(close) => assert_eq!(
+            close.error_code,
+            UPGRADING.into(),
+            "closed with reason {:?}",
+            String::from_utf8_lossy(&close.reason)
+        ),
+        other => panic!("expected the upgrading close, got {other:?}"),
+    }
     parent.stop_graceful(Some(Duration::from_secs(1)));
     let _ = parent_task.await;
     // The closed endpoint keeps reading the socket until its connections finish closing; only then may another
     // process's endpoint read it.
     endpoint.wait_idle().await;
     drop(endpoint);
-    match tokio::time::timeout(Duration::from_secs(5), open.closed())
-        .await
-        .unwrap()
-    {
-        quinn::ConnectionError::ApplicationClosed(close) => {
-            assert_eq!(close.error_code, UPGRADING.into())
-        }
-        other => panic!("expected the upgrading close, got {other:?}"),
-    }
 
     let mut writer = channel.try_clone().unwrap();
     writeln!(writer, "start").unwrap();
