@@ -3,6 +3,7 @@
 mod headers;
 mod l10n_php;
 mod mo;
+pub mod mo_pomo;
 pub mod po;
 mod probe;
 
