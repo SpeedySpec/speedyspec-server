@@ -11,6 +11,7 @@ mod balance;
 mod ent2ncr_table;
 mod small;
 mod strip;
+mod texturize;
 mod trim;
 mod unautop;
 
@@ -23,3 +24,4 @@ pub use trim::{wp_html_excerpt, wp_trim_words_core};
 pub use autop::{AutopOptions, wp_replace_in_html_tags, wpautop_reference};
 pub use unautop::{Unautop, shortcode_unautop};
 pub use balance::force_balance_tags;
+pub use texturize::{PcreTexturizer, TexturizeScope, TexturizeTables, Texturizer, texturize_shortcode_regex};
