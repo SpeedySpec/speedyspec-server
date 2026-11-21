@@ -5,6 +5,7 @@ use speedyspec_http::{
 };
 use speedyspec_http_message::{HttpResponse, HttpServerRequest};
 use speedyspec_http_pipeline::Pipeline;
+use speedyspec_router::wordpress::wp_sanitize_redirect;
 use speedyspec_router::{RouteRequest, Router, TableCache, Target};
 use speedyspec_routing::{GuardAnswer, Resolution, RouteId, RouteMatch, Rule, RuleGuard};
 use speedyspec_wp_hooks::{HookApi, HookName, HookValue};
@@ -78,11 +79,14 @@ impl RoutingMiddleware {
     }
 
     /// Answers a redirect as `wp_redirect()` would: the `wp_redirect` and `wp_redirect_status` filters decide the
-    /// location and status, and a falsy location sends nothing. `None` means PHP must decide (a PHP callback is on one
-    /// of the filters, or a filter failed).
+    /// location and status, a falsy location sends nothing, the location is sanitized (`wp_sanitize_redirect`), and
+    /// the `x_redirect_by` filter decides the `X-Redirect-By` header. `None` means PHP must decide: a PHP callback is
+    /// on one of the filters, a filter failed or returned what only PHP can read, or the status is outside 3xx (where
+    /// `wp_redirect()` calls `wp_die()`).
     fn redirect(&self, location: String, status: u16) -> Option<Option<HttpResponse>> {
-        if self.registry.has_php_callback("wp_redirect")
-            || self.registry.has_php_callback("wp_redirect_status")
+        if ["wp_redirect", "wp_redirect_status", "x_redirect_by"]
+            .iter()
+            .any(|hook| self.registry.has_php_callback(hook))
         {
             return None;
         }
@@ -93,29 +97,57 @@ impl RoutingMiddleware {
                 HookValue::Str(location),
                 vec![HookValue::Int(status.into())],
             )
-            .ok()?;
-        let location = match location.read().into_owned() {
-            HookValue::Str(s) if !s.is_empty() => s,
-            _ => return Some(None),
-        };
+            .ok()?
+            .read()
+            .into_owned();
         let status = self
             .hooks
             .apply_filters(
                 &HookName::from("wp_redirect_status"),
                 HookValue::Int(status.into()),
-                vec![HookValue::Str(location.clone())],
+                vec![location.clone()],
             )
-            .ok()?;
-        let status = match status.read().into_owned() {
-            HookValue::Int(i) => u16::try_from(i).ok()?,
+            .ok()?
+            .read()
+            .into_owned();
+        let location = match location {
+            HookValue::Str(s) if s.is_empty() || s == "0" => return Some(None),
+            HookValue::Null | HookValue::Bool(false) => return Some(None),
+            HookValue::Str(s) => s,
+            _ => return None,
+        };
+        let status = match status {
+            HookValue::Int(i) => i,
             HookValue::Str(s) => s.trim().parse().ok()?,
             _ => return None,
         };
-        let status = StatusCode::new(status).ok()?;
-        let response = HttpResponse::new(status)
-            .with_header("Location", vec![location])
-            .ok()?;
-        Some(Some(response))
+        if !(300..=399).contains(&status) {
+            return None;
+        }
+        let status = StatusCode::new(u16::try_from(status).ok()?).ok()?;
+        let location = wp_sanitize_redirect(&location);
+        let redirect_by = self
+            .hooks
+            .apply_filters(
+                &HookName::from("x_redirect_by"),
+                HookValue::Str("WordPress".into()),
+                vec![
+                    HookValue::Int(status.as_u16().into()),
+                    HookValue::Str(location.clone()),
+                ],
+            )
+            .ok()?
+            .read()
+            .into_owned();
+        let mut response = HttpResponse::new(status);
+        match redirect_by {
+            HookValue::Str(by) => {
+                response = response.with_header("X-Redirect-By", vec![by]).ok()?
+            }
+            HookValue::Bytes(_) => return None,
+            _ => {}
+        }
+        Some(Some(response.with_header("Location", vec![location]).ok()?))
     }
 
     fn run_route(&self, id: RouteId, request: HttpServerRequest) -> HttpResponse {
