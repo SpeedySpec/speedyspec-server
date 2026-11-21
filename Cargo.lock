@@ -5418,6 +5418,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-utf8"
+version = "0.1.0"
+dependencies = [
+ "memchr",
+ "simdutf8",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"

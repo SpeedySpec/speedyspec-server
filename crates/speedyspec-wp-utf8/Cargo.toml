@@ -1,0 +1,11 @@
+[package]
+name = "speedyspec-wp-utf8"
+version = "0.1.0"
+description = "WordPress's UTF-8 helpers (utf8.php, compat-utf8.php): scanning, validation, scrubbing and code point counting over bytes."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+memchr = "2.8"
+simdutf8 = "0.1.5"
