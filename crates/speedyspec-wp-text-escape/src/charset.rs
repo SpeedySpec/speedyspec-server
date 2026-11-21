@@ -9,8 +9,9 @@ pub enum Charset {
     Utf8,
     /// A single-byte set: only ASCII's special characters matter, and no byte is invalid.
     SingleByte(SingleByte),
-    /// An East Asian multibyte set (Big5, GB2312, Shift_JIS, EUC-JP). PHP validates their sequences; the port treats
-    /// them as single-byte, a documented difference.
+    /// An East Asian multibyte set (Big5, GB2312, Shift_JIS, EUC-JP). PHP validates their sequences and returns an
+    /// empty string for an invalid one; the port treats them as single-byte. This is a documented break
+    /// (`compat/formatting/breaks.json`), and the output stays safe, because no special character can be a trail byte.
     Unsupported(String),
 }
 

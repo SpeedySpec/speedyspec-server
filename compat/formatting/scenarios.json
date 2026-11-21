@@ -2130,6 +2130,54 @@
           "call": "htmlspecialchars"
         }
       ]
+    },
+    {
+      "name": "htmlspecialchars/literal/charset_sjis_invalid",
+      "steps": [
+        {
+          "args": [
+            {
+              "bytes": "gTw="
+            },
+            3,
+            "Shift_JIS",
+            true
+          ],
+          "call": "htmlspecialchars"
+        }
+      ]
+    },
+    {
+      "name": "htmlspecialchars/literal/charset_big5_invalid",
+      "steps": [
+        {
+          "args": [
+            {
+              "bytes": "pDw="
+            },
+            3,
+            "BIG5",
+            true
+          ],
+          "call": "htmlspecialchars"
+        }
+      ]
+    },
+    {
+      "name": "htmlspecialchars/literal/charset_eucjp_invalid",
+      "steps": [
+        {
+          "args": [
+            {
+              "bytes": "jjw="
+            },
+            3,
+            "EUC-JP",
+            true
+          ],
+          "call": "htmlspecialchars"
+        }
+      ]
     }
   ]
 }

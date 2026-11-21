@@ -1859,11 +1859,56 @@
         }
       }
     ],
+    "htmlspecialchars/literal/charset_big5_invalid": [
+      {
+        "returned": "",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "htmlspecialchars/literal/charset_eucjp_invalid": [
+      {
+        "returned": "",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
     "htmlspecialchars/literal/charset_sjis": [
       {
         "returned": {
           "bytes": "gqAmbHQ7"
         },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "htmlspecialchars/literal/charset_sjis_invalid": [
+      {
+        "returned": "",
         "invocations": [],
         "globals": {
           "wp_filter": null,

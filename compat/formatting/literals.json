@@ -1037,5 +1037,41 @@
       "Shift_JIS",
       true
     ]
+  },
+  {
+    "name": "charset_sjis_invalid",
+    "function": "htmlspecialchars",
+    "args": [
+      {
+        "bytes": "gTw="
+      },
+      3,
+      "Shift_JIS",
+      true
+    ]
+  },
+  {
+    "name": "charset_big5_invalid",
+    "function": "htmlspecialchars",
+    "args": [
+      {
+        "bytes": "pDw="
+      },
+      3,
+      "BIG5",
+      true
+    ]
+  },
+  {
+    "name": "charset_eucjp_invalid",
+    "function": "htmlspecialchars",
+    "args": [
+      {
+        "bytes": "jjw="
+      },
+      3,
+      "EUC-JP",
+      true
+    ]
   }
 ]
