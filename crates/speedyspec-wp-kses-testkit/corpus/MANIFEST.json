@@ -1,0 +1,219 @@
+[
+  {
+    "file": "attacks/dompurify.json",
+    "source": "https://github.com/cure53/DOMPurify",
+    "commit": "c8eeccfa7b50eb9621921b487393864eaccbb1bc",
+    "license": "Apache-2.0 (dual-licensed MPL-2.0)",
+    "sha256": "bc89d03c849224044587280f0b71501105c82a45f062a54ab4b52891dd5914bb"
+  },
+  {
+    "file": "attacks/h5sc.json",
+    "source": "https://github.com/cure53/H5SC",
+    "commit": "1b796a63b5ad8ca4734c52ed9cbe1035eb6f494b",
+    "license": "MPL-2.0",
+    "sha256": "4fbe6c9f994991ad495b6249dedb58ffa4d08361af6f2dd17cd01a19ff043bab"
+  },
+  {
+    "file": "attacks/owasp-evasion.json",
+    "source": "https://github.com/OWASP/CheatSheetSeries",
+    "commit": "c2a1e3e32cec12f27be0a3b1e771ce51288a363e",
+    "license": "CC-BY-SA-4.0",
+    "sha256": "6fc78f881338c114344bf5a4bbe468a44470ecf2a704e2f90c142cb9fcf9d180"
+  },
+  {
+    "file": "attacks/payloadsallthethings.json",
+    "source": "https://github.com/swisskyrepo/PayloadsAllTheThings",
+    "commit": "08ea40e77db3f42ef8f20c65196f3936a19b6c86",
+    "license": "MIT",
+    "sha256": "c54fcb4d5ccb1c119a48ab361c2d44e6410715093c520d662d5096e42f35371c"
+  },
+  {
+    "file": "attacks/seclists.json",
+    "source": "https://github.com/danielmiessler/SecLists",
+    "commit": "1a89b46c204032247592a1626e29f841cb0fe2a5",
+    "license": "MIT",
+    "sha256": "4406fef89b4710ab76e6324b3b83f05094d9010cacd04071ad0bacb87044e26b"
+  },
+  {
+    "file": "bombs/attlist-element-declarations.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "b4a4817eea4a935e9553e45e1a1277ef0bac4122420300790320b1c961c67603"
+  },
+  {
+    "file": "bombs/billion-laughs-in-html.html",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "b79fcf3a5b86cafac63305845191cfd8aea81edac7bc1186b5fda9f4897f9a12"
+  },
+  {
+    "file": "bombs/billion-laughs-in-svg.svg",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "2b1ef2a13c190f033af598d672db0235667d4a6b9a560fedce1427a670d20bda"
+  },
+  {
+    "file": "bombs/billion-laughs.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "ae520afbdd74fe373c915d7d2385bd70640ff9b3ec269e40d946a0e0ba3ee548"
+  },
+  {
+    "file": "bombs/cdata-in-svg.svg",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "cb5cbe530e74a1c6a217c9c8fbfc1bc23f19523028dc17d27fc5cfd5ddbec966"
+  },
+  {
+    "file": "bombs/doctype-in-html-post.html",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "8237e01cb392f5c4360668afabcd059d0828709ac10186901d493159e4209fd2"
+  },
+  {
+    "file": "bombs/external-dtd.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "687427f64c7c2757cc3c5289d48a1cdddd57948fdfc8515dec8716a0547c0584"
+  },
+  {
+    "file": "bombs/parameter-entities.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "6f6be4606c75eafe76b8ec4952725bc81b1087fe7422f466616480a2b805fd01"
+  },
+  {
+    "file": "bombs/quadratic-blowup.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "f69e28563af696e178a690e564ee029339462504fb65df5f7a08703fdeae5ac4"
+  },
+  {
+    "file": "bombs/svg-animate-href.svg",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "db2d440962bb8f6f70dcdeab5c2a56f9bdfa27c6074b49bf62efb57f6495a159"
+  },
+  {
+    "file": "bombs/svg-filter-chain.svg",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "ec60fc7d744639d1134a26d23374bc3cbcb36d7266bcf84210d9eb4d25a51e65"
+  },
+  {
+    "file": "bombs/svg-foreignobject-script.svg",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "f849372deb6749222ee7477fb44344a8481b651181d2ac0963398a28ff9205a3"
+  },
+  {
+    "file": "bombs/svg-marker-recursive.svg",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "57632d85944392b5b1bb076ecc379ccc12f488b49d96b29996f1caffbe107301"
+  },
+  {
+    "file": "bombs/svg-pattern-recursive.svg",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "a26330329f652fe592fb7ed2d02d12d5d21e9bfa32d4663d473cf19fbe598fcb"
+  },
+  {
+    "file": "bombs/svg-set-href.svg",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "c3aca655be199fc4aa21b52cc8342916b04ccfb80cfab6ff831dddb1d200c5ba"
+  },
+  {
+    "file": "bombs/svg-use-exponential.svg",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "9020c6c2669dbade73a94407691534529e5416fd102e31af59327e6214184f1f"
+  },
+  {
+    "file": "bombs/svg-use-recursive.svg",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "5f6dda4976f0e8a8d2f17116745f88006589f7e0d4c078d0b1e0c53411de2087"
+  },
+  {
+    "file": "bombs/xinclude.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "aa9aaca80d953cbdbf69cb1d5e43599e1543a5c2774bea19d07c0cb9fef96767"
+  },
+  {
+    "file": "bombs/xml-stylesheet.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "7a536d321ac91527f58d57de17fa9f2a71193cc2bc6c9d4686e6a480684aaf8d"
+  },
+  {
+    "file": "bombs/xxe-in-svg.svg",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "b559a746b36fce8e105c06327187bf1bfd23e60558d7841588a0af70c06ee302"
+  },
+  {
+    "file": "bombs/xxe-public.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "659cc883b1867c21f0b7b4f3e06669a55ff5a8548e65a6d0758f09356189cbd1"
+  },
+  {
+    "file": "bombs/xxe-system-data.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "79b5839f77adb1bda7a9cd8e39c2c87b7f481e75b47f5916481be7c524df0783"
+  },
+  {
+    "file": "bombs/xxe-system-expect.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "2767144d95719564d4d6021d2425a6dc91fc40590ca9c6f2dc84e56a3cbbe1fa"
+  },
+  {
+    "file": "bombs/xxe-system-file.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "633d96548e0a986ec51d2772b7965dca126131d91bb23c0e11ca303646e9bec2"
+  },
+  {
+    "file": "bombs/xxe-system-http.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "8f2ff3d994dce788678c85b18dda8dcb502be476c25a3f18691d84d71bf76724"
+  },
+  {
+    "file": "bombs/xxe-system-php.xml",
+    "source": "written for the kses port",
+    "commit": "",
+    "license": "MIT",
+    "sha256": "274ae348617757197c636f22ef4e48c22b2ca125da4014f8341980c0b46e9246"
+  }
+]

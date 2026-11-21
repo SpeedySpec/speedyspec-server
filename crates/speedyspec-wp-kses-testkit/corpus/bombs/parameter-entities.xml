@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<!DOCTYPE x [
+<!ENTITY % a "<!ENTITY &#37; b '<!ENTITY c &#34;boom&#34;>'>">
+%a; %b;
+]>
+<x>&c;</x>

@@ -203,6 +203,32 @@ pub fn corpus(name: &str) -> Vec<Vec<u8>> {
         "html-api-inputs" => b64_list(&dir.join("wordpress/html-api-inputs.json")),
         "html5lib" => b64_list(&dir.join("html5lib/tree-construction-data.json")),
         "invalid-bytes" => invalid_bytes(),
+        "attacks" => {
+            let mut files: Vec<_> = std::fs::read_dir(dir.join("attacks"))
+                .expect("attacks")
+                .flatten()
+                .map(|e| e.path())
+                .collect();
+            files.sort();
+            files
+                .iter()
+                .filter(|p| p.extension().is_some_and(|e| e == "json"))
+                .flat_map(|p| b64_list(p))
+                .collect()
+        }
+        "bombs" => {
+            let mut files: Vec<_> = std::fs::read_dir(dir.join("bombs"))
+                .expect("bombs")
+                .flatten()
+                .map(|e| e.path())
+                .collect();
+            files.sort();
+            files
+                .iter()
+                .filter(|p| p.extension().is_some_and(|e| e != "md"))
+                .filter_map(|p| std::fs::read(p).ok())
+                .collect()
+        }
         other => panic!("no corpus set named {other}"),
     }
 }
@@ -215,4 +241,6 @@ pub const CORPUS_SETS: &[&str] = &[
     "html-api-inputs",
     "html5lib",
     "invalid-bytes",
+    "attacks",
+    "bombs",
 ];

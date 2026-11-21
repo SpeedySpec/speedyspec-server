@@ -27,6 +27,7 @@ fn corpus_matches_php() {
     let mut php = PhpOracle::start().unwrap();
     let mut failures = Vec::new();
     let mut unlisted = Vec::new();
+    let mut compared = 0usize;
     for set in CORPUS_SETS {
         for input in corpus(set) {
             let id = format!("{:x}", Sha256::digest(&input));
@@ -37,6 +38,7 @@ fn corpus_matches_php() {
                         .unwrap()
                         .returned,
                 );
+                compared += 1;
                 let ours = api
                     .kses(
                         &input,
@@ -59,6 +61,8 @@ fn corpus_matches_php() {
             }
         }
     }
+    eprintln!("compared {compared} outputs with PHP");
+    assert!(compared > 23_000, "only {compared} comparisons ran");
     assert!(
         failures.is_empty(),
         "{} differences:\n{}",
