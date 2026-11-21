@@ -179,6 +179,11 @@ impl TranslationController {
         }))
     }
 
+    /// `WP_Translation_File::create()` for code outside the controller: a file object for `path`, not parsed yet.
+    pub fn open(&self, path: &Path) -> Option<Rc<FileHandle>> {
+        self.create(path)
+    }
+
     /// `load_file()`.
     pub fn load_file(&mut self, file: &Path, domain: &str, locale: Option<&str>) -> bool {
         let locale = locale.unwrap_or(&self.current_locale).to_owned();

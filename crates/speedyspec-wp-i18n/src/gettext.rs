@@ -75,6 +75,7 @@ pub struct I18nApi {
     gettext_with_context: HookName,
     ngettext: HookName,
     ngettext_with_context: HookName,
+    all: HookName,
     names: RefCell<HashMap<String, Rc<DomainFilterNames>>>,
 }
 
@@ -87,6 +88,7 @@ impl I18nApi {
             gettext_with_context: name("gettext_with_context"),
             ngettext: name("ngettext"),
             ngettext_with_context: name("ngettext_with_context"),
+            all: name("all"),
             names: RefCell::new(HashMap::new()),
         }
     }

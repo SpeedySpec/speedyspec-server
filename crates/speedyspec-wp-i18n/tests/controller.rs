@@ -242,3 +242,13 @@ fn get_entries_renumbers_integer_keys_as_array_merge_does() {
     );
     assert!(entries.contains(&(PhpKey::Str(b"it's".to_vec()), b"a\\\\b".to_vec())));
 }
+
+#[test]
+fn open_makes_an_unparsed_file_object() {
+    let (c, _, _) = controller();
+    let h = c.open(&data("broken-magic.mo")).expect("readable .mo");
+    assert!(h.error().is_none(), "no error before use");
+    assert!(h.parse().translate(b"x").is_none());
+    assert!(h.error().is_some());
+    assert!(c.open(&data("example-simple.po")).is_none());
+}

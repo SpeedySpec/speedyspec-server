@@ -226,3 +226,30 @@ fn filter_may_translate_again() {
         "{r:?}"
     );
 }
+
+#[test]
+fn filters_empty_does_not_count() {
+    let (api, hooks) = api();
+    assert!(api.filters_empty("dom", false, false));
+    assert_eq!(hooks.did_filter(&HookName::new(s("gettext"))).unwrap(), 0);
+    let log = Rc::new(RefCell::new(Vec::new()));
+    hooks
+        .add_filter(
+            &HookName::new(s("ngettext_dom")),
+            recorder(log.clone(), "n"),
+            &HookValue::Int(10),
+            1,
+        )
+        .unwrap();
+    assert!(!api.filters_empty("dom", false, true));
+    assert!(api.filters_empty("dom", true, true));
+    hooks
+        .add_filter(
+            &HookName::new(s("all")),
+            recorder(log, "a"),
+            &HookValue::Int(10),
+            1,
+        )
+        .unwrap();
+    assert!(!api.filters_empty("other", false, false));
+}
