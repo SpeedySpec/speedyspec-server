@@ -42,7 +42,12 @@ pub const PHP_TIMED_OUT: &str = "PHP timed out";
 impl PhpOracle {
     pub fn start() -> Result<PhpOracle, String> {
         let root = wordpress_release()?;
-        let php = std::env::var("SPEEDYSPEC_PHP").unwrap_or_else(|_| "php".to_string());
+        // SPEEDYSPEC_PHP, else the static PHP CLI that cargo's [env] names as PHP (.cargo/config.toml) when it
+        // exists, else `php` on PATH.
+        let php = std::env::var("SPEEDYSPEC_PHP")
+            .ok()
+            .or_else(|| std::env::var("PHP").ok().filter(|p| Path::new(p).exists()))
+            .unwrap_or_else(|| "php".to_string());
         let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("php/oracle.php");
         let mut child = Command::new(&php)
             .args(["-d", "pcre.jit=1", "-d", "memory_limit=2G"])
