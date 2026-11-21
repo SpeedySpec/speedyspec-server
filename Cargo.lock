@@ -4767,6 +4767,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-routing"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-http",
+]
+
+[[package]]
 name = "speedyspec-runtime-contract"
 version = "0.1.0"
 dependencies = [
