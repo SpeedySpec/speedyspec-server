@@ -36,14 +36,16 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
         };
     }
 
+    // __ and _x fire gettext and gettext_with_context as WordPress's do, so a test's translation filter works;
+    // with none registered they return the text.
     function __($text, $domain = 'default')
     {
-        return $text;
+        return apply_filters('gettext', $text, $text, $domain);
     }
 
     function _x($text, $context, $domain = 'default')
     {
-        return $text;
+        return apply_filters('gettext_with_context', $text, $text, $context, $domain);
     }
 
     function translate($text, $domain = 'default')
@@ -63,7 +65,7 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
 
     function wp_get_word_count_type()
     {
-        return 'words';
+        return $GLOBALS['speedyspec_word_count_type'] ?? 'words';
     }
 
     function includes_url($path = '', $scheme = null)
@@ -168,4 +170,163 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
     // wp-includes/default-filters.php. The rest of formatting's share of that file is on hooks other seams fire;
     // `register_text_filters` and its tests cover those.
     add_filter( 'sanitize_title', 'sanitize_title_with_dashes', 10, 3 );
+
+    // The shortcodes a booted WordPress 7.1.5 has, in its registration order: media.php registers wp_caption,
+    // caption, gallery, playlist, audio and video (wp-settings.php line 265), and WP_Embed's constructor registers
+    // embed (wp-settings.php line 468). Their handlers are placeholders; formatting only reads the names.
+    function speedyspec_shortcode_placeholder()
+    {
+        return '';
+    }
+
+    foreach (['wp_caption', 'caption', 'gallery', 'playlist', 'audio', 'video', 'embed'] as $tag) {
+        add_shortcode($tag, 'speedyspec_shortcode_placeholder');
+    }
+
+    /**
+     * wptexturize() under one of wpTexturize.php's translation filters, as test_translate (table 1, the test's
+     * filter_translate) and test_primes_quotes_translation (table 2, filter_translate2) run it.
+     *
+     * @param string $text
+     *     The text to texturize.
+     * @param int $table
+     *     1 or 2.
+     * @return string
+     *     The texturized text.
+     */
+    function speedyspec_wptexturize_translated($text, $table)
+    {
+        $filter = 1 === $table ? 'speedyspec_filter_translate' : 'speedyspec_filter_translate2';
+        add_filter('gettext_with_context', $filter, 10, 4);
+        $result = wptexturize($text, true);
+        remove_filter('gettext_with_context', $filter, 10);
+        wptexturize('reset', true);
+        return $result;
+    }
+
+    // Copied verbatim from wpTexturize.php's filter_translate().
+    function speedyspec_filter_translate( $translations, $text, $context, $domain ) {
+		switch ( $text ) {
+			case '&#8211;':
+				return '!endash!';
+			case '&#8212;':
+				return '!emdash!';
+			case '&#8216;':
+				return '!openq1!';
+			case '&#8217;':
+				if ( 'apostrophe' === $context ) {
+					return '!apos!';
+				} else {
+					return '!closeq1!';
+				}
+			case '&#8220;':
+				return '!openq2!';
+			case '&#8221;':
+				return '!closeq2!';
+			case '&#8242;':
+				return '!prime1!';
+			case '&#8243;':
+				return '!prime2!';
+			case '&#8217;tain&#8217;t,&#8217;twere,&#8217;twas,&#8217;tis,&#8217;twill,&#8217;til,&#8217;bout,&#8217;nuff,&#8217;round,&#8217;cause,&#8217;em':
+				return '!apos!tain!apos!t,!apos!twere,!apos!twas,!apos!tis,!apos!twill,!apos!til,!apos!bout,!apos!nuff,!apos!round,!apos!cause,!apos!em';
+			default:
+				return $translations;
+		}
+	}
+
+    // Copied verbatim from wpTexturize.php's filter_translate2().
+    function speedyspec_filter_translate2( $translations, $text, $context, $domain ) {
+		switch ( $text ) {
+			case '&#8211;':
+				return '!endash!';
+			case '&#8212;':
+				return '!emdash!';
+			case '&#8216;':
+				return '!q1!';
+			case '&#8217;':
+				if ( 'apostrophe' === $context ) {
+					return '!apos!';
+				} else {
+					return '!q1!';
+				}
+			case '&#8220;':
+				return '!q2!';
+			case '&#8221;':
+				return '!q2!';
+			case '&#8242;':
+				return '!prime1!';
+			case '&#8243;':
+				return '!prime2!';
+			default:
+				return $translations;
+		}
+	}
+
+    /**
+     * wptexturize() with wpTexturize.php's filter_shortcodes() on no_texturize_shortcodes, as
+     * test_unregistered_shortcodes runs it.
+     *
+     * @param string $text
+     *     The text to texturize.
+     * @return string
+     *     The texturized text.
+     */
+    function speedyspec_wptexturize_no_texturize_shortcodes($text)
+    {
+        add_filter('no_texturize_shortcodes', 'speedyspec_filter_shortcodes', 10, 1);
+        $result = wptexturize($text);
+        remove_filter('no_texturize_shortcodes', 'speedyspec_filter_shortcodes', 10);
+        return $result;
+    }
+
+    // Copied from wpTexturize.php's filter_shortcodes().
+    function speedyspec_filter_shortcodes( $disabled ) {
+		$disabled[] = 'audio';
+		return $disabled;
+	}
+
+    /**
+     * wp_trim_words() with a word count type that counts characters, as wpTrimWords.php's ja_JP tests run it
+     * (ja_JP's type is characters_including_spaces).
+     *
+     * @param mixed $text
+     *     The text.
+     * @param mixed $num_words
+     *     The number of characters.
+     * @param mixed $more
+     *     What to append.
+     * @return string
+     *     The trimmed text.
+     */
+    function speedyspec_wp_trim_words_characters($text, $num_words = 55, $more = null)
+    {
+        $GLOBALS['speedyspec_word_count_type'] = 'characters_including_spaces';
+        try {
+            return wp_trim_words($text, $num_words, $more);
+        } finally {
+            unset($GLOBALS['speedyspec_word_count_type']);
+        }
+    }
+
+    /**
+     * capital_P_dangit() while $filter is the current filter, as capitalPDangit.php sets $wp_current_filter.
+     *
+     * @param mixed $text
+     *     The text.
+     * @param string $filter
+     *     The filter to pretend is running.
+     * @return string
+     *     The corrected text.
+     */
+    function speedyspec_capital_P_dangit_in_filter($text, $filter)
+    {
+        global $wp_current_filter;
+        $saved = $wp_current_filter;
+        $wp_current_filter = [$filter];
+        try {
+            return capital_P_dangit($text);
+        } finally {
+            $wp_current_filter = $saved;
+        }
+    }
 }

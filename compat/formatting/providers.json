@@ -94,5 +94,160 @@
   {
     "whole_posts": true,
     "function": "htmlspecialchars"
+  },
+  {
+    "capture": "wpTexturize.php",
+    "class": "Tests_Formatting_wpTexturize",
+    "functions": [
+      "wptexturize"
+    ],
+    "skip": [
+      "test_pcre_performance"
+    ],
+    "as": {
+      "test_translate": {
+        "function": "speedyspec_wptexturize_translated",
+        "args": [
+          0
+        ],
+        "extra": [
+          1
+        ]
+      },
+      "test_primes_quotes_translation": {
+        "function": "speedyspec_wptexturize_translated",
+        "args": [
+          0
+        ],
+        "extra": [
+          2
+        ]
+      },
+      "test_unregistered_shortcodes": {
+        "function": "speedyspec_wptexturize_no_texturize_shortcodes",
+        "args": [
+          0
+        ]
+      }
+    }
+  },
+  {
+    "capture": "wpAutop.php",
+    "class": "Tests_Formatting_wpAutop",
+    "functions": [
+      "wpautop"
+    ]
+  },
+  {
+    "capture": "balanceTags.php",
+    "class": "Tests_Formatting_BalanceTags",
+    "functions": [
+      "balanceTags",
+      "force_balance_tags"
+    ]
+  },
+  {
+    "capture": "capitalPDangit.php",
+    "class": "Tests_Formatting_CapitalPDangit",
+    "functions": [
+      "capital_P_dangit"
+    ]
+  },
+  {
+    "capture": "convertInvalidEntities.php",
+    "class": "Tests_Formatting_ConvertInvalidEntities",
+    "functions": [
+      "convert_invalid_entities"
+    ]
+  },
+  {
+    "capture": "wpHtmlExcerpt.php",
+    "class": "Tests_Formatting_wpHtmlExcerpt",
+    "functions": [
+      "wp_html_excerpt"
+    ]
+  },
+  {
+    "capture": "wpTrimWords.php",
+    "class": "Tests_Formatting_wpTrimWords",
+    "functions": [
+      "wp_trim_words"
+    ],
+    "as": {
+      "test_trims_to_20_counted_by_chars": {
+        "function": "speedyspec_wp_trim_words_characters",
+        "args": [
+          0,
+          1
+        ]
+      },
+      "test_trims_to_20_counted_by_chars_with_double_width_chars": {
+        "function": "speedyspec_wp_trim_words_characters",
+        "args": [
+          0,
+          1
+        ]
+      }
+    }
+  },
+  {
+    "capture": "wpStripAllTags.php",
+    "class": "Tests_Formatting_wpStripAllTags",
+    "functions": [
+      "wp_strip_all_tags"
+    ]
+  },
+  {
+    "capture": "ent2ncr.php",
+    "class": "Tests_Formatting_Ent2ncr",
+    "functions": [
+      "ent2ncr"
+    ]
+  },
+  {
+    "capture": "normalizeWhitespace.php",
+    "class": "Tests_Formatting_NormalizeWhitespace",
+    "functions": [
+      "normalize_whitespace"
+    ]
+  },
+  {
+    "capture": "wpReplaceInHtmlTags.php",
+    "class": "Tests_Formatting_wpReplaceInHtmlTags",
+    "functions": [
+      "wp_replace_in_html_tags"
+    ]
+  },
+  {
+    "whole_posts": true,
+    "function": "wptexturize"
+  },
+  {
+    "whole_posts": true,
+    "function": "wpautop"
+  },
+  {
+    "whole_posts": true,
+    "function": "shortcode_unautop"
+  },
+  {
+    "whole_posts": true,
+    "function": "force_balance_tags"
+  },
+  {
+    "whole_posts": true,
+    "function": "convert_chars"
+  },
+  {
+    "whole_posts": true,
+    "function": "capital_P_dangit"
+  },
+  {
+    "whole_posts": true,
+    "function": "wp_strip_all_tags"
+  },
+  {
+    "whole_posts": true,
+    "function": "strip_tags"
   }
 ]
