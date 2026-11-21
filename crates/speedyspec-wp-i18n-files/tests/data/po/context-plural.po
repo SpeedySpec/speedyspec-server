@@ -1,0 +1,8 @@
+msgctxt "menu"
+msgid "File"
+msgid_plural "Files"
+msgstr[0] "Datei"
+msgstr[1] "Dateien"
+
+msgid "Bad"
+msgstr[0] "x"

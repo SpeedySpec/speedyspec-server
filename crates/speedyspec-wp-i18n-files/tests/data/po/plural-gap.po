@@ -1,0 +1,4 @@
+msgid "a"
+msgid_plural "as"
+msgstr[0] "x"
+msgstr[2] "z"

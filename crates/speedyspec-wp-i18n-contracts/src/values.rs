@@ -70,3 +70,29 @@ impl fmt::Display for ReadError {
 }
 
 impl std::error::Error for ReadError {}
+
+/// A PHP array key, as `Translation_Entry::$translations` keys a plural form (`msgstr[1]` is the int `1`; a key
+/// PHP does not make an int, such as `01`, stays a string).
+pub use speedyspec_hooks::Key as PhpArrayKey;
+
+/// One entry as `PO::read_entry()` leaves its `Translation_Entry`.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PoEntry {
+    /// `msgctxt`, when there was one.
+    pub context: Option<Vec<u8>>,
+    /// `msgid`; `None` only for an entry built without one.
+    pub singular: Option<Vec<u8>>,
+    /// `msgid_plural`, when there was one.
+    pub plural: Option<Vec<u8>>,
+    /// The `msgstr` values with their keys, in PHP's array order (empty when none has text).
+    pub translations: Vec<(PhpArrayKey, Vec<u8>)>,
+    pub is_plural: bool,
+    /// `#` comments, joined by `\n`.
+    pub translator_comments: Vec<u8>,
+    /// `#.` comments, joined by `\n`.
+    pub extracted_comments: Vec<u8>,
+    /// `#:` references.
+    pub references: Vec<Vec<u8>>,
+    /// `#,` flags.
+    pub flags: Vec<Vec<u8>>,
+}

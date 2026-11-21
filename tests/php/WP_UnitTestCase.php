@@ -378,6 +378,50 @@ abstract class WP_UnitTestCase extends TestCase
     }
 
     /**
+     * Asserts that two values are the same once Windows line endings are made Unix ones, as WordPress's test case
+     * does.
+     */
+    public function assertSameIgnoreEOL($expected, $actual, $message = '')
+    {
+        $unix = static function ($value) {
+            return is_string($value) ? str_replace("\r\n", "\n", $value) : $value;
+        };
+        if (null !== $expected)
+        {
+            $expected = map_deep($expected, $unix);
+        }
+        if (null !== $actual)
+        {
+            $actual = map_deep($actual, $unix);
+        }
+        $this->assertSame($expected, $actual, $message);
+    }
+
+    /**
+     * A new temporary file's name, as WordPress's test case makes one.
+     *
+     * @return string
+     *     The file's path; the file exists and is empty.
+     */
+    public function temp_filename()
+    {
+        $tmp_dir = '';
+        foreach (array('TMP', 'TMPDIR', 'TEMP') as $dir)
+        {
+            if (isset($_ENV[$dir]) && !empty($_ENV[$dir]))
+            {
+                $tmp_dir = $_ENV[$dir];
+                break;
+            }
+        }
+        if (empty($tmp_dir))
+        {
+            $tmp_dir = sys_get_temp_dir();
+        }
+        return tempnam(realpath($tmp_dir), 'wpunit');
+    }
+
+    /**
      * Asserts that two arrays hold the same values, in any order.
      */
     public function assertSameSets($expected, $actual, $message = '')

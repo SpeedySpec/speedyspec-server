@@ -26,6 +26,15 @@ impl TranslationFileReader for Counting {
         self.reads.set(self.reads.get() + 1);
         self.inner.read(path)
     }
+
+    fn read_as(
+        &self,
+        path: &Path,
+        kind: speedyspec_wp_i18n_contracts::FileKind,
+    ) -> Result<RawTranslations, ReadError> {
+        self.reads.set(self.reads.get() + 1);
+        self.inner.read_as(path, kind)
+    }
 }
 
 fn tr(
@@ -251,4 +260,26 @@ fn open_makes_an_unparsed_file_object() {
     assert!(h.parse().translate(b"x").is_none());
     assert!(h.error().is_some());
     assert!(c.open(&data("example-simple.po")).is_none());
+}
+
+#[test]
+fn a_file_opens_as_the_type_given_whatever_its_name() {
+    use speedyspec_wp_i18n_contracts::FileKind;
+    let dir = std::env::temp_dir().join(format!("speedyspec-open-as-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let plain = dir.join("wpunitAbC123");
+    std::fs::copy(data("simple.mo"), &plain).unwrap();
+    let (c, _, _) = controller();
+    assert!(
+        c.open(&plain).is_none(),
+        "no extension, no type: WordPress gives false"
+    );
+    let handle = c.open_as(&plain, FileKind::Mo).expect("opened as mo");
+    assert_eq!(handle.parse().translate(b"baba"), Some(&b"dyado"[..]));
+    let as_php = c.open_as(&plain, FileKind::Php).expect("opened as php");
+    assert!(
+        as_php.parse().error().is_some(),
+        "MO bytes are not a PHP translation file"
+    );
+    std::fs::remove_dir_all(&dir).unwrap();
 }

@@ -5527,6 +5527,7 @@ version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "foldhash",
+ "md-5",
  "serde_json",
  "speedyspec-wp-i18n",
  "speedyspec-wp-i18n-contracts",

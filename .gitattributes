@@ -2,3 +2,5 @@
 tests/php/wordpress/data/** -text
 # A WordPress test fixture that must keep its Windows line endings.
 tests/php/data/pomo/windows-line-endings.po -text
+# PO fixtures with CR and CRLF line endings, which the PO reader must see as written.
+crates/speedyspec-wp-i18n-files/tests/data/po/** -text

@@ -248,6 +248,87 @@ fn main() {
     check("schema_translation_copies_references", text(&r) == "ap", &r);
 
     let r = php.eval(
+        "speedyspec://test/plural-forms",
+        "$p = new Plural_Forms('n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2');
+         try { new Plural_Forms('n # 2'); $thrown = 'none'; } catch (Exception $e) { $thrown = get_class($e) . ':' . $e->getMessage(); }
+         $tampered = new class('n') extends Plural_Forms { public function parse($str) { $this->tokens = array(array('var'), array('value', 1), array('op', '^')); } };
+         try { $tampered->get(3); $odd = 'none'; } catch (Exception $e) { $odd = $e->getMessage(); }
+         return json_encode(array((new ReflectionClass('Plural_Forms'))->getFileName(), $p->get(22), $p->get('22'), $thrown, $odd), JSON_UNESCAPED_SLASHES);",
+    );
+    check(
+        "plural_forms_is_native",
+        text(&r)
+            == r##"["speedyspec://wp-i18n",1,1,"Exception:Unknown symbol \"#\"","Unknown operator \"^\""]"##,
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/file-export",
+        &format!(
+            "$before = SpeedySpec\\WpI18n\\Native\\export_stats();
+             $mo = WP_Translation_File::transform({f:?}, 'mo');
+             $php = WP_Translation_File::transform({f:?}, 'php');
+             return json_encode(array(md5($mo), $php, SpeedySpec\\WpI18n\\Native\\export_stats() - $before));",
+            f = root.join("tests/php/data/l10n/simple.mo").display().to_string()
+        ),
+    );
+    check(
+        "translation_file_export_is_native",
+        text(&r).ends_with(",2]") && text(&r).contains("'messages'=>"),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/mo",
+        &format!(
+            "$before = SpeedySpec\\WpI18n\\Native\\pomo_stats();
+             $mo = new MO(); $ok = $mo->import_from_file({f:?}); $bytes = $mo->export();
+             $sub = new class extends MO {{ public $seen = 0; public function &make_entry($o, $t) {{ ++$this->seen; $e = &parent::make_entry($o, $t); return $e; }} }};
+             $sub->import_from_file({f:?});
+             $missing = @(new MO())->import_from_file('/nonexistent.mo');
+             return json_encode(array($ok, count($mo->entries), strlen($bytes), $sub->seen, $missing, SpeedySpec\\WpI18n\\Native\\pomo_stats() - $before));",
+            f = root.join("tests/php/data/pomo/simple.mo").display().to_string()
+        ),
+    );
+    check("mo_is_native", text(&r) == "[true,2,202,2,false,3]", &r);
+
+    let r = php.eval(
+        "speedyspec://test/po",
+        &format!(
+            "$before = SpeedySpec\\WpI18n\\Native\\pomo_stats();
+             $po = new PO(); $ok = $po->import_from_file({f:?});
+             $after_native = SpeedySpec\\WpI18n\\Native\\pomo_stats() - $before;
+             $sub = new class extends PO {{ public $reads = 0; public function read_entry($f, $lineno = 0) {{ ++$this->reads; return parent::read_entry($f, $lineno); }} }};
+             $sub->import_from_file({f:?});
+             return json_encode(array($ok, count($po->entries), $after_native, $sub->reads, SpeedySpec\\WpI18n\\Native\\pomo_stats() - $before,
+                 PO::poify(\"a\\tb\\\"c\"), (new ReflectionMethod('PO', 'poify'))->getFileName() !== false));",
+            f = root.join("tests/php/data/pomo/simple.po").display().to_string()
+        ),
+    );
+    check("po_is_native", text(&r).starts_with("[true,6,1,8,1,"), &r);
+
+    let r = php.eval(
+        "speedyspec://test/create-as",
+        &format!(
+            "unload_textdomain('fast'); load_textdomain('fast', {mo:?}, 'de_DE');
+             $f = tempnam(sys_get_temp_dir(), 'wpunit'); copy({src:?}, $f);
+             $GLOBALS['speedyspec_includes'] = 0;
+             file_put_contents($f, str_replace('<?php', '<?php ++$GLOBALS[\"speedyspec_includes\"];', file_get_contents($f)));
+             $file = WP_Translation_File::create($f, 'php');
+             $t = $file->translate('a');
+             unlink($f);
+             return json_encode(array($t, $GLOBALS['speedyspec_includes'], $GLOBALS['speedyspec_reentry']));",
+            src = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/reentrant.l10n.php").display().to_string(),
+            mo = root.join("crates/speedyspec-wp-i18n-files/tests/data/simple.mo").display().to_string()
+        ),
+    );
+    check(
+        "a_file_read_as_another_type_is_read_once",
+        text(&r) == r#"["b",1,"dyado"]"#,
+        &r,
+    );
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

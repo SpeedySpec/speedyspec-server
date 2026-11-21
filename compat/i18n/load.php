@@ -72,7 +72,7 @@ if (!function_exists('_deprecated_argument')) {
     function _deprecated_argument($function_name, $version, $message = '') {}
 }
 
-$files = array('load.php', 'compat.php', 'compat-utf8.php', 'utf8.php', 'cache.php', 'pomo/translations.php', 'pomo/mo.php',
+$files = array('load.php', 'compat.php', 'compat-utf8.php', 'utf8.php', 'cache.php', 'pomo/translations.php', 'pomo/mo.php', 'pomo/po.php',
     'l10n/class-wp-translation-controller.php', 'l10n/class-wp-translations.php', 'l10n/class-wp-translation-file.php',
     'l10n/class-wp-translation-file-mo.php', 'l10n/class-wp-translation-file-php.php', 'l10n.php',
     'class-wp-textdomain-registry.php', 'formatting.php', 'http.php', 'link-template.php', 'class-wp-dependency.php',
