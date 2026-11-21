@@ -215,6 +215,15 @@ fn main() {
         $m = speedyspec_rewrite_match($rules, 'b', 'b');
         return $m['matched_rule'] === '(?|(a)|(b))/?$' && $m['matched_query'] === 'p=b';"#,
     );
+    yes(
+        &php,
+        "non_utf8_rule_keys_fall_back_to_php",
+        r#"$rules = array("caf\xE9/?$" => 'index.php?latin=1', '([^/]+)/?$' => 'index.php?name=$matches[1]');
+        $threw = false;
+        try { speedyspec_rewrite_match($rules, 'caf%E9', 'caf%E9'); } catch (\Throwable $e) { $threw = true; }
+        $m = speedyspec_rewrite_match_php($rules, 'caf%E9', 'caf%E9');
+        return $threw && $m['matched_rule'] === "caf\xE9/?$" && $m['matched_query'] === 'latin=1';"#,
+    );
     let flushed = eval(
         &php,
         "do_action('wp_loaded'); flush_rewrite_rules(false); return true;",

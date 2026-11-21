@@ -1,6 +1,6 @@
 --- a/wp-includes/class-wp.php
 +++ b/wp-includes/class-wp.php
-@@ -216,66 +216,17 @@
+@@ -216,66 +216,22 @@
  
  			$this->request = $requested_path;
  
@@ -64,7 +64,12 @@
 +			 * WordPress's rule loop: the empty path against '$', each rule raw then URL-decoded, the
 +			 * requested-file anchor and the verbose page check), and answers what the loop set.
 +			 */
-+			$speedyspec_match = speedyspec_rewrite_match( $rewrite, $requested_path, $requested_file );
++			try {
++				$speedyspec_match = speedyspec_rewrite_match( $rewrite, $requested_path, $requested_file );
++			} catch ( \Throwable $speedyspec_error ) {
++				// Rules that cannot reach Rust (a key that is not UTF-8): WordPress's own loop.
++				$speedyspec_match = speedyspec_rewrite_match_php( $rewrite, $requested_path, $requested_file );
++			}
  
 -				$this->matched_query = $query;
 -

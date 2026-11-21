@@ -696,6 +696,58 @@ namespace
         $wp_rewrite->add_endpoint($name, $places, $query_var);
     }
 
+    /**
+     * Runs WordPress's own rule loop from WP::parse_request, from rule `$from` on.
+     *
+     *  speedyspec_rewrite_match() hands it the rules from the first one no Rust regex engine compiles, and
+     *  WP::parse_request calls it from rule 0 when the rules cannot reach Rust at all (a rule key that is not UTF-8).
+     *  The requested-file anchor is replayed over the rules before `$from`, as the loop would have set it.
+     *
+     * @return array
+     *   The matched rule, query and query variables, each null when nothing matched.
+     */
+    function speedyspec_rewrite_match_php($rewrite, $requested_path, $requested_file, $from = 0)
+    {
+        global $wp_rewrite;
+
+        $request_match = $requested_path;
+        if (empty($request_match)) {
+            if (0 === $from && isset($rewrite['$'])) {
+                $query = addslashes(WP_MatchesMapRegex::apply(preg_replace('!^.+\?!', '', $rewrite['$']), array('')));
+                parse_str($query, $perma_query_vars);
+                return array('matched_rule' => '$', 'matched_query' => $query, 'perma_query_vars' => $perma_query_vars);
+            }
+            return array('matched_rule' => null, 'matched_query' => null, 'perma_query_vars' => null);
+        }
+        $i = -1;
+        foreach ((array) $rewrite as $match => $query) {
+            ++$i;
+            if (! empty($requested_file) && str_starts_with($match, $requested_file) && $requested_file !== $requested_path) {
+                $request_match = $requested_file . '/' . $requested_path;
+            }
+            if ($i < $from) {
+                continue;
+            }
+            if (preg_match("#^$match#", $request_match, $matches) || preg_match("#^$match#", urldecode($request_match), $matches)) {
+                if (! empty($wp_rewrite->use_verbose_page_rules) && preg_match('/pagename=\$matches\[([0-9]+)\]/', $query, $varmatch)) {
+                    $page = get_page_by_path($matches[ $varmatch[1] ]);
+                    if (! $page) {
+                        continue;
+                    }
+                    $post_status_obj = get_post_status_object($page->post_status);
+                    if (! $post_status_obj->public && ! $post_status_obj->protected && ! $post_status_obj->private && $post_status_obj->exclude_from_search) {
+                        continue;
+                    }
+                }
+                $query = preg_replace('!^.+\?!', '', $query);
+                $query = addslashes(WP_MatchesMapRegex::apply($query, $matches));
+                parse_str($query, $perma_query_vars);
+                return array('matched_rule' => $match, 'matched_query' => $query, 'perma_query_vars' => $perma_query_vars);
+            }
+        }
+        return array('matched_rule' => null, 'matched_query' => null, 'perma_query_vars' => null);
+    }
+
     function _wp_filter_taxonomy_base($base)
     {
         if (! empty($base)) {

@@ -350,40 +350,6 @@ fn native_matches_map(args: &[Value]) -> Result<Value, NativeError> {
     Ok(Value::Str(matches_map(&subject, &captures)))
 }
 
-/// `parse_request`'s rule loop for rules no Rust engine compiles: WordPress's own PHP, from rule `$from`, keeping the
-/// requested-file anchor as the loop would have set it on the earlier rules.
-const PHP_LOOP: &str = r##"return static function ($rewrite, $requested_path, $requested_file, $from) {
-    global $wp_rewrite;
-    $request_match = $requested_path;
-    $i = -1;
-    foreach ((array) $rewrite as $match => $query) {
-        ++$i;
-        if (!empty($requested_file) && str_starts_with($match, $requested_file) && $requested_file !== $requested_path) {
-            $request_match = $requested_file . '/' . $requested_path;
-        }
-        if ($i < $from) {
-            continue;
-        }
-        if (preg_match("#^$match#", $request_match, $matches) || preg_match("#^$match#", urldecode($request_match), $matches)) {
-            if (!empty($wp_rewrite->use_verbose_page_rules) && preg_match('/pagename=\$matches\[([0-9]+)\]/', $query, $varmatch)) {
-                $page = get_page_by_path($matches[ $varmatch[1] ]);
-                if (!$page) {
-                    continue;
-                }
-                $post_status_obj = get_post_status_object($page->post_status);
-                if (!$post_status_obj->public && !$post_status_obj->protected && !$post_status_obj->private && $post_status_obj->exclude_from_search) {
-                    continue;
-                }
-            }
-            $query = preg_replace('!^.+\?!', '', $query);
-            $query = addslashes(WP_MatchesMapRegex::apply($query, $matches));
-            parse_str($query, $perma_query_vars);
-            return array('matched_rule' => $match, 'matched_query' => $query, 'perma_query_vars' => $perma_query_vars);
-        }
-    }
-    return array('matched_rule' => null, 'matched_query' => null, 'perma_query_vars' => null);
-};"##;
-
 fn query_value(value: &QueryValue) -> Value {
     match value {
         QueryValue::Text(text) => Value::Str(text.clone()),
@@ -448,14 +414,14 @@ fn native_rewrite_match(args: &[Value]) -> Result<Value, NativeError> {
         WpOutcome::Matched(m) => return Ok(match_value(Some(m))),
         WpOutcome::PendingGuard(index) | WpOutcome::NeedsPhp(index) => index,
     };
-    let php_loop = speedyspec_php::eval("speedyspec://wp-rewrite-loop", PHP_LOOP).map_err(fail)?;
+    // WordPress's own loop, from the rule no Rust engine compiles (declared by the facade).
     let args = [
         rewrite,
         Value::Str(subject.requested_path),
         Value::Str(subject.requested_file),
         Value::Int(from as i64),
     ];
-    speedyspec_php::call(&php_loop, &args).map_err(fail)
+    speedyspec_php::call(&Value::Str("speedyspec_rewrite_match_php".into()), &args).map_err(fail)
 }
 
 pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
