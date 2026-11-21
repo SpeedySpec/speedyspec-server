@@ -161,8 +161,8 @@ impl SqlCache {
 
     fn keyed(group: &str, key: &str) -> Vec<DbValue> {
         vec![
-            DbValue::Text(stored_key(group)),
-            DbValue::Text(stored_key(key)),
+            DbValue::Bytes(stored_key(group).into_bytes()),
+            DbValue::Bytes(stored_key(key).into_bytes()),
         ]
     }
 
@@ -275,8 +275,8 @@ impl CachingStore for SqlCache {
         let stored: Vec<String> = keys.iter().map(|k| stored_key(k)).collect();
         let stmt = Query::table(&self.table)
             .select(&["cache_key", "cache_value", "expires_at"])
-            .where_eq("cache_group", stored_key(group))
-            .where_in("cache_key", stored.iter().map(|k| k.as_str()))
+            .where_eq("cache_group", stored_key(group).into_bytes())
+            .where_in("cache_key", stored.iter().map(|k| k.clone().into_bytes()))
             .build()
             .map_err(|e| self.err(e))?;
         let rows = self.store.query(&stmt).map_err(|e| self.err(e))?;
@@ -389,7 +389,10 @@ impl CachingStore for SqlCache {
     }
 
     fn flush_group(&self, group: &str) -> Result<(), CacheError> {
-        self.execute(&self.t.flush_group, vec![DbValue::Text(stored_key(group))])
-            .map(|_| ())
+        self.execute(
+            &self.t.flush_group,
+            vec![DbValue::Bytes(stored_key(group).into_bytes())],
+        )
+        .map(|_| ())
     }
 }

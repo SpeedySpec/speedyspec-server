@@ -4373,12 +4373,15 @@ dependencies = [
 name = "speedyspec-cache-sql"
 version = "0.1.0"
 dependencies = [
+ "postgres",
  "sha2 0.10.9",
  "speedyspec-cache",
  "speedyspec-cache-conformance",
  "speedyspec-data",
  "speedyspec-data-mysql",
+ "speedyspec-data-postgres",
  "speedyspec-data-query",
+ "speedyspec-data-sqlite",
 ]
 
 [[package]]

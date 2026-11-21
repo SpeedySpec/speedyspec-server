@@ -136,8 +136,8 @@ fn set_emits_upsert() {
     assert_eq!(
         store.params.borrow().last().unwrap(),
         &vec![
-            DbValue::Text("g".into()),
-            DbValue::Text("k".into()),
+            DbValue::Bytes(b"g".to_vec()),
+            DbValue::Bytes(b"k".to_vec()),
             DbValue::Bytes(b"v".to_vec()),
             DbValue::Null
         ]
