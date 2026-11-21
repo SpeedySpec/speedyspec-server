@@ -1,0 +1,13 @@
+[
+  {
+    "test": "wpHtmlSplit.php",
+    "class": "Tests_Formatting_wpHtmlSplit",
+    "provider": "data_basic_features",
+    "function": "wp_html_split",
+    "args": [0]
+  },
+  {
+    "whole_posts": true,
+    "function": "wp_html_split"
+  }
+]
