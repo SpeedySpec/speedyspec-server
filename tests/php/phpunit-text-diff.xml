@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    bootstrap="bootstrap-text-diff.php"
+    colors="false"
+    cacheResult="false"
+    failOnWarning="false"
+    failOnDeprecation="false"
+    displayDetailsOnTestsThatTriggerDeprecations="true"
+    displayDetailsOnPhpunitDeprecations="false"
+>
+    <testsuites>
+        <testsuite name="wordpress-text-diff">
+            <directory suffix=".php">wordpress/diff</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
