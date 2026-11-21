@@ -41,22 +41,24 @@ impl WpRouting {
 
     /// The compiled table for the stored rules, or `None` when there are none.
     pub fn table(&self) -> Result<Option<Rc<CompiledTable>>, RewriteError> {
-        let Some(rules) = self.rule_set()? else {
-            return Ok(None);
-        };
+        match self.rule_set()? {
+            Some(rules) => self.table_for(rules).map(Some),
+            None => Ok(None),
+        }
+    }
+
+    fn table_for(&self, rules: Vec<Rule>) -> Result<Rc<CompiledTable>, RewriteError> {
         let mut router: Router<()> = Router::new();
         router.rules(RuleSlot::AfterRoutes, rules);
         let fingerprint = router
             .fingerprint()
             .map_err(|err| RewriteError(err.to_string()))?;
-        let table = self
-            .cache
+        self.cache
             .table(fingerprint, || router.data())
-            .map_err(RewriteError)?;
-        Ok(Some(table))
+            .map_err(RewriteError)
     }
 
-    /// Matches `subject` as `parse_request` does.
+    /// Matches `subject` against the stored rules, as `parse_request` does.
     pub fn resolve(
         &self,
         subject: &WpSubject,
@@ -65,12 +67,31 @@ impl WpRouting {
         let Some(table) = self.table()? else {
             return Ok(WpOutcome::NoRewrite);
         };
-        let request = RouteRequest {
-            method: Method::Get,
-            path: format!("/{}", subject.requested_path),
-            wordpress: Some(subject.clone()),
-        };
-        Ok(outcome(table.resolve(&request, guard, &[], false)))
+        Ok(outcome(table.resolve(
+            &request_for(subject),
+            guard,
+            &[],
+            false,
+        )))
+    }
+
+    /// Matches `subject` against `rules`: in PHP, the `$rewrite` array `parse_request` already holds.
+    pub fn resolve_rules(
+        &self,
+        rules: Vec<Rule>,
+        subject: &WpSubject,
+        guard: &dyn RuleGuard,
+    ) -> Result<WpOutcome, RewriteError> {
+        if rules.is_empty() {
+            return Ok(WpOutcome::NoRewrite);
+        }
+        let table = self.table_for(rules)?;
+        Ok(outcome(table.resolve(
+            &request_for(subject),
+            guard,
+            &[],
+            false,
+        )))
     }
 
     /// Continues from rule `from` after PHP rejected a pending guard.
@@ -87,6 +108,14 @@ impl WpRouting {
             Some(found) => outcome(Resolution::Route(found)),
             None => WpOutcome::NoMatch,
         })
+    }
+}
+
+fn request_for(subject: &WpSubject) -> RouteRequest {
+    RouteRequest {
+        method: Method::Get,
+        path: format!("/{}", subject.requested_path),
+        wordpress: Some(subject.clone()),
     }
 }
 

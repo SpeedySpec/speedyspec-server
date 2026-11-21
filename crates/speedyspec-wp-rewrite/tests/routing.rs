@@ -122,3 +122,25 @@ fn routing_rebuilds_after_option_change() {
         WpOutcome::Matched(_)
     ));
 }
+
+#[test]
+fn resolve_rules_uses_the_rules_given() {
+    let f = fixture("/%postname%/");
+    let rules = vec![Rule {
+        pattern: "given$".into(),
+        query: "index.php?given=1".into(),
+    }];
+    match routing(&f)
+        .resolve_rules(rules, &subject("given"), &Accept)
+        .unwrap()
+    {
+        WpOutcome::Matched(m) => assert_eq!(m.matched_query, "given=1"),
+        other => panic!("unexpected {other:?}"),
+    }
+    assert_eq!(
+        routing(&f)
+            .resolve_rules(vec![], &subject("given"), &Accept)
+            .unwrap(),
+        WpOutcome::NoRewrite
+    );
+}

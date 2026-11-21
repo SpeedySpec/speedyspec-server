@@ -38,6 +38,12 @@ function is_multisite() { return false; }
 function is_main_site() { return true; }
 function get_post_types($args = array()) { return array(); }
 function is_post_type_hierarchical($type) { return false; }
+function get_page_by_path($path) {
+    return 'about' === $path ? (object) array('ID' => 2, 'post_status' => 'publish') : null;
+}
+function get_post_status_object($status) {
+    return (object) array('public' => true, 'protected' => false, 'private' => false, 'exclude_from_search' => false);
+}
 class WP_Stub { public array $public_query_vars = array(); public function add_query_var($qv) { $this->public_query_vars[] = $qv; } }
 $GLOBALS['wp'] = new WP_Stub();
 $GLOBALS['wp_rewrite'] = new WP_Rewrite();
@@ -163,6 +169,51 @@ fn main() {
         &php,
         "filter_taxonomy_base",
         r#"return _wp_filter_taxonomy_base('/index.php/topics/') === 'topics' && _wp_filter_taxonomy_base('') === '';"#,
+    );
+    yes(
+        &php,
+        "plain_permalinks_do_not_404",
+        r#"return speedyspec_rewrite_match(array(), 'anything', 'anything') === null;"#,
+    );
+    yes(
+        &php,
+        "match_sets_matched_rule_and_query",
+        r#"$rules = array(
+            '(.?.+?)(?:/([0-9]+))?/?$' => 'index.php?pagename=$matches[1]&page=$matches[2]',
+            '([^/]+)(?:/([0-9]+))?/?$' => 'index.php?name=$matches[1]&page=$matches[2]',
+        );
+        $m = speedyspec_rewrite_match($rules, 'hello-world', 'hello-world');
+        return $m['matched_rule'] === '([^/]+)(?:/([0-9]+))?/?$' && $m['matched_query'] === 'name=hello-world&page='
+            && $m['perma_query_vars'] === array('name' => 'hello-world', 'page' => '');"#,
+    );
+    yes(
+        &php,
+        "verbose_page_guard_in_php",
+        r#"$rules = array(
+            '(.?.+?)(?:/([0-9]+))?/?$' => 'index.php?pagename=$matches[1]&page=$matches[2]',
+            '([^/]+)(?:/([0-9]+))?/?$' => 'index.php?name=$matches[1]&page=$matches[2]',
+        );
+        $m = speedyspec_rewrite_match($rules, 'about', 'about');
+        return $m['matched_query'] === 'pagename=about&page=';"#,
+    );
+    yes(
+        &php,
+        "no_match_is_null_fields",
+        r#"$m = speedyspec_rewrite_match(array('only$' => 'index.php?only=1'), 'else', 'else');
+        return $m === array('matched_rule' => null, 'matched_query' => null, 'perma_query_vars' => null);"#,
+    );
+    yes(
+        &php,
+        "empty_path_matches_dollar",
+        r#"$m = speedyspec_rewrite_match(array('(.*)' => 'index.php?all=1', '$' => 'index.php?home=1'), '', '');
+        return $m['matched_rule'] === '$' && $m['perma_query_vars'] === array('home' => '1');"#,
+    );
+    yes(
+        &php,
+        "needs_php_rule_still_matches",
+        r#"$rules = array('x$' => 'index.php?x=1', '(?|(a)|(b))/?$' => 'index.php?p=$matches[1]', '.*' => 'index.php?any=1');
+        $m = speedyspec_rewrite_match($rules, 'b', 'b');
+        return $m['matched_rule'] === '(?|(a)|(b))/?$' && $m['matched_query'] === 'p=b';"#,
     );
     let flushed = eval(
         &php,

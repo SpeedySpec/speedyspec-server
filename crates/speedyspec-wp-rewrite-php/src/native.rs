@@ -16,25 +16,39 @@ use speedyspec_wp_rewrite::{
     EndpointQueryVar, FlushRewriteRules, GenerateAllRewriteRules, GetIis7RewriteRules,
     GetModRewriteRules, GetRewriteRules, InitRewrite, RemovePermastruct, RemoveRewriteTag,
     RewriteError, RewriteService, RewriteStateSource, RuleQuery, SetCategoryBase,
-    SetPermalinkStructure, SetTagBase,
+    SetPermalinkStructure, SetTagBase, WpOutcome, WpRouting,
 };
 
-use crate::PhpRewriteState;
 use crate::values::{arg, int, items, key_text, rules_value, text, truthy};
+use crate::{PhpPageByPath, PhpRewriteState};
+use speedyspec_php_ext::Key;
+use speedyspec_router::WpSubject;
+use speedyspec_routing::{QueryValue, RuleMatch};
 
 const NATIVE: &str = "SpeedySpec\\WpRewrite\\Native\\";
 
 pub(crate) struct Shared {
     pub(crate) container: Rc<Container>,
     pub(crate) service: Rc<RewriteService>,
+    pub(crate) routing: Rc<WpRouting>,
 }
 
 thread_local! {
     static SHARED: RefCell<Option<Rc<Shared>>> = const { RefCell::new(None) };
 }
 
-pub(crate) fn install(container: Rc<Container>, service: Rc<RewriteService>) {
-    SHARED.with(|s| *s.borrow_mut() = Some(Rc::new(Shared { container, service })));
+pub(crate) fn install(
+    container: Rc<Container>,
+    service: Rc<RewriteService>,
+    routing: Rc<WpRouting>,
+) {
+    SHARED.with(|s| {
+        *s.borrow_mut() = Some(Rc::new(Shared {
+            container,
+            service,
+            routing,
+        }))
+    });
 }
 
 pub(crate) fn shared() -> Result<Rc<Shared>, NativeError> {
@@ -335,8 +349,117 @@ fn native_matches_map(args: &[Value]) -> Result<Value, NativeError> {
     Ok(Value::Str(matches_map(&subject, &captures)))
 }
 
+/// `parse_request`'s rule loop for rules no Rust engine compiles: WordPress's own PHP, from rule `$from`, keeping the
+/// requested-file anchor as the loop would have set it on the earlier rules.
+const PHP_LOOP: &str = r##"return static function ($rewrite, $requested_path, $requested_file, $from) {
+    global $wp_rewrite;
+    $request_match = $requested_path;
+    $i = -1;
+    foreach ((array) $rewrite as $match => $query) {
+        ++$i;
+        if (!empty($requested_file) && str_starts_with($match, $requested_file) && $requested_file !== $requested_path) {
+            $request_match = $requested_file . '/' . $requested_path;
+        }
+        if ($i < $from) {
+            continue;
+        }
+        if (preg_match("#^$match#", $request_match, $matches) || preg_match("#^$match#", urldecode($request_match), $matches)) {
+            if (!empty($wp_rewrite->use_verbose_page_rules) && preg_match('/pagename=\$matches\[([0-9]+)\]/', $query, $varmatch)) {
+                $page = get_page_by_path($matches[ $varmatch[1] ]);
+                if (!$page) {
+                    continue;
+                }
+                $post_status_obj = get_post_status_object($page->post_status);
+                if (!$post_status_obj->public && !$post_status_obj->protected && !$post_status_obj->private && $post_status_obj->exclude_from_search) {
+                    continue;
+                }
+            }
+            $query = preg_replace('!^.+\?!', '', $query);
+            $query = addslashes(WP_MatchesMapRegex::apply($query, $matches));
+            parse_str($query, $perma_query_vars);
+            return array('matched_rule' => $match, 'matched_query' => $query, 'perma_query_vars' => $perma_query_vars);
+        }
+    }
+    return array('matched_rule' => null, 'matched_query' => null, 'perma_query_vars' => null);
+};"##;
+
+fn query_value(value: &QueryValue) -> Value {
+    match value {
+        QueryValue::Text(text) => Value::Str(text.clone()),
+        QueryValue::Map(entries) => Value::Array(
+            entries
+                .iter()
+                .map(|(k, v)| (php_key(k), query_value(v)))
+                .collect(),
+        ),
+    }
+}
+
+/// PHP turns a decimal-integer string key into an integer key.
+fn php_key(key: &str) -> Key {
+    match key.parse::<i64>() {
+        Ok(i) if i.to_string() == key => Key::Int(i),
+        _ => Key::Str(key.to_string()),
+    }
+}
+
+fn match_value(found: Option<RuleMatch>) -> Value {
+    let entry = |name: &str, value: Value| (Key::Str(name.into()), value);
+    match found {
+        Some(m) => Value::Array(vec![
+            entry("matched_rule", Value::Str(m.matched_rule)),
+            entry("matched_query", Value::Str(m.matched_query)),
+            entry(
+                "perma_query_vars",
+                Value::Array(
+                    m.query_vars
+                        .iter()
+                        .map(|(k, v)| (php_key(k), query_value(v)))
+                        .collect(),
+                ),
+            ),
+        ]),
+        None => Value::Array(vec![
+            entry("matched_rule", Value::Null),
+            entry("matched_query", Value::Null),
+            entry("perma_query_vars", Value::Null),
+        ]),
+    }
+}
+
+/// `speedyspec_rewrite_match( $rewrite, $requested_path, $requested_file )`: `WP::parse_request`'s rule loop. Null
+/// when there are no rules; otherwise the matched rule, query and query variables, null when nothing matched.
+fn native_rewrite_match(args: &[Value]) -> Result<Value, NativeError> {
+    let shared = shared()?;
+    let rewrite = args.first().cloned().unwrap_or(Value::Null);
+    let rules = crate::values::rules(&rewrite);
+    let subject = WpSubject {
+        requested_path: args.get(1).map(text).unwrap_or_default(),
+        requested_file: args.get(2).map(text).unwrap_or_default(),
+    };
+    let outcome = shared
+        .routing
+        .resolve_rules(rules, &subject, &PhpPageByPath)
+        .map_err(rewrite_error)?;
+    let from = match outcome {
+        WpOutcome::NoRewrite => return Ok(Value::Null),
+        WpOutcome::NoMatch => return Ok(match_value(None)),
+        WpOutcome::Matched(m) => return Ok(match_value(Some(m))),
+        WpOutcome::PendingGuard(index) | WpOutcome::NeedsPhp(index) => index,
+    };
+    let php_loop = speedyspec_php::eval("speedyspec://wp-rewrite-loop", PHP_LOOP).map_err(fail)?;
+    let args = [
+        rewrite,
+        Value::Str(subject.requested_path),
+        Value::Str(subject.requested_file),
+        Value::Int(from as i64),
+    ];
+    speedyspec_php::call(&php_loop, &args).map_err(fail)
+}
+
 pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
     vec![
+        native::function("speedyspec_rewrite_match", native_rewrite_match),
         native::function(&format!("{NATIVE}call"), native_call),
         native::function(&format!("{NATIVE}matches_map"), native_matches_map),
     ]

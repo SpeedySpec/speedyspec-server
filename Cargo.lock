@@ -5384,6 +5384,7 @@ dependencies = [
  "speedyspec-php",
  "speedyspec-php-ext",
  "speedyspec-router",
+ "speedyspec-router-php",
  "speedyspec-router-store-memory",
  "speedyspec-routing",
  "speedyspec-wp-hooks",

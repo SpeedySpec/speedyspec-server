@@ -14,9 +14,13 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
+use speedyspec_router::TableCache;
+use speedyspec_router::dispatch::ChunkedAlternation;
+use speedyspec_router_php::BoundRouteTableStore;
+use speedyspec_router_store_memory::MemoryRouteTableStore;
 use speedyspec_wp_hooks::HookApi;
 use speedyspec_wp_rewrite::{
-    RewriteDeps, RewriteOptions, RewriteService, register_rewrite_handlers,
+    RewriteDeps, RewriteOptions, RewriteService, WpRouting, register_rewrite_handlers,
 };
 
 pub use adapters::{
@@ -33,13 +37,23 @@ pub struct RewriteArea {
 }
 
 impl RewriteArea {
-    /// The rewrite API over `options` (the options port in a worker, memory options in tests), firing hooks through
-    /// `hooks`, with its handlers bound in `container`.
+    /// The rewrite API over `options` (lazy mode: `WP::parse_request` resolves through `speedyspec_rewrite_match()`,
+    /// whose table is cached in the route table store bound in `container`), over `options` (the options port in a
+    /// worker, memory options in tests), firing hooks through `hooks`, with its handlers bound in `container`.
     pub fn new(
         container: Rc<Container>,
         hooks: Rc<HookApi>,
         options: Rc<dyn RewriteOptions>,
     ) -> RewriteArea {
+        let store = Rc::new(BoundRouteTableStore::new(
+            container.clone(),
+            Rc::new(MemoryRouteTableStore::new()),
+        ));
+        let cache = Rc::new(TableCache::new(
+            store,
+            Rc::new(ChunkedAlternation::default()),
+        ));
+        let routing = Rc::new(WpRouting::new(options.clone(), cache));
         let deps = RewriteDeps {
             options,
             urls: Rc::new(PhpSiteUrls),
@@ -53,7 +67,7 @@ impl RewriteArea {
         };
         let service = Rc::new(RewriteService::new(deps));
         register_rewrite_handlers(&container, service.clone());
-        native::install(container, service.clone());
+        native::install(container, service.clone(), routing);
         RewriteArea { service }
     }
 

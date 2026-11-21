@@ -13,6 +13,7 @@ speedyspec-php = { path = "../speedyspec-php" }
 speedyspec-php-ext = { path = "../speedyspec-php-ext" }
 speedyspec-router = { path = "../speedyspec-router" }
 speedyspec-router-store-memory = { path = "../speedyspec-router-store-memory" }
+speedyspec-router-php = { path = "../speedyspec-router-php" }
 speedyspec-routing = { path = "../speedyspec-routing" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-rewrite = { path = "../speedyspec-wp-rewrite" }
