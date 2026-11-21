@@ -5254,6 +5254,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-i18n"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "speedyspec-wp-i18n-contracts",
+]
+
+[[package]]
 name = "speedyspec-wp-i18n-contracts"
 version = "0.1.0"
 dependencies = [
