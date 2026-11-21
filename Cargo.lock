@@ -5409,6 +5409,71 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-i18n"
+version = "0.1.0"
+dependencies = [
+ "foldhash",
+ "hashbrown",
+ "indexmap",
+ "serde_json",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-i18n-contracts",
+ "speedyspec-wp-i18n-files",
+ "speedyspec-wp-i18n-memory",
+]
+
+[[package]]
+name = "speedyspec-wp-i18n-contracts"
+version = "0.1.0"
+
+[[package]]
+name = "speedyspec-wp-i18n-files"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "foldhash",
+ "serde_json",
+ "speedyspec-wp-i18n",
+ "speedyspec-wp-i18n-contracts",
+ "speedyspec-wp-utf8",
+]
+
+[[package]]
+name = "speedyspec-wp-i18n-memory"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-wp-i18n",
+ "speedyspec-wp-i18n-contracts",
+ "speedyspec-wp-i18n-files",
+ "tempfile",
+]
+
+[[package]]
+name = "speedyspec-wp-i18n-php"
+version = "0.1.0"
+dependencies = [
+ "foldhash",
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-i18n",
+ "speedyspec-wp-i18n-contracts",
+ "speedyspec-wp-i18n-files",
+ "speedyspec-wp-i18n-memory",
+ "speedyspec-wp-utf8-php",
+ "ureq",
+]
+
+[[package]]
 name = "speedyspec-wp-object-cache"
 version = "0.1.0"
 dependencies = [
@@ -5651,6 +5716,32 @@ name = "speedyspec-wp-text-memory"
 version = "0.1.0"
 dependencies = [
  "speedyspec-wp-text-contracts",
+]
+
+[[package]]
+name = "speedyspec-wp-utf8"
+version = "0.1.0"
+dependencies = [
+ "simdutf8",
+]
+
+[[package]]
+name = "speedyspec-wp-utf8-php"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-utf8",
+ "ureq",
 ]
 
 [[package]]

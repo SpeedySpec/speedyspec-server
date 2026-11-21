@@ -1,0 +1,59 @@
+# Decoder stress cases (after Markus Kuhn's UTF-8 test file), one hex byte string per line.
+# Boundary code points
+00
+7f
+c280
+dfbf
+e0a080
+efbfbf
+f0908080
+f48fbfbf
+# Past U+10FFFF
+f4908080
+f7bfbfbf
+f888808080
+fc8480808080
+# Unexpected continuation bytes
+80
+bf
+80bf
+80bf80bf80bf
+# Lone start bytes followed by space
+c020
+e020
+f020
+# Truncated sequences
+c2
+e080
+e0a0
+f09080
+f4bfbf
+# Impossible bytes
+fe
+ff
+feff
+# Overlong forms
+c0af
+e080af
+f08080af
+c1bf
+e09fbf
+f08fbfbf
+# Surrogates
+eda080
+edadbf
+edae80
+edafbf
+edb080
+edbfbf
+eda080edb080
+# Noncharacters (valid UTF-8)
+efb790
+efbfbe
+efbfbf
+f09fbfbe
+f48fbfbf
+# Mixed
+61c3a9e282acf09f9880
+61ff62
+e282ac80
