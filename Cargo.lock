@@ -4686,6 +4686,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-http-pipeline"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-http",
+ "speedyspec-http-message",
+ "speedyspec-native-stage",
+]
+
+[[package]]
 name = "speedyspec-native-stage"
 version = "0.1.0"
 
