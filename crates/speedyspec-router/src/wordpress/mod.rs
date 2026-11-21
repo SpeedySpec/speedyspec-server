@@ -12,5 +12,5 @@ pub use parse_str::php_parse_str;
 pub use permastruct::{ExpandContext, generate_rewrite_rule, generate_rewrite_rules, preg_index};
 pub use php::{php_addslashes, php_urldecode, php_urlencode};
 pub use php_array::PhpArray;
-pub use query_template::QueryTemplate;
+pub use query_template::{QueryTemplate, matches_map};
 pub use rule_set::RuleSetMatcher;

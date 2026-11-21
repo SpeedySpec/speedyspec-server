@@ -76,3 +76,16 @@ fn parse_str_plus_is_space_and_last_wins() {
         vec![("a".into(), text("~z")), ("b".into(), text(""))]
     );
 }
+
+#[test]
+fn matches_map_substitutes_without_stripping_or_slashes() {
+    use speedyspec_router::wordpress::matches_map;
+    assert_eq!(
+        matches_map("a=$matches[1]", &[Some("".into()), Some("b c".into())]),
+        "a=b+c"
+    );
+    assert_eq!(
+        matches_map("index.php?x='$matches[1]'", &[None, Some("y".into())]),
+        "index.php?x='y'"
+    );
+}

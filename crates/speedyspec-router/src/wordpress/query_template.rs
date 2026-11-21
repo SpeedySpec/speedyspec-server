@@ -15,6 +15,11 @@ pub struct QueryTemplate {
     parts: Vec<Part>,
 }
 
+/// `WP_MatchesMapRegex::apply( $subject, $matches )`: each `$matches[N]` replaced by the URL-encoded capture.
+pub fn matches_map(subject: &str, captures: &[Option<String>]) -> String {
+    QueryTemplate::references(subject).substitute(captures)
+}
+
 impl QueryTemplate {
     /// Parses `query`, dropping everything up to its first `?` (`preg_replace('!^.+\?!', '', $query)`).
     pub fn parse(query: &str) -> QueryTemplate {
@@ -22,6 +27,11 @@ impl QueryTemplate {
             Some(i) if i > 0 => &query[i + 1..],
             _ => query,
         };
+        QueryTemplate::references(query)
+    }
+
+    /// Parses the `$matches[N]` references of `query` as written.
+    fn references(query: &str) -> QueryTemplate {
         let mut parts = Vec::new();
         let mut text = String::new();
         let mut rest = query;
@@ -50,6 +60,10 @@ impl QueryTemplate {
 
     /// Substitutes `captures` (index 0 is the whole match), as `parse_request` builds `matched_query`.
     pub fn apply(&self, captures: &[Option<String>]) -> String {
+        php_addslashes(&self.substitute(captures))
+    }
+
+    fn substitute(&self, captures: &[Option<String>]) -> String {
         let mut out = String::new();
         for part in &self.parts {
             match part {
@@ -61,6 +75,6 @@ impl QueryTemplate {
                 }
             }
         }
-        php_addslashes(&out)
+        out
     }
 }
