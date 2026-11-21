@@ -9,6 +9,7 @@ license.workspace = true
 [dependencies]
 indexmap = "2"
 memchr = "2"
+speedyspec-wp-html-syntax = { path = "../speedyspec-wp-html-syntax" }
 speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
 
 [dev-dependencies]

@@ -4,7 +4,13 @@
 //! `speedyspec-wp-kses` are both built from them, so no regex quirk is written twice. Everything works on bytes:
 //! kses's regexes run without `/u`, so `\s` is PCRE's ASCII set and invalid UTF-8 passes as in PHP.
 
+mod entities;
+mod entity_names;
 pub mod scan;
 mod text;
 
+pub use entities::{
+    decode_entities, default_html_entity_names, default_xml_entity_names, normalize_entities,
+    valid_unicode,
+};
 pub use text::{array_lc, html_error, no_null, stripslashes};

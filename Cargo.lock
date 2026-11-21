@@ -5063,6 +5063,7 @@ dependencies = [
  "indexmap",
  "memchr",
  "serde_json",
+ "speedyspec-wp-html-syntax",
  "speedyspec-wp-kses-contracts",
  "speedyspec-wp-kses-testkit",
 ]
