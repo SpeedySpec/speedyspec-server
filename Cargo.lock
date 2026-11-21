@@ -5683,11 +5683,13 @@ dependencies = [
  "pcre2",
  "speedyspec-hooks",
  "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
  "speedyspec-wp-html-split",
  "speedyspec-wp-shortcode-contracts",
  "speedyspec-wp-text-contracts",
  "speedyspec-wp-text-corpus",
  "speedyspec-wp-text-escape",
+ "speedyspec-wp-text-memory",
  "speedyspec-wp-utf8",
 ]
 
@@ -5758,6 +5760,7 @@ dependencies = [
 name = "speedyspec-wp-text-memory"
 version = "0.1.0"
 dependencies = [
+ "speedyspec-wp-shortcode-contracts",
  "speedyspec-wp-text-contracts",
 ]
 

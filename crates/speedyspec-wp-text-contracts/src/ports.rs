@@ -81,3 +81,9 @@ pub trait Diagnostics {
         level: ErrorLevel,
     ) -> Result<(), TextError>;
 }
+
+/// `$wp_cockneyreplace`: a plugin's own list of words `wptexturize()` replaces, in place of the translated one.
+pub trait TexturizeOverrides {
+    /// The pairs, in the array's order; `None` when the global is not set.
+    fn cockney(&self) -> Result<Option<Vec<(Vec<u8>, Vec<u8>)>>, TextError>;
+}

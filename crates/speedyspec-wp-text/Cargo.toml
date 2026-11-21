@@ -19,4 +19,6 @@ speedyspec-wp-text-escape = { path = "../speedyspec-wp-text-escape" }
 speedyspec-wp-utf8 = { path = "../speedyspec-wp-utf8" }
 
 [dev-dependencies]
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-text-memory = { path = "../speedyspec-wp-text-memory" }
 speedyspec-wp-text-corpus = { path = "../speedyspec-wp-text-corpus", features = ["values"] }

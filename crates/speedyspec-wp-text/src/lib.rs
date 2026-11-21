@@ -6,6 +6,7 @@
 pub mod preg;
 pub mod strings;
 
+mod api;
 mod autop;
 mod balance;
 mod ent2ncr_table;
@@ -25,3 +26,4 @@ pub use autop::{AutopOptions, wp_replace_in_html_tags, wpautop_reference};
 pub use unautop::{Unautop, shortcode_unautop};
 pub use balance::force_balance_tags;
 pub use texturize::{PcreTexturizer, TexturizeScope, TexturizeTables, Texturizer, texturize_shortcode_regex};
+pub use api::{AutopFn, TextApi, TextDeps, text_error};
