@@ -7,7 +7,7 @@ use crate::WpSubject;
 
 /// A WordPress rule set, matched exactly as `WP::parse_request` matches it (Template Method over the steps below).
 ///
-/// 1. An empty path matches only the rule `$`.
+/// 1. An empty path (`''` or `'0'`, as PHP's `empty()` has it) matches only the rule `$`.
 /// 2. Each rule is tried as `^pattern` against the path, then against its URL-decoded form, before the next rule.
 /// 3. Once a rule begins with the requested file (when that file is set and differs from the path), that rule and
 ///    every later one are tried against `file/path`, as `parse_request`'s `$request_match` stays changed.
@@ -83,7 +83,8 @@ impl RuleSetMatcher {
         from: usize,
         guard: &dyn RuleGuard,
     ) -> Option<RouteMatch> {
-        if subject.requested_path.is_empty() {
+        // PHP's `empty()`: `"0"` is empty too.
+        if matches!(subject.requested_path.as_str(), "" | "0") {
             if from > 0 {
                 return None;
             }
