@@ -5568,6 +5568,7 @@ name = "speedyspec-wp-text-escape"
 version = "0.1.0"
 dependencies = [
  "memchr",
+ "speedyspec-hooks",
  "speedyspec-wp-text-corpus",
 ]
 

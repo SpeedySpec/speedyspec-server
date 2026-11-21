@@ -5,10 +5,12 @@
 //! cores take bytes and return `Cow`, borrowing when nothing needs escaping.
 
 mod charset;
+mod decode;
 // HTML401_TABLE is for htmlentities2, which arrives in a later task.
 #[allow(dead_code)]
 mod html401;
 mod htmlspecialchars;
 
 pub use charset::{Charset, SingleByte, canonical_charset};
+pub use decode::{QuoteStyle, wp_specialchars_decode};
 pub use htmlspecialchars::{EntFlags, htmlspecialchars};
