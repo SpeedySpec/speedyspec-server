@@ -5828,6 +5828,8 @@ version = "0.1.0"
 name = "speedyspec-wp-text-diff-php"
 version = "0.1.2"
 dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
  "speedyspec-compat",
  "speedyspec-container",
  "speedyspec-hooks-memory",
@@ -5837,6 +5839,7 @@ dependencies = [
  "speedyspec-wp-hooks-php",
  "speedyspec-wp-text-diff",
  "speedyspec-wp-text-diff-contracts",
+ "ureq",
 ]
 
 [[package]]
