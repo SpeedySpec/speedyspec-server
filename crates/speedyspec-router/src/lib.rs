@@ -7,4 +7,11 @@
 //! expansion.
 
 pub mod dispatch;
+mod group;
 pub mod pattern;
+mod router;
+mod url;
+
+pub use group::Group;
+pub use router::{CompileError, RouteBuilder, Router, RuleSlot, Target, fingerprint_of};
+pub use url::UrlError;

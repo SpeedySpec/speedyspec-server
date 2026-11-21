@@ -4889,6 +4889,7 @@ dependencies = [
  "fancy-regex",
  "proptest",
  "regex",
+ "sha2 0.10.9",
  "speedyspec-http",
  "speedyspec-routing",
 ]
