@@ -5343,6 +5343,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-rewrite"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "speedyspec-router",
+ "speedyspec-routing",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-options",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
