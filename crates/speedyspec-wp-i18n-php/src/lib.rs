@@ -15,6 +15,7 @@ mod hot;
 mod internal;
 mod reader;
 mod release;
+mod schema;
 mod state;
 mod zv;
 
@@ -58,6 +59,7 @@ impl NativeArea for I18nArea {
         let mut f = hot::functions();
         f.extend(internal::functions());
         f.extend(internal::wordpress_functions());
+        f.extend(schema::functions());
         f
     }
 

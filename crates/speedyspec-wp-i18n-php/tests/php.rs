@@ -202,6 +202,43 @@ fn main() {
     );
 
     let r = php.eval(
+        "speedyspec://test/schema",
+        "$o = new stdClass();
+         $seen = array();
+         $cb = function ($t, $text, $context, $domain) use (&$seen) { $seen[] = \"$text|$context|$domain\"; return strtoupper($t); };
+         add_filter('gettext_with_context', $cb, 10, 4);
+         $out = translate_settings_using_i18n_schema(
+             (object) array('title' => 'block title', 'keywords' => array('kw'), '*' => 'star'),
+             array('title' => 'Notice', 'keywords' => array('a', 'b'), 'other' => $o, 7 => 'seven'),
+             'dom'
+         );
+         remove_filter('gettext_with_context', $cb, 10);
+         return json_encode(array((new ReflectionFunction('translate_settings_using_i18n_schema'))->isInternal(),
+             $out['title'], $out['keywords'], $out['other'] === $o, $out[7], $seen));",
+    );
+    check(
+        "schema_translation_is_native",
+        text(&r)
+            == r#"[true,"NOTICE",["A","B"],true,"SEVEN",["Notice|block title|dom","a|kw|dom","b|kw|dom","seven|star|dom"]]"#,
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/schema-throws",
+        "$cb = function () { throw new LengthException('no'); };
+         add_filter('gettext_with_context', $cb);
+         try { translate_settings_using_i18n_schema((object) array('a' => 'ctx'), array('a' => 'x'), 'dom'); $out = 'none'; }
+         catch (LengthException $e) { $out = get_class($e) . ':' . $e->getMessage(); }
+         remove_filter('gettext_with_context', $cb);
+         return $out;",
+    );
+    check(
+        "schema_translation_rethrows",
+        text(&r) == "LengthException:no",
+        &r,
+    );
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",
