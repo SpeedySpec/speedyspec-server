@@ -1,0 +1,10 @@
+[package]
+name = "speedyspec-wp-i18n-contracts"
+version = "0.1.0"
+description = "Ports and plain values of the WordPress translations port: file readers, the file cache, and the ports to code that is not ported."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-hooks = { path = "../speedyspec-hooks" }

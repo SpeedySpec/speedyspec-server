@@ -5254,6 +5254,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-i18n-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-hooks",
+]
+
+[[package]]
 name = "speedyspec-wp-object-cache"
 version = "0.1.0"
 dependencies = [
