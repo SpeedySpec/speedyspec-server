@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 /**
- * Stands in for WordPress's test factory (tests/phpunit/includes/factory), for the option tests: only networks.
+ * Stands in for WordPress's test factory (tests/phpunit/includes/factory): networks, for the option tests, and users,
+ * for the locale tests.
  *
  * WordPress's network factory calls `populate_network()` (wp-admin's schema, with users and roles), which is not
  * loaded here; the option tests only need a network id that is not the current one. Sites and users are not made:
@@ -14,9 +15,33 @@ final class WP_UnitTest_Factory
     /** @var WP_UnitTest_Factory_For_Network */
     public $network;
 
+    /** @var WP_UnitTest_Factory_For_User */
+    public $user;
+
     public function __construct()
     {
         $this->network = new WP_UnitTest_Factory_For_Network();
+        $this->user = new WP_UnitTest_Factory_For_User();
+    }
+}
+
+/**
+ * Makes users through `wp_insert_user()`, which the suite that needs users provides (for the locale tests, the
+ * in-memory stand-in in includes/i18n-doubles.php).
+ */
+final class WP_UnitTest_Factory_For_User
+{
+    /**
+     * Creates a user and returns its id.
+     *
+     * @param array<string, mixed> $args
+     *     `role`, `locale` and other fields, as WordPress's factory takes them.
+     * @return int
+     *     The new user's id.
+     */
+    public function create($args = array())
+    {
+        return (int) wp_insert_user($args);
     }
 }
 

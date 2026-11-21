@@ -54,6 +54,24 @@ if (!function_exists('wp_normalize_path')) {
         return ':' === substr($path, 1, 1) ? ucfirst($path) : $path;
     }
 }
+if (!function_exists('plugin_basename')) {
+    // WordPress's plugin_basename() (plugin.php), which the hooks port does not declare.
+    function plugin_basename($file) {
+        global $wp_plugin_paths;
+        $file = wp_normalize_path($file);
+        $paths = (array) $wp_plugin_paths;
+        arsort($paths);
+        foreach ($paths as $dir => $realdir) {
+            if (str_starts_with($file, $realdir)) {
+                $file = $dir . substr($file, strlen($realdir));
+            }
+        }
+        $plugin_dir = wp_normalize_path(WP_PLUGIN_DIR);
+        $mu_plugin_dir = wp_normalize_path(WPMU_PLUGIN_DIR);
+        $file = preg_replace('#^' . preg_quote($plugin_dir, '#') . '/|^' . preg_quote($mu_plugin_dir, '#') . '/#', '', $file);
+        return trim($file, '/');
+    }
+}
 if (!function_exists('_deprecated_function')) {
     function _deprecated_function($function_name, $version, $replacement = '') {}
 }

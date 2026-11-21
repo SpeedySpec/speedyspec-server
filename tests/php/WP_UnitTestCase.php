@@ -114,6 +114,10 @@ abstract class WP_UnitTestCase extends TestCase
                 wp_load_alloptions();
             }
         }
+        if (function_exists('speedyspec_doubles_snapshot'))
+        {
+            speedyspec_doubles_snapshot();
+        }
         $this->expectDeprecated();
     }
 
@@ -192,6 +196,19 @@ abstract class WP_UnitTestCase extends TestCase
             {
                 wp_cache_flush();
             }
+        }
+        // As WordPress's tear_down: the screen globals set_current_screen() writes, and no current user.
+        foreach (array('current_screen', 'taxnow', 'typenow') as $global)
+        {
+            $GLOBALS[$global] = null;
+        }
+        if (function_exists('wp_set_current_user'))
+        {
+            wp_set_current_user(0);
+        }
+        if (function_exists('speedyspec_doubles_restore'))
+        {
+            speedyspec_doubles_restore();
         }
         $this->_restore_hooks();
         $this->expected_deprecated = array();
@@ -358,6 +375,18 @@ abstract class WP_UnitTestCase extends TestCase
     public function expectWarningMessage(string $message): void
     {
         $this->expectExceptionMessage($message);
+    }
+
+    /**
+     * Asserts that two arrays hold the same keys and values, in any order, as WordPress's test case does.
+     */
+    public function assertSameSetsWithIndex($expected, $actual, $message = '')
+    {
+        $this->assertIsArray($expected, $message . ' Expected value must be an array.');
+        $this->assertIsArray($actual, $message . ' Value under test is not an array.');
+        ksort($expected);
+        ksort($actual);
+        $this->assertSame($expected, $actual, $message);
     }
 
     /**
