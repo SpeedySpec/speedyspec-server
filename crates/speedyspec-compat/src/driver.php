@@ -42,6 +42,9 @@ final class SpeedySpecCompat
     /** @var string|null A per-request random string reported as `{placeholder}` (wpdb's placeholder escape). */
     public static ?string $placeholder = null;
 
+    /** Whether a string that is not valid UTF-8 is reported as `{"bytes": base64}` (formatting needs exact bytes). */
+    public static bool $exact_bytes = false;
+
     /**
      * Creates, or finds again, the callable a fixture specification names.
      */
@@ -172,6 +175,9 @@ final class SpeedySpecCompat
 
     private static function arg(mixed $arg): mixed
     {
+        if (is_array($arg) && isset($arg['bytes']) && is_string($arg['bytes']) && count($arg) === 1) {
+            return base64_decode($arg['bytes'], true);
+        }
         if (is_array($arg) && isset($arg['callback']) && is_string($arg['callback'])) {
             return self::callable($arg);
         }
@@ -187,6 +193,9 @@ final class SpeedySpecCompat
         if (is_array($arg) && array_key_exists('array', $arg) && count($arg) === 1) {
             $out = [];
             foreach ($arg['array'] as [$key, $value]) {
+                if (is_array($key) && isset($key['bytes']) && is_string($key['bytes']) && count($key) === 1) {
+                    $key = base64_decode($key['bytes'], true);
+                }
                 $out[$key] = self::arg($value);
             }
             return $out;
@@ -308,6 +317,9 @@ final class SpeedySpecCompat
     public static function normalise(mixed $value): mixed
     {
         if (is_string($value)) {
+            if (self::$exact_bytes && !mb_check_encoding($value, 'UTF-8')) {
+                return ['bytes' => base64_encode($value)];
+            }
             if (self::$placeholder !== null && self::$placeholder !== '') {
                 $value = str_replace(self::$placeholder, '{placeholder}', $value);
             }
@@ -323,7 +335,12 @@ final class SpeedySpecCompat
             // A hook global is an array in WordPress and a proxy over the Rust store in the port.
             $pairs = [];
             foreach ($value as $key => $item) {
-                $pairs[] = [self::key($key), self::normalise($item)];
+                $pairs[] = [
+                    self::$exact_bytes && is_string($key) && !mb_check_encoding($key, 'UTF-8')
+                        ? ['bytes' => base64_encode($key)]
+                        : self::key($key),
+                    self::normalise($item),
+                ];
             }
             return ['array' => $pairs];
         }

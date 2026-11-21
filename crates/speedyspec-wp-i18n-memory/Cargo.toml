@@ -1,0 +1,15 @@
+[package]
+name = "speedyspec-wp-i18n-memory"
+version = "0.1.0"
+description = "The per-worker translation file cache (an Identity Map kept across requests) and test doubles for the translations port's ports."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-wp-i18n-contracts = { path = "../speedyspec-wp-i18n-contracts" }
+
+[dev-dependencies]
+speedyspec-wp-i18n = { path = "../speedyspec-wp-i18n" }
+speedyspec-wp-i18n-files = { path = "../speedyspec-wp-i18n-files" }
+tempfile = "3"

@@ -35,7 +35,10 @@ jobs:
           --exclude speedyspec-php --exclude speedyspec-php-ext --exclude speedyspec-container-php
           --exclude speedyspec-cqrs-php --exclude speedyspec-compat --exclude speedyspec-wp-hooks-php
           --exclude speedyspec-wp-db-php --exclude speedyspec-wp-object-cache-php --exclude speedyspec-wp-options-php
+          --exclude speedyspec-wp-text-diff-php --exclude speedyspec-wp-shortcode-php
           --exclude speedyspec-data-corpus --exclude speedyspec-data-sqlite --exclude speedyspec-data-postgres
+          --exclude speedyspec-wp-utf8-php --exclude speedyspec-wp-i18n-php
+          --exclude speedyspec-router-php --exclude speedyspec-wp-rewrite-php
       - run: test -z "$(cargo tree -i aws-lc-sys --target all 2>/dev/null)"
 
   # The static PHP (scripts/build-php.sh) and everything that embeds it, with PHP apps on.

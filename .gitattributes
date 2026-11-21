@@ -1,0 +1,4 @@
+# WordPress test data must keep its exact bytes (CR and CRLF line endings are part of what is tested).
+tests/php/wordpress/data/** -text
+# A WordPress test fixture that must keep its Windows line endings.
+tests/php/data/pomo/windows-line-endings.po -text

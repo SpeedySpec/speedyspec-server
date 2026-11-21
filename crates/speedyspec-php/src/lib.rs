@@ -9,6 +9,7 @@ mod area;
 mod boundary;
 mod callable;
 mod convert;
+mod global_array;
 mod hook_class;
 pub mod native;
 mod runtime;
@@ -17,6 +18,7 @@ mod web;
 
 pub use area::NativeArea;
 pub use callable::Callable;
+pub use global_array::{global_array_contains, global_array_get, global_array_keys};
 /// ext-php-rs, for areas building their functions and classes.
 pub use ext_php_rs;
 pub use runtime::{
