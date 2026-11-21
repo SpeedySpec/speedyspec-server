@@ -3,6 +3,7 @@
 mod headers;
 mod l10n_php;
 mod mo;
+pub mod po;
 mod probe;
 
 use std::path::Path;
