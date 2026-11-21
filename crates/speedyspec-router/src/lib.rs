@@ -20,3 +20,4 @@ mod table;
 
 pub use cache::TableCache;
 pub use table::{CompiledTable, RouteRequest, WpSubject};
+pub mod wordpress;
