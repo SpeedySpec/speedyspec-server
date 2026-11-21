@@ -77,7 +77,7 @@ impl OptionsRewriteOptions {
 }
 
 fn options_error(err: impl std::fmt::Display) -> RewriteError {
-    RewriteError(err.to_string())
+    RewriteError::new(err.to_string())
 }
 
 /// Reads an option value as WordPress stores `rewrite_rules`: an array of regex => query.

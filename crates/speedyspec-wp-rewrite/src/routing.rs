@@ -52,10 +52,10 @@ impl WpRouting {
         router.rules(RuleSlot::AfterRoutes, rules);
         let fingerprint = router
             .fingerprint()
-            .map_err(|err| RewriteError(err.to_string()))?;
+            .map_err(|err| RewriteError::new(err.to_string()))?;
         self.cache
             .table(fingerprint, || router.data())
-            .map_err(RewriteError)
+            .map_err(RewriteError::new)
     }
 
     /// Matches `subject` against the stored rules, as `parse_request` does.

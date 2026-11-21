@@ -176,7 +176,7 @@ fn option_error(
     function: &str,
     err: impl std::fmt::Display,
 ) -> speedyspec_wp_rewrite::RewriteError {
-    speedyspec_wp_rewrite::RewriteError(format!("{function}() failed: {err}"))
+    speedyspec_wp_rewrite::RewriteError::new(format!("{function}() failed: {err}"))
 }
 
 fn php(function: &str, args: &[Value]) -> Result<Value, speedyspec_wp_rewrite::RewriteError> {

@@ -61,8 +61,12 @@ fn fail(err: impl std::fmt::Display) -> NativeError {
     NativeError::throw("RuntimeException", err.to_string())
 }
 
+/// A PHP callback's exception is rethrown unchanged, as in WordPress; any other failure is a `RuntimeException`.
 fn rewrite_error(err: RewriteError) -> NativeError {
-    fail(err.0)
+    if let Some(exception) = err.cause.as_ref().and_then(|c| c.downcast_ref::<Value>()) {
+        return NativeError::Rethrow(exception.clone());
+    }
+    fail(err.message)
 }
 
 fn optional(value: Option<String>) -> Value {

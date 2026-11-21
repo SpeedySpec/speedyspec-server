@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
@@ -10,12 +11,45 @@ use crate::{
 };
 
 /// Why a rewrite operation failed: an option or a hook callback failed.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RewriteError(pub String);
+///
+/// `cause` is what a language bridge needs to rethrow the original failure unchanged (a PHP callback's exception
+/// object), carried from [`HookError::payload`].
+#[derive(Clone)]
+pub struct RewriteError {
+    pub message: String,
+    pub cause: Option<Rc<dyn Any>>,
+}
+
+impl RewriteError {
+    pub fn new(message: impl Into<String>) -> RewriteError {
+        RewriteError {
+            message: message.into(),
+            cause: None,
+        }
+    }
+}
+
+impl fmt::Debug for RewriteError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RewriteError")
+            .field("message", &self.message)
+            .field("cause", &self.cause.is_some())
+            .finish()
+    }
+}
+
+/// Equal when the messages are: a cause is opaque.
+impl PartialEq for RewriteError {
+    fn eq(&self, other: &RewriteError) -> bool {
+        self.message == other.message
+    }
+}
+
+impl Eq for RewriteError {}
 
 impl fmt::Display for RewriteError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "rewrite: {}", self.0)
+        write!(f, "rewrite: {}", self.message)
     }
 }
 
@@ -23,7 +57,10 @@ impl std::error::Error for RewriteError {}
 
 impl From<HookError> for RewriteError {
     fn from(err: HookError) -> RewriteError {
-        RewriteError(err.message)
+        RewriteError {
+            message: err.message,
+            cause: err.payload,
+        }
     }
 }
 
