@@ -93,3 +93,31 @@ pub fn php_truthy(value: &PhpValue) -> bool {
         PhpValue::Opaque(_) => true,
     }
 }
+
+/// The parts of a URL `wp_parse_url()` returned that script translations read.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct UrlParts {
+    pub scheme: Option<String>,
+    pub host: Option<String>,
+    pub path: Option<String>,
+}
+
+/// What `_load_script_textdomain_from_src()` asks of WordPress code that is not ported.
+pub trait ScriptSources {
+    /// `determine_locale()`, as a string (it is concatenated into file names).
+    fn determine_locale(&self) -> Result<String, PortError>;
+    /// `$wp_textdomain_registry->get( $domain, $locale )`: `None` for false.
+    fn registry_path(&self, domain: &str, locale: &str) -> Result<Option<String>, PortError>;
+    /// `wp_parse_url( $url )`: `None` for false.
+    fn parse_url(&self, url: &str) -> Result<Option<UrlParts>, PortError>;
+    /// `content_url()`, filters included.
+    fn content_url(&self) -> Result<String, PortError>;
+    /// `plugins_url()`, filters included.
+    fn plugins_url(&self) -> Result<String, PortError>;
+    /// `site_url()`, filters included.
+    fn site_url(&self) -> Result<String, PortError>;
+    /// `get_theme_root()`, filters included.
+    fn theme_root(&self) -> Result<String, PortError>;
+    /// `WP_LANG_DIR`.
+    fn lang_dir(&self) -> String;
+}

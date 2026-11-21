@@ -17,6 +17,10 @@ use crate::plural::PluralError;
 pub enum I18nError {
     Hook(HookError),
     Plural(PluralError),
+    /// An adapter behind one of the contracts' ports failed.
+    Port(speedyspec_wp_i18n_contracts::PortError),
+    /// What PHP would throw as a `TypeError`, with its message.
+    Type(String),
 }
 
 impl fmt::Display for I18nError {
@@ -24,6 +28,8 @@ impl fmt::Display for I18nError {
         match self {
             I18nError::Hook(e) => write!(f, "{e}"),
             I18nError::Plural(e) => write!(f, "{e}"),
+            I18nError::Port(e) => write!(f, "{e}"),
+            I18nError::Type(m) => write!(f, "{m}"),
         }
     }
 }
