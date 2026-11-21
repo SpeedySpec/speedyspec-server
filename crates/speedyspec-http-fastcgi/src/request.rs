@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use speedyspec_http::{HttpError, Message, Method, ServerRequest};
+use speedyspec_http::{HttpError, Message, Method, ServerRequest, Uri};
 use speedyspec_http_message::{HttpRequest, HttpServerRequest, HttpUri, LazyBody};
 
 use crate::decode::url_decode;
@@ -26,18 +26,24 @@ pub fn server_request_from_params(
     let https =
         param(params, "HTTPS").is_some_and(|v| !v.is_empty() && !v.eq_ignore_ascii_case("off"));
     let scheme = if https { "https" } else { "http" };
-    let authority = match param(params, "HTTP_HOST") {
-        Some(host) if !host.is_empty() => host.to_string(),
-        _ => {
-            let name = param(params, "SERVER_NAME").unwrap_or("localhost");
-            match param(params, "SERVER_PORT") {
-                Some(port) if !port.is_empty() => format!("{name}:{port}"),
-                _ => name.to_string(),
-            }
-        }
-    };
+    let authority = [
+        param(params, "HTTP_HOST").map(str::to_string),
+        server_authority(params),
+    ]
+    .into_iter()
+    .flatten()
+    .find(|candidate| valid_authority(candidate))
+    .unwrap_or_else(|| "localhost".to_string());
     let target = param(params, "REQUEST_URI").unwrap_or("/");
-    let uri: HttpUri = format!("{scheme}://{authority}{target}").parse()?;
+    let (path, query) = match target.split_once('?') {
+        Some((path, query)) => (path, query),
+        None => (target, ""),
+    };
+    let path = path.split('#').next().unwrap_or("");
+    let uri: HttpUri = format!("{scheme}://{authority}").parse()?;
+    let uri = uri
+        .with_path(if path.is_empty() { "/" } else { path })
+        .with_query(query);
 
     let mut request = HttpRequest::new(method, uri);
     for (name, value) in params {
@@ -64,6 +70,50 @@ pub fn server_request_from_params(
     Ok(HttpServerRequest::new(request, params.to_vec())
         .with_cookie_params(cookies)
         .with_query_params(query))
+}
+
+/// `SERVER_NAME` with `SERVER_PORT`, when set.
+fn server_authority(params: &[(String, String)]) -> Option<String> {
+    let name = param(params, "SERVER_NAME").filter(|n| !n.is_empty())?;
+    Some(match param(params, "SERVER_PORT") {
+        Some(port) if !port.is_empty() => format!("{name}:{port}"),
+        _ => name.to_string(),
+    })
+}
+
+/// A host the client may name: a registered name (letters, digits, `-`, `.`, `_`, `~`) or a bracketed IP literal,
+/// with an optional port up to 65535. Anything else (a `/`, `?`, `#` or `@` that would move the path, query or
+/// user info) is refused, so the Host header can never change what path is routed.
+fn valid_authority(authority: &str) -> bool {
+    let (host, port) = if let Some(rest) = authority.strip_prefix('[') {
+        match rest.split_once(']') {
+            Some((literal, after)) => {
+                if literal.is_empty()
+                    || !literal
+                        .bytes()
+                        .all(|b| b.is_ascii_hexdigit() || b == b':' || b == b'.')
+                {
+                    return false;
+                }
+                (literal, after.strip_prefix(':'))
+            }
+            None => return false,
+        }
+    } else {
+        match authority.rsplit_once(':') {
+            Some((host, port)) => (host, Some(port)),
+            None => (authority, None),
+        }
+    };
+    let host_ok = !host.is_empty()
+        && (authority.starts_with('[')
+            || host
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"-._~".contains(&b)));
+    let port_ok = port.is_none_or(|p| {
+        !p.is_empty() && p.len() <= 5 && p.parse::<u32>().is_ok_and(|n| n <= 65535)
+    });
+    host_ok && port_ok
 }
 
 /// `X_FORWARDED_FOR` → `X-Forwarded-For`.

@@ -119,3 +119,33 @@ fn body_is_lazy() {
         server_request_from_params(&p, Box::new(Cursor::new(b"payload".to_vec())), 1024).unwrap();
     assert_eq!(request.body().borrow_mut().read_all().unwrap(), b"payload");
 }
+
+#[test]
+fn a_host_header_cannot_change_the_path() {
+    for host in ["x/admin", "x#", "x?y=1", "x:99999", "user@x", ""] {
+        let p = params(&[
+            ("REQUEST_METHOD", "GET"),
+            ("HTTP_HOST", host),
+            ("SERVER_NAME", "fallback.test"),
+            ("SERVER_PORT", "80"),
+            ("REQUEST_URI", "/foo?a=1"),
+        ]);
+        let request = server_request_from_params(&p, Box::new(Cursor::new(Vec::new())), 1024)
+            .unwrap_or_else(|e| panic!("Host {host:?} refused the request: {e}"));
+        assert_eq!(request.uri().path(), "/foo", "Host {host:?}");
+        assert_eq!(request.uri().query(), "a=1", "Host {host:?}");
+        assert_eq!(request.uri().host(), "fallback.test", "Host {host:?}");
+    }
+}
+
+#[test]
+fn ipv6_and_ported_hosts_are_kept() {
+    let p = params(&[
+        ("REQUEST_METHOD", "GET"),
+        ("HTTP_HOST", "[::1]:8080"),
+        ("REQUEST_URI", "/"),
+    ]);
+    let request = server_request_from_params(&p, Box::new(Cursor::new(Vec::new())), 1024).unwrap();
+    assert_eq!(request.uri().host(), "[::1]");
+    assert_eq!(request.uri().port(), Some(8080));
+}
