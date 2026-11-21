@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use speedyspec_php::PhpError;
 use speedyspec_php::ext_php_rs::ffi::{
-    IS_ARRAY, IS_INDIRECT, IS_REFERENCE, ext_php_rs_executor_globals, zend_array,
+    IS_ARRAY, IS_INDIRECT, IS_REFERENCE, IS_UNDEF, ext_php_rs_executor_globals, zend_array,
     zend_array_destroy, zend_hash_str_find, zval,
 };
 use speedyspec_php_ext::Value;
@@ -72,6 +72,39 @@ fn global_array(name: &str) -> Option<*mut zend_array> {
     }
 }
 
+/// `HASH_FLAG_PACKED` from `Zend/zend_hash.h`.
+const HASH_FLAG_PACKED: u32 = 1 << 2;
+
+/// Whether `arr` holds a PHP reference at any depth (up to `depth` levels). A write through such a reference changes
+/// the array without separating it, so its contents cannot be cached between reads.
+///
+/// # Safety
+///
+/// `arr` is a live array; nothing else runs while it is read.
+unsafe fn holds_reference(arr: *const zend_array, depth: u32) -> bool {
+    // SAFETY: a live array stores `nNumUsed` zvals (packed) or buckets; holes are `IS_UNDEF`.
+    unsafe {
+        let used = (*arr).nNumUsed as usize;
+        let packed = (*arr).u.flags & HASH_FLAG_PACKED != 0;
+        for i in 0..used {
+            let zv: *const zval = if packed {
+                (*arr).__bindgen_anon_1.arPacked.add(i)
+            } else {
+                &raw const (*(*arr).__bindgen_anon_1.arData.add(i)).val
+            };
+            match u32::from((*zv).u1.v.type_) {
+                IS_UNDEF => {}
+                IS_REFERENCE => return true,
+                IS_ARRAY if depth > 0 && holds_reference((*zv).value.arr, depth - 1) => {
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+}
+
 /// Counts a reference to `arr`.
 ///
 /// # Safety
@@ -114,6 +147,8 @@ unsafe fn release(arr: *mut zend_array, free: bool) {
 struct Watched {
     name: &'static str,
     held: Cell<*mut zend_array>,
+    /// The held array contains PHP references, so it is read afresh every time.
+    volatile: Cell<bool>,
     value: RefCell<Option<Value>>,
     names: RefCell<Option<Rc<EntityNames>>>,
 }
@@ -123,6 +158,7 @@ impl Watched {
         Watched {
             name,
             held: Cell::new(std::ptr::null_mut()),
+            volatile: Cell::new(false),
             value: RefCell::new(None),
             names: RefCell::new(None),
         }
@@ -133,17 +169,23 @@ impl Watched {
     fn refresh(&self) -> bool {
         let now = global_array(self.name).unwrap_or(std::ptr::null_mut());
         let held = self.held.get();
-        if !now.is_null() && now == held {
+        if !now.is_null() && now == held && !self.volatile.get() {
             return false;
         }
-        // SAFETY: `held` is null or an array this watcher counted in this request; `now` is null or live.
-        unsafe {
-            release(held, true);
-            hold(now);
-        }
-        self.held.set(now);
         self.value.replace(None);
         self.names.replace(None);
+        if now == held {
+            return true;
+        }
+        // The new array is held before the old one is given back: freeing the old one can run PHP destructors, and a
+        // destructor that runs kses must find this watcher already on the new array.
+        // SAFETY: `now` is null or live; it is read before anything else runs.
+        unsafe { hold(now) };
+        self.volatile
+            .set(!now.is_null() && unsafe { holds_reference(now, 3) });
+        let old = self.held.replace(now);
+        // SAFETY: `old` is null or an array this watcher counted in this request.
+        unsafe { release(old, true) };
         true
     }
 
@@ -153,7 +195,7 @@ impl Watched {
             return v.clone();
         }
         let v = speedyspec_php::global(self.name).unwrap_or(Value::Null);
-        if !self.held.get().is_null() {
+        if !self.held.get().is_null() && !self.volatile.get() {
             self.value.replace(Some(v.clone()));
         }
         v
@@ -177,7 +219,7 @@ impl Watched {
             )),
             _ => Rc::new(EntityNames::default()),
         };
-        if !self.held.get().is_null() {
+        if !self.held.get().is_null() && !self.volatile.get() {
             self.names.replace(Some(names.clone()));
         }
         names
@@ -191,6 +233,7 @@ impl Watched {
             unsafe { release(self.held.get(), false) };
         }
         self.held.set(std::ptr::null_mut());
+        self.volatile.set(false);
         self.value.replace(None);
         self.names.replace(None);
     }
@@ -309,7 +352,7 @@ impl AllowedGlobals for PhpAllowedGlobals {
         }
         let mut changed = false;
         for w in self.watched() {
-            changed |= w.refresh() || w.held.get().is_null();
+            changed |= w.refresh() || w.held.get().is_null() || w.volatile.get();
         }
         if changed {
             self.bump();

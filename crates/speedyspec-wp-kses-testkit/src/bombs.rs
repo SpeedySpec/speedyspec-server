@@ -8,6 +8,28 @@ fn repeat(unit: &[u8], n: usize) -> Vec<u8> {
     unit.repeat((n / unit.len()).max(1))
 }
 
+/// A comment (or wrapper) whose text, once kses strips one level, is again such a comment, as deep as `n` bytes
+/// allow: level `k` is `opener` + level `k - 1` with every `opener` written as one that leaves `opener` behind when
+/// removed.
+fn nested(opener: &[u8], n: usize) -> Vec<u8> {
+    let doubled: Vec<u8> = [&opener[..1], opener, &opener[1..]].concat();
+    let mut level = b"x".to_vec();
+    loop {
+        let mut next = opener.to_vec();
+        let mut at = 0;
+        while let Some(i) = memchr::memmem::find(&level[at..], opener) {
+            next.extend_from_slice(&level[at..at + i]);
+            next.extend_from_slice(&doubled);
+            at += i + opener.len();
+        }
+        next.extend_from_slice(&level[at..]);
+        if next.len() > n {
+            return level;
+        }
+        level = next;
+    }
+}
+
 /// Every bomb family aimed at kses's own work.
 pub fn bomb_generators() -> Vec<BombGenerator> {
     vec![
@@ -15,6 +37,9 @@ pub fn bomb_generators() -> Vec<BombGenerator> {
             [repeat(b"<!--", n / 2), b"x".to_vec(), repeat(b"-->", n / 2)].concat()
         }),
         ("unclosed-comments", |n| repeat(b"<!--", n)),
+        // Real nesting: removing every `<!--` from `<<!--!--` leaves `<!--`, so each level survives the one before.
+        ("deeply-nested-comments", |n| nested(b"<!--", n)),
+        ("deeply-nested-invalid-closers", |n| nested(b"</1", n)),
         ("nested-invalid-closers", |n| {
             [repeat(b"</1", n / 2), repeat(b">", n / 2)].concat()
         }),

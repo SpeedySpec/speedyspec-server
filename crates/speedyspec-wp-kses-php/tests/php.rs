@@ -182,6 +182,34 @@ fn main() {
         return $ok && false === has_filter('title_save_pre', 'wp_filter_kses');"#,
     );
 
+    request(&php, &root, "");
+    yes(
+        "write_through_a_reference_takes_effect",
+        r#"$r = &$GLOBALS['allowedposttags']['a'];
+        $before = wp_kses_post('<a title="t">a</a>');
+        unset($r['title']);
+        $after = wp_kses_post('<a title="t">a</a>');
+        $r['data-z'] = true;
+        $added = wp_kses_post('<a data-z="1">a</a>');
+        unset($r);
+        return $before === '<a title="t">a</a>' && $after === '<a>a</a>' && $added === '<a data-z="1">a</a>' ? true : [$before, $after, $added];"#,
+    );
+
+    request(&php, &root, "");
+    yes(
+        "a_destructor_running_kses_while_the_old_allowlist_is_freed",
+        r#"final class SpeedySpecKsesDestructs { public function __destruct() { $GLOBALS['speedyspec_seen'] = wp_kses_post('<i>d</i>'); } }
+        $o = new SpeedySpecKsesDestructs();
+        $GLOBALS['allowedposttags']['span']['data-d'] = array('value_callback' => function ($v) use ($o) { return true; });
+        unset($o);
+        $first = wp_kses_post('<span data-d="1">a</span>');
+        $GLOBALS['allowedposttags'] = array('b' => array(), 'i' => array());
+        $second = wp_kses_post('<b>y</b><span>s</span>');
+        $third = wp_kses_post('<i>z</i>');
+        return $first === '<span data-d="1">a</span>' && $second === '<b>y</b>s' && $third === '<i>z</i>'
+            && ($GLOBALS['speedyspec_seen'] ?? null) === '<i>d</i>';"#,
+    );
+
     request(
         &php,
         &root,

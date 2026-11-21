@@ -25,6 +25,13 @@ use crate::convert::allowed_to_value;
 /// 2; a token still changing after this many is one PHP never finishes, and the port drops it.
 const MAX_PASSES: usize = 16;
 
+/// The bytes the nested passes of one `wp_kses()` call may process in all, per byte of its input, plus a floor:
+/// comments can nest as deep as the square root of their length (`<<!--!--` leaves `<!--` when stripped), which in
+/// PHP costs time that grows faster than the input. Normal content uses a few times its length; a token past the
+/// budget is dropped (compat/kses/breaks.json, technical).
+const NESTED_WORK_PER_BYTE: usize = 32;
+const NESTED_WORK_FLOOR: usize = 64 * 1024;
+
 /// An attribute that passed `wp_kses_attr_check()`: its value and whole text, as the check left them.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckedAttr {
@@ -139,6 +146,29 @@ pub fn directive_binds_value_restricted_attribute(
 impl KsesApi {
     /// `wp_kses()`.
     pub fn kses(
+        &self,
+        content: &[u8],
+        allowed: &AllowedSpec,
+        protocols: Option<&Protocols>,
+    ) -> Result<Vec<u8>, KsesError> {
+        // The outermost call sets the budget for every nested pass beneath it.
+        let outermost = self.nested_budget.get().is_none();
+        if outermost {
+            self.nested_budget.set(Some(
+                content
+                    .len()
+                    .saturating_mul(NESTED_WORK_PER_BYTE)
+                    .saturating_add(NESTED_WORK_FLOOR),
+            ));
+        }
+        let result = self.kses_once(content, allowed, protocols);
+        if outermost {
+            self.nested_budget.set(None);
+        }
+        result
+    }
+
+    fn kses_once(
         &self,
         content: &[u8],
         allowed: &AllowedSpec,
@@ -262,6 +292,14 @@ impl KsesApi {
         protocols: &Protocols,
     ) -> Result<Option<Vec<u8>>, KsesError> {
         for _ in 0..MAX_PASSES {
+            // Each pass draws its length from the outermost call's budget; a token past it is dropped.
+            match self.nested_budget.get() {
+                Some(left) if left >= content.len() => {
+                    self.nested_budget.set(Some(left - content.len()))
+                }
+                Some(_) => return Ok(None),
+                None => {}
+            }
             let next = stacker::maybe_grow(64 * 1024, 1024 * 1024, || {
                 self.kses(&content, allowed, Some(protocols))
             })?;

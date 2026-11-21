@@ -229,3 +229,57 @@ fn pre_kses_sees_the_callers_own_allowlist() {
     );
     assert_eq!(*seen.borrow(), Some(source));
 }
+
+/// Malformed allowlist rules fail closed where PHP would stop with a TypeError (compat/kses/breaks.json): a
+/// `values` rule that is not a list, or a `value_callback` nothing can call, rejects the attribute.
+#[test]
+fn malformed_rules_reject_the_attribute() {
+    use speedyspec_wp_hooks::{HookValue, Key};
+    let rule = |name: &str, value: HookValue| {
+        HookValue::Array(vec![(
+            Key::Str("a".into()),
+            HookValue::Array(vec![(
+                Key::Str("target".into()),
+                HookValue::Array(vec![(Key::Str(name.into()), value)]),
+            )]),
+        )])
+    };
+    let (_, api) = common::setup();
+    for allowed in [
+        rule("values", HookValue::Str("_blank".into())),
+        rule("value_callback", HookValue::Str("no_such_function".into())),
+    ] {
+        let html = api.allowed_from(&allowed).unwrap();
+        assert_eq!(
+            api.kses(
+                b"<a target=\"_blank\">a</a>",
+                &AllowedSpec::Explicit(html),
+                None
+            )
+            .unwrap(),
+            b"<a>a</a>"
+        );
+    }
+}
+
+/// A `wp_kses_uri_attributes` filter that returns no array leaves WordPress's URI attributes checked, rather than
+/// none (PHP stops with a TypeError).
+#[test]
+fn uri_attributes_filter_returning_no_array_keeps_the_defaults() {
+    use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+    let (hooks, api) = common::setup();
+    hooks
+        .add_filter(
+            &HookName::from("wp_kses_uri_attributes"),
+            Callback::rust("broken", |_: &[HookValue]| {
+                Ok(HookValue::Str("href".into()))
+            }),
+            &HookValue::Int(10),
+            1,
+        )
+        .unwrap();
+    assert_eq!(
+        api.post(b"<a href=\"javascript:alert(1)\">a</a>").unwrap(),
+        b"<a href=\"alert(1)\">a</a>"
+    );
+}

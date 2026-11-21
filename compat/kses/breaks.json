@@ -17,6 +17,38 @@
       "php": "Throws TypeError: wp_kses_attr() passes a tag's value to array_filter() whenever it is neither empty() nor true, so a non-array value crashes the request.",
       "port": "Keeps the tag with every attribute denied, as kses treats any other non-array value.",
       "why": "A malformed allowlist entry should not crash kses; the port's output is the safest reading (no attributes)."
+    },
+    {
+      "scenario": "kses:nested-work-budget",
+      "category": "technical",
+      "input": "comments nested by writing each <!-- as <<!--!-- (or the same with </1 wrappers), about sqrt(n) levels deep",
+      "php": "Finishes, but in time that grows about as n^1.5 (2.8 s for 320 KB in stock 7.1.5).",
+      "port": "The nested passes of one wp_kses() call may process 32 bytes per input byte plus 64 KB in all; a token past that is dropped. Normal content uses a few times its length.",
+      "why": "No input may make kses do runaway work (design: Security, bounded work)."
+    },
+    {
+      "scenario": "kses:values-not-a-list",
+      "category": "technical",
+      "input": "an allowlist rule 'values' => '_blank' (a string, not a list)",
+      "php": "Throws TypeError from in_array() when the attribute is checked.",
+      "port": "No value matches: the attribute is removed.",
+      "why": "A malformed rule fails closed instead of allowing any value."
+    },
+    {
+      "scenario": "kses:value-callback-not-callable",
+      "category": "technical",
+      "input": "an allowlist rule 'value_callback' that nothing can call (Rust callers with no bridge for it)",
+      "php": "Throws TypeError from call_user_func().",
+      "port": "The attribute is removed.",
+      "why": "A malformed rule fails closed instead of allowing any value."
+    },
+    {
+      "scenario": "kses:uri-attributes-not-an-array",
+      "category": "technical",
+      "input": "a wp_kses_uri_attributes filter that returns a non-array",
+      "php": "Throws TypeError from in_array() when an attribute is checked.",
+      "port": "WordPress's own URI attribute list is used, so URLs are still protocol-checked.",
+      "why": "A broken filter fails closed: URL attributes are never left unchecked."
     }
   ],
   "wordpress_tests": []

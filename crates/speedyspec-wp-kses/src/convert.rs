@@ -62,13 +62,18 @@ pub fn attr_rule(
         b"maxval" => AttrRule::MaxVal(rule_value(value)),
         b"minval" => AttrRule::MinVal(rule_value(value)),
         b"valueless" => AttrRule::Valueless(rule_value(value)),
+        // Not a list: PHP's `in_array()` stops with a TypeError; kses fails closed (no value matches).
         b"values" => match rule_value(value) {
             RuleValue::List(list) => AttrRule::Values(list),
-            other => AttrRule::Other(name, other),
+            _ => AttrRule::Values(Vec::new()),
         },
+        // Nothing can call it: PHP's `call_user_func()` stops with a TypeError; kses fails closed (rejects).
         b"value_callback" => match resolve(value) {
             Some(callback) => AttrRule::ValueCallback(callback),
-            None => AttrRule::Other(name, rule_value(value)),
+            None => {
+                let reject: ValueCallback = Rc::new(|_: &[u8]| Ok(false));
+                AttrRule::ValueCallback(reject)
+            }
         },
         _ => AttrRule::Other(name, rule_value(value)),
     }

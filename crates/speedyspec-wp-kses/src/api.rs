@@ -43,6 +43,8 @@ pub struct KsesApi {
     /// Buffers `attr_into` reuses across tags: (the attributes kept, one attribute's whole). Taken while in use, so
     /// a filter that runs kses again gets fresh ones.
     pub(crate) scratch: RefCell<(Vec<u8>, Vec<u8>)>,
+    /// What the nested passes of the current outermost `kses()` call may still process; `None` outside a call.
+    pub(crate) nested_budget: std::cell::Cell<Option<usize>>,
     /// This API's own `Rc`, for the filter callbacks `kses_init_filters()` registers; empty unless built by
     /// [`KsesApi::shared`].
     pub(crate) me: RefCell<std::rc::Weak<KsesApi>>,
@@ -180,6 +182,7 @@ impl KsesApi {
             protocols_read: RefCell::new(None),
             hook_names: RefCell::new(Vec::new()),
             scratch: RefCell::new((Vec::new(), Vec::new())),
+            nested_budget: std::cell::Cell::new(None),
             me: RefCell::new(std::rc::Weak::new()),
         }
     }
@@ -443,7 +446,8 @@ impl KsesApi {
                     .filter_map(|(_, v)| php_string(v).map(Into::into))
                     .collect(),
             ))),
-            Some(_) => Ok(Rc::new(UriAttributes(Vec::new()))),
+            // Not an array: PHP's `in_array()` stops with a TypeError; kses keeps checking WordPress's own list.
+            Some(_) => Ok(self.default_uris.clone()),
         }
     }
 
