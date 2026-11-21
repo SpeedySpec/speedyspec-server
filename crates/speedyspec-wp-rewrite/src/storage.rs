@@ -37,9 +37,11 @@ impl RewriteService {
             source.store(state);
             self.flush_on_wp_loaded()?;
         } else {
-            self.deps
-                .options
-                .set_rules(&state.rules.clone().unwrap_or_default())?;
+            match &state.rules {
+                Some(rules) => self.deps.options.set_rules(rules)?,
+                // Plain permalinks: WordPress leaves `$this->rules` as '' and stores that.
+                None => self.deps.options.update("rewrite_rules", "")?,
+            }
         }
         Ok(())
     }

@@ -61,6 +61,9 @@ impl RewriteOptions for MemoryRewriteOptions {
     }
 
     fn update(&self, name: &str, value: &str) -> Result<(), RewriteError> {
+        if name == "rewrite_rules" {
+            *self.rules.borrow_mut() = None;
+        }
         self.set(name, value);
         Ok(())
     }

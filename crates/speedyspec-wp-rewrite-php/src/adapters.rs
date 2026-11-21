@@ -166,3 +166,67 @@ pub fn verbose_page_index(query: &str) -> Option<usize> {
     }
     digits.parse().ok()
 }
+
+/// The rewrite options through WordPress's PHP option functions (`get_option()` and the rest), for a worker whose
+/// options are not wired to Rust yet: whatever answers those functions (the options port's native functions, or
+/// WordPress's own) answers the rewrite API too.
+pub struct PhpRewriteOptions;
+
+fn option_error(
+    function: &str,
+    err: impl std::fmt::Display,
+) -> speedyspec_wp_rewrite::RewriteError {
+    speedyspec_wp_rewrite::RewriteError(format!("{function}() failed: {err}"))
+}
+
+fn php(function: &str, args: &[Value]) -> Result<Value, speedyspec_wp_rewrite::RewriteError> {
+    speedyspec_php::call(&Value::Str(function.into()), args)
+        .map_err(|err| option_error(function, err))
+}
+
+impl speedyspec_wp_rewrite::RewriteOptions for PhpRewriteOptions {
+    fn get(&self, name: &str) -> Result<Option<String>, speedyspec_wp_rewrite::RewriteError> {
+        Ok(match php("get_option", &[Value::Str(name.into())])? {
+            Value::Str(s) => Some(s),
+            Value::Int(i) => Some(i.to_string()),
+            _ => None,
+        })
+    }
+
+    fn rules(
+        &self,
+    ) -> Result<Option<Vec<speedyspec_routing::Rule>>, speedyspec_wp_rewrite::RewriteError> {
+        let value = php("get_option", &[Value::Str("rewrite_rules".into())])?;
+        Ok(match &value {
+            Value::Array(entries) if !entries.is_empty() => Some(crate::values::rules(&value)),
+            _ => None,
+        })
+    }
+
+    fn set_rules(
+        &self,
+        rules: &[speedyspec_routing::Rule],
+    ) -> Result<(), speedyspec_wp_rewrite::RewriteError> {
+        php(
+            "update_option",
+            &[
+                Value::Str("rewrite_rules".into()),
+                crate::values::rules_value(rules),
+            ],
+        )?;
+        Ok(())
+    }
+
+    fn delete_rules(&self) -> Result<(), speedyspec_wp_rewrite::RewriteError> {
+        php("delete_option", &[Value::Str("rewrite_rules".into())])?;
+        Ok(())
+    }
+
+    fn update(&self, name: &str, value: &str) -> Result<(), speedyspec_wp_rewrite::RewriteError> {
+        php(
+            "update_option",
+            &[Value::Str(name.into()), Value::Str(value.into())],
+        )?;
+        Ok(())
+    }
+}

@@ -5377,6 +5377,8 @@ dependencies = [
 name = "speedyspec-wp-rewrite-php"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
+ "speedyspec-compat",
  "speedyspec-container",
  "speedyspec-container-php",
  "speedyspec-cqrs",

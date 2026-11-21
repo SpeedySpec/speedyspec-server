@@ -106,4 +106,7 @@ fn plain_permalinks_save_an_empty_value() {
             .unwrap()
             .is_empty()
     );
+    // WordPress stores an empty string, not an empty array: rewrite_rules() leaves $this->rules as ''.
+    assert_eq!(f.options.get("rewrite_rules").as_deref(), Some(""));
+    assert_eq!(f.options.stored_rules(), None);
 }

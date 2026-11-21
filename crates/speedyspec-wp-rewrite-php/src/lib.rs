@@ -5,6 +5,7 @@
 //! plugins and themes see WordPress's whole rewrite API. WordPress creates the `$wp_rewrite` global itself.
 
 mod adapters;
+mod compat;
 mod native;
 mod state;
 mod values;
@@ -24,8 +25,10 @@ use speedyspec_wp_rewrite::{
 };
 
 pub use adapters::{
-    HookWpLoaded, PhpMultisite, PhpPageByPath, PhpPageUris, PhpPostTypes, PhpQueryVars, PhpSiteUrls,
+    HookWpLoaded, PhpMultisite, PhpPageByPath, PhpPageUris, PhpPostTypes, PhpQueryVars,
+    PhpRewriteOptions, PhpSiteUrls,
 };
+pub use compat::rewrite_scenario_runner;
 pub use state::{PhpGlobalRewriteState, PhpRewriteState};
 
 /// The facade's PHP source.
