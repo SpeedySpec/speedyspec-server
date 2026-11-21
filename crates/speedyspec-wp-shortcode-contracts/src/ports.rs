@@ -15,6 +15,12 @@ pub trait ShortcodeHandler {
     fn is_callable(&self) -> bool {
         true
     }
+
+    /// The PHP value `$shortcode_tags` holds for this handler: a PHP callable, or the name of the native function a
+    /// Rust handler is declared as. `None` for a handler PHP cannot see, which only an in-memory registry keeps.
+    fn php_callable(&self) -> Option<PhpValue> {
+        None
+    }
 }
 
 /// The read-only view of the registered names that other areas depend on (`wpautop`, `shortcode_unautop`,
