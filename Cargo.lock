@@ -5277,6 +5277,7 @@ name = "speedyspec-wp-i18n-files"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "foldhash",
  "serde_json",
  "speedyspec-wp-i18n",
  "speedyspec-wp-i18n-contracts",

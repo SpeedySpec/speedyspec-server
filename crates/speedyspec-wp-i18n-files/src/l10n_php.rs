@@ -2,6 +2,7 @@
 //! write, parsed without running PHP. Anything outside that grammar is [`ReadError::Unsupported`], so the PHP side
 //! can `include` it as WordPress does.
 
+use std::collections::HashMap;
 use std::path::Path;
 
 use speedyspec_wp_i18n_contracts::{RawEntry, RawTranslations, ReadError, TranslationFileReader};
@@ -25,6 +26,13 @@ enum Value {
 enum Key {
     Int(i64),
     Str(u32, u32),
+}
+
+/// A key with its bytes, for the duplicate index.
+#[derive(PartialEq, Eq, Hash)]
+enum OwnedKey {
+    Int(i64),
+    Str(Vec<u8>),
 }
 
 struct Parser<'a> {
@@ -204,6 +212,9 @@ impl Parser<'_> {
 
     fn array(&mut self, close: u8) -> P<Value> {
         let mut items: Vec<(Key, Value)> = Vec::new();
+        // Where each key already is, so a repeated key replaces its value in place, as PHP's array assignment does.
+        let mut positions: HashMap<OwnedKey, usize, foldhash::fast::RandomState> =
+            HashMap::default();
         loop {
             if self.peek() == Some(close) {
                 self.pos += 1;
@@ -220,9 +231,16 @@ impl Parser<'_> {
             }
             let value = self.value()?;
             let key = self.normalize(key);
-            match items.iter_mut().find(|(k, _)| self.same_key(k, &key)) {
-                Some(slot) => slot.1 = value,
-                None => items.push((key, value)),
+            let owned = match &key {
+                Key::Int(n) => OwnedKey::Int(*n),
+                Key::Str(a, b) => OwnedKey::Str(self.bytes(*a, *b).to_vec()),
+            };
+            match positions.get(&owned) {
+                Some(&i) => items[i].1 = value,
+                None => {
+                    positions.insert(owned, items.len());
+                    items.push((key, value));
+                }
             }
             if self.eat(b",") {
                 continue;
@@ -249,14 +267,6 @@ impl Parser<'_> {
             }
         }
         key
-    }
-
-    fn same_key(&self, a: &Key, b: &Key) -> bool {
-        match (a, b) {
-            (Key::Int(x), Key::Int(y)) => x == y,
-            (Key::Str(a1, b1), Key::Str(a2, b2)) => self.bytes(*a1, *b1) == self.bytes(*a2, *b2),
-            _ => false,
-        }
     }
 }
 

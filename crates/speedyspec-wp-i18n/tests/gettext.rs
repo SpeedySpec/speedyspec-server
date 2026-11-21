@@ -319,3 +319,33 @@ fn count_if_unhooked_counts_only_when_nothing_is_hooked() {
         1
     );
 }
+
+#[test]
+fn empty_context_still_uses_the_context_filters() {
+    let (api, hooks) = api();
+    api.translate(b"baba", Some(b""), "dom", owned).unwrap();
+    assert_eq!(
+        hooks
+            .did_filter(&HookName::new(s("gettext_with_context")))
+            .unwrap(),
+        1
+    );
+    assert_eq!(hooks.did_filter(&HookName::new(s("gettext"))).unwrap(), 0);
+    let log = Rc::new(RefCell::new(Vec::new()));
+    hooks
+        .add_filter(
+            &HookName::new(s("gettext_with_context")),
+            recorder(log.clone(), "c"),
+            &HookValue::Int(10),
+            4,
+        )
+        .unwrap();
+    assert_eq!(
+        api.translate_if_unhooked(b"baba", Some(b""), "dom", owned),
+        None
+    );
+    assert_eq!(
+        api.translate_plural_if_unhooked(b"cat", b"cats", 2, Some(b""), "dom", owned),
+        Some(s("<arg 1>"))
+    );
+}

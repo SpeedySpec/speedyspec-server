@@ -244,14 +244,10 @@ impl PluralRule {
                     pos += len;
                 }
                 _ => {
-                    let ch = expression[pos..]
-                        .chars()
-                        .next()
-                        .map(|_| &expression[pos..pos + 1])
-                        .unwrap_or("");
+                    // `substr( $str, $pos, 1 )`: one byte, which may be part of a multibyte character.
                     return err(format!(
                         "Unknown symbol \"{}\"",
-                        String::from_utf8_lossy(ch.as_bytes())
+                        String::from_utf8_lossy(&s[pos..pos + 1])
                     ));
                 }
             }

@@ -129,3 +129,18 @@ fn core_pack_parses() {
     assert_eq!(a.entries().filter(|(k, _)| !k.contains(&4)).count(), 3632);
     assert_eq!(a.entries().count(), b.entries().count());
 }
+
+#[test]
+#[cfg_attr(debug_assertions, ignore = "timing needs a release build")]
+fn l10n_php_parse_is_linear() {
+    let mut src = String::from("<?php\nreturn ['messages'=>[");
+    for i in 0..20_000 {
+        src.push_str(&format!("'Original string number {i}'=>'Übersetzung {i}',"));
+    }
+    src.push_str("]];\n");
+    let start = std::time::Instant::now();
+    let raw = L10nPhpReader::parse(src.as_bytes()).unwrap();
+    let took = start.elapsed();
+    assert_eq!(raw.entries.len(), 20_000);
+    assert!(took.as_millis() < 20, "parsed in {took:?}");
+}

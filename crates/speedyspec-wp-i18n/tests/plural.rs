@@ -70,3 +70,11 @@ fn header_expression_is_extracted() {
     let rule = PluralRule::from_header("nplurals=3;plural=n==1 ? 0 : 2");
     assert_eq!(rule.eval(5), Ok(1));
 }
+
+#[test]
+fn non_ascii_symbol_is_an_error_not_a_panic() {
+    let e = PluralRule::compile("n\u{a0}!= 1").unwrap_err();
+    assert!(e.to_string().starts_with("Unknown symbol"), "{e}");
+    let rule = PluralRule::from_header("nplurals=2; plural=n\u{a0}!= 1;");
+    assert_eq!((rule.eval(1), rule.eval(2)), (Ok(0), Ok(1)));
+}
