@@ -14,6 +14,7 @@ mod legacy;
 mod slash;
 mod specialchars;
 mod tag;
+mod xml;
 
 pub use charset::{Charset, SingleByte, canonical_charset};
 pub use decode::{QuoteStyle, wp_specialchars_decode};
@@ -24,3 +25,4 @@ pub use legacy::seems_utf8_core;
 pub use slash::{addslashes, backslashit, stripslashes, wp_slash_value, wp_unslash_value};
 pub use specialchars::{check_invalid_utf8_for, wp_specialchars};
 pub use tag::tag_escape_core;
+pub use xml::esc_xml_after_check;
