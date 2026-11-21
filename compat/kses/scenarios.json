@@ -1,0 +1,4173 @@
+{
+  "area": "kses",
+  "scenarios": [
+    {
+      "name": "kses_every_context",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_kses",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_kses"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_kses_allowed_html",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_kses_allowed_html"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            "post"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            "data"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            "strip"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            "entities"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            "user_description"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            "pre_user_description"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            "pre_term_description"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            "title_save_pre"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            ""
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            "unknown_context"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            {
+              "b": true,
+              "a": {
+                "href": true
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            "post",
+            [
+              "https"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>",
+            "post",
+            []
+          ]
+        }
+      ]
+    },
+    {
+      "name": "kses_odd_content",
+      "steps": [
+        {
+          "call": "wp_kses",
+          "args": [
+            123,
+            "post"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            null,
+            "post"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            true,
+            "data"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "",
+            "post"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            4.5
+          ]
+        },
+        {
+          "call": "wp_kses_data",
+          "args": [
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "allowed_html_values",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_kses_allowed_html",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_kses_allowed_html"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            "post"
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            "data"
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            "strip"
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            "entities"
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            "user_description"
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            "pre_user_description"
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            "pre_term_description"
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            "comment"
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            ""
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            {
+              "b": [],
+              "i": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "post_and_data_functions",
+      "steps": [
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>"
+          ]
+        },
+        {
+          "call": "wp_kses_data",
+          "args": [
+            "<p class=\"c\" onclick=\"x\">a <a href=\"javascript:alert(1)\" title=\"t\" target=\"_blank\" rel=\"nofollow\">b</a> <img src=\"http://e/i.png\" alt=\"i\" onerror=\"x\"> <script>bad()</script><b style=\"color:red;behavior:url(x)\">s</b> &amp; &nbsp; &bogus; &#65; &#x41; <!-- c --> </1> <span data-wp-bind--hidden=\"x\" data-z=\"1\">z</span><form action=\"/x\"><input type=\"text\"></form><details open><summary>s</summary></details></p>"
+          ]
+        },
+        {
+          "call": "wp_filter_post_kses",
+          "args": [
+            "<a href=\\\"x\\\" onclick=\\\"y\\\">it\\'s</a>"
+          ]
+        },
+        {
+          "call": "wp_filter_nohtml_kses",
+          "args": [
+            "<b>bold</b> it\\'s"
+          ]
+        },
+        {
+          "call": "wp_filter_kses",
+          "args": [
+            "<b>x</b><p>y</p>"
+          ]
+        },
+        {
+          "call": "wp_kses_post_deep",
+          "args": [
+            {
+              "a": "<script>x</script>b",
+              "n": [
+                "<i onclick=1>d</i>",
+                5,
+                null,
+                true
+              ]
+            }
+          ]
+        },
+        {
+          "call": "wp_kses_version",
+          "args": []
+        },
+        {
+          "call": "wp_kses_uri_attributes",
+          "args": []
+        },
+        {
+          "call": "wp_allowed_protocols",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "filter_kses_takes_the_current_filter",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_comment_content",
+            "wp_filter_kses",
+            10,
+            1
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_user_description",
+            "wp_filter_kses",
+            10,
+            1
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "title_save_pre",
+            "wp_kses_data",
+            10,
+            1
+          ]
+        },
+        {
+          "call": "apply_filters",
+          "args": [
+            "pre_comment_content",
+            "<a href=\\\"http://a\\\" target=\\\"_blank\\\">a</a><p>p</p>"
+          ]
+        },
+        {
+          "call": "apply_filters",
+          "args": [
+            "pre_user_description",
+            "<a href=\\\"http://a\\\" target=\\\"_blank\\\" rel=\\\"me\\\">a</a>"
+          ]
+        },
+        {
+          "call": "apply_filters",
+          "args": [
+            "title_save_pre",
+            "<b>t</b><div>d</div>"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "one_attr",
+      "steps": [
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "href=\"http://a\"",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "href=\"http://a\"",
+            "img"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "href=\"http://a\"",
+            "x-tag"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            " title='t' ",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            " title='t' ",
+            "img"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            " title='t' ",
+            "x-tag"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "onclick=\"x\"",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "onclick=\"x\"",
+            "img"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "onclick=\"x\"",
+            "x-tag"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "href=\"javascript:x\"",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "href=\"javascript:x\"",
+            "img"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "href=\"javascript:x\"",
+            "x-tag"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "style=\"color:red\"",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "style=\"color:red\"",
+            "img"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "style=\"color:red\"",
+            "x-tag"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "style=\"behavior:url(x)\"",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "style=\"behavior:url(x)\"",
+            "img"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "style=\"behavior:url(x)\"",
+            "x-tag"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "data-x=\"1\"",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "data-x=\"1\"",
+            "img"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "data-x=\"1\"",
+            "x-tag"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "  href = http://a  ",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "  href = http://a  ",
+            "img"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "  href = http://a  ",
+            "x-tag"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "download",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "download",
+            "img"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "download",
+            "x-tag"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "class=\"a b\"",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "class=\"a b\"",
+            "img"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "class=\"a b\"",
+            "x-tag"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "",
+            "img"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "",
+            "x-tag"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "title",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "title",
+            "img"
+          ]
+        },
+        {
+          "call": "wp_kses_one_attr",
+          "args": [
+            "title",
+            "x-tag"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "attribute_rules",
+      "steps": [
+        {
+          "call": "wp_kses",
+          "args": [
+            "<a href=\"http://a\" title=\"short\">x</a>",
+            {
+              "a": {
+                "href": {
+                  "required": true
+                },
+                "title": {
+                  "maxlen": 5
+                },
+                "name": {
+                  "minlen": 3
+                }
+              },
+              "td": {
+                "colspan": {
+                  "minval": 1,
+                  "maxval": 3
+                },
+                "nowrap": {
+                  "valueless": "y"
+                },
+                "align": {
+                  "values": [
+                    "left",
+                    "Right",
+                    1
+                  ]
+                },
+                "abbr": {
+                  "valueless": "n"
+                },
+                "width": {
+                  "maxval": "10"
+                }
+              },
+              "span": {
+                "data-n": {
+                  "value_callback": "speedyspec_kses_digits"
+                },
+                "data-*": true,
+                "class": 1,
+                "id": "",
+                "lang": null,
+                "dir": "yes",
+                "hidden": false,
+                "role": [],
+                "title": {
+                  "bogus_rule": 1
+                }
+              },
+              "b": true,
+              "i": [],
+              "u": "",
+              "s": null,
+              "em": 1,
+              "strong": "yes",
+              "img": {
+                "src": {
+                  "required": 1
+                },
+                "alt": {
+                  "required": ""
+                },
+                "width": {
+                  "required": "yes"
+                },
+                "height": {
+                  "required": null
+                }
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<a title=\"toolong\">x</a>",
+            {
+              "a": {
+                "href": {
+                  "required": true
+                },
+                "title": {
+                  "maxlen": 5
+                },
+                "name": {
+                  "minlen": 3
+                }
+              },
+              "td": {
+                "colspan": {
+                  "minval": 1,
+                  "maxval": 3
+                },
+                "nowrap": {
+                  "valueless": "y"
+                },
+                "align": {
+                  "values": [
+                    "left",
+                    "Right",
+                    1
+                  ]
+                },
+                "abbr": {
+                  "valueless": "n"
+                },
+                "width": {
+                  "maxval": "10"
+                }
+              },
+              "span": {
+                "data-n": {
+                  "value_callback": "speedyspec_kses_digits"
+                },
+                "data-*": true,
+                "class": 1,
+                "id": "",
+                "lang": null,
+                "dir": "yes",
+                "hidden": false,
+                "role": [],
+                "title": {
+                  "bogus_rule": 1
+                }
+              },
+              "b": true,
+              "i": [],
+              "u": "",
+              "s": null,
+              "em": 1,
+              "strong": "yes",
+              "img": {
+                "src": {
+                  "required": 1
+                },
+                "alt": {
+                  "required": ""
+                },
+                "width": {
+                  "required": "yes"
+                },
+                "height": {
+                  "required": null
+                }
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<a href=\"http://a\" title=\"toolong\" name=\"ab\">x</a>",
+            {
+              "a": {
+                "href": {
+                  "required": true
+                },
+                "title": {
+                  "maxlen": 5
+                },
+                "name": {
+                  "minlen": 3
+                }
+              },
+              "td": {
+                "colspan": {
+                  "minval": 1,
+                  "maxval": 3
+                },
+                "nowrap": {
+                  "valueless": "y"
+                },
+                "align": {
+                  "values": [
+                    "left",
+                    "Right",
+                    1
+                  ]
+                },
+                "abbr": {
+                  "valueless": "n"
+                },
+                "width": {
+                  "maxval": "10"
+                }
+              },
+              "span": {
+                "data-n": {
+                  "value_callback": "speedyspec_kses_digits"
+                },
+                "data-*": true,
+                "class": 1,
+                "id": "",
+                "lang": null,
+                "dir": "yes",
+                "hidden": false,
+                "role": [],
+                "title": {
+                  "bogus_rule": 1
+                }
+              },
+              "b": true,
+              "i": [],
+              "u": "",
+              "s": null,
+              "em": 1,
+              "strong": "yes",
+              "img": {
+                "src": {
+                  "required": 1
+                },
+                "alt": {
+                  "required": ""
+                },
+                "width": {
+                  "required": "yes"
+                },
+                "height": {
+                  "required": null
+                }
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<a href=\"http://a\" name=\"abcd\">x</a>",
+            {
+              "a": {
+                "href": {
+                  "required": true
+                },
+                "title": {
+                  "maxlen": 5
+                },
+                "name": {
+                  "minlen": 3
+                }
+              },
+              "td": {
+                "colspan": {
+                  "minval": 1,
+                  "maxval": 3
+                },
+                "nowrap": {
+                  "valueless": "y"
+                },
+                "align": {
+                  "values": [
+                    "left",
+                    "Right",
+                    1
+                  ]
+                },
+                "abbr": {
+                  "valueless": "n"
+                },
+                "width": {
+                  "maxval": "10"
+                }
+              },
+              "span": {
+                "data-n": {
+                  "value_callback": "speedyspec_kses_digits"
+                },
+                "data-*": true,
+                "class": 1,
+                "id": "",
+                "lang": null,
+                "dir": "yes",
+                "hidden": false,
+                "role": [],
+                "title": {
+                  "bogus_rule": 1
+                }
+              },
+              "b": true,
+              "i": [],
+              "u": "",
+              "s": null,
+              "em": 1,
+              "strong": "yes",
+              "img": {
+                "src": {
+                  "required": 1
+                },
+                "alt": {
+                  "required": ""
+                },
+                "width": {
+                  "required": "yes"
+                },
+                "height": {
+                  "required": null
+                }
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<td colspan=\"2\" nowrap align=\"left\">c</td>",
+            {
+              "a": {
+                "href": {
+                  "required": true
+                },
+                "title": {
+                  "maxlen": 5
+                },
+                "name": {
+                  "minlen": 3
+                }
+              },
+              "td": {
+                "colspan": {
+                  "minval": 1,
+                  "maxval": 3
+                },
+                "nowrap": {
+                  "valueless": "y"
+                },
+                "align": {
+                  "values": [
+                    "left",
+                    "Right",
+                    1
+                  ]
+                },
+                "abbr": {
+                  "valueless": "n"
+                },
+                "width": {
+                  "maxval": "10"
+                }
+              },
+              "span": {
+                "data-n": {
+                  "value_callback": "speedyspec_kses_digits"
+                },
+                "data-*": true,
+                "class": 1,
+                "id": "",
+                "lang": null,
+                "dir": "yes",
+                "hidden": false,
+                "role": [],
+                "title": {
+                  "bogus_rule": 1
+                }
+              },
+              "b": true,
+              "i": [],
+              "u": "",
+              "s": null,
+              "em": 1,
+              "strong": "yes",
+              "img": {
+                "src": {
+                  "required": 1
+                },
+                "alt": {
+                  "required": ""
+                },
+                "width": {
+                  "required": "yes"
+                },
+                "height": {
+                  "required": null
+                }
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<td colspan=\"0\" nowrap=\"x\" align=\"LEFT\">c</td>",
+            {
+              "a": {
+                "href": {
+                  "required": true
+                },
+                "title": {
+                  "maxlen": 5
+                },
+                "name": {
+                  "minlen": 3
+                }
+              },
+              "td": {
+                "colspan": {
+                  "minval": 1,
+                  "maxval": 3
+                },
+                "nowrap": {
+                  "valueless": "y"
+                },
+                "align": {
+                  "values": [
+                    "left",
+                    "Right",
+                    1
+                  ]
+                },
+                "abbr": {
+                  "valueless": "n"
+                },
+                "width": {
+                  "maxval": "10"
+                }
+              },
+              "span": {
+                "data-n": {
+                  "value_callback": "speedyspec_kses_digits"
+                },
+                "data-*": true,
+                "class": 1,
+                "id": "",
+                "lang": null,
+                "dir": "yes",
+                "hidden": false,
+                "role": [],
+                "title": {
+                  "bogus_rule": 1
+                }
+              },
+              "b": true,
+              "i": [],
+              "u": "",
+              "s": null,
+              "em": 1,
+              "strong": "yes",
+              "img": {
+                "src": {
+                  "required": 1
+                },
+                "alt": {
+                  "required": ""
+                },
+                "width": {
+                  "required": "yes"
+                },
+                "height": {
+                  "required": null
+                }
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<td colspan=\"4\" align=\"right\" abbr=\"a\" width=\"11\">c</td>",
+            {
+              "a": {
+                "href": {
+                  "required": true
+                },
+                "title": {
+                  "maxlen": 5
+                },
+                "name": {
+                  "minlen": 3
+                }
+              },
+              "td": {
+                "colspan": {
+                  "minval": 1,
+                  "maxval": 3
+                },
+                "nowrap": {
+                  "valueless": "y"
+                },
+                "align": {
+                  "values": [
+                    "left",
+                    "Right",
+                    1
+                  ]
+                },
+                "abbr": {
+                  "valueless": "n"
+                },
+                "width": {
+                  "maxval": "10"
+                }
+              },
+              "span": {
+                "data-n": {
+                  "value_callback": "speedyspec_kses_digits"
+                },
+                "data-*": true,
+                "class": 1,
+                "id": "",
+                "lang": null,
+                "dir": "yes",
+                "hidden": false,
+                "role": [],
+                "title": {
+                  "bogus_rule": 1
+                }
+              },
+              "b": true,
+              "i": [],
+              "u": "",
+              "s": null,
+              "em": 1,
+              "strong": "yes",
+              "img": {
+                "src": {
+                  "required": 1
+                },
+                "alt": {
+                  "required": ""
+                },
+                "width": {
+                  "required": "yes"
+                },
+                "height": {
+                  "required": null
+                }
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<td colspan=\"3\" align=\"1\" abbr width=\"9\">c</td>",
+            {
+              "a": {
+                "href": {
+                  "required": true
+                },
+                "title": {
+                  "maxlen": 5
+                },
+                "name": {
+                  "minlen": 3
+                }
+              },
+              "td": {
+                "colspan": {
+                  "minval": 1,
+                  "maxval": 3
+                },
+                "nowrap": {
+                  "valueless": "y"
+                },
+                "align": {
+                  "values": [
+                    "left",
+                    "Right",
+                    1
+                  ]
+                },
+                "abbr": {
+                  "valueless": "n"
+                },
+                "width": {
+                  "maxval": "10"
+                }
+              },
+              "span": {
+                "data-n": {
+                  "value_callback": "speedyspec_kses_digits"
+                },
+                "data-*": true,
+                "class": 1,
+                "id": "",
+                "lang": null,
+                "dir": "yes",
+                "hidden": false,
+                "role": [],
+                "title": {
+                  "bogus_rule": 1
+                }
+              },
+              "b": true,
+              "i": [],
+              "u": "",
+              "s": null,
+              "em": 1,
+              "strong": "yes",
+              "img": {
+                "src": {
+                  "required": 1
+                },
+                "alt": {
+                  "required": ""
+                },
+                "width": {
+                  "required": "yes"
+                },
+                "height": {
+                  "required": null
+                }
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<span data-n=\"123\" data-foo=\"1\" class=\"c\" id=\"i\" lang=\"en\" dir=\"ltr\" hidden role=\"r\" title=\"t\">s</span>",
+            {
+              "a": {
+                "href": {
+                  "required": true
+                },
+                "title": {
+                  "maxlen": 5
+                },
+                "name": {
+                  "minlen": 3
+                }
+              },
+              "td": {
+                "colspan": {
+                  "minval": 1,
+                  "maxval": 3
+                },
+                "nowrap": {
+                  "valueless": "y"
+                },
+                "align": {
+                  "values": [
+                    "left",
+                    "Right",
+                    1
+                  ]
+                },
+                "abbr": {
+                  "valueless": "n"
+                },
+                "width": {
+                  "maxval": "10"
+                }
+              },
+              "span": {
+                "data-n": {
+                  "value_callback": "speedyspec_kses_digits"
+                },
+                "data-*": true,
+                "class": 1,
+                "id": "",
+                "lang": null,
+                "dir": "yes",
+                "hidden": false,
+                "role": [],
+                "title": {
+                  "bogus_rule": 1
+                }
+              },
+              "b": true,
+              "i": [],
+              "u": "",
+              "s": null,
+              "em": 1,
+              "strong": "yes",
+              "img": {
+                "src": {
+                  "required": 1
+                },
+                "alt": {
+                  "required": ""
+                },
+                "width": {
+                  "required": "yes"
+                },
+                "height": {
+                  "required": null
+                }
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<span data-n=\"12a\" data-Foo_bar-1=\"x\" data-=\"y\" data-a.b=\"z\">s</span>",
+            {
+              "a": {
+                "href": {
+                  "required": true
+                },
+                "title": {
+                  "maxlen": 5
+                },
+                "name": {
+                  "minlen": 3
+                }
+              },
+              "td": {
+                "colspan": {
+                  "minval": 1,
+                  "maxval": 3
+                },
+                "nowrap": {
+                  "valueless": "y"
+                },
+                "align": {
+                  "values": [
+                    "left",
+                    "Right",
+                    1
+                  ]
+                },
+                "abbr": {
+                  "valueless": "n"
+                },
+                "width": {
+                  "maxval": "10"
+                }
+              },
+              "span": {
+                "data-n": {
+                  "value_callback": "speedyspec_kses_digits"
+                },
+                "data-*": true,
+                "class": 1,
+                "id": "",
+                "lang": null,
+                "dir": "yes",
+                "hidden": false,
+                "role": [],
+                "title": {
+                  "bogus_rule": 1
+                }
+              },
+              "b": true,
+              "i": [],
+              "u": "",
+              "s": null,
+              "em": 1,
+              "strong": "yes",
+              "img": {
+                "src": {
+                  "required": 1
+                },
+                "alt": {
+                  "required": ""
+                },
+                "width": {
+                  "required": "yes"
+                },
+                "height": {
+                  "required": null
+                }
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<img src=\"http://a/i.png\" alt=\"a\" width=\"1\" height=\"2\"><img alt=\"a\"><img src=\"x\" width=\"\">",
+            {
+              "a": {
+                "href": {
+                  "required": true
+                },
+                "title": {
+                  "maxlen": 5
+                },
+                "name": {
+                  "minlen": 3
+                }
+              },
+              "td": {
+                "colspan": {
+                  "minval": 1,
+                  "maxval": 3
+                },
+                "nowrap": {
+                  "valueless": "y"
+                },
+                "align": {
+                  "values": [
+                    "left",
+                    "Right",
+                    1
+                  ]
+                },
+                "abbr": {
+                  "valueless": "n"
+                },
+                "width": {
+                  "maxval": "10"
+                }
+              },
+              "span": {
+                "data-n": {
+                  "value_callback": "speedyspec_kses_digits"
+                },
+                "data-*": true,
+                "class": 1,
+                "id": "",
+                "lang": null,
+                "dir": "yes",
+                "hidden": false,
+                "role": [],
+                "title": {
+                  "bogus_rule": 1
+                }
+              },
+              "b": true,
+              "i": [],
+              "u": "",
+              "s": null,
+              "em": 1,
+              "strong": "yes",
+              "img": {
+                "src": {
+                  "required": 1
+                },
+                "alt": {
+                  "required": ""
+                },
+                "width": {
+                  "required": "yes"
+                },
+                "height": {
+                  "required": null
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "attribute_rules_malformed_tag_values",
+      "steps": [
+        {
+          "call": "wp_kses",
+          "args": [
+            "<b onclick=\"x\">b</b><i class=\"c\">i</i><u>u</u><s>s</s><em title=\"t\">e</em><strong id=\"x\">st</strong>",
+            {
+              "a": {
+                "href": {
+                  "required": true
+                },
+                "title": {
+                  "maxlen": 5
+                },
+                "name": {
+                  "minlen": 3
+                }
+              },
+              "td": {
+                "colspan": {
+                  "minval": 1,
+                  "maxval": 3
+                },
+                "nowrap": {
+                  "valueless": "y"
+                },
+                "align": {
+                  "values": [
+                    "left",
+                    "Right",
+                    1
+                  ]
+                },
+                "abbr": {
+                  "valueless": "n"
+                },
+                "width": {
+                  "maxval": "10"
+                }
+              },
+              "span": {
+                "data-n": {
+                  "value_callback": "speedyspec_kses_digits"
+                },
+                "data-*": true,
+                "class": 1,
+                "id": "",
+                "lang": null,
+                "dir": "yes",
+                "hidden": false,
+                "role": [],
+                "title": {
+                  "bogus_rule": 1
+                }
+              },
+              "b": true,
+              "i": [],
+              "u": "",
+              "s": null,
+              "em": 1,
+              "strong": "yes",
+              "img": {
+                "src": {
+                  "required": 1
+                },
+                "alt": {
+                  "required": ""
+                },
+                "width": {
+                  "required": "yes"
+                },
+                "height": {
+                  "required": null
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "check_attr_val",
+      "steps": [
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "abc",
+            "n",
+            "maxlen",
+            2
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "ab",
+            "n",
+            "maxlen",
+            2
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "abc",
+            "n",
+            "minlen",
+            4
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "5",
+            "n",
+            "maxval",
+            4
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "5",
+            "n",
+            "minval",
+            6
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "-1",
+            "n",
+            "minval",
+            0
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "x",
+            "n",
+            "maxval",
+            4
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "",
+            "y",
+            "valueless",
+            "y"
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "v",
+            "n",
+            "valueless",
+            "y"
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "v",
+            "n",
+            "VALUELESS",
+            "n"
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "Left",
+            "n",
+            "values",
+            [
+              "left"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "1",
+            "n",
+            "values",
+            [
+              1,
+              "2"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "123",
+            "n",
+            "value_callback",
+            "speedyspec_kses_digits"
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "12a",
+            "n",
+            "value_callback",
+            "speedyspec_kses_digits"
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "x",
+            "n",
+            "unknown",
+            1
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "",
+            "n",
+            "maxlen",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_kses_check_attr_val",
+          "args": [
+            "99999999999999999999",
+            "n",
+            "maxval",
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "name": "entities",
+      "steps": [
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&amp; &lt; &gt; &quot; &apos;",
+            "html"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&amp; &lt; &gt; &quot; &apos;",
+            "xml"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&nbsp;&copy;&bogus;&zz;",
+            "html"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&nbsp;&copy;&bogus;&zz;",
+            "xml"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&#65;&#0065;&#x41;&#x0041;&#xD800;&#xFFFE;&#1114112;",
+            "html"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&#65;&#0065;&#x41;&#x0041;&#xD800;&#xFFFE;&#1114112;",
+            "xml"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&#9;&#10;&#13;&#31;&#0;",
+            "html"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&#9;&#10;&#13;&#31;&#0;",
+            "xml"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "a & b",
+            "html"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "a & b",
+            "xml"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&&amp;",
+            "html"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&&amp;",
+            "xml"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&sup1;&sup12;&frac14;&hellip;&euro;",
+            "html"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&sup1;&sup12;&frac14;&hellip;&euro;",
+            "xml"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&#x;&#;&#x1F600;",
+            "html"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&#x;&#;&#x1F600;",
+            "xml"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&colon;&Tab;&NewLine;",
+            "html"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&colon;&Tab;&NewLine;",
+            "xml"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&#00000000065;",
+            "html"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&#00000000065;",
+            "xml"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&abcdefghi;",
+            "html"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&abcdefghi;",
+            "xml"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "\u00e9 &eacute;",
+            "html"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "\u00e9 &eacute;",
+            "xml"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "&amp; &lt; &gt; &quot; &apos;"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "&nbsp;&copy;&bogus;&zz;"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "&#65;&#0065;&#x41;&#x0041;&#xD800;&#xFFFE;&#1114112;"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "&#9;&#10;&#13;&#31;&#0;"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "a & b"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "&&amp;"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "&sup1;&sup12;&frac14;&hellip;&euro;"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "&#x;&#;&#x1F600;"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "&colon;&Tab;&NewLine;"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "&#00000000065;"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "&abcdefghi;"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "\u00e9 &eacute;"
+          ]
+        },
+        {
+          "call": "wp_kses_decode_entities",
+          "args": [
+            "&#65;&#x42;&#255;&#256;"
+          ]
+        },
+        {
+          "call": "wp_kses_named_entities",
+          "args": [
+            [
+              "&nbsp;",
+              "nbsp"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_named_entities",
+          "args": [
+            [
+              "&zz;",
+              "zz"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_named_entities",
+          "args": [
+            [
+              "&apos;",
+              "apos"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_named_entities",
+          "args": [
+            [
+              "",
+              ""
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_xml_named_entities",
+          "args": [
+            [
+              "&nbsp;",
+              "nbsp"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_xml_named_entities",
+          "args": [
+            [
+              "&amp;",
+              "amp"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_xml_named_entities",
+          "args": [
+            [
+              "&zz;",
+              "zz"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_xml_named_entities",
+          "args": [
+            [
+              "&eacute;",
+              "eacute"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities2",
+          "args": [
+            [
+              "&#65;",
+              "65"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities2",
+          "args": [
+            [
+              "&#0065;",
+              "0065"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities2",
+          "args": [
+            [
+              "&#1114112;",
+              "1114112"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities2",
+          "args": [
+            [
+              "&#0;",
+              "0"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities2",
+          "args": [
+            [
+              "&#9;",
+              "9"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities3",
+          "args": [
+            [
+              "&#x41;",
+              "41"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities3",
+          "args": [
+            [
+              "&#x0041;",
+              "0041"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities3",
+          "args": [
+            [
+              "&#xD800;",
+              "D800"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities3",
+          "args": [
+            [
+              "&#x110000;",
+              "110000"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities3",
+          "args": [
+            [
+              "&#x9;",
+              "9"
+            ]
+          ]
+        },
+        {
+          "call": "valid_unicode",
+          "args": [
+            9
+          ]
+        },
+        {
+          "call": "valid_unicode",
+          "args": [
+            10
+          ]
+        },
+        {
+          "call": "valid_unicode",
+          "args": [
+            13
+          ]
+        },
+        {
+          "call": "valid_unicode",
+          "args": [
+            32
+          ]
+        },
+        {
+          "call": "valid_unicode",
+          "args": [
+            55295
+          ]
+        },
+        {
+          "call": "valid_unicode",
+          "args": [
+            55296
+          ]
+        },
+        {
+          "call": "valid_unicode",
+          "args": [
+            65534
+          ]
+        },
+        {
+          "call": "valid_unicode",
+          "args": [
+            1114111
+          ]
+        },
+        {
+          "call": "valid_unicode",
+          "args": [
+            1114112
+          ]
+        },
+        {
+          "call": "valid_unicode",
+          "args": [
+            "65"
+          ]
+        },
+        {
+          "call": "valid_unicode",
+          "args": [
+            -1
+          ]
+        },
+        {
+          "call": "_wp_kses_decode_entities_chr",
+          "args": [
+            [
+              "&#65;",
+              "65"
+            ]
+          ]
+        },
+        {
+          "call": "_wp_kses_decode_entities_chr",
+          "args": [
+            [
+              "&#300;",
+              "300"
+            ]
+          ]
+        },
+        {
+          "call": "_wp_kses_decode_entities_chr_hexdec",
+          "args": [
+            [
+              "&#x41;",
+              "41"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "protocols",
+      "steps": [
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "javascript:alert(1)",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "JaVaScRiPt:x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "java&#x09;script:x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "&#106;avascript:x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "java\u0000script:x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "feed:javascript:x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "http://ok/",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "mailto:a@b",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "/rel?x:y",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            " javascript:x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "javascript&colon;x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "jav&#x0A;ascript:x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "data:text/html,x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "vbscript:x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "http:/\\/x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "&#x6A;avascript&#x3A;x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "javascript&#58;x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "javascript&#0000058x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "\tjavascript:x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "irc6://x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "urn:x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "tel:1",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "about:blank",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "%6aavascript:x",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "x:y:z",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol",
+          "args": [
+            "javascript:x",
+            []
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol_once",
+          "args": [
+            "javascript:alert(1)",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol_once",
+          "args": [
+            "a:b:c",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ],
+            2
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol_once2",
+          "args": [
+            "JavaScript",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol_once2",
+          "args": [
+            "HTTP",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_bad_protocol_once2",
+          "args": [
+            "&#106;",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"javascript:alert(1)\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"JaVaScRiPt:x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"java&#x09;script:x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"&#106;avascript:x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"java\u0000script:x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"feed:javascript:x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"http://ok/\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"mailto:a@b\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"/rel?x:y\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\" javascript:x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"javascript&colon;x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"jav&#x0A;ascript:x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"data:text/html,x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"vbscript:x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"http:/\\/x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"&#x6A;avascript&#x3A;x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"javascript&#58;x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"javascript&#0000058x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"\tjavascript:x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"irc6://x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"urn:x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"tel:1\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"about:blank\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"%6aavascript:x\">x</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"x:y:z\">x</a>"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "lexical_functions",
+      "steps": [
+        {
+          "call": "wp_kses_hair",
+          "args": [
+            "href=\"http://a\" title='t' download",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_hair",
+          "args": [
+            "a=b c=\"d\" e",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_hair",
+          "args": [
+            "1 b=\"c\"",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_hair",
+          "args": [
+            "onclick=\"x\" href=\"javascript:y\"",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_hair",
+          "args": [
+            "x=\"&amp;&lt;\" y='\"'",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_hair",
+          "args": [
+            "data-x=\"1\" data-x=\"2\"",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_hair",
+          "args": [
+            "",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_hair",
+          "args": [
+            "   ",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_hair",
+          "args": [
+            "a=\"unterminated",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_hair",
+          "args": [
+            "style=\"color:red\"",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_hair",
+          "args": [
+            "A=\"B\" a=\"c\"",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_attr_parse",
+          "args": [
+            "<a b>"
+          ]
+        },
+        {
+          "call": "wp_kses_attr_parse",
+          "args": [
+            "<a href=\"x\" />"
+          ]
+        },
+        {
+          "call": "wp_kses_attr_parse",
+          "args": [
+            "<a b='c'd=\"e\">"
+          ]
+        },
+        {
+          "call": "wp_kses_attr_parse",
+          "args": [
+            "<a b=\"c>"
+          ]
+        },
+        {
+          "call": "wp_kses_attr_parse",
+          "args": [
+            "</a>"
+          ]
+        },
+        {
+          "call": "wp_kses_attr_parse",
+          "args": [
+            "<br/>"
+          ]
+        },
+        {
+          "call": "wp_kses_attr_parse",
+          "args": [
+            "<a [[x]]>"
+          ]
+        },
+        {
+          "call": "wp_kses_hair_parse",
+          "args": [
+            "a=\"b\" c"
+          ]
+        },
+        {
+          "call": "wp_kses_hair_parse",
+          "args": [
+            "a='b'"
+          ]
+        },
+        {
+          "call": "wp_kses_hair_parse",
+          "args": [
+            "a=b c=d"
+          ]
+        },
+        {
+          "call": "wp_kses_hair_parse",
+          "args": [
+            "a=\"b"
+          ]
+        },
+        {
+          "call": "wp_kses_hair_parse",
+          "args": [
+            ""
+          ]
+        },
+        {
+          "call": "wp_kses_hair_parse",
+          "args": [
+            "[x]=y"
+          ]
+        },
+        {
+          "call": "wp_kses_split",
+          "args": [
+            "<b onclick=x>a</b><script>s</script> > <",
+            "post",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_split",
+          "args": [
+            "<x>a</x>",
+            {
+              "x": true
+            },
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_split2",
+          "args": [
+            "<b onclick=x>",
+            "post",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_split2",
+          "args": [
+            "<!-- c -->",
+            "post",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_split2",
+          "args": [
+            ">",
+            "post",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_split2",
+          "args": [
+            "</1>",
+            "post",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_split2",
+          "args": [
+            "<!-- <b>x</b> -->",
+            "post",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_attr",
+          "args": [
+            "a",
+            " href=\"http://a\" onclick=\"x\" /",
+            "post",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_attr",
+          "args": [
+            "img",
+            " src=x",
+            "data",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_attr",
+          "args": [
+            "x-tag",
+            " a=b",
+            {
+              "x-tag": {
+                "a": true
+              }
+            },
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_no_null",
+          "args": [
+            "a\u0001b\\\\0c\u0000d"
+          ]
+        },
+        {
+          "call": "wp_kses_no_null",
+          "args": [
+            "a\\\\0",
+            {
+              "slash_zero": "keep"
+            }
+          ]
+        },
+        {
+          "call": "wp_kses_no_null",
+          "args": [
+            "a\\\\00",
+            {
+              "slash_zero": "remove"
+            }
+          ]
+        },
+        {
+          "call": "wp_kses_no_null",
+          "args": [
+            "a\\\\0",
+            {
+              "other": 1
+            }
+          ]
+        },
+        {
+          "call": "wp_kses_stripslashes",
+          "args": [
+            "a\\\\\"b\\\\'c\\\\\\\\d"
+          ]
+        },
+        {
+          "call": "wp_kses_html_error",
+          "args": [
+            "a=\"b\" c"
+          ]
+        },
+        {
+          "call": "wp_kses_html_error",
+          "args": [
+            "x"
+          ]
+        },
+        {
+          "call": "wp_kses_array_lc",
+          "args": [
+            {
+              "A": {
+                "HREF": true,
+                "Title": 1
+              },
+              "B": [],
+              "C": "x"
+            }
+          ]
+        },
+        {
+          "call": "wp_kses_array_lc",
+          "args": [
+            "str"
+          ]
+        },
+        {
+          "call": "_wp_add_global_attributes",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "_wp_add_global_attributes",
+          "args": [
+            {
+              "href": true
+            }
+          ]
+        },
+        {
+          "call": "_wp_add_global_attributes",
+          "args": [
+            []
+          ]
+        },
+        {
+          "call": "_wp_add_global_attributes",
+          "args": [
+            "x"
+          ]
+        },
+        {
+          "call": "_wp_kses_restricts_attribute_values",
+          "args": [
+            {
+              "href": true
+            }
+          ]
+        },
+        {
+          "call": "_wp_kses_restricts_attribute_values",
+          "args": [
+            {
+              "href": {
+                "required": true
+              }
+            }
+          ]
+        },
+        {
+          "call": "_wp_kses_restricts_attribute_values",
+          "args": [
+            {
+              "href": {
+                "values": [
+                  "a"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "call": "_wp_kses_restricts_attribute_values",
+          "args": [
+            "x"
+          ]
+        },
+        {
+          "call": "_wp_kses_directive_binds_value_restricted_attribute",
+          "args": [
+            "data-wp-bind--href",
+            {
+              "href": {
+                "values": [
+                  "a"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "call": "_wp_kses_directive_binds_value_restricted_attribute",
+          "args": [
+            "data-wp-bind--href---id",
+            {
+              "href": {
+                "maxlen": 1
+              }
+            }
+          ]
+        },
+        {
+          "call": "_wp_kses_directive_binds_value_restricted_attribute",
+          "args": [
+            "data-wp-bind--title",
+            {
+              "href": {
+                "values": [
+                  "a"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "call": "_wp_kses_directive_binds_value_restricted_attribute",
+          "args": [
+            "data-wp-on--click",
+            {
+              "href": {
+                "values": [
+                  "a"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "call": "_wp_kses_allow_note_mention_span",
+          "args": [
+            {
+              "span": {
+                "id": true
+              }
+            },
+            "pre_comment_content"
+          ]
+        },
+        {
+          "call": "_wp_kses_allow_note_mention_span",
+          "args": [
+            "x",
+            "pre_comment_content"
+          ]
+        },
+        {
+          "call": "_wp_kses_allow_note_mention_span",
+          "args": [
+            {
+              "b": true
+            },
+            "post"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pre_kses_changes_content",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_kses",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_kses"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_kses",
+            {
+              "callback": "append",
+              "label": "suffix",
+              "with": {
+                "suffix": " <b onclick=\"x\">added</b>"
+              }
+            },
+            10,
+            3
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<i>x</i>",
+            "post"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<i>x</i>",
+            {
+              "b": true
+            }
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "y"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pre_kses_throws",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_kses",
+            {
+              "callback": "throw",
+              "label": "boom",
+              "with": {
+                "message": "boom"
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "x"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "allowed_html_filter_changes_the_allowlist",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_kses_allowed_html",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_kses_allowed_html"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_kses_allowed_html",
+            "speedyspec_kses_add_x_tag",
+            10,
+            1
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<x-tag data-x=\"1\" data-y=\"2\">t</x-tag><b>b</b>",
+            "post"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<x-tag data-x=\"1\">t</x-tag>",
+            "data"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<x-tag>t</x-tag>",
+            {
+              "b": true
+            }
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            "strip"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "allowed_html_filter_adds_input_so_post_adds_form",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_kses_allowed_html",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_kses_allowed_html"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_kses_allowed_html",
+            "speedyspec_kses_add_input",
+            10,
+            1
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<form action=\"/a\" method=\"post\"><input type=\"text\" name=\"n\" onfocus=\"x\"></form>"
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            "post"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "uri_attributes_filter",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_kses_uri_attributes",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_kses_uri_attributes"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_kses_uri_attributes",
+            "speedyspec_kses_uri_data_href",
+            10,
+            1
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<a data-href=\"javascript:x\" href=\"javascript:y\" title=\"javascript:z\">a</a>",
+            {
+              "a": {
+                "data-href": true,
+                "href": true,
+                "title": true
+              }
+            }
+          ]
+        },
+        {
+          "call": "wp_kses_uri_attributes",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "safecss",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "safe_style_css",
+            {
+              "callback": "return_arg",
+              "label": "rec:safe_style_css"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "safecss_filter_attr_allow_css",
+            {
+              "callback": "return_arg",
+              "label": "rec:safecss_filter_attr_allow_css"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "cursor: pointer; color: red"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "color: red; behavior: url(x)"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "background: url(\"javascript:x\")"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "background-image: url(http://a/i.png)"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "width: calc(1px + 2px)"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "color: expression(x)"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "--custom: 1"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "margin: 0 auto;;; padding: 1px"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "font-family: 'a\\\\' b'"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "color: red /* c */"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "grid-template-columns: repeat(2, 1fr)"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "background: linear-gradient(red, blue)"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "color:red;color:blue"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            ""
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "COLOR: red"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "text-align:left;x:y"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "color: red",
+            "deprecated"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "safe_style_css_filter",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "safe_style_css",
+            {
+              "callback": "return_arg",
+              "label": "rec:safe_style_css"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "safe_style_css",
+            "speedyspec_kses_style_cursor",
+            10,
+            1
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "cursor: pointer; color: red"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<p style=\"cursor:pointer;float:left\">p</p>"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "allow_css_filter_allows",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "safecss_filter_attr_allow_css",
+            "speedyspec_kses_allow_css",
+            10,
+            2
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "color: red; width: calc(1px)"
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "background: url(x) (y)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "allow_css_filter_refuses",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "safecss_filter_attr_allow_css",
+            "speedyspec_kses_refuse_css",
+            10,
+            2
+          ]
+        },
+        {
+          "call": "safecss_filter_attr",
+          "args": [
+            "color: red; width: 1px"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<p style=\"color:red\">p</p>"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "protocols_filter_until_wp_loaded",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "kses_allowed_protocols",
+            {
+              "callback": "return_arg",
+              "label": "rec:kses_allowed_protocols"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "kses_allowed_protocols",
+            "speedyspec_kses_only_https",
+            10,
+            1
+          ]
+        },
+        {
+          "call": "wp_allowed_protocols",
+          "args": []
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"http://x\">h</a><a href=\"https://y\">s</a>"
+          ]
+        },
+        {
+          "call": "do_action",
+          "args": [
+            "wp_loaded"
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "kses_allowed_protocols",
+            "speedyspec_kses_only_https"
+          ]
+        },
+        {
+          "call": "wp_allowed_protocols",
+          "args": []
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<a href=\"http://x\">h</a>"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "init_filters",
+      "steps": [
+        {
+          "call": "kses_init_filters",
+          "args": []
+        },
+        {
+          "call": "has_filter",
+          "args": [
+            "title_save_pre",
+            "wp_filter_kses"
+          ]
+        },
+        {
+          "call": "has_filter",
+          "args": [
+            "pre_comment_content",
+            "wp_filter_kses"
+          ]
+        },
+        {
+          "call": "has_filter",
+          "args": [
+            "content_save_pre",
+            "wp_filter_global_styles_post"
+          ]
+        },
+        {
+          "call": "has_filter",
+          "args": [
+            "content_save_pre",
+            "wp_filter_post_kses"
+          ]
+        },
+        {
+          "call": "apply_filters",
+          "args": [
+            "title_save_pre",
+            "<b onclick=\\\"x\\\">t</b>"
+          ]
+        },
+        {
+          "call": "kses_remove_filters",
+          "args": []
+        },
+        {
+          "call": "has_filter",
+          "args": [
+            "title_save_pre",
+            "wp_filter_kses"
+          ]
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "speedyspec_kses_can",
+            [
+              "unfiltered_html"
+            ]
+          ]
+        },
+        {
+          "call": "kses_init",
+          "args": []
+        },
+        {
+          "call": "has_filter",
+          "args": [
+            "pre_comment_content",
+            "wp_filter_post_kses"
+          ]
+        },
+        {
+          "call": "has_filter",
+          "args": [
+            "title_save_pre",
+            "wp_filter_kses"
+          ]
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "speedyspec_kses_can",
+            []
+          ]
+        },
+        {
+          "call": "kses_init",
+          "args": []
+        },
+        {
+          "call": "has_filter",
+          "args": [
+            "pre_comment_content",
+            "wp_filter_kses"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "globals_written_by_plugins",
+      "steps": [
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<x-tag a=\"1\">x</x-tag>"
+          ]
+        },
+        {
+          "call": "global:set",
+          "args": [
+            "allowedposttags",
+            "x-tag",
+            {
+              "a": true
+            }
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<x-tag a=\"1\" b=\"2\">x</x-tag>"
+          ]
+        },
+        {
+          "call": "global:set",
+          "args": [
+            "allowedposttags",
+            "x-tag",
+            "b",
+            true
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<x-tag a=\"1\" b=\"2\">x</x-tag>"
+          ]
+        },
+        {
+          "call": "global:unset",
+          "args": [
+            "allowedposttags",
+            "p"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<p>p</p>"
+          ]
+        },
+        {
+          "call": "global:set",
+          "args": [
+            "allowedtags",
+            "div",
+            []
+          ]
+        },
+        {
+          "call": "wp_kses_data",
+          "args": [
+            "<div>d</div>"
+          ]
+        },
+        {
+          "call": "global:append",
+          "args": [
+            "allowedentitynames",
+            "zz"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&zz; &yy;"
+          ]
+        },
+        {
+          "call": "global:append",
+          "args": [
+            "allowedxmlentitynames",
+            "nbsp"
+          ]
+        },
+        {
+          "call": "wp_kses_normalize_entities",
+          "args": [
+            "&nbsp;",
+            "xml"
+          ]
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "allowedposttags",
+            "not an array"
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<b>b</b>"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "note_mention_span",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_kses_allowed_html",
+            "_wp_kses_allow_note_mention_span",
+            10,
+            2
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<span class=\"wp-note-mention user-2\" id=\"x\">@a</span><a class=\"c\">a</a>",
+            "pre_comment_content"
+          ]
+        },
+        {
+          "call": "wp_kses",
+          "args": [
+            "<span class=\"x\">a</span>",
+            "post"
+          ]
+        },
+        {
+          "call": "wp_kses_allowed_html",
+          "args": [
+            "pre_comment_content"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "never_settling_comment_ok_in_split2",
+      "steps": [
+        {
+          "call": "wp_kses_split2",
+          "args": [
+            "<!-- </b> -->",
+            "post",
+            [
+              "http",
+              "https",
+              "mailto",
+              "tel",
+              "irc6",
+              "urn"
+            ]
+          ]
+        },
+        {
+          "call": "wp_kses_post",
+          "args": [
+            "<!-- a -- b --->"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,582 @@
+//! The fused scanner: `wp_kses()` in one pass over the bytes per call, with `wp_kses_split2()`, `wp_kses_attr()`
+//! and `wp_kses_attr_check()` handled in place as each token is met.
+
+use std::borrow::Cow;
+use std::rc::Rc;
+
+use speedyspec_hooks::Value;
+use speedyspec_wp_html_syntax::decode_attribute;
+use speedyspec_wp_kses_contracts::{
+    AllowedAttrs, AllowedHtml, AllowedSpec, AttrRule, AttrRules, EntityContext, KsesError,
+    Protocols,
+};
+use speedyspec_wp_kses_lexical::scan::{
+    TokenKind, invalid_wrapper, next_token, tag_head, xhtml_slash,
+};
+use speedyspec_wp_kses_lexical::{
+    HairAttr, check_attr_val, hair_attrs, no_null, normalize_entities, stripslashes, write_whole,
+};
+
+use crate::KsesApi;
+use crate::api::{bytes_value, php_string};
+use crate::convert::allowed_to_value;
+
+/// The most `wp_kses()` passes a comment or invalid-markup token gets to settle. Every corpus input settles within
+/// 2; a token still changing after this many is one PHP never finishes, and the port drops it.
+const MAX_PASSES: usize = 16;
+
+/// The bytes the nested passes of one `wp_kses()` call may process in all, per byte of its input, plus a floor:
+/// comments can nest as deep as the square root of their length (`<<!--!--` leaves `<!--` when stripped), which in
+/// PHP costs time that grows faster than the input. Normal content uses a few times its length; a token past the
+/// budget is dropped (compat/kses/breaks.json, technical).
+const NESTED_WORK_PER_BYTE: usize = 32;
+const NESTED_WORK_FLOOR: usize = 64 * 1024;
+
+/// An attribute that passed `wp_kses_attr_check()`: its value and whole text, as the check left them.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CheckedAttr {
+    pub value: Vec<u8>,
+    pub whole: Vec<u8>,
+}
+
+/// An attribute that passed the check: its value and whole, borrowed where the check left them as they were.
+type Checked<'v> = (Cow<'v, [u8]>, Cow<'v, [u8]>);
+
+/// `strtolower()`, borrowing a name that is lowercase already (most are).
+fn lower(name: &[u8]) -> Cow<'_, [u8]> {
+    if name.iter().any(u8::is_ascii_uppercase) {
+        Cow::Owned(name.to_ascii_lowercase())
+    } else {
+        Cow::Borrowed(name)
+    }
+}
+
+fn replace_all(s: &[u8], from: &[u8], to: &[u8]) -> Vec<u8> {
+    if from.is_empty() {
+        return s.to_vec();
+    }
+    let mut out = Vec::with_capacity(s.len());
+    let mut at = 0;
+    while let Some(i) = memchr::memmem::find(&s[at..], from) {
+        out.extend_from_slice(&s[at..at + i]);
+        out.extend_from_slice(to);
+        at += i + from.len();
+    }
+    out.extend_from_slice(&s[at..]);
+    out
+}
+
+/// `/^data-[a-z0-9_-]+$/`.
+fn is_data_name(name: &[u8]) -> bool {
+    name.len() > 5
+        && name.starts_with(b"data-")
+        && name[5..]
+            .iter()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'_' || *b == b'-')
+}
+
+/// PHP's `empty()` on an attribute's rules.
+fn rules_empty(r: &AttrRules) -> bool {
+    match r {
+        AttrRules::Denied | AttrRules::AllowedFalsy => true,
+        AttrRules::Rules(list) => list.is_empty(),
+        AttrRules::Allowed => false,
+    }
+}
+
+/// The lowercase key of one rule, as `array_keys()` would give it.
+fn rule_key(rule: &AttrRule) -> Vec<u8> {
+    match rule {
+        AttrRule::MaxLen(_) => b"maxlen".to_vec(),
+        AttrRule::MinLen(_) => b"minlen".to_vec(),
+        AttrRule::MaxVal(_) => b"maxval".to_vec(),
+        AttrRule::MinVal(_) => b"minval".to_vec(),
+        AttrRule::Valueless(_) => b"valueless".to_vec(),
+        AttrRule::Values(_) => b"values".to_vec(),
+        AttrRule::ValueCallback(_) => b"value_callback".to_vec(),
+        AttrRule::Other(k, _) => k.to_ascii_lowercase(),
+    }
+}
+
+/// `_wp_kses_restricts_attribute_values()`: whether any attribute of the element has a rule beyond `required` and
+/// `valueless`.
+pub fn restricts_attribute_values(
+    attrs: &speedyspec_wp_kses_contracts::ByteMap<AttrRules>,
+) -> bool {
+    attrs.values().any(|r| match r {
+        AttrRules::Rules(list) => list
+            .iter()
+            .any(|rule| !matches!(&rule_key(rule)[..], b"required" | b"valueless")),
+        _ => false,
+    })
+}
+
+/// `_wp_kses_directive_binds_value_restricted_attribute()`: whether an Interactivity API `data-wp-bind--` directive
+/// would replace an attribute whose values kses restricts on this element.
+pub fn directive_binds_value_restricted_attribute(
+    directive: &[u8],
+    attrs: &speedyspec_wp_kses_contracts::ByteMap<AttrRules>,
+) -> bool {
+    let Some(bound) = directive.strip_prefix(b"data-wp-bind--") else {
+        return false;
+    };
+    if !restricts_attribute_values(attrs) {
+        return false;
+    }
+    let mut names = vec![bound];
+    if let Some(i) = memchr::memmem::find(bound, b"---") {
+        names.push(&bound[..i]);
+    }
+    for name in names {
+        let rules = match attrs.get(name) {
+            Some(r) => r,
+            None => match attrs.get(&b"data-*"[..]) {
+                Some(r) if is_data_name(name) => r,
+                _ => return true,
+            },
+        };
+        let falsy = matches!(rules, AttrRules::Denied | AttrRules::AllowedFalsy);
+        if falsy || matches!(rules, AttrRules::Rules(_)) {
+            return true;
+        }
+    }
+    false
+}
+
+impl KsesApi {
+    /// `wp_kses()`.
+    pub fn kses(
+        &self,
+        content: &[u8],
+        allowed: &AllowedSpec,
+        protocols: Option<&Protocols>,
+    ) -> Result<Vec<u8>, KsesError> {
+        // The outermost call sets the budget for every nested pass beneath it.
+        let outermost = self.nested_budget.get().is_none();
+        if outermost {
+            self.nested_budget.set(Some(
+                content
+                    .len()
+                    .saturating_mul(NESTED_WORK_PER_BYTE)
+                    .saturating_add(NESTED_WORK_FLOOR),
+            ));
+        }
+        let result = self.kses_once(content, allowed, protocols);
+        if outermost {
+            self.nested_budget.set(None);
+        }
+        result
+    }
+
+    fn kses_once(
+        &self,
+        content: &[u8],
+        allowed: &AllowedSpec,
+        protocols: Option<&Protocols>,
+    ) -> Result<Vec<u8>, KsesError> {
+        let resolved;
+        let protocols = match protocols {
+            Some(p) if !p.0.is_empty() => p,
+            _ => {
+                resolved = self.allowed_protocols()?;
+                &*resolved
+            }
+        };
+        let globals = &self.d.globals;
+        let content = no_null(content, true);
+        let content = match normalize_entities(
+            &content,
+            EntityContext::Html,
+            &globals.entity_names(),
+            &globals.xml_entity_names(),
+        ) {
+            Cow::Borrowed(_) => content,
+            Cow::Owned(o) => Cow::Owned(o),
+        };
+        let content = self.hook(content, allowed, protocols)?;
+        self.split(&content, allowed, protocols)
+    }
+
+    /// `wp_kses_hook()`: the `pre_kses` filter.
+    pub fn kses_hook(
+        &self,
+        content: &[u8],
+        allowed: &AllowedSpec,
+        protocols: &Protocols,
+    ) -> Result<Vec<u8>, KsesError> {
+        Ok(self
+            .hook(Cow::Borrowed(content), allowed, protocols)?
+            .into_owned())
+    }
+
+    fn hook<'a>(
+        &self,
+        content: Cow<'a, [u8]>,
+        allowed: &AllowedSpec,
+        protocols: &Protocols,
+    ) -> Result<Cow<'a, [u8]>, KsesError> {
+        let allowed_value = || match allowed {
+            AllowedSpec::Context(c) => bytes_value(c.as_bytes()),
+            AllowedSpec::Explicit(a) => allowed_to_value(a),
+            AllowedSpec::Foreign { html, source } => source
+                .0
+                .downcast_ref::<Value>()
+                .cloned()
+                .unwrap_or_else(|| allowed_to_value(html)),
+        };
+        let protocols_value = || {
+            Value::Array(
+                protocols
+                    .0
+                    .iter()
+                    .enumerate()
+                    .map(|(i, p)| (speedyspec_hooks::Key::Int(i as i64), bytes_value(p)))
+                    .collect(),
+            )
+        };
+        let filtered = self.filter(
+            "pre_kses",
+            || bytes_value(&content),
+            || vec![allowed_value(), protocols_value()],
+        )?;
+        Ok(match filtered {
+            None => content,
+            Some(v) => Cow::Owned(php_string(&v.read()).unwrap_or_default()),
+        })
+    }
+
+    /// `wp_kses_split()`: every token through [`KsesApi::split2`], text between tokens copied as it is.
+    pub fn split(
+        &self,
+        content: &[u8],
+        allowed: &AllowedSpec,
+        protocols: &Protocols,
+    ) -> Result<Vec<u8>, KsesError> {
+        let mut out = Vec::with_capacity(content.len());
+        let mut at = 0;
+        while let Some((start, end, kind)) = next_token(content, at) {
+            out.extend_from_slice(&content[at..start]);
+            self.token(&content[start..end], kind, allowed, protocols, &mut out)?;
+            at = end;
+        }
+        out.extend_from_slice(&content[at..]);
+        Ok(out)
+    }
+
+    /// `wp_kses_split2()` for one token.
+    pub fn split2(
+        &self,
+        token: &[u8],
+        allowed: &AllowedSpec,
+        protocols: &Protocols,
+    ) -> Result<Vec<u8>, KsesError> {
+        let mut out = Vec::new();
+        let kind = if token.first() == Some(&b'<') {
+            TokenKind::Tag
+        } else {
+            TokenKind::StrayGt
+        };
+        self.token(token, kind, allowed, protocols, &mut out)?;
+        Ok(out)
+    }
+
+    /// Repeats `wp_kses()` on `content` until it stops changing, on a stack that grows as deep input needs.
+    ///
+    /// @return
+    ///     The settled content, or `None` when it has not settled after [`MAX_PASSES`] passes. PHP loops forever
+    ///     there (`<!--</<i>` gains a `&gt;` on every pass); the caller drops the token instead.
+    fn kses_until_stable(
+        &self,
+        mut content: Vec<u8>,
+        allowed: &AllowedSpec,
+        protocols: &Protocols,
+    ) -> Result<Option<Vec<u8>>, KsesError> {
+        for _ in 0..MAX_PASSES {
+            // Each pass draws its length from the outermost call's budget; a token past it is dropped.
+            match self.nested_budget.get() {
+                Some(left) if left >= content.len() => {
+                    self.nested_budget.set(Some(left - content.len()))
+                }
+                Some(_) => return Ok(None),
+                None => {}
+            }
+            let next = stacker::maybe_grow(64 * 1024, 1024 * 1024, || {
+                self.kses(&content, allowed, Some(protocols))
+            })?;
+            if next == content {
+                return Ok(Some(content));
+            }
+            content = next;
+        }
+        Ok(None)
+    }
+
+    fn token(
+        &self,
+        raw: &[u8],
+        _kind: TokenKind,
+        allowed: &AllowedSpec,
+        protocols: &Protocols,
+        out: &mut Vec<u8>,
+    ) -> Result<(), KsesError> {
+        let token = stripslashes(raw);
+        if token.first() != Some(&b'<') {
+            out.extend_from_slice(b"&gt;");
+            return Ok(());
+        }
+        if invalid_wrapper(&token) {
+            let opener = token[1];
+            let Some(inner) =
+                self.kses_until_stable(token[2..token.len() - 1].to_vec(), allowed, protocols)?
+            else {
+                return Ok(());
+            };
+            out.push(b'<');
+            out.push(opener);
+            out.extend_from_slice(&inner);
+            out.push(b'>');
+            return Ok(());
+        }
+        if token.starts_with(b"<!--") {
+            let inner = replace_all(&replace_all(&token, b"<!--", b""), b"-->", b"");
+            let Some(inner) = self.kses_until_stable(inner, allowed, protocols)? else {
+                return Ok(());
+            };
+            if inner.is_empty() {
+                return Ok(());
+            }
+            let mut collapsed = Vec::with_capacity(inner.len());
+            for b in inner {
+                if !(b == b'-' && collapsed.last() == Some(&b'-')) {
+                    collapsed.push(b);
+                }
+            }
+            if collapsed.last() == Some(&b'-') {
+                collapsed.pop();
+            } else if collapsed.ends_with(b"-\n") {
+                let n = collapsed.len();
+                collapsed.remove(n - 2);
+            }
+            out.extend_from_slice(b"<!--");
+            out.extend_from_slice(&collapsed);
+            out.extend_from_slice(b"-->");
+            return Ok(());
+        }
+        let Some(head) = tag_head(&token) else {
+            return Ok(());
+        };
+        let elem = &token[head.name.clone()];
+        let attrlist = &token[head.attrs.clone()];
+        let allowed_html = self.resolve_allowed(allowed)?;
+        if allowed_html.get(&lower(elem)).is_none() {
+            return Ok(());
+        }
+        if head.slash {
+            out.extend_from_slice(b"</");
+            out.extend_from_slice(elem);
+            out.push(b'>');
+            return Ok(());
+        }
+        self.attr_into(elem, attrlist, &allowed_html, protocols, out)
+    }
+
+    fn resolve_allowed(&self, allowed: &AllowedSpec) -> Result<Rc<AllowedHtml>, KsesError> {
+        match allowed {
+            AllowedSpec::Context(c) => self.allowed_html(c),
+            AllowedSpec::Explicit(a) | AllowedSpec::Foreign { html: a, .. } => Ok(a.clone()),
+        }
+    }
+
+    /// `wp_kses_attr()`.
+    pub fn attr(
+        &self,
+        element: &[u8],
+        attr: &[u8],
+        allowed: &AllowedSpec,
+        protocols: &Protocols,
+    ) -> Result<Vec<u8>, KsesError> {
+        let allowed_html = self.resolve_allowed(allowed)?;
+        let mut out = Vec::new();
+        self.attr_into(element, attr, &allowed_html, protocols, &mut out)?;
+        Ok(out)
+    }
+
+    fn attr_into(
+        &self,
+        element: &[u8],
+        attr: &[u8],
+        allowed: &AllowedHtml,
+        protocols: &Protocols,
+        out: &mut Vec<u8>,
+    ) -> Result<(), KsesError> {
+        let slash: &[u8] = if xhtml_slash(attr) { b" /" } else { b"" };
+        let element_low = lower(element);
+        let attrs = match allowed.get(&element_low) {
+            Some(AllowedAttrs::Attrs(a)) if !a.is_empty() => a,
+            _ => {
+                out.push(b'<');
+                out.extend_from_slice(element);
+                out.extend_from_slice(slash);
+                out.push(b'>');
+                return Ok(());
+            }
+        };
+        let uris = self.uri_attributes()?;
+        let parsed = hair_attrs(attr, protocols, &uris);
+        let mut required: Vec<&[u8]> = attrs
+            .iter()
+            .filter(|(_, r)| r.is_required())
+            .map(|(n, _)| &**n)
+            .collect();
+        let (mut kept, mut whole) = self.scratch.take();
+        kept.clear();
+        let result = self.attrs_kept(
+            element,
+            allowed,
+            &parsed,
+            &mut required,
+            &mut kept,
+            &mut whole,
+        );
+        let done = match result {
+            Ok(true) => {
+                out.push(b'<');
+                out.extend_from_slice(element);
+                // `<` and `>` are dropped from the attributes, a run at a time.
+                let mut rest = &kept[..];
+                while let Some(i) = memchr::memchr2(b'<', b'>', rest) {
+                    out.extend_from_slice(&rest[..i]);
+                    rest = &rest[i + 1..];
+                }
+                out.extend_from_slice(rest);
+                out.extend_from_slice(slash);
+                out.push(b'>');
+                Ok(())
+            }
+            Ok(false) => {
+                if slash.is_empty() {
+                    out.push(b'<');
+                    out.extend_from_slice(element);
+                    out.push(b'>');
+                }
+                Ok(())
+            }
+            Err(e) => Err(e),
+        };
+        self.scratch.replace((kept, whole));
+        done
+    }
+
+    /// The attributes `attr_into` keeps, written to `kept`; false when a required attribute is missing or rejected
+    /// (the tag is then stripped of every attribute).
+    fn attrs_kept(
+        &self,
+        element: &[u8],
+        allowed: &AllowedHtml,
+        parsed: &[HairAttr<'_>],
+        required: &mut Vec<&[u8]>,
+        kept: &mut Vec<u8>,
+        whole: &mut Vec<u8>,
+    ) -> Result<bool, KsesError> {
+        for a in parsed {
+            let name_low = lower(&a.name);
+            let is_required = required.iter().any(|r| **r == *name_low);
+            whole.clear();
+            if a.vless {
+                whole.extend_from_slice(&a.name);
+            } else {
+                write_whole(whole, &a.name, &a.value);
+            }
+            match self.checked(&a.name, &a.value, whole, a.vless, element, allowed)? {
+                Some((_, checked)) => {
+                    kept.push(b' ');
+                    kept.extend_from_slice(&checked);
+                    if is_required {
+                        required.retain(|r| **r != *name_low);
+                    }
+                }
+                None if is_required => return Ok(false),
+                None => {}
+            }
+        }
+        Ok(required.is_empty())
+    }
+
+    /// `wp_kses_attr_check()`: `None` where PHP returns false (and blanks its by-reference arguments).
+    pub fn attr_check(
+        &self,
+        name: &[u8],
+        value: &[u8],
+        whole: &[u8],
+        vless: bool,
+        element: &[u8],
+        allowed: &AllowedHtml,
+    ) -> Result<Option<CheckedAttr>, KsesError> {
+        Ok(self
+            .checked(name, value, whole, vless, element, allowed)?
+            .map(|(value, whole)| CheckedAttr {
+                value: value.into_owned(),
+                whole: whole.into_owned(),
+            }))
+    }
+
+    /// [`KsesApi::attr_check`] borrowing the value and whole where the check leaves them as they were.
+    fn checked<'v>(
+        &self,
+        name: &[u8],
+        value: &'v [u8],
+        whole: &'v [u8],
+        vless: bool,
+        element: &[u8],
+        allowed: &AllowedHtml,
+    ) -> Result<Option<Checked<'v>>, KsesError> {
+        let name_low = lower(name);
+        let Some(tag) = allowed.get(&lower(element)) else {
+            return Ok(None);
+        };
+        // WordPress copies the `data-*` rules under the attribute's own name before the directive check; the copy
+        // cannot change that check (the rules are already in the map, under `data-*`), so nothing is copied here.
+        let none;
+        let attrs = match tag {
+            AllowedAttrs::Attrs(a) => a,
+            AllowedAttrs::Empty => {
+                none = speedyspec_wp_kses_contracts::ByteMap::default();
+                &none
+            }
+        };
+        let rules = match attrs.get(&name_low[..]) {
+            Some(r) if *r != AttrRules::Denied => r,
+            _ => match attrs.get(&b"data-*"[..]).filter(|r| !rules_empty(r)) {
+                Some(r) if is_data_name(&name_low) => r,
+                _ => return Ok(None),
+            },
+        };
+        if name_low.starts_with(b"data-wp-bind--")
+            && directive_binds_value_restricted_attribute(&name_low, attrs)
+        {
+            return Ok(None);
+        }
+        let mut value = Cow::Borrowed(value);
+        let mut whole = Cow::Borrowed(whole);
+        if *name_low == *b"style" {
+            let decoded = decode_attribute(&value).into_owned();
+            let filtered = self.safecss_filter_attr(&decoded)?;
+            if filtered.is_empty() || filtered == b"0" {
+                return Ok(None);
+            }
+            if filtered != decoded {
+                let encoded = self.d.escaper.esc_attr(&filtered)?;
+                whole = Cow::Owned(replace_all(&whole, &value, &encoded));
+                value = Cow::Owned(encoded);
+            }
+        }
+        if let AttrRules::Rules(list) = rules {
+            for rule in list {
+                if !check_attr_val(&value, vless, rule)? {
+                    return Ok(None);
+                }
+            }
+        }
+        Ok(Some((value, whole)))
+    }
+}

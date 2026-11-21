@@ -1,0 +1,19 @@
+[package]
+name = "speedyspec-wp-kses-security"
+version = "0.1.0"
+description = "A security oracle for the kses port: whether sanitized HTML could run script or carry an XML or SVG bomb."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+html5ever = "0.40.1"
+markup5ever_rcdom = "0.40.1"
+memchr = "2.8.3"
+quick-xml = "0.42.0"
+speedyspec-wp-html-syntax = { path = "../speedyspec-wp-html-syntax" }
+speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
+
+[dev-dependencies]
+indexmap = "2.14.2"

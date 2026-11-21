@@ -5,6 +5,8 @@ target-linux/
 /.php-build/
 /.php-build-linux*/
 /craft.yml
+/fuzz/corpus/
+/fuzz/artifacts/
 
 # Language packs the i18n request benchmark downloads (benches/fetch-packs.sh).
 /crates/speedyspec-wp-i18n-php/benches/packs/

@@ -485,4 +485,52 @@ abstract class WP_UnitTestCase extends TestCase
         $wp_rewrite->set_permalink_structure($structure);
         $wp_rewrite->flush_rules();
     }
+
+    /**
+     * Asserts that two HTML snippets have the same semantic tree, as WordPress's own test case does (it needs
+     * `build_visual_html_tree()` and the HTML API loaded).
+     */
+    public function assertEqualHTML(string $expected, string $actual, ?string $fragment_context = '<body>', $message = 'HTML markup was not equivalent.'): void
+    {
+        try {
+            $tree_expected = build_visual_html_tree($expected, $fragment_context);
+            $tree_actual   = build_visual_html_tree($actual, $fragment_context);
+        } catch (Exception $e) {
+            // For PHP 8.4+, we can retry, using the built-in DOM\HTMLDocument parser.
+            if (class_exists('DOM\HtmlDocument')) {
+                $dom_expected  = DOM\HtmlDocument::createFromString($expected, LIBXML_NOERROR);
+                $tree_expected = build_visual_html_tree($dom_expected->saveHtml(), $fragment_context);
+                $dom_actual    = DOM\HtmlDocument::createFromString($actual, LIBXML_NOERROR);
+                $tree_actual   = build_visual_html_tree($dom_actual->saveHtml(), $fragment_context);
+            } else {
+                throw $e;
+            }
+        }
+
+        $this->assertSame($tree_expected, $tree_actual, $message);
+    }
+
+    /**
+     * A single-level array of text strings as a named data provider, as WordPress's own test case makes one.
+     */
+    public static function text_array_to_dataprovider($input)
+    {
+        $data = array();
+
+        foreach ($input as $value) {
+            if (!is_string($value)) {
+                throw new Exception('All values in the input array should be text strings. Fix the input data.');
+            }
+
+            if (isset($data[$value])) {
+                throw new Exception(
+                    "Attempting to add a duplicate data set for value $value to the data provider. Fix the input data."
+                );
+            }
+
+            $data[$value] = array($value);
+        }
+
+        return $data;
+    }
 }

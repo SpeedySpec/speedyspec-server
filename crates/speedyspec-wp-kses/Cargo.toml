@@ -1,0 +1,32 @@
+[package]
+name = "speedyspec-wp-kses"
+version = "0.1.0"
+description = "WordPress's kses sanitizer in Rust: a fused single-pass wp_kses, the allowlists, safecss_filter_attr and the API."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+indexmap = "2"
+memchr = "2"
+serde_json = "1"
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-html-syntax = { path = "../speedyspec-wp-html-syntax" }
+speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
+speedyspec-wp-kses-lexical = { path = "../speedyspec-wp-kses-lexical" }
+stacker = "0.1"
+
+[dev-dependencies]
+libc = "0.2"
+proptest = "1"
+sha2 = "0.10"
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-kses-security = { path = "../speedyspec-wp-kses-security" }
+speedyspec-wp-kses-testkit = { path = "../speedyspec-wp-kses-testkit" }
+
+[[bench]]
+name = "kses"
+harness = false
