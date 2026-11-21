@@ -308,6 +308,27 @@ fn main() {
     check("po_is_native", text(&r).starts_with("[true,6,1,8,1,"), &r);
 
     let r = php.eval(
+        "speedyspec://test/create-as",
+        &format!(
+            "unload_textdomain('fast'); load_textdomain('fast', {mo:?}, 'de_DE');
+             $f = tempnam(sys_get_temp_dir(), 'wpunit'); copy({src:?}, $f);
+             $GLOBALS['speedyspec_includes'] = 0;
+             file_put_contents($f, str_replace('<?php', '<?php ++$GLOBALS[\"speedyspec_includes\"];', file_get_contents($f)));
+             $file = WP_Translation_File::create($f, 'php');
+             $t = $file->translate('a');
+             unlink($f);
+             return json_encode(array($t, $GLOBALS['speedyspec_includes'], $GLOBALS['speedyspec_reentry']));",
+            src = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/reentrant.l10n.php").display().to_string(),
+            mo = root.join("crates/speedyspec-wp-i18n-files/tests/data/simple.mo").display().to_string()
+        ),
+    );
+    check(
+        "a_file_read_as_another_type_is_read_once",
+        text(&r) == r#"["b",1,"dyado"]"#,
+        &r,
+    );
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

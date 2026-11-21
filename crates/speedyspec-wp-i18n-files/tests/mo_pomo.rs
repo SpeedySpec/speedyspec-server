@@ -231,3 +231,35 @@ fn var_export_escapes_like_php() {
         }
     }
 }
+
+#[test]
+#[cfg_attr(debug_assertions, ignore = "timing needs a release build")]
+fn translation_file_export_is_linear() {
+    let entries: Vec<(Vec<u8>, Vec<u8>)> = (0..40_000)
+        .map(|i| {
+            (
+                format!("Original string number {i}").into_bytes(),
+                format!("Übersetzung {i}").into_bytes(),
+            )
+        })
+        .collect();
+    let headers = vec![(b"Language".to_vec(), b"de_DE".to_vec())];
+    let start = std::time::Instant::now();
+    let mo = translation_file_mo(&headers, &entries, false);
+    let php = translation_file_php(&headers, &entries);
+    let took = start.elapsed();
+    assert!(mo.len() > 40_000 && php.len() > 40_000);
+    assert!(took.as_millis() < 60, "exported in {took:?}");
+}
+
+#[test]
+fn an_empty_original_in_the_entries_takes_the_header_slot() {
+    // array_merge( array( '' => $headers ), $entries ): an entry keyed '' replaces the header string in place.
+    let entries = vec![
+        (Vec::new(), b"replaced".to_vec()),
+        (b"a".to_vec(), b"b".to_vec()),
+    ];
+    let out = translation_file_mo(&[(b"X".to_vec(), b"y".to_vec())], &entries, false);
+    assert!(out.windows(9).any(|w| w == b"replaced\0"));
+    assert!(!out.windows(5).any(|w| w == b"X: y\n"));
+}

@@ -109,3 +109,24 @@ fn rules_rebuilt_from_tokens_evaluate_alike() {
     let lone_mod = PluralRule::from_tokens(&[T::Op("%".into())]);
     assert_eq!(lone_mod.eval(3), Err(PluralError::DivisionByZero));
 }
+
+#[test]
+fn an_open_paren_before_else_is_output_as_wordpress_does() {
+    use speedyspec_wp_i18n::PluralToken as T;
+    // WordPress's ':' pops everything up to the '?', an open parenthesis included, into the output.
+    let rule = PluralRule::compile("n ? (1 : 2").unwrap();
+    assert_eq!(
+        rule.tokens(),
+        vec![
+            T::Var,
+            T::Value(1),
+            T::Op("(".into()),
+            T::Value(2),
+            T::Op("?:".into())
+        ]
+    );
+    assert_eq!(
+        rule.eval(1),
+        Err(PluralError::Exception("Unknown operator \"(\"".into()))
+    );
+}

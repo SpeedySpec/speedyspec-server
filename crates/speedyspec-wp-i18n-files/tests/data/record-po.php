@@ -69,6 +69,11 @@ foreach ($strings as $s) {
     $out['static'][] = array('trim_quotes', array(bin2hex('"' . $s . '"')), bin2hex(PO::trim_quotes('"' . $s . '"')));
     $out['static'][] = array('match_begin_and_end_newlines', array(bin2hex($s), bin2hex("\n" . $s)), bin2hex(PO::match_begin_and_end_newlines($s, "\n" . $s)));
     $out['static'][] = array('match_begin_and_end_newlines', array(bin2hex("\n$s\n"), bin2hex('x')), bin2hex(PO::match_begin_and_end_newlines("\n$s\n", 'x')));
+    foreach (array("word\n", "\nword", "\nword\n", 'word', "\n", "\n\n") as $original) {
+        foreach (array($s, "\n", "\n\n", "\n$s", "$s\n", "\n$s\n") as $translation) {
+            $out['static'][] = array('match_begin_and_end_newlines', array(bin2hex($translation), bin2hex($original)), bin2hex(PO::match_begin_and_end_newlines($translation, $original)));
+        }
+    }
 }
 $entries = array(
     array('singular' => 'a', 'translations' => array('b')),

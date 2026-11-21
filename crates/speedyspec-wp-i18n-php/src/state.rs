@@ -128,6 +128,20 @@ impl Shared {
         }
     }
 
+    /// `path` read as `kind` with no controller borrowed (the PHP `include` fallback may translate), for a file its
+    /// name does not say is `kind`; `None` when it is not readable.
+    pub fn read_as(
+        &self,
+        path: &std::path::Path,
+        kind: speedyspec_wp_i18n_contracts::FileKind,
+    ) -> Option<Rc<TranslationFile>> {
+        use speedyspec_wp_i18n_contracts::FileProbe;
+        if !self.probe.is_readable(path) {
+            return None;
+        }
+        speedyspec_wp_i18n::cached_file_as(&*self.reader, &*self.probe, &*self.cache, path, kind)
+    }
+
     /// A new controller over the same reader, probe and file cache; its id.
     pub fn new_controller(&self) -> i64 {
         let c =

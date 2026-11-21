@@ -455,27 +455,30 @@ pub fn trim_quotes(s: &[u8]) -> &[u8] {
     s.strip_suffix(b"\"").unwrap_or(s)
 }
 
-/// `PO::match_begin_and_end_newlines()`.
+/// `PO::match_begin_and_end_newlines()`. As in WordPress, the translation's newline flags are read once, before
+/// either end is trimmed.
 pub fn match_begin_and_end_newlines(translation: &[u8], original: &[u8]) -> Vec<u8> {
     if translation.is_empty() {
         return Vec::new();
     }
-    let mut t = translation.to_vec();
     let original_begin = original.first() == Some(&b'\n');
     let original_end = original.last() == Some(&b'\n');
+    let translation_begin = translation.first() == Some(&b'\n');
+    let translation_end = translation.last() == Some(&b'\n');
+    let mut t = translation.to_vec();
     if original_begin {
-        if t.first() != Some(&b'\n') {
+        if !translation_begin {
             t.insert(0, b'\n');
         }
-    } else if t.first() == Some(&b'\n') {
+    } else if translation_begin {
         let lead = t.iter().take_while(|b| **b == b'\n').count();
         t.drain(..lead);
     }
     if original_end {
-        if t.last() != Some(&b'\n') {
+        if !translation_end {
             t.push(b'\n');
         }
-    } else if t.last() == Some(&b'\n') {
+    } else if translation_end {
         while t.last() == Some(&b'\n') {
             t.pop();
         }

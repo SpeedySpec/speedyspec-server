@@ -188,9 +188,11 @@ fn int_key(key: &[u8]) -> Option<i64> {
     std::str::from_utf8(key).ok()?.parse().ok()
 }
 
-/// `array_merge()` of arrays given as `(key, value)`: string keys kept, integer keys renumbered from 0.
+/// `array_merge()` of arrays given as `(key, value)`: string keys kept, integer keys renumbered from 0. A repeated
+/// key keeps its first position and takes the last value; keys are found through an index, so this is linear.
 fn merge<V: Clone>(parts: &[&[(Vec<u8>, V)]]) -> Vec<(Vec<u8>, V)> {
     let mut out: Vec<(Vec<u8>, V)> = Vec::new();
+    let mut index: std::collections::HashMap<Vec<u8>, usize> = std::collections::HashMap::new();
     let mut next = 0i64;
     for part in parts {
         for (k, v) in part.iter() {
@@ -202,9 +204,12 @@ fn merge<V: Clone>(parts: &[&[(Vec<u8>, V)]]) -> Vec<(Vec<u8>, V)> {
                 }
                 None => k.clone(),
             };
-            match out.iter_mut().find(|(ek, _)| *ek == key) {
-                Some(slot) => slot.1 = v.clone(),
-                None => out.push((key, v.clone())),
+            match index.get(&key) {
+                Some(&i) => out[i].1 = v.clone(),
+                None => {
+                    index.insert(key.clone(), out.len());
+                    out.push((key, v.clone()));
+                }
             }
         }
     }

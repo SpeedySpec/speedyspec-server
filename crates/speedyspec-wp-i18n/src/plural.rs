@@ -235,9 +235,12 @@ impl PluralRule {
                             break;
                         }
                         stack.pop();
-                        if let Pending::Op(o) = top {
-                            output.push(Token::Op(o));
-                        }
+                        // WordPress outputs whatever it pops here, an open parenthesis included (execute() then
+                        // throws on it as an unknown operator).
+                        output.push(match top {
+                            Pending::Op(o) => Token::Op(o),
+                            Pending::Open => Token::Unknown("(".into()),
+                        });
                     }
                     if !found {
                         return err("Missing starting \"?\" ternary operator".into());

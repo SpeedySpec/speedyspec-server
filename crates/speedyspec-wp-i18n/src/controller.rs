@@ -52,6 +52,16 @@ pub struct FileHandle {
 }
 
 impl FileHandle {
+    /// A file object for `file`, already read from `path` (not parsed yet, as `WP_Translation_File::create()` leaves
+    /// it).
+    pub fn new(path: PathBuf, file: Rc<TranslationFile>) -> FileHandle {
+        FileHandle {
+            file,
+            path,
+            parsed: Cell::new(false),
+        }
+    }
+
     pub fn file(&self) -> &Rc<TranslationFile> {
         &self.file
     }

@@ -230,8 +230,15 @@ fn file_open(a: &[Value]) -> R {
         Some(_) => speedyspec_wp_i18n_contracts::FileKind::Php,
         None => return Ok(Value::Bool(false)),
     };
-    s.prefetch_as(&file, false, kind);
-    let Some(handle) = s.api.controller().borrow().open_as(&file, kind) else {
+    let handle = if speedyspec_wp_i18n_contracts::FileKind::of_path(&file) == Some(kind) {
+        s.prefetch_as(&file, false, kind);
+        s.api.controller().borrow().open_as(&file, kind)
+    } else {
+        // Not cached per worker: read it once here, with nothing borrowed.
+        s.read_as(&file, kind)
+            .map(|read| Rc::new(speedyspec_wp_i18n::FileHandle::new(file.clone(), read)))
+    };
+    let Some(handle) = handle else {
         return Ok(Value::Bool(false));
     };
     let mut files = s.files.borrow_mut();
