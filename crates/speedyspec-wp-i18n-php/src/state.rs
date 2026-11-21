@@ -90,8 +90,20 @@ impl Shared {
     }
 
     /// Reads `file` into the per-worker cache, if WordPress would read it, without holding any controller borrow: the
-    /// PHP `include` fallback runs PHP, which may translate.
+    /// PHP `include` fallback runs PHP, which may translate. `kind` is the type given, else the file's extension's.
     pub fn prefetch(&self, file: &std::path::Path, resolve: bool) {
+        if let Some(kind) = speedyspec_wp_i18n_contracts::FileKind::of_path(file) {
+            self.prefetch_as(file, resolve, kind);
+        }
+    }
+
+    /// As [`Shared::prefetch`], for a file read as `kind` whatever it is called.
+    pub fn prefetch_as(
+        &self,
+        file: &std::path::Path,
+        resolve: bool,
+        kind: speedyspec_wp_i18n_contracts::FileKind,
+    ) {
         use speedyspec_wp_i18n_contracts::FileProbe;
         let path = if resolve {
             self.probe.realpath(file)
@@ -99,13 +111,14 @@ impl Shared {
             Some(file.to_path_buf())
         };
         let Some(path) = path else { return };
-        let bytes = path.as_os_str().as_encoded_bytes();
-        let ext = bytes
-            .iter()
-            .rposition(|b| *b == b'.')
-            .map(|i| &bytes[i + 1..]);
-        if matches!(ext, Some(b"mo" | b"php")) && self.probe.is_readable(&path) {
-            speedyspec_wp_i18n::cached_file(&*self.reader, &*self.probe, &*self.cache, &path);
+        if self.probe.is_readable(&path) {
+            speedyspec_wp_i18n::cached_file_as(
+                &*self.reader,
+                &*self.probe,
+                &*self.cache,
+                &path,
+                kind,
+            );
         }
     }
 

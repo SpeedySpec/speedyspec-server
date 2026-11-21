@@ -24,7 +24,18 @@ fn bytes_of(v: &Value) -> Option<Vec<u8>> {
 
 impl TranslationFileReader for PhpFallbackReader {
     fn read(&self, path: &Path) -> Result<RawTranslations, ReadError> {
-        match self.inner.read(path) {
+        match speedyspec_wp_i18n_contracts::FileKind::of_path(path) {
+            Some(kind) => self.read_as(path, kind),
+            None => self.inner.read(path),
+        }
+    }
+
+    fn read_as(
+        &self,
+        path: &Path,
+        kind: speedyspec_wp_i18n_contracts::FileKind,
+    ) -> Result<RawTranslations, ReadError> {
+        match self.inner.read_as(path, kind) {
             Err(ReadError::Unsupported) => {}
             other => return other,
         }

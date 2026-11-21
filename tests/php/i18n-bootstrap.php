@@ -37,6 +37,9 @@ require __DIR__ . '/includes/i18n-doubles.php';
 
 require dirname(__DIR__, 2) . '/compat/i18n/load.php';
 require_once SPEEDYSPEC_I18N_ROOT . '/wp-includes/formatting.php';
+require_once SPEEDYSPEC_I18N_ROOT . '/wp-includes/pomo/po.php';
+// GlotPress's locales, which WordPress's pluralForms test would otherwise download.
+require_once __DIR__ . '/includes/glotpress-locales.php';
 do_action('after_setup_theme');
 // WordPress's tests run after `init`, so enqueueing scripts raises no incorrect-usage notice.
 do_action('init');

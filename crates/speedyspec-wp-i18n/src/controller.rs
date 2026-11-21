@@ -13,7 +13,7 @@ use indexmap::IndexMap as StdIndexMap;
 /// Ordered maps with a fast hasher: lookups by locale and domain run on every translation call.
 type IndexMap<K, V> = StdIndexMap<K, V, foldhash::fast::RandomState>;
 use speedyspec_wp_i18n_contracts::{
-    FileProbe, RawTranslations, ReadError, TranslationFileCache, TranslationFileReader,
+    FileKind, FileProbe, RawTranslations, ReadError, TranslationFileCache, TranslationFileReader,
 };
 
 use crate::file::TranslationFile;
@@ -93,11 +93,27 @@ pub fn cached_file(
     cache: &dyn TranslationFileCache<TranslationFile>,
     path: &Path,
 ) -> Option<Rc<TranslationFile>> {
+    let kind = FileKind::of_path(path)?;
+    cached_file_as(reader, probe, cache, path, kind)
+}
+
+/// As [`cached_file`], reading `path` as `kind` whatever it is called. A file read as another kind than its name
+/// says (a temporary file named by `tempnam()`) is read fresh, not cached: the cache holds one parse per file.
+pub fn cached_file_as(
+    reader: &dyn TranslationFileReader,
+    probe: &dyn FileProbe,
+    cache: &dyn TranslationFileCache<TranslationFile>,
+    path: &Path,
+    kind: FileKind,
+) -> Option<Rc<TranslationFile>> {
     let identity = probe.identity(path)?;
-    if let Some(file) = cache.get(&identity) {
-        return Some(file);
+    let cacheable = FileKind::of_path(path) == Some(kind);
+    if cacheable {
+        if let Some(file) = cache.get(&identity) {
+            return Some(file);
+        }
     }
-    let file = Rc::new(match reader.read(path) {
+    let file = Rc::new(match reader.read_as(path, kind) {
         Ok(raw) => TranslationFile::new(identity.clone(), raw),
         // file_get_contents() failing leaves no error and no entries.
         Err(ReadError::Unreadable) => {
@@ -109,7 +125,9 @@ pub fn cached_file(
         }
         Err(e) => TranslationFile::failed(identity.clone(), e),
     });
-    cache.put(identity, file.clone());
+    if cacheable {
+        cache.put(identity, file.clone());
+    }
     Some(file)
 }
 
@@ -175,18 +193,14 @@ impl TranslationController {
 
     /// `WP_Translation_File::create()`: a file object, or `None` when the file is unreadable or not `.mo`/`.php`.
     fn create(&self, real: &Path) -> Option<Rc<FileHandle>> {
+        self.create_as(real, FileKind::of_path(real)?)
+    }
+
+    fn create_as(&self, real: &Path, kind: FileKind) -> Option<Rc<FileHandle>> {
         if !self.probe.is_readable(real) {
             return None;
         }
-        let bytes = real.as_os_str().as_encoded_bytes();
-        let ext = bytes
-            .iter()
-            .rposition(|b| *b == b'.')
-            .map(|i| &bytes[i + 1..]);
-        if !matches!(ext, Some(b"mo" | b"php")) {
-            return None;
-        }
-        let file = cached_file(&*self.reader, &*self.probe, &*self.cache, real)?;
+        let file = cached_file_as(&*self.reader, &*self.probe, &*self.cache, real, kind)?;
         Some(Rc::new(FileHandle {
             file,
             path: real.to_path_buf(),
@@ -197,6 +211,12 @@ impl TranslationController {
     /// `WP_Translation_File::create()` for code outside the controller: a file object for `path`, not parsed yet.
     pub fn open(&self, path: &Path) -> Option<Rc<FileHandle>> {
         self.create(path)
+    }
+
+    /// `WP_Translation_File::create( $file, $filetype )`: a file object for `path` read as `kind`, whatever its
+    /// name.
+    pub fn open_as(&self, path: &Path, kind: FileKind) -> Option<Rc<FileHandle>> {
+        self.create_as(path, kind)
     }
 
     /// `load_file()`.

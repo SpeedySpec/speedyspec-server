@@ -7,7 +7,7 @@ mod probe;
 
 use std::path::Path;
 
-use speedyspec_wp_i18n_contracts::{RawTranslations, ReadError, TranslationFileReader};
+use speedyspec_wp_i18n_contracts::{FileKind, RawTranslations, ReadError, TranslationFileReader};
 
 pub use l10n_php::L10nPhpReader;
 pub use mo::MoReader;
@@ -41,6 +41,13 @@ impl TranslationFileReader for ByExtension {
             Some(b"mo") => self.mo.read(path),
             Some(b"php") => self.php.read(path),
             _ => Err(ReadError::Unreadable),
+        }
+    }
+
+    fn read_as(&self, path: &Path, kind: FileKind) -> Result<RawTranslations, ReadError> {
+        match kind {
+            FileKind::Mo => self.mo.read(path),
+            FileKind::Php => self.php.read(path),
         }
     }
 }

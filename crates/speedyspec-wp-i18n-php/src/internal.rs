@@ -221,11 +221,13 @@ fn file_type_of(a: &[Value]) -> Result<Option<&'static str>, NativeError> {
 fn file_open(a: &[Value]) -> R {
     let s = state()?;
     let file = path(a, 0)?;
-    if file_type_of(a)?.is_none() {
-        return Ok(Value::Bool(false));
-    }
-    s.prefetch(&file, false);
-    let Some(handle) = s.api.controller().borrow().open(&file) else {
+    let kind = match file_type_of(a)? {
+        Some("mo") => speedyspec_wp_i18n_contracts::FileKind::Mo,
+        Some(_) => speedyspec_wp_i18n_contracts::FileKind::Php,
+        None => return Ok(Value::Bool(false)),
+    };
+    s.prefetch_as(&file, false, kind);
+    let Some(handle) = s.api.controller().borrow().open_as(&file, kind) else {
         return Ok(Value::Bool(false));
     };
     let mut files = s.files.borrow_mut();

@@ -10,7 +10,9 @@ mod schema;
 mod script;
 mod switcher;
 
-pub use controller::{FileHandle, FileRef, PhpKey, TranslationController, cached_file, php_key};
+pub use controller::{
+    FileHandle, FileRef, PhpKey, TranslationController, cached_file, cached_file_as, php_key,
+};
 pub use file::TranslationFile;
 pub use gettext::{DomainFilterNames, I18nApi, I18nError, Translated, bytes_value};
 pub use locale::{LOCALE_STRINGS, LocaleData, TEXT_DIRECTION, WORD_COUNT_TYPE, locale_strings};
