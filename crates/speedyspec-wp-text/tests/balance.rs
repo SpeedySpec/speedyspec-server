@@ -23,3 +23,12 @@ fn forced_balance_tags_matches_wordpress() {
 fn balance_tags_closes_what_is_open() {
     assert_eq!(&*force_balance_tags(b"<b>x"), b"<b>x</b>");
 }
+
+#[test]
+fn pcre_limits_are_a_documented_break() {
+    // PHP's backtrack limit gives up on this input and leaves <i> open; the port's PCRE2 still matches
+    // (compat/formatting/breaks.json, balance_backtrack_18).
+    let input = format!("<b>x <a-{}! <i>y", "a".repeat(18));
+    let expected = format!("<b>x <a-{}! <i>y</i></b>", "a".repeat(18));
+    assert_eq!(force_balance_tags(input.as_bytes()), expected.as_bytes());
+}

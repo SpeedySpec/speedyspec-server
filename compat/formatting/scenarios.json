@@ -13479,6 +13479,50 @@
           "call": "format_for_editor"
         }
       ]
+    },
+    {
+      "name": "force_balance_tags/literal/balance_backtrack_17",
+      "steps": [
+        {
+          "args": [
+            "<b>x <a-aaaaaaaaaaaaaaaaa! <i>y"
+          ],
+          "call": "force_balance_tags"
+        }
+      ]
+    },
+    {
+      "name": "force_balance_tags/literal/balance_backtrack_18",
+      "steps": [
+        {
+          "args": [
+            "<b>x <a-aaaaaaaaaaaaaaaaaa! <i>y"
+          ],
+          "call": "force_balance_tags"
+        }
+      ]
+    },
+    {
+      "name": "force_balance_tags/literal/balance_backtrack_21",
+      "steps": [
+        {
+          "args": [
+            "<b>x <a-aaaaaaaaaaaaaaaaaaaaa! <i>y"
+          ],
+          "call": "force_balance_tags"
+        }
+      ]
+    },
+    {
+      "name": "force_balance_tags/literal/balance_backtrack_22",
+      "steps": [
+        {
+          "args": [
+            "<b>x <a-aaaaaaaaaaaaaaaaaaaaaa! <i>y"
+          ],
+          "call": "force_balance_tags"
+        }
+      ]
     }
   ]
 }

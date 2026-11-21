@@ -1478,5 +1478,33 @@
     "args": [
       "0"
     ]
+  },
+  {
+    "name": "balance_backtrack_17",
+    "function": "force_balance_tags",
+    "args": [
+      "<b>x <a-aaaaaaaaaaaaaaaaa! <i>y"
+    ]
+  },
+  {
+    "name": "balance_backtrack_18",
+    "function": "force_balance_tags",
+    "args": [
+      "<b>x <a-aaaaaaaaaaaaaaaaaa! <i>y"
+    ]
+  },
+  {
+    "name": "balance_backtrack_21",
+    "function": "force_balance_tags",
+    "args": [
+      "<b>x <a-aaaaaaaaaaaaaaaaaaaaa! <i>y"
+    ]
+  },
+  {
+    "name": "balance_backtrack_22",
+    "function": "force_balance_tags",
+    "args": [
+      "<b>x <a-aaaaaaaaaaaaaaaaaaaaaa! <i>y"
+    ]
   }
 ]
