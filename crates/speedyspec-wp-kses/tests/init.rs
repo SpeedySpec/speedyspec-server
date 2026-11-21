@@ -6,8 +6,9 @@ use speedyspec_container::Container;
 use speedyspec_cqrs::{Command, CommandBus, Query, QueryBus};
 use speedyspec_wp_hooks::{CallbackId, HasFilterResult, HookApi, HookName};
 use speedyspec_wp_kses::{
-    AllowedHtmlQuery, KsesInit, KsesInitFilters, KsesPost, KsesQuery, KsesRemoveFilters, OneAttr,
-    SafecssFilterAttr, register_kses_handlers,
+    AllowedFrom, AllowedHtmlExplicitValue, AllowedHtmlQuery, AllowedHtmlValue, KsesAttr,
+    KsesAttrCheck, KsesHook, KsesInit, KsesInitFilters, KsesPost, KsesQuery, KsesRemoveFilters,
+    KsesSplit, KsesSplit2, OneAttr, SafecssFilterAttr, register_kses_handlers,
 };
 
 fn has(hooks: &HookApi, hook: &str, f: &str) -> bool {
@@ -102,6 +103,14 @@ fn handlers_are_bound() {
         <OneAttr as Query>::KEY,
         <AllowedHtmlQuery as Query>::KEY,
         <SafecssFilterAttr as Query>::KEY,
+        <AllowedHtmlValue as Query>::KEY,
+        <AllowedHtmlExplicitValue as Query>::KEY,
+        <AllowedFrom as Query>::KEY,
+        <KsesHook as Query>::KEY,
+        <KsesSplit as Query>::KEY,
+        <KsesSplit2 as Query>::KEY,
+        <KsesAttr as Query>::KEY,
+        <KsesAttrCheck as Query>::KEY,
     ] {
         assert!(container.has(key), "{key}");
     }

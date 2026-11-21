@@ -7,8 +7,8 @@ use std::rc::Rc;
 use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
 use speedyspec_wp_kses_contracts::{
-    AllowedHtml, AttributeEscaper, Bytes, Context, KsesError, Protocols, UnfilteredHtmlPolicy,
-    UriAttributes, ValueCallback,
+    AllowedHtml, AttributeEscaper, Bytes, Context, KsesError, Payload, Protocols,
+    UnfilteredHtmlPolicy, UriAttributes, ValueCallback,
 };
 
 use crate::{
@@ -41,7 +41,13 @@ pub struct KsesApi {
 }
 
 pub(crate) fn hook_error(e: HookError) -> KsesError {
-    KsesError::Hook(e.message)
+    match e.payload {
+        Some(payload) => KsesError::Foreign {
+            message: e.message,
+            payload: Payload(payload),
+        },
+        None => KsesError::Hook(e.message),
+    }
 }
 
 /// The 17 attributes `wp_kses_uri_attributes()` starts from.
@@ -203,7 +209,7 @@ impl KsesApi {
 
     /// Turns a `value_callback` into a callback: `_wp_kses_allow_pdf_objects` natively, anything else through the
     /// [`ValueCallbacks`] port.
-    pub(crate) fn resolver(&self) -> impl Fn(&Value) -> Option<ValueCallback> + '_ {
+    pub fn resolver(&self) -> impl Fn(&Value) -> Option<ValueCallback> + '_ {
         move |v: &Value| match v {
             Value::Str(s) if s == "_wp_kses_allow_pdf_objects" => {
                 let uploads = self.d.uploads.clone();
@@ -217,21 +223,6 @@ impl KsesApi {
 
     fn convert(&self, v: &Value) -> Result<Rc<AllowedHtml>, KsesError> {
         Ok(Rc::new(allowed_from_value(v, &self.resolver())?))
-    }
-
-    /// One `apply_filters( 'wp_kses_allowed_html', $base, $context )`: with no listener, the base converted once
-    /// per write of the globals.
-    /// One `apply_filters( 'wp_kses_allowed_html', $base, $context )` with listeners present.
-    fn filtered_allowed(
-        &self,
-        ctx: &[u8],
-        base: &Value,
-    ) -> Result<(Rc<AllowedHtml>, Value), KsesError> {
-        let ctx_value = bytes_value(ctx);
-        let filtered = self
-            .filter("wp_kses_allowed_html", || base.clone(), || vec![ctx_value])?
-            .unwrap_or_else(|| base.clone());
-        Ok((self.convert(&filtered)?, filtered))
     }
 
     /// `wp_kses_allowed_html()` for a named context.
@@ -322,27 +313,37 @@ impl KsesApi {
 
     /// `wp_kses_allowed_html()` when the filter has listeners: every run goes through them.
     fn allowed_html_filtered(&self, ctx: &Context) -> Result<Rc<AllowedHtml>, KsesError> {
+        self.convert(&self.allowed_value_filtered(ctx)?)
+    }
+
+    /// The array `wp_kses_allowed_html()` returns for a named context, every filter run made.
+    fn allowed_value_filtered(&self, ctx: &Context) -> Result<Value, KsesError> {
         let name = ctx.as_bytes();
         let globals = &self.d.globals;
+        let run = |base: Value| -> Result<Value, KsesError> {
+            let ctx_value = bytes_value(name);
+            let base_for_filter = base.clone();
+            Ok(self
+                .filter(
+                    "wp_kses_allowed_html",
+                    move || base_for_filter,
+                    || vec![ctx_value],
+                )?
+                .unwrap_or(base))
+        };
         match ctx {
             Context::Post => {
                 let post = globals.post();
-                let (tags, value) = self.filtered_allowed(name, &post)?;
+                let value = run(post.clone())?;
                 if !globals.custom_tags()
                     && !isset(&value, "form")
                     && (isset(&value, "input") || isset(&value, "select"))
                 {
                     let mut with_form = post;
                     set(&mut with_form, "form", form_attributes());
-                    let ctx_value = bytes_value(name);
-                    let filtered = self.filter(
-                        "wp_kses_allowed_html",
-                        || with_form.clone(),
-                        || vec![ctx_value],
-                    )?;
-                    return self.convert(&filtered.unwrap_or(with_form));
+                    return run(with_form);
                 }
-                Ok(tags)
+                Ok(value)
             }
             Context::UserDescription
             | Context::PreTermDescription
@@ -351,26 +352,57 @@ impl KsesApi {
                 let a = entry(&mut tags, "a");
                 set(a, "rel", Value::Bool(true));
                 set(a, "target", Value::Bool(true));
-                Ok(self.filtered_allowed(name, &tags)?.0)
+                run(tags)
             }
-            Context::Strip => Ok(self.filtered_allowed(name, &Value::Array(Vec::new()))?.0),
-            Context::Entities => {
-                let names = globals.entity_names();
-                let mut sorted: Vec<&Bytes> = names.0.iter().collect();
-                sorted.sort();
-                let value = Value::Array(
-                    sorted
-                        .iter()
-                        .enumerate()
-                        .map(|(i, n)| (Key::Int(i as i64), bytes_value(n)))
-                        .collect(),
-                );
-                Ok(self.filtered_allowed(name, &value)?.0)
-            }
-            Context::Data | Context::Named(_) => {
-                Ok(self.filtered_allowed(name, &globals.tags())?.0)
-            }
+            Context::Strip => run(Value::Array(Vec::new())),
+            Context::Entities => run(self.entity_names_value()),
+            Context::Data | Context::Named(_) => run(globals.tags()),
         }
+    }
+
+    /// The array `wp_kses_allowed_html()` returns for a named context, as PHP sees it: value callbacks stay the PHP
+    /// callables they were. Hook runs are counted as WordPress counts them.
+    pub fn allowed_html_value(&self, ctx: &Context) -> Result<Value, KsesError> {
+        let hook = HookName::from("wp_kses_allowed_html");
+        if !self
+            .d
+            .hooks
+            .skip_if_empty(&hook, Count::Filters)
+            .map_err(hook_error)?
+        {
+            return self.allowed_value_filtered(ctx);
+        }
+        let (value, fires_twice) = self.unfiltered_value(ctx);
+        if fires_twice {
+            self.d
+                .hooks
+                .skip_if_empty(&hook, Count::Filters)
+                .map_err(hook_error)?;
+        }
+        Ok(value)
+    }
+
+    /// `wp_kses_allowed_html()` given an array, as PHP sees the result.
+    pub fn allowed_html_explicit_value(&self, allowed: &Value) -> Result<Value, KsesError> {
+        let filtered = self.filter(
+            "wp_kses_allowed_html",
+            || allowed.clone(),
+            || vec![Value::Str("explicit".into())],
+        )?;
+        Ok(filtered.unwrap_or_else(|| allowed.clone()))
+    }
+
+    /// An `$allowed_html` array as `wp_kses()` uses one: read as it is, with no filter (WordPress filters only a
+    /// context name).
+    pub fn allowed_from(&self, allowed: &Value) -> Result<Rc<AllowedHtml>, KsesError> {
+        self.convert(allowed)
+    }
+
+    /// Starts a new request: WordPress's `static` caches (the protocol list) and the converted allowlists are
+    /// dropped.
+    pub fn new_request(&self) {
+        self.protocols.borrow_mut().clear();
+        self.allowed_cache.borrow_mut().clear();
     }
 
     /// `wp_kses_allowed_html()` given an array: filtered with the context `explicit`.

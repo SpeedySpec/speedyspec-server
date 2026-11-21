@@ -6,9 +6,12 @@ use speedyspec_container::Container;
 use speedyspec_cqrs::{
     Command, CommandHandler, Query, QueryHandler, bind_command_handler, bind_query_handler,
 };
+use speedyspec_hooks::Value;
 use speedyspec_wp_kses_contracts::{
     AllowedHtml, AllowedSpec, Context, KsesError, Protocols, UriAttributes,
 };
+
+use crate::CheckedAttr;
 
 use crate::KsesApi;
 
@@ -65,6 +68,20 @@ message!(query AllowedHtmlQuery { context: Context } -> R<Rc<AllowedHtml>>, |a, 
 message!(query UriAttributesQuery {} -> R<Rc<UriAttributes>>, |a, m| a.uri_attributes());
 message!(query AllowedProtocolsQuery {} -> R<Rc<Protocols>>, |a, m| a.allowed_protocols());
 message!(query SafecssFilterAttr { css: Vec<u8> } -> R<Vec<u8>>, |a, m| a.safecss_filter_attr(&m.css));
+message!(query AllowedHtmlValue { context: Context } -> R<Value>, |a, m| a.allowed_html_value(&m.context));
+message!(query AllowedHtmlExplicitValue { allowed: Value } -> R<Value>, |a, m| a.allowed_html_explicit_value(&m.allowed));
+message!(query AllowedFrom { allowed: Value } -> R<Rc<AllowedHtml>>, |a, m| a.allowed_from(&m.allowed));
+message!(query KsesHook { content: Vec<u8>, allowed: AllowedSpec, protocols: Protocols } -> R<Vec<u8>>,
+    |a, m| a.kses_hook(&m.content, &m.allowed, &m.protocols));
+message!(query KsesSplit { content: Vec<u8>, allowed: AllowedSpec, protocols: Protocols } -> R<Vec<u8>>,
+    |a, m| a.split(&m.content, &m.allowed, &m.protocols));
+message!(query KsesSplit2 { content: Vec<u8>, allowed: AllowedSpec, protocols: Protocols } -> R<Vec<u8>>,
+    |a, m| a.split2(&m.content, &m.allowed, &m.protocols));
+message!(query KsesAttr { element: Vec<u8>, attr: Vec<u8>, allowed: AllowedSpec, protocols: Protocols } -> R<Vec<u8>>,
+    |a, m| a.attr(&m.element, &m.attr, &m.allowed, &m.protocols));
+message!(query KsesAttrCheck {
+    name: Vec<u8>, value: Vec<u8>, whole: Vec<u8>, vless: bool, element: Vec<u8>, allowed: Rc<AllowedHtml>
+} -> R<Option<CheckedAttr>>, |a, m| a.attr_check(&m.name, &m.value, &m.whole, m.vless, &m.element, &m.allowed));
 message!(command KsesInitFilters {} -> R<()>, |a, m| a.kses_init_filters());
 message!(command KsesRemoveFilters {} -> R<()>, |a, m| a.kses_remove_filters());
 message!(command KsesInit {} -> R<()>, |a, m| a.kses_init());
@@ -81,5 +98,6 @@ pub fn register_kses_handlers(container: &Container, api: Rc<KsesApi>) {
     bind_all!(container, api;
         commands: KsesInitFilters, KsesRemoveFilters, KsesInit;
         queries: KsesQuery, KsesPost, KsesData, FilterKses, FilterPostKses, FilterNohtmlKses, OneAttr, AllowedHtmlQuery,
-            UriAttributesQuery, AllowedProtocolsQuery, SafecssFilterAttr);
+            UriAttributesQuery, AllowedProtocolsQuery, SafecssFilterAttr, AllowedHtmlValue, AllowedHtmlExplicitValue,
+            AllowedFrom, KsesHook, KsesSplit, KsesSplit2, KsesAttr, KsesAttrCheck);
 }

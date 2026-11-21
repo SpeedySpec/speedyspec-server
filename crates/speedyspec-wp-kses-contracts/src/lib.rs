@@ -15,7 +15,7 @@ pub use allowed::{
     UriAttributes,
 };
 pub use attr::Attr;
-pub use error::KsesError;
+pub use error::{KsesError, Payload};
 pub use ports::{
     AllowedHtmlSource, AttributeEscaper, Kses, KsesLexical, SafeCss, UnfilteredHtmlPolicy,
 };

@@ -19,7 +19,9 @@ mod safecss;
 mod scanner;
 
 pub use api::{KsesApi, KsesDeps};
-pub use convert::{allowed_from_value, allowed_to_value, rule_value};
+pub use convert::{
+    allowed_from_value, allowed_to_value, attr_rule, attr_rules_from_value, rule_value,
+};
 pub use defaults::{
     add_global_attributes, allow_pdf_objects, default_post_value, default_tags_value,
 };

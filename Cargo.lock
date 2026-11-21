@@ -5276,6 +5276,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-kses-php"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-cqrs",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-kses",
+ "speedyspec-wp-kses-contracts",
+ "speedyspec-wp-kses-lexical",
+ "speedyspec-wp-kses-testkit",
+ "tempfile",
+]
+
+[[package]]
 name = "speedyspec-wp-kses-security"
 version = "0.1.0"
 dependencies = [

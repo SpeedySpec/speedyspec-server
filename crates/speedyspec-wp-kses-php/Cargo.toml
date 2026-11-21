@@ -1,0 +1,31 @@
+[package]
+name = "speedyspec-wp-kses-php"
+version = "0.1.0"
+description = "WordPress's kses functions (wp_kses and the rest) as native PHP functions over the Rust kses API."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+indexmap = "2"
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+speedyspec-wp-kses = { path = "../speedyspec-wp-kses" }
+speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
+speedyspec-wp-kses-lexical = { path = "../speedyspec-wp-kses-lexical" }
+
+[dev-dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-kses-testkit = { path = "../speedyspec-wp-kses-testkit" }
+tempfile = "3"
+
+[[test]]
+name = "php"
+harness = false

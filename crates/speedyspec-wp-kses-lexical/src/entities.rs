@@ -106,7 +106,7 @@ fn rewrite(
 }
 
 /// `html_entity_decode( "&name;", ENT_HTML5 )` for one complete reference; unchanged when HTML5 has no such name.
-fn html_entity_decode(reference: &[u8]) -> Vec<u8> {
+pub fn html_entity_decode(reference: &[u8]) -> Vec<u8> {
     match speedyspec_wp_html_syntax::named_reference(reference, 1) {
         Some((replacement, len)) if len + 1 == reference.len() => replacement.to_vec(),
         _ => reference.to_vec(),

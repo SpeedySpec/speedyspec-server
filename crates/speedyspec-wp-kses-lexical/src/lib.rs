@@ -16,8 +16,8 @@ mod text;
 pub use attrs::{attr_parse, hair, hair_parse};
 pub use checks::check_attr_val;
 pub use entities::{
-    decode_entities, default_html_entity_names, default_xml_entity_names, normalize_entities,
-    valid_unicode,
+    decode_entities, default_html_entity_names, default_xml_entity_names, html_entity_decode,
+    normalize_entities, valid_unicode,
 };
 pub use lexical::Lexical;
 pub use protocol::{bad_protocol, bad_protocol_once, bad_protocol_once2};

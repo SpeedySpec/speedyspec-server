@@ -49,6 +49,45 @@ pub fn rule_value(v: &Value) -> RuleValue {
     }
 }
 
+/// One check of an attribute's rule array, `name => value` as PHP keys it (`maxlen`, `values`, ...).
+pub fn attr_rule(
+    name: &[u8],
+    value: &Value,
+    resolve: &dyn Fn(&Value) -> Option<ValueCallback>,
+) -> AttrRule {
+    let name: Bytes = name.into();
+    match &name.to_ascii_lowercase()[..] {
+        b"maxlen" => AttrRule::MaxLen(rule_value(value)),
+        b"minlen" => AttrRule::MinLen(rule_value(value)),
+        b"maxval" => AttrRule::MaxVal(rule_value(value)),
+        b"minval" => AttrRule::MinVal(rule_value(value)),
+        b"valueless" => AttrRule::Valueless(rule_value(value)),
+        b"values" => match rule_value(value) {
+            RuleValue::List(list) => AttrRule::Values(list),
+            other => AttrRule::Other(name, other),
+        },
+        b"value_callback" => match resolve(value) {
+            Some(callback) => AttrRule::ValueCallback(callback),
+            None => AttrRule::Other(name, rule_value(value)),
+        },
+        _ => AttrRule::Other(name, rule_value(value)),
+    }
+}
+
+/// One tag's attribute array (`$allowed_html[ $tag ]`) as kses reads it; a non-array has no attributes.
+pub fn attr_rules_from_value(
+    v: &Value,
+    resolve: &dyn Fn(&Value) -> Option<ValueCallback>,
+) -> IndexMap<Bytes, AttrRules> {
+    match &*v.read() {
+        Value::Array(attrs) => attrs
+            .iter()
+            .map(|(k, a)| (key_bytes(k), rules(a, resolve)))
+            .collect(),
+        _ => IndexMap::new(),
+    }
+}
+
 fn rules(v: &Value, resolve: &dyn Fn(&Value) -> Option<ValueCallback>) -> AttrRules {
     match v {
         Value::Null => AttrRules::Denied,
@@ -56,25 +95,7 @@ fn rules(v: &Value, resolve: &dyn Fn(&Value) -> Option<ValueCallback>) -> AttrRu
         Value::Array(items) => AttrRules::Rules(
             items
                 .iter()
-                .map(|(k, value)| {
-                    let name = key_bytes(k);
-                    match &name.to_ascii_lowercase()[..] {
-                        b"maxlen" => AttrRule::MaxLen(rule_value(value)),
-                        b"minlen" => AttrRule::MinLen(rule_value(value)),
-                        b"maxval" => AttrRule::MaxVal(rule_value(value)),
-                        b"minval" => AttrRule::MinVal(rule_value(value)),
-                        b"valueless" => AttrRule::Valueless(rule_value(value)),
-                        b"values" => match rule_value(value) {
-                            RuleValue::List(list) => AttrRule::Values(list),
-                            other => AttrRule::Other(name, other),
-                        },
-                        b"value_callback" => match resolve(value) {
-                            Some(callback) => AttrRule::ValueCallback(callback),
-                            None => AttrRule::Other(name, rule_value(value)),
-                        },
-                        _ => AttrRule::Other(name, rule_value(value)),
-                    }
-                })
+                .map(|(k, value)| attr_rule(&key_bytes(k), value, resolve))
                 .collect(),
         ),
         v if empty(v) => AttrRules::AllowedFalsy,

@@ -146,3 +146,30 @@ fn note_mention_span_matches_php() {
 fn version_is_kses_0_2_2() {
     assert_eq!(KsesApi::version(), "0.2.2");
 }
+
+/// A hook that fails with a language bridge's payload (a PHP exception) fails kses with that very payload, so the
+/// bridge can rethrow it unchanged.
+#[test]
+fn a_hook_failure_keeps_its_payload() {
+    use speedyspec_wp_hooks::{Callback, HookError, HookName, HookValue};
+    let (hooks, api) = common::setup();
+    hooks
+        .add_filter(
+            &HookName::from("pre_kses"),
+            Callback::rust("thrower", |_: &[HookValue]| {
+                Err(HookError {
+                    message: "thrown".into(),
+                    payload: Some(std::rc::Rc::new(42_i32)),
+                })
+            }),
+            &HookValue::Int(10),
+            1,
+        )
+        .unwrap();
+    let err = api.post(b"x").unwrap_err();
+    let speedyspec_wp_kses_contracts::KsesError::Foreign { message, payload } = err else {
+        panic!("{err:?}")
+    };
+    assert_eq!(message, "thrown");
+    assert_eq!(payload.0.downcast_ref::<i32>(), Some(&42));
+}

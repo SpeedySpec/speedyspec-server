@@ -152,6 +152,17 @@ impl KsesApi {
     }
 
     /// `wp_kses_hook()`: the `pre_kses` filter.
+    pub fn kses_hook(
+        &self,
+        content: &[u8],
+        allowed: &AllowedSpec,
+        protocols: &Protocols,
+    ) -> Result<Vec<u8>, KsesError> {
+        Ok(self
+            .hook(Cow::Borrowed(content), allowed, protocols)?
+            .into_owned())
+    }
+
     fn hook<'a>(
         &self,
         content: Cow<'a, [u8]>,

@@ -211,3 +211,90 @@ fn protocols_are_cached_after_wp_loaded() {
             .any(|p| &**p == b"x")
     );
 }
+
+/// `wp_kses_allowed_html()` as PHP returns it: the filtered array itself, value callbacks and all.
+#[test]
+fn allowed_html_value_is_the_filtered_array() {
+    let (hooks, api) = setup();
+    assert_eq!(
+        api.allowed_html_value(&Context::Post).unwrap(),
+        default_post_value()
+    );
+    assert_eq!(
+        api.allowed_html_value(&Context::Strip).unwrap(),
+        HookValue::Array(vec![])
+    );
+    let callable = HookValue::Str("my_check".into());
+    let keep = callable.clone();
+    filter(&hooks, "wp_kses_allowed_html", move |a| {
+        let mut v = a[0].clone();
+        if let HookValue::Array(items) = &mut v {
+            let rules = HookValue::Array(vec![(Key::Str("value_callback".into()), keep.clone())]);
+            items.push((
+                Key::Str("x-tag".into()),
+                HookValue::Array(vec![(Key::Str("data-x".into()), rules)]),
+            ));
+        }
+        v
+    });
+    let HookValue::Array(items) = api.allowed_html_value(&Context::Data).unwrap() else {
+        panic!("array")
+    };
+    let (_, x) = items
+        .iter()
+        .find(|(k, _)| *k == Key::Str("x-tag".into()))
+        .expect("x-tag");
+    let HookValue::Array(attrs) = x else {
+        panic!("attrs")
+    };
+    assert_eq!(
+        attrs[0].1,
+        HookValue::Array(vec![(Key::Str("value_callback".into()), callable)])
+    );
+}
+
+#[test]
+fn allowed_html_explicit_value_runs_the_explicit_filter() {
+    let (hooks, api) = setup();
+    let seen = Rc::new(RefCell::new(None));
+    let keep = seen.clone();
+    filter(&hooks, "wp_kses_allowed_html", move |a| {
+        *keep.borrow_mut() = a.get(1).cloned();
+        a[0].clone()
+    });
+    let mine = HookValue::Array(vec![(Key::Str("b".into()), HookValue::Bool(true))]);
+    assert_eq!(api.allowed_html_explicit_value(&mine).unwrap(), mine);
+    assert_eq!(*seen.borrow(), Some(HookValue::Str("explicit".into())));
+}
+
+/// wp_kses() itself never filters an explicit array: split2 and attr only resolve a context string.
+#[test]
+fn allowed_from_runs_no_filter() {
+    let (hooks, api) = setup();
+    let mine = HookValue::Array(vec![(Key::Str("B".into()), HookValue::Bool(true))]);
+    let allowed = api.allowed_from(&mine).unwrap();
+    assert!(allowed.tags.contains_key(&b"B"[..]));
+    assert_eq!(
+        hooks
+            .did_filter(&HookName::from("wp_kses_allowed_html"))
+            .unwrap(),
+        0
+    );
+}
+
+/// A new request starts with WordPress's `static` caches empty again: the protocol list a filter narrowed before
+/// `wp_loaded` goes back to the 22 defaults.
+#[test]
+fn new_request_empties_the_protocol_list() {
+    let (hooks, api) = setup();
+    filter(&hooks, "kses_allowed_protocols", |_| {
+        HookValue::Array(vec![(Key::Int(0), HookValue::Str("http".into()))])
+    });
+    assert_eq!(api.allowed_protocols().unwrap().0.len(), 1);
+    hooks
+        .do_action(&HookName::from("wp_loaded"), vec![])
+        .unwrap();
+    assert_eq!(api.allowed_protocols().unwrap().0.len(), 1);
+    api.new_request();
+    assert_eq!(api.allowed_protocols().unwrap().0.len(), 22);
+}
