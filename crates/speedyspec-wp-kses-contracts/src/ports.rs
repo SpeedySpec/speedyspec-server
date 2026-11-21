@@ -16,7 +16,8 @@ pub trait KsesLexical {
         &self,
         content: &'a [u8],
         ctx: EntityContext,
-        names: &EntityNames,
+        html_names: &EntityNames,
+        xml_names: &EntityNames,
     ) -> Cow<'a, [u8]>;
     fn decode_entities<'a>(&self, content: &'a [u8]) -> Cow<'a, [u8]>;
     fn bad_protocol<'a>(&self, content: &'a [u8], protocols: &Protocols) -> Cow<'a, [u8]>;
