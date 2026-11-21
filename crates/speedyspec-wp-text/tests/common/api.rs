@@ -1,5 +1,7 @@
 //! A `TextApi` on in-memory adapters, as the corpus was recorded.
 
+#![allow(dead_code)]
+
 use std::rc::Rc;
 
 use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
