@@ -150,6 +150,29 @@ impl I18nApi {
         }
     }
 
+    /// `apply_filters( $hook, $value, ...$args )`, skipping (and counting) a filter with nothing hooked.
+    pub fn filter(
+        &self,
+        hook: &str,
+        value: HookValue,
+        args: Vec<HookValue>,
+    ) -> Result<HookValue, I18nError> {
+        let name = HookName::new(HookValue::Str(hook.to_owned()));
+        if self.hooks.skip_if_empty(&name, Count::Filters)? {
+            return Ok(value);
+        }
+        Ok(self.hooks.apply_filters(&name, value, args)?)
+    }
+
+    /// `do_action( $hook, ...$args )`, skipping (and counting) an action with nothing hooked.
+    pub fn action(&self, hook: &str, args: Vec<HookValue>) -> Result<(), I18nError> {
+        let name = HookName::new(HookValue::Str(hook.to_owned()));
+        if self.hooks.skip_if_empty(&name, Count::Actions)? {
+            return Ok(());
+        }
+        Ok(self.hooks.do_action(&name, args)?)
+    }
+
     /// Uses `store` for the checks and counts of [`I18nApi::filters_empty`] and the `*_if_unhooked` calls until
     /// set again (a host whose Hook API resolves its store on every access sets it once per request).
     pub fn set_request_store(&self, store: Option<Rc<dyn HookStore>>) {
