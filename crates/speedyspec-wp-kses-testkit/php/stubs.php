@@ -25,3 +25,7 @@ function _doing_it_wrong( $function_name, $message, $version ) {}
 function wp_unslash( $value ) { return map_deep( $value, 'stripslashes_from_strings_only' ); }
 function wp_slash( $value ) { return is_string( $value ) ? addslashes( $value ) : $value; }
 function stripslashes_from_strings_only( $value ) { return is_string( $value ) ? stripslashes( $value ) : $value; }
+function wp_upload_dir( $time = null, $create_dir = true, $refresh_cache = false ) {
+	return array( 'url' => 'http://example.org:8080/wp-content/uploads', 'baseurl' => 'http://example.org:8080/wp-content/uploads' );
+}
+function wp_parse_url( $url, $component = -1 ) { return parse_url( $url, $component ); }

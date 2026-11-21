@@ -5050,6 +5050,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-kses"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "memchr",
+ "serde_json",
+ "speedyspec-container",
+ "speedyspec-cqrs",
+ "speedyspec-hooks",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-html-syntax",
+ "speedyspec-wp-kses-contracts",
+ "speedyspec-wp-kses-lexical",
+ "speedyspec-wp-kses-testkit",
+ "stacker",
+]
+
+[[package]]
 name = "speedyspec-wp-kses-contracts"
 version = "0.1.0"
 dependencies = [
