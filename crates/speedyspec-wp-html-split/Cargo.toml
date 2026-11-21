@@ -8,3 +8,6 @@ license.workspace = true
 
 [dependencies]
 memchr = "2.8"
+
+[dev-dependencies]
+speedyspec-wp-text-corpus = { path = "../speedyspec-wp-text-corpus" }
