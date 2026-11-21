@@ -4767,6 +4767,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-router"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "speedyspec-http",
+ "speedyspec-routing",
+]
+
+[[package]]
 name = "speedyspec-routing"
 version = "0.1.0"
 dependencies = [
