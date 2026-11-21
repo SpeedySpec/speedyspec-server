@@ -9,3 +9,4 @@ license.workspace = true
 [dependencies]
 speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contracts" }
 indexmap = "2"
+fancy-regex = "0.20"
