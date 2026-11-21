@@ -5048,6 +5048,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-kses-testkit"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "flate2",
+ "indexmap",
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-wp-kses-contracts",
+ "tar",
+ "tempfile",
+ "ureq",
+]
+
+[[package]]
 name = "speedyspec-wp-object-cache"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,19 @@
+[package]
+name = "speedyspec-wp-kses-testkit"
+version = "0.1.0"
+description = "Test support for the kses port: a PHP oracle running WordPress's own kses.php, and the test corpora."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+base64 = "0.22"
+flate2 = "1"
+indexmap = "2"
+serde_json = "1"
+sha2 = "0.10"
+speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
+tar = "0.4"
+tempfile = "3"
+ureq = "3"
