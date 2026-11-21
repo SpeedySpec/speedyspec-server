@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    bootstrap="utf8-bootstrap.php"
+    colors="false"
+    cacheResult="false"
+    failOnWarning="false"
+    failOnDeprecation="false"
+    displayDetailsOnTestsThatTriggerDeprecations="true"
+    displayDetailsOnPhpunitDeprecations="false"
+>
+    <testsuites>
+        <testsuite name="wordpress-utf8">
+            <directory suffix=".php">wordpress/unicode</directory>
+            <directory suffix=".php">wordpress/compat</directory>
+        </testsuite>
+    </testsuites>
+    <groups>
+        <exclude>
+            <group>documented-break</group>
+        </exclude>
+    </groups>
+</phpunit>

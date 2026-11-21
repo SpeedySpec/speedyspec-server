@@ -15,13 +15,21 @@ pub fn php_substr(s: &[u8], start: i64, length: Option<i64>) -> &[u8] {
     if start > len {
         return &[];
     }
-    let from = if start < 0 { (len + start).max(0) } else { start };
+    let from = if start < 0 {
+        (len + start).max(0)
+    } else {
+        start
+    };
     let to = match length {
         None => len,
         Some(l) if l < 0 => len + l,
         Some(l) => from.saturating_add(l).min(len),
     };
-    if to <= from { &[] } else { &s[from as usize..to as usize] }
+    if to <= from {
+        &[]
+    } else {
+        &s[from as usize..to as usize]
+    }
 }
 
 /// `_mb_substr`: code points when `utf8` (the charset is UTF-8), bytes (`substr`) otherwise. Each invalid span
@@ -31,8 +39,16 @@ pub fn mb_substr(s: &[u8], start: i64, length: Option<i64>, utf8: bool) -> Cow<'
         return Cow::Borrowed(php_substr(s, start, length));
     }
     let negative_length = length.is_some_and(|l| l < 0);
-    let total = if start < 0 || negative_length { codepoint_count(s, 0, usize::MAX) as i64 } else { 0 };
-    let start = if start < 0 { (total + start).max(0) } else { start };
+    let total = if start < 0 || negative_length {
+        codepoint_count(s, 0, usize::MAX) as i64
+    } else {
+        0
+    };
+    let start = if start < 0 {
+        (total + start).max(0)
+    } else {
+        start
+    };
     let (starting_byte, _) = codepoint_span(s, 0, start as usize);
     let length = match length {
         Some(l) if l < 0 => Some((total - start + l).max(0)),
@@ -47,5 +63,9 @@ pub fn mb_substr(s: &[u8], start: i64, length: Option<i64>, utf8: bool) -> Cow<'
 
 /// `_mb_strlen`: code points when `utf8`, bytes otherwise.
 pub fn mb_strlen(s: &[u8], utf8: bool) -> usize {
-    if utf8 { codepoint_count(s, 0, usize::MAX) } else { s.len() }
+    if utf8 {
+        codepoint_count(s, 0, usize::MAX)
+    } else {
+        s.len()
+    }
 }

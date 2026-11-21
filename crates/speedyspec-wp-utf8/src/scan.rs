@@ -41,18 +41,32 @@ fn four_byte_lead_valid(b1: u8, b2: u8) -> bool {
 ///
 /// Scanning stops at the first invalid sequence, after `max_bytes` bytes (a sequence that starts before that limit
 /// is still read to its end, as WordPress does), or once `max_code_points` code points are counted.
-pub fn scan_utf8(bytes: &[u8], at: usize, max_bytes: Option<usize>, max_code_points: Option<usize>) -> Scan {
+pub fn scan_utf8(
+    bytes: &[u8],
+    at: usize,
+    max_bytes: Option<usize>,
+    max_code_points: Option<usize>,
+) -> Scan {
     let byte_length = bytes.len();
     let end = byte_length.min(at.saturating_add(max_bytes.unwrap_or(usize::MAX)));
     let max_count = max_code_points.unwrap_or(usize::MAX);
-    let mut out = Scan { code_points: 0, at, invalid_length: 0, has_noncharacters: false, noncharacters_tested: false };
+    let mut out = Scan {
+        code_points: 0,
+        at,
+        invalid_length: 0,
+        has_noncharacters: false,
+        noncharacters_tested: false,
+    };
     let mut count = 0usize;
     let mut i = at;
 
     while i < end && count <= max_count {
         // WordPress 7.1.5 bounds the ASCII run by the code points still wanted (`min( $end - $i, $max_count - $count )`).
         let window = (end - i).min(max_count - count);
-        let ascii = bytes[i..i + window].iter().take_while(|b| **b < 0x80).count();
+        let ascii = bytes[i..i + window]
+            .iter()
+            .take_while(|b| **b < 0x80)
+            .count();
         if count + ascii >= max_count {
             out.at = i + (max_count - count);
             out.code_points = max_count;
@@ -81,8 +95,8 @@ pub fn scan_utf8(bytes: &[u8], at: usize, max_bytes: Option<usize>, max_code_poi
                 i += 3;
                 if b1 == 0xEF {
                     out.noncharacters_tested = true;
-                    out.has_noncharacters |=
-                        (b2 == 0xB7 && (0x90..=0xAF).contains(&b3)) || (b2 == 0xBF && (b3 == 0xBE || b3 == 0xBF));
+                    out.has_noncharacters |= (b2 == 0xB7 && (0x90..=0xAF).contains(&b3))
+                        || (b2 == 0xBF && (b3 == 0xBE || b3 == 0xBF));
                 }
                 continue;
             }
@@ -91,7 +105,8 @@ pub fn scan_utf8(bytes: &[u8], at: usize, max_bytes: Option<usize>, max_code_poi
                 count += 1;
                 i += 4;
                 out.noncharacters_tested = true;
-                out.has_noncharacters |= (b2 & 0x0F) == 0x0F && b3 == 0xBF && (b4 == 0xBE || b4 == 0xBF);
+                out.has_noncharacters |=
+                    (b2 & 0x0F) == 0x0F && b3 == 0xBF && (b4 == 0xBE || b4 == 0xBF);
                 continue;
             }
         }
@@ -109,7 +124,11 @@ pub fn scan_utf8(bytes: &[u8], at: usize, max_bytes: Option<usize>, max_code_poi
         } else if b1 & 0xF8 == 0xF0 {
             let b2_valid = four_byte_lead_valid(b1, b2);
             let b3_valid = (0x80..=0xBF).contains(&b3);
-            out.invalid_length = (end - i).min(if b2_valid { if b3_valid { 3 } else { 2 } } else { 1 });
+            out.invalid_length = (end - i).min(if b2_valid {
+                if b3_valid { 3 } else { 2 }
+            } else {
+                1
+            });
         }
         return out;
     }

@@ -2,10 +2,13 @@
 //! `tests/phpunit/tests/compat/mbSubstr.php` and `mbStrlen.php`, with expected values from PHP's own `mb_substr`
 //! (UTF-8) and `substr` (8bit).
 
-use speedyspec_wp_utf8::{is_utf8_charset, mb_strlen, mb_substr, utf8_decode_latin1, utf8_encode_latin1};
+use speedyspec_wp_utf8::{
+    is_utf8_charset, mb_strlen, mb_substr, utf8_decode_latin1, utf8_encode_latin1,
+};
 
 #[rustfmt::skip]
-const SUBSTR: &[(&[u8], i64, Option<i64>, &[u8], &[u8])] = &[
+type SubstrCase = (&'static [u8], i64, Option<i64>, &'static [u8], &'static [u8]);
+const SUBSTR: &[SubstrCase] = &[
     (b"\xd0\xb1\xd0\xb0\xd0\xb1\xd0\xb0", 0, Some(3), b"\xd0\xb1\xd0\xb0\xd0\xb1", b"\xd0\xb1\xd0"),
     (b"\xd0\xb1\xd0\xb0\xd0\xb1\xd0\xb0", 0, Some(-1), b"\xd0\xb1\xd0\xb0\xd0\xb1", b"\xd0\xb1\xd0\xb0\xd0\xb1\xd0"),
     (b"\xd0\xb1\xd0\xb0\xd0\xb1\xd0\xb0", 1, None, b"\xd0\xb0\xd0\xb1\xd0\xb0", b"\xb1\xd0\xb0\xd0\xb1\xd0\xb0"),
@@ -28,8 +31,16 @@ const SUBSTR: &[(&[u8], i64, Option<i64>, &[u8], &[u8])] = &[
 #[test]
 fn mb_substr_matches_php_utf8_and_8bit() {
     for (s, start, len, utf8, bytes) in SUBSTR {
-        assert_eq!(&*mb_substr(s, *start, *len, true), *utf8, "utf8 {s:x?} {start} {len:?}");
-        assert_eq!(&*mb_substr(s, *start, *len, false), *bytes, "8bit {s:x?} {start} {len:?}");
+        assert_eq!(
+            &*mb_substr(s, *start, *len, true),
+            *utf8,
+            "utf8 {s:x?} {start} {len:?}"
+        );
+        assert_eq!(
+            &*mb_substr(s, *start, *len, false),
+            *bytes,
+            "8bit {s:x?} {start} {len:?}"
+        );
     }
 }
 
@@ -60,7 +71,10 @@ fn utf8_charset_names() {
 #[test]
 fn latin1_roundtrip() {
     assert_eq!(utf8_encode_latin1(b"caf\xE9"), "café".as_bytes());
-    assert_eq!(utf8_decode_latin1(&utf8_encode_latin1(b"caf\xE9")), b"caf\xE9");
+    assert_eq!(
+        utf8_decode_latin1(&utf8_encode_latin1(b"caf\xE9")),
+        b"caf\xE9"
+    );
     assert_eq!(utf8_decode_latin1("€".as_bytes()), b"?");
     assert_eq!(utf8_decode_latin1(b"a\xFFb"), b"a?b");
 }

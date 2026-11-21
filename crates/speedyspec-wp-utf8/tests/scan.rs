@@ -9,7 +9,10 @@ fn scan(bytes: &[u8], max_bytes: Option<usize>, max_code_points: Option<usize>) 
 #[test]
 fn scan_counts_code_points_and_stops_at_invalid() {
     let s = scan(b"a\xC3\xA9\xFFb", None, None);
-    assert_eq!((s.code_points, s.at, s.invalid_length, s.has_noncharacters), (2, 3, 1, false));
+    assert_eq!(
+        (s.code_points, s.at, s.invalid_length, s.has_noncharacters),
+        (2, 3, 1, false)
+    );
 }
 
 #[test]
@@ -58,7 +61,10 @@ fn empty_and_nul_are_valid() {
 }
 
 fn hex(line: &str) -> Vec<u8> {
-    (0..line.len()).step_by(2).map(|i| u8::from_str_radix(&line[i..i + 2], 16).unwrap()).collect()
+    (0..line.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&line[i..i + 2], 16).unwrap())
+        .collect()
 }
 
 #[test]
@@ -71,11 +77,18 @@ fn fast_path_agrees_with_reference() {
             for k in 0..len {
                 buf.push((n >> (8 * k)) as u8);
             }
-            assert_eq!(is_valid_utf8(&buf), is_valid_utf8_reference(&buf), "{buf:02x?}");
+            assert_eq!(
+                is_valid_utf8(&buf),
+                is_valid_utf8_reference(&buf),
+                "{buf:02x?}"
+            );
         }
     }
     let cases = include_str!("data/utf8-cases.txt");
-    for line in cases.lines().filter(|l| !l.is_empty() && !l.starts_with('#')) {
+    for line in cases
+        .lines()
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+    {
         let b = hex(line.trim());
         assert_eq!(is_valid_utf8(&b), is_valid_utf8_reference(&b), "{line}");
     }

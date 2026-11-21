@@ -5425,6 +5425,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-utf8-php"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-utf8",
+ "ureq",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"

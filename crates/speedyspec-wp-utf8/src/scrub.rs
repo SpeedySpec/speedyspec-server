@@ -64,5 +64,9 @@ pub fn check_invalid_utf8(bytes: &[u8], strip: bool) -> Cow<'_, [u8]> {
     if bytes.is_empty() || is_valid_utf8(bytes) {
         return Cow::Borrowed(bytes);
     }
-    if strip { scrub_utf8(bytes) } else { Cow::Borrowed(&[]) }
+    if strip {
+        scrub_utf8(bytes)
+    } else {
+        Cow::Borrowed(&[])
+    }
 }
