@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-php-ext"
-version = "0.1.0"
+version = "0.1.1"
 description = "The speedyspec_wordpress PHP extension's shared parts: PHP twins of Rust ports, their PHP adapters, value conversion and the boundary counter."
 edition.workspace = true
 rust-version.workspace = true
