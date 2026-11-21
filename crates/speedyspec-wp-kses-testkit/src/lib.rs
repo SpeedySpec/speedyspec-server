@@ -11,3 +11,7 @@ mod release;
 pub use convert::{allowed_from_php, bytes, from_bytes, rule_value};
 pub use oracle::{OracleResult, PhpOracle};
 pub use release::{WORDPRESS, wordpress_release};
+
+mod corpus;
+
+pub use corpus::{protocols_value, xss_attacks};

@@ -6,6 +6,7 @@
 
 mod entities;
 mod entity_names;
+mod protocol;
 pub mod scan;
 mod text;
 
@@ -13,4 +14,5 @@ pub use entities::{
     decode_entities, default_html_entity_names, default_xml_entity_names, normalize_entities,
     valid_unicode,
 };
+pub use protocol::{bad_protocol, bad_protocol_once, bad_protocol_once2};
 pub use text::{array_lc, html_error, no_null, stripslashes};

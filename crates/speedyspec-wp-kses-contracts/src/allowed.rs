@@ -27,7 +27,7 @@ impl AllowedHtml {
     }
 }
 
-/// The URL schemes kses keeps, lowercase, in order.
+/// The URL schemes kses keeps, as given (kses compares them lowercased, except its `http`/`https` fast path).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Protocols(pub Vec<Bytes>);
 

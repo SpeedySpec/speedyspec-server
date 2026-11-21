@@ -5075,6 +5075,7 @@ dependencies = [
  "base64 0.22.1",
  "flate2",
  "indexmap",
+ "memchr",
  "serde_json",
  "sha2 0.10.9",
  "speedyspec-wp-kses-contracts",
