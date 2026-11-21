@@ -18,7 +18,7 @@ fn entities() -> Vec<(Vec<u8>, Vec<u8>)> {
         .iter()
         .map(|(name, v)| {
             (
-                name[1..].as_bytes().to_vec(),
+                name.as_bytes()[1..].to_vec(),
                 v["characters"].as_str().unwrap().as_bytes().to_vec(),
             )
         })
