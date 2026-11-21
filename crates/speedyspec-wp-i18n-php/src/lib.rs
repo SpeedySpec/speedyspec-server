@@ -9,6 +9,12 @@
 //! The facade also declares `WP_Translation_Controller` and the `WP_Translation_File` classes as shells over the
 //! Rust controller, and `WP_Translations` as WordPress has it. Translation files are read once per worker and kept
 //! across requests (`MemoryTranslationFileCache`).
+//!
+//! Locale (phase 3): `WP_Locale` takes its translations from one native call when nothing could tell the
+//! difference; `WP_Locale_Switcher` is WordPress's class over the domain's `LocaleSwitcher`, with switching effects
+//! run through a PHP adapter; `_load_script_textdomain_from_src()` and `load_script_translations()` are native (JSON
+//! files read once per worker); and `translate_settings_using_i18n_schema()` walks PHP's own values natively. The
+//! functions that only forward to `$wp_locale`, `$wp_locale_switcher` or `wp_scripts()` stay WordPress's PHP.
 
 mod effects;
 mod hot;
