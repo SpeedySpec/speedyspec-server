@@ -5271,6 +5271,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-i18n-files"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "serde_json",
+ "speedyspec-wp-i18n",
+ "speedyspec-wp-i18n-contracts",
+ "speedyspec-wp-utf8",
+]
+
+[[package]]
 name = "speedyspec-wp-object-cache"
 version = "0.1.0"
 dependencies = [
