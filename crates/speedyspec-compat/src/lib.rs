@@ -20,7 +20,7 @@ pub use php::{DRIVER, PhpRunner};
 
 /// The WordPress functions the object cache calls, declared the same on both sides of `compat/object-cache`.
 pub const OBJECT_CACHE_STUBS: &str = include_str!("object_cache_stubs.php");
-pub use record::{Source, record, wordpress_release};
+pub use record::{Source, area_runner, record, record_for, wordpress_release};
 
 /// A catalogue of scenarios for one area.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -33,6 +33,9 @@ pub struct Catalogue {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Scenario {
     pub name: String,
+    /// Recorded on a multisite install, into the `-multisite` fixture, and replayed on a multisite port.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub multisite: bool,
     pub steps: Vec<Step>,
 }
 
@@ -142,12 +145,29 @@ fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
     serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-/// The catalogue, the fixture of the pinned WordPress release, and the breaks of `area`.
+/// The fixture file of `version`: `wordpress-<version>.json`, or `wordpress-<version>-multisite.json` for the
+/// scenarios marked `multisite`.
+pub fn fixture_name(version: &str, multisite: bool) -> String {
+    if multisite {
+        format!("wordpress-{version}-multisite.json")
+    } else {
+        format!("wordpress-{version}.json")
+    }
+}
+
+/// The catalogue, the fixture of the pinned WordPress release, and the breaks of `area`: its single-site scenarios.
 pub fn load(area: &str) -> Result<(Catalogue, Fixture, Breaks), String> {
+    load_for(area, false)
+}
+
+/// The catalogue's scenarios recorded single site (`multisite` false) or on multisite (true), their fixture, and the
+/// breaks of `area`.
+pub fn load_for(area: &str, multisite: bool) -> Result<(Catalogue, Fixture, Breaks), String> {
     let dir = compat_dir().join(area);
-    let catalogue = read_json(&dir.join("scenarios.json"))?;
+    let mut catalogue: Catalogue = read_json(&dir.join("scenarios.json"))?;
+    catalogue.scenarios.retain(|s| s.multisite == multisite);
     let source: Source = read_json(&dir.join("source.json"))?;
-    let fixture = read_json(&dir.join(format!("wordpress-{}.json", source.wordpress)))?;
+    let fixture = read_json(&dir.join(fixture_name(&source.wordpress, multisite)))?;
     let breaks_path = dir.join("breaks.json");
     let breaks = if breaks_path.exists() {
         read_json(&breaks_path)?
@@ -157,9 +177,14 @@ pub fn load(area: &str) -> Result<(Catalogue, Fixture, Breaks), String> {
     Ok((catalogue, fixture, breaks))
 }
 
-/// Replays `area`'s catalogue through `runner` against its fixture.
+/// Replays `area`'s single-site catalogue through `runner` against its fixture.
 pub fn replay(area: &str, runner: &mut dyn ScenarioRunner) -> Vec<Mismatch> {
-    match load(area) {
+    replay_for(area, false, runner)
+}
+
+/// Replays `area`'s single-site or multisite scenarios through `runner` against their fixture.
+pub fn replay_for(area: &str, multisite: bool, runner: &mut dyn ScenarioRunner) -> Vec<Mismatch> {
+    match load_for(area, multisite) {
         Ok((catalogue, fixture, breaks)) => replay_with(&catalogue, &fixture, &breaks, runner),
         Err(why) => vec![Mismatch {
             scenario: format!("<{area}>"),

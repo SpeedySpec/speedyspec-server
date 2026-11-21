@@ -33,6 +33,12 @@ pub trait Introspector {
     fn columns(&self, table: &str) -> Result<Vec<ColumnDef>, DbError>;
     fn indexes(&self, table: &str) -> Result<Vec<IndexDef>, DbError>;
     fn table_collation(&self, table: &str) -> Result<Option<String>, DbError>;
+
+    /// MySQL's `Index_type` for an index (`BTREE`, `FULLTEXT`, `SPATIAL`); `None` when the engine does not say.
+    fn index_type(&self, table: &str, index: &str) -> Result<Option<String>, DbError> {
+        let _ = (table, index);
+        Ok(None)
+    }
 }
 
 /// A relational store. Statements only; a caller with SQL text parses it first.
@@ -89,6 +95,16 @@ pub trait NoSqlStore {
         limit: Option<usize>,
     ) -> Result<KeyValues, DbError>;
     fn increment(&self, keyspace: &str, key: &[u8], by: i64) -> Result<i64, DbError>;
+    /// Atomic: adds `by` to the key's integer value and keeps its expiry; `None`, creating nothing, when the key is
+    /// absent. With `floor`, a result below it is stored and returned as `floor`. Errors as `increment`'s
+    /// (`not-integer`, `overflow`).
+    fn adjust_existing(
+        &self,
+        keyspace: &str,
+        key: &[u8],
+        by: i64,
+        floor: Option<i64>,
+    ) -> Result<Option<i64>, DbError>;
     fn clear(&self, keyspace: &str) -> Result<(), DbError>;
 }
 

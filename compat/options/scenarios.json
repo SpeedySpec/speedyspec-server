@@ -10117,6 +10117,3930 @@
           "call": "ob_get_clean"
         }
       ]
+    },
+    {
+      "name": "transient_basics",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_transient_basic",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_transient_basic"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "transient_basic",
+            {
+              "callback": "return_arg",
+              "label": "rec:transient_basic"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_set_transient_basic",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_set_transient_basic"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_transient_basic",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_transient_basic"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_transient_basic",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_transient_basic"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_transient_basic",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_transient_basic"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "basic"
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "basic",
+            "value"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "basic"
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "basic",
+            "another"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "basic"
+          ]
+        },
+        {
+          "call": "delete_transient",
+          "args": [
+            "basic"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "basic"
+          ]
+        },
+        {
+          "call": "delete_transient",
+          "args": [
+            "basic"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transient_serialized",
+      "steps": [
+        {
+          "call": "set_transient",
+          "args": [
+            "ser",
+            {
+              "array": [
+                [
+                  "a",
+                  1
+                ],
+                [
+                  "b",
+                  [
+                    1,
+                    2,
+                    3
+                  ]
+                ],
+                [
+                  "c",
+                  {
+                    "array": [
+                      [
+                        "x",
+                        "y"
+                      ]
+                    ]
+                  }
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "ser"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_thing",
+          "args": [],
+          "as": "thing"
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "ser",
+            {
+              "var": "thing"
+            }
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "ser"
+          ],
+          "as": "read"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "read"
+            }
+          ]
+        },
+        {
+          "call": "delete_transient",
+          "args": [
+            "ser"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "ser"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transient_with_timeout",
+      "steps": [
+        {
+          "call": "set_transient",
+          "args": [
+            "timed",
+            "value",
+            100
+          ]
+        },
+        {
+          "call": "speedyspec_compat_timeout",
+          "args": [
+            "_transient_timeout_timed"
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "_transient_timed"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "timed"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_option",
+            "_transient_timeout_timed",
+            1
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "_transient_timed"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transient_expired_read_deletes",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_transient_exp",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_transient_exp"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "transient_exp",
+            {
+              "callback": "return_arg",
+              "label": "rec:transient_exp"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_set_transient_exp",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_set_transient_exp"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_transient_exp",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_transient_exp"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_transient_exp",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_transient_exp"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_transient_exp",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_transient_exp"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "exp",
+            "value",
+            60
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_option",
+            "_transient_timeout_exp",
+            10
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "exp"
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "_transient_exp"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "exp"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transient_add_timeout_to_existing",
+      "steps": [
+        {
+          "call": "set_transient",
+          "args": [
+            "grow",
+            "value"
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "grow",
+            "value2",
+            60
+          ]
+        },
+        {
+          "call": "speedyspec_compat_timeout",
+          "args": [
+            "_transient_timeout_grow"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "grow"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_option",
+            "_transient_timeout_grow",
+            1
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "grow"
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "grow",
+            "value3",
+            30
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "grow",
+            "value4",
+            60
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "grow"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transient_nonexistent_old_timeout",
+      "steps": [
+        {
+          "call": "add_option",
+          "args": [
+            "_transient_timeout_ghost",
+            100,
+            "",
+            false
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "ghost"
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "_transient_timeout_ghost"
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "ghost",
+            "value",
+            60
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "ghost"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transient_ext_object_cache",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_transient_ext",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_transient_ext"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "transient_ext",
+            {
+              "callback": "return_arg",
+              "label": "rec:transient_ext"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_set_transient_ext",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_set_transient_ext"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_transient_ext",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_transient_ext"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_transient_ext",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_transient_ext"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_transient_ext",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_transient_ext"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "wp_using_ext_object_cache",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "ext",
+            "value",
+            60
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "ext"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "ext",
+            "transient"
+          ]
+        },
+        {
+          "call": "delete_transient",
+          "args": [
+            "ext"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "ext"
+          ]
+        },
+        {
+          "call": "delete_transient",
+          "args": [
+            "ext"
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "sext",
+            "value",
+            60
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "sext"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "sext",
+            "site-transient"
+          ]
+        },
+        {
+          "call": "delete_site_transient",
+          "args": [
+            "sext"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transient_installing",
+      "steps": [
+        {
+          "call": "wp_installing",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "inst",
+            "value",
+            60
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "inst"
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "sinst",
+            "value",
+            60
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "sinst"
+          ]
+        },
+        {
+          "call": "delete_transient",
+          "args": [
+            "inst"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "inst"
+          ]
+        },
+        {
+          "call": "delete_site_transient",
+          "args": [
+            "sinst"
+          ]
+        },
+        {
+          "call": "wp_installing",
+          "args": [
+            false
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "inst"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transient_hooks_order",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_transient_ord",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_transient_ord"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "transient_ord",
+            {
+              "callback": "return_arg",
+              "label": "rec:transient_ord"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_set_transient_ord",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_set_transient_ord"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_transient_ord",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_transient_ord"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_transient_ord",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_transient_ord"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_transient_ord",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_transient_ord"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "setted_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:setted_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deprecated_hook_run",
+            {
+              "callback": "return_arg",
+              "label": "rec:deprecated_hook_run"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "ord",
+            "v1",
+            60
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "ord",
+            "v2",
+            120
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "ord"
+          ]
+        },
+        {
+          "call": "delete_transient",
+          "args": [
+            "ord"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transient_filters_change_values",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_set_transient_fil",
+            {
+              "callback": "append",
+              "label": "suffix",
+              "with": {
+                "suffix": "-filtered"
+              }
+            },
+            10,
+            3
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_transient_fil",
+            {
+              "callback": "return_arg",
+              "label": "exp:value",
+              "with": {
+                "index": 0
+              }
+            },
+            10,
+            3
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "fil",
+            "v",
+            60
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "fil"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_transient_fil",
+            {
+              "callback": "append",
+              "label": "short",
+              "with": {
+                "suffix": "short"
+              }
+            },
+            10,
+            2
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "fil"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transient_long_name_fails",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_transient_llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_transient_llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "transient_llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll",
+            {
+              "callback": "return_arg",
+              "label": "rec:transient_llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_set_transient_llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_set_transient_llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_transient_llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_transient_llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_transient_llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_transient_llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_transient_llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_transient_llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_transient_mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_transient_mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "transient_mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+            {
+              "callback": "return_arg",
+              "label": "rec:transient_mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_set_transient_mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_set_transient_mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_transient_mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_transient_mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_transient_mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_transient_mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_transient_mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_transient_mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll",
+            "value",
+            60
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll"
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll",
+            "value"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll"
+          ]
+        },
+        {
+          "call": "delete_transient",
+          "args": [
+            "llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll"
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+            "value"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transient_odd_expirations",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_transient_o1",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_transient_o1"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_transient_o2",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_transient_o2"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_transient_o3",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_transient_o3"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_transient_o4",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_transient_o4"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_transient_o5",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_transient_o5"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "o1",
+            "v",
+            "60"
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "o2",
+            "v",
+            "abc"
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "o3",
+            "v",
+            -10
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "o4",
+            "v",
+            {
+              "float": 60.9
+            }
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "o5",
+            "v",
+            "1e3"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "o1"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "o2"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "o3"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "o4"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "o5"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "site_transient_single_site",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_site_transient_sst",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_site_transient_sst"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "site_transient_sst",
+            {
+              "callback": "return_arg",
+              "label": "rec:site_transient_sst"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_set_site_transient_sst",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_set_site_transient_sst"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_site_transient_sst",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_site_transient_sst"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_site_transient_sst",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_site_transient_sst"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_site_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_site_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_site_transient_sst",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_site_transient_sst"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_site_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_site_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "sst"
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "sst",
+            "value",
+            60
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "sst"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_timeout",
+          "args": [
+            "_site_transient_timeout_sst",
+            true
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "sst",
+            "value2"
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "sst"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_site_option",
+            "_site_transient_timeout_sst",
+            10
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "sst"
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "forever",
+            [
+              "a"
+            ]
+          ]
+        },
+        {
+          "call": "wp_load_alloptions",
+          "args": []
+        },
+        {
+          "call": "delete_site_transient",
+          "args": [
+            "forever"
+          ]
+        },
+        {
+          "call": "delete_site_transient",
+          "args": [
+            "forever"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "site_transient_core_no_timeout",
+      "steps": [
+        {
+          "call": "set_site_transient",
+          "args": [
+            "update_core",
+            "core",
+            60
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "update_plugins",
+            "plugins",
+            60
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "update_other",
+            "other",
+            60
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_site_option",
+            "_site_transient_timeout_update_core",
+            10
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_site_option",
+            "_site_transient_timeout_update_plugins",
+            10
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_site_option",
+            "_site_transient_timeout_update_other",
+            10
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "update_core"
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "update_plugins"
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "update_other"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "site_option_fallback",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_site_option_sof",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_site_option_sof"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "default_site_option_sof",
+            {
+              "callback": "return_arg",
+              "label": "rec:default_site_option_sof"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "site_option_sof",
+            {
+              "callback": "return_arg",
+              "label": "rec:site_option_sof"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_add_site_option_sof",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_add_site_option_sof"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_site_option_sof",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_site_option_sof"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_update_site_option_sof",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_update_site_option_sof"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_site_option_sof",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_site_option_sof"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_delete_site_option_sof",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_delete_site_option_sof"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_site_option_sof",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_site_option_sof"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_site_option",
+          "args": [
+            "sof"
+          ]
+        },
+        {
+          "call": "get_site_option",
+          "args": [
+            "sof",
+            "default"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "default_site_option_sof",
+            "speedyspec_compat_default_fallback"
+          ]
+        },
+        {
+          "call": "get_site_option",
+          "args": [
+            "sof"
+          ]
+        },
+        {
+          "call": "get_site_option",
+          "args": [
+            "sof",
+            "given"
+          ]
+        },
+        {
+          "call": "add_site_option",
+          "args": [
+            "sof",
+            "value"
+          ]
+        },
+        {
+          "call": "get_site_option",
+          "args": [
+            "sof",
+            "given"
+          ]
+        },
+        {
+          "call": "add_site_option",
+          "args": [
+            "sof",
+            "again"
+          ]
+        },
+        {
+          "call": "update_site_option",
+          "args": [
+            "sof",
+            "value"
+          ]
+        },
+        {
+          "call": "update_site_option",
+          "args": [
+            "sof",
+            "new"
+          ]
+        },
+        {
+          "call": "update_site_option",
+          "args": [
+            "sof",
+            false
+          ]
+        },
+        {
+          "call": "get_site_option",
+          "args": [
+            "sof"
+          ]
+        },
+        {
+          "call": "delete_site_option",
+          "args": [
+            "sof"
+          ]
+        },
+        {
+          "call": "delete_site_option",
+          "args": [
+            "sof"
+          ]
+        },
+        {
+          "call": "update_site_option",
+          "args": [
+            "fresh",
+            ""
+          ]
+        },
+        {
+          "call": "get_site_option",
+          "args": [
+            "fresh",
+            "d"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "network_option_bad_network_id",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_site_option_bad",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_site_option_bad"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "default_site_option_bad",
+            {
+              "callback": "return_arg",
+              "label": "rec:default_site_option_bad"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "site_option_bad",
+            {
+              "callback": "return_arg",
+              "label": "rec:site_option_bad"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_add_site_option_bad",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_add_site_option_bad"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_site_option_bad",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_site_option_bad"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_update_site_option_bad",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_update_site_option_bad"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_site_option_bad",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_site_option_bad"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_delete_site_option_bad",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_delete_site_option_bad"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_site_option_bad",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_site_option_bad"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            "abc",
+            "bad"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            [
+              1
+            ],
+            "bad",
+            "d"
+          ]
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            "abc",
+            "bad",
+            "v"
+          ]
+        },
+        {
+          "call": "update_network_option",
+          "args": [
+            "abc",
+            "bad",
+            "v"
+          ]
+        },
+        {
+          "call": "delete_network_option",
+          "args": [
+            "abc",
+            "bad"
+          ]
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            "1abc",
+            "bad",
+            "v"
+          ]
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            0,
+            "bad",
+            "zero"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            null,
+            "bad"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            "1",
+            "bad"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            {
+              "float": 1.0
+            },
+            "bad"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            true,
+            "bad"
+          ]
+        },
+        {
+          "call": "delete_network_option",
+          "args": [
+            null,
+            "bad"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "network_option_update_same_object",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "array": [
+                [
+                  "a",
+                  1
+                ],
+                [
+                  "b",
+                  [
+                    1,
+                    2
+                  ]
+                ]
+              ]
+            }
+          ],
+          "as": "first"
+        },
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "array": [
+                [
+                  "a",
+                  1
+                ],
+                [
+                  "b",
+                  [
+                    1,
+                    2
+                  ]
+                ]
+              ]
+            }
+          ],
+          "as": "second"
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            null,
+            "obj",
+            {
+              "var": "first"
+            }
+          ]
+        },
+        {
+          "call": "update_network_option",
+          "args": [
+            null,
+            "obj",
+            {
+              "var": "second"
+            }
+          ]
+        },
+        {
+          "call": "update_network_option",
+          "args": [
+            null,
+            "obj",
+            {
+              "array": [
+                [
+                  "o",
+                  {
+                    "var": "second"
+                  }
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "update_network_option",
+          "args": [
+            null,
+            "obj",
+            {
+              "array": [
+                [
+                  "o",
+                  {
+                    "var": "first"
+                  }
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            null,
+            "obj"
+          ],
+          "as": "got"
+        },
+        {
+          "call": "delete_network_option",
+          "args": [
+            null,
+            "obj"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete_expired_transients_single",
+      "steps": [
+        {
+          "call": "set_transient",
+          "args": [
+            "fresh",
+            "v",
+            3600
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "old",
+            "v",
+            60
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "forever",
+            "v"
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "sfresh",
+            "v",
+            3600
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "sold",
+            "v",
+            60
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_option",
+            "_transient_timeout_old",
+            10
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_option",
+            "_site_transient_timeout_sold",
+            10
+          ]
+        },
+        {
+          "call": "wp_using_ext_object_cache",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "delete_expired_transients",
+          "args": []
+        },
+        {
+          "call": "wp_using_ext_object_cache",
+          "args": [
+            false
+          ]
+        },
+        {
+          "call": "delete_expired_transients",
+          "args": []
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "old2",
+            "v",
+            60
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_option",
+            "_transient_timeout_old2",
+            10
+          ]
+        },
+        {
+          "call": "wp_using_ext_object_cache",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "delete_expired_transients",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "wp_using_ext_object_cache",
+          "args": [
+            false
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "old"
+          ]
+        },
+        {
+          "call": "get_transient",
+          "args": [
+            "fresh"
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "sold"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "register_setting_defaults",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "register_setting_args",
+            {
+              "callback": "return_arg",
+              "label": "rec:register_setting_args"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "register_setting",
+            {
+              "callback": "return_arg",
+              "label": "rec:register_setting"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "register_setting",
+          "args": [
+            "group",
+            "reg_name",
+            {
+              "array": [
+                [
+                  "type",
+                  "string"
+                ],
+                [
+                  "description",
+                  "A name"
+                ],
+                [
+                  "default",
+                  "x"
+                ],
+                [
+                  "show_in_rest",
+                  true
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "global:read",
+          "args": [
+            "wp_registered_settings",
+            "reg_name"
+          ]
+        },
+        {
+          "call": "global:read",
+          "args": [
+            "new_allowed_options",
+            "group"
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "reg_name"
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "reg_name",
+            "passed"
+          ]
+        },
+        {
+          "call": "register_setting",
+          "args": [
+            "group",
+            "reg_plain"
+          ]
+        },
+        {
+          "call": "register_setting",
+          "args": [
+            "group",
+            "reg_query",
+            "type=integer&default=3"
+          ]
+        },
+        {
+          "call": "get_registered_settings",
+          "args": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "reg_query"
+          ]
+        },
+        {
+          "call": "register_setting",
+          "args": [
+            "other",
+            "reg_name",
+            {
+              "array": [
+                [
+                  "default",
+                  "y"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "reg_name"
+          ]
+        },
+        {
+          "call": "global:read",
+          "args": [
+            "new_allowed_options"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "register_setting_callable",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "sanitize_option_reg_cb",
+            {
+              "callback": "return_arg",
+              "label": "rec:sanitize_option_reg_cb"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "sanitize_option_reg_named",
+            {
+              "callback": "return_arg",
+              "label": "rec:sanitize_option_reg_named"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "register_setting",
+          "args": [
+            "group",
+            "reg_cb",
+            {
+              "callback": "append",
+              "label": "sanitizer",
+              "with": {
+                "suffix": "!"
+              }
+            }
+          ]
+        },
+        {
+          "call": "global:read",
+          "args": [
+            "wp_registered_settings",
+            "reg_cb"
+          ]
+        },
+        {
+          "call": "update_option",
+          "args": [
+            "reg_cb",
+            "value"
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "reg_cb"
+          ]
+        },
+        {
+          "call": "register_setting",
+          "args": [
+            "group",
+            "reg_named",
+            {
+              "array": [
+                [
+                  "sanitize_callback",
+                  "speedyspec_compat_upper"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "update_option",
+          "args": [
+            "reg_named",
+            "value"
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "reg_named"
+          ]
+        },
+        {
+          "call": "unregister_setting",
+          "args": [
+            "group",
+            "reg_named"
+          ]
+        },
+        {
+          "call": "update_option",
+          "args": [
+            "reg_named",
+            "lower"
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "reg_named"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "register_setting_deprecated_groups",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "deprecated_argument_run",
+            {
+              "callback": "return_arg",
+              "label": "rec:deprecated_argument_run"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "register_setting",
+          "args": [
+            "misc",
+            "dep_misc"
+          ]
+        },
+        {
+          "call": "register_setting",
+          "args": [
+            "privacy",
+            "dep_privacy"
+          ]
+        },
+        {
+          "call": "global:read",
+          "args": [
+            "new_allowed_options"
+          ]
+        },
+        {
+          "call": "global:read",
+          "args": [
+            "wp_registered_settings",
+            "dep_misc"
+          ]
+        },
+        {
+          "call": "unregister_setting",
+          "args": [
+            "misc",
+            "dep_misc"
+          ]
+        },
+        {
+          "call": "unregister_setting",
+          "args": [
+            "privacy",
+            "dep_privacy"
+          ]
+        },
+        {
+          "call": "global:read",
+          "args": [
+            "new_allowed_options"
+          ]
+        },
+        {
+          "call": "register_setting",
+          "args": [
+            "group",
+            "dep_cb",
+            {
+              "array": [
+                [
+                  "sanitize_callback",
+                  "speedyspec_compat_upper"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "unregister_setting",
+          "args": [
+            "group",
+            "dep_cb",
+            "speedyspec_compat_upper"
+          ]
+        },
+        {
+          "call": "has_filter",
+          "args": [
+            "sanitize_option_dep_cb",
+            "speedyspec_compat_upper"
+          ]
+        },
+        {
+          "call": "global:isset",
+          "args": [
+            "wp_registered_settings",
+            "dep_cb"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "unregister_setting_removes_default",
+      "steps": [
+        {
+          "call": "register_setting",
+          "args": [
+            "group",
+            "unreg",
+            {
+              "array": [
+                [
+                  "default",
+                  "registered"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "unreg"
+          ]
+        },
+        {
+          "call": "has_filter",
+          "args": [
+            "default_option_unreg",
+            "filter_default_option"
+          ]
+        },
+        {
+          "call": "unregister_setting",
+          "args": [
+            "group",
+            "unreg"
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "unreg"
+          ]
+        },
+        {
+          "call": "has_filter",
+          "args": [
+            "default_option_unreg",
+            "filter_default_option"
+          ]
+        },
+        {
+          "call": "unregister_setting",
+          "args": [
+            "group",
+            "never"
+          ]
+        },
+        {
+          "call": "unregister_setting",
+          "args": [
+            "nogroup",
+            "unreg"
+          ]
+        },
+        {
+          "call": "global:read",
+          "args": [
+            "new_allowed_options"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "filter_default_option_passed",
+      "steps": [
+        {
+          "call": "register_setting",
+          "args": [
+            "group",
+            "fdo",
+            {
+              "array": [
+                [
+                  "default",
+                  "registered"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "filter_default_option",
+          "args": [
+            "fallback",
+            "fdo",
+            true
+          ]
+        },
+        {
+          "call": "filter_default_option",
+          "args": [
+            "fallback",
+            "fdo",
+            false
+          ]
+        },
+        {
+          "call": "filter_default_option",
+          "args": [
+            "fallback",
+            "unregistered",
+            false
+          ]
+        },
+        {
+          "call": "register_setting",
+          "args": [
+            "group",
+            "fdo_none"
+          ]
+        },
+        {
+          "call": "filter_default_option",
+          "args": [
+            "fallback",
+            "fdo_none",
+            false
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "fdo",
+            false
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "fdo"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "network_option_per_network",
+      "multisite": true,
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_site_option_per",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_site_option_per"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "default_site_option_per",
+            {
+              "callback": "return_arg",
+              "label": "rec:default_site_option_per"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "site_option_per",
+            {
+              "callback": "return_arg",
+              "label": "rec:site_option_per"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_add_site_option_per",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_add_site_option_per"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_site_option_per",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_site_option_per"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_update_site_option_per",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_update_site_option_per"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_site_option_per",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_site_option_per"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_delete_site_option_per",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_delete_site_option_per"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_site_option_per",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_site_option_per"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            1,
+            "per",
+            "one"
+          ]
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            2,
+            "per",
+            "two"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            1,
+            "per"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            2,
+            "per"
+          ]
+        },
+        {
+          "call": "get_site_option",
+          "args": [
+            "per"
+          ]
+        },
+        {
+          "call": "update_network_option",
+          "args": [
+            2,
+            "per",
+            "deux"
+          ]
+        },
+        {
+          "call": "delete_network_option",
+          "args": [
+            1,
+            "per"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            1,
+            "per",
+            "gone"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            2,
+            "per"
+          ]
+        },
+        {
+          "call": "add_site_option",
+          "args": [
+            "per",
+            "site"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            3,
+            "per"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "network_option_notoptions",
+      "multisite": true,
+      "steps": [
+        {
+          "call": "get_network_option",
+          "args": [
+            1,
+            "nope"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            1,
+            "nope"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            1,
+            "nope2",
+            "d"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "1:notoptions",
+            "site-options"
+          ]
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            1,
+            "nope",
+            "now"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "1:notoptions",
+            "site-options"
+          ]
+        },
+        {
+          "call": "delete_network_option",
+          "args": [
+            1,
+            "nope"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            1,
+            "nope"
+          ]
+        },
+        {
+          "call": "update_network_option",
+          "args": [
+            1,
+            "nope2",
+            "v"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "1:notoptions",
+            "site-options"
+          ]
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "single_nope"
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            "notoptions",
+            "options"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "network_option_hooks_order",
+      "multisite": true,
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_site_option_hk",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_site_option_hk"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "default_site_option_hk",
+            {
+              "callback": "return_arg",
+              "label": "rec:default_site_option_hk"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "site_option_hk",
+            {
+              "callback": "return_arg",
+              "label": "rec:site_option_hk"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_add_site_option_hk",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_add_site_option_hk"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_site_option_hk",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_site_option_hk"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_update_site_option_hk",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_update_site_option_hk"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_site_option_hk",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_site_option_hk"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_delete_site_option_hk",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_delete_site_option_hk"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_site_option_hk",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_site_option_hk"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_site_option",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_site_option"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            1,
+            "hk"
+          ]
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            1,
+            "hk",
+            "v"
+          ]
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            1,
+            "hk",
+            "v"
+          ]
+        },
+        {
+          "call": "update_network_option",
+          "args": [
+            1,
+            "hk",
+            "v"
+          ]
+        },
+        {
+          "call": "update_network_option",
+          "args": [
+            1,
+            "hk",
+            [
+              "array"
+            ]
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            1,
+            "hk"
+          ]
+        },
+        {
+          "call": "delete_network_option",
+          "args": [
+            1,
+            "hk"
+          ]
+        },
+        {
+          "call": "delete_network_option",
+          "args": [
+            1,
+            "hk"
+          ]
+        },
+        {
+          "call": "update_network_option",
+          "args": [
+            1,
+            "hk",
+            "added"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "site_transient_multisite",
+      "multisite": true,
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_site_transient_mst",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_site_transient_mst"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "site_transient_mst",
+            {
+              "callback": "return_arg",
+              "label": "rec:site_transient_mst"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_set_site_transient_mst",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_set_site_transient_mst"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "expiration_of_site_transient_mst",
+            {
+              "callback": "return_arg",
+              "label": "rec:expiration_of_site_transient_mst"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_site_transient_mst",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_site_transient_mst"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "set_site_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:set_site_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_site_transient_mst",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_site_transient_mst"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_site_transient",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_site_transient"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "mst",
+            "value",
+            60
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "mst"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_timeout",
+          "args": [
+            "_site_transient_timeout_mst",
+            true
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "plain",
+            "value",
+            60
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_site_option",
+            "_site_transient_timeout_mst",
+            10
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "mst"
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "mst",
+            "again"
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "mst"
+          ]
+        },
+        {
+          "call": "delete_site_transient",
+          "args": [
+            "mst"
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "mst"
+          ]
+        },
+        {
+          "call": "wp_using_ext_object_cache",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "mext",
+            "value",
+            60
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "pext",
+            "value",
+            60
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "mext"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete_expired_transients_multisite",
+      "multisite": true,
+      "steps": [
+        {
+          "call": "set_transient",
+          "args": [
+            "old",
+            "v",
+            60
+          ]
+        },
+        {
+          "call": "set_transient",
+          "args": [
+            "fresh",
+            "v",
+            3600
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "sold",
+            "v",
+            60
+          ]
+        },
+        {
+          "call": "set_site_transient",
+          "args": [
+            "sfresh",
+            "v",
+            3600
+          ]
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            2,
+            "_site_transient_other",
+            "v"
+          ]
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            2,
+            "_site_transient_timeout_other",
+            100
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_option",
+            "_transient_timeout_old",
+            10
+          ]
+        },
+        {
+          "call": "speedyspec_compat_expire",
+          "args": [
+            "update_site_option",
+            "_site_transient_timeout_sold",
+            10
+          ]
+        },
+        {
+          "call": "delete_expired_transients",
+          "args": []
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "sold"
+          ]
+        },
+        {
+          "call": "get_site_transient",
+          "args": [
+            "sfresh"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prime_network_option_caches",
+      "multisite": true,
+      "steps": [
+        {
+          "call": "add_network_option",
+          "args": [
+            1,
+            "pa",
+            "a"
+          ]
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            1,
+            "pb",
+            [
+              "b"
+            ]
+          ]
+        },
+        {
+          "call": "add_network_option",
+          "args": [
+            2,
+            "pa",
+            "other"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "wp_prime_network_option_caches",
+          "args": [
+            1,
+            [
+              "pa",
+              "pb",
+              "pmissing"
+            ]
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            1,
+            "pa"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            1,
+            "pb"
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            1,
+            "pmissing"
+          ]
+        },
+        {
+          "call": "wp_prime_network_option_caches",
+          "args": [
+            1,
+            [
+              "pa",
+              "pb"
+            ]
+          ]
+        },
+        {
+          "call": "wp_prime_network_option_caches",
+          "args": [
+            2,
+            [
+              "pa"
+            ]
+          ]
+        },
+        {
+          "call": "get_network_option",
+          "args": [
+            2,
+            "pa"
+          ]
+        },
+        {
+          "call": "wp_prime_site_option_caches",
+          "args": [
+            [
+              "pa",
+              "pc"
+            ]
+          ]
+        },
+        {
+          "call": "wp_prime_network_option_caches",
+          "args": [
+            "abc",
+            [
+              "pa"
+            ]
+          ]
+        }
+      ]
     }
   ]
 }

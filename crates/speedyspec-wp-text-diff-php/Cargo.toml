@@ -1,0 +1,24 @@
+[package]
+name = "speedyspec-wp-text-diff-php"
+version = "0.1.1"
+description = "WordPress's wp_text_diff() as a native PHP function over the Rust text diff."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-text-diff = { path = "../speedyspec-wp-text-diff" }
+speedyspec-wp-text-diff-contracts = { path = "../speedyspec-wp-text-diff-contracts" }
+
+[dev-dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+
+[[test]]
+name = "php"
+harness = false

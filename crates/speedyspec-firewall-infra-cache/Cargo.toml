@@ -1,0 +1,21 @@
+[package]
+name = "speedyspec-firewall-infra-cache"
+version = "0.1.0"
+description = "The firewall's counters and bans on the Caching Store: memory, database, Valkey, ReDB or file."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-firewall = { path = "../speedyspec-firewall" }
+
+[dev-dependencies]
+speedyspec-cache-file = { path = "../speedyspec-cache-file" }
+speedyspec-cache-kv = { path = "../speedyspec-cache-kv" }
+speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
+speedyspec-data-memory = { path = "../speedyspec-data-memory" }
+speedyspec-data-valkey = { path = "../speedyspec-data-valkey" }
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-file = { path = "../speedyspec-data-file" }
+tempfile = "3"

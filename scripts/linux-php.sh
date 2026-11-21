@@ -17,8 +17,8 @@ if [ "$#" -eq 0 ]; then
 fi
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# The host's own architecture by default: under emulation (linux/amd64 on an arm64 Mac) the static ICU crashes as
-# soon as intl is used, so a native container is the only one whose results mean anything.
+# The host's own architecture by default: a native container is the fastest. linux/amd64 also runs on an arm64 Mac
+# under emulation.
 case "$(uname -m)" in
     arm64|aarch64) native="linux/arm64" ;;
     *)             native="linux/amd64" ;;
@@ -51,7 +51,7 @@ docker build --quiet --platform "$platform" --tag "$image" - >/dev/null <<'EOF'
 FROM rust:1.99-alpine
 RUN apk add --no-cache \
     autoconf automake bash binutils bison build-base bzip2 ca-certificates \
-    clang-dev cmake curl file flex g++ gettext-dev git gzip libtool \
+    clang-dev cmake curl file flex g++ gettext-dev git gzip jq libtool \
     linux-headers m4 make patch perl pkgconf re2c tar unzip wget xz \
     && rustup component add rustfmt
 RUN printf '%s\n' \

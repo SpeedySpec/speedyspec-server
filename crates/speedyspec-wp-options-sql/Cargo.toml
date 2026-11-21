@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-options-sql"
-version = "0.1.0"
+version = "0.1.1"
 description = "The option repository over wp_options, through the wpdb port (so the query filter fires and counts)."
 edition.workspace = true
 rust-version.workspace = true
@@ -13,7 +13,18 @@ speedyspec-wp-db = { path = "../speedyspec-wp-db" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 
 [dev-dependencies]
+speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache-file = { path = "../speedyspec-cache-file" }
+speedyspec-cache-kv = { path = "../speedyspec-cache-kv" }
+speedyspec-cache-sql = { path = "../speedyspec-cache-sql" }
+speedyspec-data-file = { path = "../speedyspec-data-file" }
+speedyspec-data-valkey = { path = "../speedyspec-data-valkey" }
+tempfile = "3"
 speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
+speedyspec-data-postgres = { path = "../speedyspec-data-postgres" }
+speedyspec-data-sqlite = { path = "../speedyspec-data-sqlite" }
+postgres = "0.19"
 speedyspec-hooks = { path = "../speedyspec-hooks" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }

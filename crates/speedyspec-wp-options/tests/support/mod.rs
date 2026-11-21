@@ -33,6 +33,18 @@ impl Deprecations for RecordedDeprecations {
             .push((function.into(), version.into(), message.into()));
         Ok(())
     }
+
+    fn doing_it_wrong(
+        &self,
+        function: &str,
+        message: &str,
+        version: &str,
+    ) -> Result<(), OptionsError> {
+        self.0
+            .borrow_mut()
+            .push((function.into(), version.into(), message.into()));
+        Ok(())
+    }
 }
 
 pub struct Fixture {

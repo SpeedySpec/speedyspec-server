@@ -23,9 +23,13 @@ fn immutable_config(dir: &Path, extra: &str) -> PathBuf {
 }
 
 fn status(config: &Path) -> String {
+    try_status(config).unwrap_or_else(|stderr| panic!("{stderr}"))
+}
+
+/// `status`'s output, or its error while the keeper is not answering yet.
+fn try_status(config: &Path) -> Result<String, String> {
     let (code, stdout, stderr) = command(&["status", "--config", config.to_str().unwrap()]);
-    assert_eq!(code, 0, "{stderr}");
-    stdout
+    if code == 0 { Ok(stdout) } else { Err(stderr) }
 }
 
 /// The PID on the `generation` line of `status`.
@@ -403,9 +407,11 @@ fn newer_running_binary_is_adopted_at_start() {
         "the newer binary was not adopted; log: {:?}",
         second.log()
     );
+    // The state file is written before the keeper serves keeper.sock, so `status` may not answer at once.
     assert!(
-        status(&config).contains("\t0.3.0\tconfirmed"),
-        "{}",
-        status(&config)
+        wait_for(Duration::from_secs(10), || try_status(&config)
+            .is_ok_and(|out| out.contains("\t0.3.0\tconfirmed"))),
+        "{:?}",
+        try_status(&config)
     );
 }

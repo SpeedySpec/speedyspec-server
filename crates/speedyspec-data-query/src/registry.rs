@@ -77,6 +77,11 @@ impl EngineRegistry {
             .unwrap_or_else(|| "default".into())
     }
 
+    /// The engine a use is explicitly routed to; `None` when it only falls back to `default`.
+    pub fn routed(&self, use_name: &str) -> Option<String> {
+        self.routes.borrow().get(use_name).cloned()
+    }
+
     pub fn sql(&self, use_name: &str) -> Result<Rc<dyn SqlStore>, DbError> {
         let engine = self.engine_for(use_name);
         self.handle(&engine)?

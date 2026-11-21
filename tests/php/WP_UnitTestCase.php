@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 
+require_once __DIR__ . '/includes/factory.php';
+
 /**
  * Raised in place of a PHP deprecation while a test expects one.
  */
@@ -59,12 +61,37 @@ abstract class WP_UnitTestCase extends TestCase
         $this->assert_post_conditions();
     }
 
-    public static function set_up_before_class()
+    /** @var WP_UnitTest_Factory|null */
+    private static $speedyspec_factory = null;
+
+    /**
+     * The test factory (networks only; see includes/factory.php).
+     */
+    protected static function factory()
     {
+        return self::$speedyspec_factory ??= new WP_UnitTest_Factory();
     }
 
+    /**
+     * Runs the test class's `wpSetUpBeforeClass( $factory )`, as WordPress's test case does.
+     */
+    public static function set_up_before_class()
+    {
+        if (method_exists(static::class, 'wpSetUpBeforeClass'))
+        {
+            call_user_func(array(static::class, 'wpSetUpBeforeClass'), static::factory());
+        }
+    }
+
+    /**
+     * Runs the test class's `wpTearDownAfterClass()`, as WordPress's test case does.
+     */
     public static function tear_down_after_class()
     {
+        if (method_exists(static::class, 'wpTearDownAfterClass'))
+        {
+            call_user_func(array(static::class, 'wpTearDownAfterClass'));
+        }
     }
 
     public function set_up()

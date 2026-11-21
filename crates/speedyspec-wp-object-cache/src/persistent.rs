@@ -5,7 +5,7 @@
 use std::rc::Rc;
 use std::time::Duration;
 
-use speedyspec_cache::CachingStore;
+use speedyspec_cache::{CacheError, CachingStore};
 use speedyspec_hooks::{Key, Value};
 
 use crate::keys::{array_key, key_text};
@@ -16,10 +16,14 @@ fn expiry(expire: i64) -> Option<Duration> {
 }
 
 impl ObjectCache {
+    /// The second level, unless it already failed in this request.
+    fn reachable(&self) -> Option<&Rc<dyn CachingStore>> {
+        self.persistent.as_ref().filter(|_| !self.second_down.get())
+    }
+
     /// The second level for this group, if it has one.
     fn second(&self, group: &Key) -> Option<&Rc<dyn CachingStore>> {
-        self.persistent
-            .as_ref()
+        self.reachable()
             .filter(|_| !self.non_persistent.borrow().contains(group))
     }
 
@@ -33,6 +37,14 @@ impl ObjectCache {
             .persistence_miss(&key_text(group), &key_text(id), why);
     }
 
+    /// The second level failed: a miss (or a first-level-only write), logged once, and the rest of the request skips
+    /// the second level, as a persistent drop-in's fail-graceful mode does.
+    fn failed(&self, group: &Key, id: &Key, e: &CacheError) {
+        if !self.second_down.replace(true) {
+            self.miss(group, id, &e.to_string());
+        }
+    }
+
     /// Writes the first level, and the second when there is one; a value the codec refuses stays first-level.
     pub(crate) fn write(&self, id: Key, group: Key, data: Value, expire: i64, _overwrite: bool) {
         if let Some(store) = self.second(&group) {
@@ -41,7 +53,7 @@ impl ObjectCache {
                     if let Err(e) =
                         store.set(&key_text(&group), &key_text(&id), &bytes, expiry(expire))
                     {
-                        self.miss(&group, &id, &e.to_string());
+                        self.failed(&group, &id, &e);
                         self.forget_second(&id, &group);
                     }
                 }
@@ -69,7 +81,7 @@ impl ObjectCache {
         match store.add(&key_text(g), &key_text(id), &bytes, expiry(expire)) {
             Ok(added) => Some(added),
             Err(e) => {
-                self.miss(g, id, &e.to_string());
+                self.failed(g, id, &e);
                 None
             }
         }
@@ -82,7 +94,7 @@ impl ObjectCache {
         match store.get(&key_text(g), &key_text(id)) {
             Ok(found) => found.is_some(),
             Err(e) => {
-                self.miss(g, id, &e.to_string());
+                self.failed(g, id, &e);
                 false
             }
         }
@@ -98,7 +110,7 @@ impl ObjectCache {
             }
             Ok(None) => None,
             Err(e) => {
-                self.miss(g, id, &e.to_string());
+                self.failed(g, id, &e);
                 None
             }
         }
@@ -109,7 +121,7 @@ impl ObjectCache {
         if let Some(store) = self.second(g)
             && let Err(e) = store.delete(&key_text(g), &key_text(id))
         {
-            self.miss(g, id, &e.to_string());
+            self.failed(g, id, &e);
         }
     }
 
@@ -120,16 +132,17 @@ impl ObjectCache {
         store
             .delete(&key_text(g), &key_text(id))
             .unwrap_or_else(|e| {
-                self.miss(g, id, &e.to_string());
+                self.failed(g, id, &e);
                 false
             })
     }
 
     pub(crate) fn second_flush(&self) {
-        if let Some(store) = &self.persistent
+        if let Some(store) = self.reachable()
             && let Err(e) = store.flush()
         {
-            self.ports.notices.persistence_miss("", "", &e.to_string());
+            let none = Key::Str(String::new());
+            self.failed(&none, &none, &e);
         }
     }
 
@@ -137,7 +150,7 @@ impl ObjectCache {
         if let Some(store) = self.second(g)
             && let Err(e) = store.flush_group(&key_text(g))
         {
-            self.miss(g, &Key::Str(String::new()), &e.to_string());
+            self.failed(g, &Key::Str(String::new()), &e);
         }
     }
 
@@ -175,7 +188,7 @@ impl ObjectCache {
                     }
                 }
             }
-            Err(e) => self.miss(&g, &Key::Str(String::new()), &e.to_string()),
+            Err(e) => self.failed(&g, &Key::Str(String::new()), &e),
         }
         Ok(())
     }

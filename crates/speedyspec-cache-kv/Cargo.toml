@@ -1,0 +1,19 @@
+[package]
+name = "speedyspec-cache-kv"
+version = "0.1.0"
+description = "A Caching Store over any NoSQL store: group generation counters, so flush_group needs no prefix delete."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-counter = { path = "../speedyspec-data-counter" }
+
+[dev-dependencies]
+speedyspec-cache-conformance = { path = "../speedyspec-cache-conformance" }
+speedyspec-data-memory = { path = "../speedyspec-data-memory" }
+speedyspec-data-redb = { path = "../speedyspec-data-redb" }
+speedyspec-data-valkey = { path = "../speedyspec-data-valkey" }
+tempfile = "3"

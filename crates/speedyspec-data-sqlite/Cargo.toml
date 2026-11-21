@@ -1,0 +1,25 @@
+[package]
+name = "speedyspec-data-sqlite"
+version = "0.1.2"
+description = "The SQLite engine: MySQL statements translated for SQLite, with MySQL's results, collation and functions."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono = { version = "0.4.45", default-features = false, features = ["std", "clock"] }
+md-5 = "0.11.0"
+regex = "1.13.2"
+rusqlite = { version = "0.43.0", features = ["bundled", "functions", "collation", "column_metadata"] }
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+speedyspec-data-translate = { path = "../speedyspec-data-translate" }
+sqlparser = { version = "0.64", features = ["visitor"] }
+unicode-normalization = "0.1.26"
+uuid = { version = "1.29.3", features = ["v4"] }
+
+[dev-dependencies]
+speedyspec-data-corpus = { path = "../speedyspec-data-corpus" }
+speedyspec-data-conformance = { path = "../speedyspec-data-conformance" }
+tempfile = "3"
+speedyspec-data-translate = { path = "../speedyspec-data-translate", features = ["testing"] }

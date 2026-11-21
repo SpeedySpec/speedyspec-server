@@ -60,6 +60,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "alloca"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5a7d05ea6aea7e9e64d25b9156ba2fee3fdd659e34e41063cd2fc7cd020d7f4"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -219,6 +228,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.10",
+]
+
+[[package]]
+name = "atomic-polyfill"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cf2bce30dfe09ef0bfaef228b9d414faaf7e563035494d7fe092dba54b300f4"
+dependencies = [
+ "critical-section",
 ]
 
 [[package]]
@@ -757,6 +775,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
 
 [[package]]
+name = "cobs"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fa961b519f0b462e3a3b4a34b64d119eeaca1d59af726fe450bbba07a9fc0a1"
+dependencies = [
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -892,15 +919,40 @@ dependencies = [
  "cast",
  "ciborium",
  "clap",
- "criterion-plot",
+ "criterion-plot 0.5.0",
  "is-terminal",
  "itertools 0.10.5",
  "num-traits",
  "once_cell",
  "oorandom",
+ "plotters",
+ "rayon",
  "regex",
  "serde",
  "serde_derive",
+ "serde_json",
+ "tinytemplate",
+ "walkdir",
+]
+
+[[package]]
+name = "criterion"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "950046b2aa2492f9a536f5f4f9a3de7b9e2476e575e05bd6c333371add4d98f3"
+dependencies = [
+ "alloca",
+ "anes",
+ "cast",
+ "ciborium",
+ "clap",
+ "criterion-plot 0.8.2",
+ "itertools 0.13.0",
+ "num-traits",
+ "oorandom",
+ "page_size",
+ "regex",
+ "serde",
  "serde_json",
  "tinytemplate",
  "walkdir",
@@ -917,6 +969,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "criterion-plot"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8d80a2f4f5b554395e47b5d8305bc3d27813bacb73493eb1001e8f76dae29ea"
+dependencies = [
+ "cast",
+ "itertools 0.13.0",
+]
+
+[[package]]
 name = "critical-section"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -928,6 +990,16 @@ version = "0.5.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98b0cc327b5bc766e7fda9c9260cc0fa81b43a8e240440422dff70788e3f9ef1"
 dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-deque"
+version = "0.8.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "622f3fc73690be383c7214310406f28a90e6edeadc3cea882f9d71e495b9711a"
+dependencies = [
+ "crossbeam-epoch",
  "crossbeam-utils",
 ]
 
@@ -1219,6 +1291,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "embedded-io"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef1a6892d9eef45c8fa6b9e0086428a2cca8491aca8f787c534a3d6d0bcb3ced"
+
+[[package]]
+name = "embedded-io"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
+
+[[package]]
 name = "encoding_rs"
 version = "0.8.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1331,6 +1415,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "efa29f09b08e644d5dc1e76a318f758afc9dccbe92ccf84b4778e0433a78eecc"
 
 [[package]]
+name = "fallible-iterator"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
+
+[[package]]
+name = "fallible-iterator"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
+
+[[package]]
+name = "fallible-streaming-iterator"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
+
+[[package]]
 name = "fancy-regex"
 version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1389,6 +1491,12 @@ name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+
+[[package]]
+name = "foldhash"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
 name = "foreign-types"
@@ -1527,7 +1635,7 @@ dependencies = [
  "cfg-if",
  "js-sys",
  "libc",
- "wasi",
+ "wasi 0.11.1+wasi-snapshot-preview1",
  "wasm-bindgen",
 ]
 
@@ -1668,10 +1776,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "hash32"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0c35f58762feb77d74ebe43bdbc3210f09be9fe6742234d573bacc26ed92b67"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
+dependencies = [
+ "foldhash",
+]
+
+[[package]]
+name = "hashlink"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a596f1b20ed2cc5ecac41a164aaebc7258057060f06c0cf7a2ba3991ee7990fb"
+dependencies = [
+ "hashbrown",
+]
 
 [[package]]
 name = "headers"
@@ -1695,6 +1824,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54b4a22553d4242c49fddb9ba998a99962b5cc6f22cb5a3482bec22522403ce4"
 dependencies = [
  "http",
+]
+
+[[package]]
+name = "heapless"
+version = "0.7.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdc6457c0eb62c71aac4bc17216026d8410337c4126773b9c5daba343f17964f"
+dependencies = [
+ "atomic-polyfill",
+ "hash32",
+ "rustc_version",
+ "serde",
+ "spin",
+ "stable_deref_trait",
 ]
 
 [[package]]
@@ -2166,6 +2309,15 @@ dependencies = [
 
 [[package]]
 name = "itertools"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
@@ -2412,6 +2564,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
+name = "libredox"
+version = "0.1.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61ff90caf6077a803a240f62fdbe88645a890bbca49ef8174c3cb0404362171d"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "libsqlite3-sys"
+version = "0.40.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b06e69070b7e12262b0cd90832f0a7396f142a2b330181255562decf9f0c6215"
+dependencies = [
+ "cc",
+ "pkg-config",
+ "vcpkg",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2466,6 +2638,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef1d73c59a56771343712b22ea5615092c612c16ba291c0979e3105dfeec4890"
 dependencies = [
  "sha2 0.11.1",
+]
+
+[[package]]
+name = "md-5"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69b6441f590336821bb897fb28fc622898ccceb1d6cea3fde5ea86b090c4de98"
+dependencies = [
+ "cfg-if",
+ "digest 0.11.3",
 ]
 
 [[package]]
@@ -2541,7 +2723,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20521a903f02b0a573cd6840e9d0a5a0cc043d361fe924092cd70f8556cc9c4a"
 dependencies = [
  "libc",
- "wasi",
+ "wasi 0.11.1+wasi-snapshot-preview1",
  "windows-sys 0.61.2",
 ]
 
@@ -2773,6 +2955,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "objc2-core-foundation"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a180dd8642fa45cdb7dd721cd4c11b1cadd4929ce112ebd8b9f5803cc79d536"
+dependencies = [
+ "bitflags",
+]
+
+[[package]]
+name = "objc2-system-configuration"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7216bd11cbda54ccabcab84d523dc93b858ec75ecfb3a7d89513fa22464da396"
+dependencies = [
+ "objc2-core-foundation",
+]
+
+[[package]]
 name = "object"
 version = "0.39.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2876,6 +3076,16 @@ dependencies = [
  "primefield",
  "primeorder",
  "sha2 0.11.1",
+]
+
+[[package]]
+name = "page_size"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30d5b2194ed13191c1999ae0704b7839fb18384fa22e49b57eeaa97d79ce40da"
+dependencies = [
+ "libc",
+ "winapi",
 ]
 
 [[package]]
@@ -3031,6 +3241,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "phf"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1562dc717473dbaa4c1f85a36410e03c047b2e7df7f45ee938fbef64ae7fadf"
+dependencies = [
+ "phf_shared",
+ "serde",
+]
+
+[[package]]
+name = "phf_shared"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e57fef6bc5981e38c2ce2d63bfa546861309f875b8a75f092d1d54ae2d64f266"
+dependencies = [
+ "siphasher",
+]
+
+[[package]]
 name = "pin-project"
 version = "1.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3094,6 +3323,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
+name = "plotters"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5aeb6f403d7a4911efb1e33402027fc44f29b5bf6def3effcc22d7bb75f2b747"
+dependencies = [
+ "num-traits",
+ "plotters-backend",
+ "plotters-svg",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "plotters-backend"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df42e13c12958a16b3f7f4386b9ab1f3e7933914ecea48da7139435263a4172a"
+
+[[package]]
+name = "plotters-svg"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51bae2ac328883f7acdfea3d66a7c35751187f870bc81f94563733a154d7a670"
+dependencies = [
+ "plotters-backend",
+]
+
+[[package]]
 name = "portable-atomic"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3106,6 +3363,62 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10ab3eb7f3becc3a1cbc4f2c6f20267996cfc1a6467a873763411b136a122715"
 dependencies = [
  "portable-atomic",
+]
+
+[[package]]
+name = "postcard"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6764c3b5dd454e283a30e6dfe78e9b31096d9e32036b5d1eaac7a6119ccb9a24"
+dependencies = [
+ "cobs",
+ "embedded-io 0.4.0",
+ "embedded-io 0.6.1",
+ "heapless",
+ "serde",
+]
+
+[[package]]
+name = "postgres"
+version = "0.19.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33ad20e0aa0b24f5a394eab4f78c781d248982b22b25cecc7e3aa46a681605bd"
+dependencies = [
+ "bytes",
+ "fallible-iterator 0.2.0",
+ "futures-util",
+ "log",
+ "tokio",
+ "tokio-postgres",
+]
+
+[[package]]
+name = "postgres-protocol"
+version = "0.6.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08808e3c483c46e999108051c78334f473d5adb59d78bb80a1268c7e6aa6c514"
+dependencies = [
+ "base64 0.22.1",
+ "byteorder",
+ "bytes",
+ "fallible-iterator 0.2.0",
+ "hmac 0.13.0",
+ "md-5",
+ "memchr",
+ "rand 0.10.4",
+ "sha2 0.11.1",
+ "stringprep",
+]
+
+[[package]]
+name = "postgres-types"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "851ca9db4932932d69f3ea811b1abe63087a0f740a47692619dd40d4899b68be"
+dependencies = [
+ "bytes",
+ "fallible-iterator 0.2.0",
+ "postgres-protocol",
 ]
 
 [[package]]
@@ -3385,6 +3698,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "rayon"
+version = "1.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb39b166781f92d482534ef4b4b1b2568f42613b53e5b6c160e24cfbfa30926d"
+dependencies = [
+ "either",
+ "rayon-core",
+]
+
+[[package]]
+name = "rayon-core"
+version = "1.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
+dependencies = [
+ "crossbeam-deque",
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "rcgen"
 version = "0.14.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3417,6 +3750,30 @@ checksum = "76009fbe0614077fc1a2ce255e3a1881a2e3a3527097d5dc6d8212c585e7e38b"
 dependencies = [
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "redb"
+version = "4.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "096b1dd5ec053c9c2a5a26a93aafeadf73ebcb710ea54dc3151f17a8e20535ef"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "redis"
+version = "0.32.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "014cc767fefab6a3e798ca45112bccad9c6e0e218fbd49720042716c73cfef44"
+dependencies = [
+ "combine",
+ "itoa",
+ "num-bigint",
+ "percent-encoding",
+ "ryu",
+ "socket2",
+ "url",
 ]
 
 [[package]]
@@ -3614,6 +3971,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rsqlite-vfs"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "353b74f9810d5b085b6c42c9d86a5f0fdb795553235cdd48753b32e3809d18a7"
+dependencies = [
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "rtoolbox"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3621,6 +3987,21 @@ checksum = "9a1efe12a1469752d0e6ff5ebec0b6ef4924cc5c4c71046b0ec730040535819d"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "rusqlite"
+version = "0.43.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f172c4812a19b26d1c23cdb0070e69db335503dfa378b910eb857386e5b8beba"
+dependencies = [
+ "bitflags",
+ "fallible-iterator 0.3.0",
+ "fallible-streaming-iterator",
+ "hashlink",
+ "libsqlite3-sys",
+ "smallvec",
+ "sqlite-wasm-rs",
 ]
 
 [[package]]
@@ -4242,6 +4623,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 
 [[package]]
+name = "siphasher"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33f4fe9184a62d842c9ef383018f3306d8ba224fd9d836f56d7288308847c256"
+
+[[package]]
 name = "skeptic"
 version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4292,6 +4679,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-cache-file"
+version = "0.1.0"
+dependencies = [
+ "sha2 0.10.9",
+ "speedyspec-cache",
+ "speedyspec-cache-conformance",
+ "speedyspec-data",
+ "speedyspec-data-file",
+ "speedyspec-data-memory",
+ "tempfile",
+]
+
+[[package]]
+name = "speedyspec-cache-kv"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-conformance",
+ "speedyspec-data",
+ "speedyspec-data-counter",
+ "speedyspec-data-memory",
+ "speedyspec-data-redb",
+ "speedyspec-data-valkey",
+ "tempfile",
+]
+
+[[package]]
 name = "speedyspec-cache-memory"
 version = "0.1.0"
 dependencies = [
@@ -4300,20 +4714,38 @@ dependencies = [
 ]
 
 [[package]]
-name = "speedyspec-cache-sql"
-version = "0.1.0"
+name = "speedyspec-cache-routing"
+version = "0.1.1"
 dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-file",
+ "speedyspec-cache-kv",
+ "speedyspec-cache-sql",
+ "speedyspec-data",
+ "speedyspec-data-file",
+ "speedyspec-data-memory",
+ "speedyspec-data-query",
+ "tempfile",
+]
+
+[[package]]
+name = "speedyspec-cache-sql"
+version = "0.1.1"
+dependencies = [
+ "postgres",
  "sha2 0.10.9",
  "speedyspec-cache",
  "speedyspec-cache-conformance",
  "speedyspec-data",
  "speedyspec-data-mysql",
+ "speedyspec-data-postgres",
  "speedyspec-data-query",
+ "speedyspec-data-sqlite",
 ]
 
 [[package]]
 name = "speedyspec-compat"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "flate2",
  "serde",
@@ -4381,6 +4813,46 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-data-corpus"
+version = "0.1.2"
+dependencies = [
+ "serde",
+ "serde_json",
+ "speedyspec-compat",
+ "speedyspec-data",
+ "speedyspec-data-query",
+ "sqlparser",
+]
+
+[[package]]
+name = "speedyspec-data-counter"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+]
+
+[[package]]
+name = "speedyspec-data-file"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-query",
+ "tempfile",
+]
+
+[[package]]
+name = "speedyspec-data-memory"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-counter",
+ "speedyspec-data-query",
+]
+
+[[package]]
 name = "speedyspec-data-mysql"
 version = "0.1.0"
 dependencies = [
@@ -4388,6 +4860,21 @@ dependencies = [
  "speedyspec-data",
  "speedyspec-data-conformance",
  "speedyspec-data-query",
+]
+
+[[package]]
+name = "speedyspec-data-postgres"
+version = "0.1.2"
+dependencies = [
+ "bytes",
+ "indexmap",
+ "postgres",
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-corpus",
+ "speedyspec-data-query",
+ "speedyspec-data-translate",
+ "sqlparser",
 ]
 
 [[package]]
@@ -4400,10 +4887,65 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-data-redb"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "postcard",
+ "redb",
+ "serde",
+ "serde_json",
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-counter",
+ "speedyspec-data-query",
+ "tempfile",
+]
+
+[[package]]
+name = "speedyspec-data-sqlite"
+version = "0.1.2"
+dependencies = [
+ "chrono",
+ "md-5",
+ "regex",
+ "rusqlite",
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-corpus",
+ "speedyspec-data-query",
+ "speedyspec-data-translate",
+ "sqlparser",
+ "tempfile",
+ "unicode-normalization",
+ "uuid",
+]
+
+[[package]]
+name = "speedyspec-data-translate"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+ "speedyspec-data-query",
+ "speedyspec-data-translate",
+ "sqlparser",
+]
+
+[[package]]
 name = "speedyspec-data-uow"
 version = "0.1.0"
 dependencies = [
  "speedyspec-data",
+]
+
+[[package]]
+name = "speedyspec-data-valkey"
+version = "0.1.0"
+dependencies = [
+ "redis",
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-query",
 ]
 
 [[package]]
@@ -4413,6 +4955,67 @@ dependencies = [
  "bytes",
  "futures-util",
  "tokio",
+]
+
+[[package]]
+name = "speedyspec-firewall"
+version = "0.1.0"
+dependencies = [
+ "ipnet",
+ "regex",
+]
+
+[[package]]
+name = "speedyspec-firewall-app"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-firewall",
+]
+
+[[package]]
+name = "speedyspec-firewall-infra-cache"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-file",
+ "speedyspec-cache-kv",
+ "speedyspec-cache-memory",
+ "speedyspec-data",
+ "speedyspec-data-file",
+ "speedyspec-data-memory",
+ "speedyspec-data-valkey",
+ "speedyspec-firewall",
+ "tempfile",
+]
+
+[[package]]
+name = "speedyspec-firewall-infra-options"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-firewall",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-object-cache",
+ "speedyspec-wp-options",
+ "speedyspec-wp-options-memory",
+]
+
+[[package]]
+name = "speedyspec-firewall-presentation"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-memory",
+ "speedyspec-firewall",
+ "speedyspec-firewall-app",
+ "speedyspec-firewall-infra-cache",
+ "speedyspec-firewall-infra-options",
+ "speedyspec-native-stage",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-object-cache",
+ "speedyspec-wp-options",
+ "speedyspec-wp-options-memory",
 ]
 
 [[package]]
@@ -4429,6 +5032,10 @@ version = "0.1.0"
 dependencies = [
  "speedyspec-hooks",
 ]
+
+[[package]]
+name = "speedyspec-native-stage"
+version = "0.1.0"
 
 [[package]]
 name = "speedyspec-php"
@@ -4462,7 +5069,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-php-runtime"
-version = "1.0.0"
+version = "1.0.2"
 dependencies = [
  "clap",
  "libc",
@@ -4501,7 +5108,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "bytes",
@@ -4550,7 +5157,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-app"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "semver",
  "sha2 0.10.9",
@@ -4565,18 +5172,19 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-domain"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "http",
  "semver",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "speedyspec-server-gate"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "http",
  "httpdate",
@@ -4603,7 +5211,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-access-dev"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "http",
  "speedyspec-server-domain",
@@ -4612,7 +5220,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-fs"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "ruzstd",
  "semver",
@@ -4628,7 +5236,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-http"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "speedyspec-server-domain",
  "tempfile",
@@ -4638,7 +5246,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-kubernetes"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "http",
  "k8s-openapi",
@@ -4651,7 +5259,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-memory"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "ruzstd",
  "semver",
@@ -4662,7 +5270,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-minisign"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "minisign",
  "minisign-verify",
@@ -4672,7 +5280,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-presentation"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "arc-swap",
  "bytes",
@@ -4691,7 +5299,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-static"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "blake3",
  "brotli 8.0.4",
@@ -4727,9 +5335,10 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-db-php"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "indexmap",
+ "postgres",
  "serde_json",
  "sha2 0.10.9",
  "speedyspec-compat",
@@ -4738,7 +5347,9 @@ dependencies = [
  "speedyspec-cqrs",
  "speedyspec-data",
  "speedyspec-data-mysql",
+ "speedyspec-data-postgres",
  "speedyspec-data-query",
+ "speedyspec-data-sqlite",
  "speedyspec-hooks-memory",
  "speedyspec-php",
  "speedyspec-php-ext",
@@ -4772,7 +5383,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-hooks-php"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
@@ -4786,6 +5397,15 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "ureq",
+]
+
+[[package]]
+name = "speedyspec-wp-html-split"
+version = "0.1.1"
+dependencies = [
+ "criterion 0.5.1",
+ "memchr",
+ "speedyspec-wp-text-corpus",
 ]
 
 [[package]]
@@ -4803,7 +5423,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-object-cache-php"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
@@ -4829,6 +5449,9 @@ dependencies = [
 name = "speedyspec-wp-options"
 version = "0.1.0"
 dependencies = [
+ "indexmap",
+ "speedyspec-cache",
+ "speedyspec-cache-memory",
  "speedyspec-container",
  "speedyspec-cqrs",
  "speedyspec-data",
@@ -4846,20 +5469,30 @@ name = "speedyspec-wp-options-memory"
 version = "0.1.0"
 dependencies = [
  "indexmap",
+ "speedyspec-cache",
+ "speedyspec-cache-memory",
+ "speedyspec-data",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-object-cache",
  "speedyspec-wp-options",
 ]
 
 [[package]]
 name = "speedyspec-wp-options-php"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
+ "indexmap",
  "serde_json",
  "sha2 0.10.9",
+ "speedyspec-cache",
+ "speedyspec-cache-routing",
  "speedyspec-compat",
  "speedyspec-container",
  "speedyspec-container-php",
  "speedyspec-cqrs",
  "speedyspec-data",
+ "speedyspec-data-file",
  "speedyspec-data-mysql",
  "speedyspec-data-query",
  "speedyspec-hooks-memory",
@@ -4881,17 +5514,28 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-options-sql"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
+ "postgres",
+ "speedyspec-cache",
+ "speedyspec-cache-file",
+ "speedyspec-cache-kv",
+ "speedyspec-cache-sql",
  "speedyspec-data",
+ "speedyspec-data-file",
  "speedyspec-data-mysql",
+ "speedyspec-data-postgres",
  "speedyspec-data-query",
+ "speedyspec-data-sqlite",
+ "speedyspec-data-valkey",
  "speedyspec-hooks",
  "speedyspec-wp-db",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-object-cache",
  "speedyspec-wp-options",
+ "speedyspec-wp-options-memory",
+ "tempfile",
 ]
 
 [[package]]
@@ -4899,7 +5543,7 @@ name = "speedyspec-wp-shortcode"
 version = "0.1.0"
 dependencies = [
  "aho-corasick",
- "criterion",
+ "criterion 0.5.1",
  "fancy-regex",
  "indexmap",
  "memchr",
@@ -4942,10 +5586,71 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-text-contracts"
+version = "0.1.0"
+
+[[package]]
+name = "speedyspec-wp-text-corpus"
+version = "0.1.1"
+dependencies = [
+ "base64 0.22.1",
+ "serde",
+ "serde_json",
+ "speedyspec-compat",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+]
+
+[[package]]
+name = "speedyspec-wp-text-diff"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "criterion 0.8.2",
+ "foldhash",
+ "hashbrown",
+ "memchr",
+ "proptest",
+ "serde_json",
+ "simdutf8",
+ "speedyspec-wp-text-diff-contracts",
+]
+
+[[package]]
+name = "speedyspec-wp-text-diff-contracts"
+version = "0.1.0"
+
+[[package]]
+name = "speedyspec-wp-text-diff-php"
+version = "0.1.1"
+dependencies = [
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-text-diff",
+ "speedyspec-wp-text-diff-contracts",
+]
+
+[[package]]
+name = "speedyspec-wp-text-memory"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-wp-text-contracts",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3763264f6b73151db08c50ff20d7d8a0b8796e021cdea7ceedad07b80155fa0e"
+dependencies = [
+ "lock_api 0.4.14",
+]
 
 [[package]]
 name = "spki"
@@ -4965,6 +5670,16 @@ checksum = "7ef958a98b9d5da290cfc78946e9f3e61e1e62a18db0d92cac0b83cc161491a9"
 dependencies = [
  "base64ct",
  "der 0.8.3",
+]
+
+[[package]]
+name = "sqlite-wasm-rs"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6cd504cecbfe7eef649988840f9a6cb768d11085efec138f8e99f160632d867"
+dependencies = [
+ "cc",
+ "rsqlite-vfs",
 ]
 
 [[package]]
@@ -5006,6 +5721,17 @@ dependencies = [
  "libc",
  "psm",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "stringprep"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b4df3d392d81bd458a8a621b8bffbd2302a12ffe288a9d931670948749463b1"
+dependencies = [
+ "unicode-bidi",
+ "unicode-normalization",
+ "unicode-properties",
 ]
 
 [[package]]
@@ -5271,6 +5997,32 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.10",
+]
+
+[[package]]
+name = "tokio-postgres"
+version = "0.7.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a528f7d280f6d5b9cd149635c8705b0dd049754bc67d81d31fa25169a93809d3"
+dependencies = [
+ "async-trait",
+ "byteorder",
+ "bytes",
+ "fallible-iterator 0.2.0",
+ "futures-channel",
+ "futures-util",
+ "log",
+ "parking_lot 0.12.5",
+ "percent-encoding",
+ "phf",
+ "pin-project-lite",
+ "postgres-protocol",
+ "postgres-types",
+ "rand 0.10.4",
+ "socket2",
+ "tokio",
+ "tokio-util",
+ "whoami",
 ]
 
 [[package]]
@@ -5568,10 +6320,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "357cc3acc6a036009fd6c973ed009037c732d60d0b4f6c673e9041497482a28f"
 
 [[package]]
+name = "unicode-bidi"
+version = "0.3.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c1cb5db39152898a79168971543b1cb5020dff7fe43c8dc468b0885f5e29df5"
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2c754d6c33795a1c324727428e5a7dedb5b06195f9890bdbcba760d3e246563"
+
+[[package]]
+name = "unicode-normalization"
+version = "0.1.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75cd3fb03d5288b3ba9a1ee103ac7e9cbb59f0b03d64f8ddfcc04dd42758a85d"
+dependencies = [
+ "tinyvec",
+]
+
+[[package]]
+name = "unicode-properties"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "993ad287eb20e8ba755312801cfe1413e0f25d604075863acaddca10b04c1833"
 
 [[package]]
 name = "unicode-segmentation"
@@ -5732,12 +6505,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 
 [[package]]
+name = "wasi"
+version = "0.14.7+wasi-0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "883478de20367e224c0090af9cf5f9fa85bed63a95c1abf3afc5c083ebc06e8c"
+dependencies = [
+ "wasip2",
+]
+
+[[package]]
 name = "wasip2"
 version = "1.0.4+wasi-0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b67efb37e106e55ce722a510d6b5f9c17f083e5fc79afc2badeb12cc313d9487"
 dependencies = [
  "wit-bindgen",
+]
+
+[[package]]
+name = "wasite"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66fe902b4a6b8028a753d5424909b764ccf79b7a209eac9bf97e59cda9f71a42"
+dependencies = [
+ "wasi 0.14.7+wasi-0.2.4",
 ]
 
 [[package]]
@@ -5844,6 +6635,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7265c9301c16a8711c992c2d8da90ee77ef54b1ed51482d6dfeb00dc756b1297"
 dependencies = [
  "rustls-pki-types",
+]
+
+[[package]]
+name = "whoami"
+version = "2.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "626c4bac6755d76ffc12cb01b2eac751db1996b9e0041de9aa02c8c211ddc82c"
+dependencies = [
+ "libc",
+ "libredox",
+ "objc2-system-configuration",
+ "wasite",
+ "web-sys",
 ]
 
 [[package]]

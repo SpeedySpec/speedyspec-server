@@ -21,6 +21,28 @@ pub const PORTED_FUNCTIONS: &[&str] = &[
     "wp_determine_option_autoload_value",
     "wp_filter_default_autoload_value_via_option_size",
     "wp_autoload_values_to_autoload",
+    "get_transient",
+    "set_transient",
+    "delete_transient",
+    "delete_expired_transients",
+    "get_site_transient",
+    "set_site_transient",
+    "delete_site_transient",
+    "get_site_option",
+    "add_site_option",
+    "update_site_option",
+    "delete_site_option",
+    "get_network_option",
+    "add_network_option",
+    "update_network_option",
+    "delete_network_option",
+    "wp_prime_site_option_caches",
+    "wp_prime_network_option_caches",
+    "wp_load_core_site_options",
+    "register_setting",
+    "unregister_setting",
+    "get_registered_settings",
+    "filter_default_option",
 ];
 
 /// `option.php`'s text without the ported functions, each with its docblock. A function is a line
@@ -54,11 +76,20 @@ pub fn strip_ported(source: &str) -> Result<String, String> {
 }
 
 /// Prepares `release` (a `wordpress/` root) in `out`: links to each of its entries, except `wp-includes/option.php`,
-/// which is written without the ported functions. Reuses a copy already prepared. Returns `out`.
+/// which is written without the ported functions. Reuses a copy already prepared, rewriting its `option.php` when
+/// it was stripped of other functions. Returns `out`.
 pub fn prepare_release(release: &Path, out: &Path) -> Result<PathBuf, String> {
     let err = |p: &Path, e: std::io::Error| format!("{}: {e}", p.display());
     let option = out.join("wp-includes/option.php");
     if option.exists() {
+        // A copy another build prepared (another port list, the same temp directory) is brought to this one's.
+        let source = release.join("wp-includes/option.php");
+        let wanted = strip_ported(&std::fs::read_to_string(&source).map_err(|e| err(&source, e))?)?;
+        if std::fs::read_to_string(&option).ok().as_deref() != Some(wanted.as_str()) {
+            let temp = option.with_extension(format!("php.{}", std::process::id()));
+            std::fs::write(&temp, wanted).map_err(|e| err(&temp, e))?;
+            std::fs::rename(&temp, &option).map_err(|e| err(&option, e))?;
+        }
         return Ok(out.to_path_buf());
     }
     std::fs::create_dir_all(out.join("wp-includes")).map_err(|e| err(out, e))?;

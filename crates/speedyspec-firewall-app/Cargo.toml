@@ -1,0 +1,10 @@
+[package]
+name = "speedyspec-firewall-app"
+version = "0.1.0"
+description = "The firewall's rules as a chain, the settings cache that builds it, and the login guard."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-firewall = { path = "../speedyspec-firewall" }

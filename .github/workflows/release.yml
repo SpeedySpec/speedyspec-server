@@ -1,0 +1,297 @@
+name: Release
+
+# release-please keeps a release pull request open on main. Merging it bumps a component's version (and its entry in
+# .release-please-manifest.json) to one with no tag yet. This workflow then builds that component's three binaries at
+# that commit first, and only when every build passes lets release-please tag and publish the release. The binaries
+# are then signed and uploaded, and both release indexes are rebuilt from the GitHub releases and deployed to Pages.
+# A failed build publishes nothing; the next push to main tries again.
+#
+# Run it by hand with a tag to finish a release whose publishing failed part-way (a complete release is never
+# changed), or with no tag to rebuild and redeploy the indexes only.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          An existing release tag to build and publish (for example speedyspec-server-v0.1.0), or empty to redeploy
+          the indexes only
+        required: false
+        type: string
+
+# One release at a time; a second push waits rather than racing the first.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Which components to build and publish: on a push, those with a merged, untagged release; on a dispatch, the
+  # tag's component.
+  pending:
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.pick.outputs.server }}
+      server_version: ${{ steps.pick.outputs.server_version }}
+      runtime: ${{ steps.pick.outputs.runtime }}
+      runtime_version: ${{ steps.pick.outputs.runtime_version }}
+      # JSON: [{component, version, tag}] for the publish matrix.
+      releases: ${{ steps.pick.outputs.releases }}
+      # The release commit (the merged release pull request), which is built, and where the libraries are tagged.
+      ref: ${{ steps.pick.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The whole history: release-pending.sh finds the commit that last changed the manifest.
+          fetch-depth: 0
+      - name: Fetch tags
+        run: git fetch --tags --quiet origin
+      - name: Pick
+        id: pick
+        # bash -eo pipefail, so a failing script fails the job instead of reading as "not pending".
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ inputs.tag }}
+          SHA: ${{ github.sha }}
+        run: |
+          releases='[]'
+          add() { # component version tag
+              releases="$(jq -c --arg c "$1" --arg v "$2" --arg t "$3" '. + [{component: $c, version: $v, tag: $t}]' <<<"$releases")"
+          }
+          server=false runtime=false server_version="" runtime_version="" ref="$SHA"
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+              if [ -n "$TAG" ]; then
+                  git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || { echo "no tag $TAG" >&2; exit 1; }
+                  ref="$TAG"
+                  case "$TAG" in
+                      speedyspec-server-v*) server=true server_version="${TAG#speedyspec-server-v}"; add speedyspec-server "$server_version" "$TAG" ;;
+                      speedyspec-php-runtime-v*) runtime=true runtime_version="${TAG#speedyspec-php-runtime-v}"; add speedyspec-php-runtime "$runtime_version" "$TAG" ;;
+                      *) echo "$TAG is not a server or runtime release tag" >&2; exit 1 ;;
+                  esac
+              fi
+          else
+              server_out="$(scripts/release-pending.sh speedyspec-server)"
+              runtime_out="$(scripts/release-pending.sh speedyspec-php-runtime)"
+              while IFS='=' read -r key value; do printf -v "server_$key" '%s' "$value"; done <<<"$server_out"
+              while IFS='=' read -r key value; do printf -v "runtime_$key" '%s' "$value"; done <<<"$runtime_out"
+              if [ -z "${server_pending:-}" ] || [ -z "${runtime_pending:-}" ] || [ -z "${server_commit:-}" ]; then
+                  echo "release-pending.sh printed no answer" >&2
+                  exit 1
+              fi
+              server="$server_pending" runtime="$runtime_pending"
+              # Both components are released by the same merged release pull request.
+              ref="$server_commit"
+              [ "$server" = true ] && add speedyspec-server "$server_version" "$server_tag"
+              [ "$runtime" = true ] && add speedyspec-php-runtime "$runtime_version" "$runtime_tag"
+          fi
+          {
+              echo "server=$server"
+              echo "server_version=$server_version"
+              echo "runtime=$runtime"
+              echo "runtime_version=$runtime_version"
+              echo "releases=$releases"
+              echo "ref=$ref"
+          } | tee -a "$GITHUB_OUTPUT"
+
+  build-server:
+    needs: pending
+    if: needs.pending.outputs.server == 'true'
+    uses: ./.github/workflows/release-build.yml
+    with:
+      ref: ${{ needs.pending.outputs.ref }}
+      component: speedyspec-server
+      version: ${{ needs.pending.outputs.server_version }}
+    permissions:
+      contents: read
+
+  build-runtime:
+    needs: pending
+    if: needs.pending.outputs.runtime == 'true'
+    uses: ./.github/workflows/release-build.yml
+    with:
+      ref: ${{ needs.pending.outputs.ref }}
+      component: speedyspec-php-runtime
+      version: ${{ needs.pending.outputs.runtime_version }}
+    permissions:
+      contents: read
+
+  release-please:
+    needs: [pending, build-server, build-runtime]
+    # On a push, unless a pending release failed to build.
+    if: >-
+      always() && !cancelled() && github.event_name == 'push' &&
+      needs.pending.result == 'success' &&
+      needs.build-server.result != 'failure' && needs.build-runtime.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    # The release is tagged at the release commit, which is behind main when an earlier build failed and a later push
+    # retries it. GitHub refuses GITHUB_TOKEN any tag whose commit's workflow files differ from main's ("Resource not
+    # accessible by integration"), since that needs the workflows permission GITHUB_TOKEN can't have. RELEASE_TOKEN is
+    # a fine-grained token (or GitHub App token) for this repository with Contents, Workflows and Pull requests set to
+    # read and write. Without it, releases still work whenever the release commit is main's head.
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+      # Library crates are release-please packages without GitHub releases; release-please finds where each was last
+      # released from its tag, so tag them at the merged release (only when this push merged one).
+      - uses: actions/checkout@v4
+        if: needs.pending.outputs.releases != '[]'
+        with:
+          # The tags below are pushed at the release commit too, so they need the same token.
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: Tag the library crates
+        if: needs.pending.outputs.releases != '[]'
+        env:
+          # The release commit, where release-please tags the server and the runtime too.
+          SHA: ${{ needs.pending.outputs.ref }}
+        run: |
+          git fetch --tags --quiet origin
+          tags="$(scripts/release-tag-libraries.sh "$SHA")"
+          if [ -n "$tags" ]; then
+              # shellcheck disable=SC2086 # one tag name per word
+              git push origin $tags
+          fi
+
+  publish:
+    needs: [pending, build-server, build-runtime, release-please]
+    if: >-
+      always() && !cancelled() && needs.pending.outputs.releases != '[]' &&
+      needs.build-server.result != 'failure' && needs.build-runtime.result != 'failure' &&
+      (needs.release-please.result == 'success' || github.event_name == 'workflow_dispatch')
+    strategy:
+      fail-fast: false
+      matrix:
+        release: ${{ fromJSON(needs.pending.outputs.releases) }}
+    name: publish ${{ matrix.release.tag }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      COMPONENT: ${{ matrix.release.component }}
+      VERSION: ${{ matrix.release.version }}
+      TAG: ${{ matrix.release.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ matrix.release.component }}-*
+          merge-multiple: true
+          path: dist
+      - name: Check the binaries
+        run: |
+          ls -l dist
+          test "$(find dist -maxdepth 1 -type f -name "$COMPONENT-*" | wc -l)" -eq 3
+      - name: Check signing is set up
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: |
+          if [ -z "$MINISIGN_SECRET_KEY" ]; then
+              echo "::error::the MINISIGN_SECRET_KEY secret is not set: nothing is published" >&2
+              exit 1
+          fi
+          if [ ! -s minisign.pub ]; then
+              echo "::error::minisign.pub is missing: nothing is published" >&2
+              exit 1
+          fi
+      - name: Install minisign
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq minisign
+      - name: Checksums
+        run: (cd dist && sha256sum "$COMPONENT"-* | sort -k 2) > SHA256SUMS && mv SHA256SUMS dist/ && cat dist/SHA256SUMS
+      - name: Sign
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+        run: |
+          key="$RUNNER_TEMP/minisign.key"
+          (umask 077 && printf '%s\n' "$MINISIGN_SECRET_KEY" > "$key")
+          for file in dist/"$COMPONENT"-*; do
+              triple="${file#dist/"$COMPONENT"-}"
+              printf '%s\n' "$MINISIGN_PASSWORD" |
+                  minisign -S -s "$key" -m "$file" -t "$COMPONENT $VERSION $triple"
+          done
+          rm -f "$key"
+      - name: Forget the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/minisign.key"
+      - name: Verify the signatures
+        run: |
+          for file in dist/"$COMPONENT"-*; do
+              case "$file" in *.minisig) continue ;; esac
+              minisign -V -p minisign.pub -m "$file"
+          done
+      - name: Upload
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets > assets.json
+          plan="$(scripts/release-publish-plan.sh "$COMPONENT" assets.json)"
+          echo "$TAG: $plan"
+          case "$plan" in
+              complete)
+                  echo "$TAG is already complete; a published binary is never replaced"
+                  ;;
+              incomplete)
+                  for name in SHA256SUMS dist/"$COMPONENT"-*; do
+                      name="${name#dist/}"
+                      if jq -e --arg n "$name" 'any(.assets[]; .name == $n)' assets.json >/dev/null; then
+                          gh release delete-asset "$TAG" "$name" --repo "$GITHUB_REPOSITORY" --yes
+                      fi
+                  done
+                  gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"
+                  ;;
+              empty)
+                  gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"
+                  ;;
+          esac
+
+  pages:
+    needs: [publish]
+    # After a publish, or on any dispatch (a dispatch with no tag redeploys the indexes only).
+    if: >-
+      always() && !cancelled() && needs.publish.result != 'failure' &&
+      (needs.publish.result == 'success' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the indexes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p site/server site/php-runtime
+          scripts/release-index.sh speedyspec-server server > site/server/index.json
+          scripts/release-index.sh speedyspec-php-runtime php-runtime > site/php-runtime/index.json
+          if [ -s minisign.pub ]; then cp minisign.pub site/minisign.pub; fi
+          cat > site/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>SpeedySpec server releases</title>
+          <h1>SpeedySpec server releases</h1>
+          <p>Release indexes for managed mode (an app's <code>source</code>):</p>
+          <ul>
+            <li><a href="server/index.json">server/index.json</a>: the server</li>
+            <li><a href="php-runtime/index.json">php-runtime/index.json</a>: the PHP runtime</li>
+          </ul>
+          <p>Every binary is signed with <a href="minisign.pub">this minisign key</a>.</p>
+          HTML
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

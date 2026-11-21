@@ -1,0 +1,9 @@
+[package]
+name = "speedyspec-wp-text-contracts"
+version = "0.1.0"
+description = "The ports WordPress's formatting functions read outside facts through (site settings, translations, locale, diagnostics), apart from any implementation."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]

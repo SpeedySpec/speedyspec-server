@@ -1,0 +1,84 @@
+{
+  "expected_failures": [
+    {
+      "test": "Tests_DB_Charset::test_no_db_charset_defined",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #21",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #22",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #23",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #24",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #25",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #26",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #27",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #28",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #30",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #31",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #32",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #33",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #34",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #36",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #39",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #40",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text with data set #41",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_Charset::test_strip_invalid_text_from_query_cp1251_is_safe",
+      "why": "non_unicode_charset_conversion: wpdb asks the engine for CONVERT(... USING <charset>) on a non-Unicode charset (koi8r, hebrew, cp1251, tis620, ujis, big5); the PostgreSQL engine keeps text as UTF-8 and refuses it (Unsupported), and wpdb returns its WP_Error"
+    },
+    {
+      "test": "Tests_DB_dbDelta::test_spatial_indices",
+      "why": "spatial_types_need_postgis: MySQL's GEOMETRY and other spatial types and SPATIAL KEY have no PostgreSQL form without PostGIS, which the engine does not assume, so dbDelta cannot create the test's spatial table"
+    }
+  ]
+}

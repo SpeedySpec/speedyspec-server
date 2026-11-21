@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-cache-sql"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Caching Store over any speedyspec SQL Store: one table of groups, keys, byte values and expiry."
 edition.workspace = true
 rust-version.workspace = true
@@ -15,3 +15,6 @@ speedyspec-data-query = { path = "../speedyspec-data-query" }
 [dev-dependencies]
 speedyspec-cache-conformance = { path = "../speedyspec-cache-conformance" }
 speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
+speedyspec-data-postgres = { path = "../speedyspec-data-postgres" }
+speedyspec-data-sqlite = { path = "../speedyspec-data-sqlite" }
+postgres = "0.19"
