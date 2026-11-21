@@ -143,7 +143,15 @@ pub fn short(input: &[u8]) -> String {
     }
 }
 
-/// The security oracle's exploit finder for the gate; none until the oracle exists.
-pub fn exploit_finder() -> Option<Box<speedyspec_wp_kses_testkit::ExploitFinder>> {
-    None
+/// The security oracle's exploit finder for the gate, with the allowlist and protocols of `ctx`.
+pub fn exploit_finder_for(
+    api: &KsesApi,
+    ctx: &str,
+) -> Box<speedyspec_wp_kses_testkit::ExploitFinder> {
+    let context = speedyspec_wp_kses_contracts::Context::from_bytes(ctx.as_bytes());
+    let allowed = api.allowed_html(&context).unwrap();
+    let protocols = api.allowed_protocols().unwrap();
+    Box::new(move |out: &[u8]| {
+        speedyspec_wp_kses_security::first_exploit(out, &allowed, &protocols)
+    })
 }

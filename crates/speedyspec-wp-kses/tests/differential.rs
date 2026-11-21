@@ -46,7 +46,8 @@ fn corpus_matches_php() {
                         None,
                     )
                     .unwrap();
-                match gate(&expected, &ours, common::exploit_finder().as_deref()) {
+                let finder = common::exploit_finder_for(&api, ctx);
+                match gate(&expected, &ours, Some(&*finder)) {
                     Verdict::Same => {}
                     Verdict::SecurityBreak(_) => {
                         let scenario = format!("corpus:{set}:{}:{ctx}", &id[..16]);
