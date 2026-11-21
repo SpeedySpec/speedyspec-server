@@ -70,13 +70,25 @@ impl TranslationFile {
         &self.bytes[r.start as usize..r.end as usize]
     }
 
-    /// The whole translation for a lookup key (`context\x04singular`), every form joined by `\0`.
+    /// Where the translation for a lookup key is, for [`TranslationFile::at`].
     #[inline]
-    pub fn translate(&self, key: &[u8]) -> Option<&[u8]> {
+    pub fn find(&self, key: &[u8]) -> Option<Range<u32>> {
         let h = self.hasher.hash_one(key);
         self.index
             .find(h, |&i| self.slice(&self.entries[i as usize].0) == key)
-            .map(|&i| self.slice(&self.entries[i as usize].1))
+            .map(|&i| self.entries[i as usize].1.clone())
+    }
+
+    /// The bytes [`TranslationFile::find`] pointed at.
+    #[inline]
+    pub fn at(&self, range: &Range<u32>) -> &[u8] {
+        self.slice(range)
+    }
+
+    /// The whole translation for a lookup key (`context\x04singular`), every form joined by `\0`.
+    #[inline]
+    pub fn translate(&self, key: &[u8]) -> Option<&[u8]> {
+        self.find(key).map(|r| self.slice(&r))
     }
 
     /// The first form only, up to the first `\0`.

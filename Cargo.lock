@@ -5259,8 +5259,11 @@ version = "0.1.0"
 dependencies = [
  "foldhash",
  "hashbrown",
+ "indexmap",
  "serde_json",
  "speedyspec-wp-i18n-contracts",
+ "speedyspec-wp-i18n-files",
+ "speedyspec-wp-i18n-memory",
 ]
 
 [[package]]
