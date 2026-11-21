@@ -5238,6 +5238,7 @@ name = "speedyspec-wp-kses"
 version = "0.1.0"
 dependencies = [
  "indexmap",
+ "libc",
  "memchr",
  "proptest",
  "serde_json",

@@ -13,7 +13,7 @@ mod protocol;
 pub mod scan;
 mod text;
 
-pub use attrs::{attr_parse, hair, hair_parse};
+pub use attrs::{HairAttr, attr_parse, hair, hair_attrs, hair_parse, write_whole};
 pub use checks::check_attr_val;
 pub use entities::{
     decode_entities, default_html_entity_name_list, default_html_entity_names,

@@ -1,6 +1,5 @@
-use indexmap::IndexMap;
 use speedyspec_wp_kses_contracts::{
-    AllowedAttrs, AllowedHtml, AttrRule, AttrRules, Context, RuleValue,
+    AllowedAttrs, AllowedHtml, AttrRule, AttrRules, ByteMap, Context, RuleValue,
 };
 
 #[test]
@@ -31,7 +30,7 @@ fn context_round_trips() {
 
 #[test]
 fn lookup_is_by_lowercase_key() {
-    let mut tags = IndexMap::new();
+    let mut tags = ByteMap::default();
     tags.insert(b"a".to_vec().into_boxed_slice(), AllowedAttrs::Empty);
     let allowed = AllowedHtml { tags };
     assert!(allowed.get(b"a").is_some());

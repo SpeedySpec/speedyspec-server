@@ -469,7 +469,7 @@ fn is_custom_property(s: &[u8]) -> bool {
 
 impl KsesApi {
     /// `safe_style_css`, as values: kses compares them with `in_array( ..., true )`, so only strings can match.
-    fn safe_style_css(&self) -> Result<Vec<Value>, KsesError> {
+    fn safe_style_css(&self) -> Result<AllowedStyles, KsesError> {
         let defaults = || {
             Value::Array(
                 SAFE_STYLE_CSS
@@ -479,12 +479,16 @@ impl KsesApi {
                     .collect(),
             )
         };
-        let list = self
-            .filter("safe_style_css", defaults, Vec::new)?
-            .unwrap_or_else(defaults);
-        Ok(match list {
-            Value::Array(items) => items.into_iter().map(|(_, v)| v).collect(),
-            other => vec![other],
+        let base = match self.filter("safe_style_css", defaults, Vec::new)? {
+            None => Styles::Default,
+            Some(Value::Array(items)) => {
+                Styles::Filtered(items.into_iter().map(|(_, v)| v).collect())
+            }
+            Some(other) => Styles::Filtered(vec![other]),
+        };
+        Ok(AllowedStyles {
+            base,
+            extra: Vec::new(),
         })
     }
 
@@ -498,9 +502,6 @@ impl KsesApi {
             .collect();
         let protocols = self.allowed_protocols()?;
         let mut allowed = self.safe_style_css()?;
-        let is_string = |v: &Value, s: &[u8]| {
-            matches!(v, Value::Str(_) | Value::Bytes(_)) && php_string(v).as_deref() == Some(s)
-        };
         if allowed.is_empty() {
             return Ok(css);
         }
@@ -518,12 +519,11 @@ impl KsesApi {
                 Some(colon) => {
                     let selector = trim(&item[..colon]);
                     value = &item[colon + 1..];
-                    let custom = allowed.iter().any(|v| is_string(v, b"--*"))
-                        && is_custom_property(selector);
+                    let custom = allowed.contains(b"--*") && is_custom_property(selector);
                     if custom {
-                        allowed.push(bytes_value(selector));
+                        allowed.extra.push(selector.to_vec());
                     }
-                    if allowed.iter().any(|v| is_string(v, selector)) {
+                    if allowed.contains(selector) {
                         found = true;
                         url_attr = URL_DATA_TYPES.contains(&selector);
                         gradient_attr = GRADIENT_DATA_TYPES.contains(&selector);
@@ -592,5 +592,40 @@ fn truthy(v: &Value) -> bool {
         Value::Str(_) | Value::Bytes(_) => !matches!(php_string(v).as_deref(), Some(b"" | b"0")),
         Value::Array(items) => !items.is_empty(),
         Value::Opaque(_) => true,
+    }
+}
+
+/// `safe_style_css`'s list: WordPress's defaults (a set built once) when nothing filters it, else the filtered
+/// list; `extra` holds the custom properties a call adds as it goes.
+enum Styles {
+    Default,
+    Filtered(Vec<Value>),
+}
+
+struct AllowedStyles {
+    base: Styles,
+    extra: Vec<Vec<u8>>,
+}
+
+impl AllowedStyles {
+    fn is_empty(&self) -> bool {
+        matches!(&self.base, Styles::Filtered(list) if list.is_empty()) && self.extra.is_empty()
+    }
+
+    /// `in_array( $name, $allowed, true )`: only a string entry matches.
+    fn contains(&self, name: &[u8]) -> bool {
+        static DEFAULTS: std::sync::OnceLock<std::collections::HashSet<&'static [u8]>> =
+            std::sync::OnceLock::new();
+        let in_base = match &self.base {
+            Styles::Default => DEFAULTS
+                .get_or_init(|| SAFE_STYLE_CSS.iter().map(|s| s.as_bytes()).collect())
+                .contains(name),
+            Styles::Filtered(list) => list.iter().any(|v| match v {
+                Value::Str(s) => s.as_bytes() == name,
+                Value::Bytes(b) => b == name,
+                _ => false,
+            }),
+        };
+        in_base || self.extra.iter().any(|e| e == name)
     }
 }

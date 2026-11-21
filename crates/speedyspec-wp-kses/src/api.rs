@@ -1,7 +1,6 @@
 //! [`KsesApi`], the facade over kses's functions, and the filters it fires.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use speedyspec_hooks::{Key, Value};
@@ -17,7 +16,9 @@ use crate::{
 
 /// Converted allowlists by context, with the globals' generation they were converted at and whether the filter
 /// runs twice for them.
-type AllowedCache = RefCell<HashMap<Vec<u8>, (u64, Rc<AllowedHtml>, bool)>>;
+/// Converted allowlists by context name: (name, generation, allowlist, whether the filter runs twice). A few
+/// contexts at most, so a list beats hashing the name on every tag.
+type AllowedCache = RefCell<Vec<(Vec<u8>, u64, Rc<AllowedHtml>, bool)>>;
 
 /// What kses needs from outside: the Hook API and the ports to code not yet ported.
 pub struct KsesDeps {
@@ -35,6 +36,10 @@ pub struct KsesApi {
     allowed_cache: AllowedCache,
     default_uris: Rc<UriAttributes>,
     protocols: RefCell<Vec<Value>>,
+    /// `protocols` as kses reads it, until the list changes.
+    protocols_read: RefCell<Option<Rc<Protocols>>>,
+    /// The hook names kses uses, made once (each made anew would copy its name).
+    hook_names: RefCell<Vec<(&'static str, Rc<HookName>)>>,
     /// This API's own `Rc`, for the filter callbacks `kses_init_filters()` registers; empty unless built by
     /// [`KsesApi::shared`].
     pub(crate) me: RefCell<std::rc::Weak<KsesApi>>,
@@ -164,11 +169,13 @@ impl KsesApi {
     pub fn new(deps: KsesDeps) -> KsesApi {
         KsesApi {
             d: deps,
-            allowed_cache: RefCell::new(HashMap::new()),
+            allowed_cache: RefCell::new(Vec::new()),
             default_uris: Rc::new(UriAttributes(
                 URI_ATTRIBUTES.iter().map(|u| u.as_bytes().into()).collect(),
             )),
             protocols: RefCell::new(Vec::new()),
+            protocols_read: RefCell::new(None),
+            hook_names: RefCell::new(Vec::new()),
             me: RefCell::new(std::rc::Weak::new()),
         }
     }
@@ -184,14 +191,28 @@ impl KsesApi {
         &self.d
     }
 
+    /// The hook named `name`, made once per API.
+    pub(crate) fn hook_name(&self, name: &'static str) -> Rc<HookName> {
+        let mut names = self.hook_names.borrow_mut();
+        if let Some((_, hook)) = names
+            .iter()
+            .find(|(n, _)| std::ptr::eq(*n, name) || *n == name)
+        {
+            return hook.clone();
+        }
+        let hook = Rc::new(HookName::from(name));
+        names.push((name, hook.clone()));
+        hook
+    }
+
     /// Runs `apply_filters()`, or counts the run and returns `None` when nothing listens.
     pub(crate) fn filter(
         &self,
-        hook: &str,
+        hook: &'static str,
         value: impl FnOnce() -> Value,
         args: impl FnOnce() -> Vec<Value>,
     ) -> Result<Option<Value>, KsesError> {
-        let name = HookName::from(hook);
+        let name = self.hook_name(hook);
         if self
             .d
             .hooks
@@ -231,7 +252,7 @@ impl KsesApi {
     /// With no listener, the allowlist comes from a cache kept per context until the globals are written, so a
     /// context string resolved per tag costs a lookup; the filter runs are still counted as WordPress counts them.
     pub fn allowed_html(&self, ctx: &Context) -> Result<Rc<AllowedHtml>, KsesError> {
-        let hook = HookName::from("wp_kses_allowed_html");
+        let hook = self.hook_name("wp_kses_allowed_html");
         if !self
             .d
             .hooks
@@ -245,17 +266,17 @@ impl KsesApi {
         let cached = self
             .allowed_cache
             .borrow()
-            .get(name)
-            .filter(|e| e.0 == generation)
-            .map(|e| (e.1.clone(), e.2));
+            .iter()
+            .find(|e| e.0 == name && e.1 == generation)
+            .map(|e| (e.2.clone(), e.3));
         let (allowed, fires_twice) = match cached {
             Some(hit) => hit,
             None => {
                 let (value, fires_twice) = self.unfiltered_value(ctx);
                 let converted = self.convert(&value)?;
-                self.allowed_cache
-                    .borrow_mut()
-                    .insert(name.to_vec(), (generation, converted.clone(), fires_twice));
+                let mut cache = self.allowed_cache.borrow_mut();
+                cache.retain(|e| e.0 != name);
+                cache.push((name.to_vec(), generation, converted.clone(), fires_twice));
                 (converted, fires_twice)
             }
         };
@@ -355,7 +376,7 @@ impl KsesApi {
     /// The array `wp_kses_allowed_html()` returns for a named context, as PHP sees it: value callbacks stay the PHP
     /// callables they were. Hook runs are counted as WordPress counts them.
     pub fn allowed_html_value(&self, ctx: &Context) -> Result<Value, KsesError> {
-        let hook = HookName::from("wp_kses_allowed_html");
+        let hook = self.hook_name("wp_kses_allowed_html");
         if !self
             .d
             .hooks
@@ -394,6 +415,7 @@ impl KsesApi {
     /// dropped.
     pub fn new_request(&self) {
         self.protocols.borrow_mut().clear();
+        self.protocols_read.replace(None);
         self.allowed_cache.borrow_mut().clear();
     }
 
@@ -433,19 +455,22 @@ impl KsesApi {
         let loaded = self
             .d
             .hooks
-            .did_action(&HookName::from("wp_loaded"))
+            .did_action(&self.hook_name("wp_loaded"))
             .map_err(hook_error)?
             > 0;
         if !loaded {
-            let current = Value::Array(
-                protocols
-                    .iter()
-                    .cloned()
-                    .enumerate()
-                    .map(|(i, v)| (Key::Int(i as i64), v))
-                    .collect(),
-            );
-            if let Some(filtered) = self.filter("kses_allowed_protocols", || current, Vec::new)? {
+            // Built only when a filter listens.
+            let current = || {
+                Value::Array(
+                    protocols
+                        .iter()
+                        .cloned()
+                        .enumerate()
+                        .map(|(i, v)| (Key::Int(i as i64), v))
+                        .collect(),
+                )
+            };
+            if let Some(filtered) = self.filter("kses_allowed_protocols", current, Vec::new)? {
                 let items: Vec<Value> = match filtered {
                     Value::Array(items) => items.into_iter().map(|(_, v)| v).collect(),
                     Value::Null => Vec::new(),
@@ -458,13 +483,19 @@ impl KsesApi {
                     }
                 }
                 *protocols = unique;
+                self.protocols_read.replace(None);
             }
         }
-        Ok(Rc::new(Protocols(
-            protocols
-                .iter()
-                .filter_map(|v| php_string(v).map(Into::into))
-                .collect(),
-        )))
+        let mut read = self.protocols_read.borrow_mut();
+        Ok(read
+            .get_or_insert_with(|| {
+                Rc::new(Protocols(
+                    protocols
+                        .iter()
+                        .filter_map(|v| php_string(v).map(Into::into))
+                        .collect(),
+                ))
+            })
+            .clone())
     }
 }

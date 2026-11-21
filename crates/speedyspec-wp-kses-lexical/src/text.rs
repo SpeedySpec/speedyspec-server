@@ -2,22 +2,36 @@
 
 use std::borrow::Cow;
 
-use indexmap::IndexMap;
-use speedyspec_wp_kses_contracts::{AllowedAttrs, AllowedHtml};
+use speedyspec_wp_kses_contracts::{AllowedAttrs, AllowedHtml, ByteMap};
 
 use crate::scan::is_space;
 
 /// The bytes `wp_kses_no_null()` removes: `[\x00-\x08\x0B\x0C\x0E-\x1F]`.
 #[inline]
 fn is_removed_control(b: u8) -> bool {
-    b < 0x20 && !matches!(b, b'\t' | b'\n' | b'\r')
+    // Bitwise, not short-circuiting, so a loop over it compiles to vector instructions.
+    (b < 0x20) & (b != b'\t') & (b != b'\n') & (b != b'\r')
+}
+
+/// Whether `content` holds a byte `wp_kses_no_null()` removes, 32 bytes at a time.
+fn has_removed_control(content: &[u8]) -> bool {
+    let (chunks, rest) = content.as_chunks::<32>();
+    for chunk in chunks {
+        let found = chunk
+            .iter()
+            .fold(0u8, |found, b| found | u8::from(is_removed_control(*b)));
+        if found != 0 {
+            return true;
+        }
+    }
+    rest.iter().any(|b| is_removed_control(*b))
 }
 
 /// `wp_kses_no_null()`: removes control bytes and, unless `keep_slash_zero`, every `\\+0+` run.
 ///
 /// Borrows when nothing is removed, the common case.
 pub fn no_null(content: &[u8], keep_slash_zero: bool) -> Cow<'_, [u8]> {
-    let has_control = content.iter().any(|b| is_removed_control(*b));
+    let has_control = has_removed_control(content);
     let has_slash = !keep_slash_zero && memchr::memchr(b'\\', content).is_some();
     if !has_control && !has_slash {
         return Cow::Borrowed(content);
@@ -97,10 +111,10 @@ pub fn html_error(attr: &[u8]) -> &[u8] {
 /// A bare tag becomes an empty attribute list; PHP's `(array) true` would add an attribute named `0`, which no
 /// attribute name can match.
 pub fn array_lc(allowed: &AllowedHtml) -> AllowedHtml {
-    let mut tags = IndexMap::new();
+    let mut tags = ByteMap::default();
     for (tag, attrs) in &allowed.tags {
         let lowered = match attrs {
-            AllowedAttrs::Empty => IndexMap::new(),
+            AllowedAttrs::Empty => ByteMap::default(),
             AllowedAttrs::Attrs(map) => map
                 .iter()
                 .map(|(name, rules)| (name.to_ascii_lowercase().into(), rules.clone()))

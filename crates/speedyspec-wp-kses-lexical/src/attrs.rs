@@ -12,34 +12,64 @@ use crate::scan::{attr_name, is_space, leading_space, trailing_space};
 /// lowercased, first occurrence wins, values decoded), URL values cleaned with [`bad_protocol`], and every value
 /// re-encoded inside double quotes.
 pub fn hair<'a>(attr: &'a [u8], protocols: &Protocols, uris: &UriAttributes) -> Vec<Attr<'a>> {
+    hair_attrs(attr, protocols, uris)
+        .into_iter()
+        .map(|a| {
+            let whole = if a.vless {
+                a.name.clone()
+            } else {
+                let mut whole = Vec::with_capacity(a.name.len() + a.value.len() + 3);
+                write_whole(&mut whole, &a.name, &a.value);
+                Cow::Owned(whole)
+            };
+            Attr {
+                name: a.name,
+                value: a.value,
+                whole,
+                vless: a.vless,
+            }
+        })
+        .collect()
+}
+
+/// One attribute of [`hair_attrs`]: its name, its re-encoded value and whether it was written without one.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HairAttr<'a> {
+    pub name: Cow<'a, [u8]>,
+    pub value: Cow<'a, [u8]>,
+    pub vless: bool,
+}
+
+/// [`hair`] without each attribute's `whole`, which a caller can write itself ([`write_whole`]); borrows what it
+/// does not change.
+pub fn hair_attrs<'a>(
+    attr: &'a [u8],
+    protocols: &Protocols,
+    uris: &UriAttributes,
+) -> Vec<HairAttr<'a>> {
     let Some(parsed) = start_tag_attributes(attr) else {
         return Vec::new();
     };
     parsed
         .into_iter()
         .map(|a| match a.value {
-            None => Attr {
-                whole: Cow::Owned(a.name.clone()),
-                name: Cow::Owned(a.name),
+            None => HairAttr {
+                name: a.name,
                 value: Cow::Borrowed(b""),
                 vless: true,
             },
             Some(value) => {
                 let value = if uris.0.iter().any(|u| **u == *a.name) {
-                    bad_protocol(&value, protocols).into_owned()
+                    match bad_protocol(&value, protocols) {
+                        Cow::Borrowed(_) => value,
+                        Cow::Owned(cleaned) => Cow::Owned(cleaned),
+                    }
                 } else {
                     value
                 };
-                let recoded = recode(&value);
-                let mut whole = Vec::with_capacity(a.name.len() + recoded.len() + 3);
-                whole.extend_from_slice(&a.name);
-                whole.extend_from_slice(b"=\"");
-                whole.extend_from_slice(&recoded);
-                whole.push(b'"');
-                Attr {
-                    name: Cow::Owned(a.name),
-                    value: Cow::Owned(recoded),
-                    whole: Cow::Owned(whole),
+                HairAttr {
+                    name: a.name,
+                    value: recode(value),
                     vless: false,
                 }
             }
@@ -47,10 +77,24 @@ pub fn hair<'a>(attr: &'a [u8], protocols: &Protocols, uris: &UriAttributes) -> 
         .collect()
 }
 
-/// `strtr()` of HTML's five syntax characters to their references.
-fn recode(value: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(value.len());
-    for b in value {
+/// An attribute's `whole` as `wp_kses_hair()` writes it: `name="value"`.
+pub fn write_whole(out: &mut Vec<u8>, name: &[u8], value: &[u8]) {
+    out.extend_from_slice(name);
+    out.extend_from_slice(b"=\"");
+    out.extend_from_slice(value);
+    out.push(b'"');
+}
+
+/// `strtr()` of HTML's five syntax characters to their references; borrows when there are none.
+fn recode(value: Cow<'_, [u8]>) -> Cow<'_, [u8]> {
+    if !value
+        .iter()
+        .any(|b| matches!(b, b'&' | b'<' | b'>' | b'\'' | b'"'))
+    {
+        return value;
+    }
+    let mut out = Vec::with_capacity(value.len() + 16);
+    for b in value.iter() {
         match b {
             b'&' => out.extend_from_slice(b"&amp;"),
             b'<' => out.extend_from_slice(b"&lt;"),
@@ -60,7 +104,7 @@ fn recode(value: &[u8]) -> Vec<u8> {
             b => out.push(*b),
         }
     }
-    out
+    Cow::Owned(out)
 }
 
 /// Whether `$` matches at `i`.

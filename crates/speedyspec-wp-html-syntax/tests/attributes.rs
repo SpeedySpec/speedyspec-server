@@ -2,10 +2,10 @@ use serde_json::Value;
 use speedyspec_wp_html_syntax::{TagAttribute, start_tag_attributes};
 use speedyspec_wp_kses_testkit::{PhpOracle, bytes, from_bytes};
 
-fn attr(name: &str, value: Option<&str>) -> TagAttribute {
+fn attr(name: &str, value: Option<&str>) -> TagAttribute<'static> {
     TagAttribute {
-        name: name.as_bytes().to_vec(),
-        value: value.map(|v| v.as_bytes().to_vec()),
+        name: name.as_bytes().to_vec().into(),
+        value: value.map(|v| v.as_bytes().to_vec().into()),
     }
 }
 
@@ -86,11 +86,11 @@ fn matches_php() {
                         let pair = kv[1]["array"].as_array().unwrap();
                         let value = &pair[1][1];
                         TagAttribute {
-                            name: from_bytes(&pair[0][1]),
+                            name: from_bytes(&pair[0][1]).into(),
                             value: if value == &Value::Bool(true) {
                                 None
                             } else {
-                                Some(from_bytes(value))
+                                Some(from_bytes(value).into())
                             },
                         }
                     })

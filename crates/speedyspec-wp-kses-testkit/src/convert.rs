@@ -2,10 +2,9 @@
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
-use indexmap::IndexMap;
 use serde_json::{Value, json};
 use speedyspec_wp_kses_contracts::{
-    AllowedAttrs, AllowedHtml, AttrRule, AttrRules, Bytes, RuleValue, ValueCallback,
+    AllowedAttrs, AllowedHtml, AttrRule, AttrRules, ByteMap, Bytes, RuleValue, ValueCallback,
 };
 
 /// Encodes bytes as an oracle string.
@@ -117,7 +116,7 @@ pub fn allowed_from_php(
     v: &Value,
     resolve: &dyn Fn(&[u8]) -> Option<ValueCallback>,
 ) -> AllowedHtml {
-    let mut tags = IndexMap::new();
+    let mut tags = ByteMap::default();
     for kv in pairs(v).into_iter().flatten() {
         let (name, value) = (key(&kv[0]), &kv[1]);
         let attrs = match value {

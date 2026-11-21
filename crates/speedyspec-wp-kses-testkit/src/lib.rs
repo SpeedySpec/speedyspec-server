@@ -4,6 +4,7 @@
 //! be compared byte for byte with the code it ports. [`allowed_from_php`] reads a PHP `$allowed_html` array with the
 //! same `isset`/`empty`/`is_array` rules kses applies.
 
+mod bench;
 mod bombs;
 mod convert;
 mod gate;
@@ -11,6 +12,7 @@ mod generate;
 mod oracle;
 mod release;
 
+pub use bench::{bench_page, bench_snippets};
 pub use bombs::{BombGenerator, bomb_generators};
 pub use convert::{allowed_from_php, bytes, from_bytes, rule_value};
 pub use gate::{ExploitFinder, Verdict, gate};

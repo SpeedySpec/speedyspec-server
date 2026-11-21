@@ -13,7 +13,9 @@ use speedyspec_wp_kses_contracts::{
 use speedyspec_wp_kses_lexical::scan::{
     TokenKind, invalid_wrapper, next_token, tag_head, xhtml_slash,
 };
-use speedyspec_wp_kses_lexical::{check_attr_val, hair, no_null, normalize_entities, stripslashes};
+use speedyspec_wp_kses_lexical::{
+    check_attr_val, hair_attrs, no_null, normalize_entities, stripslashes, write_whole,
+};
 
 use crate::KsesApi;
 use crate::api::{bytes_value, php_string};
@@ -28,6 +30,18 @@ const MAX_PASSES: usize = 16;
 pub struct CheckedAttr {
     pub value: Vec<u8>,
     pub whole: Vec<u8>,
+}
+
+/// An attribute that passed the check: its value and whole, borrowed where the check left them as they were.
+type Checked<'v> = (Cow<'v, [u8]>, Cow<'v, [u8]>);
+
+/// `strtolower()`, borrowing a name that is lowercase already (most are).
+fn lower(name: &[u8]) -> Cow<'_, [u8]> {
+    if name.iter().any(u8::is_ascii_uppercase) {
+        Cow::Owned(name.to_ascii_lowercase())
+    } else {
+        Cow::Borrowed(name)
+    }
 }
 
 fn replace_all(s: &[u8], from: &[u8], to: &[u8]) -> Vec<u8> {
@@ -79,7 +93,9 @@ fn rule_key(rule: &AttrRule) -> Vec<u8> {
 
 /// `_wp_kses_restricts_attribute_values()`: whether any attribute of the element has a rule beyond `required` and
 /// `valueless`.
-pub fn restricts_attribute_values(attrs: &indexmap::IndexMap<Box<[u8]>, AttrRules>) -> bool {
+pub fn restricts_attribute_values(
+    attrs: &speedyspec_wp_kses_contracts::ByteMap<AttrRules>,
+) -> bool {
     attrs.values().any(|r| match r {
         AttrRules::Rules(list) => list
             .iter()
@@ -92,7 +108,7 @@ pub fn restricts_attribute_values(attrs: &indexmap::IndexMap<Box<[u8]>, AttrRule
 /// would replace an attribute whose values kses restricts on this element.
 pub fn directive_binds_value_restricted_attribute(
     directive: &[u8],
-    attrs: &indexmap::IndexMap<Box<[u8]>, AttrRules>,
+    attrs: &speedyspec_wp_kses_contracts::ByteMap<AttrRules>,
 ) -> bool {
     let Some(bound) = directive.strip_prefix(b"data-wp-bind--") else {
         return false;
@@ -314,7 +330,7 @@ impl KsesApi {
         let elem = &token[head.name.clone()];
         let attrlist = &token[head.attrs.clone()];
         let allowed_html = self.resolve_allowed(allowed)?;
-        if allowed_html.get(&elem.to_ascii_lowercase()).is_none() {
+        if allowed_html.get(&lower(elem)).is_none() {
             return Ok(());
         }
         if head.slash {
@@ -356,7 +372,7 @@ impl KsesApi {
         out: &mut Vec<u8>,
     ) -> Result<(), KsesError> {
         let slash: &[u8] = if xhtml_slash(attr) { b" /" } else { b"" };
-        let element_low = element.to_ascii_lowercase();
+        let element_low = lower(element);
         let attrs = match allowed.get(&element_low) {
             Some(AllowedAttrs::Attrs(a)) if !a.is_empty() => a,
             _ => {
@@ -368,7 +384,7 @@ impl KsesApi {
             }
         };
         let uris = self.uri_attributes()?;
-        let parsed = hair(attr, protocols, &uris);
+        let parsed = hair_attrs(attr, protocols, &uris);
         let mut required: Vec<&[u8]> = attrs
             .iter()
             .filter(|(_, r)| r.is_required())
@@ -382,13 +398,20 @@ impl KsesApi {
             }
         };
         let mut kept = Vec::new();
+        let mut whole = Vec::new();
         for a in &parsed {
-            let name_low = a.name.to_ascii_lowercase();
+            let name_low = lower(&a.name);
             let is_required = required.iter().any(|r| **r == *name_low);
-            match self.attr_check(&a.name, &a.value, &a.whole, a.vless, element, allowed)? {
-                Some(checked) => {
+            whole.clear();
+            if a.vless {
+                whole.extend_from_slice(&a.name);
+            } else {
+                write_whole(&mut whole, &a.name, &a.value);
+            }
+            match self.checked(&a.name, &a.value, &whole, a.vless, element, allowed)? {
+                Some((_, whole)) => {
                     kept.push(b' ');
-                    kept.extend_from_slice(&checked.whole);
+                    kept.extend_from_slice(&whole);
                     if is_required {
                         required.retain(|r| **r != *name_low);
                     }
@@ -406,7 +429,13 @@ impl KsesApi {
         }
         out.push(b'<');
         out.extend_from_slice(element);
-        out.extend(kept.into_iter().filter(|b| *b != b'<' && *b != b'>'));
+        // `<` and `>` are dropped from the attributes, a run at a time.
+        let mut rest = &kept[..];
+        while let Some(i) = memchr::memchr2(b'<', b'>', rest) {
+            out.extend_from_slice(&rest[..i]);
+            rest = &rest[i + 1..];
+        }
+        out.extend_from_slice(rest);
         out.extend_from_slice(slash);
         out.push(b'>');
         Ok(())
@@ -422,38 +451,53 @@ impl KsesApi {
         element: &[u8],
         allowed: &AllowedHtml,
     ) -> Result<Option<CheckedAttr>, KsesError> {
-        let name_low = name.to_ascii_lowercase();
-        let Some(tag) = allowed.get(&element.to_ascii_lowercase()) else {
+        Ok(self
+            .checked(name, value, whole, vless, element, allowed)?
+            .map(|(value, whole)| CheckedAttr {
+                value: value.into_owned(),
+                whole: whole.into_owned(),
+            }))
+    }
+
+    /// [`KsesApi::attr_check`] borrowing the value and whole where the check leaves them as they were.
+    fn checked<'v>(
+        &self,
+        name: &[u8],
+        value: &'v [u8],
+        whole: &'v [u8],
+        vless: bool,
+        element: &[u8],
+        allowed: &AllowedHtml,
+    ) -> Result<Option<Checked<'v>>, KsesError> {
+        let name_low = lower(name);
+        let Some(tag) = allowed.get(&lower(element)) else {
             return Ok(None);
         };
-        let mut attrs = match tag {
-            AllowedAttrs::Attrs(a) => a.clone(),
-            AllowedAttrs::Empty => indexmap::IndexMap::new(),
-        };
-        let rules = match attrs.get(&name_low[..]) {
-            Some(r) if *r != AttrRules::Denied => r.clone(),
-            _ => {
-                let data = attrs
-                    .get(&b"data-*"[..])
-                    .filter(|r| !rules_empty(r))
-                    .cloned();
-                match data {
-                    Some(r) if is_data_name(&name_low) => {
-                        attrs.insert(name_low.clone().into(), r.clone());
-                        r
-                    }
-                    _ => return Ok(None),
-                }
+        // WordPress copies the `data-*` rules under the attribute's own name before the directive check; the copy
+        // cannot change that check (the rules are already in the map, under `data-*`), so nothing is copied here.
+        let none;
+        let attrs = match tag {
+            AllowedAttrs::Attrs(a) => a,
+            AllowedAttrs::Empty => {
+                none = speedyspec_wp_kses_contracts::ByteMap::default();
+                &none
             }
         };
+        let rules = match attrs.get(&name_low[..]) {
+            Some(r) if *r != AttrRules::Denied => r,
+            _ => match attrs.get(&b"data-*"[..]).filter(|r| !rules_empty(r)) {
+                Some(r) if is_data_name(&name_low) => r,
+                _ => return Ok(None),
+            },
+        };
         if name_low.starts_with(b"data-wp-bind--")
-            && directive_binds_value_restricted_attribute(&name_low, &attrs)
+            && directive_binds_value_restricted_attribute(&name_low, attrs)
         {
             return Ok(None);
         }
-        let mut value = value.to_vec();
-        let mut whole = whole.to_vec();
-        if name_low == b"style" {
+        let mut value = Cow::Borrowed(value);
+        let mut whole = Cow::Borrowed(whole);
+        if *name_low == *b"style" {
             let decoded = decode_attribute(&value).into_owned();
             let filtered = self.safecss_filter_attr(&decoded)?;
             if filtered.is_empty() || filtered == b"0" {
@@ -461,17 +505,17 @@ impl KsesApi {
             }
             if filtered != decoded {
                 let encoded = self.d.escaper.esc_attr(&filtered)?;
-                whole = replace_all(&whole, &value, &encoded);
-                value = encoded;
+                whole = Cow::Owned(replace_all(&whole, &value, &encoded));
+                value = Cow::Owned(encoded);
             }
         }
-        if let AttrRules::Rules(list) = &rules {
+        if let AttrRules::Rules(list) = rules {
             for rule in list {
                 if !check_attr_val(&value, vless, rule)? {
                     return Ok(None);
                 }
             }
         }
-        Ok(Some(CheckedAttr { value, whole }))
+        Ok(Some((value, whole)))
     }
 }

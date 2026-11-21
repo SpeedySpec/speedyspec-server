@@ -1,11 +1,10 @@
-use indexmap::IndexMap;
-use speedyspec_wp_kses_contracts::{AllowedAttrs, AllowedHtml, AttrRules, Protocols};
+use speedyspec_wp_kses_contracts::{AllowedAttrs, AllowedHtml, AttrRules, ByteMap, Protocols};
 use speedyspec_wp_kses_security::{Finding, Level, inspect};
 
 fn allowed() -> AllowedHtml {
-    let mut tags = IndexMap::new();
+    let mut tags = ByteMap::default();
     for tag in ["p", "a", "img", "div", "span", "svg", "math"] {
-        let mut attrs = IndexMap::new();
+        let mut attrs = ByteMap::default();
         for a in ["href", "src", "title", "class", "style", "data"] {
             attrs.insert(a.as_bytes().into(), AttrRules::Allowed);
         }

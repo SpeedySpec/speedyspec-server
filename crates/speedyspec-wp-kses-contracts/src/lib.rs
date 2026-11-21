@@ -11,8 +11,8 @@ mod ports;
 mod rules;
 
 pub use allowed::{
-    AllowedAttrs, AllowedHtml, AllowedSpec, Context, EntityContext, EntityNames, Protocols,
-    UriAttributes,
+    AllowedAttrs, AllowedHtml, AllowedSpec, ByteMap, Context, EntityContext, EntityNames,
+    NameHasher, Protocols, UriAttributes,
 };
 pub use attr::Attr;
 pub use error::{KsesError, Payload};

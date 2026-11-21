@@ -3,10 +3,10 @@
 
 use std::rc::Rc;
 
-use indexmap::IndexMap;
 use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_kses_contracts::{
-    AllowedAttrs, AllowedHtml, AttrRule, AttrRules, Bytes, KsesError, RuleValue, ValueCallback,
+    AllowedAttrs, AllowedHtml, AttrRule, AttrRules, ByteMap, Bytes, KsesError, RuleValue,
+    ValueCallback,
 };
 
 fn key_bytes(k: &Key) -> Bytes {
@@ -78,13 +78,13 @@ pub fn attr_rule(
 pub fn attr_rules_from_value(
     v: &Value,
     resolve: &dyn Fn(&Value) -> Option<ValueCallback>,
-) -> IndexMap<Bytes, AttrRules> {
+) -> ByteMap<AttrRules> {
     match &*v.read() {
         Value::Array(attrs) => attrs
             .iter()
             .map(|(k, a)| (key_bytes(k), rules(a, resolve)))
             .collect(),
-        _ => IndexMap::new(),
+        _ => ByteMap::default(),
     }
 }
 
@@ -111,7 +111,7 @@ pub fn allowed_from_value(
     resolve: &dyn Fn(&Value) -> Option<ValueCallback>,
 ) -> Result<AllowedHtml, KsesError> {
     let v = v.read();
-    let mut tags = IndexMap::new();
+    let mut tags = ByteMap::default();
     let Value::Array(items) = &*v else {
         return Ok(AllowedHtml { tags });
     };
@@ -126,7 +126,7 @@ pub fn allowed_from_value(
                     .map(|(k, a)| (key_bytes(k), rules(a, resolve)))
                     .collect(),
             ),
-            _ => AllowedAttrs::Attrs(IndexMap::new()),
+            _ => AllowedAttrs::Attrs(ByteMap::default()),
         };
         tags.insert(key_bytes(k), attrs);
     }

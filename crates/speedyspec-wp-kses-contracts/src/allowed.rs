@@ -1,9 +1,36 @@
 use std::collections::HashSet;
 use std::rc::Rc;
 
+use std::hash::{BuildHasherDefault, Hasher};
+
 use indexmap::IndexMap;
 
 use crate::{AttrRules, Bytes};
+
+/// A map keyed by tag or attribute name, in PHP's order. Its keys come from an allowlist (configuration, not
+/// request input), so it hashes with a fast non-keyed hash rather than SipHash.
+pub type ByteMap<V> = IndexMap<Bytes, V, BuildHasherDefault<NameHasher>>;
+
+/// FxHash over 8-byte words: fast for the short ASCII names allowlists hold.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct NameHasher(u64);
+
+impl Hasher for NameHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        const K: u64 = 0x517c_c1b7_2722_0a95;
+        let (words, rest) = bytes.as_chunks::<8>();
+        for w in words {
+            self.0 = (self.0.rotate_left(5) ^ u64::from_le_bytes(*w)).wrapping_mul(K);
+        }
+        for b in rest {
+            self.0 = (self.0.rotate_left(5) ^ u64::from(*b)).wrapping_mul(K);
+        }
+    }
+
+    fn finish(&self) -> u64 {
+        self.0
+    }
+}
 
 /// What an allowlist says about one tag.
 #[derive(Clone, Debug, PartialEq)]
@@ -11,13 +38,13 @@ pub enum AllowedAttrs {
     /// PHP `true` or any `empty()` value: the tag is kept, with no attributes.
     Empty,
     /// Attribute name (lowercase) to its rules, in PHP's order.
-    Attrs(IndexMap<Bytes, AttrRules>),
+    Attrs(ByteMap<AttrRules>),
 }
 
 /// `$allowed_html` as an array: tag name (lowercase) to what it may carry, in PHP's order.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AllowedHtml {
-    pub tags: IndexMap<Bytes, AllowedAttrs>,
+    pub tags: ByteMap<AllowedAttrs>,
 }
 
 impl AllowedHtml {
