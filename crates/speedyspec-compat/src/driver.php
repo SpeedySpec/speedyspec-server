@@ -193,6 +193,9 @@ final class SpeedySpecCompat
         if (is_array($arg) && array_key_exists('array', $arg) && count($arg) === 1) {
             $out = [];
             foreach ($arg['array'] as [$key, $value]) {
+                if (is_array($key) && isset($key['bytes']) && is_string($key['bytes']) && count($key) === 1) {
+                    $key = base64_decode($key['bytes'], true);
+                }
                 $out[$key] = self::arg($value);
             }
             return $out;
@@ -332,7 +335,12 @@ final class SpeedySpecCompat
             // A hook global is an array in WordPress and a proxy over the Rust store in the port.
             $pairs = [];
             foreach ($value as $key => $item) {
-                $pairs[] = [self::key($key), self::normalise($item)];
+                $pairs[] = [
+                    self::$exact_bytes && is_string($key) && !mb_check_encoding($key, 'UTF-8')
+                        ? ['bytes' => base64_encode($key)]
+                        : self::key($key),
+                    self::normalise($item),
+                ];
             }
             return ['array' => $pairs];
         }

@@ -258,28 +258,22 @@ pub fn cases(function: &str) -> Vec<Case> {
 
 /// Checks `run` against every recorded call of `function`, and panics listing every case it gets wrong.
 ///
-/// It also panics when `function` has no cases, so a misspelt name cannot pass.
+/// It is for functions that report nothing: a case where WordPress reported a deprecation or an error is a mismatch
+/// here, so such a function must use [`assert_corpus_reporting`]. It also panics when `function` has no cases, so a
+/// misspelt name cannot pass.
 pub fn assert_corpus(function: &str, run: impl Fn(&[Php]) -> Php) {
+    assert_corpus_reporting(function, |args| (run(args), Php::Array(Vec::new())));
+}
+
+/// Checks `run` against every recorded call of `function`, comparing what it returns and what it reported (the
+/// recorder's diagnostics: a list of `[kind, function, ...arguments]`), and panics listing every case it gets wrong.
+pub fn assert_corpus_reporting(function: &str, run: impl Fn(&[Php]) -> (Php, Php)) {
     let cases = cases(function);
     assert!(
         !cases.is_empty(),
         "the corpus has no cases for {function}"
     );
-    let wrong: Vec<String> = cases
-        .iter()
-        .filter_map(|case| {
-            let actual = run(&case.args);
-            (actual != case.returned).then(|| {
-                let args: Vec<String> = case.args.iter().map(ToString::to_string).collect();
-                format!(
-                    "{}\n  args:     ({})\n  expected: {}\n  actual:   {actual}",
-                    case.scenario,
-                    args.join(", "),
-                    case.returned
-                )
-            })
-        })
-        .collect();
+    let wrong = mismatches(&cases, run);
     assert!(
         wrong.is_empty(),
         "{} of {} {function} cases differ from WordPress:\n{}",
@@ -287,6 +281,27 @@ pub fn assert_corpus(function: &str, run: impl Fn(&[Php]) -> Php) {
         cases.len(),
         wrong.join("\n")
     );
+}
+
+/// Every case `run` gets wrong, described: its result or its diagnostics differ from what WordPress recorded.
+pub fn mismatches(cases: &[Case], run: impl Fn(&[Php]) -> (Php, Php)) -> Vec<String> {
+    cases
+        .iter()
+        .filter_map(|case| {
+            let (actual, reported) = run(&case.args);
+            if actual == case.returned && reported == case.diagnostics {
+                return None;
+            }
+            let args: Vec<String> = case.args.iter().map(ToString::to_string).collect();
+            Some(format!(
+                "{}\n  args:        ({})\n  expected:    {}\n  actual:      {actual}\n  diagnostics: expected {}, actual {reported}",
+                case.scenario,
+                args.join(", "),
+                case.returned,
+                case.diagnostics
+            ))
+        })
+        .collect()
 }
 
 /// How much of the corpus the ported functions answer.

@@ -54,3 +54,42 @@ fn coverage_counts_skips() {
     assert_eq!(split.covered, cases("wp_html_split").len());
     assert!(!split.skipped.contains_key("wp_html_split"));
 }
+
+fn reported(kind: &str, function: &str) -> Php {
+    Php::Array(vec![(
+        PhpKey::Int(0),
+        Php::Array(vec![
+            (PhpKey::Int(0), text(kind)),
+            (PhpKey::Int(1), text(function)),
+        ]),
+    )])
+}
+
+fn case_with(diagnostics: Php) -> speedyspec_wp_text_corpus::Case {
+    speedyspec_wp_text_corpus::Case {
+        scenario: "seems_utf8/x/0".into(),
+        function: "seems_utf8".into(),
+        args: vec![text("a")],
+        returned: Php::Bool(true),
+        diagnostics,
+    }
+}
+
+#[test]
+fn a_missing_diagnostic_is_a_mismatch() {
+    let cases = vec![case_with(reported("deprecated_function", "seems_utf8"))];
+    let wrong = speedyspec_wp_text_corpus::mismatches(&cases, |_| {
+        (Php::Bool(true), Php::Array(vec![]))
+    });
+    assert_eq!(wrong.len(), 1);
+    assert!(wrong[0].contains("seems_utf8/x/0"), "{}", wrong[0]);
+}
+
+#[test]
+fn matching_diagnostics_pass() {
+    let cases = vec![case_with(reported("deprecated_function", "seems_utf8"))];
+    let wrong = speedyspec_wp_text_corpus::mismatches(&cases, |_| {
+        (Php::Bool(true), reported("deprecated_function", "seems_utf8"))
+    });
+    assert!(wrong.is_empty(), "{wrong:?}");
+}
