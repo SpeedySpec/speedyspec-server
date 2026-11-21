@@ -4383,7 +4383,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-compat"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "flate2",
  "serde",
@@ -4452,7 +4452,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-data-corpus"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -4502,7 +4502,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-data-postgres"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bytes",
  "indexmap",
@@ -4542,7 +4542,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-data-sqlite"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "md-5",
@@ -4707,7 +4707,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-php-runtime"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "clap",
  "libc",
@@ -4795,7 +4795,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-app"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "semver",
  "sha2 0.10.9",
@@ -4810,7 +4810,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-domain"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "http",
  "semver",
@@ -4822,7 +4822,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-gate"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "http",
  "httpdate",
@@ -4849,7 +4849,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-access-dev"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "http",
  "speedyspec-server-domain",
@@ -4858,7 +4858,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-fs"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ruzstd",
  "semver",
@@ -4874,7 +4874,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-http"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "speedyspec-server-domain",
  "tempfile",
@@ -4884,7 +4884,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-kubernetes"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "http",
  "k8s-openapi",
@@ -4897,7 +4897,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-memory"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ruzstd",
  "semver",
@@ -4908,7 +4908,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-minisign"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "minisign",
  "minisign-verify",
@@ -4918,7 +4918,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-presentation"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "arc-swap",
  "bytes",
@@ -4937,7 +4937,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-static"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "blake3",
  "brotli 8.0.4",
@@ -4973,7 +4973,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-db-php"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "indexmap",
  "postgres",
@@ -5021,7 +5021,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-hooks-php"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
@@ -5052,7 +5052,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-object-cache-php"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
@@ -5109,7 +5109,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-options-php"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "indexmap",
  "serde_json",

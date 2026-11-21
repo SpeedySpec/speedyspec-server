@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-server-infra-fs"
-version = "0.1.0"
+version = "0.1.1"
 description = "The SpeedySpec server's state file and release store on disk."
 edition.workspace = true
 rust-version.workspace = true
