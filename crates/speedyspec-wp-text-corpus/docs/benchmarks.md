@@ -61,3 +61,28 @@ Targets (spec):
 - The chain at least 5x PHP on whole posts: not met. It is about 4.2x to 4.9x. Reaching 5x steadily needs
   `wpautop`'s twelve or so passes merged into fewer scans; until then the faster paths (`HandTexturizer`,
   `wpautop`) are checked against the PCRE2 transcriptions of WordPress's code by `tests/differential.rs`.
+
+## Escaping (2026-11-21, branch commit 27764b1)
+
+Rust: `cargo bench -p speedyspec-wp-text-escape --bench escape`, through `EscapeApi` with no filters registered,
+timed in thread CPU time. PHP: `php-baseline esc_html` (and `esc_attr`, `esc_textarea`), CPU-time column. Both
+include the filter call and `wp_check_invalid_utf8`. `short` is every recorded non-whole-post input of the
+function (attribute values, snippets), so its rate is dominated by per-call cost. Each Rust bench first checks every
+corpus case of its function.
+
+Machine: Apple M4 Max, rustc 1.99.0 release, PHP 8.5.12 static embed. Load average 21 to 27 during both runs; the
+table gives the range of two back-to-back runs of each side.
+
+| Function | Group | Rust | PHP | Rust / PHP |
+|---|---|---|---|---|
+| `esc_html` | whole_posts | 516 to 560 MiB/s | 150 to 159 MiB/s | about 3.5x |
+| | page | 463 to 506 MiB/s | 149 to 161 MiB/s | about 3.1x |
+| | short | 181 to 190 MiB/s | 50 to 54 MiB/s | about 3.5x |
+| `esc_attr` | whole_posts | 485 to 505 MiB/s | 149 to 162 MiB/s | 3.0x to 3.4x |
+| | page | 493 to 502 MiB/s | 148 to 164 MiB/s | 3.0x to 3.3x |
+| | short | 69 to 73 MiB/s | 14.0 to 14.4 MiB/s | about 5x |
+| `esc_textarea` | whole_posts | 485 to 499 MiB/s | 160 to 174 MiB/s | about 3x |
+| | page | 515 to 555 MiB/s | 159 to 172 MiB/s | about 3.3x |
+| | short | 48 to 49 MiB/s | 19 to 20 MiB/s | about 2.5x |
+
+Target (spec): at least as fast as PHP on every input. Met.

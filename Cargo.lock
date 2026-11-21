@@ -6094,6 +6094,8 @@ name = "speedyspec-wp-text-escape"
 version = "0.1.1"
 dependencies = [
  "aho-corasick",
+ "criterion 0.5.1",
+ "libc",
  "memchr",
  "speedyspec-hooks",
  "speedyspec-wp-hooks",

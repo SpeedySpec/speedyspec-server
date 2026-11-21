@@ -31,3 +31,13 @@ pub fn page(function: &str) -> Vec<u8> {
     }
     page
 }
+
+/// Every first string argument of `function` that isn't a whole post: the short, typical inputs (attribute values,
+/// titles, snippets) the corpus records.
+pub fn short_inputs(function: &str) -> Vec<Vec<u8>> {
+    inputs(function)
+        .into_iter()
+        .filter(|(scenario, _)| !scenario.contains("/whole_posts/"))
+        .map(|(_, bytes)| bytes)
+        .collect()
+}

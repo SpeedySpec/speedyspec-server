@@ -16,7 +16,7 @@ mod bench;
 #[cfg(feature = "values")]
 mod values;
 
-pub use bench::{inputs, page};
+pub use bench::{inputs, page, short_inputs};
 #[cfg(feature = "values")]
 pub use values::{diagnostics, from_value, to_value};
 
