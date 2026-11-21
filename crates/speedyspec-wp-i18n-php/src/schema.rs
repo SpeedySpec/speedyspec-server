@@ -14,7 +14,8 @@ use speedyspec_wp_i18n_contracts::PortError;
 use crate::state::shared;
 use crate::zv;
 
-/// A PHP value, owned (one reference).
+/// A PHP value, owned (one reference). Values taken out of arrays and objects are dereferenced first, as PHP's
+/// `foreach` and property reads give them: a reference must not leak into the result.
 struct Tree(Zval);
 
 impl Clone for Tree {
@@ -79,7 +80,7 @@ impl SettingsTree for Tree {
         match self.value().array() {
             Some(a) => a
                 .iter()
-                .map(|(k, v)| (key_of(k), Tree(v.shallow_clone())))
+                .map(|(k, v)| (key_of(k), Tree(v.dereference().shallow_clone())))
                 .collect(),
             None => Vec::new(),
         }
@@ -89,7 +90,7 @@ impl SettingsTree for Tree {
         self.value()
             .array()
             .and_then(|a| a.get_index(0))
-            .map(|v| Tree(v.shallow_clone()))
+            .map(|v| Tree(v.dereference().shallow_clone()))
     }
 
     fn property(&self, key: &Key) -> Option<Tree> {
@@ -107,7 +108,7 @@ impl SettingsTree for Tree {
         object
             .get_property::<&Zval>(&name)
             .ok()
-            .map(|v| Tree(v.shallow_clone()))
+            .map(|v| Tree(v.dereference().shallow_clone()))
     }
 
     fn null() -> Tree {

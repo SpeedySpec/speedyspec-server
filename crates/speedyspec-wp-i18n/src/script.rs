@@ -17,20 +17,29 @@ use crate::{I18nApi, I18nError, bytes_value};
 pub enum Relative {
     /// `wp_parse_url()` could not parse the source or `content_url()`: no file is looked for.
     Unparseable,
-    /// The path relative to the plugin, theme or WordPress root (`None` is WordPress's false: not WordPress's
-    /// script), and the language subdirectory (`plugins` or `themes`) to look in, if any.
+    /// The path relative to the plugin, theme or WordPress root, as bytes (PHP's `substr()` may cut a multibyte
+    /// character; `None` is WordPress's false: not WordPress's script), and the language subdirectory (`plugins` or
+    /// `themes`) to look in, if any.
     Path {
-        relative: Option<String>,
+        relative: Option<Vec<u8>>,
         languages_suffix: Option<&'static str>,
     },
 }
 
-fn trim_slashes(s: &str) -> &str {
-    s.trim_matches('/')
+/// PHP's `trim( $s, '/' )`.
+fn trim_slashes(s: &[u8]) -> &[u8] {
+    let start = s.iter().position(|b| *b != b'/').unwrap_or(s.len());
+    let end = s.iter().rposition(|b| *b != b'/').map_or(start, |i| i + 1);
+    &s[start..end.max(start)]
 }
 
 fn untrailingslashit(s: &str) -> &str {
     s.trim_end_matches(['/', '\\'])
+}
+
+/// PHP's `substr( $s, $start )` for a non-negative start: `''` past the end.
+fn substr_from(s: &[u8], start: usize) -> &[u8] {
+    s.get(start..).unwrap_or(b"")
 }
 
 /// Whether `url` is on the same host as `base`, as WordPress compares them (a side without a host matches).
@@ -42,18 +51,26 @@ fn same_host(url: &UrlParts, base: &UrlParts) -> bool {
 }
 
 /// The source path below `base`'s path (all of it when `base` has none), when it starts there and is on its host.
-fn below<'a>(src: &'a UrlParts, src_path: &'a str, base: &UrlParts) -> Option<&'a str> {
+fn below<'a>(src: &UrlParts, src_path: &'a [u8], base: &UrlParts) -> Option<&'a [u8]> {
     let starts = match &base.path {
         None => true,
-        Some(p) => src_path.starts_with(p.as_str()),
+        Some(p) => src_path.starts_with(p.as_bytes()),
     };
     if !(starts && same_host(src, base)) {
         return None;
     }
     Some(match &base.path {
-        Some(p) => &src_path[p.len()..],
+        Some(p) => substr_from(src_path, p.len()),
         None => src_path,
     })
+}
+
+/// `implode( '/', array_slice( explode( '/', $path ), $skip ) )`.
+fn drop_segments(path: &[u8], skip: usize) -> Vec<u8> {
+    path.split(|b| *b == b'/')
+        .skip(skip)
+        .collect::<Vec<_>>()
+        .join(&b'/')
 }
 
 /// The relative path and language subdirectory for `src`, given the parsed `content_url()`, `plugins_url()` and
@@ -68,25 +85,25 @@ pub fn relative_path(
     let Some(content) = content else {
         return Relative::Unparseable;
     };
-    let src_path = src.path.as_deref().unwrap_or("");
+    let src_path = src.path.as_deref().unwrap_or("").as_bytes();
     if let Some(rest) = below(src, src_path, content) {
-        let parts: Vec<&str> = trim_slashes(rest).split('/').collect();
+        let rest = trim_slashes(rest);
+        let first = rest.split(|b| *b == b'/').next().unwrap_or(b"");
         let theme_dir = theme_root.rsplit('/').next().unwrap_or("");
-        let suffix = if parts[0] == theme_dir {
+        let suffix = if first == theme_dir.as_bytes() {
             "themes"
         } else {
             "plugins"
         };
         return Relative::Path {
-            relative: Some(parts.iter().skip(2).copied().collect::<Vec<_>>().join("/")),
+            relative: Some(drop_segments(rest, 2)),
             languages_suffix: Some(suffix),
         };
     }
     let plugins = plugins.cloned().unwrap_or_default();
     if let Some(rest) = below(src, src_path, &plugins) {
-        let parts: Vec<&str> = trim_slashes(rest).split('/').collect();
         return Relative::Path {
-            relative: Some(parts.iter().skip(1).copied().collect::<Vec<_>>().join("/")),
+            relative: Some(drop_segments(trim_slashes(rest), 1)),
             languages_suffix: Some("plugins"),
         };
     }
@@ -94,11 +111,11 @@ pub fn relative_path(
     let mut relative = None;
     if same_host(src, &site) {
         match &site.path {
-            None => relative = Some(trim_slashes(src_path).to_owned()),
+            None => relative = Some(trim_slashes(src_path).to_vec()),
             Some(p) => {
                 let with_slash = format!("{}/", untrailingslashit(p));
-                if src_path.starts_with(&with_slash) {
-                    relative = Some(trim_slashes(&src_path[p.len()..]).to_owned());
+                if src_path.starts_with(with_slash.as_bytes()) {
+                    relative = Some(trim_slashes(substr_from(src_path, p.len())).to_vec());
                 }
             }
         }
@@ -110,12 +127,12 @@ pub fn relative_path(
 }
 
 /// The JSON file name for a script at `relative`: translations are always for the unminified file.
-pub fn json_filename(file_base: &str, relative: &str) -> String {
-    let relative = match relative.strip_suffix(".min.js") {
-        Some(stem) => format!("{stem}.js"),
-        None => relative.to_owned(),
+pub fn json_filename(file_base: &str, relative: &[u8]) -> String {
+    let relative = match relative.strip_suffix(b".min.js") {
+        Some(stem) => [stem, b".js"].concat(),
+        None => relative.to_vec(),
     };
-    let digest = Md5::digest(relative.as_bytes());
+    let digest = Md5::digest(&relative);
     let hex: String = digest.iter().map(|b| format!("{b:02x}")).collect();
     format!("{file_base}-{hex}.json")
 }
@@ -300,12 +317,14 @@ impl I18nApi {
         };
         let relative = self.filter(
             "load_script_textdomain_relative_path",
-            relative.map(PhpValue::Str).unwrap_or(PhpValue::Bool(false)),
+            relative
+                .map(|r| bytes_value(&r))
+                .unwrap_or(PhpValue::Bool(false)),
             vec![PhpValue::Str(src.to_owned()), PhpValue::Bool(is_module)],
         )?;
         let relative = match relative.read().as_ref() {
-            PhpValue::Str(s) => s.clone(),
-            PhpValue::Bytes(b) => String::from_utf8_lossy(b).into_owned(),
+            PhpValue::Str(s) => s.as_bytes().to_vec(),
+            PhpValue::Bytes(b) => b.clone(),
             _ => return none(self),
         };
         let md5_filename = json_filename(&file_base, &relative);

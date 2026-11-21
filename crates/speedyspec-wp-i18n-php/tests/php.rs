@@ -239,6 +239,15 @@ fn main() {
     );
 
     let r = php.eval(
+        "speedyspec://test/schema-references",
+        "$x = 'a'; $y = 'p';
+         $r = translate_settings_using_i18n_schema((object) array('zz' => 'c', 'l' => array('c')), array('k' => &$x, 'l' => array(&$y)), 'd');
+         $r['k'] = 'b'; $r['l'][0] = 'q';
+         return $x . $y;",
+    );
+    check("schema_translation_copies_references", text(&r) == "ap", &r);
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

@@ -58,7 +58,10 @@ fn rel(
         Relative::Path {
             relative,
             languages_suffix,
-        } => (relative, languages_suffix),
+        } => (
+            relative.map(|r| String::from_utf8(r).unwrap()),
+            languages_suffix,
+        ),
         Relative::Unparseable => panic!("unexpected"),
     }
 }
@@ -154,13 +157,34 @@ fn relative_path_matches_wordpress() {
 }
 
 #[test]
+fn a_site_path_with_extra_slashes_slices_as_php_does() {
+    // PHP's substr() past the end is '', and inside a multibyte character it keeps the raw bytes.
+    let (c, p) = (content(), plugins());
+    let site = url(Some("http"), Some("example.org"), Some("/wp//"));
+    assert_eq!(
+        rel(url(None, None, Some("/wp/")), &c, &p, &site),
+        (Some(String::new()), None)
+    );
+    match relative_path(
+        &url(None, None, Some("/wp/é.js")),
+        Some(&c),
+        Some(&p),
+        Some(&site),
+        THEME_ROOT,
+    ) {
+        Relative::Path { relative, .. } => assert_eq!(relative, Some(b"\xa9.js".to_vec())),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
 fn json_filename_strips_min() {
     assert_eq!(
-        json_filename("en_US", "wp-includes/js/script.min.js"),
+        json_filename("en_US", b"wp-includes/js/script.min.js"),
         "en_US-813e104eb47e13dd4cc5af844c618754.json"
     );
     assert_eq!(
-        json_filename("en_US", "wp-includes/js/script.js"),
+        json_filename("en_US", b"wp-includes/js/script.js"),
         "en_US-813e104eb47e13dd4cc5af844c618754.json"
     );
 }
