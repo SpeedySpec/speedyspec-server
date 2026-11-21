@@ -9,6 +9,7 @@
 pub mod dispatch;
 mod group;
 pub mod pattern;
+mod pcre;
 mod router;
 mod url;
 

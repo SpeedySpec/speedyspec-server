@@ -102,6 +102,55 @@ fn permastruct_args(args: &[Value]) -> PermastructArgs {
     parsed
 }
 
+/// `add_permastruct()`'s `$args` as WordPress keeps them: `array_intersect_key()` with the defaults, then
+/// `wp_parse_args()`, the caller's values unchanged.
+fn permastruct_given(args: &[Value]) -> Value {
+    let mut entries: Vec<(Key, Value)> = [
+        ("with_front", Value::Bool(true)),
+        ("ep_mask", Value::Int(0)),
+        ("paged", Value::Bool(true)),
+        ("feed", Value::Bool(true)),
+        ("forcomments", Value::Bool(false)),
+        ("walk_dirs", Value::Bool(true)),
+        ("endpoints", Value::Bool(true)),
+    ]
+    .into_iter()
+    .map(|(name, value)| (Key::Str(name.into()), value))
+    .collect();
+    let mut set = |name: &str, value: &Value| {
+        if let Some(entry) = entries.iter_mut().find(|(key, _)| key_text(key) == name) {
+            entry.1 = value.clone();
+        }
+    };
+    match arg(args, 2) {
+        Some(Value::Array(given)) => {
+            for (key, value) in given {
+                set(&key_text(key), value);
+            }
+        }
+        Some(other) => set("with_front", other),
+        None => {}
+    }
+    if let Some(mask) = arg(args, 3) {
+        set("ep_mask", mask);
+    }
+    Value::Array(entries)
+}
+
+/// The entry `add_endpoint()` appends: `array( $places, $name, $query_var )`, `true` or `null` being the name.
+fn endpoint_given(args: &[Value]) -> Value {
+    let name = arg(args, 0).cloned().unwrap_or(Value::Null);
+    let query_var = match arg(args, 2) {
+        None | Some(Value::Bool(true)) | Some(Value::Null) => name.clone(),
+        Some(other) => other.clone(),
+    };
+    Value::Array(vec![
+        (Key::Int(0), arg(args, 1).cloned().unwrap_or(Value::Null)),
+        (Key::Int(1), name),
+        (Key::Int(2), query_var),
+    ])
+}
+
 fn rule_query(value: Option<&Value>) -> RuleQuery {
     match value {
         Some(Value::Array(entries)) => RuleQuery::Pairs(
@@ -136,7 +185,16 @@ fn call_method(
     method: &str,
     args: &[Value],
 ) -> Result<Value, NativeError> {
-    let source: Rc<dyn RewriteStateSource> = Rc::new(PhpRewriteState::new(object));
+    let state = PhpRewriteState::new(object);
+    let state = match method {
+        "add_permastruct" => state.with_given_permastruct(
+            arg(args, 0).map(text).unwrap_or_default(),
+            permastruct_given(args),
+        ),
+        "add_endpoint" => state.with_given_endpoint(endpoint_given(args)),
+        _ => state,
+    };
+    let source: Rc<dyn RewriteStateSource> = Rc::new(state);
     let c = &shared.container;
     let s = shared.service.as_ref();
     let bus = |err: speedyspec_cqrs::BusError| fail(err);

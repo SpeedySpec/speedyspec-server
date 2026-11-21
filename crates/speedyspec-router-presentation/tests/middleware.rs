@@ -186,3 +186,90 @@ fn route_middleware_wraps_the_handler() {
         middleware(router, hooks(), &[]).process(request("/stamped", "/index.php"), &Php);
     assert_eq!(response.headers().get("x-stamp").as_deref(), Some("1"));
 }
+
+fn filter_to(hooks: &HookApi, hook: &str, value: HookValue) {
+    hooks
+        .add_filter(
+            &HookName::from(hook),
+            Callback::rust("replace", move |_: &[HookValue]| Ok(value.clone())),
+            &HookValue::Int(10),
+            3,
+        )
+        .unwrap();
+}
+
+fn redirect_response(hooks: Rc<HookApi>, php_hooks: &[&'static str]) -> HttpResponse {
+    let mut router: Router<AppHandler, AppMiddleware> = Router::new();
+    router.redirect("/old", "/new", 301);
+    middleware(router, hooks, php_hooks).process(request("/old", "/index.php"), &Php)
+}
+
+#[test]
+fn redirect_location_is_sanitized_like_wp_sanitize_redirect() {
+    let hooks = hooks();
+    filter_to(
+        &hooks,
+        "wp_redirect",
+        HookValue::Str("/new path\r\n%0d%0Aé<x>".into()),
+    );
+    let response = redirect_response(hooks, &[]);
+    assert_eq!(response.status().as_u16(), 301);
+    assert_eq!(
+        response.headers().get("location").as_deref(),
+        Some("/new%20path%C3%A9x")
+    );
+}
+
+#[test]
+fn redirect_sends_x_redirect_by_unless_filtered_away() {
+    let response = redirect_response(hooks(), &[]);
+    assert_eq!(
+        response.headers().get("x-redirect-by").as_deref(),
+        Some("WordPress")
+    );
+    let hooks = hooks();
+    filter_to(&hooks, "x_redirect_by", HookValue::Bool(false));
+    let response = redirect_response(hooks, &[]);
+    assert_eq!(response.status().as_u16(), 301);
+    assert_eq!(response.headers().get("x-redirect-by"), None);
+}
+
+/// `wp_redirect()` calls `wp_die()` for a status outside 3xx: only PHP can answer that.
+#[test]
+fn redirect_status_outside_3xx_passes_to_php() {
+    let hooks = hooks();
+    filter_to(&hooks, "wp_redirect_status", HookValue::Int(200));
+    let response = redirect_response(hooks, &[]);
+    assert_eq!(response.headers().get("location"), None);
+    assert!(response.headers().get("x-seen").is_some());
+}
+
+/// The status filter runs before the falsy-location check, as in `wp_redirect()`.
+#[test]
+fn redirect_status_filter_runs_even_for_a_falsy_location() {
+    use std::cell::Cell;
+    let hooks = hooks();
+    filter_to(&hooks, "wp_redirect", HookValue::Str("0".into()));
+    let ran = Rc::new(Cell::new(false));
+    let seen = ran.clone();
+    hooks
+        .add_filter(
+            &HookName::from("wp_redirect_status"),
+            Callback::rust("note", move |args: &[HookValue]| {
+                seen.set(true);
+                Ok(args[0].clone())
+            }),
+            &HookValue::Int(10),
+            2,
+        )
+        .unwrap();
+    let response = redirect_response(hooks, &[]);
+    assert!(ran.get());
+    assert_eq!(response.headers().get("location"), None);
+}
+
+#[test]
+fn php_callback_on_x_redirect_by_passes_on() {
+    let response = redirect_response(hooks(), &["x_redirect_by"]);
+    assert_eq!(response.headers().get("location"), None);
+}

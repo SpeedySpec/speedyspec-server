@@ -60,8 +60,9 @@ impl RewriteService {
             let mut state = source
                 .load()
                 .map_err(|err| speedyspec_wp_hooks::HookError::message(err.0))?;
+            // `do_action( 'wp_loaded' )` passes `''`: soft, unless `$do_hard_later` says otherwise.
             service
-                .flush_rules(&mut state, source.as_ref(), true)
+                .flush_rules(&mut state, source.as_ref(), false)
                 .map_err(|err| speedyspec_wp_hooks::HookError::message(err.0))?;
             source.store(&state);
             Ok(HookValue::Null)
@@ -90,7 +91,8 @@ impl RewriteService {
             self.do_hard_later.set(Some(later));
             return Ok(());
         }
-        let hard = self.do_hard_later.take().unwrap_or(hard);
+        // `unset( $do_hard_later )` only drops the local name: the static keeps its value for every later call.
+        let hard = self.do_hard_later.get().unwrap_or(hard);
         self.refresh_rewrite_rules(state, source)?;
         if !hard {
             return Ok(());

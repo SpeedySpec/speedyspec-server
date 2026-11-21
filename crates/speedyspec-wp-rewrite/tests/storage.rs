@@ -110,3 +110,47 @@ fn plain_permalinks_save_an_empty_value() {
     assert_eq!(f.options.get("rewrite_rules").as_deref(), Some(""));
     assert_eq!(f.options.stored_rules(), None);
 }
+
+/// `refresh_rewrite_rules()` defers `flush_rules` to `wp_loaded` without setting `$do_hard_later`, and
+/// `do_action( 'wp_loaded' )` passes `''`: the deferred flush is soft.
+#[test]
+fn flush_deferred_by_refresh_is_soft() {
+    let f = fixture("/%postname%/");
+    support::record(&f, "flush_rewrite_rules_hard");
+    f.loaded.set(false);
+    let mut s = state(&f);
+    f.service
+        .wp_rewrite_rules(&mut s, f.source.as_ref())
+        .unwrap();
+    f.loaded.set(true);
+    f.hooks
+        .do_action(&speedyspec_wp_hooks::HookName::from("wp_loaded"), vec![])
+        .unwrap();
+    assert!(f.options.stored_rules().is_some());
+    assert!(support::hooks_run(&f).is_empty());
+}
+
+/// `unset()` on a static leaves its value for the next call, so `$do_hard_later` decides every later flush.
+#[test]
+fn deferred_hard_decides_later_flushes_too() {
+    let f = fixture("/%postname%/");
+    support::record(&f, "flush_rewrite_rules_hard");
+    f.loaded.set(false);
+    let mut s = state(&f);
+    f.source.store(&s);
+    f.service
+        .flush_rules(&mut s, f.source.as_ref(), true)
+        .unwrap();
+    f.loaded.set(true);
+    f.hooks
+        .do_action(&speedyspec_wp_hooks::HookName::from("wp_loaded"), vec![])
+        .unwrap();
+    let mut s = f.source.load().unwrap();
+    f.service
+        .flush_rules(&mut s, f.source.as_ref(), false)
+        .unwrap();
+    assert_eq!(
+        support::hooks_run(&f),
+        vec!["flush_rewrite_rules_hard", "flush_rewrite_rules_hard"]
+    );
+}

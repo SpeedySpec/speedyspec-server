@@ -249,6 +249,26 @@ fn main() {
         $r->rules = array("caf\xE9/?$" => 'index.php?x=1');
         return $r->get_feed_permastruct() === 'feed/%feed%' && $r->rules === array("caf\xE9/?$" => 'index.php?x=1');"#,
     );
+    // WordPress keeps the caller's values as given (after array_intersect_key and wp_parse_args), and later writes
+    // of the state keep them.
+    yes(
+        &php,
+        "permastruct_and_endpoint_values_keep_their_php_types",
+        r#"$r = new WP_Rewrite();
+        $r->init();
+        $r->add_permastruct('typed', 'typed/%typed%', array('with_front' => 'yes', 'paged' => 0, 'bogus' => 1));
+        $r->add_endpoint('blank', '3', '');
+        $permastruct = array(
+            'with_front' => 'yes', 'ep_mask' => EP_NONE, 'paged' => 0, 'feed' => true,
+            'forcomments' => false, 'walk_dirs' => true, 'endpoints' => true, 'struct' => $r->front . 'typed/%typed%',
+        );
+        $endpoint = array('3', 'blank', '');
+        $added = $r->extra_permastructs['typed'] === $permastruct && end($r->endpoints) === $endpoint;
+        $r->add_permastruct('other', 'other/%other%');
+        $r->add_endpoint('more', EP_ALL);
+        return $added && $r->extra_permastructs['typed'] === $permastruct && $r->endpoints[0] === $endpoint
+            && $r->extra_permastructs['other']['with_front'] === true;"#,
+    );
     let flushed = eval(
         &php,
         "do_action('wp_loaded'); flush_rewrite_rules(false); return true;",

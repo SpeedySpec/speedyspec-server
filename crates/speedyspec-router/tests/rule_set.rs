@@ -321,3 +321,60 @@ fn rules_match_with_pcre_byte_semantics() {
         );
     }
 }
+
+/// PHP's `empty("0")` is true, so `parse_request` treats the path `0` as empty and tries only `$`.
+#[test]
+fn zero_path_is_empty_like_php() {
+    for s in strategies() {
+        let list = rules(&[
+            ("(.*)", "index.php?all=$matches[1]"),
+            ("$", "index.php?home=1"),
+        ]);
+        let r = resolve_with(s.as_ref(), list, "0", "", &Guard::accept());
+        assert_eq!(matched(&r), Some(("$", "home=1")));
+    }
+}
+
+/// PCRE's `$` also matches before a final newline (here a decoded `%0A`). Expected values are PHP's `preg_match`.
+#[test]
+fn dollar_matches_before_a_final_newline() {
+    let cases = [
+        ("hello/?$", "index.php?h=1", "h=1"),
+        ("([a-z]+)/?$", "index.php?name=$matches[1]", "name=hello"),
+        ("(hello$)", "index.php?x=$matches[1]", "x=hello"),
+        ("hello$\\n", "index.php?n=1", "n=1"),
+    ];
+    for s in strategies() {
+        for (pattern, query, expected) in cases {
+            let r = resolve_with(
+                s.as_ref(),
+                rules(&[(pattern, query)]),
+                "hello%0A",
+                "",
+                &Guard::accept(),
+            );
+            assert_eq!(matched(&r), Some((pattern, expected)), "{pattern}");
+        }
+    }
+}
+
+/// `parse_request` matches `"#^$match#"`: an unescaped `#` ends the pattern, `preg_match` fails, and the rule never
+/// matches; `\#` is a literal `#`.
+#[test]
+fn unescaped_hash_rule_never_matches() {
+    for s in strategies() {
+        let list = rules(&[("a#b", "index.php?x=1"), ("a\\#b", "index.php?y=1")]);
+        let r = resolve_with(s.as_ref(), list, "a%23b", "", &Guard::accept());
+        assert_eq!(matched(&r), Some(("a\\#b", "y=1")));
+    }
+}
+
+/// `^zzz|b` leaves `b` unanchored, so it matches `xb` anywhere; the earlier rule still wins over `^x`.
+#[test]
+fn top_level_alternation_keeps_rule_order() {
+    for s in strategies() {
+        let list = rules(&[("zzz|b", "index.php?first=1"), ("x", "index.php?second=1")]);
+        let r = resolve_with(s.as_ref(), list, "xb", "", &Guard::accept());
+        assert_eq!(matched(&r), Some(("zzz|b", "first=1")));
+    }
+}
