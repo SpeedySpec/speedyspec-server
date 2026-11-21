@@ -46,6 +46,11 @@ impl<'a> Words<'a> {
         (0..self.len()).map(|i| self.get(i)).collect()
     }
 
+    /// `$words[ $i ]`, an empty string when it is missing (PHP reads it as null).
+    fn get_or_empty(&self, i: usize) -> &'a [u8] {
+        if i < self.len() { self.get(i) } else { b"" }
+    }
+
     fn get(&self, i: usize) -> &'a [u8] {
         match self {
             Words::Owned(w) => &w[i],
@@ -84,9 +89,25 @@ fn find(haystack: &[u8], needle: &[u8], ignore_case: bool) -> Option<usize> {
     if needle.is_empty() {
         return Some(0);
     }
+    if !ignore_case {
+        return memchr::memmem::find(haystack, needle);
+    }
     haystack
         .windows(needle.len())
-        .position(|w| eq_bytes(w, needle, ignore_case))
+        .position(|w| eq_bytes(w, needle, true))
+}
+
+/// `strpos()` / `stripos()` of a group key in the `groups` string. Every key there is followed by a NUL, so any
+/// window that does not start a key holds a NUL: a needle without one can only match at a key's start, and the
+/// first such match is `strpos()`'s / `stripos()`'s.
+fn find_group(groups: &[u8], key: &[u8], key_length: usize, ignore_case: bool) -> Option<usize> {
+    if !ignore_case || key.contains(&0) || key.len() != key_length || key_length == 0 {
+        return find(groups, key, ignore_case);
+    }
+    groups
+        .chunks(key_length + 1)
+        .position(|chunk| chunk.len() > key_length && chunk[..key_length].eq_ignore_ascii_case(key))
+        .map(|i| i * (key_length + 1))
 }
 
 /// `0 === substr_compare( $main, $str, $offset, strlen( $str ), $ignore_case )` for an offset within `$main`.
@@ -111,10 +132,10 @@ impl<'a> TokenMapView<'a> {
             term.resize(kl + 1, 0);
             return find(self.small_words, &term, ignore_case).is_some();
         }
-        let Some(group_at) = find(self.groups, &word[..kl], ignore_case) else {
+        let Some(group_at) = find_group(self.groups, &word[..kl], kl, ignore_case) else {
             return false;
         };
-        let group = self.large_words.get(group_at / (kl + 1));
+        let group = self.large_words.get_or_empty(group_at / (kl + 1));
         let slug = &word[kl..];
         let mut at = 0;
         while at < group.len() {
@@ -152,10 +173,10 @@ impl<'a> TokenMapView<'a> {
             if before_nul < kl {
                 return None;
             }
-            match find(self.groups, window, ignore_case) {
+            match find_group(self.groups, window, kl, ignore_case) {
                 None => return self.read_small_token(text, offset, ignore_case),
                 Some(group_at) => {
-                    let group = self.large_words.get(group_at / (kl + 1));
+                    let group = self.large_words.get_or_empty(group_at / (kl + 1));
                     let mut at = 0;
                     while at < group.len() {
                         let token_length = group[at] as usize;

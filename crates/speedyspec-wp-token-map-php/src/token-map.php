@@ -557,7 +557,8 @@ class WP_Token_Map {
 			null !== self::$speedyspec_html5 && isset( self::$speedyspec_html5[ $this ] )
 			&& $offset >= 0 && strlen( $text ) > $this->key_length && strlen( $text ) - $offset >= $this->key_length
 		) {
-			$found = \SpeedySpec\WpTokenMap\Native\html5_read_token( $text, $offset, $case_sensitivity );
+			// The longest name is 32 bytes: a window of the text gives the same answer without copying the document.
+			$found = \SpeedySpec\WpTokenMap\Native\html5_read_token( substr( $text, $offset, 64 ), 0, $case_sensitivity );
 			if ( null === $found ) {
 				return null;
 			}

@@ -166,3 +166,12 @@ fn words_list_their_strings() {
     assert_eq!(v.small_mappings.slices(), vec![&b"<"[..]]);
     assert_eq!(v.large_words.slices(), vec![&b"\x01c\x011"[..]]);
 }
+
+#[test]
+fn a_missing_group_reads_as_empty_as_in_php() {
+    // key_length 0: every word groups under '', and WordPress reads a missing group as null (an empty string).
+    let map = TokenMap::from_array(&[(b"".to_vec(), b"x".to_vec())], 0).unwrap();
+    let v = map.view();
+    assert_eq!(v.read_token(b"ab", 0, CaseSensitivity::CaseSensitive), None);
+    assert!(!v.contains(b"a", CaseSensitivity::CaseSensitive));
+}

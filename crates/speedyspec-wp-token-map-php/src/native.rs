@@ -14,6 +14,8 @@ type R = Result<Value, NativeError>;
 thread_local! {
     /// Lookups answered natively (for tests).
     static LOOKUPS: Cell<u64> = const { Cell::new(0) };
+    /// The longest text `html5_read_token()` was handed (for tests: the facade passes a window, not the document).
+    static LONGEST: Cell<u64> = const { Cell::new(0) };
 }
 
 fn bytes(v: Option<&Value>) -> Option<Vec<u8>> {
@@ -34,10 +36,20 @@ fn counted() {
     LOOKUPS.with(|c| c.set(c.get() + 1));
 }
 
-/// A list of strings, as `large_words` and `small_mappings` hold them.
+/// A list of strings (keys 0, 1, 2, … in order, as WordPress indexes `large_words` and `small_mappings`).
 fn strings(v: Option<&Value>) -> Option<Vec<Vec<u8>>> {
     match v?.read().as_ref() {
-        Value::Array(items) => items.iter().map(|(_, v)| bytes(Some(v))).collect(),
+        Value::Array(items) => items
+            .iter()
+            .enumerate()
+            .map(|(i, (k, v))| {
+                if *k == Key::Int(i as i64) {
+                    bytes(Some(v))
+                } else {
+                    None
+                }
+            })
+            .collect(),
         _ => None,
     }
 }
@@ -89,6 +101,7 @@ fn html5_read_token(a: &[Value]) -> R {
         }
     };
     counted();
+    LONGEST.with(|l| l.set(l.get().max(text.len() as u64)));
     Ok(match html5().read_token(&text, offset, case(a.get(2))) {
         Some((mapping, length)) => Value::Array(vec![
             (Key::Int(0), bytes_value(mapping)),
@@ -114,5 +127,8 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
         f("html5_read_token", html5_read_token),
         f("html5_contains", html5_contains),
         f("stats", |_| Ok(Value::Int(LOOKUPS.with(Cell::get) as i64))),
+        f("longest_text", |_| {
+            Ok(Value::Int(LONGEST.with(Cell::get) as i64))
+        }),
     ]
 }

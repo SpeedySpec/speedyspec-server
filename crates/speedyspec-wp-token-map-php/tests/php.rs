@@ -94,6 +94,66 @@ fn main() {
     check("other_maps_run_wordpress_code", text(&r) == "[0,1]", &r);
 
     let r = php.eval(
+        "speedyspec://test/window",
+        "global $html5_named_character_references;
+         $doc = str_repeat('x', 100000) . '&notin;';
+         $len = null; $found = $html5_named_character_references->read_token($doc, 100001, $len);
+         return json_encode(array($found, $len, SpeedySpec\\WpTokenMap\\Native\\longest_text()), JSON_UNESCAPED_UNICODE);",
+    );
+    check(
+        "read_token_passes_a_window_not_the_document",
+        serde_json::from_str::<serde_json::Value>(&text(&r))
+            .is_ok_and(|v| v[0] == "∉" && v[1] == 6 && v[2].as_i64().is_some_and(|n| n <= 64)),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/shifted-keys",
+        "global $html5_named_character_references;
+         $state = (function () { return array('storage_version' => '6.6.0-trunk', 'key_length' => $this->key_length, 'groups' => $this->groups,
+             'large_words' => $this->large_words, 'small_words' => $this->small_words, 'small_mappings' => $this->small_mappings); })
+             ->call($html5_named_character_references);
+         $state['large_words'] = array_combine(range(1, count($state['large_words'])), $state['large_words']);
+         return json_encode(SpeedySpec\\WpTokenMap\\Native\\is_html5_table($state));",
+    );
+    check(
+        "a_table_with_other_keys_is_not_wordpress_html5",
+        text(&r) == "false",
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/speed",
+        "global $html5_named_character_references;
+         $native = $html5_named_character_references;
+         $state = (function () { return array('storage_version' => '6.6.0-trunk', 'key_length' => $this->key_length, 'groups' => $this->groups,
+             'large_words' => $this->large_words, 'small_words' => $this->small_words, 'small_mappings' => $this->small_mappings); })
+             ->call($native);
+         $state['small_mappings'][] = 'unmarked';
+         $php = WP_Token_Map::from_precomputed_table($state);
+         $doc = str_repeat('Some text &amp; more &notin; and &hellip; ', 2000);
+         $time = function ($map) use ($doc) {
+             $start = hrtime(true);
+             for ($i = 0, $at = 0; $i < 20000; $i++) {
+                 $at = strpos($doc, '&', $at + 1); if (false === $at) { $at = 0; continue; }
+                 $map->read_token($doc, $at + 1);
+             }
+             return hrtime(true) - $start;
+         };
+         $time($native); $time($php);
+         return json_encode(array($time($native), $time($php)));",
+    );
+    let times: Vec<i64> = serde_json::from_str(&text(&r)).unwrap_or_default();
+    println!(
+        "read_token over a document: native {times:?} ns (native, WordPress's PHP) for 20,000 lookups"
+    );
+    check(
+        "native_lookups_are_not_slower_than_php",
+        times.len() == 2 && (cfg!(debug_assertions) || times[0] <= times[1]),
+        &times,
+    );
+
+    let r = php.eval(
         "speedyspec://test/replay",
         &format!(
             "$r = require {:?}; return json_encode($r);",

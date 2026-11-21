@@ -5907,6 +5907,7 @@ dependencies = [
 name = "speedyspec-wp-token-map"
 version = "0.1.0"
 dependencies = [
+ "memchr",
  "serde_json",
 ]
 
