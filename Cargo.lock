@@ -5282,6 +5282,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-i18n-memory"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-wp-i18n",
+ "speedyspec-wp-i18n-contracts",
+ "speedyspec-wp-i18n-files",
+ "tempfile",
+]
+
+[[package]]
 name = "speedyspec-wp-object-cache"
 version = "0.1.0"
 dependencies = [
