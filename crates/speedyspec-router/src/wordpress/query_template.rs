@@ -21,9 +21,11 @@ pub fn matches_map(subject: &str, captures: &[Option<String>]) -> String {
 }
 
 impl QueryTemplate {
-    /// Parses `query`, dropping everything up to its first `?` (`preg_replace('!^.+\?!', '', $query)`).
+    /// Parses `query`, dropping everything through the last `?` of its first line that is not its first character
+    /// (`preg_replace('!^.+\?!', '', $query)`: greedy, and `.` stops at a newline).
     pub fn parse(query: &str) -> QueryTemplate {
-        let query = match query.find('?') {
+        let first_line = query.find('\n').map_or(query, |end| &query[..end]);
+        let query = match first_line.rfind('?') {
             Some(i) if i > 0 => &query[i + 1..],
             _ => query,
         };
