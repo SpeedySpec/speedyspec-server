@@ -253,7 +253,7 @@ impl ShortcodeApi {
         };
         let attr = atts.to_value();
         let early = self.d.filters.pre_do_shortcode_tag(&tag, &attr, m)?;
-        if early != PhpValue::Bool(false) {
+        if *early.read() != PhpValue::Bool(false) {
             return Ok(early);
         }
         let content = self.group(m, 5)?;

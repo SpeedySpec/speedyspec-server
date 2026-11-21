@@ -4782,6 +4782,10 @@ dependencies = [
  "memchr",
  "proptest",
  "regex",
+ "speedyspec-container",
+ "speedyspec-cqrs",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
  "speedyspec-wp-shortcode-contracts",
 ]
 

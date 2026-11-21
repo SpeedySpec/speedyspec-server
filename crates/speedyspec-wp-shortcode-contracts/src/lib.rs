@@ -16,7 +16,7 @@ mod regex_source;
 mod tag;
 
 pub use atts::{AttKey, AttsParse, ParsedAtts};
-pub use error::ShortcodeError;
+pub use error::{ShortcodeError, Thrown};
 pub use matches::{MatchGroups, ShortcodeMatch};
 pub use ports::{
     AttsParser, ContextGuard, DiagnosticMessage, Diagnostics, HtmlSplitter, KsesAttributes, PhpStrings,
