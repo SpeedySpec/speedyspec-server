@@ -19,6 +19,10 @@ use crate::KsesApi;
 use crate::api::{bytes_value, php_string};
 use crate::convert::allowed_to_value;
 
+/// The most `wp_kses()` passes a comment or invalid-markup token gets to settle. Every corpus input settles within
+/// 2; a token still changing after this many is one PHP never finishes, and the port drops it.
+const MAX_PASSES: usize = 16;
+
 /// An attribute that passed `wp_kses_attr_check()`: its value and whole text, as the check left them.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckedAttr {
@@ -215,21 +219,26 @@ impl KsesApi {
     }
 
     /// Repeats `wp_kses()` on `content` until it stops changing, on a stack that grows as deep input needs.
+    ///
+    /// @return
+    ///     The settled content, or `None` when it has not settled after [`MAX_PASSES`] passes. PHP loops forever
+    ///     there (`<!--</<i>` gains a `&gt;` on every pass); the caller drops the token instead.
     fn kses_until_stable(
         &self,
         mut content: Vec<u8>,
         allowed: &AllowedSpec,
         protocols: &Protocols,
-    ) -> Result<Vec<u8>, KsesError> {
-        loop {
+    ) -> Result<Option<Vec<u8>>, KsesError> {
+        for _ in 0..MAX_PASSES {
             let next = stacker::maybe_grow(64 * 1024, 1024 * 1024, || {
                 self.kses(&content, allowed, Some(protocols))
             })?;
             if next == content {
-                return Ok(content);
+                return Ok(Some(content));
             }
             content = next;
         }
+        Ok(None)
     }
 
     fn token(
@@ -247,8 +256,11 @@ impl KsesApi {
         }
         if invalid_wrapper(&token) {
             let opener = token[1];
-            let inner =
-                self.kses_until_stable(token[2..token.len() - 1].to_vec(), allowed, protocols)?;
+            let Some(inner) =
+                self.kses_until_stable(token[2..token.len() - 1].to_vec(), allowed, protocols)?
+            else {
+                return Ok(());
+            };
             out.push(b'<');
             out.push(opener);
             out.extend_from_slice(&inner);
@@ -257,7 +269,9 @@ impl KsesApi {
         }
         if token.starts_with(b"<!--") {
             let inner = replace_all(&replace_all(&token, b"<!--", b""), b"-->", b"");
-            let inner = self.kses_until_stable(inner, allowed, protocols)?;
+            let Some(inner) = self.kses_until_stable(inner, allowed, protocols)? else {
+                return Ok(());
+            };
             if inner.is_empty() {
                 return Ok(());
             }

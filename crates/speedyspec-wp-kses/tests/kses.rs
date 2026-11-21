@@ -173,3 +173,23 @@ fn required_attribute_drops_the_tag() {
         b"<a href=\"x\">y</a>"
     );
 }
+
+/// PHP's "repeat until stable" loop never ends on these: each pass adds another `&gt;`. The port drops the token after
+/// a fixed number of passes (compat/kses/breaks.json, technical).
+#[test]
+fn comment_that_never_settles_is_dropped() {
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let (_, api) = common::setup();
+        let post = AllowedSpec::Context(Context::from_bytes(b"post"));
+        let out: Vec<Vec<u8>> = [&b"<!--</<i>"[..], b"a<!--</<i></<i>-->b", b"<!--</<i>-->"]
+            .iter()
+            .map(|input| api.kses(input, &post, None).unwrap())
+            .collect();
+        let _ = tx.send(out);
+    });
+    let out = rx
+        .recv_timeout(std::time::Duration::from_secs(10))
+        .expect("kses did not finish");
+    assert_eq!(out, vec![b"".to_vec(), b"ab".to_vec(), b"".to_vec()]);
+}

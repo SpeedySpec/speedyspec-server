@@ -5,3 +5,5 @@ target-linux/
 /.php-build/
 /.php-build-linux*/
 /craft.yml
+/fuzz/corpus/
+/fuzz/artifacts/

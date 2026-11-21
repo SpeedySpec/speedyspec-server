@@ -35,6 +35,7 @@ pub fn start_tag_attributes(attr: &[u8]) -> Option<Vec<TagAttribute>> {
     let len = html.len();
     let mut at = 3;
     let mut attributes: Vec<TagAttribute> = Vec::new();
+    let mut seen: std::collections::HashSet<Vec<u8>> = std::collections::HashSet::new();
     loop {
         at += span_of(&html, at, b" \t\x0C\r\n/");
         if at >= len {
@@ -86,7 +87,7 @@ pub fn start_tag_attributes(attr: &[u8]) -> Option<Vec<TagAttribute>> {
             return None;
         }
         let comparable = comparable_name(name);
-        if !attributes.iter().any(|a| a.name == comparable) {
+        if seen.insert(comparable.clone()) {
             attributes.push(TagAttribute {
                 name: comparable,
                 value: value.map(decoded_value),

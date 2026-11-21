@@ -18,6 +18,11 @@ pub fn bomb_generators() -> Vec<BombGenerator> {
         ("nested-invalid-closers", |n| {
             [repeat(b"</1", n / 2), repeat(b">", n / 2)].concat()
         }),
+        // PHP never finishes these: every pass of the comment's "until stable" loop adds a `&gt;`.
+        ("never-settling-comment", |n| {
+            [b"<!--".to_vec(), repeat(b"</<i>", n)].concat()
+        }),
+        ("never-settling-comments", |n| repeat(b"<!--</<i>-->", n)),
         ("nested-declarations", |n| {
             [repeat(b"<!a", n / 2), repeat(b">", n / 2)].concat()
         }),
@@ -34,6 +39,16 @@ pub fn bomb_generators() -> Vec<BombGenerator> {
         }),
         ("many-attributes", |n| {
             [b"<p".to_vec(), repeat(b" a=1", n), b">x</p>".to_vec()].concat()
+        }),
+        ("many-distinct-attributes", |n| {
+            let mut out = b"<p".to_vec();
+            let mut i = 0usize;
+            while out.len() < n {
+                out.extend_from_slice(format!(" a{i}=1").as_bytes());
+                i += 1;
+            }
+            out.extend_from_slice(b">x</p>");
+            out
         }),
         ("many-duplicate-styles", |n| {
             [
@@ -72,6 +87,17 @@ pub fn bomb_generators() -> Vec<BombGenerator> {
             [
                 b"<p style=\"background:".to_vec(),
                 repeat(b"url(a.png) ", n),
+                b"\">x</p>".to_vec(),
+            ]
+            .concat()
+        }),
+        ("many-distinct-url-functions", |n| {
+            let urls: Vec<u8> = (0..n / 12)
+                .flat_map(|i| format!("url(a{i}.png) ").into_bytes())
+                .collect();
+            [
+                b"<p style=\"background:".to_vec(),
+                urls,
                 b"\">x</p>".to_vec(),
             ]
             .concat()

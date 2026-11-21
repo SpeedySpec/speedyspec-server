@@ -15,8 +15,9 @@ use crate::{
     AllowedGlobals, UploadsLocation, ValueCallbacks, allow_pdf_objects, allowed_from_value,
 };
 
-/// Converted allowlists by context, with the globals' generation they were converted at.
-type AllowedCache = RefCell<HashMap<Vec<u8>, (u64, Rc<AllowedHtml>)>>;
+/// Converted allowlists by context, with the globals' generation they were converted at and whether the filter
+/// runs twice for them.
+type AllowedCache = RefCell<HashMap<Vec<u8>, (u64, Rc<AllowedHtml>, bool)>>;
 
 /// What kses needs from outside: the Hook API and the ports to code not yet ported.
 pub struct KsesDeps {
@@ -98,6 +99,24 @@ pub(crate) fn bytes_value(b: &[u8]) -> Value {
         Ok(s) => Value::Str(s.to_string()),
         Err(_) => Value::Bytes(b.to_vec()),
     }
+}
+
+/// The `form` entry the post context adds when a filter allows `input` or `select` without it.
+fn form_attributes() -> Value {
+    Value::Array(
+        [
+            "action",
+            "accept",
+            "accept-charset",
+            "enctype",
+            "method",
+            "name",
+            "target",
+        ]
+        .iter()
+        .map(|a| (Key::Str((*a).to_string()), Value::Bool(true)))
+        .collect(),
+    )
 }
 
 /// `isset( $array[ $key ] )`.
@@ -202,36 +221,107 @@ impl KsesApi {
 
     /// One `apply_filters( 'wp_kses_allowed_html', $base, $context )`: with no listener, the base converted once
     /// per write of the globals.
+    /// One `apply_filters( 'wp_kses_allowed_html', $base, $context )` with listeners present.
     fn filtered_allowed(
         &self,
         ctx: &[u8],
         base: &Value,
     ) -> Result<(Rc<AllowedHtml>, Value), KsesError> {
         let ctx_value = bytes_value(ctx);
-        match self.filter("wp_kses_allowed_html", || base.clone(), || vec![ctx_value])? {
-            Some(filtered) => Ok((self.convert(&filtered)?, filtered)),
-            None => {
-                let generation = self.d.globals.generation();
-                let cached = self
-                    .allowed_cache
-                    .borrow()
-                    .get(ctx)
-                    .filter(|(g, _)| *g == generation)
-                    .map(|(_, c)| c.clone());
-                if let Some(cached) = cached {
-                    return Ok((cached, base.clone()));
-                }
-                let converted = self.convert(base)?;
-                self.allowed_cache
-                    .borrow_mut()
-                    .insert(ctx.to_vec(), (generation, converted.clone()));
-                Ok((converted, base.clone()))
-            }
-        }
+        let filtered = self
+            .filter("wp_kses_allowed_html", || base.clone(), || vec![ctx_value])?
+            .unwrap_or_else(|| base.clone());
+        Ok((self.convert(&filtered)?, filtered))
     }
 
     /// `wp_kses_allowed_html()` for a named context.
+    ///
+    /// With no listener, the allowlist comes from a cache kept per context until the globals are written, so a
+    /// context string resolved per tag costs a lookup; the filter runs are still counted as WordPress counts them.
     pub fn allowed_html(&self, ctx: &Context) -> Result<Rc<AllowedHtml>, KsesError> {
+        let hook = HookName::from("wp_kses_allowed_html");
+        if !self
+            .d
+            .hooks
+            .skip_if_empty(&hook, Count::Filters)
+            .map_err(hook_error)?
+        {
+            return self.allowed_html_filtered(ctx);
+        }
+        let generation = self.d.globals.generation();
+        let name = ctx.as_bytes();
+        let cached = self
+            .allowed_cache
+            .borrow()
+            .get(name)
+            .filter(|e| e.0 == generation)
+            .map(|e| (e.1.clone(), e.2));
+        let (allowed, fires_twice) = match cached {
+            Some(hit) => hit,
+            None => {
+                let (value, fires_twice) = self.unfiltered_value(ctx);
+                let converted = self.convert(&value)?;
+                self.allowed_cache
+                    .borrow_mut()
+                    .insert(name.to_vec(), (generation, converted.clone(), fires_twice));
+                (converted, fires_twice)
+            }
+        };
+        if fires_twice {
+            self.d
+                .hooks
+                .skip_if_empty(&hook, Count::Filters)
+                .map_err(hook_error)?;
+        }
+        Ok(allowed)
+    }
+
+    /// The allowlist a context resolves to when nothing listens, and whether `wp_kses_allowed_html` runs twice
+    /// for it (the post context adding `form`).
+    fn unfiltered_value(&self, ctx: &Context) -> (Value, bool) {
+        let globals = &self.d.globals;
+        match ctx {
+            Context::Post => {
+                let mut post = globals.post();
+                if !globals.custom_tags()
+                    && !isset(&post, "form")
+                    && (isset(&post, "input") || isset(&post, "select"))
+                {
+                    set(&mut post, "form", form_attributes());
+                    return (post, true);
+                }
+                (post, false)
+            }
+            Context::UserDescription
+            | Context::PreTermDescription
+            | Context::PreUserDescription => {
+                let mut tags = globals.tags();
+                let a = entry(&mut tags, "a");
+                set(a, "rel", Value::Bool(true));
+                set(a, "target", Value::Bool(true));
+                (tags, false)
+            }
+            Context::Strip => (Value::Array(Vec::new()), false),
+            Context::Entities => (self.entity_names_value(), false),
+            Context::Data | Context::Named(_) => (globals.tags(), false),
+        }
+    }
+
+    fn entity_names_value(&self) -> Value {
+        let names = self.d.globals.entity_names();
+        let mut sorted: Vec<&Bytes> = names.0.iter().collect();
+        sorted.sort();
+        Value::Array(
+            sorted
+                .iter()
+                .enumerate()
+                .map(|(i, n)| (Key::Int(i as i64), bytes_value(n)))
+                .collect(),
+        )
+    }
+
+    /// `wp_kses_allowed_html()` when the filter has listeners: every run goes through them.
+    fn allowed_html_filtered(&self, ctx: &Context) -> Result<Rc<AllowedHtml>, KsesError> {
         let name = ctx.as_bytes();
         let globals = &self.d.globals;
         match ctx {
@@ -243,19 +333,7 @@ impl KsesApi {
                     && (isset(&value, "input") || isset(&value, "select"))
                 {
                     let mut with_form = post;
-                    let form: Vec<(Key, Value)> = [
-                        "action",
-                        "accept",
-                        "accept-charset",
-                        "enctype",
-                        "method",
-                        "name",
-                        "target",
-                    ]
-                    .iter()
-                    .map(|a| (Key::Str((*a).to_string()), Value::Bool(true)))
-                    .collect();
-                    set(&mut with_form, "form", Value::Array(form));
+                    set(&mut with_form, "form", form_attributes());
                     let ctx_value = bytes_value(name);
                     let filtered = self.filter(
                         "wp_kses_allowed_html",

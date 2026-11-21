@@ -1,0 +1,28 @@
+# cargo-fuzz targets for kses, run on demand: `cargo +nightly fuzz run kses_post` from this directory.
+# Its own workspace, so the main build never needs nightly or libFuzzer.
+[package]
+name = "speedyspec-kses-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+speedyspec-wp-hooks = { path = "../crates/speedyspec-wp-hooks" }
+speedyspec-wp-hooks-memory = { path = "../crates/speedyspec-wp-hooks-memory" }
+speedyspec-wp-kses = { path = "../crates/speedyspec-wp-kses" }
+speedyspec-wp-kses-contracts = { path = "../crates/speedyspec-wp-kses-contracts" }
+speedyspec-wp-kses-security = { path = "../crates/speedyspec-wp-kses-security" }
+
+[[bin]]
+name = "kses_post"
+path = "fuzz_targets/kses_post.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]

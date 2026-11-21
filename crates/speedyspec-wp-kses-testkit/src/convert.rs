@@ -13,7 +13,7 @@ pub fn bytes(v: &[u8]) -> Value {
     json!({ "b64": STANDARD.encode(v) })
 }
 
-/// Decodes an oracle string (or a plain JSON string) to bytes; anything else is empty.
+/// Decodes an oracle string (or a plain JSON string) to bytes, casting other scalars as PHP does.
 pub fn from_bytes(v: &Value) -> Vec<u8> {
     match v {
         Value::String(s) => s.as_bytes().to_vec(),
@@ -22,6 +22,9 @@ pub fn from_bytes(v: &Value) -> Vec<u8> {
             .and_then(Value::as_str)
             .and_then(|s| STANDARD.decode(s).ok())
             .unwrap_or_default(),
+        // PHP's string cast: an integer array key such as "1" comes back as a number, true as "1".
+        Value::Number(n) => n.to_string().into_bytes(),
+        Value::Bool(true) => b"1".to_vec(),
         _ => Vec::new(),
     }
 }

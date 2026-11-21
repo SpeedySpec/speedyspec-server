@@ -1,6 +1,8 @@
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
-use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::process::{Child, ChildStdin, Command, Stdio};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, channel};
+use std::time::Duration;
 
 use serde_json::{Value, json};
 
@@ -21,8 +23,21 @@ pub struct OracleResult {
 pub struct PhpOracle {
     child: Child,
     stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
+    lines: Receiver<String>,
+    timeout: Duration,
 }
+
+/// How long one call may take before the oracle counts PHP as hung. `SPEEDYSPEC_ORACLE_TIMEOUT` (seconds) changes it.
+fn call_timeout() -> Duration {
+    let seconds = std::env::var("SPEEDYSPEC_ORACLE_TIMEOUT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(60);
+    Duration::from_secs(seconds)
+}
+
+/// The error a call returns when PHP did not answer in time; the oracle restarts PHP before returning it.
+pub const PHP_TIMED_OUT: &str = "PHP timed out";
 
 impl PhpOracle {
     pub fn start() -> Result<PhpOracle, String> {
@@ -38,12 +53,32 @@ impl PhpOracle {
             .spawn()
             .map_err(|e| format!("{php}: {e} (set SPEEDYSPEC_PHP to a PHP 8.4+ CLI)"))?;
         let stdin = child.stdin.take().ok_or("no stdin")?;
-        let stdout = BufReader::new(child.stdout.take().ok_or("no stdout")?);
+        let mut stdout = BufReader::new(child.stdout.take().ok_or("no stdout")?);
+        let (tx, lines) = channel();
+        std::thread::spawn(move || {
+            loop {
+                let mut line = String::new();
+                match stdout.read_line(&mut line) {
+                    Ok(0) | Err(_) => break,
+                    Ok(_) => {
+                        if tx.send(line).is_err() {
+                            break;
+                        }
+                    }
+                }
+            }
+        });
         Ok(PhpOracle {
             child,
             stdin,
-            stdout,
+            lines,
+            timeout: call_timeout(),
         })
+    }
+
+    /// Sets how long one call may take before PHP counts as hung (see [`PHP_TIMED_OUT`]).
+    pub fn set_timeout(&mut self, timeout: Duration) {
+        self.timeout = timeout;
     }
 
     /// Calls a kses.php function with arguments already encoded (see [`crate::bytes`]).
@@ -69,13 +104,18 @@ impl PhpOracle {
     fn request(&mut self, request: Value) -> Result<OracleResult, String> {
         writeln!(self.stdin, "{request}").map_err(|e| e.to_string())?;
         self.stdin.flush().map_err(|e| e.to_string())?;
-        let mut line = String::new();
-        self.stdout
-            .read_line(&mut line)
-            .map_err(|e| e.to_string())?;
-        if line.is_empty() {
-            return Err("the PHP oracle exited".to_string());
-        }
+        let line = match self.lines.recv_timeout(self.timeout) {
+            Ok(line) => line,
+            Err(RecvTimeoutError::Timeout) => {
+                let _ = self.child.kill();
+                let _ = self.child.wait();
+                let timeout = self.timeout;
+                *self = PhpOracle::start()?;
+                self.timeout = timeout;
+                return Err(PHP_TIMED_OUT.to_string());
+            }
+            Err(RecvTimeoutError::Disconnected) => return Err("the PHP oracle exited".to_string()),
+        };
         let response: Value = serde_json::from_str(&line).map_err(|e| format!("{e}: {line}"))?;
         if let Some(error) = response.get("error") {
             return Err(format!("PHP: {error}"));

@@ -1,3 +1,12 @@
 {
-  "breaks": []
+  "breaks": [
+    {
+      "scenario": "kses:never-settling-token",
+      "category": "technical",
+      "input": "<!--</<i>",
+      "php": "Never returns. wp_kses_split2() repeats wp_kses() on a comment's text until it stops changing; `</<i>` becomes `</<i>>` and every later pass adds another `&gt;`, so the loop runs until PHP's time or memory limit.",
+      "port": "Gives a comment or invalid-markup token at most 16 passes to settle and drops the token when it has not. Every corpus input settles within 2 passes.",
+      "reason": "No input may make kses do runaway work (design: Security). A post containing `<!--</<i>` would otherwise pin a server worker forever."
+    }
+  ]
 }

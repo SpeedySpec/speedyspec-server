@@ -7,13 +7,15 @@
 mod bombs;
 mod convert;
 mod gate;
+mod generate;
 mod oracle;
 mod release;
 
 pub use bombs::{BombGenerator, bomb_generators};
 pub use convert::{allowed_from_php, bytes, from_bytes, rule_value};
 pub use gate::{ExploitFinder, Verdict, gate};
-pub use oracle::{OracleResult, PhpOracle};
+pub use generate::token_soup;
+pub use oracle::{OracleResult, PHP_TIMED_OUT, PhpOracle};
 pub use release::{WORDPRESS, wordpress_release};
 
 mod corpus;

@@ -304,6 +304,42 @@ fn url_matches(s: &[u8]) -> Vec<&[u8]> {
     out
 }
 
+/// `$css_test_string` after `str_replace( $url_match, '', ... )` for every match in order.
+///
+/// One `str_replace` per match is quadratic in the number of matches. When every `url(` in `item` starts one of the
+/// matches and removing them all joins no new `url(`, each `str_replace` removes exactly the matches equal to its
+/// needle, so cutting every match out in one pass gives the same string. Anything else takes PHP's way.
+///
+/// @param item
+///     The trimmed declaration; `matches` are slices of it.
+fn remove_url_matches(item: &[u8], matches: &[&[u8]]) -> Vec<u8> {
+    let base = item.as_ptr() as usize;
+    let mut starts = matches.iter().map(|m| m.as_ptr() as usize - base);
+    let only_match_starts = memchr::memmem::find_iter(item, b"url(")
+        .all(|at| starts.next() == Some(at))
+        && starts.next().is_none();
+    if only_match_starts {
+        let mut cut = Vec::with_capacity(item.len());
+        let mut at = 0;
+        for m in matches {
+            let start = m.as_ptr() as usize - base;
+            cut.extend_from_slice(&item[at..start]);
+            at = start + m.len();
+        }
+        cut.extend_from_slice(&item[at..]);
+        if memchr::memmem::find(&cut, b"url(").is_none() {
+            return cut;
+        }
+    }
+    let mut test = item.to_vec();
+    for m in matches {
+        if memchr::memmem::find(&test, m).is_some() {
+            test = replace_all(&test, m, b"");
+        }
+    }
+    test
+}
+
 fn is_space(b: u8) -> bool {
     speedyspec_wp_kses_lexical::scan::is_space(b)
 }
@@ -500,7 +536,8 @@ impl KsesApi {
                 }
             }
             if found && url_attr {
-                for m in url_matches(value) {
+                let matches = url_matches(value);
+                for m in &matches {
                     let piece = url_piece(m);
                     if piece.is_empty() || piece == b"0" {
                         found = false;
@@ -511,7 +548,9 @@ impl KsesApi {
                         found = false;
                         break;
                     }
-                    test = replace_all(&test, m, b"");
+                }
+                if found {
+                    test = remove_url_matches(item, &matches);
                 }
             }
             if found && gradient_attr {
