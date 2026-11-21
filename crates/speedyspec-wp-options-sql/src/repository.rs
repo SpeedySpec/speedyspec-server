@@ -1,5 +1,7 @@
 //! `SqlOptionRepository` (Repository): one statement per `$wpdb` call `option.php` makes, built with the query
-//! builder (never text), on the table `wpdb` names now (so `set_blog_id` is followed).
+//! builder, on the table `wpdb` names now (so `set_blog_id` is followed). The one exception is
+//! `wp_prime_option_caches()`'s `IN` list, which goes through `wpdb::prepare` with WordPress's own template: the
+//! `query` filter sees its text, and the builder writes `IN` lists as `'a', 'b'` where WordPress writes `'a','b'`.
 
 use std::rc::Rc;
 
@@ -55,8 +57,16 @@ impl SqlOptionRepository {
         quiet: bool,
     ) -> Result<Outcome, OptionsError> {
         let stmt = built.map_err(|e| OptionsError::Db(e.to_string()))?;
+        self.send_with(quiet, |wpdb| wpdb.query_statement(stmt))
+    }
+
+    fn send_with(
+        &self,
+        quiet: bool,
+        query: impl FnOnce(&WpDb) -> Result<QueryOutcome, WpDbError>,
+    ) -> Result<Outcome, OptionsError> {
         let previous = quiet.then(|| self.wpdb.suppress_errors(true));
-        let result = self.wpdb.query_statement(stmt);
+        let result = query(&self.wpdb);
         if let Some(previous) = previous {
             self.wpdb.suppress_errors(previous);
         }
@@ -156,14 +166,22 @@ impl OptionRepository for SqlOptionRepository {
         if names.is_empty() {
             return Ok(Vec::new());
         }
-        let rows = self.rows(
-            Query::table(&self.table())
-                .select(&["option_name", "option_value"])
-                .where_in("option_name", self::names(names))
-                .build(),
-            false,
-        )?;
-        Ok(Self::pairs(&rows))
+        // wp_prime_option_caches(): prepare( "... IN (%s,%s)", $options_to_prime ).
+        let template = format!(
+            "SELECT option_name, option_value FROM {} WHERE option_name IN ({})",
+            self.table(),
+            vec!["%s"; names.len()].join(",")
+        );
+        let args: Vec<WpValue> = names.iter().map(|n| WpValue::Str(n.clone())).collect();
+        let Some(sql) = self.wpdb.prepare(Some(template.as_bytes()), &args) else {
+            return Ok(Vec::new());
+        };
+        Ok(
+            match self.send_with(false, |wpdb| wpdb.query_bytes(&sql))? {
+                Outcome::Rows(rows) => Self::pairs(&rows),
+                _ => Vec::new(),
+            },
+        )
     }
 
     fn autoloaded(

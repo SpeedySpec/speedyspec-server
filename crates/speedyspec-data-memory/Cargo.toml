@@ -1,0 +1,15 @@
+[package]
+name = "speedyspec-data-memory"
+version = "0.1.0"
+description = "In-memory NoSQL and Direct Stores, for tests and single-process sites."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-counter = { path = "../speedyspec-data-counter" }
+
+[dev-dependencies]
+speedyspec-data-conformance = { path = "../speedyspec-data-conformance" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }

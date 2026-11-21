@@ -228,3 +228,28 @@ fn per_site_table() {
         "{last:?}"
     );
 }
+
+/// `wp_prime_option_caches()`'s query, as WordPress's `prepare()` makes it: the `query` filter sees this text, and
+/// WordPress's tests (ticket 61193) look for it.
+#[test]
+#[ignore = "needs MySQL: set SPEEDYSPEC_TEST_MYSQL_URL"]
+fn prime_query_text_is_wordpress() {
+    let _one = TABLE.lock().unwrap_or_else(|e| e.into_inner());
+    let r = rig();
+    r.repo.add(&option("a", b"1", Autoload::Off)).unwrap();
+    let seen = Rc::new(RefCell::new(Vec::new()));
+    let saw = seen.clone();
+    on_query(&r.hooks, move |q| {
+        saw.borrow_mut().push(q.clone());
+        q.clone()
+    });
+    let values = r.repo.values_of(&["a".into(), "it's".into()]).unwrap();
+    assert_eq!(values.len(), 1);
+    assert_eq!(
+        *seen.borrow(),
+        [HookValue::Str(
+            "SELECT option_name, option_value FROM wp_options WHERE option_name IN ('a','it\\'s')"
+                .into()
+        )]
+    );
+}

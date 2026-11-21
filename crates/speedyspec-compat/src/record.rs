@@ -103,6 +103,17 @@ fn unpacked(version: &str, release: &Release) -> Result<PathBuf, String> {
 
 /// Records `area` against WordPress `version` and writes `compat/<area>/wordpress-<version>.json`.
 pub fn record(area: &str, version: &str) -> Result<PathBuf, String> {
+    record_for(area, version, false)
+}
+
+/// Records `area`'s single-site scenarios (`multisite` false) into `wordpress-<version>.json`, or its scenarios
+/// marked `multisite` on a multisite install into `wordpress-<version>-multisite.json`.
+pub fn record_for(area: &str, version: &str, multisite: bool) -> Result<PathBuf, String> {
+    if multisite && area != "options" {
+        return Err(format!(
+            "the recorder has no multisite install for the area {area}"
+        ));
+    }
     let dir = compat_dir().join(area);
     let source: Source = read_json(&dir.join("source.json"))?;
     let release = source.releases.get(version).ok_or_else(|| {
@@ -111,7 +122,8 @@ pub fn record(area: &str, version: &str) -> Result<PathBuf, String> {
             dir.join("source.json").display()
         )
     })?;
-    let catalogue: Catalogue = read_json(&dir.join("scenarios.json"))?;
+    let mut catalogue: Catalogue = read_json(&dir.join("scenarios.json"))?;
+    catalogue.scenarios.retain(|s| s.multisite == multisite);
 
     let root = unpacked(version, release)?;
 
@@ -121,7 +133,7 @@ pub fn record(area: &str, version: &str) -> Result<PathBuf, String> {
         areas: Vec::new(),
     })
     .map_err(|e| e.to_string())?;
-    let setup = setup_for(area, &root)?;
+    let setup = setup_for(area, &root, multisite)?;
     let mut runner = PhpRunner::new(php, setup);
     let mut results = BTreeMap::new();
     let mut errors = Vec::new();
@@ -140,18 +152,17 @@ pub fn record(area: &str, version: &str) -> Result<PathBuf, String> {
         wordpress: version.to_string(),
         results,
     };
-    let path = dir.join(format!("wordpress-{version}.json"));
+    let path = dir.join(crate::fixture_name(version, multisite));
     let mut text = serde_json::to_string_pretty(&fixture).map_err(|e| e.to_string())?;
     text.push('\n');
     std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
     Ok(path)
 }
 
-/// What loads WordPress's implementation of `area` into a fresh request.
 /// What prepares a fresh request for an area's scenarios.
 type Setup = Box<dyn Fn(&Php) -> Result<(), String>>;
 
-fn setup_for(area: &str, root: &Path) -> Result<Setup, String> {
+fn setup_for(area: &str, root: &Path, multisite: bool) -> Result<Setup, String> {
     let files: &[&str] = match area {
         "hooks" => &["wp-includes/plugin.php"],
         "wp-db" => &["wp-includes/plugin.php", "wp-includes/class-wpdb.php"],
@@ -165,7 +176,8 @@ fn setup_for(area: &str, root: &Path) -> Result<Setup, String> {
     if area == "options" {
         // `setup.php` loads WordPress's files itself, for either side.
         let code = format!(
-            "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', false); require {:?};",
+            "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', false); \
+             define('SPEEDYSPEC_COMPAT_MULTISITE', {multisite}); require {:?};",
             format!("{}/", root.display()),
             compat_dir().join("options/setup.php").display().to_string()
         );

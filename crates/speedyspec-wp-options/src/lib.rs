@@ -8,17 +8,27 @@ mod api;
 mod autoload;
 mod autoload_policy;
 mod autoload_set;
+mod clock;
 #[cfg(feature = "conformance")]
 pub mod conformance;
 mod entity;
 mod error;
+mod external_cache;
 mod facade;
 mod fired;
 mod messages;
 mod name;
+mod network;
+mod network_messages;
+mod php_cast;
 mod ports;
 mod read;
+mod settings;
+mod settings_messages;
+mod sitemeta;
 mod staged;
+mod transient_messages;
+mod transients;
 mod value;
 mod write;
 
@@ -32,8 +42,10 @@ pub use autoload_policy::{
     AutoloadPolicy, WordPressAutoloadPolicy, autoload_values,
     filter_default_autoload_value_via_option_size, register_default_filters,
 };
+pub use clock::{Clock, SystemClock};
 pub use entity::Option;
 pub use error::OptionsError;
+pub use external_cache::{ExternalObjectCache, ObjectCachePersistence};
 pub use facade::{FromOptionValue, Options};
 pub use messages::{
     AddOption, AutoloadValuesToAutoload, DeleteOption, DetermineOptionAutoloadValue,
@@ -42,9 +54,29 @@ pub use messages::{
     SetOptionAutoloadValues, SetOptionsAutoload, UpdateOption, register_options_handlers,
 };
 pub use name::OptionName;
+pub use network::{NetworkOptionsApi, NetworkPorts, resolve_network_id};
+pub use network_messages::{
+    AddNetworkOption, DeleteNetworkOption, GetNetworkOption, LoadCoreSiteOptions,
+    PrimeNetworkOptionCaches, UpdateNetworkOption, register_network_option_handlers,
+};
+pub use php_cast::php_int;
 pub use ports::{
     Deprecations, Installing, Multisite, OptionGroups, OptionRepository, ProtectedOptions,
     Sanitizing, ValueCodec,
 };
+pub use settings::{
+    ArgsParsing, FILTER_DEFAULT_OPTION, NoArgsParsing, SettingArgsInput, SettingsRegistry,
+    SettingsStore,
+};
+pub use settings_messages::{
+    FilterDefaultOption, GetRegisteredSettings, RegisterSetting, UnregisterSetting,
+    register_settings_handlers,
+};
+pub use sitemeta::{NetworkMeta, SitemetaRepository};
 pub use staged::Staged;
+pub use transient_messages::{
+    DeleteExpiredTransients, DeleteSiteTransient, DeleteTransient, GetSiteTransient, GetTransient,
+    SetSiteTransient, SetTransient, register_transient_handlers,
+};
+pub use transients::{ExpiredTransients, TransientPorts, TransientPrefix, TransientsApi};
 pub use value::{SerializedValue, php_empty, php_string};

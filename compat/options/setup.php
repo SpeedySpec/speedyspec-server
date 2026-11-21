@@ -10,7 +10,32 @@ declare(strict_types=1);
  *  loaded. The recorder loads WordPress's hooks, object cache, `wpdb` and `option.php`; the port's side loads none of
  *  them (they are native) and its release copy's `option.php` has the ported functions removed. Both need MySQL,
  *  through `SPEEDYSPEC_TEST_MYSQL_URL`.
+ *
+ *  `SPEEDYSPEC_COMPAT_MULTISITE` (false when undefined) makes the install a multisite one, as `wp-config.php` and
+ *  `ms-settings.php` would: `MULTISITE`, network 1 with main site 1 as `$current_site`, blog 1, and `wp_sitemeta`.
  */
+
+if (!defined('SPEEDYSPEC_COMPAT_MULTISITE'))
+{
+    define('SPEEDYSPEC_COMPAT_MULTISITE', false);
+}
+if (SPEEDYSPEC_COMPAT_MULTISITE)
+{
+    foreach ([
+        'MULTISITE' => true,
+        'SUBDOMAIN_INSTALL' => false,
+        'DOMAIN_CURRENT_SITE' => 'example.org',
+        'PATH_CURRENT_SITE' => '/',
+        'SITE_ID_CURRENT_SITE' => 1,
+        'BLOG_ID_CURRENT_SITE' => 1,
+    ] as $speedyspec_name => $speedyspec_value)
+    {
+        if (!defined($speedyspec_name))
+        {
+            define($speedyspec_name, $speedyspec_value);
+        }
+    }
+}
 
 $speedyspec_url = getenv('SPEEDYSPEC_TEST_MYSQL_URL');
 if (!$speedyspec_url)
@@ -116,6 +141,85 @@ function speedyspec_compat_thing()
 }
 
 /**
+ * A transient timeout as its distance from now, in tens of seconds (a timestamp differs between recording and
+ *  replaying, and a second may pass between a step and its report).
+ */
+function speedyspec_compat_relative($value)
+{
+    if (!is_numeric($value) || (int) $value < 1000000000)
+    {
+        return $value;
+    }
+    $seconds = (int) round(((int) $value - time()) / 10) * 10;
+    return '{' . get_debug_type($value) . ':time()' . sprintf('%+d', $seconds) . '}';
+}
+
+/**
+ * Reads a transient timeout option (`get_option`, or `get_site_option` for a site transient's) as its distance from
+ *  now.
+ */
+function speedyspec_compat_timeout($option, $site = false)
+{
+    return speedyspec_compat_relative($site ? get_site_option($option) : get_option($option));
+}
+
+/**
+ * Moves a transient timeout `$seconds` into the past through `$setter` (`update_option` or `update_site_option`),
+ *  as WordPress's tests do with `time() - 1`.
+ */
+function speedyspec_compat_expire($setter, $option, $seconds = 1)
+{
+    if (!in_array($setter, ['update_option', 'update_site_option'], true))
+    {
+        throw new InvalidArgumentException("$setter is not an option setter");
+    }
+    return $setter($option, time() - $seconds);
+}
+
+/**
+ * Replaces transient timeouts in a reported table or cache with their distance from now.
+ *
+ * @return mixed
+ *   The value with every timeout made relative.
+ */
+function speedyspec_compat_relative_timeouts($value)
+{
+    if (!is_array($value))
+    {
+        return $value;
+    }
+    foreach ($value as $key => $item)
+    {
+        if (is_array($item) && isset($item['option_name']) && str_contains((string) $item['option_name'], '_transient_timeout_'))
+        {
+            $item['option_value'] = speedyspec_compat_relative($item['option_value']);
+        }
+        elseif (is_array($item) && isset($item['meta_key']) && str_contains((string) $item['meta_key'], '_transient_timeout_'))
+        {
+            $item['meta_value'] = speedyspec_compat_relative($item['meta_value']);
+        }
+        elseif (is_string($key) && str_contains($key, '_transient_timeout_'))
+        {
+            $item = speedyspec_compat_relative($item);
+        }
+        elseif (is_array($item))
+        {
+            $item = speedyspec_compat_relative_timeouts($item);
+        }
+        $value[$key] = $item;
+    }
+    return $value;
+}
+
+/**
+ * Upper-cases a setting's value (a `sanitize_callback` given by name).
+ */
+function speedyspec_compat_upper($value)
+{
+    return is_string($value) ? strtoupper($value) : $value;
+}
+
+/**
  * Reverses the autoload values (a `wp_autoload_values_to_autoload` callback that reorders).
  */
 function speedyspec_compat_values_reversed($values)
@@ -165,6 +269,22 @@ require ABSPATH . WPINC . '/compat.php';
 require ABSPATH . WPINC . '/formatting.php';
 require ABSPATH . WPINC . '/functions.php';
 require ABSPATH . WPINC . '/kses.php';
+if (SPEEDYSPEC_COMPAT_MULTISITE)
+{
+    require ABSPATH . WPINC . '/class-wp-network.php';
+    require ABSPATH . WPINC . '/ms-network.php';
+    // ms-settings.php: the current network and site, before the object cache reads the blog id.
+    $GLOBALS['blog_id'] = 1;
+    $GLOBALS['site_id'] = 1;
+    $GLOBALS['current_site'] = new WP_Network((object) [
+        'id' => 1,
+        'domain' => 'example.org',
+        'path' => '/',
+        'blog_id' => 1,
+        'site_name' => 'Compat Network',
+        'cookie_domain' => 'example.org',
+    ]);
+}
 if (!SPEEDYSPEC_COMPAT_PORT)
 {
     require ABSPATH . WPINC . '/class-wp-object-cache.php';
@@ -173,7 +293,18 @@ if (!SPEEDYSPEC_COMPAT_PORT)
     $GLOBALS['wpdb'] = new wpdb(DB_USER, DB_PASSWORD, DB_NAME, DB_HOST);
 }
 $GLOBALS['wpdb']->set_prefix('wp_');
+if (SPEEDYSPEC_COMPAT_MULTISITE)
+{
+    // ms-settings.php: on multisite, set_prefix() leaves the blog tables to set_blog_id().
+    $GLOBALS['wpdb']->set_blog_id(1, 1);
+}
 wp_cache_init();
+// wp_start_object_cache()'s global groups.
+wp_cache_add_global_groups(
+    ['blog-details', 'blog-id-cache', 'blog-lookup', 'blog_meta', 'global-posts', 'image_editor', 'networks',
+        'network-queries', 'sites', 'site-details', 'site-options', 'site-queries', 'site-transient', 'theme_files',
+        'translation_files', 'rss', 'users', 'user-queries', 'user_meta', 'useremail', 'userlogins', 'userslugs']
+);
 
 // `init` has run, so `wp_load_translations_early()` (called by wpdb on invalid text) loads no l10n.php beside the
 // stubs above.
@@ -201,6 +332,16 @@ function speedyspec_compat_options_table(): void
     {
         $wpdb->insert($wpdb->options, ['option_name' => $name, 'option_value' => $value, 'autoload' => 'on']);
     }
+    if (SPEEDYSPEC_COMPAT_MULTISITE)
+    {
+        $wpdb->query(
+            "CREATE TABLE IF NOT EXISTS wp_sitemeta (meta_id bigint(20) unsigned NOT NULL auto_increment, "
+            . "site_id bigint(20) unsigned NOT NULL default '0', meta_key varchar(255) default NULL, "
+            . "meta_value longtext, PRIMARY KEY (meta_id), KEY meta_key (meta_key(191)), KEY site_id (site_id)) "
+            . "DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+        );
+        $wpdb->query('TRUNCATE TABLE wp_sitemeta');
+    }
     $wpdb->suppress_errors(false);
 }
 
@@ -214,6 +355,18 @@ function speedyspec_compat_area_setup(): void
     speedyspec_compat_options_table();
     wp_cache_flush();
     SpeedySpecCompat::$report_globals = false;
+    // A hook given a transient timeout (`add_option`'s value) reports it as its distance from now.
+    SpeedySpecCompat::$arguments = static function (array $args): array
+    {
+        foreach ($args as $key => $arg)
+        {
+            if ((is_int($arg) || (is_string($arg) && ctype_digit($arg))) && abs((int) $arg - time()) < 10 * 365 * 86400)
+            {
+                $args[$key] = speedyspec_compat_relative($arg);
+            }
+        }
+        return $args;
+    };
     $last = $wpdb->num_queries;
     SpeedySpecCompat::$state = static function () use (&$last): array
     {
@@ -225,7 +378,23 @@ function speedyspec_compat_area_setup(): void
             . "WHERE option_name NOT IN ('siteurl', 'home', 'blogname') ORDER BY option_name",
             ARRAY_A
         );
+        $state = ['queries' => $queries, 'cache' => $cache, 'rows' => $rows];
+        // The transient and network groups, when they hold anything (the options scenarios of plan 4 use none).
+        foreach (['transient', 'site-transient', 'site-options'] as $group)
+        {
+            if (!empty($wp_object_cache->cache[$group]))
+            {
+                $state["cache:$group"] = $wp_object_cache->cache[$group];
+            }
+        }
+        if (SPEEDYSPEC_COMPAT_MULTISITE)
+        {
+            $state['sitemeta'] = $wpdb->get_results(
+                'SELECT site_id, meta_key, meta_value FROM wp_sitemeta ORDER BY site_id, meta_key, meta_id',
+                ARRAY_A
+            );
+        }
         $last = $wpdb->num_queries;
-        return ['queries' => $queries, 'cache' => $cache, 'rows' => $rows];
+        return speedyspec_compat_relative_timeouts($state);
     };
 }

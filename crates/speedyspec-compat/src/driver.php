@@ -33,6 +33,9 @@ final class SpeedySpecCompat
     /** @var callable|null The area's own snapshot after each step (set by its support file). */
     public static $state = null;
 
+    /** @var callable|null An area's own rewriting of a fixture's arguments before they are reported (set by its support file). */
+    public static $arguments = null;
+
     /** Whether each step reports the hook globals (an area whose behaviour is not hooks may turn it off). */
     public static bool $report_globals = true;
 
@@ -94,7 +97,8 @@ final class SpeedySpecCompat
         $spec = self::$specs[$label];
         $with = $spec['with'] ?? [];
         $index = count(self::$invocations);
-        self::$invocations[] = ['fixture' => $label, 'args' => self::normalise($args)];
+        $reported = self::$arguments === null ? $args : (self::$arguments)($args);
+        self::$invocations[] = ['fixture' => $label, 'args' => self::normalise($reported)];
         $first = $args[0] ?? null;
         switch ($spec['callback']) {
             case 'append':

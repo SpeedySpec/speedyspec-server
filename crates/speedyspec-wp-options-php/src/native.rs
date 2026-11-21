@@ -8,6 +8,12 @@ use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_wp_options::{
+    AddNetworkOption, DeleteExpiredTransients, DeleteNetworkOption, DeleteSiteTransient,
+    DeleteTransient, FilterDefaultOption, GetNetworkOption, GetRegisteredSettings,
+    GetSiteTransient, GetTransient, LoadCoreSiteOptions, PrimeNetworkOptionCaches, RegisterSetting,
+    SetSiteTransient, SetTransient, UnregisterSetting, UpdateNetworkOption,
+};
+use speedyspec_wp_options::{
     AddOption, AutoloadValuesToAutoload, DeleteOption, DetermineOptionAutoloadValue,
     FilterDefaultAutoloadValueViaOptionSize, GetOption, LoadAlloptions, OptionsError,
     PrimeOptionCaches, PrimeOptionCachesByGroup, ProtectSpecialOption, SetOptionAutoload,
@@ -34,6 +40,23 @@ pub(crate) struct Handlers {
     set_many: HandlerRef<SetOptionsAutoload>,
     set_one: HandlerRef<SetOptionAutoload>,
     protect: HandlerRef<ProtectSpecialOption>,
+    pub(crate) get_network: QueryRef<GetNetworkOption>,
+    pub(crate) add_network: HandlerRef<AddNetworkOption>,
+    pub(crate) update_network: HandlerRef<UpdateNetworkOption>,
+    pub(crate) delete_network: HandlerRef<DeleteNetworkOption>,
+    pub(crate) prime_network: HandlerRef<PrimeNetworkOptionCaches>,
+    pub(crate) load_core: HandlerRef<LoadCoreSiteOptions>,
+    pub(crate) get_transient: QueryRef<GetTransient>,
+    pub(crate) set_transient: HandlerRef<SetTransient>,
+    pub(crate) delete_transient: HandlerRef<DeleteTransient>,
+    pub(crate) get_site_transient: QueryRef<GetSiteTransient>,
+    pub(crate) set_site_transient: HandlerRef<SetSiteTransient>,
+    pub(crate) delete_site_transient: HandlerRef<DeleteSiteTransient>,
+    pub(crate) delete_expired: HandlerRef<DeleteExpiredTransients>,
+    pub(crate) register_setting: HandlerRef<RegisterSetting>,
+    pub(crate) unregister_setting: HandlerRef<UnregisterSetting>,
+    pub(crate) registered_settings: QueryRef<GetRegisteredSettings>,
+    pub(crate) filter_default: QueryRef<FilterDefaultOption>,
 }
 
 impl Handlers {
@@ -53,14 +76,31 @@ impl Handlers {
             set_many: HandlerRef::new(c.clone()),
             set_one: HandlerRef::new(c.clone()),
             protect: HandlerRef::new(c.clone()),
+            get_network: QueryRef::new(c.clone()),
+            add_network: HandlerRef::new(c.clone()),
+            update_network: HandlerRef::new(c.clone()),
+            delete_network: HandlerRef::new(c.clone()),
+            prime_network: HandlerRef::new(c.clone()),
+            load_core: HandlerRef::new(c.clone()),
+            get_transient: QueryRef::new(c.clone()),
+            set_transient: HandlerRef::new(c.clone()),
+            delete_transient: HandlerRef::new(c.clone()),
+            get_site_transient: QueryRef::new(c.clone()),
+            set_site_transient: HandlerRef::new(c.clone()),
+            delete_site_transient: HandlerRef::new(c.clone()),
+            delete_expired: HandlerRef::new(c.clone()),
+            register_setting: HandlerRef::new(c.clone()),
+            unregister_setting: HandlerRef::new(c.clone()),
+            registered_settings: QueryRef::new(c.clone()),
+            filter_default: QueryRef::new(c.clone()),
         }
     }
 }
 
-type R = Result<Value, NativeError>;
+pub(crate) type R = Result<Value, NativeError>;
 
 /// A native function's body.
-type Native = fn(&[Value]) -> R;
+pub(crate) type Native = fn(&[Value]) -> R;
 
 /// An options error as PHP sees it: a PHP exception rethrown, PHP unwinding left alone, anything else an `Error`.
 fn native_error(e: OptionsError) -> NativeError {
@@ -84,30 +124,30 @@ fn bus(e: BusError) -> NativeError {
     NativeError::throw("Error", e.to_string())
 }
 
-fn ask<Q: Query<Result = Result<T, OptionsError>>, T>(
+pub(crate) fn ask<Q: Query<Result = Result<T, OptionsError>>, T>(
     r: &QueryRef<Q>,
     q: Q,
 ) -> Result<T, NativeError> {
     r.call(q).map_err(bus)?.map_err(native_error)
 }
 
-fn send<C: Command<Result = Result<T, OptionsError>>, T>(
+pub(crate) fn send<C: Command<Result = Result<T, OptionsError>>, T>(
     r: &HandlerRef<C>,
     c: C,
 ) -> Result<T, NativeError> {
     r.call(c).map_err(bus)?.map_err(native_error)
 }
 
-fn a(args: &[Value], i: usize) -> Value {
+pub(crate) fn a(args: &[Value], i: usize) -> Value {
     args.get(i).cloned().unwrap_or(Value::Null)
 }
 
-fn or(args: &[Value], i: usize, default: Value) -> Value {
+pub(crate) fn or(args: &[Value], i: usize, default: Value) -> Value {
     args.get(i).cloned().unwrap_or(default)
 }
 
 /// An option name as `trim()` takes it: a scalar by PHP's string conversion; `None` for an array or object.
-fn name(v: &Value) -> Option<String> {
+pub(crate) fn name(v: &Value) -> Option<String> {
     match v {
         Value::Array(_) | Value::Opaque(_) => None,
         other => php_string(other).map(|b| String::from_utf8_lossy(&b).into_owned()),
@@ -143,7 +183,7 @@ fn text(k: &Key) -> String {
     }
 }
 
-fn names(v: &Value) -> Vec<String> {
+pub(crate) fn names(v: &Value) -> Vec<String> {
     match v.read().as_ref() {
         Value::Array(items) => items.iter().filter_map(|(_, v)| name(v)).collect(),
         _ => Vec::new(),
@@ -155,7 +195,7 @@ fn by_name(pairs: Vec<(String, Value)>) -> Value {
     Value::Array(pairs.into_iter().map(|(n, v)| (key(&n), v)).collect())
 }
 
-fn key(name: &str) -> Key {
+pub(crate) fn key(name: &str) -> Key {
     let digits = name.strip_prefix('-').unwrap_or(name);
     let canonical = !digits.is_empty()
         && digits.bytes().all(|b| b.is_ascii_digit())
@@ -167,7 +207,7 @@ fn key(name: &str) -> Key {
     }
 }
 
-fn h<T>(f: impl FnOnce(&Handlers) -> T) -> Result<T, NativeError> {
+pub(crate) fn h<T>(f: impl FnOnce(&Handlers) -> T) -> Result<T, NativeError> {
     crate::SHARED
         .with(|s| s.borrow().as_ref().map(|s| f(&s.handlers)))
         .ok_or_else(|| NativeError::throw("Error", "the options API is not available"))
@@ -298,7 +338,7 @@ fn protect(args: &[Value]) -> R {
 }
 
 pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
-    let entries: Vec<(&str, Native)> = vec![
+    let mut entries: Vec<(&str, Native)> = vec![
         ("get_option", get_option),
         ("add_option", add_option),
         ("update_option", update_option),
@@ -314,6 +354,9 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
         ("wp_autoload_values_to_autoload", values),
         ("wp_protect_special_option", protect),
     ];
+    entries.extend(crate::network::entries());
+    entries.extend(crate::transients::entries());
+    entries.extend(crate::settings::entries());
     entries
         .into_iter()
         .map(|(name, f)| {

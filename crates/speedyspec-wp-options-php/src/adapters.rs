@@ -28,7 +28,7 @@ pub(crate) fn exists(function: &str) -> Result<bool, OptionsError> {
     ))
 }
 
-fn truthy(v: &Value) -> bool {
+pub(crate) fn truthy(v: &Value) -> bool {
     !speedyspec_wp_options::php_empty(&v.read())
 }
 
@@ -106,6 +106,16 @@ impl Multisite for PhpMultisite {
     fn network_id(&self) -> u64 {
         id("get_current_network_id")
     }
+
+    fn is_main_site(&self) -> bool {
+        !exists("is_main_site").unwrap_or(false)
+            || call("is_main_site", &[]).is_ok_and(|v| truthy(&v))
+    }
+
+    fn is_main_network(&self) -> bool {
+        !exists("is_main_network").unwrap_or(false)
+            || call("is_main_network", &[]).is_ok_and(|v| truthy(&v))
+    }
 }
 
 /// `sanitize_option()`: PHP's for the names core sanitizes; the filter alone, in Rust, for every other name.
@@ -133,7 +143,7 @@ impl Sanitizing for PhpSanitizing {
     }
 }
 
-/// `_deprecated_argument()` when defined.
+/// `_deprecated_argument()` and `_doing_it_wrong()` when defined.
 pub struct PhpDeprecations;
 
 impl Deprecations for PhpDeprecations {
@@ -150,6 +160,25 @@ impl Deprecations for PhpDeprecations {
                     Value::Str(function.into()),
                     Value::Str(version.into()),
                     Value::Str(message.into()),
+                ],
+            )?;
+        }
+        Ok(())
+    }
+
+    fn doing_it_wrong(
+        &self,
+        function: &str,
+        message: &str,
+        version: &str,
+    ) -> Result<(), OptionsError> {
+        if exists("_doing_it_wrong")? {
+            call(
+                "_doing_it_wrong",
+                &[
+                    Value::Str(function.into()),
+                    Value::Str(message.into()),
+                    Value::Str(version.into()),
                 ],
             )?;
         }

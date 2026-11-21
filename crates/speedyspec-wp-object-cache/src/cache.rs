@@ -30,6 +30,9 @@ pub struct ObjectCache {
     pub(crate) non_persistent: RefCell<IndexSet<Key>>,
     blog_prefix: RefCell<String>,
     multisite: Cell<bool>,
+    /// The second level failed in this request (one cache per request), so the rest of the request skips it (an unreachable host would
+    /// otherwise make every call wait out its timeout). The next request's cache tries it again.
+    pub(crate) second_down: Cell<bool>,
 }
 
 /// PHP's `empty()`.
@@ -73,7 +76,19 @@ impl ObjectCache {
             non_persistent: RefCell::new(IndexSet::new()),
             blog_prefix: RefCell::new(prefix),
             multisite: Cell::new(multisite),
+            second_down: Cell::new(false),
         }
+    }
+
+    /// The same cache with `store` as its second level.
+    pub fn with_persistent(mut self, store: Rc<dyn CachingStore>) -> ObjectCache {
+        self.persistent = Some(store);
+        self
+    }
+
+    /// Whether a second level shares values across requests and processes, as a persistent drop-in does.
+    pub fn is_persistent(&self) -> bool {
+        self.persistent.is_some()
     }
 
     /// `is_valid_key`: the key as an array key, or a notice naming the method that checked it.

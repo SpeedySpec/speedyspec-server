@@ -1,11 +1,13 @@
-//! WordPress's options functions, recorded on MySQL (`compat/options`), replayed exactly through the native ones.
+//! WordPress's options functions, recorded on MySQL (`compat/options`, single site and multisite), replayed exactly
+//! through the native ones.
 //!
 //! Needs MySQL (`SPEEDYSPEC_TEST_MYSQL_URL`); without it the test reports that it was skipped.
 
+use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use speedyspec_compat::{replay, wordpress_release};
+use speedyspec_compat::{replay_for, wordpress_release};
 use speedyspec_container::Container;
 use speedyspec_container_php::ContainerArea;
 use speedyspec_data::EngineConfig;
@@ -68,36 +70,41 @@ fn main() {
     })
     .expect("PHP boots");
     let release = wordpress_release("7.1.5").expect("the pinned release");
-    let mut runner = options_scenario_runner(php, &release).expect("the release prepares");
-    // SPEEDYSPEC_COMPAT_TRACE=1 replays one scenario at a time, naming each and its time.
-    let mismatches = if std::env::var_os("SPEEDYSPEC_COMPAT_TRACE").is_some() {
-        let (catalogue, fixture, breaks) =
-            speedyspec_compat::load("options").expect("the options files load");
-        let mut all = Vec::new();
-        let only = std::env::var("SPEEDYSPEC_COMPAT_ONLY").ok();
-        for scenario in catalogue
-            .scenarios
-            .iter()
-            .filter(|s| only.as_ref().is_none_or(|o| *o == s.name))
-        {
-            let one = speedyspec_compat::Catalogue {
-                area: catalogue.area.clone(),
-                scenarios: vec![scenario.clone()],
-            };
-            let started = std::time::Instant::now();
-            eprintln!("trace: {} ...", scenario.name);
-            all.extend(speedyspec_compat::replay_with(
-                &one,
-                &fixture,
-                &breaks,
-                &mut runner,
-            ));
-            eprintln!("trace: {} {:?}", scenario.name, started.elapsed());
+    let multisite = Rc::new(Cell::new(false));
+    let mut runner =
+        options_scenario_runner(php, &release, multisite.clone()).expect("the release prepares");
+    // Both fixtures: the single-site scenarios, then those recorded on multisite, on a multisite port.
+    let mut mismatches = Vec::new();
+    for network in [false, true] {
+        multisite.set(network);
+        // SPEEDYSPEC_COMPAT_TRACE=1 replays one scenario at a time, naming each and its time.
+        if std::env::var_os("SPEEDYSPEC_COMPAT_TRACE").is_some() {
+            let (catalogue, fixture, breaks) =
+                speedyspec_compat::load_for("options", network).expect("the options files load");
+            let only = std::env::var("SPEEDYSPEC_COMPAT_ONLY").ok();
+            for scenario in catalogue
+                .scenarios
+                .iter()
+                .filter(|s| only.as_ref().is_none_or(|o| *o == s.name))
+            {
+                let one = speedyspec_compat::Catalogue {
+                    area: catalogue.area.clone(),
+                    scenarios: vec![scenario.clone()],
+                };
+                let started = std::time::Instant::now();
+                eprintln!("trace: {} ...", scenario.name);
+                mismatches.extend(speedyspec_compat::replay_with(
+                    &one,
+                    &fixture,
+                    &breaks,
+                    &mut runner,
+                ));
+                eprintln!("trace: {} {:?}", scenario.name, started.elapsed());
+            }
+        } else {
+            mismatches.extend(replay_for("options", network, &mut runner));
         }
-        all
-    } else {
-        replay("options", &mut runner)
-    };
+    }
     for m in &mismatches {
         eprintln!("MISMATCH {m}");
         eprintln!(

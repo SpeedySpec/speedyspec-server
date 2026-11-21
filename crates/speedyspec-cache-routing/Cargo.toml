@@ -1,0 +1,20 @@
+[package]
+name = "speedyspec-cache-routing"
+version = "0.1.0"
+description = "Chooses the persistent Caching Store from the engine the object-cache use is routed to."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache-file = { path = "../speedyspec-cache-file" }
+speedyspec-cache-kv = { path = "../speedyspec-cache-kv" }
+speedyspec-cache-sql = { path = "../speedyspec-cache-sql" }
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+
+[dev-dependencies]
+speedyspec-data-file = { path = "../speedyspec-data-file" }
+speedyspec-data-memory = { path = "../speedyspec-data-memory" }
+tempfile = "3"

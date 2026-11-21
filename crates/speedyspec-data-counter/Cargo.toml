@@ -1,0 +1,10 @@
+[package]
+name = "speedyspec-data-counter"
+version = "0.1.0"
+description = "Valkey's INCRBY rules for key-value stores that emulate it: canonical decimal counters."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-data = { path = "../speedyspec-data" }

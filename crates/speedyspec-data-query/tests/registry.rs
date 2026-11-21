@@ -130,3 +130,12 @@ fn registry_rejects_unknown_scheme_and_route() {
     ));
     assert!(registry.reset_all().is_ok());
 }
+
+#[test]
+fn routed_has_no_default_fallback() {
+    let opens = Rc::new(Cell::new(0));
+    let registry = registry(&opens);
+    registry.route("object-cache", "cache").unwrap();
+    assert_eq!(registry.routed("object-cache").as_deref(), Some("cache"));
+    assert_eq!(registry.routed("x"), None);
+}

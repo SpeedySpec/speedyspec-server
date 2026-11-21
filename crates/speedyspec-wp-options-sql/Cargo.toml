@@ -13,6 +13,14 @@ speedyspec-wp-db = { path = "../speedyspec-wp-db" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 
 [dev-dependencies]
+speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache-file = { path = "../speedyspec-cache-file" }
+speedyspec-cache-kv = { path = "../speedyspec-cache-kv" }
+speedyspec-cache-sql = { path = "../speedyspec-cache-sql" }
+speedyspec-data-file = { path = "../speedyspec-data-file" }
+speedyspec-data-valkey = { path = "../speedyspec-data-valkey" }
+tempfile = "3"
 speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
 speedyspec-hooks = { path = "../speedyspec-hooks" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }

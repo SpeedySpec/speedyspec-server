@@ -216,6 +216,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "atomic-polyfill"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cf2bce30dfe09ef0bfaef228b9d414faaf7e563035494d7fe092dba54b300f4"
+dependencies = [
+ "critical-section",
+]
+
+[[package]]
 name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -660,6 +669,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
 
 [[package]]
+name = "cobs"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fa961b519f0b462e3a3b4a34b64d119eeaca1d59af726fe450bbba07a9fc0a1"
+dependencies = [
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1080,6 +1098,18 @@ dependencies = [
  "subtle",
  "zeroize",
 ]
+
+[[package]]
+name = "embedded-io"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef1a6892d9eef45c8fa6b9e0086428a2cca8491aca8f787c534a3d6d0bcb3ced"
+
+[[package]]
+name = "embedded-io"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 
 [[package]]
 name = "encoding_rs"
@@ -1533,6 +1563,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hash32"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0c35f58762feb77d74ebe43bdbc3210f09be9fe6742234d573bacc26ed92b67"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1572,6 +1611,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54b4a22553d4242c49fddb9ba998a99962b5cc6f22cb5a3482bec22522403ce4"
 dependencies = [
  "http",
+]
+
+[[package]]
+name = "heapless"
+version = "0.7.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdc6457c0eb62c71aac4bc17216026d8410337c4126773b9c5daba343f17964f"
+dependencies = [
+ "atomic-polyfill",
+ "hash32",
+ "rustc_version",
+ "serde",
+ "spin",
+ "stable_deref_trait",
 ]
 
 [[package]]
@@ -3021,6 +3074,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "postcard"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6764c3b5dd454e283a30e6dfe78e9b31096d9e32036b5d1eaac7a6119ccb9a24"
+dependencies = [
+ "cobs",
+ "embedded-io 0.4.0",
+ "embedded-io 0.6.1",
+ "heapless",
+ "serde",
+]
+
+[[package]]
 name = "postgres"
 version = "0.19.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3337,6 +3403,30 @@ checksum = "76009fbe0614077fc1a2ce255e3a1881a2e3a3527097d5dc6d8212c585e7e38b"
 dependencies = [
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "redb"
+version = "4.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "096b1dd5ec053c9c2a5a26a93aafeadf73ebcb710ea54dc3151f17a8e20535ef"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "redis"
+version = "0.32.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "014cc767fefab6a3e798ca45112bccad9c6e0e218fbd49720042716c73cfef44"
+dependencies = [
+ "combine",
+ "itoa",
+ "num-bigint",
+ "percent-encoding",
+ "ryu",
+ "socket2",
+ "url",
 ]
 
 [[package]]
@@ -4230,11 +4320,53 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-cache-file"
+version = "0.1.0"
+dependencies = [
+ "sha2 0.10.9",
+ "speedyspec-cache",
+ "speedyspec-cache-conformance",
+ "speedyspec-data",
+ "speedyspec-data-file",
+ "speedyspec-data-memory",
+ "tempfile",
+]
+
+[[package]]
+name = "speedyspec-cache-kv"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-conformance",
+ "speedyspec-data",
+ "speedyspec-data-counter",
+ "speedyspec-data-memory",
+ "speedyspec-data-redb",
+ "speedyspec-data-valkey",
+ "tempfile",
+]
+
+[[package]]
 name = "speedyspec-cache-memory"
 version = "0.1.0"
 dependencies = [
  "speedyspec-cache",
  "speedyspec-cache-conformance",
+]
+
+[[package]]
+name = "speedyspec-cache-routing"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-file",
+ "speedyspec-cache-kv",
+ "speedyspec-cache-sql",
+ "speedyspec-data",
+ "speedyspec-data-file",
+ "speedyspec-data-memory",
+ "speedyspec-data-query",
+ "tempfile",
 ]
 
 [[package]]
@@ -4331,6 +4463,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-data-counter"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+]
+
+[[package]]
+name = "speedyspec-data-file"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-query",
+ "tempfile",
+]
+
+[[package]]
+name = "speedyspec-data-memory"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-counter",
+ "speedyspec-data-query",
+]
+
+[[package]]
 name = "speedyspec-data-mysql"
 version = "0.1.0"
 dependencies = [
@@ -4362,6 +4522,22 @@ dependencies = [
  "indexmap",
  "speedyspec-data",
  "sqlparser",
+]
+
+[[package]]
+name = "speedyspec-data-redb"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "postcard",
+ "redb",
+ "serde",
+ "serde_json",
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-counter",
+ "speedyspec-data-query",
+ "tempfile",
 ]
 
 [[package]]
@@ -4398,6 +4574,16 @@ name = "speedyspec-data-uow"
 version = "0.1.0"
 dependencies = [
  "speedyspec-data",
+]
+
+[[package]]
+name = "speedyspec-data-valkey"
+version = "0.1.0"
+dependencies = [
+ "redis",
+ "speedyspec-data",
+ "speedyspec-data-conformance",
+ "speedyspec-data-query",
 ]
 
 [[package]]
@@ -4827,6 +5013,9 @@ dependencies = [
 name = "speedyspec-wp-options"
 version = "0.1.0"
 dependencies = [
+ "indexmap",
+ "speedyspec-cache",
+ "speedyspec-cache-memory",
  "speedyspec-container",
  "speedyspec-cqrs",
  "speedyspec-data",
@@ -4844,6 +5033,12 @@ name = "speedyspec-wp-options-memory"
 version = "0.1.0"
 dependencies = [
  "indexmap",
+ "speedyspec-cache",
+ "speedyspec-cache-memory",
+ "speedyspec-data",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-object-cache",
  "speedyspec-wp-options",
 ]
 
@@ -4851,13 +5046,17 @@ dependencies = [
 name = "speedyspec-wp-options-php"
 version = "0.1.0"
 dependencies = [
+ "indexmap",
  "serde_json",
  "sha2 0.10.9",
+ "speedyspec-cache",
+ "speedyspec-cache-routing",
  "speedyspec-compat",
  "speedyspec-container",
  "speedyspec-container-php",
  "speedyspec-cqrs",
  "speedyspec-data",
+ "speedyspec-data-file",
  "speedyspec-data-mysql",
  "speedyspec-data-query",
  "speedyspec-hooks-memory",
@@ -4881,15 +5080,23 @@ dependencies = [
 name = "speedyspec-wp-options-sql"
 version = "0.1.0"
 dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-file",
+ "speedyspec-cache-kv",
+ "speedyspec-cache-sql",
  "speedyspec-data",
+ "speedyspec-data-file",
  "speedyspec-data-mysql",
  "speedyspec-data-query",
+ "speedyspec-data-valkey",
  "speedyspec-hooks",
  "speedyspec-wp-db",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-object-cache",
  "speedyspec-wp-options",
+ "speedyspec-wp-options-memory",
+ "tempfile",
 ]
 
 [[package]]
@@ -4897,6 +5104,9 @@ name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3763264f6b73151db08c50ff20d7d8a0b8796e021cdea7ceedad07b80155fa0e"
+dependencies = [
+ "lock_api 0.4.14",
+]
 
 [[package]]
 name = "spki"
