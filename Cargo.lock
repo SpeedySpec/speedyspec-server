@@ -6096,7 +6096,10 @@ dependencies = [
  "aho-corasick",
  "memchr",
  "speedyspec-hooks",
+ "speedyspec-wp-kses-contracts",
+ "speedyspec-wp-kses-lexical",
  "speedyspec-wp-text-corpus",
+ "speedyspec-wp-utf8",
 ]
 
 [[package]]
