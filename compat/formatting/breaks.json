@@ -14,6 +14,26 @@
       "scenario": "htmlspecialchars/literal/charset_eucjp_invalid",
       "step": 0,
       "why": "East Asian multibyte charsets (Shift_JIS, BIG5, BIG5-HKSCS, GB2312, EUC-JP): PHP validates their byte sequences and returns an empty string for an invalid one; the port treats them as single-byte and escapes the bytes it is given. The output is still safe: none of < > & \" ' can be a trail byte in these sets. WordPress sites on these charsets are rare; see the design spec's breaks ledger."
+    },
+    {
+      "scenario": "force_balance_tags/literal/balance_backtrack_18",
+      "step": 0,
+      "why": "PCRE resource limits. PHP runs preg_* with pcre.backtrack_limit = 1000000; the bundled PCRE2 the port uses (pcre2 0.2, which exposes no match limit) allows more. On pathological input a WordPress pattern can exhaust PHP's limit and make preg_match return false, which WordPress then treats as no match, while the port still matches. Here force_balance_tags' tag pattern on '<b>x <a-' + 18 × 'a' + '! <i>y': PHP stops balancing ('…<i>y</b>'), the port closes <i> too ('…<i>y</i></b>'). At 17 and below both match; at 21 and above both give up. Only crafted input reaches the window; the spec's breaks ledger names this class."
+    },
+    {
+      "scenario": "wptexturize/unrecorded/closing_quote_translated_empty",
+      "step": 0,
+      "why": "Not recorded (it needs a translation filter). When a locale translates the closing curly quote to '', PHP 8's substr_count() in wptexturize_primes() throws ValueError; the port counts no closing quotes and texturizes. Pinned by the PCRE and hand paths alike."
+    },
+    {
+      "scenario": "wptexturize/unrecorded/no_texturize_list_not_array",
+      "step": 0,
+      "why": "Not recorded (it needs a filter). When a no_texturize_tags or no_texturize_shortcodes filter returns a non-array, PHP 8's in_array() throws TypeError at the first tag or shortcode; the port reads the value as an empty list and texturizes. Pinned in tests/api.rs no_texturize_tags_odd_values."
+    },
+    {
+      "scenario": "wptexturize/unrecorded/broken_input_or_spaces",
+      "step": 0,
+      "why": "Not recorded (it needs a filter or a non-string argument). A wp_spaces_regexp fragment that doesn't compile makes PHP warn and its preg_* return null, turning texturized chunks into ''; the port's TextApi returns a TextError instead. A non-scalar wptexturize argument makes PHP throw or warn; the port returns the value unchanged."
     }
   ]
 }

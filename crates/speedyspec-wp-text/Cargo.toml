@@ -1,0 +1,31 @@
+[package]
+name = "speedyspec-wp-text"
+version = "0.1.0"
+description = "WordPress's content filters and sanitizers (wptexturize, wpautop and the rest) in Rust, byte for byte, behind a TextApi facade that fires their filters."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+aho-corasick = "1"
+memchr = "2.8"
+pcre2 = "0.2"
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-html-split = { path = "../speedyspec-wp-html-split" }
+speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contracts" }
+speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
+speedyspec-wp-text-escape = { path = "../speedyspec-wp-text-escape" }
+speedyspec-wp-utf8 = { path = "../speedyspec-wp-utf8" }
+
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+proptest = "1"
+libc = "0.2"
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-text-memory = { path = "../speedyspec-wp-text-memory" }
+speedyspec-wp-text-corpus = { path = "../speedyspec-wp-text-corpus", features = ["values"] }
+
+[[bench]]
+name = "content"
+harness = false

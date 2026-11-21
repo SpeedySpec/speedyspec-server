@@ -8,3 +8,4 @@ license.workspace = true
 
 [dependencies]
 speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
+speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contracts" }

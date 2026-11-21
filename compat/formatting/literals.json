@@ -1073,5 +1073,438 @@
       "EUC-JP",
       true
     ]
+  },
+  {
+    "name": "texturize_zero",
+    "function": "wptexturize",
+    "args": [
+      "0"
+    ]
+  },
+  {
+    "name": "texturize_unterminated_comment",
+    "function": "wptexturize",
+    "args": [
+      "a 'b' <!-- 'c' \"d\""
+    ]
+  },
+  {
+    "name": "texturize_unclosed_code",
+    "function": "wptexturize",
+    "args": [
+      "[code]'a'"
+    ]
+  },
+  {
+    "name": "texturize_unclosed_code_tag",
+    "function": "wptexturize",
+    "args": [
+      "<code>'a' </code> 'b'"
+    ]
+  },
+  {
+    "name": "texturize_nbsp",
+    "function": "wptexturize",
+    "args": [
+      {
+        "bytes": "IMKgJ2EnwqAt"
+      }
+    ]
+  },
+  {
+    "name": "texturize_nbsp_entity",
+    "function": "wptexturize",
+    "args": [
+      "&nbsp;'a'&nbsp;--&nbsp;"
+    ]
+  },
+  {
+    "name": "texturize_invalid_utf8",
+    "function": "wptexturize",
+    "args": [
+      {
+        "bytes": "J2HAJyAiYiI="
+      }
+    ]
+  },
+  {
+    "name": "texturize_cdata",
+    "function": "wptexturize",
+    "args": [
+      "<![CDATA[ 'x' ]]> 'y'"
+    ]
+  },
+  {
+    "name": "texturize_close_tag_only",
+    "function": "wptexturize",
+    "args": [
+      "[/gallery] 'a' [gallery]"
+    ]
+  },
+  {
+    "name": "autop_pre_unclosed",
+    "function": "wpautop",
+    "args": [
+      "a\n\n<pre>b\n\nc"
+    ]
+  },
+  {
+    "name": "autop_pre_nested",
+    "function": "wpautop",
+    "args": [
+      "<pre><pre>x</pre>\n\ny</pre>"
+    ]
+  },
+  {
+    "name": "autop_whitespace_only",
+    "function": "wpautop",
+    "args": [
+      " \n\t"
+    ]
+  },
+  {
+    "name": "autop_no_br",
+    "function": "wpautop",
+    "args": [
+      "a\nb",
+      false
+    ]
+  },
+  {
+    "name": "autop_crlf",
+    "function": "wpautop",
+    "args": [
+      "a\r\n\r\nb\rc"
+    ]
+  },
+  {
+    "name": "unautop_basic",
+    "function": "shortcode_unautop",
+    "args": [
+      "<p>[gallery]</p>"
+    ]
+  },
+  {
+    "name": "unautop_nbsp",
+    "function": "shortcode_unautop",
+    "args": [
+      "<p>&nbsp;[caption]x[/caption]&nbsp;</p>"
+    ]
+  },
+  {
+    "name": "unautop_unregistered",
+    "function": "shortcode_unautop",
+    "args": [
+      "<p>[nope]</p>"
+    ]
+  },
+  {
+    "name": "unautop_self_close",
+    "function": "shortcode_unautop",
+    "args": [
+      "<p>[video /]</p>"
+    ]
+  },
+  {
+    "name": "balance_comment_space",
+    "function": "force_balance_tags",
+    "args": [
+      "< !-- x --> <b>"
+    ]
+  },
+  {
+    "name": "balance_digit",
+    "function": "force_balance_tags",
+    "args": [
+      "<1 <b>"
+    ]
+  },
+  {
+    "name": "balance_deep",
+    "function": "force_balance_tags",
+    "args": [
+      "<div><span><b>x</div>"
+    ]
+  },
+  {
+    "name": "trim_zero",
+    "function": "wp_trim_words",
+    "args": [
+      "a b c",
+      0
+    ]
+  },
+  {
+    "name": "trim_negative",
+    "function": "wp_trim_words",
+    "args": [
+      "a b c",
+      -1
+    ]
+  },
+  {
+    "name": "trim_negative_two",
+    "function": "wp_trim_words",
+    "args": [
+      "a b c",
+      -2
+    ]
+  },
+  {
+    "name": "trim_more_null",
+    "function": "wp_trim_words",
+    "args": [
+      "a b c",
+      1,
+      null
+    ]
+  },
+  {
+    "name": "trim_characters_invalid_utf8",
+    "function": "speedyspec_wp_trim_words_characters",
+    "args": [
+      {
+        "bytes": "YWLAY2QgZWY="
+      },
+      3
+    ]
+  },
+  {
+    "name": "trim_characters_multibyte",
+    "function": "speedyspec_wp_trim_words_characters",
+    "args": [
+      "héllo wörld",
+      3,
+      "…"
+    ]
+  },
+  {
+    "name": "excerpt_multibyte",
+    "function": "wp_html_excerpt",
+    "args": [
+      "héllo wörld",
+      2
+    ]
+  },
+  {
+    "name": "excerpt_entity_cut",
+    "function": "wp_html_excerpt",
+    "args": [
+      "a &amp; b",
+      4,
+      "…"
+    ]
+  },
+  {
+    "name": "excerpt_invalid_utf8",
+    "function": "wp_html_excerpt",
+    "args": [
+      {
+        "bytes": "YcBiYw=="
+      },
+      2
+    ]
+  },
+  {
+    "name": "strip_script",
+    "function": "wp_strip_all_tags",
+    "args": [
+      "a<script>x</script>b<style>y</style>"
+    ]
+  },
+  {
+    "name": "strip_breaks",
+    "function": "wp_strip_all_tags",
+    "args": [
+      "a\n\tb  c",
+      true
+    ]
+  },
+  {
+    "name": "strip_int",
+    "function": "wp_strip_all_tags",
+    "args": [
+      5
+    ]
+  },
+  {
+    "name": "strip_array",
+    "function": "wp_strip_all_tags",
+    "args": [
+      {
+        "array": []
+      }
+    ]
+  },
+  {
+    "name": "strip_null",
+    "function": "wp_strip_all_tags",
+    "args": [
+      null
+    ]
+  },
+  {
+    "name": "strip_float",
+    "function": "wp_strip_all_tags",
+    "args": [
+      1.5
+    ]
+  },
+  {
+    "name": "strip_bool",
+    "function": "wp_strip_all_tags",
+    "args": [
+      true
+    ]
+  },
+  {
+    "name": "strip_tags_quotes",
+    "function": "strip_tags",
+    "args": [
+      "<a title='>'>x</a>"
+    ]
+  },
+  {
+    "name": "strip_tags_php",
+    "function": "strip_tags",
+    "args": [
+      "a<?php echo 1; ?>b"
+    ]
+  },
+  {
+    "name": "strip_tags_comment",
+    "function": "strip_tags",
+    "args": [
+      "a<!-- <b> -->c"
+    ]
+  },
+  {
+    "name": "strip_tags_lt_space",
+    "function": "strip_tags",
+    "args": [
+      "a < b > c"
+    ]
+  },
+  {
+    "name": "strip_tags_doctype",
+    "function": "strip_tags",
+    "args": [
+      "<!DOCTYPE html>x"
+    ]
+  },
+  {
+    "name": "strip_tags_unclosed",
+    "function": "strip_tags",
+    "args": [
+      "a<b c"
+    ]
+  },
+  {
+    "name": "strip_tags_dquote",
+    "function": "strip_tags",
+    "args": [
+      "<a t=\"x>y\">z</a>w"
+    ]
+  },
+  {
+    "name": "chars_amp",
+    "function": "convert_chars",
+    "args": [
+      "a & b &amp; &#1; &x"
+    ]
+  },
+  {
+    "name": "chars_deprecated",
+    "function": "convert_chars",
+    "args": [
+      "a",
+      "x"
+    ]
+  },
+  {
+    "name": "entities_all",
+    "function": "convert_invalid_entities",
+    "args": [
+      "&#128; &#129; &#130; &#131; &#132; &#133; &#134; &#135; &#136; &#137; &#138; &#139; &#140; &#141; &#142; &#143; &#144; &#145; &#146; &#147; &#148; &#149; &#150; &#151; &#152; &#153; &#154; &#155; &#156; &#157; &#158; &#159;"
+    ]
+  },
+  {
+    "name": "entities_none",
+    "function": "convert_invalid_entities",
+    "args": [
+      "&#12;"
+    ]
+  },
+  {
+    "name": "dangit_all",
+    "function": "capital_P_dangit",
+    "args": [
+      " Wordpress &#8216;Wordpress &#8220;Wordpress >Wordpress (Wordpress Wordpress"
+    ]
+  },
+  {
+    "name": "dangit_title",
+    "function": "speedyspec_capital_P_dangit_in_filter",
+    "args": [
+      "Wordpress (Wordpress",
+      "the_title"
+    ]
+  },
+  {
+    "name": "dangit_wp_title",
+    "function": "speedyspec_capital_P_dangit_in_filter",
+    "args": [
+      "Wordpress",
+      "wp_title"
+    ]
+  },
+  {
+    "name": "editor_basic",
+    "function": "format_for_editor",
+    "args": [
+      "<b>&amp;</b>"
+    ]
+  },
+  {
+    "name": "editor_empty",
+    "function": "format_for_editor",
+    "args": [
+      ""
+    ]
+  },
+  {
+    "name": "editor_zero",
+    "function": "format_for_editor",
+    "args": [
+      "0"
+    ]
+  },
+  {
+    "name": "balance_backtrack_17",
+    "function": "force_balance_tags",
+    "args": [
+      "<b>x <a-aaaaaaaaaaaaaaaaa! <i>y"
+    ]
+  },
+  {
+    "name": "balance_backtrack_18",
+    "function": "force_balance_tags",
+    "args": [
+      "<b>x <a-aaaaaaaaaaaaaaaaaa! <i>y"
+    ]
+  },
+  {
+    "name": "balance_backtrack_21",
+    "function": "force_balance_tags",
+    "args": [
+      "<b>x <a-aaaaaaaaaaaaaaaaaaaaa! <i>y"
+    ]
+  },
+  {
+    "name": "balance_backtrack_22",
+    "function": "force_balance_tags",
+    "args": [
+      "<b>x <a-aaaaaaaaaaaaaaaaaaaaaa! <i>y"
+    ]
   }
 ]

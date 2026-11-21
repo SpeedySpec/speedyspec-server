@@ -3156,6 +3156,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "pcre2"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e970b0fcce0c7ee6ef662744ff711f21ccd6f11b7cf03cd187a80e89797fc67"
+dependencies = [
+ "libc",
+ "log",
+ "pcre2-sys",
+]
+
+[[package]]
+name = "pcre2-sys"
+version = "0.2.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18b9073c1a2549bd409bf4a32c94d903bb1a09bf845bc306ae148897fa0760a4"
+dependencies = [
+ "cc",
+ "libc",
+ "pkg-config",
+]
+
+[[package]]
 name = "pem"
 version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5789,6 +5811,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-text"
+version = "0.1.0"
+dependencies = [
+ "aho-corasick",
+ "criterion 0.5.1",
+ "libc",
+ "memchr",
+ "pcre2",
+ "proptest",
+ "speedyspec-hooks",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-html-split",
+ "speedyspec-wp-shortcode-contracts",
+ "speedyspec-wp-text-contracts",
+ "speedyspec-wp-text-corpus",
+ "speedyspec-wp-text-escape",
+ "speedyspec-wp-text-memory",
+ "speedyspec-wp-utf8",
+]
+
+[[package]]
 name = "speedyspec-wp-text-contracts"
 version = "0.1.0"
 
@@ -5803,6 +5847,8 @@ dependencies = [
  "speedyspec-hooks",
  "speedyspec-hooks-memory",
  "speedyspec-php",
+ "speedyspec-wp-text-contracts",
+ "speedyspec-wp-text-memory",
 ]
 
 [[package]]
@@ -5853,6 +5899,7 @@ dependencies = [
 name = "speedyspec-wp-text-memory"
 version = "0.1.0"
 dependencies = [
+ "speedyspec-wp-shortcode-contracts",
  "speedyspec-wp-text-contracts",
 ]
 

@@ -30,16 +30,63 @@ impl<'a> HtmlChunk<'a> {
     }
 }
 
+/// Which elements run to their own terminator instead of the next `>`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Escapes {
+    /// Comments (`-->`) and CDATA sections (`]]>`), as `get_html_split_regex()` has it.
+    CommentsAndCdata,
+    /// Comments only, as `_get_wptexturize_split_regex()` has it: `<![CDATA[` is an ordinary element.
+    CommentsOnly,
+}
+
 /// Splits `input` into chunks, as `wp_html_split()` does.
 ///
 /// It always yields text first and alternates, ending with text, so `n` tags give `2n + 1` chunks; text chunks may
 /// be empty, as `preg_split` with `PREG_SPLIT_DELIM_CAPTURE` returns them.
 pub fn split(input: &[u8]) -> Split<'_> {
+    split_with(input, Escapes::CommentsAndCdata)
+}
+
+/// Splits `input` into chunks, with `escapes` deciding which elements run to their own terminator.
+///
+/// @param input
+///     The HTML.
+/// @param escapes
+///     Whether CDATA sections are escaped as well as comments.
+/// @return
+///     The chunks, alternating text and tag as [`split`] yields them.
+pub fn split_with(input: &[u8], escapes: Escapes) -> Split<'_> {
     Split {
         input,
         pos: 0,
         pending_tag: None,
         done: false,
+        escapes,
+    }
+}
+
+/// Where the tag that starts with the `<` at `start` ends (one past its last byte).
+///
+/// @param input
+///     The HTML.
+/// @param start
+///     The position of a `<`.
+/// @param escapes
+///     Which elements run to their own terminator.
+/// @return
+///     The end of the tag; an unterminated one runs to the end of `input`.
+pub fn tag_end(input: &[u8], start: usize, escapes: Escapes) -> usize {
+    let rest = &input[start + 1..];
+    let found = |needle: &[u8], from: usize| {
+        memmem::find(&input[from..], needle).map(|at| from + at + needle.len())
+    };
+    if rest.starts_with(b"!--") {
+        // The comment search starts at the first dash, which is why `<!-->` is a whole comment.
+        found(b"-->", start + 2).unwrap_or(input.len())
+    } else if escapes == Escapes::CommentsAndCdata && rest.starts_with(b"![CDATA[") {
+        found(b"]]>", start + 9).unwrap_or(input.len())
+    } else {
+        memchr(b'>', rest).map_or(input.len(), |at| start + 1 + at + 1)
     }
 }
 
@@ -55,25 +102,7 @@ pub struct Split<'a> {
     pos: usize,
     pending_tag: Option<(usize, usize)>,
     done: bool,
-}
-
-impl<'a> Split<'a> {
-    /// The end of the tag that starts with the `<` at `start`.
-    fn tag_end(&self, start: usize) -> usize {
-        let input = self.input;
-        let rest = &input[start + 1..];
-        let found = |needle: &[u8], from: usize| {
-            memmem::find(&input[from..], needle).map(|at| from + at + needle.len())
-        };
-        if rest.starts_with(b"!--") {
-            // The comment search starts at the first dash, which is why `<!-->` is a whole comment.
-            found(b"-->", start + 2).unwrap_or(input.len())
-        } else if rest.starts_with(b"![CDATA[") {
-            found(b"]]>", start + 9).unwrap_or(input.len())
-        } else {
-            memchr(b'>', rest).map_or(input.len(), |at| start + 1 + at + 1)
-        }
-    }
+    escapes: Escapes,
 }
 
 impl<'a> Iterator for Split<'a> {
@@ -91,7 +120,7 @@ impl<'a> Iterator for Split<'a> {
         match memchr(b'<', &self.input[from..]) {
             Some(at) => {
                 let start = from + at;
-                self.pending_tag = Some((start, self.tag_end(start)));
+                self.pending_tag = Some((start, tag_end(self.input, start, self.escapes)));
                 Some(HtmlChunk::Text(&self.input[from..start]))
             }
             None => {

@@ -81,3 +81,12 @@ pub trait Diagnostics {
         level: ErrorLevel,
     ) -> Result<(), TextError>;
 }
+
+/// `(word, replacement)` pairs, in order, as PHP's `$wp_cockneyreplace` array holds them.
+pub type ReplacementPairs = Vec<(Vec<u8>, Vec<u8>)>;
+
+/// `$wp_cockneyreplace`: a plugin's own list of words `wptexturize()` replaces, in place of the translated one.
+pub trait TexturizeOverrides {
+    /// The pairs, in the array's order; `None` when the global is not set.
+    fn cockney(&self) -> Result<Option<ReplacementPairs>, TextError>;
+}

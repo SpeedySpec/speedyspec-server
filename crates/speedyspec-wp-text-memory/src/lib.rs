@@ -6,7 +6,7 @@
 use std::cell::RefCell;
 
 use speedyspec_wp_text_contracts::{
-    Diagnostics, ErrorLevel, Locale, SiteSettings, TextError, Translator, WordCountType,
+    Diagnostics, ErrorLevel, Locale, ReplacementPairs, SiteSettings, TextError, TexturizeOverrides, Translator, WordCountType,
 };
 
 /// Site settings given up front.
@@ -159,5 +159,35 @@ impl Diagnostics for RecordingDiagnostics {
             message: message.into(),
             level,
         })
+    }
+}
+
+/// A fixed `$wp_cockneyreplace`: `None` (the default) is WordPress with no plugin setting it.
+#[derive(Clone, Debug, Default)]
+pub struct FixedTexturizeOverrides(pub Option<ReplacementPairs>);
+
+impl TexturizeOverrides for FixedTexturizeOverrides {
+    fn cockney(&self) -> Result<Option<ReplacementPairs>, TextError> {
+        Ok(self.0.clone())
+    }
+}
+
+/// A fixed list of registered shortcode names, in registration order, for formatting without a shortcode registry.
+#[derive(Clone, Debug, Default)]
+pub struct FixedShortcodeTags(pub Vec<speedyspec_wp_shortcode_contracts::TagName>);
+
+impl speedyspec_wp_shortcode_contracts::ShortcodeTagNames for FixedShortcodeTags {
+    fn tag_names(&self) -> Vec<speedyspec_wp_shortcode_contracts::TagName> {
+        self.0.clone()
+    }
+
+    /// A hash of the names, so equal lists have equal generations.
+    fn generation(&self) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        for name in &self.0 {
+            name.as_bytes().hash(&mut hasher);
+        }
+        hasher.finish()
     }
 }

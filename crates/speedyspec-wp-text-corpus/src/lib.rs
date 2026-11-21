@@ -13,8 +13,12 @@ use serde::Deserialize;
 use serde_json::Value;
 
 mod bench;
+#[cfg(feature = "values")]
+mod values;
 
 pub use bench::{inputs, page};
+#[cfg(feature = "values")]
+pub use values::{diagnostics, from_value, to_value};
 
 /// A value as WordPress recorded it.
 #[derive(Clone, Debug, PartialEq)]
