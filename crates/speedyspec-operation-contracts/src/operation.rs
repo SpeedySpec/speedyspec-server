@@ -131,3 +131,31 @@ impl OperationSpec {
                 .is_none_or(|t| t.contains(transport))
     }
 }
+
+impl std::fmt::Debug for ContractSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ContractSpec")
+            .field("schema", &self.schema)
+            .field("type", &self.mapper.type_name())
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for OperationSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OperationSpec")
+            .field("name", &self.name)
+            .field("kind", &self.kind)
+            .field("resource", &self.resource)
+            .field("idempotent", &self.idempotent)
+            .field("destructive", &self.destructive)
+            .field("pagination", &self.pagination)
+            .field("input", &self.input)
+            .field("output", &self.output)
+            .field("errors", &self.errors)
+            .field("labels", &self.labels)
+            .field("deprecated", &self.deprecated)
+            .field("transports", &self.transports)
+            .finish_non_exhaustive()
+    }
+}
