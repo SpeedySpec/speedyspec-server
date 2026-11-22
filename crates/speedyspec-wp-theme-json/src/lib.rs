@@ -21,6 +21,7 @@ pub fn codec_string(bytes: &[u8]) -> speedyspec_hooks::Value {
 }
 mod construct;
 pub mod css;
+pub mod declarations;
 mod deps;
 pub mod filters;
 mod memory;
