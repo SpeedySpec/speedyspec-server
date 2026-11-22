@@ -4,8 +4,9 @@ use indexmap::IndexMap;
 
 /// A JSON-like tree, extended with binary and datetime so XML-RPC `base64`/`dateTime.iso8601`, multipart uploads and
 /// protobuf bytes survive between transports. Maps keep insertion order.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum Value {
+    #[default]
     Null,
     Bool(bool),
     Int(i64),
