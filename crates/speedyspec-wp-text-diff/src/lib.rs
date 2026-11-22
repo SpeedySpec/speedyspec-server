@@ -23,6 +23,7 @@ mod numeric;
 pub mod simd;
 mod table;
 mod tokens;
+mod whitespace;
 mod words;
 
 pub use api::{AlreadyNormalized, TextDiff, TextDiffError, split_lines};
@@ -33,4 +34,5 @@ pub use inline::{InlineDiff, InvalidUtf8, Segment, inline_diff};
 pub use numeric::{Numeric, parse_numeric, php_loose_eq};
 pub use speedyspec_wp_text_diff_contracts as contracts;
 pub use table::MAX_PAIRS;
+pub use whitespace::{WordPressWhitespace, normalize_whitespace};
 pub use words::{Words, is_word_char, split_words};
