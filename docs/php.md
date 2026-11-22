@@ -94,6 +94,20 @@ Sizes (FFmpeg 9.1, `-Os` via `--enable-small`, measured 2026-11-22):
 
 Linux x86_64 is built by CI's `php (linux-x86_64)` job.
 
+**Fuzzing.** `fuzz-media/` holds cargo-fuzz targets for the FFmpeg shim (`ffmpeg_probe`) and the MIDI parser (`midi`).
+`.github/workflows/fuzz.yml` runs each for 30 minutes weekly (and on demand) against an FFmpeg built with
+AddressSanitizer and libFuzzer coverage (`SPEEDYSPEC_FFMPEG_CC` and `SPEEDYSPEC_FFMPEG_CFLAGS`, which no shipped
+build sets). Minimize each finding into `crates/speedyspec-wp-media-ffmpeg/tests/regressions/`; every PR replays
+that directory. Locally, on Linux with glibc:
+
+```
+SPEEDYSPEC_FFMPEG_CC=clang SPEEDYSPEC_FFMPEG_CFLAGS="-fsanitize=address,fuzzer-no-link -g" \
+  SPEEDYSPEC_FFMPEG_DIR=/tmp/ffmpeg-fuzz scripts/build-ffmpeg.sh
+cd fuzz-media && FFMPEG_PREFIX=/tmp/ffmpeg-fuzz/prefix cargo +nightly fuzz run ffmpeg_probe
+```
+
+libFuzzer is unreliable on musl (Alpine): use a glibc host or the workflow.
+
 ## The release
 
 A php release's `speedyspec-release.json` may have a `php` section; without one, the defaults apply:

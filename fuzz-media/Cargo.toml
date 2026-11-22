@@ -1,0 +1,33 @@
+# Fuzz targets for the media readers (cargo-fuzz, nightly). Not part of the workspace: run by
+# .github/workflows/fuzz.yml on a schedule, against an FFmpeg built with sanitizers and coverage.
+[package]
+name = "speedyspec-media-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libc = "0.2"
+libfuzzer-sys = "0.4"
+speedyspec-wp-media-contracts = { path = "../crates/speedyspec-wp-media-contracts" }
+speedyspec-wp-media-ffmpeg = { path = "../crates/speedyspec-wp-media-ffmpeg" }
+speedyspec-wp-media-midi = { path = "../crates/speedyspec-wp-media-midi" }
+
+[workspace]
+
+[[bin]]
+name = "ffmpeg_probe"
+path = "fuzz_targets/ffmpeg_probe.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "midi"
+path = "fuzz_targets/midi.rs"
+test = false
+doc = false
+bench = false
