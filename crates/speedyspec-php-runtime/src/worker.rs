@@ -368,6 +368,7 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
                 memory: peak,
                 requests,
                 poisoned,
+                next_cron: None,
             };
             let _ = responder.write_stderr(&report.encode());
             if responder.end_request(0).is_err() {

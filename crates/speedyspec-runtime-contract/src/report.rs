@@ -12,10 +12,14 @@ pub struct WorkerReport {
     pub requests: u64,
     /// A fatal error left the engine degraded: the worker exits after this request.
     pub poisoned: bool,
+    /// When the app next wants its scheduled call (Unix seconds), if the request learned it: the server's scheduler
+    /// wakes then. Absent from older workers' reports.
+    pub next_cron: Option<u64>,
 }
 
 impl WorkerReport {
-    /// The record's bytes: the prefix, then `memory=<n> requests=<n> poisoned=<0|1>`.
+    /// The record's bytes: the prefix, then `memory=<n> requests=<n> poisoned=<0|1>`, then ` next_cron=<n>` when
+    /// set.
     pub fn encode(&self) -> Vec<u8> {
         let mut record = REPORT_PREFIX.to_vec();
         record.extend_from_slice(
@@ -27,6 +31,9 @@ impl WorkerReport {
             )
             .as_bytes(),
         );
+        if let Some(next) = self.next_cron {
+            record.extend_from_slice(format!(" next_cron={next}").as_bytes());
+        }
         record
     }
 
@@ -43,6 +50,7 @@ impl WorkerReport {
             memory: field("memory").unwrap_or(0),
             requests: field("requests").unwrap_or(0),
             poisoned: field("poisoned") == Some(1),
+            next_cron: field("next_cron"),
         })
     }
 }
@@ -56,6 +64,7 @@ mod tests {
             memory: 1234,
             requests: 7,
             poisoned: true,
+            next_cron: None,
         };
         assert_eq!(WorkerReport::decode(&report.encode()), Some(report));
         assert_eq!(WorkerReport::decode(b"PHP Warning: x"), None);
@@ -67,10 +76,32 @@ mod tests {
             memory: 5,
             requests: 2,
             poisoned: false,
+            next_cron: None,
         };
         assert_eq!(
             report.encode(),
             b"\0speedyspec:memory=5 requests=2 poisoned=0".to_vec()
         );
+    }
+
+    #[test]
+    fn next_cron_round_trips() {
+        let report = WorkerReport {
+            memory: 1,
+            requests: 2,
+            poisoned: false,
+            next_cron: Some(1_700_000_000),
+        };
+        assert_eq!(
+            report.encode(),
+            b"\0speedyspec:memory=1 requests=2 poisoned=0 next_cron=1700000000".to_vec()
+        );
+        assert_eq!(WorkerReport::decode(&report.encode()), Some(report));
+    }
+
+    #[test]
+    fn old_record_decodes_without_next_cron() {
+        let report = WorkerReport::decode(b"\0speedyspec:memory=1 requests=2 poisoned=0").unwrap();
+        assert_eq!(report.next_cron, None);
     }
 }
