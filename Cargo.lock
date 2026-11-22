@@ -6414,6 +6414,7 @@ version = "0.1.0"
 dependencies = [
  "indexmap",
  "speedyspec-hooks",
+ "speedyspec-php-serialize",
  "speedyspec-wp-kses-contracts",
 ]
 

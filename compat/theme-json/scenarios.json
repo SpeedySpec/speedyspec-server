@@ -1,1 +1,225 @@
-{"area": "theme-json", "scenarios": []}
+{
+    "area": "theme-json",
+    "scenarios": [
+        {
+            "name": "constant_ROOT_CSS_PROPERTIES_SELECTOR",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "ROOT_CSS_PROPERTIES_SELECTOR"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_ROOT_BLOCK_SELECTOR",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "ROOT_BLOCK_SELECTOR"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_VALID_ORIGINS",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "VALID_ORIGINS"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_PRESETS_METADATA",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "PRESETS_METADATA"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_PROPERTIES_METADATA",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "PROPERTIES_METADATA"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_INDIRECT_PROPERTIES_METADATA",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "INDIRECT_PROPERTIES_METADATA"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_PROTECTED_PROPERTIES",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "PROTECTED_PROPERTIES"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_VALID_TOP_LEVEL_KEYS",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "VALID_TOP_LEVEL_KEYS"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_VALID_SETTINGS",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "VALID_SETTINGS"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_FONT_FAMILY_SCHEMA",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "FONT_FAMILY_SCHEMA"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_VALID_STYLES",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "VALID_STYLES"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_VALID_ELEMENT_PSEUDO_SELECTORS",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "VALID_ELEMENT_PSEUDO_SELECTORS"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_VALID_BLOCK_PSEUDO_SELECTORS",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "VALID_BLOCK_PSEUDO_SELECTORS"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_VALID_BLOCK_CUSTOM_STATES",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "VALID_BLOCK_CUSTOM_STATES"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_DEFAULT_VIEWPORT_BREAKPOINTS",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "DEFAULT_VIEWPORT_BREAKPOINTS"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_ELEMENTS",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "ELEMENTS"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant___EXPERIMENTAL_ELEMENT_CLASS_NAMES",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "__EXPERIMENTAL_ELEMENT_CLASS_NAMES"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_BLOCK_SUPPORT_FEATURE_LEVEL_SELECTORS",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "BLOCK_SUPPORT_FEATURE_LEVEL_SELECTORS"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_APPEARANCE_TOOLS_OPT_INS",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "APPEARANCE_TOOLS_OPT_INS"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "constant_LATEST_SCHEMA",
+            "steps": [
+                {
+                    "call": "compat_constant",
+                    "args": [
+                        "LATEST_SCHEMA"
+                    ]
+                }
+            ]
+        }
+    ]
+}

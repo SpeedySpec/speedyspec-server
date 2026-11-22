@@ -1,4 +1,3741 @@
 {
   "wordpress": "7.1.5",
-  "results": {}
+  "results": {
+    "constant_APPEARANCE_TOOLS_OPT_INS": [
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              {
+                "array": [
+                  [
+                    0,
+                    "background"
+                  ],
+                  [
+                    1,
+                    "backgroundImage"
+                  ]
+                ]
+              }
+            ],
+            [
+              1,
+              {
+                "array": [
+                  [
+                    0,
+                    "background"
+                  ],
+                  [
+                    1,
+                    "backgroundSize"
+                  ]
+                ]
+              }
+            ],
+            [
+              2,
+              {
+                "array": [
+                  [
+                    0,
+                    "background"
+                  ],
+                  [
+                    1,
+                    "gradient"
+                  ]
+                ]
+              }
+            ],
+            [
+              3,
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "color"
+                  ]
+                ]
+              }
+            ],
+            [
+              4,
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "radius"
+                  ]
+                ]
+              }
+            ],
+            [
+              5,
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "style"
+                  ]
+                ]
+              }
+            ],
+            [
+              6,
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "width"
+                  ]
+                ]
+              }
+            ],
+            [
+              7,
+              {
+                "array": [
+                  [
+                    0,
+                    "color"
+                  ],
+                  [
+                    1,
+                    "link"
+                  ]
+                ]
+              }
+            ],
+            [
+              8,
+              {
+                "array": [
+                  [
+                    0,
+                    "color"
+                  ],
+                  [
+                    1,
+                    "heading"
+                  ]
+                ]
+              }
+            ],
+            [
+              9,
+              {
+                "array": [
+                  [
+                    0,
+                    "color"
+                  ],
+                  [
+                    1,
+                    "button"
+                  ]
+                ]
+              }
+            ],
+            [
+              10,
+              {
+                "array": [
+                  [
+                    0,
+                    "color"
+                  ],
+                  [
+                    1,
+                    "caption"
+                  ]
+                ]
+              }
+            ],
+            [
+              11,
+              {
+                "array": [
+                  [
+                    0,
+                    "dimensions"
+                  ],
+                  [
+                    1,
+                    "aspectRatio"
+                  ]
+                ]
+              }
+            ],
+            [
+              12,
+              {
+                "array": [
+                  [
+                    0,
+                    "dimensions"
+                  ],
+                  [
+                    1,
+                    "height"
+                  ]
+                ]
+              }
+            ],
+            [
+              13,
+              {
+                "array": [
+                  [
+                    0,
+                    "dimensions"
+                  ],
+                  [
+                    1,
+                    "minHeight"
+                  ]
+                ]
+              }
+            ],
+            [
+              14,
+              {
+                "array": [
+                  [
+                    0,
+                    "dimensions"
+                  ],
+                  [
+                    1,
+                    "minWidth"
+                  ]
+                ]
+              }
+            ],
+            [
+              15,
+              {
+                "array": [
+                  [
+                    0,
+                    "dimensions"
+                  ],
+                  [
+                    1,
+                    "width"
+                  ]
+                ]
+              }
+            ],
+            [
+              16,
+              {
+                "array": [
+                  [
+                    0,
+                    "position"
+                  ],
+                  [
+                    1,
+                    "sticky"
+                  ]
+                ]
+              }
+            ],
+            [
+              17,
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "blockGap"
+                  ]
+                ]
+              }
+            ],
+            [
+              18,
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "margin"
+                  ]
+                ]
+              }
+            ],
+            [
+              19,
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "padding"
+                  ]
+                ]
+              }
+            ],
+            [
+              20,
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "lineHeight"
+                  ]
+                ]
+              }
+            ],
+            [
+              21,
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "textColumns"
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_BLOCK_SUPPORT_FEATURE_LEVEL_SELECTORS": [
+      {
+        "returned": {
+          "array": [
+            [
+              "__experimentalBorder",
+              "border"
+            ],
+            [
+              "color",
+              "color"
+            ],
+            [
+              "dimensions",
+              "dimensions"
+            ],
+            [
+              "spacing",
+              "spacing"
+            ],
+            [
+              "typography",
+              "typography"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_DEFAULT_VIEWPORT_BREAKPOINTS": [
+      {
+        "returned": {
+          "array": [
+            [
+              "mobile",
+              "480px"
+            ],
+            [
+              "tablet",
+              "782px"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_ELEMENTS": [
+      {
+        "returned": {
+          "array": [
+            [
+              "button",
+              ".wp-element-button, .wp-block-button__link"
+            ],
+            [
+              "caption",
+              ".wp-element-caption, .wp-block-audio figcaption, .wp-block-embed figcaption, .wp-block-gallery figcaption, .wp-block-image figcaption, .wp-block-table figcaption, .wp-block-video figcaption"
+            ],
+            [
+              "cite",
+              "cite"
+            ],
+            [
+              "h1",
+              "h1"
+            ],
+            [
+              "h2",
+              "h2"
+            ],
+            [
+              "h3",
+              "h3"
+            ],
+            [
+              "h4",
+              "h4"
+            ],
+            [
+              "h5",
+              "h5"
+            ],
+            [
+              "h6",
+              "h6"
+            ],
+            [
+              "heading",
+              "h1, h2, h3, h4, h5, h6"
+            ],
+            [
+              "link",
+              "a:where(:not(.wp-element-button))"
+            ],
+            [
+              "select",
+              "select"
+            ],
+            [
+              "textInput",
+              "textarea, input:where([type=email],[type=number],[type=password],[type=search],[type=text],[type=tel],[type=url])"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_FONT_FAMILY_SCHEMA": [
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              {
+                "array": [
+                  [
+                    "fontFace",
+                    {
+                      "array": [
+                        [
+                          0,
+                          {
+                            "array": [
+                              [
+                                "ascentOverride",
+                                null
+                              ],
+                              [
+                                "descentOverride",
+                                null
+                              ],
+                              [
+                                "fontDisplay",
+                                null
+                              ],
+                              [
+                                "fontFamily",
+                                null
+                              ],
+                              [
+                                "fontFeatureSettings",
+                                null
+                              ],
+                              [
+                                "fontStretch",
+                                null
+                              ],
+                              [
+                                "fontStyle",
+                                null
+                              ],
+                              [
+                                "fontVariationSettings",
+                                null
+                              ],
+                              [
+                                "fontWeight",
+                                null
+                              ],
+                              [
+                                "lineGapOverride",
+                                null
+                              ],
+                              [
+                                "sizeAdjust",
+                                null
+                              ],
+                              [
+                                "src",
+                                null
+                              ],
+                              [
+                                "unicodeRange",
+                                null
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "fontFamily",
+                    null
+                  ],
+                  [
+                    "name",
+                    null
+                  ],
+                  [
+                    "slug",
+                    null
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_INDIRECT_PROPERTIES_METADATA": [
+      {
+        "returned": {
+          "array": [
+            [
+              "background-image",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "background"
+                        ],
+                        [
+                          1,
+                          "backgroundImage"
+                        ],
+                        [
+                          2,
+                          "url"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "background"
+                        ],
+                        [
+                          1,
+                          "gradient"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "column-gap",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "spacing"
+                        ],
+                        [
+                          1,
+                          "blockGap"
+                        ],
+                        [
+                          2,
+                          "left"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "gap",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "spacing"
+                        ],
+                        [
+                          1,
+                          "blockGap"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "max-width",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "layout"
+                        ],
+                        [
+                          1,
+                          "contentSize"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "layout"
+                        ],
+                        [
+                          1,
+                          "wideSize"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "row-gap",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "spacing"
+                        ],
+                        [
+                          1,
+                          "blockGap"
+                        ],
+                        [
+                          2,
+                          "top"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_LATEST_SCHEMA": [
+      {
+        "returned": 3,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_PRESETS_METADATA": [
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              {
+                "array": [
+                  [
+                    "classes",
+                    {
+                      "array": []
+                    }
+                  ],
+                  [
+                    "css_vars",
+                    "--wp--preset--aspect-ratio--$slug"
+                  ],
+                  [
+                    "path",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "dimensions"
+                        ],
+                        [
+                          1,
+                          "aspectRatios"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "prevent_override",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "dimensions"
+                        ],
+                        [
+                          1,
+                          "defaultAspectRatios"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "properties",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "aspect-ratio"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "use_default_names",
+                    false
+                  ],
+                  [
+                    "value_key",
+                    "ratio"
+                  ]
+                ]
+              }
+            ],
+            [
+              1,
+              {
+                "array": [
+                  [
+                    "classes",
+                    {
+                      "array": [
+                        [
+                          ".has-$slug-background-color",
+                          "background-color"
+                        ],
+                        [
+                          ".has-$slug-border-color",
+                          "border-color"
+                        ],
+                        [
+                          ".has-$slug-color",
+                          "color"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "css_vars",
+                    "--wp--preset--color--$slug"
+                  ],
+                  [
+                    "path",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "color"
+                        ],
+                        [
+                          1,
+                          "palette"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "prevent_override",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "color"
+                        ],
+                        [
+                          1,
+                          "defaultPalette"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "properties",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "color"
+                        ],
+                        [
+                          1,
+                          "background-color"
+                        ],
+                        [
+                          2,
+                          "border-color"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "use_default_names",
+                    false
+                  ],
+                  [
+                    "value_key",
+                    "color"
+                  ]
+                ]
+              }
+            ],
+            [
+              2,
+              {
+                "array": [
+                  [
+                    "classes",
+                    {
+                      "array": [
+                        [
+                          ".has-$slug-gradient-background",
+                          "background"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "css_vars",
+                    "--wp--preset--gradient--$slug"
+                  ],
+                  [
+                    "path",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "color"
+                        ],
+                        [
+                          1,
+                          "gradients"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "prevent_override",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "color"
+                        ],
+                        [
+                          1,
+                          "defaultGradients"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "properties",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "background"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "use_default_names",
+                    false
+                  ],
+                  [
+                    "value_key",
+                    "gradient"
+                  ]
+                ]
+              }
+            ],
+            [
+              3,
+              {
+                "array": [
+                  [
+                    "classes",
+                    {
+                      "array": []
+                    }
+                  ],
+                  [
+                    "css_vars",
+                    null
+                  ],
+                  [
+                    "path",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "color"
+                        ],
+                        [
+                          1,
+                          "duotone"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "prevent_override",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "color"
+                        ],
+                        [
+                          1,
+                          "defaultDuotone"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "properties",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "filter"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "use_default_names",
+                    false
+                  ],
+                  [
+                    "value_func",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              4,
+              {
+                "array": [
+                  [
+                    "classes",
+                    {
+                      "array": [
+                        [
+                          ".has-$slug-font-size",
+                          "font-size"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "css_vars",
+                    "--wp--preset--font-size--$slug"
+                  ],
+                  [
+                    "path",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "typography"
+                        ],
+                        [
+                          1,
+                          "fontSizes"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "prevent_override",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "typography"
+                        ],
+                        [
+                          1,
+                          "defaultFontSizes"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "properties",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "font-size"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "use_default_names",
+                    true
+                  ],
+                  [
+                    "value_func",
+                    "wp_get_typography_font_size_value"
+                  ]
+                ]
+              }
+            ],
+            [
+              5,
+              {
+                "array": [
+                  [
+                    "classes",
+                    {
+                      "array": [
+                        [
+                          ".has-$slug-font-family",
+                          "font-family"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "css_vars",
+                    "--wp--preset--font-family--$slug"
+                  ],
+                  [
+                    "path",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "typography"
+                        ],
+                        [
+                          1,
+                          "fontFamilies"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "prevent_override",
+                    false
+                  ],
+                  [
+                    "properties",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "font-family"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "use_default_names",
+                    false
+                  ],
+                  [
+                    "value_key",
+                    "fontFamily"
+                  ]
+                ]
+              }
+            ],
+            [
+              6,
+              {
+                "array": [
+                  [
+                    "classes",
+                    {
+                      "array": []
+                    }
+                  ],
+                  [
+                    "css_vars",
+                    "--wp--preset--spacing--$slug"
+                  ],
+                  [
+                    "path",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "spacing"
+                        ],
+                        [
+                          1,
+                          "spacingSizes"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "prevent_override",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "spacing"
+                        ],
+                        [
+                          1,
+                          "defaultSpacingSizes"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "properties",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "padding"
+                        ],
+                        [
+                          1,
+                          "margin"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "use_default_names",
+                    true
+                  ],
+                  [
+                    "value_key",
+                    "size"
+                  ]
+                ]
+              }
+            ],
+            [
+              7,
+              {
+                "array": [
+                  [
+                    "classes",
+                    {
+                      "array": []
+                    }
+                  ],
+                  [
+                    "css_vars",
+                    "--wp--preset--shadow--$slug"
+                  ],
+                  [
+                    "path",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "shadow"
+                        ],
+                        [
+                          1,
+                          "presets"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "prevent_override",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "shadow"
+                        ],
+                        [
+                          1,
+                          "defaultPresets"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "properties",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "box-shadow"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "use_default_names",
+                    false
+                  ],
+                  [
+                    "value_key",
+                    "shadow"
+                  ]
+                ]
+              }
+            ],
+            [
+              8,
+              {
+                "array": [
+                  [
+                    "classes",
+                    {
+                      "array": []
+                    }
+                  ],
+                  [
+                    "css_vars",
+                    "--wp--preset--border-radius--$slug"
+                  ],
+                  [
+                    "path",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "border"
+                        ],
+                        [
+                          1,
+                          "radiusSizes"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "prevent_override",
+                    false
+                  ],
+                  [
+                    "properties",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "border-radius"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "use_default_names",
+                    false
+                  ],
+                  [
+                    "value_key",
+                    "size"
+                  ]
+                ]
+              }
+            ],
+            [
+              9,
+              {
+                "array": [
+                  [
+                    "classes",
+                    {
+                      "array": []
+                    }
+                  ],
+                  [
+                    "css_vars",
+                    "--wp--preset--dimension--$slug"
+                  ],
+                  [
+                    "path",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "dimensions"
+                        ],
+                        [
+                          1,
+                          "dimensionSizes"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "prevent_override",
+                    false
+                  ],
+                  [
+                    "properties",
+                    {
+                      "array": [
+                        [
+                          0,
+                          "width"
+                        ],
+                        [
+                          1,
+                          "height"
+                        ],
+                        [
+                          2,
+                          "min-height"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "use_default_names",
+                    false
+                  ],
+                  [
+                    "value_key",
+                    "size"
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_PROPERTIES_METADATA": [
+      {
+        "returned": {
+          "array": [
+            [
+              "--wp--style--root--padding",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "padding"
+                  ]
+                ]
+              }
+            ],
+            [
+              "--wp--style--root--padding-bottom",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "padding"
+                  ],
+                  [
+                    2,
+                    "bottom"
+                  ]
+                ]
+              }
+            ],
+            [
+              "--wp--style--root--padding-left",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "padding"
+                  ],
+                  [
+                    2,
+                    "left"
+                  ]
+                ]
+              }
+            ],
+            [
+              "--wp--style--root--padding-right",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "padding"
+                  ],
+                  [
+                    2,
+                    "right"
+                  ]
+                ]
+              }
+            ],
+            [
+              "--wp--style--root--padding-top",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "padding"
+                  ],
+                  [
+                    2,
+                    "top"
+                  ]
+                ]
+              }
+            ],
+            [
+              "aspect-ratio",
+              {
+                "array": [
+                  [
+                    0,
+                    "dimensions"
+                  ],
+                  [
+                    1,
+                    "aspectRatio"
+                  ]
+                ]
+              }
+            ],
+            [
+              "background",
+              {
+                "array": [
+                  [
+                    0,
+                    "color"
+                  ],
+                  [
+                    1,
+                    "gradient"
+                  ]
+                ]
+              }
+            ],
+            [
+              "background-attachment",
+              {
+                "array": [
+                  [
+                    0,
+                    "background"
+                  ],
+                  [
+                    1,
+                    "backgroundAttachment"
+                  ]
+                ]
+              }
+            ],
+            [
+              "background-color",
+              {
+                "array": [
+                  [
+                    0,
+                    "color"
+                  ],
+                  [
+                    1,
+                    "background"
+                  ]
+                ]
+              }
+            ],
+            [
+              "background-image",
+              {
+                "array": [
+                  [
+                    0,
+                    "background"
+                  ],
+                  [
+                    1,
+                    "backgroundImage"
+                  ]
+                ]
+              }
+            ],
+            [
+              "background-position",
+              {
+                "array": [
+                  [
+                    0,
+                    "background"
+                  ],
+                  [
+                    1,
+                    "backgroundPosition"
+                  ]
+                ]
+              }
+            ],
+            [
+              "background-repeat",
+              {
+                "array": [
+                  [
+                    0,
+                    "background"
+                  ],
+                  [
+                    1,
+                    "backgroundRepeat"
+                  ]
+                ]
+              }
+            ],
+            [
+              "background-size",
+              {
+                "array": [
+                  [
+                    0,
+                    "background"
+                  ],
+                  [
+                    1,
+                    "backgroundSize"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-bottom-color",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "bottom"
+                  ],
+                  [
+                    2,
+                    "color"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-bottom-left-radius",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "radius"
+                  ],
+                  [
+                    2,
+                    "bottomLeft"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-bottom-right-radius",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "radius"
+                  ],
+                  [
+                    2,
+                    "bottomRight"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-bottom-style",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "bottom"
+                  ],
+                  [
+                    2,
+                    "style"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-bottom-width",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "bottom"
+                  ],
+                  [
+                    2,
+                    "width"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-color",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "color"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-left-color",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "left"
+                  ],
+                  [
+                    2,
+                    "color"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-left-style",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "left"
+                  ],
+                  [
+                    2,
+                    "style"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-left-width",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "left"
+                  ],
+                  [
+                    2,
+                    "width"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-radius",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "radius"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-right-color",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "right"
+                  ],
+                  [
+                    2,
+                    "color"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-right-style",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "right"
+                  ],
+                  [
+                    2,
+                    "style"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-right-width",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "right"
+                  ],
+                  [
+                    2,
+                    "width"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-style",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "style"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-top-color",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "top"
+                  ],
+                  [
+                    2,
+                    "color"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-top-left-radius",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "radius"
+                  ],
+                  [
+                    2,
+                    "topLeft"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-top-right-radius",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "radius"
+                  ],
+                  [
+                    2,
+                    "topRight"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-top-style",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "top"
+                  ],
+                  [
+                    2,
+                    "style"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-top-width",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "top"
+                  ],
+                  [
+                    2,
+                    "width"
+                  ]
+                ]
+              }
+            ],
+            [
+              "border-width",
+              {
+                "array": [
+                  [
+                    0,
+                    "border"
+                  ],
+                  [
+                    1,
+                    "width"
+                  ]
+                ]
+              }
+            ],
+            [
+              "box-shadow",
+              {
+                "array": [
+                  [
+                    0,
+                    "shadow"
+                  ]
+                ]
+              }
+            ],
+            [
+              "color",
+              {
+                "array": [
+                  [
+                    0,
+                    "color"
+                  ],
+                  [
+                    1,
+                    "text"
+                  ]
+                ]
+              }
+            ],
+            [
+              "column-count",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "textColumns"
+                  ]
+                ]
+              }
+            ],
+            [
+              "filter",
+              {
+                "array": [
+                  [
+                    0,
+                    "filter"
+                  ],
+                  [
+                    1,
+                    "duotone"
+                  ]
+                ]
+              }
+            ],
+            [
+              "font-family",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "fontFamily"
+                  ]
+                ]
+              }
+            ],
+            [
+              "font-size",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "fontSize"
+                  ]
+                ]
+              }
+            ],
+            [
+              "font-style",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "fontStyle"
+                  ]
+                ]
+              }
+            ],
+            [
+              "font-weight",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "fontWeight"
+                  ]
+                ]
+              }
+            ],
+            [
+              "height",
+              {
+                "array": [
+                  [
+                    0,
+                    "dimensions"
+                  ],
+                  [
+                    1,
+                    "height"
+                  ]
+                ]
+              }
+            ],
+            [
+              "letter-spacing",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "letterSpacing"
+                  ]
+                ]
+              }
+            ],
+            [
+              "line-height",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "lineHeight"
+                  ]
+                ]
+              }
+            ],
+            [
+              "margin",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "margin"
+                  ]
+                ]
+              }
+            ],
+            [
+              "margin-bottom",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "margin"
+                  ],
+                  [
+                    2,
+                    "bottom"
+                  ]
+                ]
+              }
+            ],
+            [
+              "margin-left",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "margin"
+                  ],
+                  [
+                    2,
+                    "left"
+                  ]
+                ]
+              }
+            ],
+            [
+              "margin-right",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "margin"
+                  ],
+                  [
+                    2,
+                    "right"
+                  ]
+                ]
+              }
+            ],
+            [
+              "margin-top",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "margin"
+                  ],
+                  [
+                    2,
+                    "top"
+                  ]
+                ]
+              }
+            ],
+            [
+              "min-height",
+              {
+                "array": [
+                  [
+                    0,
+                    "dimensions"
+                  ],
+                  [
+                    1,
+                    "minHeight"
+                  ]
+                ]
+              }
+            ],
+            [
+              "min-width",
+              {
+                "array": [
+                  [
+                    0,
+                    "dimensions"
+                  ],
+                  [
+                    1,
+                    "minWidth"
+                  ]
+                ]
+              }
+            ],
+            [
+              "outline-color",
+              {
+                "array": [
+                  [
+                    0,
+                    "outline"
+                  ],
+                  [
+                    1,
+                    "color"
+                  ]
+                ]
+              }
+            ],
+            [
+              "outline-offset",
+              {
+                "array": [
+                  [
+                    0,
+                    "outline"
+                  ],
+                  [
+                    1,
+                    "offset"
+                  ]
+                ]
+              }
+            ],
+            [
+              "outline-style",
+              {
+                "array": [
+                  [
+                    0,
+                    "outline"
+                  ],
+                  [
+                    1,
+                    "style"
+                  ]
+                ]
+              }
+            ],
+            [
+              "outline-width",
+              {
+                "array": [
+                  [
+                    0,
+                    "outline"
+                  ],
+                  [
+                    1,
+                    "width"
+                  ]
+                ]
+              }
+            ],
+            [
+              "padding",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "padding"
+                  ]
+                ]
+              }
+            ],
+            [
+              "padding-bottom",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "padding"
+                  ],
+                  [
+                    2,
+                    "bottom"
+                  ]
+                ]
+              }
+            ],
+            [
+              "padding-left",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "padding"
+                  ],
+                  [
+                    2,
+                    "left"
+                  ]
+                ]
+              }
+            ],
+            [
+              "padding-right",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "padding"
+                  ],
+                  [
+                    2,
+                    "right"
+                  ]
+                ]
+              }
+            ],
+            [
+              "padding-top",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "padding"
+                  ],
+                  [
+                    2,
+                    "top"
+                  ]
+                ]
+              }
+            ],
+            [
+              "text-align",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "textAlign"
+                  ]
+                ]
+              }
+            ],
+            [
+              "text-decoration",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "textDecoration"
+                  ]
+                ]
+              }
+            ],
+            [
+              "text-indent",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "textIndent"
+                  ]
+                ]
+              }
+            ],
+            [
+              "text-shadow",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "textShadow"
+                  ]
+                ]
+              }
+            ],
+            [
+              "text-transform",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "textTransform"
+                  ]
+                ]
+              }
+            ],
+            [
+              "width",
+              {
+                "array": [
+                  [
+                    0,
+                    "dimensions"
+                  ],
+                  [
+                    1,
+                    "width"
+                  ]
+                ]
+              }
+            ],
+            [
+              "writing-mode",
+              {
+                "array": [
+                  [
+                    0,
+                    "typography"
+                  ],
+                  [
+                    1,
+                    "writingMode"
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_PROTECTED_PROPERTIES": [
+      {
+        "returned": {
+          "array": [
+            [
+              "spacing.blockGap",
+              {
+                "array": [
+                  [
+                    0,
+                    "spacing"
+                  ],
+                  [
+                    1,
+                    "blockGap"
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_ROOT_BLOCK_SELECTOR": [
+      {
+        "returned": "body",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_ROOT_CSS_PROPERTIES_SELECTOR": [
+      {
+        "returned": ":root",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_VALID_BLOCK_CUSTOM_STATES": [
+      {
+        "returned": {
+          "array": [
+            [
+              "core/navigation-link",
+              {
+                "array": [
+                  [
+                    0,
+                    "-current"
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_VALID_BLOCK_PSEUDO_SELECTORS": [
+      {
+        "returned": {
+          "array": [
+            [
+              "core/button",
+              {
+                "array": [
+                  [
+                    0,
+                    ":hover"
+                  ],
+                  [
+                    1,
+                    ":focus"
+                  ],
+                  [
+                    2,
+                    ":focus-visible"
+                  ],
+                  [
+                    3,
+                    ":active"
+                  ]
+                ]
+              }
+            ],
+            [
+              "core/navigation-link",
+              {
+                "array": [
+                  [
+                    0,
+                    ":hover"
+                  ],
+                  [
+                    1,
+                    ":focus"
+                  ],
+                  [
+                    2,
+                    ":focus-visible"
+                  ],
+                  [
+                    3,
+                    ":active"
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_VALID_ELEMENT_PSEUDO_SELECTORS": [
+      {
+        "returned": {
+          "array": [
+            [
+              "button",
+              {
+                "array": [
+                  [
+                    0,
+                    ":link"
+                  ],
+                  [
+                    1,
+                    ":any-link"
+                  ],
+                  [
+                    2,
+                    ":visited"
+                  ],
+                  [
+                    3,
+                    ":hover"
+                  ],
+                  [
+                    4,
+                    ":focus"
+                  ],
+                  [
+                    5,
+                    ":focus-visible"
+                  ],
+                  [
+                    6,
+                    ":active"
+                  ]
+                ]
+              }
+            ],
+            [
+              "link",
+              {
+                "array": [
+                  [
+                    0,
+                    ":link"
+                  ],
+                  [
+                    1,
+                    ":any-link"
+                  ],
+                  [
+                    2,
+                    ":visited"
+                  ],
+                  [
+                    3,
+                    ":hover"
+                  ],
+                  [
+                    4,
+                    ":focus"
+                  ],
+                  [
+                    5,
+                    ":focus-visible"
+                  ],
+                  [
+                    6,
+                    ":active"
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_VALID_ORIGINS": [
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              "default"
+            ],
+            [
+              1,
+              "blocks"
+            ],
+            [
+              2,
+              "theme"
+            ],
+            [
+              3,
+              "custom"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_VALID_SETTINGS": [
+      {
+        "returned": {
+          "array": [
+            [
+              "appearanceTools",
+              null
+            ],
+            [
+              "background",
+              {
+                "array": [
+                  [
+                    "backgroundImage",
+                    null
+                  ],
+                  [
+                    "backgroundSize",
+                    null
+                  ],
+                  [
+                    "gradient",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "blockVisibility",
+              {
+                "array": [
+                  [
+                    "allowEditing",
+                    true
+                  ]
+                ]
+              }
+            ],
+            [
+              "border",
+              {
+                "array": [
+                  [
+                    "color",
+                    null
+                  ],
+                  [
+                    "radius",
+                    null
+                  ],
+                  [
+                    "radiusSizes",
+                    null
+                  ],
+                  [
+                    "style",
+                    null
+                  ],
+                  [
+                    "width",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "color",
+              {
+                "array": [
+                  [
+                    "background",
+                    null
+                  ],
+                  [
+                    "button",
+                    null
+                  ],
+                  [
+                    "caption",
+                    null
+                  ],
+                  [
+                    "custom",
+                    null
+                  ],
+                  [
+                    "customDuotone",
+                    null
+                  ],
+                  [
+                    "customGradient",
+                    null
+                  ],
+                  [
+                    "defaultDuotone",
+                    null
+                  ],
+                  [
+                    "defaultGradients",
+                    null
+                  ],
+                  [
+                    "defaultPalette",
+                    null
+                  ],
+                  [
+                    "duotone",
+                    null
+                  ],
+                  [
+                    "gradients",
+                    null
+                  ],
+                  [
+                    "heading",
+                    null
+                  ],
+                  [
+                    "link",
+                    null
+                  ],
+                  [
+                    "palette",
+                    null
+                  ],
+                  [
+                    "text",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "custom",
+              null
+            ],
+            [
+              "dimensions",
+              {
+                "array": [
+                  [
+                    "aspectRatio",
+                    null
+                  ],
+                  [
+                    "aspectRatios",
+                    null
+                  ],
+                  [
+                    "defaultAspectRatios",
+                    null
+                  ],
+                  [
+                    "dimensionSizes",
+                    null
+                  ],
+                  [
+                    "height",
+                    null
+                  ],
+                  [
+                    "minHeight",
+                    null
+                  ],
+                  [
+                    "minWidth",
+                    null
+                  ],
+                  [
+                    "width",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "layout",
+              {
+                "array": [
+                  [
+                    "allowCustomContentAndWideSize",
+                    null
+                  ],
+                  [
+                    "allowEditing",
+                    null
+                  ],
+                  [
+                    "contentSize",
+                    null
+                  ],
+                  [
+                    "wideSize",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "lightbox",
+              {
+                "array": [
+                  [
+                    "allowEditing",
+                    true
+                  ],
+                  [
+                    "enabled",
+                    true
+                  ]
+                ]
+              }
+            ],
+            [
+              "position",
+              {
+                "array": [
+                  [
+                    "fixed",
+                    null
+                  ],
+                  [
+                    "sticky",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "shadow",
+              {
+                "array": [
+                  [
+                    "defaultPresets",
+                    null
+                  ],
+                  [
+                    "presets",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "spacing",
+              {
+                "array": [
+                  [
+                    "blockGap",
+                    null
+                  ],
+                  [
+                    "customSpacingSize",
+                    null
+                  ],
+                  [
+                    "defaultSpacingSizes",
+                    null
+                  ],
+                  [
+                    "margin",
+                    null
+                  ],
+                  [
+                    "padding",
+                    null
+                  ],
+                  [
+                    "spacingScale",
+                    null
+                  ],
+                  [
+                    "spacingSizes",
+                    null
+                  ],
+                  [
+                    "units",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "typography",
+              {
+                "array": [
+                  [
+                    "customFontSize",
+                    null
+                  ],
+                  [
+                    "defaultFontSizes",
+                    null
+                  ],
+                  [
+                    "dropCap",
+                    null
+                  ],
+                  [
+                    "fluid",
+                    null
+                  ],
+                  [
+                    "fontFamilies",
+                    null
+                  ],
+                  [
+                    "fontSizes",
+                    null
+                  ],
+                  [
+                    "fontStyle",
+                    null
+                  ],
+                  [
+                    "fontWeight",
+                    null
+                  ],
+                  [
+                    "letterSpacing",
+                    null
+                  ],
+                  [
+                    "lineHeight",
+                    null
+                  ],
+                  [
+                    "textAlign",
+                    null
+                  ],
+                  [
+                    "textColumns",
+                    null
+                  ],
+                  [
+                    "textDecoration",
+                    null
+                  ],
+                  [
+                    "textIndent",
+                    null
+                  ],
+                  [
+                    "textTransform",
+                    null
+                  ],
+                  [
+                    "writingMode",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "useRootPaddingAwareAlignments",
+              null
+            ],
+            [
+              "viewport",
+              {
+                "array": [
+                  [
+                    "mobile",
+                    null
+                  ],
+                  [
+                    "tablet",
+                    null
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_VALID_STYLES": [
+      {
+        "returned": {
+          "array": [
+            [
+              "background",
+              {
+                "array": [
+                  [
+                    "backgroundAttachment",
+                    null
+                  ],
+                  [
+                    "backgroundImage",
+                    null
+                  ],
+                  [
+                    "backgroundPosition",
+                    null
+                  ],
+                  [
+                    "backgroundRepeat",
+                    null
+                  ],
+                  [
+                    "backgroundSize",
+                    null
+                  ],
+                  [
+                    "gradient",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "border",
+              {
+                "array": [
+                  [
+                    "bottom",
+                    null
+                  ],
+                  [
+                    "color",
+                    null
+                  ],
+                  [
+                    "left",
+                    null
+                  ],
+                  [
+                    "radius",
+                    null
+                  ],
+                  [
+                    "right",
+                    null
+                  ],
+                  [
+                    "style",
+                    null
+                  ],
+                  [
+                    "top",
+                    null
+                  ],
+                  [
+                    "width",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "color",
+              {
+                "array": [
+                  [
+                    "background",
+                    null
+                  ],
+                  [
+                    "gradient",
+                    null
+                  ],
+                  [
+                    "text",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "css",
+              null
+            ],
+            [
+              "dimensions",
+              {
+                "array": [
+                  [
+                    "aspectRatio",
+                    null
+                  ],
+                  [
+                    "height",
+                    null
+                  ],
+                  [
+                    "minHeight",
+                    null
+                  ],
+                  [
+                    "minWidth",
+                    null
+                  ],
+                  [
+                    "width",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "filter",
+              {
+                "array": [
+                  [
+                    "duotone",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "outline",
+              {
+                "array": [
+                  [
+                    "color",
+                    null
+                  ],
+                  [
+                    "offset",
+                    null
+                  ],
+                  [
+                    "style",
+                    null
+                  ],
+                  [
+                    "width",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "shadow",
+              null
+            ],
+            [
+              "spacing",
+              {
+                "array": [
+                  [
+                    "blockGap",
+                    null
+                  ],
+                  [
+                    "margin",
+                    null
+                  ],
+                  [
+                    "padding",
+                    null
+                  ]
+                ]
+              }
+            ],
+            [
+              "typography",
+              {
+                "array": [
+                  [
+                    "fontFamily",
+                    null
+                  ],
+                  [
+                    "fontSize",
+                    null
+                  ],
+                  [
+                    "fontStyle",
+                    null
+                  ],
+                  [
+                    "fontWeight",
+                    null
+                  ],
+                  [
+                    "letterSpacing",
+                    null
+                  ],
+                  [
+                    "lineHeight",
+                    null
+                  ],
+                  [
+                    "textAlign",
+                    null
+                  ],
+                  [
+                    "textColumns",
+                    null
+                  ],
+                  [
+                    "textDecoration",
+                    null
+                  ],
+                  [
+                    "textIndent",
+                    null
+                  ],
+                  [
+                    "textShadow",
+                    null
+                  ],
+                  [
+                    "textTransform",
+                    null
+                  ],
+                  [
+                    "writingMode",
+                    null
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant_VALID_TOP_LEVEL_KEYS": [
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              "blockTypes"
+            ],
+            [
+              1,
+              "customTemplates"
+            ],
+            [
+              2,
+              "description"
+            ],
+            [
+              3,
+              "patterns"
+            ],
+            [
+              4,
+              "settings"
+            ],
+            [
+              5,
+              "slug"
+            ],
+            [
+              6,
+              "styles"
+            ],
+            [
+              7,
+              "templateParts"
+            ],
+            [
+              8,
+              "title"
+            ],
+            [
+              9,
+              "version"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "constant___EXPERIMENTAL_ELEMENT_CLASS_NAMES": [
+      {
+        "returned": {
+          "array": [
+            [
+              "button",
+              "wp-element-button"
+            ],
+            [
+              "caption",
+              "wp-element-caption"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ]
+  }
 }

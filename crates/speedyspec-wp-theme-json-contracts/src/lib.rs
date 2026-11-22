@@ -4,6 +4,7 @@
 //! services; the PHP crate (`speedyspec-wp-theme-json-php`) adapts them to WordPress's classes.
 
 mod by_origin;
+pub mod schema;
 mod error;
 mod leaf;
 mod origin;
