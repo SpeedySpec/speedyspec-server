@@ -38,6 +38,13 @@ const EARLIER: &[&str] = &[
     "tag_escape",
     "seems_utf8",
     "htmlentities2",
+    "_wp_specialchars",
+    "wp_check_invalid_utf8",
+    "esc_html",
+    "esc_attr",
+    "esc_textarea",
+    "esc_xml",
+    "esc_js",
 ];
 
 #[test]
@@ -47,12 +54,7 @@ fn content_filters_cover_their_corpus() {
     for function in CONTENT_FILTERS {
         assert!(!report.skipped.contains_key(*function), "{function} has corpus cases no test covers");
     }
-    // What is left waits for plan 2's last tasks (kses-lexical): the esc_* family, _wp_specialchars,
-    // wp_check_invalid_utf8.
-    let left: Vec<&String> = report.skipped.keys().collect();
-    assert!(
-        left.iter().all(|f| f.starts_with("esc_") || *f == "_wp_specialchars" || *f == "wp_check_invalid_utf8"),
-        "unexpected uncovered functions: {left:?}"
-    );
+    // With plan 2 finished, every recorded function is ported.
+    assert!(report.skipped.is_empty(), "functions with no port: {:?}", report.skipped);
     assert!(report.covered > 900, "only {} cases covered", report.covered);
 }

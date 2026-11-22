@@ -34,6 +34,11 @@
       "scenario": "wptexturize/unrecorded/broken_input_or_spaces",
       "step": 0,
       "why": "Not recorded (it needs a filter or a non-string argument). A wp_spaces_regexp fragment that doesn't compile makes PHP warn and its preg_* return null, turning texturized chunks into ''; the port's TextApi returns a TextError instead. A non-scalar wptexturize argument makes PHP throw or warn; the port returns the value unchanged."
+    },
+    {
+      "scenario": "esc_xml/literal/xml_cdata_backtrack",
+      "step": 0,
+      "why": "PCRE resource limits (see balance_backtrack_18). esc_xml's CDATA regex (a lookahead '(?=.*?<!\\[CDATA\\[.*?\\]\\]>)' and lazy groups) exhausts PHP's pcre.backtrack_limit on input such as 471 unterminated '<![CDATA[' (4 KB), and also on any input of about 1 MB or more; preg_replace_callback then returns null and esc_xml returns ''. The port splits CDATA sections with a linear scan and returns the escaped text, which is safe and is what the function means. The spec's 'reproduce WordPress's fallback' would be '' here; the port keeps the escaped output instead (ledger ruling)."
     }
   ]
 }

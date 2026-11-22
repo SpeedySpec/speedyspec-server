@@ -10,6 +10,19 @@ license.workspace = true
 aho-corasick = "1"
 memchr = "2.8"
 speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
+speedyspec-wp-kses-lexical = { path = "../speedyspec-wp-kses-lexical" }
+speedyspec-wp-utf8 = { path = "../speedyspec-wp-utf8" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
 
 [dev-dependencies]
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+libc = "0.2"
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-text-memory = { path = "../speedyspec-wp-text-memory" }
 speedyspec-wp-text-corpus = { path = "../speedyspec-wp-text-corpus", features = ["values"] }
+
+[[bench]]
+name = "escape"
+harness = false

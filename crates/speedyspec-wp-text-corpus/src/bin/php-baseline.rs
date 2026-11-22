@@ -15,7 +15,7 @@ use speedyspec_compat::{DRIVER, compat_dir, wordpress_release};
 use speedyspec_hooks::Value;
 use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, Php};
-use speedyspec_wp_text_corpus::{WORDPRESS, inputs, page};
+use speedyspec_wp_text_corpus::{WORDPRESS, inputs, page, short_inputs};
 
 /// The PHP side's timing loop: runs `$function` over every input until `$seconds` pass, and answers bytes per second
 /// by wall time and by CPU time.
@@ -98,7 +98,12 @@ fn run() -> Result<(), String> {
         .collect();
     let seconds = Duration::from_secs(2).as_secs_f64();
     println!("WordPress {WORDPRESS} {function} in the embedded PHP");
-    for (group, items) in [("whole_posts", posts), ("page", vec![page(source)])] {
+    let mut groups = vec![("whole_posts", posts), ("page", vec![page(source)])];
+    let short = short_inputs(source);
+    if !short.is_empty() && function != "the_content" {
+        groups.push(("short", short));
+    }
+    for (group, items) in groups {
         let rate = php
             .call(
                 &Value::Str("speedyspec_formatting_time".into()),
