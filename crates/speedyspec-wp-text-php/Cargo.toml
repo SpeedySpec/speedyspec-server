@@ -1,0 +1,38 @@
+[package]
+name = "speedyspec-wp-text-php"
+version = "0.1.1"
+description = "WordPress's formatting functions (wptexturize, esc_html, sanitize_title and the rest) as native PHP functions over the Rust text port."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+speedyspec-wp-html-split = { path = "../speedyspec-wp-html-split" }
+speedyspec-wp-kses = { path = "../speedyspec-wp-kses" }
+speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
+speedyspec-wp-kses-php = { path = "../speedyspec-wp-kses-php" }
+speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contracts" }
+speedyspec-wp-text = { path = "../speedyspec-wp-text" }
+speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
+speedyspec-wp-text-escape = { path = "../speedyspec-wp-text-escape" }
+
+[dev-dependencies]
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-text-corpus = { path = "../speedyspec-wp-text-corpus", features = ["values"] }
+serde_json = "1"
+sha2 = "0.10"
+tempfile = "3"
+ureq = "3"
+
+[[test]]
+name = "php"
+harness = false

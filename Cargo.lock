@@ -6313,6 +6313,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-text-php"
+version = "0.1.1"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-cqrs",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-html-split",
+ "speedyspec-wp-kses",
+ "speedyspec-wp-kses-contracts",
+ "speedyspec-wp-kses-php",
+ "speedyspec-wp-shortcode-contracts",
+ "speedyspec-wp-text",
+ "speedyspec-wp-text-contracts",
+ "speedyspec-wp-text-corpus",
+ "speedyspec-wp-text-escape",
+ "tempfile",
+ "ureq",
+]
+
+[[package]]
 name = "speedyspec-wp-token-map"
 version = "0.1.0"
 dependencies = [
