@@ -12,6 +12,9 @@ use speedyspec_wp_hooks_memory::MemoryHookStore;
 
 pub const NOW: i64 = 1_700_000_000;
 
+/// Each hook run a test recorded, with its arguments.
+pub type Log = Rc<RefCell<Vec<(String, Vec<HookValue>)>>>;
+
 pub struct FixedClock(pub Cell<f64>);
 
 impl Clock for FixedClock {
@@ -73,7 +76,7 @@ pub struct Fixture {
     pub store: Rc<MemoryCronStore>,
     pub hooks: Rc<HookApi>,
     pub clock: Rc<FixedClock>,
-    pub log: Rc<RefCell<Vec<(String, Vec<HookValue>)>>>,
+    pub log: Log,
 }
 
 pub fn fixture() -> Fixture {

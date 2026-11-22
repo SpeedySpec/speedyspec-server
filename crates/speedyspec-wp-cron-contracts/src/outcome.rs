@@ -26,7 +26,13 @@ pub enum SaveOutcome {
 #[derive(Debug, Clone, PartialEq)]
 pub enum CronResult {
     Value(Value),
-    Error { code: &'static str, message: String },
+    Error {
+        code: &'static str,
+        message: String,
+    },
+    /// `wp_clear_scheduled_hook()`'s merged error: a new `WP_Error` that `merge_from`s each entry (an `Error`, or a
+    /// `Value` holding a `WP_Error` a filter returned).
+    Merge(Vec<CronResult>),
 }
 
 /// A failure WordPress would not hide: a hook callback threw, or storage failed.

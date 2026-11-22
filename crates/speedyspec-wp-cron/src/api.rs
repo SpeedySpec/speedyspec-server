@@ -47,14 +47,6 @@ impl CronApi {
             .map_err(hook_error)
     }
 
-    /// `do_action( $hook, ...$args )`.
-    pub(crate) fn action(&self, hook: &str, args: Vec<HookValue>) -> Result<(), CronError> {
-        self.p
-            .hooks
-            .do_action(&HookName::from(hook), args)
-            .map_err(hook_error)
-    }
-
     pub(crate) fn tr(&self, text: &str) -> String {
         self.p.translator.translate(text)
     }

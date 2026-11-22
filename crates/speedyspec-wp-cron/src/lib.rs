@@ -10,6 +10,7 @@ pub mod memory;
 mod php;
 mod read;
 mod schedules;
+mod write;
 
 pub use api::{CronApi, CronParts};
 pub use keyer::RustArgsKeyer;

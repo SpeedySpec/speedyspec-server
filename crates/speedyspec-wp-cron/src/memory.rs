@@ -14,6 +14,8 @@ pub struct MemoryCronStore {
     raw: RefCell<Option<HookValue>>,
     writes: Cell<u64>,
     forced_conflicts: Cell<u32>,
+    reload_filtered: Cell<bool>,
+    unconditional: Cell<u64>,
     before_save: RefCell<Option<BeforeSave>>,
 }
 
@@ -53,6 +55,16 @@ impl MemoryCronStore {
         *self.before_save.borrow_mut() = Some(Box::new(f));
     }
 
+    /// `reload()` reports that a filter rewrote the value read, so a compare-and-swap against it cannot succeed.
+    pub fn reload_reports_filtered(&self, filtered: bool) {
+        self.reload_filtered.set(filtered);
+    }
+
+    /// Unconditional saves (`save`) that landed.
+    pub fn unconditional_saves(&self) -> u64 {
+        self.unconditional.get()
+    }
+
     fn run_before_save(&self) {
         let pending = self.before_save.borrow_mut().take();
         if let Some(f) = pending {
@@ -74,7 +86,7 @@ impl CronStore for MemoryCronStore {
 
     fn reload(&self) -> Result<(HookValue, Version, bool), CronError> {
         let (value, v) = self.current();
-        Ok((value, v, true))
+        Ok((value, v, !self.reload_filtered.get()))
     }
 
     fn save_if(&self, expected: &Version, value: HookValue) -> Result<SaveOutcome, CronError> {
@@ -103,6 +115,7 @@ impl CronStore for MemoryCronStore {
         }
         *self.raw.borrow_mut() = Some(value);
         self.writes.set(self.writes.get() + 1);
+        self.unconditional.set(self.unconditional.get() + 1);
         Ok(true)
     }
 }

@@ -60,19 +60,4 @@ impl CronApi {
         };
         Ok(HookValue::Array(array_merge(filtered, built_in)))
     }
-
-    /// `$schedules[ $recurrence ]['interval']`, when the schedule exists and has one.
-    pub(crate) fn interval_of(
-        &self,
-        recurrence: &HookValue,
-    ) -> Result<Option<HookValue>, CronError> {
-        let schedules = self.get_schedules()?;
-        let Some(key) = crate::array_key(recurrence) else {
-            return Ok(None);
-        };
-        Ok(crate::php::get(&schedules, &key)
-            .and_then(|s| crate::php::get(s, &Key::Str("interval".into())))
-            .filter(|v| !matches!(v, HookValue::Null))
-            .cloned())
-    }
 }

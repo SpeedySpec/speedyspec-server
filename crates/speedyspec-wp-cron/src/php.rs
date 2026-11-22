@@ -101,6 +101,53 @@ pub fn key_after(key: &Key, float: f64) -> bool {
     }
 }
 
+/// `$key < $float`, as [`key_after`] compares.
+pub fn key_before(key: &Key, float: f64) -> bool {
+    match key {
+        Key::Int(n) => (*n as f64) < float,
+        Key::Str(s) => match numeric_str(s) {
+            Some(n) => n < float,
+            None => s.as_bytes() < format!("{float}").as_bytes(),
+        },
+    }
+}
+
+/// A numeric value as a float (`is_numeric()` values only).
+pub fn number(value: &HookValue) -> Option<f64> {
+    match &*value.read() {
+        HookValue::Int(n) => Some(*n as f64),
+        HookValue::Float(f) => Some(*f),
+        HookValue::Str(s) => numeric_str(s),
+        _ => None,
+    }
+}
+
+/// PHP's `empty()` of an array entry.
+pub fn empty(value: Option<&HookValue>) -> bool {
+    match value {
+        None => true,
+        Some(v) => !truthy(v),
+    }
+}
+
+/// `unset( $array[ $a ][ $b ][ $c ] )`, then `$array[ $a ][ $b ]` and `$array[ $a ]` unset when `empty()`, as
+/// `wp_unschedule_event()` does.
+pub fn unset3(items: &mut Vec<(Key, HookValue)>, a: &Key, b: &Key, c: &Key) {
+    if let Some((_, HookValue::Array(hooks))) = items.iter_mut().find(|(k, _)| k == a) {
+        if let Some((_, HookValue::Array(keyed))) = hooks.iter_mut().find(|(k, _)| k == b) {
+            keyed.retain(|(k, _)| k != c);
+        }
+        let hook_empty = empty(hooks.iter().find(|(k, _)| k == b).map(|(_, v)| v));
+        if hook_empty {
+            hooks.retain(|(k, _)| k != b);
+        }
+    }
+    let ts_empty = empty(items.iter().find(|(k, _)| k == a).map(|(_, v)| v));
+    if ts_empty {
+        items.retain(|(k, _)| k != a);
+    }
+}
+
 /// `$array[ $key ]`, when `array` is an array holding it.
 pub fn get<'a>(array: &'a HookValue, key: &Key) -> Option<&'a HookValue> {
     match array {
