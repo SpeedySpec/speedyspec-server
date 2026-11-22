@@ -21,7 +21,9 @@ pub fn codec_string(bytes: &[u8]) -> speedyspec_hooks::Value {
 }
 mod construct;
 mod deps;
+pub mod filters;
 mod memory;
+pub mod nodes;
 #[allow(dead_code)] // Used by the stylesheet pieces as they land.
 pub(crate) mod php_value;
 pub mod presets;
