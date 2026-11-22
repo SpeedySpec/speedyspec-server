@@ -1,0 +1,17 @@
+[package]
+name = "speedyspec-wp-theme-json-php"
+version = "0.1.0"
+publish = false
+description = "WordPress's theme.json classes in PHP, thin wrappers over the Rust theme.json engine."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-theme-json = { path = "../speedyspec-wp-theme-json" }
+speedyspec-wp-theme-json-contracts = { path = "../speedyspec-wp-theme-json-contracts" }
