@@ -52,18 +52,22 @@ macro_rules! message {
 }
 
 message!(query ConstructThemeJson { data: Value, origin: Vec<u8> } -> ThemeJson, |a, m| a.construct(m.data, &m.origin));
-message!(query MergeThemeJson { base: ThemeJson, incoming: ThemeJson } -> ThemeJson, |a, m| a.merge(&m.base, &m.incoming));
-message!(query GetRawData { doc: ThemeJson } -> Value, |a, m| a.get_raw_data(&m.doc));
-message!(query GetSettings { doc: ThemeJson } -> Value, |a, m| a.get_settings(&m.doc));
-message!(query GetData { doc: ThemeJson } -> Value, |a, m| a.get_data(&m.doc));
-message!(query GetCustomTemplates { doc: ThemeJson } -> Value, |a, m| a.get_custom_templates(&m.doc));
-message!(query GetTemplateParts { doc: ThemeJson } -> Value, |a, m| a.get_template_parts(&m.doc));
-message!(query GetPatterns { doc: ThemeJson } -> Value, |a, m| a.get_patterns(&m.doc));
+message!(query MergeThemeJson { base: Rc<ThemeJson>, incoming: Rc<ThemeJson> } -> ThemeJson, |a, m| a.merge(&m.base, &m.incoming));
+message!(query MergeRawData { base: Rc<ThemeJson>, incoming: Value } -> ThemeJson,
+    |a, m| a.merge_raw_data(&m.base, m.incoming));
+message!(query GetViewportMediaQueries { viewport: Value, include_desktop: bool } -> Vec<(String, String)>,
+    |a, m| a.get_viewport_media_queries(&m.viewport, m.include_desktop));
+message!(query GetRawData { doc: Rc<ThemeJson> } -> Value, |a, m| a.get_raw_data(&m.doc));
+message!(query GetSettings { doc: Rc<ThemeJson> } -> Value, |a, m| a.get_settings(&m.doc));
+message!(query GetData { doc: Rc<ThemeJson> } -> Value, |a, m| a.get_data(&m.doc));
+message!(query GetCustomTemplates { doc: Rc<ThemeJson> } -> Value, |a, m| a.get_custom_templates(&m.doc));
+message!(query GetTemplateParts { doc: Rc<ThemeJson> } -> Value, |a, m| a.get_template_parts(&m.doc));
+message!(query GetPatterns { doc: Rc<ThemeJson> } -> Value, |a, m| a.get_patterns(&m.doc));
 message!(query GetFromEditorSettings { settings: Value } -> Value, |a, m| a.get_from_editor_settings(&m.settings));
 message!(query GetElementClassName { element: Vec<u8> } -> Vec<u8>, |a, m| a.get_element_class_name(&m.element));
 message!(query SchemaMigrate { data: Value, origin: Vec<u8> } -> Value, |a, m| a.schema_migrate(m.data, &m.origin));
-message!(command SetSpacingSizes { doc: ThemeJson } -> ThemeJson, |a, m| {
-    let mut doc = m.doc;
+message!(command SetSpacingSizes { doc: Rc<ThemeJson> } -> ThemeJson, |a, m| {
+    let mut doc = (*m.doc).clone();
     a.set_spacing_sizes(&mut doc);
     doc
 });
@@ -79,6 +83,6 @@ macro_rules! bind_all {
 pub fn register_theme_json_handlers(container: &Container, api: Rc<ThemeJsonApi>) {
     bind_all!(container, api;
         commands: SetSpacingSizes;
-        queries: ConstructThemeJson, MergeThemeJson, GetRawData, GetSettings, GetData, GetCustomTemplates,
+        queries: ConstructThemeJson, MergeThemeJson, MergeRawData, GetViewportMediaQueries, GetRawData, GetSettings, GetData, GetCustomTemplates,
             GetTemplateParts, GetPatterns, GetFromEditorSettings, GetElementClassName, SchemaMigrate);
 }

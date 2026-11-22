@@ -15,3 +15,14 @@ speedyspec-compat = { path = "../speedyspec-compat" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-theme-json = { path = "../speedyspec-wp-theme-json" }
 speedyspec-wp-theme-json-contracts = { path = "../speedyspec-wp-theme-json-contracts" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+
+[dev-dependencies]
+serde_json = "1"
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+
+[[test]]
+name = "php"
+harness = false

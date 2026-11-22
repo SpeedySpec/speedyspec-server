@@ -35,6 +35,17 @@ impl ThemeJsonApi {
         crate::merge(base, incoming, &self.deps)
     }
 
+    /// `$this->merge( $incoming )` where only `$incoming->get_raw_data()` is known, as WordPress reads it.
+    pub fn merge_raw_data(&self, base: &ThemeJson, incoming: Value) -> ThemeJson {
+        ThemeJsonCodec::decode(&crate::merge::merge_value(ThemeJsonCodec::encode(base), incoming, &self.deps))
+    }
+
+    /// `WP_Theme_JSON::get_viewport_media_queries( $viewport_settings, $options )` as `(state, query)` pairs.
+    pub fn get_viewport_media_queries(&self, viewport: &Value, include_desktop: bool) -> Vec<(String, String)> {
+        let viewport = (!matches!(viewport, Value::Null)).then_some(viewport);
+        crate::sanitize::viewport::media_queries(viewport, include_desktop)
+    }
+
     /// `get_raw_data()`.
     pub fn get_raw_data(&self, doc: &ThemeJson) -> Value {
         ThemeJsonCodec::encode(doc)

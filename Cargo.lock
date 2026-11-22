@@ -6422,11 +6422,16 @@ dependencies = [
 name = "speedyspec-wp-theme-json-php"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "speedyspec-compat",
  "speedyspec-container",
+ "speedyspec-cqrs",
  "speedyspec-hooks",
+ "speedyspec-hooks-memory",
  "speedyspec-php",
  "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
  "speedyspec-wp-theme-json",
  "speedyspec-wp-theme-json-contracts",
 ]

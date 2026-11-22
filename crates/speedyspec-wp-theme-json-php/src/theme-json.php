@@ -1,0 +1,180 @@
+// Not strict: WordPress's class-wp-theme-json.php coerces arguments, and so must this.
+
+namespace SpeedySpec\WpThemeJson\Support
+{
+    /**
+     * Lists the registered blocks for the Rust engine: name, selectors, supports and style variation names.
+     *
+     *  Style names come from `block.json` first, then from the block styles registry, as WordPress collects them.
+     */
+    function registered_blocks()
+    {
+        if (!class_exists('WP_Block_Type_Registry', false)) {
+            return array();
+        }
+        $styles = class_exists('WP_Block_Styles_Registry', false) ? \WP_Block_Styles_Registry::get_instance() : null;
+        $out = array();
+        foreach (\WP_Block_Type_Registry::get_instance()->get_all_registered() as $name => $type) {
+            $names = array();
+            foreach ((array) ($type->styles ?? array()) as $style) {
+                if (isset($style['name'])) {
+                    $names[$style['name']] = true;
+                }
+            }
+            if (null !== $styles) {
+                foreach ($styles->get_registered_styles_for_block($name) as $style) {
+                    $names[$style['name']] = true;
+                }
+            }
+            $out[] = array($name, $type->selectors ?? array(), $type->supports ?? array(), array_keys($names));
+        }
+        return $out;
+    }
+
+    /**
+     * Fingerprints what the block registries hold, so the engine re-reads them only after a registration.
+     */
+    function block_marker()
+    {
+        if (!class_exists('WP_Block_Type_Registry', false)) {
+            return 0;
+        }
+        $marker = count(\WP_Block_Type_Registry::get_instance()->get_all_registered());
+        if (class_exists('WP_Block_Styles_Registry', false)) {
+            $marker = $marker * 1000003 + count(\WP_Block_Styles_Registry::get_instance()->get_all_registered(), COUNT_RECURSIVE);
+        }
+        return $marker;
+    }
+}
+
+namespace
+{
+    use SpeedySpec\WpThemeJson\Native as N;
+
+    /**
+     * Holds a theme.json document; every method is answered by the Rust engine.
+     */
+    #[AllowDynamicProperties]
+    class WP_Theme_JSON
+    {
+        /*CONSTANTS*/
+
+        private $speedyspec_handle = -1;
+
+        public function __construct( $theme_json = array( 'version' => self::LATEST_SCHEMA ), $origin = 'theme' )
+        {
+            $this->speedyspec_handle = N\construct( $theme_json, $origin );
+        }
+
+        public function __clone()
+        {
+            $this->speedyspec_handle = N\duplicate( $this->speedyspec_handle );
+        }
+
+        public function __destruct()
+        {
+            N\release( $this->speedyspec_handle );
+        }
+
+        public function merge( $incoming )
+        {
+            N\merge( $this->speedyspec_handle, $incoming->get_raw_data() );
+        }
+
+        public function get_raw_data()
+        {
+            return N\get_raw_data( $this->speedyspec_handle );
+        }
+
+        public function get_settings()
+        {
+            return N\get_settings( $this->speedyspec_handle );
+        }
+
+        public function get_data()
+        {
+            return N\get_data( $this->speedyspec_handle );
+        }
+
+        public function get_custom_templates()
+        {
+            return N\get_custom_templates( $this->speedyspec_handle );
+        }
+
+        public function get_template_parts()
+        {
+            return N\get_template_parts( $this->speedyspec_handle );
+        }
+
+        public function get_patterns()
+        {
+            return N\get_patterns( $this->speedyspec_handle );
+        }
+
+        public function set_spacing_sizes()
+        {
+            N\set_spacing_sizes( $this->speedyspec_handle );
+        }
+
+        public static function get_element_class_name( $element )
+        {
+            return N\get_element_class_name( $element );
+        }
+
+        public static function get_from_editor_settings( $settings )
+        {
+            return N\get_from_editor_settings( $settings );
+        }
+
+        public static function get_viewport_media_queries( $viewport_settings = null, $options = array() )
+        {
+            return N\get_viewport_media_queries( $viewport_settings, ! empty( $options['include_desktop'] ) );
+        }
+    }
+
+    /**
+     * Migrates theme.json documents to the latest schema, in the Rust engine.
+     */
+    class WP_Theme_JSON_Schema
+    {
+        /*SCHEMA_CONSTANTS*/
+
+        public static function migrate( $theme_json, $origin = 'theme' )
+        {
+            return N\schema_migrate( $theme_json, $origin );
+        }
+    }
+
+    /**
+     * What the `wp_theme_json_data_*` filters receive: one layer, which a callback may update.
+     */
+    #[AllowDynamicProperties]
+    class WP_Theme_JSON_Data
+    {
+        private $theme_json = null;
+
+        private $origin = '';
+
+        public function __construct( $data = array( 'version' => WP_Theme_JSON::LATEST_SCHEMA ), $origin = 'theme' )
+        {
+            $this->origin     = $origin;
+            $this->theme_json = new WP_Theme_JSON( $data, $this->origin );
+        }
+
+        public function update_with( $new_data )
+        {
+            $this->theme_json->merge( new WP_Theme_JSON( $new_data, $this->origin ) );
+            return $this;
+        }
+
+        public function get_data()
+        {
+            return $this->theme_json->get_raw_data();
+        }
+
+        public function get_theme_json()
+        {
+            return $this->theme_json;
+        }
+    }
+}
