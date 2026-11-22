@@ -108,6 +108,28 @@ cd fuzz-media && FFMPEG_PREFIX=/tmp/ffmpeg-fuzz/prefix cargo +nightly fuzz run f
 
 libFuzzer is unreliable on musl (Alpine): use a glibc host or the workflow.
 
+### Media metadata
+
+WordPress's `wp_read_audio_metadata()`, `wp_read_video_metadata()`, `wp_add_id3_tag_data()` and
+`wp_get_media_creation_timestamp()` are native (`speedyspec-wp-media-php`), over the FFmpeg and MIDI readers.
+
+- **Isolation and cache.** A worker reads each file in a `media-probe` child of the runtime binary (no environment,
+  only stdin, stdout and stderr open, CPU, memory and file-size limits, seccomp on Linux), killed at its 5 s deadline,
+  behind a content-keyed cache in files under `<site_dir>/cache/speedyspec-media` (memory when the app has no site
+  directory). Failures are cached too: unreadable files for the full 30 days, timeouts and crashes for 5 minutes.
+- **What `$data` holds.** The filters' fourth argument and `wp_get_media_creation_timestamp()`'s input are getID3's
+  shape, built from FFmpeg's description: `fileformat`, `mime_type`, `filesize`, `playtime_seconds`,
+  `playtime_string`, `bitrate`, `audio`, `video`, the tag comments (`id3v2`, `id3v1`, `comments`, per format),
+  pictures (`id3v2.APIC`, `comments.picture`) and creation times where WordPress looks. `$data['speedyspec']` holds the
+  library-neutral description (`schema` 1: container, MIME type, duration, streams, tags, pictures, creation time)
+  with FFmpeg's own view under `$data['speedyspec']['ffmpeg']` (or `['midi']`).
+- **Replacing the reader.** Bind a class implementing `SpeedySpec\WpMedia\MediaReader` (`read(string $path):
+  array|false`, returning the neutral array) in the container; `SpeedySpec\WpMedia\Native\read_media($path)` is
+  the default reader, for a replacement that wraps it.
+- **Differences from WordPress** are listed, with reasons, in `compat/media/DIFFERENCES.md`; the corpus test
+  (`speedyspec-wp-media-corpus`) fails when one appears or disappears. The deliberate one: files without ID3 tags get
+  their title, artist and album from their own tag format.
+
 ### Media reading cost
 
 Median per call, Apple M-series laptop, release build, 2026-11-22 (`cargo bench -p speedyspec-wp-media-isolate`,
@@ -126,7 +148,14 @@ PHP on the same files: `getimagesize()` on the PNG 10.5 µs; `finfo_file()` 170 
 - The MP3's cost is its cover: the same MP3 without a cover reads in 0.23 ms; FFmpeg decodes an embedded PNG to learn
   its size.
 - PCM WAV levels off near 20 ms from about 10 s of audio up; plan 3 investigates with real files.
-- getID3's cost is measured in plan 3, with the pinned WordPress release.
+- **getID3 is faster per call.** WordPress 7.1.5's getID3, timed by `compat/media/record.php` on the corpus (2 s
+  files), takes 0.1–0.4 ms per `wp_read_*_metadata()` call: 0.25 ms for an ID3v2 MP3 with a JPEG cover, 0.10 ms for
+  a WAV, 0.19 ms for an M4A, 0.23 ms for an MP4, 0.40–0.43 ms for MKV and WebM. It parses headers in PHP and decodes
+  nothing. A native read costs a probe child (about 7 ms) the first time a file is read and a cache hit (0.14–0.29
+  ms) after that. Uploads read each file once, so the trade is a few milliseconds per upload for reading every format
+  FFmpeg reads, in an isolated process.
+- PCM WAV in-process plateaus near 20 ms from about 5 s of audio; `analyzeduration`, `probesize`,
+  `skip_estimate_duration_from_pts` and `fpsprobesize` don't move it. It is paid once per file.
 
 ## The release
 
