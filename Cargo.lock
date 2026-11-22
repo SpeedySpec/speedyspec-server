@@ -6571,6 +6571,7 @@ dependencies = [
  "speedyspec-hooks",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-i18n",
  "speedyspec-wp-kses",
  "speedyspec-wp-kses-contracts",
  "speedyspec-wp-theme-json-contracts",
