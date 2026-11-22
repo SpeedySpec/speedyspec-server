@@ -289,3 +289,30 @@ fn a_restriction_whose_operation_never_registers_is_reported_at_close() {
     );
     assert!(r.is_closed());
 }
+
+#[test]
+fn replace_operation_replaces_while_open_and_follows_close_rules_after() {
+    let r = Registries::new();
+    r.register_type(user_type()).unwrap();
+    r.register_type(post_type()).unwrap();
+    r.register_operation(get_user().build().unwrap()).unwrap();
+    r.register_operation(get_post().build().unwrap()).unwrap();
+    r.replace_operation(get_user().deprecated("old").build().unwrap())
+        .unwrap();
+    assert_eq!(
+        r.get_operation("core/get-user")
+            .unwrap()
+            .deprecated
+            .as_deref(),
+        Some("old")
+    );
+    r.close().unwrap();
+    assert_eq!(
+        r.replace_operation(get_user().deprecated("old").build().unwrap()),
+        Ok(())
+    );
+    assert!(matches!(
+        r.replace_operation(get_user().build().unwrap()),
+        Err(RegistrationError::Closed { .. })
+    ));
+}

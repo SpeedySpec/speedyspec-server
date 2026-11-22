@@ -76,11 +76,19 @@ fn params_merge_in_trunk_order() {
     r.json_params.clear();
     assert_eq!(r.params().get("k"), Some(&Value::from("body")));
     r.body_params.clear();
-    assert_eq!(r.params().get("k"), Some(&Value::from("query")), "the query beats URL parameters, as in trunk");
+    assert_eq!(
+        r.params().get("k"),
+        Some(&Value::from("query")),
+        "the query beats URL parameters, as in trunk"
+    );
     let mut g = request(RestMethod::Get);
     g.body_params = map(&[("b", "body")]);
     g.url_params = map(&[("id", "3")]);
-    assert_eq!(g.params().get("b"), None, "body parameters are ignored on GET");
+    assert_eq!(
+        g.params().get("b"),
+        None,
+        "body parameters are ignored on GET"
+    );
     assert_eq!(g.params().get("id"), Some(&Value::from("3")));
 }
 
@@ -107,4 +115,20 @@ fn set_param_updates_every_source_or_the_first_in_order() {
 fn response_ok_is_200() {
     let r = RestResponse::ok(Value::Null);
     assert_eq!((r.status, r.links.len(), r.headers.len()), (200, 0, 0));
+}
+
+#[test]
+fn defaults_are_the_lowest_priority() {
+    let mut g = request(RestMethod::Get);
+    g.default_params = map(&[("a", "d"), ("b", "d")]);
+    g.query_params = map(&[("a", "q")]);
+    let p = g.params();
+    assert_eq!(p.get("a"), Some(&Value::from("q")));
+    assert_eq!(p.get("b"), Some(&Value::from("d")));
+    g.set_param("c", Value::from("x"));
+    assert_eq!(g.query_params.get("c"), Some(&Value::from("x")));
+    assert!(!g.default_params.contains_key("c"));
+    g.set_param("b", Value::from("y"));
+    assert_eq!(g.default_params.get("b"), Some(&Value::from("y")));
+    assert_eq!(g.params().get("b"), Some(&Value::from("y")));
 }

@@ -33,6 +33,7 @@ use crate::{RouteMatch, RouteTable, coerce, decode, encode, errors, fields, inde
 /// 10. errors encoded as responses; 11. `_links` and `_embed`;
 /// 12. `rest_post_dispatch`, then `_fields`; 13. `rest_pre_serve_request`.
 pub struct RestServer {
+    container: Rc<Container>,
     registries: Rc<Registries>,
     dispatcher: Dispatcher,
     table: RouteTable,
@@ -137,12 +138,13 @@ impl RestServer {
         base_url: &str,
     ) -> RestServer {
         let (table, problems) = RouteTable::build(exposure.as_ref(), hooks.as_ref());
-        let dispatcher = Dispatcher::new(container, registries.clone()).with_middleware(Rc::new(
-            DispatchRequestMiddleware {
+        let dispatcher = Dispatcher::new(container.clone(), registries.clone()).with_middleware(
+            Rc::new(DispatchRequestMiddleware {
                 hooks: hooks.clone(),
-            },
-        ));
+            }),
+        );
         RestServer {
+            container,
             registries,
             dispatcher,
             table,
@@ -151,6 +153,16 @@ impl RestServer {
             authenticator,
             base_url: base_url.trim_end_matches('/').to_owned(),
         }
+    }
+
+    /// The container handlers are bound in.
+    pub fn container(&self) -> &Rc<Container> {
+        &self.container
+    }
+
+    /// The registries the server dispatches over.
+    pub fn registries(&self) -> &Rc<Registries> {
+        &self.registries
     }
 
     /// Routes that could not be added, and why.

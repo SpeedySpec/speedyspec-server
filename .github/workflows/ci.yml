@@ -43,7 +43,7 @@ jobs:
           --exclude speedyspec-wp-kses-php --exclude speedyspec-wp-text-php --exclude speedyspec-wp-kses --exclude speedyspec-wp-kses-lexical
           --exclude speedyspec-wp-kses-testkit --exclude speedyspec-wp-html-syntax
           --exclude speedyspec-wp-crypto-sodium --exclude speedyspec-wp-crypto-php --exclude speedyspec-wp-password-php
-          --exclude speedyspec-operation-php --exclude speedyspec-wp-theme-json-php
+          --exclude speedyspec-operation-php --exclude speedyspec-rest-php --exclude speedyspec-wp-theme-json-php
           --exclude speedyspec-pcre2-link-test
       - run: test -z "$(cargo tree -i aws-lc-sys --target all 2>/dev/null)"
 

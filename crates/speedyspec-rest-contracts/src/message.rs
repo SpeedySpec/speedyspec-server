@@ -21,6 +21,8 @@ pub struct RestRequest {
     pub body_params: IndexMap<String, Value>,
     /// A JSON object body. Its presence decides where `set_param` writes.
     pub json_params: IndexMap<String, Value>,
+    /// Defaults from the matched route's arguments: the lowest-priority source.
+    pub default_params: IndexMap<String, Value>,
     /// Lowercase names, `-` written as `_`, as WordPress stores them.
     pub headers: IndexMap<String, Vec<String>>,
     pub body: Vec<u8>,
@@ -45,6 +47,7 @@ impl RestRequest {
             query_params: IndexMap::new(),
             body_params: IndexMap::new(),
             json_params: IndexMap::new(),
+            default_params: IndexMap::new(),
             headers: IndexMap::new(),
             body: Vec::new(),
             route: None,
@@ -59,7 +62,7 @@ impl RestRequest {
     }
 
     /// The parameter sources in priority order (`WP_REST_Request::get_parameter_order`): the JSON body when the body is
-    /// JSON, the form body for methods with a body, then the query, then URL parameters. The first source holding a
+    /// JSON, the form body for methods with a body, then the query, then URL parameters, then defaults. The first source holding a
     /// key wins, so the query beats URL parameters, as in WordPress.
     fn order(&self) -> Vec<&IndexMap<String, Value>> {
         let mut order = Vec::new();
@@ -71,6 +74,7 @@ impl RestRequest {
         }
         order.push(&self.query_params);
         order.push(&self.url_params);
+        order.push(&self.default_params);
         order
     }
 
@@ -108,6 +112,11 @@ impl RestRequest {
             } else if first.is_none() {
                 first = Some(source);
             }
+        }
+        // Defaults are never written, only updated when they hold the key, as trunk's set_param does.
+        if let Some(slot) = self.default_params.get_mut(key) {
+            *slot = value.clone();
+            found = true;
         }
         if !found && let Some(source) = first {
             source.insert(key.to_owned(), value);
