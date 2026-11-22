@@ -128,6 +128,33 @@ pub struct PhpConfig {
     pub env: Vec<(String, String)>,
     /// `app.<id>.php.env_file`: a file of `KEY=value` lines for the app's workers.
     pub env_file: Option<PathBuf>,
+    /// `app.<id>.php.cron`: the scheduled call to the release's `php.cron` path, if it declares one.
+    pub cron: CronConfig,
+}
+
+/// How the server's scheduler calls an app's cron path.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CronConfig {
+    /// Whether to call it at all (when the release declares a path).
+    pub enabled: bool,
+    /// The longest wait between calls, whatever the app reports: how events scheduled through another replica are
+    /// noticed.
+    pub max_interval: Duration,
+    /// One call's limit.
+    pub timeout: Duration,
+    /// How long one call may run due events before it stops and asks to be called again (sent as `?budget=`).
+    pub budget: Duration,
+}
+
+impl Default for CronConfig {
+    fn default() -> CronConfig {
+        CronConfig {
+            enabled: true,
+            max_interval: DEFAULT_CRON_MAX_INTERVAL,
+            timeout: DEFAULT_CRON_TIMEOUT,
+            budget: DEFAULT_CRON_BUDGET,
+        }
+    }
 }
 
 impl PhpConfig {
@@ -167,6 +194,9 @@ pub const DEFAULT_PHP_MAX_REQUESTS: u64 = 1000;
 pub const DEFAULT_PHP_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 pub const DEFAULT_PHP_MEMORY_LIMIT: u64 = 256 * 1024 * 1024;
 pub const DEFAULT_PHP_IDLE_TIMEOUT: Duration = Duration::from_secs(10);
+pub const DEFAULT_CRON_MAX_INTERVAL: Duration = Duration::from_secs(60);
+pub const DEFAULT_CRON_TIMEOUT: Duration = Duration::from_secs(120);
+pub const DEFAULT_CRON_BUDGET: Duration = Duration::from_secs(30);
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -527,6 +557,16 @@ struct RawPhp {
     #[serde(default)]
     env: BTreeMap<String, String>,
     env_file: Option<PathBuf>,
+    cron: Option<RawCron>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct RawCron {
+    enabled: Option<bool>,
+    max_interval: Option<String>,
+    timeout: Option<String>,
+    budget: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -623,6 +663,24 @@ fn php_config(mode: Mode, id: &AppId, raw: Option<RawPhp>) -> Result<PhpConfig, 
         bindings: raw.bindings.into_iter().collect(),
         env: raw.env.into_iter().collect(),
         env_file: raw.env_file,
+        cron: {
+            let cron = raw.cron.unwrap_or_default();
+            let key = |field: &str| format!("app.{id}.php.cron.{field}");
+            CronConfig {
+                enabled: cron.enabled.unwrap_or(true),
+                max_interval: duration(
+                    &key("max_interval"),
+                    cron.max_interval.as_deref(),
+                    DEFAULT_CRON_MAX_INTERVAL,
+                )?,
+                timeout: duration(
+                    &key("timeout"),
+                    cron.timeout.as_deref(),
+                    DEFAULT_CRON_TIMEOUT,
+                )?,
+                budget: duration(&key("budget"), cron.budget.as_deref(), DEFAULT_CRON_BUDGET)?,
+            }
+        },
     })
 }
 
@@ -1608,6 +1666,54 @@ app = "blog"
         assert_eq!(php.idle_timeout, std::time::Duration::from_secs(10));
         assert!(php.site_dir.is_none() && php.bindings.is_empty());
         assert!(config.apps[&id("admin")].php.is_none());
+    }
+
+    #[test]
+    fn cron_defaults() {
+        let config = Config::parse(IMMUTABLE).unwrap();
+        let cron = config.apps[&id("blog")].php.clone().unwrap().cron;
+        assert_eq!(
+            cron,
+            CronConfig {
+                enabled: true,
+                max_interval: std::time::Duration::from_secs(60),
+                timeout: std::time::Duration::from_secs(120),
+                budget: std::time::Duration::from_secs(30),
+            }
+        );
+    }
+
+    #[test]
+    fn cron_durations_parse() {
+        let config = Config::parse(&format!(
+            "{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\n[app.blog.php.cron]\nenabled = false\nmax_interval = \"10s\"\ntimeout = \"2m\"\nbudget = \"5s\"\n"
+        ))
+        .unwrap();
+        let cron = config.apps[&id("blog")].php.clone().unwrap().cron;
+        assert!(!cron.enabled);
+        assert_eq!(cron.max_interval, std::time::Duration::from_secs(10));
+        assert_eq!(cron.timeout, std::time::Duration::from_secs(120));
+        assert_eq!(cron.budget, std::time::Duration::from_secs(5));
+    }
+
+    #[test]
+    fn cron_bad_duration_names_key() {
+        rejects(
+            &format!(
+                "{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\n[app.blog.php.cron]\ntimeout = \"soon\"\n"
+            ),
+            "app.blog.php.cron.timeout",
+        );
+    }
+
+    #[test]
+    fn cron_unknown_field_refused() {
+        assert!(
+            Config::parse(&format!(
+                "{SPEC_EXAMPLE}{RUNTIME}{MANAGED_BLOG}[app.blog.php]\nsite_dir = \"/s\"\n[app.blog.php.cron]\nevery = \"1m\"\n"
+            ))
+            .is_err()
+        );
     }
 
     #[test]

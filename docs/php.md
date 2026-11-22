@@ -72,6 +72,11 @@ A php release's `speedyspec-release.json` may have a `php` section; without one,
 | `document_root` | `.` | the directory URLs map into |
 | `entry` | `index.php` | the front controller under `document_root`; a release without it is refused at unpack |
 | `ini` | none | INI settings for the release's workers, applied at boot as php.ini would (`upload_max_filesize` included) |
+| `cron` | none | `{ "path": "/cron.php" }`: the path the server's cron scheduler calls (see "Scheduled cron calls") |
+| `internal` | none | more paths only the server may call, such as `["/wp-cron.php"]`: visitors get 404 |
+
+A release that uses `cron` or `internal` must declare `"requires": { "<the server app's id>": "^<the version that ships
+them>" }`: an older server refuses manifest fields it does not know.
 
 ## Requests
 
@@ -179,12 +184,35 @@ request. A Rust caller of a port with no PHP binding never enters PHP.
 
 ## The server's own calls
 
-Each pool keeps two workers beyond `workers.max` for the server's own calls: one for health probes, one for the gate's
-questions and migrations. A pool full of visitors never starves them, and gate calls never delay a probe. These calls
+Each pool keeps workers beyond `workers.max` for the server's own calls: one for health probes, one for the gate's
+questions and migrations, and one for scheduled cron calls, started the first time the scheduler calls. A pool full of
+visitors never starves them, gate calls never delay a probe, and a long cron run holds only its own worker. These calls
 are internal requests to the app's first mount, with no client address; their paths (the release's probes, the gate's
 revocation feed, the migration) answer 404 to visitors and never reach PHP, nor does any path below them or after a
 `.php` segment (`/migrate.php/x`, `/index.php/migrate.php`). Internal paths come from the live release: a release that
 still ships its migration script must keep declaring it.
+
+## Scheduled cron calls
+
+The server calls an app's `php.cron` path (internal, `GET <path>?budget=<seconds>`, on the cron worker) when the app
+says it is next due: every worker report may carry `next_cron`, the earliest Unix time the request learned, and the
+app's scheduler wakes then. Any PHP code can report one with `\SpeedySpec\Runtime\report_next_wake( int $timestamp )`;
+the runtime's native WordPress cron does so whenever it writes the `cron` option, and its runner when it finishes. The
+server never reads the app's data: it knows a path, a time and a number in a report.
+
+```toml
+[app.admin-api.php.cron]
+enabled = true          # default: call when the live release declares php.cron
+max_interval = "60s"    # the longest wait between calls, however late the app says it is next due
+timeout = "120s"        # one call's limit
+budget = "30s"          # how long a call may run due events before it stops and asks to be called again
+```
+
+A report moves the next call earlier, never later; calls are at least a second apart and one at a time. A failed call
+is retried after 5 s, doubling up to `max_interval`. No call is made while the app is in maintenance. Every replica
+runs its own scheduler; the app makes sure each due event runs once (WordPress's runner claims each event with a
+compare-and-swap write), so replicas never coordinate. `max_interval` is how a replica notices events scheduled
+through another replica.
 
 ## Health and maintenance
 

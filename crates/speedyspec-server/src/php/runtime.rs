@@ -35,9 +35,12 @@ pub struct PhpRuntime {
     gate_app: Option<AppId>,
     /// What the gate app's handlers tell of each response head (sign-outs), once the gate exists.
     sign_out: Arc<std::sync::OnceLock<super::handler::HeadHook>>,
+    /// Each app's cron scheduler, told every `next_cron` its workers report.
+    wake_sinks: Arc<Mutex<HashMap<AppId, super::handler::WakeSink>>>,
 }
 
-/// The paths of a php release only the server calls: its health probes, and a gate app's revocation feed.
+/// The paths of a php release only the server calls: its health probes, a gate app's revocation feed, its migration,
+/// its cron path, and the extra paths it lists as internal.
 fn internal_paths(manifest: &ReleaseManifest) -> Vec<String> {
     let section = manifest.php_section().unwrap_or_default();
     section
@@ -46,6 +49,8 @@ fn internal_paths(manifest: &ReleaseManifest) -> Vec<String> {
         .flat_map(|health| [health.live.clone(), health.ready.clone()])
         .chain(section.gate.iter().map(|gate| gate.changes.clone()))
         .chain(section.switch_.iter().map(|switch| switch.migrate.clone()))
+        .chain(section.cron.iter().map(|cron| cron.path.clone()))
+        .chain(section.internal.iter().cloned())
         .collect()
 }
 
@@ -75,7 +80,14 @@ impl PhpRuntime {
             handlers: Mutex::new(HashMap::new()),
             gate_app: None,
             sign_out: Arc::new(std::sync::OnceLock::new()),
+            wake_sinks: Arc::new(Mutex::new(HashMap::new())),
         }
+    }
+
+    /// Where `app`'s workers' `next_cron` reports go (its cron scheduler). Every handler of the app reads it at each
+    /// report, so a handler built before the sink was set, or after a pool switch, reports to it too.
+    pub fn set_wake_sink(&self, app: &AppId, sink: super::handler::WakeSink) {
+        self.wake_sinks.lock().unwrap().insert(app.clone(), sink);
     }
 
     /// What the gate app's handlers call with each response head (set once, when the gate is built).
@@ -192,6 +204,7 @@ impl PhpRuntime {
             bindings: Vec::new(),
             env: Vec::new(),
             env_file: None,
+            cron: crate::config::CronConfig::default(),
         })
     }
 
@@ -242,6 +255,14 @@ impl PhpRuntime {
             config.site_dir.clone(),
         )
         .map_err(|err| format!("{}: {err}", document_root.display()))?;
+        let sinks = self.wake_sinks.clone();
+        let reporting = app.clone();
+        let handler = handler.with_wake_sink(Arc::new(move |next| {
+            let sink = sinks.lock().unwrap().get(&reporting).cloned();
+            if let Some(sink) = sink {
+                sink(next);
+            }
+        }));
         let handler = if self.gate_app.as_ref() == Some(app) {
             let sign_out = self.sign_out.clone();
             handler.with_on_head(Arc::new(move |headers, set_cookies| {
@@ -319,5 +340,22 @@ impl AppRuntime for PhpRuntime {
         {
             pool.drain();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn internal_paths_include_cron_and_internal() {
+        let manifest = ReleaseManifest::parse(
+            br#"{"app":"admin-api","version":"1.0.0","kind":"php","php":{"health":{"live":"/live","ready":"/ready"},"cron":{"path":"/cron.php"},"internal":["/wp-cron.php","/other"]}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            internal_paths(&manifest),
+            ["/live", "/ready", "/cron.php", "/wp-cron.php", "/other"]
+        );
     }
 }
