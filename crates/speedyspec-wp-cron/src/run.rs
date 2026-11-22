@@ -31,6 +31,17 @@ enum Reschedule {
 enum Ran {
     Ran,
     ClaimedByOthers,
+    /// The claim's write kept conflicting: not run, left for the next call.
+    Unclaimed,
+}
+
+/// Marks a run in progress for as long as it lives, also when the run fails.
+struct Running<'a>(&'a std::cell::Cell<bool>);
+
+impl Drop for Running<'_> {
+    fn drop(&mut self) {
+        self.0.set(false);
+    }
 }
 
 fn field(name: &str) -> Key {
@@ -42,6 +53,9 @@ impl CronApi {
     /// next due (now, when the budget ran out).
     pub fn run_due_events(&self, budget: Duration) -> Result<RunSummary, CronError> {
         let started = self.p.clock.microtime();
+        // The claims' writes leave due events behind for a moment; only the run's own answer is reported.
+        self.running.set(true);
+        let _running = Running(&self.running);
         let pre = self.filter("pre_get_ready_cron_jobs", HookValue::Null, Vec::new())?;
         let foreign = !matches!(*pre.read(), HookValue::Null);
         let ready: Vec<(Key, HookValue)> = if foreign {
@@ -59,6 +73,7 @@ impl CronApi {
         let mut summary = RunSummary {
             ran: 0,
             claimed_by_others: 0,
+            unclaimed: 0,
             next: None,
         };
         if ready.is_empty() {
@@ -88,6 +103,7 @@ impl CronApi {
                     match self.run_event(timestamp, hook, key, event, foreign)? {
                         Ran::Ran => summary.ran += 1,
                         Ran::ClaimedByOthers => summary.claimed_by_others += 1,
+                        Ran::Unclaimed => summary.unclaimed += 1,
                     }
                     if self.p.clock.microtime() - started >= budget.as_secs_f64() {
                         stopped = true;
@@ -220,21 +236,10 @@ impl CronApi {
         if claimed_by_others.get() {
             return Ok(Ran::ClaimedByOthers);
         }
-        let (rescheduled, unscheduled) = match written {
-            Ok(()) => (
-                CronResult::Value(HookValue::Bool(true)),
-                CronResult::Value(HookValue::Bool(true)),
-            ),
-            Err(failed) => (failed.clone(), failed),
-        };
-        match reschedule {
-            Reschedule::Single => {}
-            Reschedule::Done(result) => self.report(CronStep::Reschedule, &hook, &result, event)?,
-            Reschedule::Insert(..) => {
-                self.report(CronStep::Reschedule, &hook, &rescheduled, event)?
-            }
+        if written.is_err() {
+            // Other runners are writing and one of them may claim it: running it unclaimed could run it twice.
+            return Ok(Ran::Unclaimed);
         }
-        self.report(CronStep::Unschedule, &hook, &unscheduled, event)?;
         self.run_action(&hook, &args)?;
         Ok(Ran::Ran)
     }

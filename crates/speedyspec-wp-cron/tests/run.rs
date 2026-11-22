@@ -57,9 +57,12 @@ fn runs_due_in_order_and_skips_future() {
         RunSummary {
             ran: 2,
             claimed_by_others: 0,
+            unclaimed: 0,
             next: Some(NOW + 100)
         }
     );
+    // The run reports when cron is next due, not the due events its claims left behind for a moment.
+    assert_eq!(f.wake.earliest(), Some(NOW + 100));
     let left: Vec<String> = f
         .api
         .get_cron_array()
@@ -241,8 +244,7 @@ fn budget_stops_and_reports_now() {
     let summary = f.api.run_due_events(Duration::ZERO).unwrap();
     assert_eq!(summary.ran, 1);
     assert_eq!(summary.next, Some(NOW));
-    // Due now: the claim's write reported the remaining event's (past) time, which means the same.
-    assert!(f.wake.earliest().is_some_and(|t| t <= NOW));
+    assert_eq!(f.wake.earliest(), Some(NOW));
 }
 
 #[test]
@@ -279,6 +281,7 @@ fn nothing_due_reports_earliest() {
         RunSummary {
             ran: 0,
             claimed_by_others: 0,
+            unclaimed: 0,
             next: Some(NOW + 600)
         }
     );
@@ -300,4 +303,19 @@ fn reschedule_error_is_reported_before_unschedule() {
         f.ran(),
         ["cron_reschedule_event_error", "pre_unschedule_event"]
     );
+}
+
+#[test]
+fn a_claim_that_cannot_be_written_is_left_for_the_next_call() {
+    let f = fixture();
+    f.store.set_raw(Some(option_with(&[(NOW - 10, "x")])));
+    let runs = count(&f, "x");
+    f.store.force_conflicts(5);
+    let summary = f.api.run_due_events(budget()).unwrap();
+    // Other runners are writing: one of them may claim it; this runner must not run it unclaimed.
+    assert_eq!(runs.get(), 0);
+    assert_eq!(summary.unclaimed, 1);
+    assert_eq!(summary.ran, 0);
+    assert_eq!(f.api.get_cron_array().unwrap().events().len(), 1);
+    assert_eq!(summary.next, Some(NOW - 10));
 }

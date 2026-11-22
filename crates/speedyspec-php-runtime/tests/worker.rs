@@ -94,3 +94,21 @@ async fn earliest_wake_wins() {
     let again = worker.get(&app.join("index.php"), "/").await;
     assert_eq!(report(&again).next_cron, Some(0));
 }
+
+#[tokio::test(flavor = "current_thread")]
+async fn a_wake_never_leaks_into_the_next_request() {
+    let dir = tempfile::tempdir().unwrap();
+    let app = support::release(
+        dir.path(),
+        "app",
+        "<?php \\SpeedySpec\\Runtime\\report_next_wake(99); echo 'woke';",
+    );
+    std::fs::write(app.join("plain.php"), "<?php echo 'plain';").unwrap();
+    let mut worker = support::spawn(dir.path(), &app, None, &[]);
+    worker.ready().await;
+    let woke = worker.get(&app.join("index.php"), "/").await;
+    assert_eq!(report(&woke).next_cron, Some(99));
+    let plain = worker.get(&app.join("plain.php"), "/plain.php").await;
+    assert_eq!(plain.body(), "plain", "{}", plain.stdout);
+    assert_eq!(report(&plain).next_cron, None);
+}

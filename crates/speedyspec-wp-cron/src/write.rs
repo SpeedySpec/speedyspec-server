@@ -187,6 +187,9 @@ impl CronApi {
 
     /// Reports the array's earliest timestamp, if any, as when cron is next due.
     pub(crate) fn report_wake(&self, cron: &CronArray) {
+        if self.running.get() {
+            return;
+        }
         if let Some(next) = cron.earliest() {
             self.p.wake.wake_at(next);
         }
