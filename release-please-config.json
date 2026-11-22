@@ -76,6 +76,11 @@
       "skip-github-release": true,
       "skip-changelog": true
     },
+    "crates/speedyspec-ffmpeg-sys": {
+      "component": "speedyspec-ffmpeg-sys",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
     "crates/speedyspec-hooks": {
       "component": "speedyspec-hooks",
       "skip-github-release": true,
@@ -226,6 +231,41 @@
     },
     "crates/speedyspec-wp-kses-testkit": {
       "component": "speedyspec-wp-kses-testkit",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-media": {
+      "component": "speedyspec-wp-media",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-media-contracts": {
+      "component": "speedyspec-wp-media-contracts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-media-ffmpeg": {
+      "component": "speedyspec-wp-media-ffmpeg",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-media-isolate": {
+      "component": "speedyspec-wp-media-isolate",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-media-midi": {
+      "component": "speedyspec-wp-media-midi",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-media-php": {
+      "component": "speedyspec-wp-media-php",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-media-testkit": {
+      "component": "speedyspec-wp-media-testkit",
       "skip-github-release": true,
       "skip-changelog": true
     },
