@@ -110,6 +110,7 @@ jobs:
       - name: Media
         run: >-
           ${{ matrix.run }} cargo test -p speedyspec-wp-media-ffmpeg -p speedyspec-wp-media-isolate -p speedyspec-wp-media-corpus
+          -p speedyspec-wp-media-php
           --features speedyspec-wp-media-isolate/test-modes
       - name: Test with php
         run: ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks
