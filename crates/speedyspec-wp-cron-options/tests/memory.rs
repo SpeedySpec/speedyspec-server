@@ -215,6 +215,9 @@ fn false_from_a_filter_still_writes() {
         clock: Rc::new(Fixed),
         translator: Rc::new(Same),
         objects: Rc::new(Arrays),
+        wake: Rc::new(speedyspec_wp_cron::memory::RecordingWake::new()),
+        doing_cron: Rc::new(speedyspec_wp_cron::memory::MemoryDoingCron::new()),
+        errors: Rc::new(speedyspec_wp_cron::memory::CollectingErrors::new()),
     });
     // WordPress writes here (add_option's INSERT ... ON DUPLICATE KEY UPDATE); so must the port.
     let result = api
