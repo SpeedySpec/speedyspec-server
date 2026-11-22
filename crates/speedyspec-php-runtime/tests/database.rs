@@ -92,3 +92,23 @@ async fn no_db_name_boots_as_before() {
     let answer = worker.get(&app.join("index.php"), "/").await;
     assert_eq!(answer.body(), "ok", "{}", answer.stdout);
 }
+
+#[tokio::test(flavor = "current_thread")]
+async fn release_drop_in_is_refused_without_a_site_dir() {
+    let Some(env) = mysql_env("cronworker_") else {
+        println!("skip: SPEEDYSPEC_TEST_MYSQL_URL is not set");
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let app = release(dir.path(), "app", "<?php echo 'served';");
+    // Without a site directory, WP_CONTENT_DIR is the release's own wp-content.
+    std::fs::create_dir_all(app.join("wp-content")).unwrap();
+    std::fs::write(app.join("wp-content/db.php"), "<?php").unwrap();
+    let mut worker = spawn(dir.path(), &app, None, &env);
+    worker.ready().await;
+    for _ in 0..2 {
+        let answer = worker.get(&app.join("index.php"), "/").await;
+        assert_eq!(answer.status(), 500, "{}", answer.stdout);
+        assert!(answer.body().contains("db.php"), "{}", answer.stdout);
+    }
+}
