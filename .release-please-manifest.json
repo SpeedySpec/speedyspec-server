@@ -107,5 +107,9 @@
   "crates/speedyspec-data-memory": "0.1.0",
   "crates/speedyspec-data-redb": "0.1.0",
   "crates/speedyspec-data-translate": "0.1.0",
-  "crates/speedyspec-data-valkey": "0.1.0"
+  "crates/speedyspec-data-valkey": "0.1.0",
+  "crates/speedyspec-wp-cron": "0.1.0",
+  "crates/speedyspec-wp-cron-contracts": "0.1.0",
+  "crates/speedyspec-wp-cron-options": "0.1.0",
+  "crates/speedyspec-wp-cron-php": "0.1.0"
 }
