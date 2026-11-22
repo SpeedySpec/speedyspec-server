@@ -22,6 +22,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=SPEEDYSPEC_PHP_PREFIX");
     println!("cargo:rerun-if-env-changed=PHP");
     println!("cargo:rerun-if-env-changed=PHP_CONFIG");
+    println!("cargo:rerun-if-env-changed=SODIUM_LIB_DIR");
 
     let prefix = env::var_os("SPEEDYSPEC_PHP_PREFIX")
         .map(PathBuf::from)
@@ -48,6 +49,17 @@ fn main() {
                 expected.display()
             ));
         }
+    }
+
+    // libsodium-sys-stable (the Rust crypto port) links libsodium.a from SODIUM_LIB_DIR. It must be this PHP's own
+    // archive: two libsodium archives in one link resolve symbol by symbol, mixing objects of both versions.
+    let sodium_dir = env::var_os("SODIUM_LIB_DIR").map(PathBuf::from);
+    if sodium_dir.as_deref().map(canonical) != Some(canonical(&prefix.join("lib"))) {
+        fail(&format!(
+            "sodium: SODIUM_LIB_DIR is {sodium_dir:?} but must be {} so Rust links PHP's own libsodium; \
+             set it alongside SPEEDYSPEC_PHP_PREFIX (see .cargo/config.toml)",
+            prefix.join("lib").display()
+        ));
     }
 
     let version_file = workspace.join("php-version");

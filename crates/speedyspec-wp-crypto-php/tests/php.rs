@@ -166,5 +166,79 @@ fn main() {
         matches!(&r, Ok(HookValue::Str(s)) if s == "base64_decode(): Argument #1 ($string) must be of type string, array given"),
         &r,
     );
+    // The recorded valid signature and key for files/hello.txt.
+    let fixture = format!(
+        r#"$compat = {compat:?};
+        $cases = json_decode(file_get_contents($compat . 'cases.json'), true);
+        $valid = array_values(array_filter($cases['signature'], static fn ($c) => 'valid' === $c['name']))[0];
+        $GLOBALS['speedyspec_sig'] = $valid['signatures'];
+        $GLOBALS['speedyspec_key'] = $valid['filter'][0];
+        $GLOBALS['speedyspec_file'] = $compat . 'files/hello.txt';
+        return true;"#
+    );
+    php.eval("speedyspec://test/fixture", &fixture)
+        .expect("the fixture loads");
+
+    let r = php.eval(
+        "speedyspec://test/trusted-keys-untouched",
+        "remove_all_filters('wp_trusted_keys'); $value = [['nested'], null, 5, new stdClass()];
+         add_filter('wp_trusted_keys', static fn () => $value);
+         $got = wp_trusted_keys(); remove_all_filters('wp_trusted_keys');
+         return $got == $value && count($got) === 4 && $got[3] instanceof stdClass;",
+    );
+    check(
+        "trusted_keys_returns_the_filtered_value_untouched",
+        is_true(&r),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/key-after-match",
+        "remove_all_filters('wp_trusted_keys'); add_filter('wp_trusted_keys', static fn () => [$GLOBALS['speedyspec_key'], ['x']]);
+         $got = verify_file_signature($GLOBALS['speedyspec_file'], $GLOBALS['speedyspec_sig'], 'f'); remove_all_filters('wp_trusted_keys');
+         return $got;",
+    );
+    check("a_key_after_the_match_is_never_read", is_true(&r), &r);
+
+    let r = php.eval(
+        "speedyspec://test/key-short-signature",
+        "remove_all_filters('wp_trusted_keys'); add_filter('wp_trusted_keys', static fn () => [['x']]);
+         $got = verify_file_signature($GLOBALS['speedyspec_file'], 'QUJD', 'f'); remove_all_filters('wp_trusted_keys');
+         return $got instanceof WP_Error ? $got->get_error_code() . ':' . $got->get_error_data()['skipped_sig'] : var_export($got, true);",
+    );
+    check(
+        "a_key_behind_short_signatures_is_never_read",
+        matches!(&r, Ok(HookValue::Str(s)) if s == "signature_verification_failed:1"),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/signature-after-match",
+        "remove_all_filters('wp_trusted_keys'); add_filter('wp_trusted_keys', static fn () => [$GLOBALS['speedyspec_key']]);
+         $got = verify_file_signature($GLOBALS['speedyspec_file'], [$GLOBALS['speedyspec_sig'], ['x']], 'f'); remove_all_filters('wp_trusted_keys');
+         return $got;",
+    );
+    check("a_signature_after_the_match_is_never_read", is_true(&r), &r);
+
+    let r = php.eval(
+        "speedyspec://test/message-hooks",
+        "// WordPress's __() fires gettext; l10n.php isn't loaded here, so this stands in for it.
+         if (!function_exists('__')) { function __($text, $domain = 'default') { return apply_filters('gettext', $text, $text, $domain); } }
+         $log = [];
+         add_filter('gettext', static function ($t) use (&$log) { $log[] = 'gettext'; return $t; });
+         add_filter('esc_html', static function ($t) use (&$log) { $log[] = 'esc_html'; return $t; });
+         add_filter('wp_trusted_keys', static function ($k) use (&$log) { $log[] = 'keys'; return [$GLOBALS['speedyspec_key']]; });
+         $runs = [];
+         verify_file_signature($GLOBALS['speedyspec_file'], $GLOBALS['speedyspec_sig'], 'f'); $runs[] = implode(',', $log); $log = [];
+         verify_file_signature($GLOBALS['speedyspec_file'], '', 'f'); $runs[] = implode(',', $log); $log = [];
+         verify_file_signature($GLOBALS['speedyspec_file'], 'QUJD', 'f'); $runs[] = implode(',', $log);
+         remove_all_filters('gettext'); remove_all_filters('esc_html'); remove_all_filters('wp_trusted_keys');
+         return implode('|', $runs);",
+    );
+    check(
+        "message_hooks_fire_only_with_their_error_and_in_wordpress_order",
+        matches!(&r, Ok(HookValue::Str(s)) if s == "keys|gettext,esc_html|keys,gettext,esc_html"),
+        &r,
+    );
     println!("wp-crypto php: all checks passed");
 }

@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use base64::Engine as _;
 use speedyspec_php::native::NativeError;
-use speedyspec_wp_crypto_contracts::{Clock, FilteredKeys, Translator, TrustedKeysFilter};
+use speedyspec_wp_crypto_contracts::{Clock, Translator, TrustedKeysFilter};
 use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName, HookValue};
 use speedyspec_wp_text_contracts::{
     Diagnostics, ErrorLevel, SiteSettings, TextError, WordCountType,
@@ -13,9 +13,7 @@ use speedyspec_wp_text_contracts::{
 /// The `wp_trusted_keys` filter over the Hook API.
 ///
 /// With no callback the run is only counted (`did_filter()` stays WordPress's) and PHP is not entered. The filtered
-/// value is kept as the filter returned it, for WordPress's error data, and its elements are read as strings the way
-/// `base64_decode()` reads them. A callback's exception, or `base64_decode()`'s `TypeError` on a key that can't be a
-/// string, is the call's failure.
+/// value comes back as the filter returned it; a callback's exception is the call's failure.
 pub struct HookTrustedKeysFilter {
     hooks: Rc<HookApi>,
     name: HookName,
@@ -29,46 +27,24 @@ impl HookTrustedKeysFilter {
             name: HookName::from("wp_trusted_keys"),
         }
     }
+}
 
-    /// Filters `defaults`, failing as the PHP call would.
-    pub fn try_apply(
-        &self,
-        defaults: Vec<Vec<u8>>,
-    ) -> Result<FilteredKeys<HookValue>, NativeError> {
+impl TrustedKeysFilter for HookTrustedKeysFilter {
+    type Value = HookValue;
+    type Error = NativeError;
+
+    fn apply(&self, defaults: Vec<Vec<u8>>) -> Result<HookValue, NativeError> {
         let value = php_list(&defaults);
-        let raw = if self
+        if self
             .hooks
             .skip_if_empty(&self.name, Count::Filters)
             .map_err(native_error)?
         {
-            value
-        } else {
-            self.hooks
-                .apply_filters(&self.name, value, Vec::new())
-                .map_err(native_error)?
-        };
-        let keys = elements(&raw.read())
-            .iter()
-            .map(key_string)
-            .collect::<Result<_, _>>()?;
-        Ok(FilteredKeys { keys, raw })
-    }
-}
-
-impl TrustedKeysFilter for HookTrustedKeysFilter {
-    type Raw = Result<HookValue, NativeError>;
-
-    fn apply(&self, defaults: Vec<Vec<u8>>) -> FilteredKeys<Self::Raw> {
-        match self.try_apply(defaults) {
-            Ok(filtered) => FilteredKeys {
-                keys: filtered.keys,
-                raw: Ok(filtered.raw),
-            },
-            Err(err) => FilteredKeys {
-                keys: Vec::new(),
-                raw: Err(err),
-            },
+            return Ok(value);
         }
+        self.hooks
+            .apply_filters(&self.name, value, Vec::new())
+            .map_err(native_error)
     }
 }
 
@@ -92,7 +68,7 @@ pub(crate) fn php_string(bytes: &[u8]) -> HookValue {
 }
 
 /// `(array) $value`'s elements, in order.
-fn elements(value: &HookValue) -> Vec<HookValue> {
+pub(crate) fn elements(value: &HookValue) -> Vec<HookValue> {
     match value {
         HookValue::Null => Vec::new(),
         HookValue::Array(items) => items.iter().map(|(_, v)| v.clone()).collect(),
@@ -100,9 +76,9 @@ fn elements(value: &HookValue) -> Vec<HookValue> {
     }
 }
 
-/// A key as the string `base64_decode()` sees: strings as they are, anything else through PHP's own `base64_decode()`
-/// (and back), so its coercions and errors are PHP's.
-fn key_string(value: &HookValue) -> Result<Vec<u8>, NativeError> {
+/// A signature or key as the string `base64_decode()` sees: strings as they are, anything else through PHP's own
+/// `base64_decode()` (and back), so its coercions, deprecations and errors are PHP's.
+pub(crate) fn base64_text(value: &HookValue) -> Result<Vec<u8>, NativeError> {
     match value.read().as_ref() {
         HookValue::Str(s) => return Ok(s.as_bytes().to_vec()),
         HookValue::Bytes(b) => return Ok(b.clone()),

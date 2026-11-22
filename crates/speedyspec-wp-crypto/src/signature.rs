@@ -28,44 +28,70 @@ pub enum SignatureOutcome {
     },
 }
 
-/// Checks signatures against keys as WordPress does.
-///
-/// `file_sha384` is `None` when the file can't be hashed: WordPress then carries `hash_file()`'s `false` on, so every
-/// signature is checked against the empty message and the reported hash is empty. `signatures` is `None` when
-/// WordPress's `! $signatures` holds (a falsy value), which ends the check before any key is looked at. Signatures and keys are base64 text, decoded leniently as PHP does; wrong-length ones are skipped and
-/// counted, and the first signature and key that verify end the check.
+/// Checks signatures against keys as WordPress does, when both are already strings. See
+/// [`check_signatures_with`].
 pub fn check_signatures(
     verifier: &dyn DetachedVerifier,
     file_sha384: Option<&[u8; 48]>,
     signatures: Option<&[Vec<u8>]>,
     keys: &[Vec<u8>],
 ) -> SignatureOutcome {
+    let text = |value: &Vec<u8>| Ok::<_, std::convert::Infallible>(value.clone());
+    match check_signatures_with(verifier, file_sha384, signatures, keys, text, text) {
+        Ok(outcome) => outcome,
+        Err(never) => match never {},
+    }
+}
+
+/// Checks signatures against keys as WordPress does.
+///
+/// `file_sha384` is `None` when the file can't be hashed: WordPress then carries `hash_file()`'s `false` on, so every
+/// signature is checked against the empty message and the reported hash is empty. `signatures` is `None` when
+/// WordPress's `! $signatures` holds (a falsy value), which ends the check before any key is looked at.
+///
+/// Each signature and key is read as base64 text (`signature_text`, `key_text`) only when the loop reaches it, as
+/// WordPress calls `base64_decode()` inside its loop: a key is read for each signature of the right length it is
+/// tried with, and nothing after the first match is read. A read that fails ends the check with its error, as PHP's
+/// `TypeError` would. Text is decoded leniently, as PHP does; wrong-length signatures and keys are skipped and
+/// counted.
+pub fn check_signatures_with<S, K, E>(
+    verifier: &dyn DetachedVerifier,
+    file_sha384: Option<&[u8; 48]>,
+    signatures: Option<&[S]>,
+    keys: &[K],
+    mut signature_text: impl FnMut(&S) -> Result<Vec<u8>, E>,
+    mut key_text: impl FnMut(&K) -> Result<Vec<u8>, E>,
+) -> Result<SignatureOutcome, E> {
     let Some(signatures) = signatures else {
-        return SignatureOutcome::NoSignature;
+        return Ok(SignatureOutcome::NoSignature);
     };
     let message: &[u8] = file_sha384.map_or(&[], |hash| hash);
     let mut skipped_key = 0;
     let mut skipped_sig = 0;
     for signature in signatures {
-        let Ok(signature) = <[u8; SIGN_BYTES]>::try_from(php_base64_decode(signature)) else {
+        let Ok(signature) =
+            <[u8; SIGN_BYTES]>::try_from(php_base64_decode(&signature_text(signature)?))
+        else {
             skipped_sig += 1;
             continue;
         };
         for key in keys {
-            let Ok(key) = <[u8; SIGN_PUBLICKEY_BYTES]>::try_from(php_base64_decode(key)) else {
+            let Ok(key) =
+                <[u8; SIGN_PUBLICKEY_BYTES]>::try_from(php_base64_decode(&key_text(key)?))
+            else {
                 skipped_key += 1;
                 continue;
             };
             if verifier.verify(&signature, message, &key) {
-                return SignatureOutcome::Verified;
+                return Ok(SignatureOutcome::Verified);
             }
         }
     }
-    SignatureOutcome::Failed {
+    Ok(SignatureOutcome::Failed {
         hash_hex: hex(message),
         skipped_key,
         skipped_sig,
-    }
+    })
 }
 
 /// The file's sha384, or `None` where PHP's `hash_file()` fails (missing, unreadable, not a regular file).
@@ -91,26 +117,38 @@ pub fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// `verify_file_signature()`'s error messages.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SignatureMessages {
-    /// `signature_verification_no_signature`'s message.
-    pub no_signature: String,
-    /// `signature_verification_failed`'s message.
-    pub failed: String,
+/// Which of `verify_file_signature()`'s error messages.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SignatureMessage {
+    /// `signature_verification_no_signature`'s.
+    NoSignature,
+    /// `signature_verification_failed`'s.
+    Failed,
 }
 
-/// Translates WordPress's messages and puts the file name in them, as `sprintf( __( … ), '<span class="code">' .
-/// esc_html( $name ) . '</span>' )`. The name must already be escaped.
-pub fn messages(translator: &dyn Translator, escaped_filename: &str) -> SignatureMessages {
-    let name = format!("<span class=\"code\">{escaped_filename}</span>");
-    let message = |text: &str| sprintf_one(&translator.translate(text), &name);
-    SignatureMessages {
-        no_signature: message(
-            "The authenticity of %s could not be verified as no signature was found.",
-        ),
-        failed: message("The authenticity of %s could not be verified."),
+impl SignatureMessage {
+    /// WordPress's English text, before translation.
+    pub fn text(self) -> &'static str {
+        match self {
+            SignatureMessage::NoSignature => {
+                "The authenticity of %s could not be verified as no signature was found."
+            }
+            SignatureMessage::Failed => "The authenticity of %s could not be verified.",
+        }
     }
+}
+
+/// One error message, built as WordPress builds it, only when it returns that error:
+/// `sprintf( __( … ), '<span class="code">' . esc_html( $name ) . '</span>' )`. PHP evaluates `__()` before the
+/// escaping, so `escaped_name` runs after the translation; its failure (a throwing `esc_html` filter) is the message's.
+pub fn signature_message<E>(
+    translator: &dyn Translator,
+    which: SignatureMessage,
+    escaped_name: impl FnOnce() -> Result<String, E>,
+) -> Result<String, E> {
+    let format = translator.translate(which.text());
+    let name = format!("<span class=\"code\">{}</span>", escaped_name()?);
+    Ok(sprintf_one(&format, &name))
 }
 
 /// `sprintf()` with one string argument: `%s` and `%1$s` take it, `%%` is a percent sign, anything else is kept.

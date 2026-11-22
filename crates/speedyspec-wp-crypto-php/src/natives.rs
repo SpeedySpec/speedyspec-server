@@ -6,17 +6,17 @@ use std::rc::Rc;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_wp_crypto::{
-    SignatureOutcome, check_signatures, default_trusted_keys, messages, sha384_file, wp_basename,
-    wp_fast_hash, wp_verify_fast_hash,
+    SignatureMessage, SignatureOutcome, check_signatures_with, default_trusted_keys, sha384_file,
+    signature_message, wp_basename, wp_fast_hash, wp_verify_fast_hash,
 };
-use speedyspec_wp_crypto_contracts::CryptoLibrary;
+use speedyspec_wp_crypto_contracts::{CryptoLibrary, TrustedKeysFilter};
 use speedyspec_wp_crypto_sodium::Sodium;
 use speedyspec_wp_hooks::{HookApi, HookValue};
 use speedyspec_wp_text_escape::EscapeApi;
 
 use crate::adapters::{
     HookTrustedKeysFilter, PhpSiteSettings, PhpTranslator, QuietDiagnostics, SystemClock,
-    php_string,
+    base64_text, elements, php_string,
 };
 
 /// What the native functions share: libsodium, the filter and the escaping facade.
@@ -59,7 +59,7 @@ pub(crate) fn functions(natives: &Rc<Natives>) -> Vec<FunctionBuilder<'static>> 
             },
         ),
         native::function("SpeedySpec\\WpCrypto\\Native\\wp_trusted_keys", move |_| {
-            Ok(c.keys.try_apply(default_trusted_keys(&SystemClock))?.raw)
+            c.keys.apply(default_trusted_keys(&SystemClock))
         }),
         native::function(
             "SpeedySpec\\WpCrypto\\Native\\verify_file_signature",
@@ -82,21 +82,18 @@ fn bytes(args: &[HookValue], i: usize, function: &str) -> Result<Vec<u8>, Native
     }
 }
 
-/// `(filename, signatures: string[]|null, filename_for_errors: ?string)`: `true`, or an error marker the facade turns
-/// into a `WP_Error`. `signatures` is null when WordPress's `! $signatures` holds.
+/// `(filename, signatures: array|null, filename_for_errors: ?string)`: `true`, or an error marker the facade turns into
+/// a `WP_Error`. `signatures` is `(array) $signatures`, or null when WordPress's `! $signatures` holds.
+///
+/// The steps run in WordPress's order, firing what WordPress fires and nothing else: the `wp_trusted_keys` filter only
+/// when there are signatures, each signature and key read only when the loop reaches it, and `__()` and `esc_html`
+/// only for the one message of the error returned.
 fn verify(natives: &Natives, args: &[HookValue]) -> Result<HookValue, NativeError> {
     let filename = bytes(args, 0, "verify_file_signature")?;
     let signatures = match args.get(1) {
-        Some(HookValue::Array(items)) => Some(
-            items
-                .iter()
-                .map(|(_, v)| match v {
-                    HookValue::Str(s) => s.as_bytes().to_vec(),
-                    HookValue::Bytes(b) => b.clone(),
-                    _ => Vec::new(),
-                })
-                .collect::<Vec<_>>(),
-        ),
+        Some(HookValue::Array(items)) => {
+            Some(items.iter().map(|(_, v)| v.clone()).collect::<Vec<_>>())
+        }
         _ => None,
     };
     let friendly = match args.get(2) {
@@ -104,16 +101,7 @@ fn verify(natives: &Natives, args: &[HookValue]) -> Result<HookValue, NativeErro
         Some(HookValue::Bytes(b)) => b.clone(),
         _ => wp_basename(&filename),
     };
-    let escaped = match natives
-        .escape
-        .esc_html(&friendly)
-        .map_err(|e| NativeError::throw("Error", e.message))?
-    {
-        HookValue::Str(s) => s,
-        HookValue::Bytes(b) => String::from_utf8_lossy(&b).into_owned(),
-        other => strval(&other)?,
-    };
-    let text = messages(&PhpTranslator, &escaped);
+    let message = |which| signature_message(&PhpTranslator, which, || escape(natives, &friendly));
     let marker = |code: &str, message: String, more: Vec<(&str, HookValue)>| {
         let mut items = vec![
             (key("__speedyspec_error"), HookValue::Bool(true)),
@@ -124,43 +112,58 @@ fn verify(natives: &Natives, args: &[HookValue]) -> Result<HookValue, NativeErro
         items.extend(more.into_iter().map(|(k, v)| (key(k), v)));
         HookValue::Array(items)
     };
-    let Some(signatures) = signatures else {
-        return Ok(marker(
+    let no_signature = || -> Result<HookValue, NativeError> {
+        Ok(marker(
             "signature_verification_no_signature",
-            text.no_signature,
+            message(SignatureMessage::NoSignature)?,
             Vec::new(),
-        ));
+        ))
     };
-    let filtered = natives.keys.try_apply(default_trusted_keys(&SystemClock))?;
+    let Some(signatures) = signatures else {
+        return no_signature();
+    };
+    let raw = natives.keys.apply(default_trusted_keys(&SystemClock))?;
+    let keys = elements(&raw.read());
     let path = std::path::Path::new(std::ffi::OsStr::from_bytes(&filename));
     let hash = sha384_file(path);
-    match check_signatures(
+    match check_signatures_with(
         &natives.sodium,
         hash.as_ref(),
         Some(&signatures),
-        &filtered.keys,
-    ) {
+        &keys,
+        base64_text,
+        base64_text,
+    )? {
         SignatureOutcome::Verified => Ok(HookValue::Bool(true)),
-        SignatureOutcome::NoSignature => Ok(marker(
-            "signature_verification_no_signature",
-            text.no_signature,
-            Vec::new(),
-        )),
+        SignatureOutcome::NoSignature => no_signature(),
         SignatureOutcome::Failed {
             hash_hex,
             skipped_key,
             skipped_sig,
         } => Ok(marker(
             "signature_verification_failed",
-            text.failed,
+            message(SignatureMessage::Failed)?,
             vec![
-                ("keys", filtered.raw),
+                ("keys", raw),
                 ("hash", HookValue::Str(hash_hex)),
                 ("skipped_key", HookValue::Int(skipped_key as i64)),
                 ("skipped_sig", HookValue::Int(skipped_sig as i64)),
                 ("sodium", HookValue::Str(natives.sodium.version())),
             ],
         )),
+    }
+}
+
+/// `esc_html( $name )` as the string `sprintf()` receives.
+fn escape(natives: &Natives, name: &[u8]) -> Result<String, NativeError> {
+    match natives
+        .escape
+        .esc_html(name)
+        .map_err(|e| NativeError::throw("Error", e.message))?
+    {
+        HookValue::Str(s) => Ok(s),
+        HookValue::Bytes(b) => Ok(String::from_utf8_lossy(&b).into_owned()),
+        other => strval(&other),
     }
 }
 

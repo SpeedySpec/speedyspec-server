@@ -62,24 +62,16 @@ pub trait Translator {
     fn translate(&self, text: &str) -> String;
 }
 
-/// The trusted keys after the `wp_trusted_keys` filter.
-///
-/// `keys` are the strings the signature check decodes, in order. `raw` is the filter's return value exactly as the
-/// filter returned it, held by the adapter: WordPress returns it untouched in its error data, and the rules never look
-/// inside it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FilteredKeys<H> {
-    /// The keys as base64 text, in the filtered order.
-    pub keys: Vec<Vec<u8>>,
-    /// The filtered value as the filter returned it.
-    pub raw: H,
-}
-
 /// The `wp_trusted_keys` filter.
+///
+/// It answers the filtered value as the filter returned it: WordPress returns that value from `wp_trusted_keys()` and
+/// in its error data untouched, and reads its elements as keys only when its signature loop reaches them.
 pub trait TrustedKeysFilter {
-    /// The adapter's handle on the filtered value.
-    type Raw;
+    /// The filtered value, as the adapter holds it.
+    type Value;
+    /// Why filtering failed (a callback's exception).
+    type Error;
 
     /// Filters WordPress's default keys (base64 text).
-    fn apply(&self, defaults: Vec<Vec<u8>>) -> FilteredKeys<Self::Raw>;
+    fn apply(&self, defaults: Vec<Vec<u8>>) -> Result<Self::Value, Self::Error>;
 }

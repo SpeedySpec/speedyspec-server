@@ -40,28 +40,6 @@ namespace SpeedySpec\WpCrypto
         }
         return new \WP_Error($marker['code'], $marker['message'], $data);
     }
-
-    /**
-     * Gives each signature or key to the native check as a string, the way WordPress's `base64_decode()` call sees it.
-     *
-     *  Strings pass as they are. Anything else goes through PHP's own `base64_decode()` and back through
-     *  `base64_encode()`, so its coercions, deprecations and `TypeError`s are PHP's, and the native decoder reads the
-     *  same bytes.
-     *
-     * @param mixed $values
-     *   The value WordPress casts with `(array)`.
-     * @return string[]
-     *   The strings, in order.
-     */
-    function strings($values): array
-    {
-        $out = array();
-        foreach ((array) $values as $value)
-        {
-            $out[] = is_string($value) ? $value : base64_encode(base64_decode($value));
-        }
-        return $out;
-    }
 }
 
 namespace
@@ -139,7 +117,7 @@ namespace
         {
             $result = \SpeedySpec\WpCrypto\Native\verify_file_signature(
                 (string) $filename,
-                $signatures ? \SpeedySpec\WpCrypto\strings($signatures) : null,
+                $signatures ? (array) $signatures : null,
                 $filename_for_errors ? (string) $filename_for_errors : null
             );
             return is_array($result) ? \SpeedySpec\WpCrypto\wp_error($result, $signatures) : $result;

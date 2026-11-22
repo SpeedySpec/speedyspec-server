@@ -10,8 +10,8 @@ use std::path::PathBuf;
 use base64::Engine as _;
 use serde_json::Value;
 use speedyspec_wp_crypto::{
-    SignatureOutcome, check_signatures, messages, sha384_file, wp_basename, wp_fast_hash,
-    wp_verify_fast_hash,
+    SignatureMessage, SignatureOutcome, check_signatures, sha384_file, signature_message,
+    wp_basename, wp_fast_hash, wp_verify_fast_hash,
 };
 use speedyspec_wp_crypto_contracts::Translator;
 use speedyspec_wp_crypto_sodium::Sodium;
@@ -135,7 +135,9 @@ fn signatures_match() {
             signatures.as_deref(),
             &strings(&case["filter"]),
         );
-        let text = messages(&Untranslated, &escape(&filename));
+        let message = |which| {
+            signature_message(&Untranslated, which, || Ok::<_, ()>(escape(&filename))).unwrap()
+        };
         let recorded = &case["result"];
         match outcome {
             SignatureOutcome::Verified => assert_eq!(recorded, &Value::Bool(true), "{name}"),
@@ -144,7 +146,11 @@ fn signatures_match() {
                     recorded["code"], "signature_verification_no_signature",
                     "{name}"
                 );
-                assert_eq!(recorded["message"], text.no_signature, "{name}");
+                assert_eq!(
+                    recorded["message"],
+                    message(SignatureMessage::NoSignature),
+                    "{name}"
+                );
                 assert_eq!(recorded["data"]["filename"], filename, "{name}");
             }
             SignatureOutcome::Failed {
@@ -153,7 +159,11 @@ fn signatures_match() {
                 skipped_sig,
             } => {
                 assert_eq!(recorded["code"], "signature_verification_failed", "{name}");
-                assert_eq!(recorded["message"], text.failed, "{name}");
+                assert_eq!(
+                    recorded["message"],
+                    message(SignatureMessage::Failed),
+                    "{name}"
+                );
                 let data = &recorded["data"];
                 assert_eq!(data["filename"], filename, "{name}");
                 assert_eq!(data["hash"], hash_hex, "{name}");

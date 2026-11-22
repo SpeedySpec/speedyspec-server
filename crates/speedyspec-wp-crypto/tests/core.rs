@@ -298,30 +298,137 @@ fn sha384_file_missing_is_none() {
 }
 
 #[test]
-fn messages_translate_then_substitute() {
-    let m = messages(&Shout, "a&amp;b.zip");
+fn message_translates_then_substitutes() {
+    let no_signature = signature_message(&Shout, SignatureMessage::NoSignature, || {
+        Ok::<_, ()>("a&amp;b.zip".into())
+    });
     assert_eq!(
-        m.no_signature,
+        no_signature.unwrap(),
         "THE AUTHENTICITY OF <span class=\"code\">a&amp;b.zip</span> COULD NOT BE VERIFIED AS NO SIGNATURE WAS FOUND."
     );
+    let failed = signature_message(&Shout, SignatureMessage::Failed, || {
+        Ok::<_, ()>("f.zip".into())
+    });
     assert_eq!(
-        m.failed,
-        "THE AUTHENTICITY OF <span class=\"code\">a&amp;b.zip</span> COULD NOT BE VERIFIED."
+        failed.unwrap(),
+        "THE AUTHENTICITY OF <span class=\"code\">f.zip</span> COULD NOT BE VERIFIED."
     );
 }
 
 #[test]
-fn messages_take_numbered_placeholders_and_percent() {
+fn message_translates_before_escaping_and_only_once() {
+    // sprintf( __( ... ), '<span class="code">' . esc_html( $name ) . '</span>' ): PHP evaluates __() first.
+    struct Logging<'a>(&'a RefCell<Vec<&'static str>>);
+    impl Translator for Logging<'_> {
+        fn translate(&self, text: &str) -> String {
+            self.0.borrow_mut().push("translate");
+            text.to_string()
+        }
+    }
+    let log = RefCell::new(Vec::new());
+    let message = signature_message(&Logging(&log), SignatureMessage::Failed, || {
+        log.borrow_mut().push("escape");
+        Ok::<_, ()>("f.zip".into())
+    });
+    assert!(message.is_ok());
+    assert_eq!(*log.borrow(), vec!["translate", "escape"]);
+}
+
+#[test]
+fn escape_failure_is_the_message_failure() {
+    let message = signature_message(&Shout, SignatureMessage::Failed, || {
+        Err::<String, _>("thrown")
+    });
+    assert_eq!(message, Err("thrown"));
+}
+
+#[test]
+fn message_takes_numbered_placeholders_and_percent() {
     struct Numbered;
     impl Translator for Numbered {
         fn translate(&self, _text: &str) -> String {
             "100%% sure: %1$s".to_string()
         }
     }
+    let message = signature_message(&Numbered, SignatureMessage::Failed, || {
+        Ok::<_, ()>("f.zip".into())
+    });
     assert_eq!(
-        messages(&Numbered, "f.zip").failed,
+        message.unwrap(),
         "100% sure: <span class=\"code\">f.zip</span>"
     );
+}
+
+#[test]
+fn keys_are_read_only_when_reached() {
+    // WordPress decodes a key only inside the loop, after a signature of the right length, and stops at the first
+    // match: a key it never reaches can't fail the call.
+    let v = verifier();
+    let reached = RefCell::new(Vec::new());
+    let keys = [Ok(b64(&[9; 32])), Err("an array")];
+    let outcome = check_signatures_with(
+        &v,
+        Some(&[0; 48]),
+        Some(&[b64(&[7; 64])]),
+        &keys,
+        |s: &Vec<u8>| Ok(s.clone()),
+        |k: &Result<Vec<u8>, &'static str>| {
+            reached.borrow_mut().push(k.is_ok());
+            k.clone()
+        },
+    );
+    assert_eq!(outcome, Ok(SignatureOutcome::Verified));
+    assert_eq!(*reached.borrow(), vec![true]);
+}
+
+#[test]
+fn keys_after_short_signatures_are_never_read() {
+    let v = verifier();
+    let outcome = check_signatures_with(
+        &v,
+        Some(&[0; 48]),
+        Some(&[b64(&[7; 63])]),
+        &[()],
+        |s: &Vec<u8>| Ok::<_, &str>(s.clone()),
+        |_: &()| Err("never read"),
+    );
+    assert!(matches!(
+        outcome,
+        Ok(SignatureOutcome::Failed {
+            skipped_sig: 1,
+            skipped_key: 0,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn signatures_are_read_one_at_a_time_and_failures_stop_the_check() {
+    let v = verifier();
+    let signatures = [Ok(b64(&[7; 64])), Err("an array")];
+    let verified = check_signatures_with(
+        &v,
+        Some(&[0; 48]),
+        Some(&signatures),
+        &[b64(&[9; 32])],
+        |s: &Result<Vec<u8>, &'static str>| s.clone(),
+        |k: &Vec<u8>| Ok(k.clone()),
+    );
+    assert_eq!(
+        verified,
+        Ok(SignatureOutcome::Verified),
+        "a signature after the match is never read"
+    );
+    let failing = [Err("an array"), Ok(b64(&[7; 64]))];
+    let failed = check_signatures_with(
+        &v,
+        Some(&[0; 48]),
+        Some(&failing),
+        &[b64(&[9; 32])],
+        |s: &Result<Vec<u8>, &'static str>| s.clone(),
+        |k: &Vec<u8>| Ok(k.clone()),
+    );
+    assert_eq!(failed, Err("an array"));
 }
 
 #[test]

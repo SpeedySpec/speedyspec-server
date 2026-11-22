@@ -141,7 +141,7 @@
         {
             "name": "phpass",
             "message_b64": "cGFzc3dvcmQ=",
-            "hash": "$P$B1kZbIaixWYDFvrTOUcI/5TjXMt6nB.",
+            "hash": "$P$BWA7diblJelEl//zIxB6l5dp7JPtwU/",
             "result": true
         }
     ],
@@ -518,6 +518,64 @@
                 "primary": "gTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=",
                 "backup": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
             },
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "filter-array-key-after-match",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+                [
+                    "x"
+                ]
+            ],
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "filter-array-key-short-signature",
+            "file": "hello.txt",
+            "signatures": "QUJD",
+            "filter": [
+                [
+                    "x"
+                ]
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": [
+                        [
+                            "x"
+                        ]
+                    ],
+                    "signatures": "QUJD",
+                    "hash": "bef15bb9682f2fcd241cc3e75f5c67f169e8063dea3f8827637006c9b9e8dbc311a3fef0899918f5e2cfade7b5335c7b",
+                    "skipped_key": 0,
+                    "skipped_sig": 1
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "array-signature-after-match",
+            "file": "hello.txt",
+            "signatures": [
+                "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+                [
+                    "x"
+                ]
+            ],
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
             "filename_for_errors": "WordPress",
             "result": true,
             "warnings": []

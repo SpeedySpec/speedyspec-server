@@ -52,7 +52,10 @@ missing. The runtime never needs that polyfill, because it never runs without ex
 - A runtime worker checks ext-sodium at start-up and exits with `php_worker_sodium_missing` without it, and the
   release smoke check fails a runtime whose manifest doesn't report the pinned libsodium.
 
-The Rust crypto port (`speedyspec-wp-crypto*`) links the same `libsodium.a`, so PHP and Rust share one libsodium.
+The Rust crypto port (`speedyspec-wp-crypto*`) links the same `libsodium.a`, so PHP and Rust share one libsodium:
+`.cargo/config.toml` sets `SODIUM_LIB_DIR` to the buildroot's `lib`, and `speedyspec-php`'s build script refuses any
+other directory. Point `SODIUM_LIB_DIR` at `<prefix>/lib` whenever you set `SPEEDYSPEC_PHP_PREFIX`, `PHP` and
+`PHP_CONFIG` to another PHP build.
 
 The `speedyspec_wordpress` extension (the Rust side: the container, the Hook API) is built in.
 
