@@ -16,7 +16,8 @@ use crate::url::wp_parse_url;
 ///     The chunks, which join back into `text`; a chunk is longer than `goal` only when it has no whitespace to cut
 ///     at.
 pub fn split_str_by_whitespace(text: &[u8], goal: usize) -> Vec<&[u8]> {
-    let space = |b: &u8| matches!(b, b'\r' | b'\n' | b'\t' | b'\x0B' | b'\x0C' | b' ');
+    // PHP turns whitespace into NUL and then cuts at NUL, so a NUL already in the text is a cut point too.
+    let space = |b: &u8| matches!(b, b'\r' | b'\n' | b'\t' | b'\x0B' | b'\x0C' | b' ' | 0);
     let mut chunks = Vec::new();
     let mut rest = text;
     while goal < rest.len() {
@@ -82,7 +83,8 @@ pub fn make_absolute_url(relative: &[u8], base: &[u8]) -> Vec<u8> {
     match filled(&rel.path) {
         Some(rel_path) if rel_path[0] == b'/' => path = rel_path.to_vec(),
         Some(rel_path) => {
-            let keep = path.iter().rposition(|&b| b == b'/').map_or(0, |i| i + 1);
+            // substr( $path, 0, strrpos( $path, '/' ) + 1 ): with no `/`, `false + 1` keeps one byte.
+            let keep = path.iter().rposition(|&b| b == b'/').map_or(1, |i| i + 1).min(path.len());
             path.truncate(keep);
             path.extend_from_slice(rel_path);
             let (segment, leading) = &*ABSOLUTE;

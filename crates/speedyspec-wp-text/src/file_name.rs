@@ -179,17 +179,34 @@ pub fn sanitize_file_name_core<E>(
     let name = collapse_runs_to(&name, |b| b == b'.', b'.');
     let name = collapse_runs_to(&name, |b| matches!(b, b'\r' | b'\n' | b'\t' | b' ' | b'-'), b'-');
     let mut name = php_trim(&name, b".-_").to_vec();
-    if !name.contains(&b'.')
-        && let Some(ext) = check_filetype_ext(&[b"test.", name.as_slice()].concat(), &mimes()?)
-        && ext == name
-    {
-        name = [&b"unnamed-file."[..], &ext].concat();
+    // `get_allowed_mime_types()` is asked at most once: by `wp_check_filetype()` for an empty list, or below.
+    let mut allowed = Some(allowed);
+    let mut allowed_list: Option<Rc<MimePairs>> = None;
+    let mut get_allowed = || -> Result<Rc<MimePairs>, E> {
+        if let Some(list) = &allowed_list {
+            return Ok(list.clone());
+        }
+        let list = (allowed.take().expect("asked once"))()?;
+        allowed_list = Some(list.clone());
+        Ok(list)
+    };
+    if !name.contains(&b'.') {
+        let mut list = mimes()?;
+        // wp_check_filetype(): `if ( empty( $mimes ) ) $mimes = get_allowed_mime_types();`.
+        if list.is_empty() {
+            list = get_allowed()?;
+        }
+        if let Some(ext) = check_filetype_ext(&[b"test.", name.as_slice()].concat(), &list)
+            && ext == name
+        {
+            name = [&b"unnamed-file."[..], &ext].concat();
+        }
     }
     let parts: Vec<&[u8]> = name.split(|&b| b == b'.').collect();
     if parts.len() <= 2 {
         return Ok(name);
     }
-    let allowed = allowed()?;
+    let allowed = get_allowed()?;
     let mut out = parts[0].to_vec();
     for part in &parts[1..parts.len() - 1] {
         out.push(b'.');

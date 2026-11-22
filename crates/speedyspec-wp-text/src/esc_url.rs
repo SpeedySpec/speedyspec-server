@@ -82,7 +82,7 @@ pub fn esc_url_core<E>(
     url = replace_one(&url, b";//", b"://").into_owned();
     // `deep_replace` can empty the URL, and PHP's `$url[0]` on "" is "" (with a warning).
     let first = url.first().copied();
-    if !url.contains(&b':') && !matches!(first, Some(b'/' | b'#' | b'?')) && !php_script(&url) {
+    if !url.contains(&b':') && !matches!(first, Some(b'/' | b'#' | b'?')) && !looks_like_php_script(&url) {
         let https = given.is_some_and(|p| p.0.first().is_some_and(|f| &**f == b"https"));
         url = [if https { &b"https://"[..] } else { b"http://" }, &url].concat();
     }
@@ -112,8 +112,13 @@ pub fn esc_url_core<E>(
     Ok(good.into_owned())
 }
 
-/// `preg_match( '/^[a-z0-9-]+?\.php/i', $url )`.
-fn php_script(url: &[u8]) -> bool {
+/// `esc_url()`'s `preg_match( '/^[a-z0-9-]+?\.php/i', $url )`: a bare `name.php` gets no scheme added.
+///
+/// @param url
+///     The URL.
+/// @return
+///     Whether it starts with letters, digits or `-` and then `.php`.
+pub fn looks_like_php_script(url: &[u8]) -> bool {
     let name = url.iter().take_while(|b| b.is_ascii_alphanumeric() || **b == b'-').count();
     name > 0 && url[name..].get(..4).is_some_and(|ext| ext.eq_ignore_ascii_case(b".php"))
 }

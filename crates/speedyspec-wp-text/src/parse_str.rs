@@ -161,10 +161,14 @@ fn symtable_key(key: &[u8]) -> Key {
     Key::Str(String::from_utf8_lossy(key).into_owned())
 }
 
-/// The key `$array[] = ...` uses: one past the largest int key, or 0.
-fn next_key(table: &[(Key, Value)]) -> Key {
+/// The key `$array[] = ...` uses: one past the largest int key, or 0; `None` past `PHP_INT_MAX`, where PHP's
+/// `zend_hash_next_index_insert()` fails and the value is dropped.
+fn next_key(table: &[(Key, Value)]) -> Option<Key> {
     let max = table.iter().filter_map(|(k, _)| if let Key::Int(n) = k { Some(*n) } else { None }).max();
-    Key::Int(max.map_or(0, |n| n.saturating_add(1)))
+    match max {
+        None => Some(Key::Int(0)),
+        Some(n) => n.checked_add(1).map(Key::Int),
+    }
 }
 
 /// Walks `walk`, creating or replacing arrays as PHP does, then stores the value.
@@ -173,7 +177,9 @@ fn store(top: &mut Vec<(Key, Value)>, walk: &[Option<Vec<u8>>], last: Option<Vec
     for step in walk {
         let at = match step {
             None => {
-                let key = next_key(table);
+                let Some(key) = next_key(table) else {
+                    return;
+                };
                 table.push((key, Value::Array(Vec::new())));
                 table.len() - 1
             }
@@ -202,8 +208,9 @@ fn store(top: &mut Vec<(Key, Value)>, walk: &[Option<Vec<u8>>], last: Option<Vec
     let value = bytes_value(value);
     match last {
         None => {
-            let key = next_key(table);
-            table.push((key, value));
+            if let Some(key) = next_key(table) {
+                table.push((key, value));
+            }
         }
         Some(name) => {
             if forbidden(&name, pre) {
