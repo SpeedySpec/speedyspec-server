@@ -5,13 +5,19 @@
 //! - [`SequenceDiffer`] turns two token sequences into [`DiffOp`]s (Strategy: Horde's engine for WordPress's output,
 //!   any other algorithm for callers that only need a correct diff);
 //! - [`LineHtmlFilter`] is the `process_text_diff_html` filter;
-//! - [`WhitespaceNormalizer`] is `normalize_whitespace()`, which belongs to the text formatting port.
+//! - [`WhitespaceNormalizer`] is `normalize_whitespace()`, which belongs to the text formatting port;
+//! - [`TextDiffer`] is `wp_text_diff()` itself, the pluggable function, bound in the container under [`TEXT_DIFFER`];
+//!   [`TextDiffHost`] is the PHP its WordPress implementation reaches.
 //!
 //! Text is bytes throughout: PHP strings are bytes, and WordPress's diff never assumes an encoding except when it
 //! splits words.
 
+mod port;
+
 use std::borrow::Cow;
 use std::ops::Range;
+
+pub use port::{CheckedLineFilter, TEXT_DIFFER, TextDiffHost, TextDiffer, TextDifferError, Value};
 
 /// One edit operation over two token sequences, as Horde's `Text_Diff_Op_*` classes, by index range.
 ///
@@ -182,6 +188,20 @@ mod tests {
         assert!(Title::new("00").truthy);
         assert!(Title::new(" ").truthy);
         assert_eq!(Title::new("0").text, b"0");
+    }
+
+    #[test]
+    fn throw_displays_as_class_and_message() {
+        let err = TextDifferError::Throw {
+            class: "TypeError".into(),
+            message: "nope".into(),
+        };
+        assert_eq!(err.to_string(), "TypeError: nope");
+    }
+
+    #[test]
+    fn port_key_names_the_twin() {
+        assert_eq!(TEXT_DIFFER, "SpeedySpec\\WpTextDiff\\TextDiffer");
     }
 
     #[test]
