@@ -172,6 +172,12 @@ fn native_request_get(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
                 })
                 .collect(),
         ),
+        "default_params" => map_value(&r.default_params),
+        "attributes" => r
+            .operation
+            .as_deref()
+            .and_then(crate::legacy::handler)
+            .unwrap_or(PhpValue::Array(vec![])),
         "body" => match String::from_utf8(r.body.clone()) {
             Ok(text) => PhpValue::Str(text),
             Err(e) => PhpValue::Bytes(e.into_bytes()),
@@ -242,7 +248,7 @@ fn native_request_set(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
                 }
             }
         }
-        "url_params" | "query_params" | "body_params" => {
+        "url_params" | "query_params" | "body_params" | "default_params" => {
             let map = match plain(args.get(2))? {
                 Value::Map(map) => map,
                 _ => indexmap::IndexMap::new(),
@@ -250,6 +256,7 @@ fn native_request_set(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
             match arg_text(args, 1).as_str() {
                 "url_params" => r.url_params = map,
                 "query_params" => r.query_params = map,
+                "default_params" => r.default_params = map,
                 _ => r.body_params = map,
             }
         }

@@ -149,6 +149,14 @@ function wp_parse_args( $args, $defaults = array() ) { return array_merge( $defa
 function is_wp_error( $thing ) { return $thing instanceof WP_Error; }
 function esc_html( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES ); }
 function wp_json_encode( $value, $flags = 0, $depth = 512 ) { return json_encode( $value, $flags, $depth ); }
+function wp_sprintf( $pattern, ...$args ) {
+    foreach ( $args as $i => $arg ) {
+        if ( is_array( $arg ) ) {
+            $args[ $i ] = implode( ', ', $arg );
+        }
+    }
+    return vsprintf( preg_replace( '/%(\d+\$)?l/', '%$1s', $pattern ), $args );
+}
 function wp_list_filter( $input_list, $args = array(), $operator = 'AND' ) {
     return array_filter( $input_list, static function ( $item ) use ( $args ) {
         foreach ( $args as $key => $value ) {

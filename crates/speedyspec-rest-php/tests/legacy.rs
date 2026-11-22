@@ -23,6 +23,39 @@ function legacy_routes( $server ) {
     register_rest_route( 'acme/v1', '/dup', [ 'methods' => 'GET', 'callback' => static fn () => 'second', 'permission_callback' => '__return_true' ] );
     register_rest_route( 'oembed/1.0', '/over', [ 'methods' => 'GET', 'callback' => static fn () => 'core', 'permission_callback' => '__return_true' ] );
     register_rest_route( 'oembed/1.0', '/over', [ 'methods' => 'GET', 'callback' => static fn () => 'plugin', 'permission_callback' => '__return_true' ], true );
+    $public = static fn ( $request ) => true;
+    register_rest_route( 'acme/v1', '/perm-false', [ 'methods' => 'GET', 'callback' => static fn () => 'ran', 'permission_callback' => '__return_false' ] );
+    register_rest_route( 'acme/v1', '/perm-error', [ 'methods' => 'GET', 'callback' => static fn () => 'ran', 'permission_callback' => static fn () => new WP_Error( 'x', 'X', [ 'status' => 418 ] ) ] );
+    register_rest_route( 'acme/v1', '/no-perm', [ 'methods' => 'GET', 'callback' => static fn () => 'open' ] );
+    register_rest_route( 'acme/v1', '/args', [
+        'methods'             => 'GET',
+        'callback'            => static fn ( $request ) => [ 'id' => $request['id'], 'tag' => $request['tag'] ],
+        'permission_callback' => $public,
+        'args'                => [
+            'id'  => [ 'type' => 'integer', 'required' => true ],
+            'tag' => [ 'type' => 'string', 'enum' => [ 'a', 'b' ] ],
+        ],
+    ] );
+    register_rest_route( 'acme/v1', '/defaults', [
+        'methods'             => 'GET',
+        'callback'            => static fn ( $request ) => $request['n'],
+        'permission_callback' => $public,
+        'args'                => [ 'n' => [ 'default' => 5, 'sanitize_callback' => 'absint' ] ],
+    ] );
+    register_rest_route( 'acme/v1', '/resp', [
+        'methods'             => 'GET',
+        'callback'            => static function () {
+            $response = new WP_REST_Response( [ 'x' => 1 ], 201, [ 'X-A' => '1' ] );
+            $response->add_link( 'about', 'http://x.test/a' );
+            return $response;
+        },
+        'permission_callback' => $public,
+    ] );
+    register_rest_route( 'acme/v1', '/error', [
+        'methods'             => 'GET',
+        'callback'            => static fn () => new WP_Error( 'y', 'Y', [ 'status' => 409 ] ),
+        'permission_callback' => $public,
+    ] );
 }
 add_action( 'rest_api_init', 'legacy_routes' );
 "#;
@@ -94,6 +127,91 @@ fn main() {
         "get_routes_has_trunk_shape",
         matches!(&methods, Ok(PhpValue::Array(items)) if items.len() == 1),
         &methods,
+    );
+
+    // permission_false_is_401_or_403
+    let anonymous = call(&b, "/wp-json/acme/v1/perm-false");
+    load(&b.php, "$GLOBALS['uid'] = 8;");
+    let signed_in = call(&b, "/wp-json/acme/v1/perm-false");
+    load(&b.php, "$GLOBALS['uid'] = 0;");
+    check(
+        "permission_false_is_401_or_403",
+        anonymous.0 == 401 && anonymous.1["code"] == "rest_forbidden" && signed_in.0 == 403,
+        (&anonymous, &signed_in),
+    );
+
+    // permission_wp_error_keeps_its_status
+    let error = call(&b, "/wp-json/acme/v1/perm-error");
+    check(
+        "permission_wp_error_keeps_its_status",
+        error.0 == 418 && error.1["code"] == "x",
+        &error,
+    );
+
+    // missing_permission_callback_is_public_with_a_notice
+    let open = call(&b, "/wp-json/acme/v1/no-perm");
+    let notice = eval(
+        &b.php,
+        "return implode( '|', $GLOBALS['__doing_it_wrong'] ?? [] );",
+    );
+    check(
+        "missing_permission_callback_is_public_with_a_notice",
+        open == (200, Json::from("open"))
+            && matches!(&notice, Ok(PhpValue::Str(n)) if n.contains("permission_callback")),
+        (&open, &notice),
+    );
+
+    // args_validate_in_wordpress_words
+    let missing = call(&b, "/wp-json/acme/v1/args");
+    let bad_tag = call(&b, "/wp-json/acme/v1/args?id=3&tag=c");
+    let good = call(&b, "/wp-json/acme/v1/args?id=3&tag=a");
+    let wordpress = eval(
+        &b.php,
+        "$e = rest_validate_value_from_schema( 'c', [ 'type' => 'string', 'enum' => [ 'a', 'b' ] ], 'tag' ); return $e->get_error_message();",
+    );
+    check(
+        "args_validate_in_wordpress_words",
+        missing.0 == 400
+            && missing.1["code"] == "rest_missing_callback_param"
+            && bad_tag.0 == 400
+            && bad_tag.1["code"] == "rest_invalid_param"
+            && matches!(&wordpress, Ok(PhpValue::Str(m)) if bad_tag.1["data"]["params"]["tag"] == m.as_str())
+            && good == (200, serde_json::json!({"id": 3, "tag": "a"})),
+        (&missing, &bad_tag, &wordpress, &good),
+    );
+
+    // defaults_and_sanitize_reach_the_callback
+    let defaulted = call(&b, "/wp-json/acme/v1/defaults");
+    let sanitized = call(&b, "/wp-json/acme/v1/defaults?n=-3");
+    check(
+        "defaults_and_sanitize_reach_the_callback",
+        defaulted == (200, Json::from(5)) && sanitized == (200, Json::from(3)),
+        (&defaulted, &sanitized),
+    );
+
+    // callback_response_keeps_status_headers_and_links
+    let server = b.service.server().expect("a server");
+    let http = MessageFactory
+        .create_server_request(Method::Get, "http://x.test/wp-json/acme/v1/resp", vec![])
+        .unwrap();
+    let response = server.serve(&http).expect("a REST request");
+    let body: Json = serde_json::from_slice(&response.body().borrow_mut().read_all().unwrap())
+        .unwrap_or(Json::Null);
+    check(
+        "callback_response_keeps_status_headers_and_links",
+        response.status().as_u16() == 201
+            && response.headers().get("X-A").as_deref() == Some("1")
+            && body["x"] == 1
+            && body["_links"]["about"][0]["href"] == "http://x.test/a",
+        (response.status().as_u16(), &body),
+    );
+
+    // callback_wp_error_keeps_its_status
+    let failed = call(&b, "/wp-json/acme/v1/error");
+    check(
+        "callback_wp_error_keeps_its_status",
+        failed.0 == 409 && failed.1["code"] == "y",
+        &failed,
     );
 
     // re_registration_is_a_no_op_that_rebinds

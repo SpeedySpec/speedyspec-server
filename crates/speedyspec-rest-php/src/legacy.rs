@@ -199,6 +199,8 @@ impl PermissionCheck for LegacyPermission {
     fn check(&self, caller: &Caller, _input: &dyn Any) -> Result<(), OperationError> {
         let handler =
             handler(&self.operation).ok_or_else(|| crate::legacy::missing(&self.operation))?;
+        // As WP_REST_Server::dispatch does before respond_to_request: defaults, then the arguments' checks.
+        self.prepare(&handler)?;
         let callback = field(&handler, "permission_callback");
         if crate::hooks::empty(&callback) {
             return Ok(());
@@ -220,6 +222,49 @@ impl PermissionCheck for LegacyPermission {
                 "Sorry, you are not allowed to do that.",
             )),
         }
+    }
+}
+
+impl LegacyPermission {
+    /// Fills the defaults from the endpoint's `args`, then runs WordPress's `has_valid_params()` and `sanitize_params()`
+    /// on the request.
+    fn prepare(&self, handler: &PhpValue) -> Result<(), OperationError> {
+        let request = speedyspec_rest::current_request().ok_or_else(|| {
+            OperationError::new(
+                "rest_no_request",
+                Category::Internal,
+                "no REST request is being dispatched",
+            )
+        })?;
+        if let PhpValue::Array(args) = field(handler, "args") {
+            let mut r = request.borrow_mut();
+            for (key, arg) in &args {
+                let (Key::Str(name), default) = (key, field(arg, "default")) else {
+                    continue;
+                };
+                if let PhpValue::Array(items) = arg
+                    && items.iter().any(|(k, _)| *k == Key::Str("default".into()))
+                    && let Ok(value) = speedyspec_operation_php::convert::from_php(&default)
+                {
+                    r.default_params.insert(name.clone(), value);
+                }
+            }
+        }
+        let proxy =
+            speedyspec_php_ext::PhpObject::new(request_proxy(&request)).ok_or_else(|| {
+                OperationError::new(
+                    "rest_no_request",
+                    Category::Internal,
+                    "the REST request proxy is not available",
+                )
+            })?;
+        for method in ["has_valid_params", "sanitize_params"] {
+            let checked = proxy.call(method, vec![]).map_err(|e| failed(method, e))?;
+            if let Described::Error(e) = describe(&checked) {
+                return Err(e);
+            }
+        }
+        Ok(())
     }
 }
 
