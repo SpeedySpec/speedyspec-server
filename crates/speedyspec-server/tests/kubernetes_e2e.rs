@@ -23,6 +23,7 @@ use std::sync::Once;
 use std::time::{Duration, Instant};
 
 use support::release_host::ReleaseHost;
+use support::versions::next;
 
 const K3S: &str = "speedyspec-server-k3s";
 const IMAGE: &str = "speedyspec-server:e2e";
@@ -137,7 +138,7 @@ fn deploy(ns: &str) -> Deployment {
     let host = ReleaseHost::start();
     host.publish_static("admin", "1.0.0");
     let (binary, target) = linux_binary(files.path());
-    host.publish_server_for("0.2.0", &binary, &target);
+    host.publish_server_for(next(), &binary, &target);
     let releases = files.path().join("releases");
     host.write_to(&releases.join("files"), "http://127.0.0.1:8081");
     std::fs::write(
@@ -485,20 +486,23 @@ fn server_upgrade_rolls_all_replicas() {
         describe(ns)
     );
     let leader = leader(ns).unwrap();
-    exec_ok(ns, &leader, &["release", "install", "server", "0.2.0"]);
-    let out = exec_ok(ns, &leader, &["release", "switch", "server@0.2.0"]);
+    exec_ok(ns, &leader, &["release", "install", "server", next()]);
+    let out = exec_ok(
+        ns,
+        &leader,
+        &["release", "switch", &format!("server@{}", next())],
+    );
     assert!(
-        out.contains("rolling out server 0.2.0 across 3 pods"),
+        out.contains(&format!("rolling out server {} across 3 pods", next())),
         "{out}"
     );
     let mut holders = Vec::new();
     let done = wait_for(Duration::from_secs(300), || {
         holders.push(lease_holder(ns));
         pods(ns).iter().all(|pod| {
-            exec(ns, pod, &["status"])
-                .1
-                .lines()
-                .any(|l| l.starts_with("generation\t") && l.ends_with("\t0.2.0\tconfirmed"))
+            exec(ns, pod, &["status"]).1.lines().any(|l| {
+                l.starts_with("generation\t") && l.ends_with(&format!("\t{}\tconfirmed", next()))
+            })
         })
     });
     assert!(
