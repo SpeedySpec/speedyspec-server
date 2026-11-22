@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-media-midi"
-version = "0.1.0"
+version = "0.2.0"
 description = "A bounded Standard MIDI File reader: duration from the tempo map, and text meta events as tags."
 edition.workspace = true
 rust-version.workspace = true

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-server-infra-minisign"
-version = "0.1.6"
+version = "0.1.7"
 publish = false
 description = "Minisign signature checks for SpeedySpec server releases."
 edition.workspace = true

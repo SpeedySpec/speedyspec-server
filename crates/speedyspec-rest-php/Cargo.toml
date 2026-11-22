@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-rest-php"
-version = "0.1.1"
+version = "0.1.2"
 publish = false
 description = "The REST transport's PHP adapter: WP_REST_Request and WP_REST_Response proxies over the Rust request and response, WP_Error mapping, the REST hooks through apply_filters, the PHP authenticator and Rest::bind."
 edition.workspace = true

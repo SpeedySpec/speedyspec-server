@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.3.0](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-php-runtime-v1.2.0...speedyspec-php-runtime-v1.3.0) (2026-11-22)
+
+
+### Features
+
+* wp_text_diff() as a container port PHP can rebind ([#85](https://github.com/SpeedySpec/speedyspec-server/issues/85)) ([a71720d](https://github.com/SpeedySpec/speedyspec-server/commit/a71720d0b1061e490e399602724867c70496f002))
+* **wp-cron:** WordPress's cron scheduling API in Rust, every write a compare-and-swap ([#86](https://github.com/SpeedySpec/speedyspec-server/issues/86)) ([97fdc98](https://github.com/SpeedySpec/speedyspec-server/commit/97fdc98fd55444b5036e23f2b4301231ac4f260c))
+* **wp-media:** WordPress's audio and video metadata functions on FFmpeg (plan 3 of 5) ([#100](https://github.com/SpeedySpec/speedyspec-server/issues/100)) ([d310c7a](https://github.com/SpeedySpec/speedyspec-server/commit/d310c7a67914e110f38c9f5e38869a0c73b94574))
+* **wp-media:** WordPress's image functions, with PHP's getimagesize() as the fast path (plan 4 of 5) ([#101](https://github.com/SpeedySpec/speedyspec-server/issues/101)) ([5e3871a](https://github.com/SpeedySpec/speedyspec-server/commit/5e3871a92151d1eccc68efad0b3813ff37bb4c78))
+
+
+### Build System
+
+* a pinned, LGPL-only static FFmpeg for media metadata (plan 1 of 5) ([#92](https://github.com/SpeedySpec/speedyspec-server/issues/92)) ([52a7b7a](https://github.com/SpeedySpec/speedyspec-server/commit/52a7b7a56270ece5a13e53dff08dce324f00883b))
+
 ## [1.2.0](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-php-runtime-v1.1.1...speedyspec-php-runtime-v1.2.0) (2026-11-22)
 
 

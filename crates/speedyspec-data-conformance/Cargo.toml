@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-data-conformance"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "Conformance suites every speedyspec data store must pass."
 edition.workspace = true

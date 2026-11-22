@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-cache-routing"
-version = "0.1.6"
+version = "0.2.0"
 publish = false
 description = "Chooses the persistent Caching Store from the engine the object-cache use is routed to."
 edition.workspace = true
