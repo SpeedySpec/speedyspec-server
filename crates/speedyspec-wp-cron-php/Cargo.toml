@@ -16,9 +16,9 @@ speedyspec-wp-cron-contracts = { path = "../speedyspec-wp-cron-contracts" }
 speedyspec-wp-cron-options = { path = "../speedyspec-wp-cron-options" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 speedyspec-wp-options-php = { path = "../speedyspec-wp-options-php" }
+speedyspec-compat = { path = "../speedyspec-compat" }
 
 [dev-dependencies]
-speedyspec-compat = { path = "../speedyspec-compat" }
 speedyspec-container = { path = "../speedyspec-container" }
 speedyspec-container-php = { path = "../speedyspec-container-php" }
 speedyspec-data = { path = "../speedyspec-data" }
@@ -31,7 +31,18 @@ speedyspec-wp-db-php = { path = "../speedyspec-wp-db-php" }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
 speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
 speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
+serde_json = "1"
+sha2 = "0.10"
+ureq = "3"
 
 [[test]]
 name = "php"
+harness = false
+
+[[test]]
+name = "compat"
+harness = false
+
+[[test]]
+name = "wordpress"
 harness = false

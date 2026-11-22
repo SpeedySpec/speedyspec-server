@@ -28,6 +28,29 @@ pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
 
 const FACADE: &str = include_str!("cron.php");
 
+/// The compatibility runner for the `cron` scenarios: `compat/cron/setup.php` on a copy of `release` prepared for the
+/// native functions.
+pub fn cron_scenario_runner(
+    php: speedyspec_php::Php,
+    release: &std::path::Path,
+) -> Result<speedyspec_compat::PhpRunner, String> {
+    let root = prepare_release(release, &release.with_file_name("wordpress-cron-port"))?;
+    let code = format!(
+        "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', true); \
+         define('SPEEDYSPEC_COMPAT_MULTISITE', false); require {:?};",
+        format!("{}/", root.display()),
+        speedyspec_compat::compat_dir()
+            .join("cron/setup.php")
+            .display()
+            .to_string()
+    );
+    Ok(speedyspec_compat::PhpRunner::new(php, move |php| {
+        php.eval("speedyspec://compat/cron-setup", &code)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }))
+}
+
 /// The native cron functions and their wrapper.
 pub struct CronArea {
     api: Rc<CronApi>,

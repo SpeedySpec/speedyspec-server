@@ -65,7 +65,11 @@ pub struct PhpEventObjects;
 
 impl PhpObjects for PhpEventObjects {
     fn to_object(&self, array: HookValue) -> HookValue {
-        call("SpeedySpec\\WpCron\\to_object", std::slice::from_ref(&array)).unwrap_or(array)
+        call(
+            "SpeedySpec\\WpCron\\to_object",
+            std::slice::from_ref(&array),
+        )
+        .unwrap_or(array)
     }
 
     fn property(&self, object: &HookValue, name: &str) -> Option<HookValue> {

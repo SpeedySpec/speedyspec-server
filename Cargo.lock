@@ -5772,6 +5772,8 @@ dependencies = [
 name = "speedyspec-wp-cron-php"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
  "speedyspec-compat",
  "speedyspec-container",
  "speedyspec-container-php",
@@ -5793,6 +5795,7 @@ dependencies = [
  "speedyspec-wp-object-cache-php",
  "speedyspec-wp-options",
  "speedyspec-wp-options-php",
+ "ureq",
 ]
 
 [[package]]
