@@ -122,7 +122,7 @@ impl WpHooksArea {
         let worker: Rc<dyn HookStore> = memory.clone();
         let bound = worker.clone();
         container.singleton_port::<dyn HookStore>(HOOK_STORE, move |_, _| Ok(bound.clone()));
-        let store = Rc::new(ResolvedHookStore::new(container.clone(), worker));
+        let store = Rc::new(ResolvedHookStore::new(&container, worker));
         let api = Rc::new(HookApi::new(store, Rc::new(stores::PhpDeprecations)));
         register_hook_handlers(&container, api.clone());
         let handlers = Handlers {
@@ -173,6 +173,22 @@ impl WpHooksArea {
     /// The Hook API (`plugin.php`) for Rust callers.
     pub fn api(&self) -> Rc<HookApi> {
         self.state.api.clone()
+    }
+}
+
+/// The native functions find the area's state through a thread-local; it goes with the area, so the area's container
+/// is freed once nothing else holds it. A newer area's state is left in place.
+impl Drop for WpHooksArea {
+    fn drop(&mut self) {
+        // `try_with`: at thread exit the thread-local may already be gone (the areas are thread-locals too).
+        let _ = STATE.try_with(|s| {
+            let mut s = s.borrow_mut();
+            if s.as_ref()
+                .is_some_and(|current| Rc::ptr_eq(current, &self.state))
+            {
+                *s = None;
+            }
+        });
     }
 }
 
