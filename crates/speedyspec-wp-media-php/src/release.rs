@@ -1,5 +1,5 @@
-//! A WordPress release prepared for the native media functions: `wp-admin/includes/media.php` without the functions
-//! this port declares (which would otherwise be declared twice), every other file the release's own. Only WordPress's
+//! A WordPress release prepared for the native media functions: `wp-admin/includes/media.php`, `wp-includes/media.php`
+//! and `wp-includes/functions.php` without the functions this port declares (which would otherwise be declared twice), every other file the release's own. Only WordPress's
 //! own tests need it: the runtime never loads WordPress.
 
 use std::path::{Path, PathBuf};
@@ -13,6 +13,10 @@ pub const PORTED_FUNCTIONS: &[(&str, &str)] = &[
         "wp-admin/includes/media.php",
         "wp_get_media_creation_timestamp",
     ),
+    ("wp-includes/media.php", "wp_getimagesize"),
+    ("wp-includes/media.php", "wp_get_avif_info"),
+    ("wp-includes/media.php", "wp_get_webp_info"),
+    ("wp-includes/functions.php", "wp_get_image_mime"),
 ];
 
 /// `file`'s text (a path under the release root) without the ported functions it declares, each with its docblock.

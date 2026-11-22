@@ -10,6 +10,7 @@ use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName, HookValue as Valu
 use speedyspec_wp_media::functions::{
     Outcome, add_id3_tag_data, media_creation_timestamp, read_audio_metadata, read_video_metadata,
 };
+use speedyspec_wp_media::images;
 use speedyspec_wp_media::neutral::neutral;
 use speedyspec_wp_media_contracts::{MEDIA_READER, MediaReader, MediaSource, ProbeLimits, Tree};
 
@@ -135,6 +136,66 @@ impl Natives {
         Ok(media_creation_timestamp(&data, &PhpTimeParser).map_or(Value::Bool(false), Value::Int))
     }
 
+    /// The image type of a file from its first bytes (read by the facade, so stream wrappers work too).
+    fn image_type(&self, args: &[Value]) -> Result<Value, NativeError> {
+        let head = bytes(args.first());
+        Ok(match images::sniff(&head) {
+            Some(t) => to_php(&Tree::Map(vec![
+                ("mime".into(), Tree::Bytes(t.mime.as_bytes().to_vec())),
+                ("imagetype".into(), Tree::Int(t.imagetype)),
+                ("fast".into(), Tree::Bool(t.path == images::ImagePath::Fast)),
+            ])),
+            None => Value::Bool(false),
+        })
+    }
+
+    /// `wp_getimagesize()`'s array for a reader-path type (a local file), or `false`.
+    fn read_image_size(&self, args: &[Value]) -> Result<Value, NativeError> {
+        let path = bytes(args.first());
+        let imagetype = match args.get(1) {
+            Some(Value::Int(i)) => *i,
+            _ => 0,
+        };
+        let mime = String::from_utf8_lossy(&bytes(args.get(2))).into_owned();
+        let read = self.reader()?.read(
+            MediaSource::Path(path_of(&path).to_path_buf()),
+            &self.limits,
+        );
+        self.rethrow_pending()?;
+        Ok(read
+            .ok()
+            .and_then(|info| images::reader_imagesize(&info, imagetype, &mime))
+            .map_or(Value::Bool(false), |t| to_php(&t)))
+    }
+
+    /// `wp_get_webp_info()` over the first 40 bytes the facade read.
+    fn webp_info(&self, args: &[Value]) -> Result<Value, NativeError> {
+        Ok(to_php(&images::webp_info(&bytes(args.first()))))
+    }
+
+    /// `wp_get_avif_info()` through the reader (a local file).
+    fn avif_info(&self, args: &[Value]) -> Result<Value, NativeError> {
+        let path = bytes(args.first());
+        let read = self.reader()?.read(
+            MediaSource::Path(path_of(&path).to_path_buf()),
+            &self.limits,
+        );
+        self.rethrow_pending()?;
+        let info = read.unwrap_or_else(|_| speedyspec_wp_media_contracts::MediaInfo {
+            container: speedyspec_wp_media_contracts::ContainerKind::Other(String::new()),
+            mime_type: None,
+            duration: None,
+            bitrate: None,
+            file_size: None,
+            created_at: None,
+            streams: Vec::new(),
+            tags: Vec::new(),
+            pictures: Vec::new(),
+            raw: Default::default(),
+        });
+        Ok(to_php(&images::avif_info(&info)))
+    }
+
     fn read_media(&self, args: &[Value]) -> Result<Value, NativeError> {
         let Some(reader) = self.default.borrow().clone() else {
             return Ok(Value::Bool(false));
@@ -171,5 +232,23 @@ pub(crate) fn functions(natives: &Rc<Natives>) -> Vec<FunctionBuilder<'static>> 
     let media = native::function(&format!("{ns}read_media"), move |args| n.read_media(args));
     let max = natives.limits.max_bytes as i64;
     let max_bytes = native::function(&format!("{ns}max_bytes"), move |_| Ok(Value::Int(max)));
-    vec![read, id3, ts, media, max_bytes]
+    let mut out = vec![read, id3, ts, media, max_bytes];
+    let n = natives.clone();
+    out.push(native::function(&format!("{ns}image_type"), move |args| {
+        n.image_type(args)
+    }));
+    let n = natives.clone();
+    out.push(native::function(
+        &format!("{ns}read_image_size"),
+        move |args| n.read_image_size(args),
+    ));
+    let n = natives.clone();
+    out.push(native::function(&format!("{ns}webp_info"), move |args| {
+        n.webp_info(args)
+    }));
+    let n = natives.clone();
+    out.push(native::function(&format!("{ns}avif_info"), move |args| {
+        n.avif_info(args)
+    }));
+    out
 }

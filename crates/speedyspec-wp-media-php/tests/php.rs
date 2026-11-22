@@ -40,8 +40,18 @@ fn json(result: &Result<HookValue, PhpError>) -> serde_json::Value {
     serde_json::from_str(&text(result)).unwrap_or(serde_json::Value::Null)
 }
 
-fn main() {
+/// WordPress 7.1.5 without the functions the media area declares natively.
+fn speedyspec_media_release() -> std::path::PathBuf {
     let release = speedyspec_compat::wordpress_release("7.1.5").expect("WordPress 7.1.5");
+    speedyspec_wp_media_php::prepare_release(
+        &release,
+        &Path::new(env!("CARGO_TARGET_TMPDIR")).join("wordpress-media-php"),
+    )
+    .expect("the release is prepared")
+}
+
+fn main() {
+    let release = speedyspec_media_release();
     let corpus = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat/media/corpus");
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
@@ -212,6 +222,103 @@ fn main() {
         text(&r) == r#"[true,"T",true]"#,
         &r,
     );
+
+    let images = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat/media/images");
+    let img = |name: &str| images.join(name).display().to_string();
+
+    let r = php.eval(
+        "speedyspec://test/fast-path",
+        &format!("return json_encode(wp_getimagesize({0:?})) === json_encode(getimagesize({0:?})) ? 'same' : json_encode([wp_getimagesize({0:?}), getimagesize({0:?})]);", img("rgb.png")),
+    );
+    check("getimagesize_fast_path_is_phps", text(&r) == "same", &r);
+
+    let r = php.eval(
+        "speedyspec://test/image-info",
+        &format!("$i = 'untouched'; wp_getimagesize({0:?}); $a = $i; $j = null; wp_getimagesize({0:?}, $j); return json_encode([$a, is_array($j)]);", img("baseline.jpg")),
+    );
+    check(
+        "image_info_only_when_passed",
+        text(&r) == r#"["untouched",true]"#,
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/app13",
+        &format!("$i = null; wp_getimagesize({:?}, $i); return isset($i['APP13']) ? 'yes' : json_encode(array_keys((array) $i));", img("iptc.jpg")),
+    );
+    check("jpeg_app13_reaches_image_info", text(&r) == "yes", &r);
+
+    let r = php.eval(
+        "speedyspec://test/jxl",
+        &format!(
+            "return json_encode(wp_getimagesize({:?}));",
+            img("photo.jxl")
+        ),
+    );
+    let v = json(&r);
+    check(
+        "reader_path_jxl",
+        v["0"] == 64 && v["1"] == 48 && v["2"] == 0 && v["mime"] == "image/jxl",
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/mislabelled",
+        &format!(
+            "return wp_get_image_mime({:?}) . ' ' . wp_getimagesize({:?})['mime'];",
+            img("mislabelled.jpg"),
+            img("mislabelled.jpg")
+        ),
+    );
+    check(
+        "mislabelled_png_is_png",
+        text(&r) == "image/png image/png",
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/broken-images",
+        &format!("return json_encode([wp_getimagesize({0:?}), wp_getimagesize({1:?}), wp_get_image_mime({1:?})]);", img("truncated.jpg"), img("empty.png")),
+    );
+    check(
+        "truncated_and_empty_are_false",
+        text(&r) == "[false,false,false]",
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/webp-info",
+        &format!("return json_encode([wp_get_webp_info({:?}), wp_get_webp_info({:?}), wp_get_webp_info({:?})]);", img("lossy.webp"), img("lossless.webp"), img("rgb.png")),
+    );
+    let v = json(&r);
+    check(
+        "webp_info_matches_wordpress",
+        v[0]["width"] == 64
+            && v[0]["type"] == "lossy"
+            && v[1]["type"] == "lossless"
+            && v[2]["width"] == false,
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/avif-info",
+        &format!(
+            "return json_encode(wp_get_avif_info({:?}));",
+            img("lossy.avif")
+        ),
+    );
+    let v = json(&r);
+    check(
+        "avif_info_through_the_reader",
+        v["width"] == 64 && v["height"] == 48,
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/qoi-mime",
+        &format!("return wp_get_image_mime({:?});", img("photo.qoi")),
+    );
+    check("image_mime_for_reader_types", text(&r) == "image/qoi", &r);
 
     let r = php.eval(
         "speedyspec://test/php-reader",
