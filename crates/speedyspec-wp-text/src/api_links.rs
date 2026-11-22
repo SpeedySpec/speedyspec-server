@@ -12,7 +12,7 @@ use speedyspec_wp_text_contracts::TextError;
 
 use crate::api::TextApi;
 use crate::api_sanitize::kses_error;
-use crate::links::{is_serialized, make_absolute_url, split_str_by_whitespace};
+use crate::links::{is_serialized, make_absolute_url, may_link, opens, split_str_by_whitespace, tag_starts_with_url};
 use crate::preg::{Captures, Pattern, SplitFlags, preg_match, preg_match_all_group, preg_replace, preg_replace_callback, preg_split};
 use crate::strings::{bytes_value, php_trim, to_php_string, PHP_TRIM_DEFAULT};
 use crate::url::wp_parse_url;
@@ -35,11 +35,6 @@ const URL_CLICKABLE: &str = r"~
 
 struct LinkPatterns {
     split_tags: Pattern,
-    code: Pattern,
-    pre: Pattern,
-    script: Pattern,
-    style: Pattern,
-    tag_url: Pattern,
     url: Pattern,
     web_ftp: Pattern,
     email: Pattern,
@@ -56,11 +51,6 @@ struct LinkPatterns {
 
 static LINKS: LazyLock<LinkPatterns> = LazyLock::new(|| LinkPatterns {
     split_tags: Pattern::php("/(<[^<>]+>)/"),
-    code: Pattern::php("|^<code[\\s>]|i"),
-    pre: Pattern::php("|^<pre[\\s>]|i"),
-    script: Pattern::php("|^<script[\\s>]|i"),
-    style: Pattern::php("|^<style[\\s>]|i"),
-    tag_url: Pattern::php("|^<\\s*[\\w]{1,20}+://|"),
     url: Pattern::php(URL_CLICKABLE),
     web_ftp: Pattern::php("#([\\s>])((www|ftp)\\.[\\w\\x80-\\xff\\#$%&~/.\\-;:=,?@\\[\\]+]+)#is"),
     email: Pattern::php("#([\\s>])([.0-9a-z_+-]+)@(([0-9a-z-]+\\.)+[0-9a-z]{2,})#i"),
@@ -214,16 +204,15 @@ impl TextApi {
         let pieces = preg_split(&p.split_tags, text, -1, flags).unwrap_or_default();
         let mut r = Vec::with_capacity(text.len() + text.len() / 4);
         let mut nested: i64 = 0;
-        let starts = |pattern: &Pattern, piece: &[u8]| matches!(preg_match(pattern, piece), Ok(Some(_)));
         for piece in pieces {
-            if starts(&p.code, piece) || starts(&p.pre, piece) || starts(&p.script, piece) || starts(&p.style, piece) {
+            if opens(piece, b"code") || opens(piece, b"pre") || opens(piece, b"script") || opens(piece, b"style") {
                 nested += 1;
             } else if nested != 0
                 && matches!(piece.to_ascii_lowercase().as_slice(), b"</code>" | b"</pre>" | b"</script>" | b"</style>")
             {
                 nested -= 1;
             }
-            if nested != 0 || !truthy(piece) || (piece[0] == b'<' && !starts(&p.tag_url, piece)) {
+            if nested != 0 || !truthy(piece) || (piece[0] == b'<' && !tag_starts_with_url(piece)) {
                 r.extend_from_slice(piece);
                 continue;
             }
@@ -235,6 +224,10 @@ impl TextApi {
                         r.extend_from_slice(&self.make_clickable(chunk)?);
                     }
                 }
+                continue;
+            }
+            if !may_link(piece) {
+                r.extend_from_slice(piece);
                 continue;
             }
             let padded = [b" ", piece, b" "].concat();
@@ -250,6 +243,11 @@ impl TextApi {
             if ret.len() > 2 {
                 r.extend_from_slice(&ret[1..ret.len() - 1]);
             }
+        }
+        // The nested-link fix needs `</a></a>`.
+        let closes_twice = memchr::memchr_iter(b'<', &r).any(|at| r[at..].get(..8).is_some_and(|w| w.eq_ignore_ascii_case(b"</a></a>")));
+        if !closes_twice {
+            return Ok(r);
         }
         Ok(replaced(preg_replace(&p.nested_links, &r, b"$1$3</a>", None).map(|(out, _)| out)))
     }
@@ -312,6 +310,10 @@ impl TextApi {
     /// `wp_rel_nofollow()` and `wp_rel_ugc()`: unslash, rebuild every `<a ...>`, slash again.
     fn rel_links(&self, text: &[u8], rel: &[u8]) -> Result<Vec<u8>, TextError> {
         let unslashed = speedyspec_wp_text_escape::stripslashes(text);
+        // `|<a (.+?)>|i` needs `<a ` in some case.
+        if !memchr::memchr_iter(b'<', &unslashed).any(|at| unslashed.get(at + 1..at + 3).is_some_and(|w| (w[0] | 0x20) == b'a' && w[1] == b' ')) {
+            return Ok(speedyspec_wp_text_escape::addslashes(&unslashed).into_owned());
+        }
         let failure = Failure::new();
         let out = replaced(preg_replace_callback(&LINKS.anchor, &unslashed, |m| {
             failure.keep(self.wp_rel_callback(m.get(1).unwrap_or_default(), rel), Vec::new())

@@ -142,3 +142,44 @@ pub fn is_serialized(data: &[u8]) -> bool {
         _ => false,
     }
 }
+
+/// `preg_match( '|^<NAME[\s>]|i', $piece )`, as `make_clickable()` tests a piece.
+///
+/// @param piece
+///     The piece.
+/// @param name
+///     The tag name, lowercase.
+/// @return
+///     Whether the piece opens that tag.
+pub fn opens(piece: &[u8], name: &[u8]) -> bool {
+    piece.len() > name.len() + 1
+        && piece[0] == b'<'
+        && piece[1..=name.len()].eq_ignore_ascii_case(name)
+        && matches!(piece[name.len() + 1], b' ' | b'\t' | b'\n' | b'\x0B' | b'\x0C' | b'\r' | b'>')
+}
+
+/// `preg_match( '|^<\s*[\w]{1,20}+://|', $piece )`: the possessive count takes at most 20 word bytes.
+///
+/// @param piece
+///     A piece starting with `<`.
+/// @return
+///     Whether a URL starts right inside it.
+pub fn tag_starts_with_url(piece: &[u8]) -> bool {
+    let after = &piece[1..];
+    let spaces = after.iter().take_while(|b| matches!(b, b' ' | b'\t' | b'\n' | b'\x0B' | b'\x0C' | b'\r')).count();
+    let rest = &after[spaces..];
+    let word = rest.iter().take(20).take_while(|b| b.is_ascii_alphanumeric() || **b == b'_').count();
+    word > 0 && rest[word..].starts_with(b"://")
+}
+
+/// Whether any of `make_clickable()`'s three patterns could match: they need `://`, `www.`/`ftp.` (any case) or `@`.
+///
+/// @param piece
+///     The piece.
+/// @return
+///     `false` only when none can match.
+pub fn may_link(piece: &[u8]) -> bool {
+    memchr::memchr(b'@', piece).is_some()
+        || memchr::memmem::find(piece, b"://").is_some()
+        || piece.windows(4).any(|w| w[3] == b'.' && (w[..3].eq_ignore_ascii_case(b"www") || w[..3].eq_ignore_ascii_case(b"ftp")))
+}

@@ -171,3 +171,57 @@ pub fn sanitize_sql_orderby(orderby: &[u8]) -> Option<&[u8]> {
     let matches = |p: &Pattern| matches!(preg_match(p, orderby), Ok(Some(_)));
     (matches(list) || matches(rand)).then_some(orderby)
 }
+
+/// Every run of bytes `in_run` accepts as one space, as `_sanitize_text_fields()`'s
+/// `preg_replace( '/[\r\n\t ]+/', ' ', ... )` and `preg_replace( '/ +/', ' ', ... )` do.
+///
+/// @param text
+///     The text.
+/// @param in_run
+///     Which bytes form runs.
+/// @return
+///     The text with each run as one space.
+pub fn collapse_runs(text: &[u8], in_run: impl Fn(u8) -> bool) -> Vec<u8> {
+    collapse_runs_to(text, in_run, b' ')
+}
+
+/// Every run of bytes `in_run` accepts as one `replacement` byte, as `preg_replace( '/[...]+/', $r, ... )` does
+/// (and `/\.{2,}/` to `.`, since one `.` is already `.`).
+///
+/// @param text
+///     The text.
+/// @param in_run
+///     Which bytes form runs.
+/// @param replacement
+///     The byte each run becomes.
+/// @return
+///     The text with each run replaced.
+pub fn collapse_runs_to(text: &[u8], in_run: impl Fn(u8) -> bool, replacement: u8) -> Vec<u8> {
+    let mut out = Vec::with_capacity(text.len());
+    let mut run = false;
+    for &b in text {
+        if in_run(b) {
+            if !run {
+                out.push(replacement);
+            }
+            run = true;
+        } else {
+            out.push(b);
+            run = false;
+        }
+    }
+    out
+}
+
+/// The first `%XX` (hex digits in either case), as `_sanitize_text_fields()`'s `/%[a-f0-9]{2}/i` finds it.
+///
+/// @param text
+///     The text.
+/// @return
+///     The three bytes, or `None`.
+pub fn first_octet(text: &[u8]) -> Option<[u8; 3]> {
+    memchr::memchr_iter(b'%', text).find_map(|at| match text.get(at + 1..at + 3) {
+        Some(&[a, b]) if a.is_ascii_hexdigit() && b.is_ascii_hexdigit() => Some([b'%', a, b]),
+        _ => None,
+    })
+}

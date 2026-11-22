@@ -8,7 +8,10 @@ use speedyspec_wp_kses_contracts::KsesError;
 use speedyspec_wp_text_contracts::TextError;
 
 use crate::api::TextApi;
-use crate::file_name::{MimeTable, default_special_chars, sanitize_file_name_core, sanitize_file_name_prepare};
+use crate::file_name::{
+    default_special_chars, default_special_chars_replace, sanitize_file_name_core, sanitize_file_name_prepare,
+    special_chars_replace,
+};
 use crate::helpers::antispambot_core;
 use crate::sanitize::{sanitize_html_class_core, sanitize_key_core, sanitize_locale_name_core, sanitize_mime_type_core};
 use crate::strings::{bytes_value, to_php_string};
@@ -172,14 +175,24 @@ impl TextApi {
         let prepared = sanitize_file_name_prepare(&accents);
         let raw = || bytes_value(filename.to_vec());
         let special_hook = self.hook("sanitize_file_name_chars");
-        let special = match self.filter(&special_hook, bytes_list(default_special_chars()), || vec![raw()])? {
-            HookValue::Array(items) => items.iter().filter_map(|(_, v)| to_php_string(v)).collect(),
-            HookValue::Null => Vec::new(),
-            scalar => to_php_string(&scalar).into_iter().collect(),
+        let filtered;
+        let special = if self.d.hooks.skip_if_empty(&special_hook, speedyspec_wp_hooks::Count::Filters).map_err(crate::api::text_error)? {
+            default_special_chars_replace()
+        } else {
+            let list: Vec<Vec<u8>> = match self.filter(&special_hook, bytes_list(default_special_chars()), || vec![raw()])? {
+                HookValue::Array(items) => items.iter().filter_map(|(_, v)| to_php_string(v)).collect(),
+                HookValue::Null => Vec::new(),
+                scalar => to_php_string(&scalar).into_iter().collect(),
+            };
+            filtered = special_chars_replace(&list);
+            &filtered
         };
-        let mimes = MimeTable(self.d.mime_types.mime_types()?);
-        let allowed = MimeTable(self.d.mime_types.allowed_mime_types()?);
-        let sanitized = sanitize_file_name_core(&prepared, &special, &mimes, &allowed);
+        let sanitized = sanitize_file_name_core(
+            &prepared,
+            special,
+            || self.d.mime_types.mime_types(),
+            || self.d.mime_types.allowed_mime_types(),
+        )?;
         self.filter(&self.hook("sanitize_file_name"), bytes_value(sanitized), || vec![raw()])
     }
 
@@ -237,9 +250,6 @@ fn string_arg(value: &HookValue, what: &str) -> Result<Vec<u8>, TextError> {
 /// `_sanitize_text_fields()`'s and `sanitize_trackback_urls()`'s patterns.
 struct FieldPatterns {
     less_than: crate::preg::Pattern,
-    whitespace: crate::preg::Pattern,
-    octet: crate::preg::Pattern,
-    spaces: crate::preg::Pattern,
     trackback_split: crate::preg::Pattern,
     trackback_url: crate::preg::Pattern,
 }
@@ -248,9 +258,6 @@ static FIELDS: std::sync::LazyLock<FieldPatterns> = std::sync::LazyLock::new(|| 
     use crate::preg::Pattern;
     FieldPatterns {
         less_than: Pattern::php("%<[^>]*?((?=<)|>|$)%"),
-        whitespace: Pattern::php("/[\\r\\n\\t ]+/"),
-        octet: Pattern::php("/%[a-f0-9]{2}/i"),
-        spaces: Pattern::php("/ +/"),
         trackback_split: Pattern::php("/[\\r\\n\\t ]/"),
         trackback_url: Pattern::php("#^https?://.#i"),
     }
@@ -352,21 +359,18 @@ impl TextApi {
             let stripped = self.wp_strip_all_tags(&bytes_value(escaped), false)?;
             filtered = crate::strings::replace_one(&stripped, b"<\n", b"&lt;\n").into_owned();
         }
-        let replace = |p: &crate::preg::Pattern, s: &[u8], with: &[u8]| {
-            crate::preg::preg_replace(p, s, with, None).map_or_else(|_| Vec::new(), |(o, _)| o.into_owned())
-        };
         if !keep_newlines {
-            filtered = replace(&FIELDS.whitespace, &filtered, b" ");
+            filtered = crate::sanitize::collapse_runs(&filtered, |b| matches!(b, b'\r' | b'\n' | b'\t' | b' '));
         }
         let mut filtered = crate::strings::php_trim(&filtered, crate::strings::PHP_TRIM_DEFAULT).to_vec();
         let mut found = false;
-        while let Ok(Some(m)) = crate::preg::preg_match(&FIELDS.octet, &filtered) {
-            let octet = m.get(0).unwrap_or_default().to_vec();
+        // while ( preg_match( '/%[a-f0-9]{2}/i', ... ) ): remove every copy of the first escape, again and again.
+        while let Some(octet) = crate::sanitize::first_octet(&filtered) {
             filtered = crate::strings::replace_one(&filtered, &octet, b"").into_owned();
             found = true;
         }
         if found {
-            let collapsed = replace(&FIELDS.spaces, &filtered, b" ");
+            let collapsed = crate::sanitize::collapse_runs(&filtered, |b| b == b' ');
             filtered = crate::strings::php_trim(&collapsed, crate::strings::PHP_TRIM_DEFAULT).to_vec();
         }
         Ok(filtered)

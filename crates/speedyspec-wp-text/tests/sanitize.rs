@@ -86,3 +86,35 @@ proptest! {
         prop_assert_eq!(&*sanitize_mime_type_core(&input), &*mime);
     }
 }
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(4096))]
+
+    #[test]
+    fn text_field_passes_match_patterns(input in proptest::collection::vec(proptest::sample::select(vec![
+        b' ', b'\t', b'\n', b'\r', b'%', b'a', b'F', b'g', b'0', b'9', b'\x0B',
+    ]), 0..24)) {
+        use speedyspec_wp_text::sanitize::{collapse_runs, first_octet};
+        let ws = preg_replace(&Pattern::php("/[\\r\\n\\t ]+/"), &input, b" ", None).unwrap().0.into_owned();
+        prop_assert_eq!(collapse_runs(&input, |b| matches!(b, b'\r' | b'\n' | b'\t' | b' ')), ws);
+        let spaces = preg_replace(&Pattern::php("/ +/"), &input, b" ", None).unwrap().0.into_owned();
+        prop_assert_eq!(collapse_runs(&input, |b| b == b' '), spaces);
+        let found = speedyspec_wp_text::preg::preg_match(&Pattern::php("/%[a-f0-9]{2}/i"), &input).unwrap().map(|m| m.get(0).unwrap().to_vec());
+        prop_assert_eq!(first_octet(&input).map(|o| o.to_vec()), found);
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(4096))]
+
+    #[test]
+    fn file_name_runs_match_patterns(input in proptest::collection::vec(proptest::sample::select(vec![
+        b'.', b'-', b' ', b'\t', b'\n', b'\r', b'a', b'_', b'\x0B',
+    ]), 0..24)) {
+        use speedyspec_wp_text::sanitize::collapse_runs_to;
+        let periods = preg_replace(&Pattern::php("/\\.{2,}/"), &input, b".", None).unwrap().0.into_owned();
+        prop_assert_eq!(collapse_runs_to(&input, |b| b == b'.', b'.'), periods);
+        let dashes = preg_replace(&Pattern::php("/[\\r\\n\\t -]+/"), &input, b"-", None).unwrap().0.into_owned();
+        prop_assert_eq!(collapse_runs_to(&input, |b| matches!(b, b'\r' | b'\n' | b'\t' | b' ' | b'-'), b'-'), dashes);
+    }
+}

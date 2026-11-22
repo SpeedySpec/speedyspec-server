@@ -107,7 +107,8 @@ fn replace(pattern: &Pattern, subject: &[u8], replacement: &[u8]) -> Vec<u8> {
     preg_replace(pattern, subject, replacement, None).map_or_else(|_| Vec::new(), |(out, _)| out.into_owned())
 }
 
-/// WordPress's `sanitize_title_with_dashes()`: the slug WordPress makes from a title.
+/// `sanitize_title_with_dashes()` as a literal transcription with WordPress's patterns: the oracle for
+/// [`sanitize_title_with_dashes`].
 ///
 /// @param title
 ///     The title.
@@ -115,7 +116,7 @@ fn replace(pattern: &Pattern, subject: &[u8], replacement: &[u8]) -> Vec<u8> {
 ///     `Save` also turns dashes and spaces written as entities or UTF-8 into `-` and drops marks and invisibles.
 /// @return
 ///     Lowercase letters, digits, `%XX` escapes, `_` and single dashes.
-pub fn sanitize_title_with_dashes(title: &[u8], context: &SanitizeContext) -> Vec<u8> {
+pub fn sanitize_title_with_dashes_reference(title: &[u8], context: &SanitizeContext) -> Vec<u8> {
     let p = &*TITLE;
     let stripped = strip_tags(title);
     let title = replace(&p.octet, &stripped, b"---$1---");
@@ -183,4 +184,82 @@ pub fn sanitize_user_core(username: &[u8], strict: bool, locale: &str, strip_all
     }
     let trimmed = php_trim(&name, PHP_TRIM_DEFAULT);
     replace(&p.spaces, trimmed, b" ")
+}
+
+/// WordPress's `sanitize_title_with_dashes()`: the slug WordPress makes from a title.
+///
+/// The same bytes as [`sanitize_title_with_dashes_reference`], with the `%XX` steps skipped when they can't change
+/// anything and the last six steps (entities, `.`, disallowed bytes, spaces, dashes, trim) as one pass.
+///
+/// @param title
+///     The title.
+/// @param context
+///     `Save` also turns dashes and spaces written as entities or UTF-8 into `-` and drops marks and invisibles.
+/// @return
+///     Lowercase letters, digits, `%XX` escapes, `_` and single dashes.
+pub fn sanitize_title_with_dashes(title: &[u8], context: &SanitizeContext) -> Vec<u8> {
+    let p = &*TITLE;
+    let stripped = strip_tags(title);
+    // The `%XX` marking steps change nothing when there is no `%` and no `---` to unmark.
+    let title: Vec<u8> = if stripped.contains(&b'%') || stripped.windows(3).any(|w| w == b"---") {
+        let marked = replace(&p.octet, &stripped, b"---$1---");
+        let unpercent = replace_one(&marked, b"%", b"").into_owned();
+        replace(&p.marked, &unpercent, b"%$1")
+    } else {
+        stripped.into_owned()
+    };
+    let mut title = if title.is_ascii() {
+        let mut lower = title;
+        lower.make_ascii_lowercase();
+        lower.truncate(200);
+        lower
+    } else if is_valid_utf8(&title) {
+        let lower = mb_strtolower(std::str::from_utf8(&title).expect("validated"));
+        let mut encoded = utf8_uri_encode(lower.as_bytes(), 200, false);
+        encoded.make_ascii_lowercase();
+        encoded
+    } else {
+        title.to_ascii_lowercase()
+    };
+    if *context == SanitizeContext::Save {
+        for step in SAVE.iter().take(2) {
+            title = step.apply(&title).into_owned();
+        }
+        title = replace_one(&title, b"/", b"-").into_owned();
+        for step in SAVE.iter().skip(2) {
+            title = step.apply(&title).into_owned();
+        }
+    }
+    slug_tail(&title)
+}
+
+/// `/&.+?;/` removed, `.` as `-`, `[^%a-z0-9 _-]` removed, `\s+` and `-+` as one `-`, `-` trimmed, in one pass.
+fn slug_tail(title: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(title.len());
+    let mut dash = false;
+    let mut i = 0;
+    while i < title.len() {
+        let b = title[i];
+        if b == b'&' && title.get(i + 1).is_some_and(|&c| c != b'\n') {
+            // `.+?;`: the byte after `&` (any but a newline), then up to the first `;`, with no newline before it.
+            let end = title[i + 2..].iter().position(|&c| c == b'\n' || c == b';').map(|n| i + 2 + n);
+            if let Some(end) = end.filter(|&e| title[e] == b';') {
+                i = end + 1;
+                continue;
+            }
+        }
+        match b {
+            b'.' | b'-' | b' ' => dash = true,
+            b'%' | b'_' | b'a'..=b'z' | b'0'..=b'9' => {
+                if dash && !out.is_empty() {
+                    out.push(b'-');
+                }
+                dash = false;
+                out.push(b);
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    out
 }

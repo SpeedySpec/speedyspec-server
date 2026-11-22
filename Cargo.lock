@@ -6102,6 +6102,7 @@ dependencies = [
  "criterion 0.5.1",
  "libc",
  "memchr",
+ "proptest",
  "speedyspec-hooks",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",

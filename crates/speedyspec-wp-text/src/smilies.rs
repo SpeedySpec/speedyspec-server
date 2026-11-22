@@ -191,7 +191,8 @@ impl SmileyEngine {
     }
 }
 
-/// `convert_smilies()` once smileys are on and the search is set.
+/// `convert_smilies()` once smileys are on and the search is set, splitting with WordPress's patterns: the oracle for
+/// [`convert_smilies_core`].
 ///
 /// @param text
 ///     The text.
@@ -201,7 +202,7 @@ impl SmileyEngine {
 ///     `translate_smiley()`, given each matched smiley.
 /// @return
 ///     The text with smileys replaced outside tags and outside `code`, `pre`, `style`, `script` and `textarea`.
-pub fn convert_smilies_core<'a>(text: &'a [u8], engine: &SmileyEngine, translate: &mut dyn FnMut(&[u8]) -> Vec<u8>) -> Cow<'a, [u8]> {
+pub fn convert_smilies_reference<'a>(text: &'a [u8], engine: &SmileyEngine, translate: &mut dyn FnMut(&[u8]) -> Vec<u8>) -> Cow<'a, [u8]> {
     let (split, ignore_open) = &*SMILEY_SPLIT;
     let Ok(pieces) = preg_split(split, text, -1, SplitFlags { delim_capture: true, no_empty: false }) else {
         return Cow::Borrowed(text);
@@ -228,4 +229,79 @@ pub fn convert_smilies_core<'a>(text: &'a [u8], engine: &SmileyEngine, translate
         out.extend_from_slice(&piece);
     }
     if changed || out != text { Cow::Owned(out) } else { Cow::Borrowed(text) }
+}
+
+/// The tags `convert_smilies()` skips the content of.
+const IGNORED: [&[u8]; 5] = [b"code", b"pre", b"style", b"script", b"textarea"];
+
+/// `preg_match( '/^<(code|pre|style|script|textarea)[^>]*>/', $content )`'s group 1 on a piece.
+fn ignored_open(piece: &[u8]) -> Option<&'static [u8]> {
+    if piece.first() != Some(&b'<') || !piece.contains(&b'>') {
+        return None;
+    }
+    IGNORED.iter().copied().find(|name| piece[1..].starts_with(name))
+}
+
+/// `convert_smilies()` once smileys are on and the search is set.
+///
+/// The same bytes as [`convert_smilies_reference`], splitting on `<...>` by hand: `/(<[^>]*>)/U` is a `<`, then
+/// everything up to the next `>`.
+///
+/// @param text
+///     The text.
+/// @param engine
+///     The matcher.
+/// @param translate
+///     `translate_smiley()`, given each matched smiley.
+/// @return
+///     The text with smileys replaced outside tags and outside `code`, `pre`, `style`, `script` and `textarea`;
+///     borrowed when nothing changed.
+pub fn convert_smilies_core<'a>(text: &'a [u8], engine: &SmileyEngine, translate: &mut dyn FnMut(&[u8]) -> Vec<u8>) -> Cow<'a, [u8]> {
+    let mut out: Option<Vec<u8>> = None;
+    let mut ignore: Option<&'static [u8]> = None;
+    let mut at = 0;
+    let mut text_piece = |piece: &[u8], at_piece: usize, ignore: Option<&'static [u8]>, out: &mut Option<Vec<u8>>| {
+        if ignore.is_none()
+            && !piece.is_empty()
+            && let Cow::Owned(changed) = engine.replace(piece, translate)
+        {
+            let buf = out.get_or_insert_with(|| text[..at_piece].to_vec());
+            buf.extend_from_slice(&changed);
+            return;
+        }
+        if let Some(buf) = out.as_mut() {
+            buf.extend_from_slice(piece);
+        }
+    };
+    while at < text.len() {
+        let tag = memchr::memchr(b'<', &text[at..]).and_then(|lt| {
+            let lt = at + lt;
+            memchr::memchr(b'>', &text[lt..]).map(|gt| (lt, lt + gt + 1))
+        });
+        let Some((lt, end)) = tag else {
+            // The rest is one text piece (a `<` with no `>` after it never opens an ignored tag).
+            text_piece(&text[at..], at, ignore, &mut out);
+            break;
+        };
+        text_piece(&text[at..lt], at, ignore, &mut out);
+        let tag = &text[lt..end];
+        if ignore.is_none() {
+            ignore = ignored_open(tag);
+        }
+        if let Some(name) = ignore
+            && tag.len() == name.len() + 3
+            && tag.starts_with(b"</")
+            && &tag[2..tag.len() - 1] == name
+        {
+            ignore = None;
+        }
+        if let Some(buf) = out.as_mut() {
+            buf.extend_from_slice(tag);
+        }
+        at = end;
+    }
+    match out {
+        Some(buf) => Cow::Owned(buf),
+        None => Cow::Borrowed(text),
+    }
 }

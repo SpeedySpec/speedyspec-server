@@ -5,93 +5,18 @@
 //! Times are thread CPU time, not wall time, so a busy machine skews them less; compare them with the baseline's
 //! CPU-time rates.
 
+mod common;
+
 use std::borrow::Cow;
-use std::rc::Rc;
 
-use std::time::Duration;
-
-use criterion::measurement::{Measurement, ValueFormatter, WallTime};
+use common::{CpuTime, api};
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use speedyspec_hooks::Value;
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
-use speedyspec_wp_hooks_memory::MemoryHookStore;
-use speedyspec_wp_shortcode_contracts::TagName;
-use speedyspec_wp_text::{TextApi, TextDeps, adapters, convert_chars, force_balance_tags, wp_strip_all_tags_core};
+use speedyspec_wp_text::{convert_chars, force_balance_tags, wp_strip_all_tags_core};
 use speedyspec_wp_text_corpus::{Php, cases, from_value, inputs, page};
-use speedyspec_wp_text_memory::{
-    EnglishTranslator, FixedShortcodeTags, FixedSiteSettings, FixedTexturizeOverrides, RecordingDiagnostics,
-};
-
-/// The calling thread's CPU time.
-fn thread_cpu() -> Duration {
-    let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
-    // SAFETY: clock_gettime writes one timespec through a valid pointer.
-    unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut ts) };
-    Duration::new(ts.tv_sec as u64, ts.tv_nsec as u32)
-}
-
-/// Criterion's measurement as thread CPU time.
-struct CpuTime;
-
-static WALL: WallTime = WallTime;
-
-impl Measurement for CpuTime {
-    type Intermediate = Duration;
-    type Value = Duration;
-
-    fn start(&self) -> Duration {
-        thread_cpu()
-    }
-
-    fn end(&self, start: Duration) -> Duration {
-        thread_cpu() - start
-    }
-
-    fn add(&self, a: &Duration, b: &Duration) -> Duration {
-        *a + *b
-    }
-
-    fn zero(&self) -> Duration {
-        Duration::ZERO
-    }
-
-    fn to_f64(&self, value: &Duration) -> f64 {
-        value.as_nanos() as f64
-    }
-
-    fn formatter(&self) -> &dyn ValueFormatter {
-        WALL.formatter()
-    }
-}
 
 type Bench = Criterion<CpuTime>;
 
-fn api() -> TextApi {
-    let tags = ["wp_caption", "caption", "gallery", "playlist", "audio", "video", "embed"]
-        .iter()
-        .map(|t| TagName::new(t.as_bytes()).unwrap())
-        .collect();
-    let hooks = Rc::new(HookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)));
-    let settings = Rc::new(FixedSiteSettings::default());
-    let diagnostics = Rc::new(RecordingDiagnostics::default());
-    let escape = Rc::new(speedyspec_wp_text_escape::EscapeApi::new(hooks.clone(), settings.clone(), diagnostics.clone()));
-    let kses = adapters::kses_for(hooks.clone(), escape.clone());
-    TextApi::new(TextDeps {
-        hooks,
-        settings,
-        translator: Rc::new(EnglishTranslator),
-        diagnostics,
-        texturize_overrides: Rc::new(FixedTexturizeOverrides::default()),
-        shortcode_tags: Rc::new(FixedShortcodeTags(tags)),
-        escape,
-        kses: kses.clone(),
-        locale: Rc::new(speedyspec_wp_text_memory::FixedLocale::default()),
-        mime_types: Rc::new(adapters::FixedMimeTypes::wordpress()),
-        random: Rc::new(adapters::PhpMtRand::seeded(1)),
-        smilies: Rc::new(adapters::FixedSmilies::wordpress(b"https://example.org/wp-includes/", b"http://example.org")),
-        link_context: Rc::new(adapters::HostLinkContext::new(kses, b"http://example.org")),
-    })
-}
 
 fn whole_posts(function: &str) -> Vec<Vec<u8>> {
     inputs(function).into_iter().filter(|(s, _)| s.contains("/whole_posts/")).map(|(_, b)| b).collect()
@@ -133,13 +58,18 @@ fn content(c: &mut Bench) {
     bench(c, "convert_chars", &convert_chars);
     bench(c, "force_balance_tags", &force_balance_tags);
     bench(c, "wp_strip_all_tags", &|t| wp_strip_all_tags_core(t, false));
+    bench(c, "convert_smilies", &|t| api.convert_smilies(t).unwrap());
+    bench(c, "make_clickable", &|t| Cow::Owned(api.make_clickable(t).unwrap()));
+    bench(c, "wp_rel_nofollow", &|t| Cow::Owned(api.wp_rel_nofollow(t).unwrap()));
 
-    // the_content's formatting chain, as default-filters.php orders it (convert_smilies waits for plan 4).
+    // the_content's formatting chain, as default-filters.php orders it: wptexturize, wpautop and shortcode_unautop
+    // at 10, capital_P_dangit at 11, convert_smilies at 20.
     let chain = |t: &[u8]| {
         let t = text(api.wptexturize(&speedyspec_wp_text::strings::bytes_value(t.to_vec()), false).unwrap());
         let t = api.wpautop(&t, true).unwrap().into_owned();
         let t = api.shortcode_unautop(&t).unwrap().into_owned();
-        api.capital_p_dangit(&t).unwrap().into_owned()
+        let t = api.capital_p_dangit(&t).unwrap().into_owned();
+        api.convert_smilies(&t).unwrap().into_owned()
     };
     let posts = whole_posts("wptexturize");
     let mut group = c.benchmark_group("the_content_chain");

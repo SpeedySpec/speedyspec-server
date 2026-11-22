@@ -33,3 +33,7 @@ speedyspec-wp-text-corpus = { path = "../speedyspec-wp-text-corpus", features = 
 [[bench]]
 name = "content"
 harness = false
+
+[[bench]]
+name = "sanitize"
+harness = false

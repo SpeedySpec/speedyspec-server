@@ -9,7 +9,7 @@ use common::text;
 use proptest::prelude::*;
 use speedyspec_wp_hooks::{Callback, HookName, HookValue};
 use speedyspec_wp_text::adapters::{FixedSmilies, NoSmilies};
-use speedyspec_wp_text::smilies::{SmileyEngine, convert_smilies_core};
+use speedyspec_wp_text::smilies::{SmileyEngine, convert_smilies_core, convert_smilies_reference};
 use speedyspec_wp_text_contracts::Smilies;
 use speedyspec_wp_text_corpus::{Php, assert_corpus};
 use speedyspec_wp_text_memory::FixedSiteSettings;
@@ -93,7 +93,7 @@ fn smilies_src_filter_args() {
 fn smiley_text() -> impl Strategy<Value = Vec<u8>> {
     let atoms: Vec<&'static [u8]> = vec![
         b":", b";", b"8", b"-", b")", b"(", b"D", b"P", b"o", b"x", b"|", b"?", b"!", b"O", b"mrgreen", b"lol", b" ", b"\n",
-        b"\t", b"\xC2\xA0", b"&nbsp;", b"<", b">", b"code", b"pre", b"/", b"a",
+        b"\t", b"\xC2\xA0", b"&nbsp;", b"<", b">", b"code", b"pre", b"/", b"a", b"textarea", b"preview", b"</code>", b"<pre>",
     ];
     proptest::collection::vec(proptest::sample::select(atoms), 0..24).prop_map(|parts| parts.concat())
 }
@@ -110,7 +110,7 @@ proptest! {
         prop_assert!(hand.is_hand());
         let reference = SmileyEngine::reference(&search).expect("a valid search");
         let mark = |m: &[u8]| [&b"["[..], m, b"]"].concat();
-        let expected = convert_smilies_core(&input, &reference, &mut |m| mark(m));
+        let expected = convert_smilies_reference(&input, &reference, &mut |m| mark(m));
         prop_assert_eq!(&*convert_smilies_core(&input, &hand, &mut |m| mark(m)), &*expected);
     }
 }

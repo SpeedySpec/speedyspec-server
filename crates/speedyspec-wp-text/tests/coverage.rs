@@ -2,8 +2,8 @@
 
 use speedyspec_wp_text_corpus::coverage;
 
-/// Every function this crate's corpus tests check.
-const CONTENT_FILTERS: &[&str] = &[
+/// Every function this crate's corpus tests check (plans 3 and 4), with the setup.php wrappers.
+const PORTED: &[&str] = &[
     "wptexturize",
     "speedyspec_wptexturize_translated",
     "speedyspec_wptexturize_no_texturize_shortcodes",
@@ -97,16 +97,11 @@ const EARLIER: &[&str] = &[
     "esc_js",
 ];
 
-/// Plan 4's functions whose corpus cases are recorded but not yet checked; each task takes its own off this list,
-/// and the last one removes it.
-const PENDING: &[&str] = &[
-];
-
 #[test]
-fn content_filters_cover_their_corpus() {
-    let implemented: Vec<&str> = CONTENT_FILTERS.iter().chain(EARLIER).chain(PENDING).copied().collect();
+fn ported_functions_cover_their_corpus() {
+    let implemented: Vec<&str> = PORTED.iter().chain(EARLIER).copied().collect();
     let report = coverage(&implemented);
-    for function in CONTENT_FILTERS {
+    for function in PORTED {
         assert!(!report.skipped.contains_key(*function), "{function} has corpus cases no test covers");
     }
     // With plan 2 finished, every recorded function is ported.

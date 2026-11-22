@@ -5,10 +5,12 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::LazyLock;
 
+use speedyspec_wp_text_contracts::MimePairs;
 use speedyspec_wp_utf8::is_valid_utf8;
 
 use crate::adapters::mime_table::MIME_TYPES;
 use crate::preg::{Pattern, preg_match, preg_replace};
+use crate::sanitize::collapse_runs_to;
 use crate::strings::{StrReplace, pathinfo_extension, pathinfo_filename, php_trim};
 use crate::title::{SanitizeContext, sanitize_title_with_dashes};
 
@@ -54,15 +56,11 @@ pub fn default_special_chars() -> Vec<Vec<u8>> {
 /// `sanitize_file_name()`'s patterns.
 struct FilePatterns {
     space_separator: Pattern,
-    periods: Pattern,
-    whitespace: Pattern,
     extension_like: Pattern,
 }
 
 static FILE: LazyLock<FilePatterns> = LazyLock::new(|| FilePatterns {
     space_separator: Pattern::php("#\\p{Zs}#siu"),
-    periods: Pattern::php("/\\.{2,}/"),
-    whitespace: Pattern::php("/[\\r\\n\\t -]+/"),
     extension_like: Pattern::php("/^[a-zA-Z]{2,5}\\d?$/"),
 });
 
@@ -86,20 +84,44 @@ pub fn sanitize_file_name_prepare(name: &[u8]) -> Vec<u8> {
         let stem = pathinfo_filename(name);
         [sanitize_title_with_dashes(stem, &SanitizeContext::Display), b".".to_vec(), extension].concat()
     };
+    // In ASCII the only space separator is the space itself.
+    if name.is_ascii() {
+        return name;
+    }
     preg_replace(&FILE.space_separator, &name, b" ", None).map_or_else(|_| Vec::new(), |(out, _)| out.into_owned())
 }
 
+/// Compiled patterns by MIME key; `None` for a key whose pattern PCRE rejects.
+type PatternCache = RefCell<HashMap<Vec<u8>, Option<Rc<Pattern>>>>;
+
 thread_local! {
-    /// Compiled extension patterns by source; `None` for one PCRE rejects.
-    static EXTENSION_PATTERNS: RefCell<HashMap<Vec<u8>, Option<Rc<Pattern>>>> = RefCell::new(HashMap::new());
+    /// `wp_check_filetype()`'s `!\.(KEY)$!i`, compiled once per key; `None` for one PCRE rejects.
+    static SUFFIX_PATTERNS: PatternCache = RefCell::new(HashMap::new());
+    /// `sanitize_file_name()`'s `!^(KEY)$!i`, compiled once per key.
+    static WHOLE_PATTERNS: PatternCache = RefCell::new(HashMap::new());
 }
 
-/// Whether `subject` matches the pattern built from `source`; a pattern PCRE rejects never matches (PHP warns and
-/// returns `false`).
-fn matches_built(source: Vec<u8>, subject: &[u8]) -> Option<Vec<u8>> {
-    let pattern = EXTENSION_PATTERNS.with(|cache| {
-        cache.borrow_mut().entry(source.clone()).or_insert_with(|| Pattern::try_php(&source).ok().map(Rc::new)).clone()
-    })?;
+/// The pattern `prefix KEY suffix`, from `cache`; a pattern PCRE rejects never matches (PHP warns and returns
+/// `false`).
+fn built(
+    cache: &'static std::thread::LocalKey<PatternCache>,
+    key: &[u8],
+    prefix: &[u8],
+    suffix: &[u8],
+) -> Option<Rc<Pattern>> {
+    cache.with(|cache| {
+        if let Some(found) = cache.borrow().get(key) {
+            return found.clone();
+        }
+        let compiled = Pattern::try_php(&[prefix, key, suffix].concat()).ok().map(Rc::new);
+        cache.borrow_mut().insert(key.to_vec(), compiled.clone());
+        compiled
+    })
+}
+
+/// Group 1 of `pattern` on `subject`, when it matches.
+fn group_one(pattern: Option<Rc<Pattern>>, subject: &[u8]) -> Option<Vec<u8>> {
+    let pattern = pattern?;
     match preg_match(&pattern, subject) {
         Ok(Some(found)) => Some(found.get(1).unwrap_or_default().to_vec()),
         _ => None,
@@ -107,8 +129,28 @@ fn matches_built(source: Vec<u8>, subject: &[u8]) -> Option<Vec<u8>> {
 }
 
 /// `wp_check_filetype( $filename, $mimes )['ext']`.
-fn check_filetype_ext(filename: &[u8], mimes: &MimeTable) -> Option<Vec<u8>> {
-    mimes.0.iter().find_map(|(ext_preg, _)| matches_built([&b"!\\.("[..], ext_preg, b")$!i"].concat(), filename))
+fn check_filetype_ext(filename: &[u8], mimes: &[(Vec<u8>, Vec<u8>)]) -> Option<Vec<u8>> {
+    mimes.iter().find_map(|(ext_preg, _)| group_one(built(&SUFFIX_PATTERNS, ext_preg, b"!\\.(", b")$!i"), filename))
+}
+
+/// `sanitize_file_name()`'s default `$special_chars` as one prepared `str_replace()`.
+///
+/// @return
+///     The replacement, built once.
+pub fn default_special_chars_replace() -> &'static StrReplace {
+    static DEFAULT: LazyLock<StrReplace> =
+        LazyLock::new(|| StrReplace::new(default_special_chars().into_iter().map(|c| (c, Vec::new())).collect()));
+    &DEFAULT
+}
+
+/// The `str_replace( $special_chars, '', ... )` for a filtered list.
+///
+/// @param special_chars
+///     The characters to remove, in order.
+/// @return
+///     The prepared replacement.
+pub fn special_chars_replace(special_chars: &[Vec<u8>]) -> StrReplace {
+    StrReplace::new(special_chars.iter().map(|c| (c.clone(), Vec::new())).collect())
 }
 
 /// `sanitize_file_name()` after its `sanitize_file_name_chars` filter, up to (not including) its
@@ -116,43 +158,46 @@ fn check_filetype_ext(filename: &[u8], mimes: &MimeTable) -> Option<Vec<u8>> {
 ///
 /// @param name
 ///     What [`sanitize_file_name_prepare`] returned.
-/// @param special_chars
-///     The filtered list of characters to remove, in order.
+/// @param special
+///     The filtered special characters, prepared ([`default_special_chars_replace`] when unfiltered).
 /// @param mimes
-///     `wp_get_mime_types()`.
+///     `wp_get_mime_types()`, asked only when the name has no `.` left, as WordPress asks it.
 /// @param allowed
-///     `get_allowed_mime_types()`.
+///     `get_allowed_mime_types()`, asked only when the name has more than one `.`.
 /// @return
-///     The sanitized file name.
-pub fn sanitize_file_name_core(name: &[u8], special_chars: &[Vec<u8>], mimes: &MimeTable, allowed: &MimeTable) -> Vec<u8> {
+///     The sanitized file name, or the first error the MIME lookups return.
+pub fn sanitize_file_name_core<E>(
+    name: &[u8],
+    special: &StrReplace,
+    mimes: impl FnOnce() -> Result<Rc<MimePairs>, E>,
+    allowed: impl FnOnce() -> Result<Rc<MimePairs>, E>,
+) -> Result<Vec<u8>, E> {
     let p = &*FILE;
-    let remove = StrReplace::new(special_chars.iter().map(|c| (c.clone(), Vec::new())).collect());
-    let name = remove.apply(name).into_owned();
+    let name = special.apply(name).into_owned();
     let name = SPACES.apply(&name).into_owned();
-    let replace = |pattern: &Pattern, subject: &[u8], with: &[u8]| {
-        preg_replace(pattern, subject, with, None).map_or_else(|_| Vec::new(), |(out, _)| out.into_owned())
-    };
-    let name = replace(&p.periods, &name, b".");
-    let name = replace(&p.whitespace, &name, b"-");
+    // `/\.{2,}/` to `.`, then `/[\r\n\t -]+/` to `-`.
+    let name = collapse_runs_to(&name, |b| b == b'.', b'.');
+    let name = collapse_runs_to(&name, |b| matches!(b, b'\r' | b'\n' | b'\t' | b' ' | b'-'), b'-');
     let mut name = php_trim(&name, b".-_").to_vec();
     if !name.contains(&b'.')
-        && let Some(ext) = check_filetype_ext(&[b"test.", name.as_slice()].concat(), mimes)
+        && let Some(ext) = check_filetype_ext(&[b"test.", name.as_slice()].concat(), &mimes()?)
         && ext == name
     {
         name = [&b"unnamed-file."[..], &ext].concat();
     }
     let parts: Vec<&[u8]> = name.split(|&b| b == b'.').collect();
     if parts.len() <= 2 {
-        return name;
+        return Ok(name);
     }
+    let allowed = allowed()?;
     let mut out = parts[0].to_vec();
     for part in &parts[1..parts.len() - 1] {
         out.push(b'.');
         out.extend_from_slice(part);
         if matches!(preg_match(&p.extension_like, part), Ok(Some(_))) {
-            let allowed_ext = allowed.0.iter().any(|(ext_preg, _)| {
-                matches_built([&b"!^("[..], ext_preg, b")$!i"].concat(), part).is_some()
-            });
+            let allowed_ext = allowed
+                .iter()
+                .any(|(ext_preg, _)| group_one(built(&WHOLE_PATTERNS, ext_preg, b"!^(", b")$!i"), part).is_some());
             if !allowed_ext {
                 out.push(b'_');
             }
@@ -160,5 +205,5 @@ pub fn sanitize_file_name_core(name: &[u8], special_chars: &[Vec<u8>], mimes: &M
     }
     out.push(b'.');
     out.extend_from_slice(parts[parts.len() - 1]);
-    out
+    Ok(out)
 }

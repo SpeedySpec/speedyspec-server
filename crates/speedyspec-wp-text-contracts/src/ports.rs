@@ -1,5 +1,7 @@
 //! The outside facts formatting reads.
 
+use std::rc::Rc;
+
 use crate::TextError;
 
 /// How `wp_trim_words()` counts, as `wp_get_word_count_type()` answers.
@@ -98,10 +100,10 @@ pub type MimePairs = Vec<(Vec<u8>, Vec<u8>)>;
 ///
 /// The PHP adapter calls WordPress's functions, so their `mime_types` and `upload_mimes` filters fire there.
 pub trait MimeTypes {
-    /// `wp_get_mime_types()`.
-    fn mime_types(&self) -> Result<MimePairs, TextError>;
+    /// `wp_get_mime_types()`, shared so a lookup copies nothing.
+    fn mime_types(&self) -> Result<Rc<MimePairs>, TextError>;
     /// `get_allowed_mime_types()` for the current user.
-    fn allowed_mime_types(&self) -> Result<MimePairs, TextError>;
+    fn allowed_mime_types(&self) -> Result<Rc<MimePairs>, TextError>;
 }
 
 /// PHP's `rand( $min, $max )`, which `antispambot()` uses to choose how to write each character.

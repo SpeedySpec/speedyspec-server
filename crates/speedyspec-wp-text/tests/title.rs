@@ -4,7 +4,7 @@
 mod common;
 
 use common::text;
-use speedyspec_wp_text::file_name::{MimeTable, default_special_chars, sanitize_file_name_core, sanitize_file_name_prepare};
+use speedyspec_wp_text::file_name::{MimeTable, default_special_chars_replace, sanitize_file_name_core, sanitize_file_name_prepare};
 use speedyspec_wp_text::title::{SanitizeContext, remove_accents, sanitize_title_with_dashes, sanitize_user_core};
 use speedyspec_wp_text::wp_strip_all_tags_core;
 use speedyspec_wp_text_corpus::{Php, assert_corpus};
@@ -40,7 +40,13 @@ fn sanitize_file_name_corpus() {
     assert_corpus("sanitize_file_name", |args| {
         let accents = remove_accents(text(&args[0]), "en_US");
         let prepared = sanitize_file_name_prepare(&accents);
-        Php::Str(sanitize_file_name_core(&prepared, &default_special_chars(), &mimes, &allowed))
+        let core = sanitize_file_name_core::<()>(
+            &prepared,
+            default_special_chars_replace(),
+            || Ok(std::rc::Rc::new(mimes.0.clone())),
+            || Ok(std::rc::Rc::new(allowed.0.clone())),
+        );
+        Php::Str(core.unwrap())
     });
 }
 

@@ -7,40 +7,70 @@ use speedyspec_hooks::Value;
 
 /// PHP's `addslashes()`: a backslash before `'`, `"` and `\`, and NUL as `\0`.
 pub fn addslashes(text: &[u8]) -> Cow<'_, [u8]> {
-    let needs = |b: u8| matches!(b, b'\'' | b'"' | b'\\' | 0);
-    if memchr3(b'\'', b'"', b'\\', text).is_none() && memchr(0, text).is_none() {
-        return Cow::Borrowed(text);
+    const SPECIAL: [bool; 256] = {
+        let mut t = [false; 256];
+        t[b'\'' as usize] = true;
+        t[b'"' as usize] = true;
+        t[b'\\' as usize] = true;
+        t[0] = true;
+        t
+    };
+    if memchr(0, text).is_none() {
+        // No NUL: the three other bytes, found with SIMD.
+        let Some(first) = memchr3(b'\'', b'"', b'\\', text) else {
+            return Cow::Borrowed(text);
+        };
+        let mut out = Vec::with_capacity(text.len() + text.len() / 16 + 8);
+        let mut copied = 0;
+        let mut at = first;
+        loop {
+            out.extend_from_slice(&text[copied..at]);
+            out.extend_from_slice(&[b'\\', text[at]]);
+            copied = at + 1;
+            match memchr3(b'\'', b'"', b'\\', &text[copied..]) {
+                Some(next) => at = copied + next,
+                None => break,
+            }
+        }
+        out.extend_from_slice(&text[copied..]);
+        return Cow::Owned(out);
     }
-    let mut out = Vec::with_capacity(text.len() + 8);
-    for &b in text {
-        if needs(b) {
-            out.push(b'\\');
-            out.push(if b == 0 { b'0' } else { b });
-        } else {
-            out.push(b);
+    let Some(first) = text.iter().position(|&b| SPECIAL[usize::from(b)]) else {
+        return Cow::Borrowed(text);
+    };
+    let mut out = Vec::with_capacity(text.len() + text.len() / 16 + 8);
+    out.extend_from_slice(&text[..first]);
+    let mut copied = first;
+    for (i, &b) in text.iter().enumerate().skip(first) {
+        if SPECIAL[usize::from(b)] {
+            out.extend_from_slice(&text[copied..i]);
+            out.extend_from_slice(&[b'\\', if b == 0 { b'0' } else { b }]);
+            copied = i + 1;
         }
     }
+    out.extend_from_slice(&text[copied..]);
     Cow::Owned(out)
 }
 
 /// PHP's `stripslashes()`: `\0` becomes NUL, `\x` becomes `x`, and a trailing lone `\` is dropped.
 pub fn stripslashes(text: &[u8]) -> Cow<'_, [u8]> {
-    if memchr(b'\\', text).is_none() {
+    let Some(mut at) = memchr(b'\\', text) else {
         return Cow::Borrowed(text);
-    }
+    };
     let mut out = Vec::with_capacity(text.len());
-    let mut i = 0;
-    while i < text.len() {
-        if text[i] == b'\\' {
-            if let Some(&next) = text.get(i + 1) {
-                out.push(if next == b'0' { 0 } else { next });
-            }
-            i += 2;
-        } else {
-            out.push(text[i]);
-            i += 1;
+    let mut copied = 0;
+    loop {
+        out.extend_from_slice(&text[copied..at]);
+        if let Some(&next) = text.get(at + 1) {
+            out.push(if next == b'0' { 0 } else { next });
+        }
+        copied = (at + 2).min(text.len());
+        match memchr(b'\\', &text[copied..]) {
+            Some(found) => at = copied + found,
+            None => break,
         }
     }
+    out.extend_from_slice(&text[copied..]);
     Cow::Owned(out)
 }
 
