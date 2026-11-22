@@ -25,3 +25,7 @@ speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
 [[test]]
 name = "registration"
 harness = false
+
+[[test]]
+name = "identity"
+harness = false

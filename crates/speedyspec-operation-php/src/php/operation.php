@@ -19,6 +19,26 @@ namespace SpeedySpec\Operation {
     }
 
     /**
+     * Who is calling an operation: the user a transport authenticated (`null` when anonymous), which transport, and
+     * the fields the client asked for.
+     */
+    final class Caller
+    {
+        public function __construct(
+            public readonly ?int $user,
+            public readonly string $transport,
+            public readonly ?array $requestedFields = null,
+        ) {
+        }
+
+        /** Whether the caller has `$capability` (with WordPress's `user_can()` arguments). */
+        public function can( string $capability, mixed ...$args ): bool
+        {
+            return Native\can( $this->user, $capability, $args );
+        }
+    }
+
+    /**
      * A type or operation could not be registered: the message lists every reason.
      */
     class RegistrationException extends \RuntimeException

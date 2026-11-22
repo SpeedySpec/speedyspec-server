@@ -140,6 +140,19 @@ final class Mapper
 }
 
 /**
+ * Builds callers for Rust.
+ *
+ * @internal
+ */
+final class Callers
+{
+    public static function make( ?int $user, string $transport, ?array $requestedFields ): \SpeedySpec\Operation\Caller
+    {
+        return new \SpeedySpec\Operation\Caller( $user, $transport, $requestedFields );
+    }
+}
+
+/**
  * Which site this request serves, and its active plugins and theme: a change of either rebuilds the site's registries.
  *
  * @internal

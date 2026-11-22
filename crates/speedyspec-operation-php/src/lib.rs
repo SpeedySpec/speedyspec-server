@@ -19,10 +19,12 @@
 mod area;
 pub mod convert;
 pub mod descriptor;
+pub mod identity;
 pub mod mapper;
 pub mod permission;
 pub mod shape;
 pub mod sites;
 
-pub use area::{INIT_HOOK, OperationArea};
+pub use area::{INIT_HOOK, OperationArea, php_caller};
+pub use identity::PhpIdentity;
 pub use sites::{FixedSiteKey, PhpSiteKey, Site, SiteId, SiteKey, Sites};

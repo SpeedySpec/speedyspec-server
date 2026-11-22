@@ -5,12 +5,13 @@ use std::rc::Rc;
 
 use serde_json::Value as Json;
 use speedyspec_container::Container;
-use speedyspec_operation_contracts::{Category, Identity, OperationError};
+use speedyspec_operation_contracts::{Caller, Category, Identity, OperationError};
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_php_ext::{Key, Value as PhpValue};
 
+use crate::convert::from_php;
 use crate::descriptor;
 use crate::permission;
 use crate::sites::{Site, SiteId, SiteKey, Sites};
@@ -35,6 +36,7 @@ const FACADE: [(&str, &str); 4] = [
 ];
 const NATIVE: &str = "SpeedySpec\\Operation\\Native\\";
 pub(crate) const REGISTRATION_EXCEPTION: &str = "SpeedySpec\\Operation\\RegistrationException";
+pub(crate) const OPERATION_EXCEPTION: &str = "SpeedySpec\\Operation\\OperationException";
 /// The action fired, once per request, the first time the request needs operations.
 pub const INIT_HOOK: &str = "wp_operations_init";
 
@@ -266,11 +268,57 @@ fn json_to_php(json: &Json) -> PhpValue {
     }
 }
 
+fn native_can(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    let state = state()?;
+    let user = match args.first() {
+        Some(PhpValue::Int(u)) if *u > 0 => Some(*u as u64),
+        _ => None,
+    };
+    let Some(PhpValue::Str(capability)) = args.get(1) else {
+        return Ok(PhpValue::Bool(false));
+    };
+    let extra = match args.get(2) {
+        Some(PhpValue::Array(items)) => items
+            .iter()
+            .map(|(_, v)| from_php(v))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| NativeError::throw(OPERATION_EXCEPTION, e.message))?,
+        _ => Vec::new(),
+    };
+    Ok(PhpValue::Bool(state.identity.can(user, capability, &extra)))
+}
+
+/// The PHP `SpeedySpec\Operation\Caller` for `caller`.
+pub fn php_caller(caller: &Caller) -> Result<PhpValue, OperationError> {
+    let user = caller
+        .user
+        .and_then(|u| i64::try_from(u).ok())
+        .map_or(PhpValue::Null, PhpValue::Int);
+    let fields = caller
+        .requested_fields
+        .as_ref()
+        .map_or(PhpValue::Null, |fields| {
+            PhpValue::Array(
+                fields
+                    .iter()
+                    .enumerate()
+                    .map(|(i, f)| (Key::Int(i as i64), PhpValue::Str(f.clone())))
+                    .collect(),
+            )
+        });
+    speedyspec_php::call(
+        &PhpValue::Str("SpeedySpec\\Operation\\Internal\\Callers::make".into()),
+        &[user, PhpValue::Str(caller.transport.clone()), fields],
+    )
+    .map_err(|err| OperationError::new("caller_failed", Category::Internal, err.to_string()))
+}
+
 type NativeFn = fn(&[PhpValue]) -> Result<PhpValue, NativeError>;
 
 impl NativeArea for OperationArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
-        let entries: [(&str, NativeFn); 4] = [
+        let entries: [(&str, NativeFn); 5] = [
+            ("can", native_can),
             ("register_operation", native_register_operation),
             ("register_type", native_register_type),
             ("restrict", native_restrict),
