@@ -25,6 +25,7 @@ pub mod declarations;
 mod deps;
 pub mod duotone;
 pub mod filters;
+pub mod global_styles;
 pub mod layout;
 mod memory;
 pub mod nodes;

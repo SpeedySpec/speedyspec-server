@@ -147,16 +147,31 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
     }
 }
 
-/** The site's merged settings fluid typography reads; a scenario sets them with compat_set_global_settings(). */
-if (!function_exists('wp_get_global_settings')) {
-    function wp_get_global_settings($path = array(), $context = array()) {
-        return $GLOBALS['compat_global_settings'] ?? array();
-    }
-}
-
+/**
+ * The site's settings fluid typography reads come from the resolver on both sides (WordPress's on the recorder, the
+ * port's on the other); a scenario changes them with a user-layer filter, the same code on both sides.
+ */
 function compat_set_global_settings(array $settings): void
 {
-    $GLOBALS['compat_global_settings'] = $settings;
+    add_filter('wp_theme_json_data_user', static function ($data) use ($settings) {
+        return $data->update_with(array('version' => 3, 'settings' => $settings));
+    });
+    wp_clean_theme_json_cache();
+}
+
+/** WordPress's object cache and transients, over arrays. */
+if (!function_exists('wp_cache_get')) {
+    function wp_cache_get($key, $group = '', $force = false, &$found = null)
+    {
+        $found = isset($GLOBALS['compat_cache'][$group]) && array_key_exists($key, $GLOBALS['compat_cache'][$group]);
+        return $found ? $GLOBALS['compat_cache'][$group][$key] : false;
+    }
+    function wp_cache_set($key, $data, $group = '', $expire = 0) { $GLOBALS['compat_cache'][$group][$key] = $data; return true; }
+    function wp_cache_delete($key, $group = '') { unset($GLOBALS['compat_cache'][$group][$key]); return true; }
+}
+if (!function_exists('get_transient')) {
+    function get_transient($transient) { return $GLOBALS['compat_transients'][$transient] ?? false; }
+    function set_transient($transient, $value, $expiration = 0) { $GLOBALS['compat_transients'][$transient] = $value; return true; }
 }
 
 /** `current_user_can()`, answering from compat_set_caps(): a request without a user can do nothing. */
@@ -438,7 +453,12 @@ function compat_load_resolver(): void
     compat_load_functions('wp-includes/block-supports/block-style-variations.php', ['wp_register_block_style_variations_from_theme_json_partials']);
     compat_load_functions('wp-includes/blocks.php', ['register_block_style']);
     if (!SPEEDYSPEC_COMPAT_PORT) {
-        compat_load_functions('wp-includes/global-styles-and-settings.php', ['wp_theme_has_theme_json']);
+        compat_load_functions('wp-includes/global-styles-and-settings.php', ['wp_get_global_settings',
+            'wp_get_global_styles', 'wp_get_global_stylesheet', 'wp_add_global_styles_for_blocks',
+            'wp_get_block_name_from_theme_json_path', 'wp_theme_has_theme_json', 'wp_clean_theme_json_cache',
+            'wp_get_theme_directory_pattern_slugs', 'wp_get_theme_data_custom_templates',
+            'wp_get_theme_data_template_parts']);
         require_once SPEEDYSPEC_COMPAT_WP_ROOT . 'wp-includes/class-wp-theme-json-resolver.php';
     }
 }
+compat_load_resolver();
