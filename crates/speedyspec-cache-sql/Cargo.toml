@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-cache-sql"
-version = "0.1.3"
+version = "0.1.4"
 publish = false
 description = "A Caching Store over any speedyspec SQL Store: one table of groups, keys, byte values and expiry."
 edition.workspace = true

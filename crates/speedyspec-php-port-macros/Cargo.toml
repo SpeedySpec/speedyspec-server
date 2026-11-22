@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-php-port-macros"
-version = "0.1.0"
+version = "0.1.1"
 description = "#[php_port]: generates a Rust port trait's PHP twin interface and its PHP adapter."
 edition.workspace = true
 rust-version.workspace = true

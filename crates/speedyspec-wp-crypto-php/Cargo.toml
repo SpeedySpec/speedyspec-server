@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-crypto-php"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "WordPress's sodium functions (wp_fast_hash, wp_verify_fast_hash, wp_trusted_keys, verify_file_signature) as native PHP functions over Rust and libsodium."
 edition.workspace = true
