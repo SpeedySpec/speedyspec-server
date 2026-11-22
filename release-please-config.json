@@ -283,6 +283,171 @@
       "component": "speedyspec-wp-password-php",
       "skip-github-release": true,
       "skip-changelog": true
+    },
+    "crates/speedyspec-cache": {
+      "component": "speedyspec-cache",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data": {
+      "component": "speedyspec-data",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-mysql": {
+      "component": "speedyspec-data-mysql",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-query": {
+      "component": "speedyspec-data-query",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-uow": {
+      "component": "speedyspec-data-uow",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-php-serialize": {
+      "component": "speedyspec-php-serialize",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-db": {
+      "component": "speedyspec-wp-db",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-db-php": {
+      "component": "speedyspec-wp-db-php",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-object-cache": {
+      "component": "speedyspec-wp-object-cache",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-object-cache-php": {
+      "component": "speedyspec-wp-object-cache-php",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-options": {
+      "component": "speedyspec-wp-options",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-options-php": {
+      "component": "speedyspec-wp-options-php",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-options-sql": {
+      "component": "speedyspec-wp-options-sql",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-cache-conformance": {
+      "component": "speedyspec-cache-conformance",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-cache-file": {
+      "component": "speedyspec-cache-file",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-cache-kv": {
+      "component": "speedyspec-cache-kv",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-cache-memory": {
+      "component": "speedyspec-cache-memory",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-cache-routing": {
+      "component": "speedyspec-cache-routing",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-cache-sql": {
+      "component": "speedyspec-cache-sql",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-conformance": {
+      "component": "speedyspec-data-conformance",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-corpus": {
+      "component": "speedyspec-data-corpus",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-counter": {
+      "component": "speedyspec-data-counter",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-file": {
+      "component": "speedyspec-data-file",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-memory": {
+      "component": "speedyspec-data-memory",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-postgres": {
+      "component": "speedyspec-data-postgres",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-redb": {
+      "component": "speedyspec-data-redb",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-sqlite": {
+      "component": "speedyspec-data-sqlite",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-translate": {
+      "component": "speedyspec-data-translate",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-data-valkey": {
+      "component": "speedyspec-data-valkey",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-options-memory": {
+      "component": "speedyspec-wp-options-memory",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text-diff": {
+      "component": "speedyspec-wp-text-diff",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text-diff-contracts": {
+      "component": "speedyspec-wp-text-diff-contracts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text-diff-php": {
+      "component": "speedyspec-wp-text-diff-php",
+      "skip-github-release": true,
+      "skip-changelog": true
     }
   }
 }
