@@ -165,3 +165,33 @@ fn strip_all_tags_reports_objects_and_arrays() {
     assert_eq!(h.api.wp_strip_all_tags(&HookValue::Null, false).unwrap(), b"");
     assert!(h.diagnostics.taken().is_empty());
 }
+
+#[test]
+fn hook_error_payload_survives() {
+    use speedyspec_wp_hooks::HookError;
+    let h = api::harness();
+    h.hooks
+        .add_filter(
+            &HookName::from("clean_url"),
+            Callback::rust("boom", |_: &[HookValue]| {
+                Err(HookError { message: "boom".into(), payload: Some(Rc::new(String::from("the exception"))) })
+            }),
+            &HookValue::Int(10),
+            3,
+        )
+        .unwrap();
+    let error = h.api.esc_url(b"http://a.b", None, b"display").unwrap_err();
+    let payload = error.payload.expect("the payload");
+    assert_eq!(payload.downcast_ref::<String>().map(String::as_str), Some("the exception"));
+}
+
+#[test]
+fn new_request_forgets_run_wptexturize_false() {
+    let h = api::harness();
+    add(&h, "run_wptexturize", |_| HookValue::Bool(false));
+    assert_eq!(bytes_of(&h.api.wptexturize(&str_value("'a'"), false).unwrap()), b"'a'");
+    h.hooks.remove_all_filters(&HookName::from("run_wptexturize"), None).unwrap();
+    assert_eq!(bytes_of(&h.api.wptexturize(&str_value("'a'"), false).unwrap()), b"'a'");
+    h.api.new_request();
+    assert_eq!(bytes_of(&h.api.wptexturize(&str_value("'a'"), false).unwrap()), "&#8216;a&#8217;".as_bytes());
+}

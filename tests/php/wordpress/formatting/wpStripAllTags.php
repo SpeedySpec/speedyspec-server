@@ -50,6 +50,7 @@ class Tests_Formatting_wpStripAllTags extends WP_UnitTestCase {
 	 * @dataProvider data_wp_strip_all_tags_should_return_empty_string_and_trigger_an_error_for_non_string_arg
 	 *
 	 * @param mixed $non_string A non-string value.
+	 * @group documented-break
 	 */
 	public function test_wp_strip_all_tags_should_return_empty_string_and_trigger_an_error_for_non_string_arg( $non_string ) {
 		$type = gettype( $non_string );
@@ -63,7 +64,7 @@ class Tests_Formatting_wpStripAllTags extends WP_UnitTestCase {
 	 *
 	 * @return array[]
 	 */
-	public function data_wp_strip_all_tags_should_return_empty_string_and_trigger_an_error_for_non_string_arg() {
+	public static function data_wp_strip_all_tags_should_return_empty_string_and_trigger_an_error_for_non_string_arg() {
 		return array(
 			'an empty array'     => array( 'non_string' => array() ),
 			'a non-empty array'  => array( 'non_string' => array( 'a string' ) ),
@@ -90,7 +91,7 @@ class Tests_Formatting_wpStripAllTags extends WP_UnitTestCase {
 	 *
 	 * @return array[]
 	 */
-	public function data_wp_strip_all_tags_should_cast_scalar_values_to_string() {
+	public static function data_wp_strip_all_tags_should_cast_scalar_values_to_string() {
 		return array(
 			'(int) 0'      => array( 'text' => 0 ),
 			'(int) 1'      => array( 'text' => 1 ),

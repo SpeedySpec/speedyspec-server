@@ -57,6 +57,7 @@ class Tests_Formatting_wpTrimWords extends WP_UnitTestCase {
 
 	/**
 	 * @ticket 44541
+	 * @group needs-wordpress-core
 	 */
 	public function test_trims_to_20_counted_by_chars() {
 		switch_to_locale( 'ja_JP' );
@@ -68,6 +69,7 @@ class Tests_Formatting_wpTrimWords extends WP_UnitTestCase {
 
 	/**
 	 * @ticket 44541
+	 * @group needs-wordpress-core
 	 */
 	public function test_trims_to_20_counted_by_chars_with_double_width_chars() {
 		switch_to_locale( 'ja_JP' );

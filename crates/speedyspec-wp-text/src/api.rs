@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use speedyspec_hooks::{Key, Value as HookValue};
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
+use speedyspec_wp_hooks::{Count, HookApi, HookName};
 use speedyspec_wp_shortcode_contracts::ShortcodeTagNames;
 use speedyspec_wp_kses::KsesApi;
 use speedyspec_wp_text_contracts::{
@@ -18,21 +18,13 @@ use crate::autop::AutopOptions;
 use crate::autop_fast::wpautop;
 use crate::balance::force_balance_tags;
 use crate::small::{DEFAULT_SPACES, capital_p_dangit, convert_chars, ent2ncr, format_for_editor_core};
-use crate::strings::{bytes_value, to_php_string};
+use crate::strings::{StrReplace, bytes_value, to_php_string};
 use crate::strip::wp_strip_all_tags_core;
 use crate::texturize::{HandTexturizer, TexturizeScope, TexturizeTables, Texturizer};
 use crate::trim::{wp_html_excerpt, wp_trim_words_core};
 use crate::unautop::Unautop;
 
-/// A `HookError` as the text port's error.
-///
-/// @param e
-///     The hook error.
-/// @return
-///     The same message, as a `TextError`.
-pub fn text_error(e: HookError) -> TextError {
-    TextError::message(e.to_string())
-}
+pub use speedyspec_wp_text_escape::text_error;
 
 /// Everything `TextApi` reads from outside: the hooks and the ports.
 pub struct TextDeps {
@@ -60,8 +52,8 @@ pub type AutopFn = for<'a> fn(&'a [u8], AutopOptions) -> Cow<'a, [u8]>;
 struct Statics {
     /// `wp_spaces_regexp()`'s `$spaces`, once non-empty.
     spaces: Option<Vec<u8>>,
-    /// `capital_P_dangit()`'s `$dblq`.
-    opening_double_quote: Option<Vec<u8>>,
+    /// `capital_P_dangit()`'s `$dblq`, and its replacement built once.
+    opening_double_quote: Option<(Vec<u8>, Rc<StrReplace>)>,
     /// `wptexturize()`'s tables, built on the first non-empty call and on `$reset`.
     tables: Option<Rc<TexturizeTables>>,
     /// `wptexturize()`'s `$run_texturize`: once a filter turns it off, it stays off.
@@ -182,6 +174,14 @@ impl TextApi {
     pub fn with_autop(mut self, autop: AutopFn) -> TextApi {
         self.autop = autop;
         self
+    }
+
+    /// Forgets what WordPress keeps for one request in function statics: `wptexturize()`'s tables and
+    /// `$run_texturize`, `wp_spaces_regexp()`'s `$spaces`, `capital_P_dangit()`'s `$dblq`, and the smiley matcher
+    /// built for the last search.
+    pub fn new_request(&self) {
+        *self.statics.borrow_mut() = Statics { spaces: None, opening_double_quote: None, tables: None, run_texturize: true };
+        *self.smiley_engine.borrow_mut() = None;
     }
 
     /// The hooks and ports.
@@ -351,16 +351,21 @@ impl TextApi {
         if in_title {
             return Ok(capital_p_dangit(text, true, b""));
         }
-        let cached = self.statics.borrow().opening_double_quote.clone();
-        let quote = match cached {
-            Some(quote) => quote,
+        // `static $dblq`: translated on the first call, as WordPress does, whatever the text.
+        let cached = self.statics.borrow().opening_double_quote.as_ref().map(|(_, r)| r.clone());
+        let replace = match cached {
+            Some(replace) => replace,
             None => {
                 let quote = self.translate_x("&#8220;", "opening curly double quote")?.into_bytes();
-                self.statics.borrow_mut().opening_double_quote = Some(quote.clone());
-                quote
+                let replace = Rc::new(crate::small::capital_p_dangit_replace(&quote));
+                self.statics.borrow_mut().opening_double_quote = Some((quote, replace.clone()));
+                replace
             }
         };
-        Ok(capital_p_dangit(text, false, &quote))
+        if memchr::memmem::find(text, b"Wordpress").is_none() {
+            return Ok(Cow::Borrowed(text));
+        }
+        Ok(replace.apply(text))
     }
 
     /// `convert_chars( $content, $deprecated )`.

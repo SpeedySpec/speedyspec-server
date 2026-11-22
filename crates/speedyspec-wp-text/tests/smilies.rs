@@ -115,6 +115,15 @@ proptest! {
     }
 }
 
+#[test]
+fn text_starting_with_an_unclosed_lt_is_left_alone() {
+    // WordPress: convert_smilies( '< :) ' ) === '< :) ' (the one piece starts with '<').
+    let h = api::harness();
+    assert_eq!(&*h.api.convert_smilies(b"< :) ").unwrap(), b"< :) ");
+    // Reported from CI on main (#61): the same case with 8O.
+    assert_eq!(&*h.api.convert_smilies(b"< 8O").unwrap(), b"< 8O");
+}
+
 /// WordPress leaves a piece starting with `<` alone, including a trailing `<` that never closes.
 #[test]
 fn unclosed_lt_piece_keeps_its_smileys() {
