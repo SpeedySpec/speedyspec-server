@@ -434,6 +434,21 @@
       "skip-github-release": true,
       "skip-changelog": true
     },
+    "crates/speedyspec-wp-text-diff": {
+      "component": "speedyspec-wp-text-diff",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text-diff-contracts": {
+      "component": "speedyspec-wp-text-diff-contracts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text-diff-php": {
+      "component": "speedyspec-wp-text-diff-php",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
     "crates/speedyspec-wp-cron": {
       "component": "speedyspec-wp-cron",
       "skip-github-release": true,
@@ -451,21 +466,6 @@
     },
     "crates/speedyspec-wp-cron-php": {
       "component": "speedyspec-wp-cron-php",
-      "skip-github-release": true,
-      "skip-changelog": true
-    },
-    "crates/speedyspec-wp-text-diff": {
-      "component": "speedyspec-wp-text-diff",
-      "skip-github-release": true,
-      "skip-changelog": true
-    },
-    "crates/speedyspec-wp-text-diff-contracts": {
-      "component": "speedyspec-wp-text-diff-contracts",
-      "skip-github-release": true,
-      "skip-changelog": true
-    },
-    "crates/speedyspec-wp-text-diff-php": {
-      "component": "speedyspec-wp-text-diff-php",
       "skip-github-release": true,
       "skip-changelog": true
     }
