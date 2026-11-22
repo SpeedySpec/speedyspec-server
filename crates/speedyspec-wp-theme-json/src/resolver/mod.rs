@@ -34,7 +34,7 @@ pub struct ResolverDeps {
     pub posts: Rc<dyn GlobalStylesPost>,
     /// Registers block style variations from the theme's partials.
     pub registrar: Rc<dyn BlockStyleVariationRegistrar>,
-    /// The directory holding core's `theme.json` (`wp-includes`).
+    /// The directory holding core's `theme.json` (`wp-includes`); empty to ask the theme port each time.
     pub core_dir: String,
 }
 
@@ -141,7 +141,12 @@ impl ThemeJsonResolver {
         if self.state.borrow().core.is_some() && self.has_same_registered_blocks("core") {
             return Ok(self.state.borrow().core.clone().unwrap_or_default());
         }
-        let config = self.read_json_file(&format!("{}/theme.json", self.deps.core_dir));
+        let core_dir = if self.deps.core_dir.is_empty() {
+            self.deps.theme.core_directory()
+        } else {
+            self.deps.core_dir.clone()
+        };
+        let config = self.read_json_file(&format!("{core_dir}/theme.json"));
         let config = self.translate(config, &Value::Str("default".into()));
         let core = self.filtered("wp_theme_json_data_default", Origin::Default, config)?;
         self.state.borrow_mut().core = Some(core.clone());

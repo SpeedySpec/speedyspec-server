@@ -53,6 +53,10 @@ pub trait ActiveTheme {
     fn theme_file_uri(&self, file: &str) -> String {
         file.to_owned()
     }
+    /// The directory holding core's `theme.json` (`ABSPATH . WPINC`), when the resolver was not given one.
+    fn core_directory(&self) -> String {
+        String::new()
+    }
     /// `wp_check_filetype( $file )['type']`.
     fn file_type(&self, _file: &str) -> Value {
         Value::Bool(false)

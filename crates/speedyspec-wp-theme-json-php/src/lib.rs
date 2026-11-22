@@ -8,6 +8,8 @@ mod adapters;
 mod arena;
 mod literal;
 mod native;
+mod release;
+mod resolver_native;
 
 use std::rc::Rc;
 
@@ -16,15 +18,19 @@ use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_wp_hooks::HookApi;
 use speedyspec_wp_theme_json::filters::HookApiFilters;
+use speedyspec_wp_theme_json::global_styles::{GlobalStylesApi, ResolverGlobalSettings};
+use speedyspec_wp_theme_json::resolver::{ResolverDeps, ThemeJsonResolver};
 use speedyspec_wp_theme_json::{ThemeJsonApi, ThemeJsonDeps, register_theme_json_handlers};
 use speedyspec_wp_theme_json_contracts::schema;
 
 pub use adapters::{
     PhpActiveTheme, PhpBlockRegistry, PhpCapabilities, PhpDiagnostics, PhpGettext,
-    PhpGlobalSettings, PhpSafeCss, PhpTextFunctions,
+    PhpGlobalSettings, PhpGlobalStylesPost, PhpLayerFilters, PhpSafeCss, PhpTextFunctions,
+    PhpVariationRegistrar, PhpWpCache,
 };
 pub use arena::HandleArena;
 pub use literal::php_literal;
+pub use release::{PORTED_FUNCTIONS, REPLACED_FILES, prepare_release, strip_ported};
 
 const FACADE: &str = include_str!("theme-json.php");
 
@@ -52,6 +58,7 @@ pub fn facade_source() -> String {
 /// The theme.json area: the native functions and the classes over them.
 pub struct ThemeJsonArea {
     api: Rc<ThemeJsonApi>,
+    styles: Rc<GlobalStylesApi>,
     handlers: Rc<native::Handlers>,
     blocks: Rc<PhpBlockRegistry>,
     source: String,
@@ -61,6 +68,7 @@ impl ThemeJsonArea {
     /// The area, with every port adapted onto WordPress's PHP.
     pub fn new(container: Rc<Container>, hooks: Rc<HookApi>) -> Self {
         let blocks = Rc::new(PhpBlockRegistry::default());
+        let global = Rc::new(ResolverGlobalSettings::default());
         let deps = ThemeJsonDeps::new(
             blocks.clone(),
             Rc::new(PhpTextFunctions),
@@ -68,14 +76,27 @@ impl ThemeJsonArea {
             Rc::new(PhpDiagnostics),
             Rc::new(PhpSafeCss),
         )
-        .with_global_settings(Rc::new(PhpGlobalSettings))
+        .with_global_settings(global.clone())
         .with_filters(Rc::new(HookApiFilters::new(hooks)))
         .with_theme(Rc::new(PhpActiveTheme))
         .with_capabilities(Rc::new(PhpCapabilities));
         let api = Rc::new(ThemeJsonApi::new(deps));
         register_theme_json_handlers(&container, api.clone());
+        let resolver = Rc::new(ThemeJsonResolver::new(
+            api.clone(),
+            ResolverDeps {
+                theme: Rc::new(PhpActiveTheme),
+                filters: Rc::new(PhpLayerFilters),
+                posts: Rc::new(PhpGlobalStylesPost),
+                registrar: Rc::new(PhpVariationRegistrar),
+                core_dir: String::new(),
+            },
+        ));
+        let styles = Rc::new(GlobalStylesApi::new(resolver, Rc::new(PhpWpCache)));
+        global.bind(&styles);
         Self {
             api,
+            styles,
             handlers: Rc::new(native::Handlers::new(&container)),
             blocks,
             source: facade_source(),
@@ -90,11 +111,14 @@ impl ThemeJsonArea {
 
 impl NativeArea for ThemeJsonArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
-        native::functions(self.handlers.clone())
+        let mut functions = native::functions(self.handlers.clone());
+        functions.extend(resolver_native::functions(self.styles.clone()));
+        functions
     }
 
     fn request_start(&self) {
         self.blocks.reset();
+        self.styles.resolver().new_request();
         if let Err(err) = speedyspec_php::eval("speedyspec://wp-theme-json", &self.source) {
             eprintln!("speedyspec_wordpress: installing the theme.json classes failed: {err}");
         }
