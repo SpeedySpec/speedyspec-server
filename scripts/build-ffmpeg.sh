@@ -83,14 +83,13 @@ deny_demuxers=(
 # Header-less PCM: every pcm_* demuxer, matched by prefix.
 deny_demuxer_prefixes=(pcm_)
 
-# Decoders avformat_find_stream_info needs for stream properties the demuxers and parsers don't fill: image width,
-# height and pixel format. Provisional: plan 3's corpus trims or grows this list.
+# Decoders avformat_find_stream_info needs for stream properties the demuxers and parsers don't fill, and nothing
+# else: each one's removal changes a result of the corpus or reader tests (plan 4's minimization, one at a time and
+# together). MJPEG and PNG for cover art sizes (with jpegls also gone, JPEG covers lose theirs), BMP for BMP sizes, QOI, PCX, SGI and Radiance HDR for those reader-path
+# image sizes; FLV dimensions, DTS channels and duration, FLAC bit depth. JPEG and the other formats get their sizes
+# from parsers and headers, and the fast-path image types are sized by PHP.
 decoders=(
-    mjpeg jpegls png apng gif bmp tiff webp jpeg2000 qoi pcx targa ppm pgm pgmyuv pbm pam sgi sunrast xbm xpm xwd dds
-    psd hdr
-    # Stream properties the demuxers leave unset without them (corpus: FLV dimensions, DTS channels and duration,
-    # FLAC bit depth).
-    flv h263 dca flac
+    mjpeg png bmp qoi pcx sgi hdr flv dca flac
 )
 
 denied() {
