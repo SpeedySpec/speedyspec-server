@@ -93,6 +93,10 @@ impl Smilies for FixedSmilies {
         Ok(self.search.clone())
     }
 
+    fn smileys(&self) -> Result<Vec<Vec<u8>>, TextError> {
+        Ok(self.table.iter().map(|(s, _)| s.clone()).collect())
+    }
+
     fn image(&self, smiley: &[u8]) -> Result<Option<Vec<u8>>, TextError> {
         Ok(self.table.iter().find(|(s, _)| s == smiley).map(|(_, i)| i.clone()))
     }
@@ -112,6 +116,10 @@ pub struct NoSmilies;
 impl Smilies for NoSmilies {
     fn search(&self) -> Result<Option<Vec<u8>>, TextError> {
         Ok(None)
+    }
+
+    fn smileys(&self) -> Result<Vec<Vec<u8>>, TextError> {
+        Ok(Vec::new())
     }
 
     fn image(&self, _smiley: &[u8]) -> Result<Option<Vec<u8>>, TextError> {

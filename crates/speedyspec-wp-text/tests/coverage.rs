@@ -72,6 +72,8 @@ const CONTENT_FILTERS: &[&str] = &[
     "links_add_target",
     "wp_targeted_link_rel",
     "speedyspec_make_clickable_in_comment_text",
+    "convert_smilies",
+    "speedyspec_convert_smilies_with",
 ];
 
 /// What plans 1 and 2 port (html-split and text-escape), which their own crates check.
@@ -98,7 +100,6 @@ const EARLIER: &[&str] = &[
 /// Plan 4's functions whose corpus cases are recorded but not yet checked; each task takes its own off this list,
 /// and the last one removes it.
 const PENDING: &[&str] = &[
-    "convert_smilies",
 ];
 
 #[test]

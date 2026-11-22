@@ -114,6 +114,8 @@ pub trait RandomSource {
 pub trait Smilies {
     /// `$wp_smiliessearch`, or `None` when it is empty (smilies off, or no table).
     fn search(&self) -> Result<Option<Vec<u8>>, TextError>;
+    /// The keys of `$wpsmiliestrans`, in order (a fast matcher is used only when they rebuild the search).
+    fn smileys(&self) -> Result<Vec<Vec<u8>>, TextError>;
     /// `$wpsmiliestrans[ $smiley ]`: the image file (or the text) for a smiley; `None` when it has none.
     fn image(&self, smiley: &[u8]) -> Result<Option<Vec<u8>>, TextError>;
     /// `includes_url( $path )`.

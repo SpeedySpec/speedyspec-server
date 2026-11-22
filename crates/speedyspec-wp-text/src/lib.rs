@@ -23,6 +23,7 @@ pub mod adapters;
 mod api;
 mod api_links;
 mod api_sanitize;
+mod api_smilies;
 mod autop;
 mod autop_fast;
 mod balance;

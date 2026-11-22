@@ -1,6 +1,12 @@
 //! Smileys: `smilies_init()`'s search pattern, `translate_smiley()` and `convert_smilies()`.
 
+use std::borrow::Cow;
+use std::sync::LazyLock;
+
 use speedyspec_wp_shortcode_contracts::preg_quote;
+
+use crate::preg::{Pattern, SplitFlags, preg_match, preg_replace_callback, preg_split};
+use crate::small::DEFAULT_SPACES;
 
 /// `preg_quote( $text, '/' )`.
 fn quote(text: &[u8]) -> Vec<u8> {
@@ -51,4 +57,175 @@ pub fn smilies_search_pattern(table: &[(Vec<u8>, Vec<u8>)], spaces: &[u8]) -> Op
     }
     out.extend_from_slice(&[b")(?=", spaces, b"|$)/m"].concat());
     Some(out)
+}
+
+
+/// `convert_smilies()`'s patterns.
+static SMILEY_SPLIT: LazyLock<(Pattern, Pattern)> =
+    LazyLock::new(|| (Pattern::php("/(<[^>]*>)/U"), Pattern::php("/^<(code|pre|style|script|textarea)[^>]*>/")));
+
+/// The smileys for one first byte, in the search's (`krsort()`) order, without that byte.
+type Group = Vec<Vec<u8>>;
+
+/// A matcher equivalent to the search pattern `smilies_init()` builds with the default spaces: a smiley preceded by
+/// the start, a space, `\xC2\xA0` or `&nbsp;`, and followed by one or the end; at each position the first smiley
+/// in descending order that fits wins, as PCRE's alternation does.
+pub struct HandSmilies {
+    groups: Vec<Option<Group>>,
+}
+
+impl HandSmilies {
+    fn new(smileys: &[Vec<u8>]) -> HandSmilies {
+        let mut sorted: Vec<&Vec<u8>> = smileys.iter().filter(|s| !s.is_empty()).collect();
+        sorted.sort_unstable_by(|a, b| b.cmp(a));
+        let mut groups: Vec<Option<Group>> = vec![None; 256];
+        for smiley in sorted {
+            groups[usize::from(smiley[0])].get_or_insert_with(Vec::new).push(smiley[1..].to_vec());
+        }
+        HandSmilies { groups }
+    }
+
+    /// Whether a space fragment ends at `at` (or `at` is the start).
+    fn space_before(text: &[u8], at: usize) -> bool {
+        at == 0
+            || matches!(text[at - 1], b'\r' | b'\n' | b'\t' | b' ')
+            || text[..at].ends_with(b"\xC2\xA0")
+            || text[..at].ends_with(b"&nbsp;")
+    }
+
+    /// Whether a space fragment starts at `at` (or `at` is the end).
+    fn space_after(text: &[u8], at: usize) -> bool {
+        at == text.len()
+            || matches!(text[at], b'\r' | b'\n' | b'\t' | b' ')
+            || text[at..].starts_with(b"\xC2\xA0")
+            || text[at..].starts_with(b"&nbsp;")
+    }
+
+    /// The length of the smiley matched at `at`, if any.
+    fn at(&self, text: &[u8], at: usize) -> Option<usize> {
+        let group = self.groups[usize::from(text[at])].as_ref()?;
+        if !HandSmilies::space_before(text, at) {
+            return None;
+        }
+        group
+            .iter()
+            .find(|rest| text[at + 1..].starts_with(rest) && HandSmilies::space_after(text, at + 1 + rest.len()))
+            .map(|rest| 1 + rest.len())
+    }
+
+    /// `preg_replace_callback( $wp_smiliessearch, ..., $text )`.
+    fn replace<'a>(&self, text: &'a [u8], translate: &mut dyn FnMut(&[u8]) -> Vec<u8>) -> Cow<'a, [u8]> {
+        let mut out: Option<Vec<u8>> = None;
+        let mut copied = 0;
+        let mut i = 0;
+        while i < text.len() {
+            match self.at(text, i) {
+                Some(len) => {
+                    let buf = out.get_or_insert_with(|| Vec::with_capacity(text.len() + 64));
+                    buf.extend_from_slice(&text[copied..i]);
+                    buf.extend_from_slice(&translate(&text[i..i + len]));
+                    i += len;
+                    copied = i;
+                }
+                None => i += 1,
+            }
+        }
+        match out {
+            None => Cow::Borrowed(text),
+            Some(mut buf) => {
+                buf.extend_from_slice(&text[copied..]);
+                Cow::Owned(buf)
+            }
+        }
+    }
+}
+
+/// How smileys are found: the hand matcher when it is equivalent, WordPress's pattern otherwise.
+pub enum SmileyEngine {
+    Hand(HandSmilies),
+    Pattern(Pattern),
+}
+
+impl SmileyEngine {
+    /// The engine for a search.
+    ///
+    /// @param search
+    ///     `$wp_smiliessearch`.
+    /// @param smileys
+    ///     The keys of `$wpsmiliestrans`, in order.
+    /// @return
+    ///     The hand matcher when `search` is exactly what `smilies_init()` builds from `smileys` with the default
+    ///     spaces, else the compiled pattern; `None` when PCRE rejects the search.
+    pub fn new(search: &[u8], smileys: &[Vec<u8>]) -> Option<SmileyEngine> {
+        let table: Vec<(Vec<u8>, Vec<u8>)> = smileys.iter().map(|s| (s.clone(), Vec::new())).collect();
+        if smilies_search_pattern(&table, DEFAULT_SPACES).as_deref() == Some(search) {
+            return Some(SmileyEngine::Hand(HandSmilies::new(smileys)));
+        }
+        SmileyEngine::reference(search)
+    }
+
+    /// The pattern engine, always.
+    ///
+    /// @param search
+    ///     `$wp_smiliessearch`.
+    /// @return
+    ///     The compiled pattern, or `None` when PCRE rejects it.
+    pub fn reference(search: &[u8]) -> Option<SmileyEngine> {
+        Pattern::try_php(search).ok().map(SmileyEngine::Pattern)
+    }
+
+    /// Whether this is the hand matcher.
+    pub fn is_hand(&self) -> bool {
+        matches!(self, SmileyEngine::Hand(_))
+    }
+
+    fn replace<'a>(&self, text: &'a [u8], translate: &mut dyn FnMut(&[u8]) -> Vec<u8>) -> Cow<'a, [u8]> {
+        match self {
+            SmileyEngine::Hand(hand) => hand.replace(text, translate),
+            SmileyEngine::Pattern(pattern) => {
+                // PHP's preg_replace_callback returns null on failure, which the concatenation reads as "".
+                preg_replace_callback(pattern, text, |m| translate(m.get(0).unwrap_or_default()))
+                    .unwrap_or(Cow::Borrowed(&text[..0]))
+            }
+        }
+    }
+}
+
+/// `convert_smilies()` once smileys are on and the search is set.
+///
+/// @param text
+///     The text.
+/// @param engine
+///     The matcher.
+/// @param translate
+///     `translate_smiley()`, given each matched smiley.
+/// @return
+///     The text with smileys replaced outside tags and outside `code`, `pre`, `style`, `script` and `textarea`.
+pub fn convert_smilies_core<'a>(text: &'a [u8], engine: &SmileyEngine, translate: &mut dyn FnMut(&[u8]) -> Vec<u8>) -> Cow<'a, [u8]> {
+    let (split, ignore_open) = &*SMILEY_SPLIT;
+    let Ok(pieces) = preg_split(split, text, -1, SplitFlags { delim_capture: true, no_empty: false }) else {
+        return Cow::Borrowed(text);
+    };
+    let mut out: Vec<u8> = Vec::with_capacity(text.len() + 64);
+    let mut changed = false;
+    let mut ignore: Vec<u8> = Vec::new();
+    for content in pieces {
+        if ignore.is_empty()
+            && let Ok(Some(m)) = preg_match(ignore_open, content)
+        {
+            ignore = m.get(1).unwrap_or_default().to_vec();
+        }
+        let mut piece = Cow::Borrowed(content);
+        if ignore.is_empty() && !content.is_empty() && content[0] != b'<' {
+            piece = engine.replace(content, translate);
+            changed |= matches!(piece, Cow::Owned(_));
+        }
+        if !ignore.is_empty() && content.len() == ignore.len() + 3 && content.starts_with(b"</") && content.ends_with(b">")
+            && content[2..content.len() - 1] == ignore[..]
+        {
+            ignore.clear();
+        }
+        out.extend_from_slice(&piece);
+    }
+    if changed || out != text { Cow::Owned(out) } else { Cow::Borrowed(text) }
 }

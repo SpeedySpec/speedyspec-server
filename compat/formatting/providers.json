@@ -309,6 +309,56 @@
     "class": "Tests_Formatting_ConvertSmilies",
     "functions": [
       "convert_smilies"
+    ],
+    "as": {
+      "test_convert_custom_smilies": {
+        "function": "speedyspec_convert_smilies_with",
+        "args": [
+          0
+        ],
+        "extra": [
+          {
+            "array": [
+              [
+                ":PP",
+                "icon_tongue.gif"
+              ],
+              [
+                ":arrow:",
+                "icon_arrow.gif"
+              ],
+              [
+                ":monkey:",
+                "icon_shock_the_monkey.gif"
+              ],
+              [
+                ":nervou:",
+                "icon_nervou.gif"
+              ]
+            ]
+          }
+        ]
+      },
+      "test_single_smilies_in_wpsmiliestrans": {
+        "function": "speedyspec_convert_smilies_with",
+        "args": [
+          0
+        ],
+        "extra": [
+          {
+            "array": [
+              [
+                ":)",
+                "simple-smile.png"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "skip": [
+      "test_smilies_filter_removes_smilies",
+      "test_smilies_filter_adds_smilies"
     ]
   },
   {

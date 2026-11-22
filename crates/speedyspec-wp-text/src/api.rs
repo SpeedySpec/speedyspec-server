@@ -88,6 +88,8 @@ pub struct TextApi {
     pub(crate) d: TextDeps,
     /// Hook names made once each (making one copies its name).
     hook_names: RefCell<Vec<(&'static str, Rc<HookName>)>>,
+    /// The smiley matcher for the last search seen (Lazy Load, like the texturize tables).
+    pub(crate) smiley_engine: RefCell<Option<(Vec<u8>, Rc<crate::smilies::SmileyEngine>)>>,
     texturizer: Rc<dyn Texturizer>,
     autop: AutopFn,
     unautop: Unautop,
@@ -138,6 +140,7 @@ impl TextApi {
         TextApi {
             d: deps,
             hook_names: RefCell::new(Vec::new()),
+            smiley_engine: RefCell::new(None),
             texturizer: Rc::new(HandTexturizer::default()),
             autop: wpautop,
             unautop: Unautop::new(),
