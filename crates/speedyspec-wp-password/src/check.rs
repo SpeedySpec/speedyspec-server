@@ -2,13 +2,14 @@
 //!
 //! Order is part of the semantics: a 32-character hash is rejected before `$wp_hasher` is asked, and `$wp_hasher`
 //! answers before the length and format rules. Two links differ from WordPress on purpose: hashes of 32 characters
-//! or fewer (raw MD5) and phpass `$P$` hashes never verify.
+//! or fewer (raw MD5) and phpass `$P$` hashes never verify. A third is a hardening: bcrypt and argon2 hashes whose
+//! costs exceed the site's [`CostLimits`] never verify, and are never computed.
 
 use std::rc::Rc;
 
 use speedyspec_hooks::Value;
 use speedyspec_wp_crypto_contracts::{Argon2, Argon2Variant};
-use speedyspec_wp_password_contracts::{Bcrypt, PasswordChecker, PasswordError};
+use speedyspec_wp_password_contracts::{Bcrypt, CostLimits, PasswordChecker, PasswordError};
 use subtle::ConstantTimeEq;
 
 use crate::hash::{MAX_PASSWORD_LEN, PasswordPorts};
@@ -60,6 +61,7 @@ impl CheckHandler for TooLong {
 pub struct WpPrefixed {
     pub bcrypt: Rc<dyn Bcrypt>,
     pub argon2: Rc<dyn Argon2>,
+    pub limits: CostLimits,
 }
 
 impl CheckHandler for WpPrefixed {
@@ -68,6 +70,7 @@ impl CheckHandler for WpPrefixed {
         Some(Handled::Answer(verify_known(
             &*self.bcrypt,
             &*self.argon2,
+            &self.limits,
             prehash(password).as_bytes(),
             rest,
         )))
@@ -83,21 +86,21 @@ impl CheckHandler for PhpassRejected {
     }
 }
 
-/// `$2a$`, `$2b$` and `$2y$` bcrypt.
-pub struct BcryptFormat(pub Rc<dyn Bcrypt>);
+/// `$2a$`, `$2b$` and `$2y$` bcrypt, up to the site's cost limit.
+pub struct BcryptFormat(pub Rc<dyn Bcrypt>, pub CostLimits);
 
 impl CheckHandler for BcryptFormat {
     fn handle(&self, password: &[u8], hash: &[u8]) -> Option<Handled> {
-        is_bcrypt(hash).then(|| Handled::Answer(self.0.verify(password, hash)))
+        is_bcrypt(hash).then(|| Handled::Answer(verify_bcrypt(&*self.0, &self.1, password, hash)))
     }
 }
 
-/// `$argon2i$` and `$argon2id$`.
-pub struct Argon2Format(pub Rc<dyn Argon2>);
+/// `$argon2i$` and `$argon2id$`, up to the site's cost limits.
+pub struct Argon2Format(pub Rc<dyn Argon2>, pub CostLimits);
 
 impl CheckHandler for Argon2Format {
     fn handle(&self, password: &[u8], hash: &[u8]) -> Option<Handled> {
-        is_argon2(hash).then(|| Handled::Answer(verify_argon2(&*self.0, password, hash)))
+        is_argon2(hash).then(|| Handled::Answer(verify_argon2(&*self.0, &self.1, password, hash)))
     }
 }
 
@@ -119,24 +122,58 @@ fn is_argon2(hash: &[u8]) -> bool {
 }
 
 /// `password_verify()` for the formats SpeedySpec supports.
-fn verify_known(bcrypt: &dyn Bcrypt, argon2: &dyn Argon2, password: &[u8], hash: &[u8]) -> bool {
+fn verify_known(
+    bcrypt: &dyn Bcrypt,
+    argon2: &dyn Argon2,
+    limits: &CostLimits,
+    password: &[u8],
+    hash: &[u8],
+) -> bool {
     if is_bcrypt(hash) {
-        bcrypt.verify(password, hash)
+        verify_bcrypt(bcrypt, limits, password, hash)
     } else if is_argon2(hash) {
-        verify_argon2(argon2, password, hash)
+        verify_argon2(argon2, limits, password, hash)
     } else {
         false
     }
 }
 
+/// A bcrypt hash's cost (`$2y$NN$`), when it reads as a number.
+fn bcrypt_cost(hash: &[u8]) -> Option<u32> {
+    let rest = hash.get(4..)?;
+    let end = rest.iter().position(|b| *b == b'$')?;
+    std::str::from_utf8(&rest[..end]).ok()?.parse().ok()
+}
+
+/// Whether `password` matches a bcrypt hash. A hash whose cost is above `limits` never verifies, and isn't computed.
+pub fn verify_bcrypt(
+    bcrypt: &dyn Bcrypt,
+    limits: &CostLimits,
+    password: &[u8],
+    hash: &[u8],
+) -> bool {
+    if bcrypt_cost(hash).is_some_and(|cost| cost > limits.bcrypt_cost) {
+        return false;
+    }
+    bcrypt.verify(password, hash)
+}
+
 /// Whether `password` matches an argon2 hash string, comparing digests in constant time.
 ///
 /// Hashes libsodium can't recompute never verify: more than one lane, argon2 1.0 (no `v=19`), argon2i under three
-/// passes, salts other than 16 bytes.
-pub fn verify_argon2(argon2: &dyn Argon2, password: &[u8], hash: &[u8]) -> bool {
+/// passes, salts other than 16 bytes. Nor do hashes whose memory or time cost is above `limits`.
+pub fn verify_argon2(
+    argon2: &dyn Argon2,
+    limits: &CostLimits,
+    password: &[u8],
+    hash: &[u8],
+) -> bool {
     let Some(phc) = parse_phc(hash) else {
         return false;
     };
+    if phc.memory_kib > limits.argon2_memory_kib || phc.time_cost > limits.argon2_time_cost {
+        return false;
+    }
     if phc.version != ARGON2_VERSION
         || phc.threads != 1
         || (phc.variant == Argon2Variant::Argon2i && phc.time_cost < 3)
@@ -159,11 +196,12 @@ pub fn verify_argon2(argon2: &dyn Argon2, password: &[u8], hash: &[u8]) -> bool 
     }
 }
 
-/// WordPress's chain, in its order.
+/// WordPress's chain, in its order, verifying up to `limits`.
 pub fn default_chain(
     bcrypt: Rc<dyn Bcrypt>,
     argon2: Rc<dyn Argon2>,
     hasher_set: bool,
+    limits: CostLimits,
 ) -> Vec<Box<dyn CheckHandler>> {
     vec![
         Box::new(Md5Rejected),
@@ -172,10 +210,11 @@ pub fn default_chain(
         Box::new(WpPrefixed {
             bcrypt: bcrypt.clone(),
             argon2: argon2.clone(),
+            limits,
         }),
         Box::new(PhpassRejected),
-        Box::new(BcryptFormat(bcrypt)),
-        Box::new(Argon2Format(argon2)),
+        Box::new(BcryptFormat(bcrypt, limits)),
+        Box::new(Argon2Format(argon2, limits)),
         Box::new(Unrecognized),
     ]
 }
@@ -198,6 +237,7 @@ impl PasswordChecker for DefaultPasswordChecker {
             ports.bcrypt.clone(),
             ports.argon2.clone(),
             ports.hasher_global.is_set(),
+            ports.limits.limits()?,
         );
         let handled = chain
             .iter()

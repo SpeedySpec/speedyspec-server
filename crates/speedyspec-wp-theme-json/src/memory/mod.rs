@@ -150,3 +150,34 @@ impl speedyspec_wp_theme_json_contracts::ports::ActiveTheme for MemoryThemeSuppo
         self.features.borrow().iter().any(|f| f == feature)
     }
 }
+
+/// A user who can do nothing (no user, as in a request without one).
+pub struct NoCapabilities;
+
+impl speedyspec_wp_theme_json_contracts::ports::Capabilities for NoCapabilities {
+    fn current_user_can(&self, _capability: &str) -> bool {
+        false
+    }
+}
+
+/// A user with the capabilities listed.
+#[derive(Default)]
+pub struct MemoryCapabilities {
+    /// The capabilities.
+    pub capabilities: RefCell<Vec<String>>,
+}
+
+impl MemoryCapabilities {
+    /// A user with these capabilities.
+    pub fn new(capabilities: &[&str]) -> MemoryCapabilities {
+        MemoryCapabilities {
+            capabilities: RefCell::new(capabilities.iter().map(|c| (*c).to_owned()).collect()),
+        }
+    }
+}
+
+impl speedyspec_wp_theme_json_contracts::ports::Capabilities for MemoryCapabilities {
+    fn current_user_can(&self, capability: &str) -> bool {
+        self.capabilities.borrow().iter().any(|c| c == capability)
+    }
+}

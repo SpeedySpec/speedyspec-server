@@ -1,0 +1,22 @@
+[package]
+name = "speedyspec-rest"
+version = "0.1.0"
+publish = false
+description = "The REST transport: default routes, the route table, HTTP decoding and encoding, links and embeds, and the REST server in WordPress's hook order."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+indexmap = "2"
+regex = "1"
+serde_json = "1"
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-http = { path = "../speedyspec-http" }
+speedyspec-http-message = { path = "../speedyspec-http-message" }
+speedyspec-operation = { path = "../speedyspec-operation" }
+speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
+speedyspec-operation-dispatch = { path = "../speedyspec-operation-dispatch" }
+speedyspec-rest-contracts = { path = "../speedyspec-rest-contracts" }
+speedyspec-transport = { path = "../speedyspec-transport" }
+speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }

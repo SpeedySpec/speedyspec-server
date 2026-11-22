@@ -157,27 +157,69 @@ pub fn st(value: impl Into<String>) -> Value {
     Value::Str(value.into())
 }
 
-/// Text functions close enough to WordPress's for slugs made of ASCII letters, digits and dashes.
+/// Text functions close enough to WordPress's for the tests' inputs: `sanitize_title` lowercases,
+/// `sanitize_html_class` is WordPress's rule, and the escapers are `_wp_specialchars( ENT_QUOTES )` without
+/// double-encoding entities that are already there.
 pub struct AsciiText;
+
+/// Whether `bytes` starts with a character reference (`&amp;`, `&#38;`, `&#x26;`).
+fn entity_len(bytes: &[u8]) -> Option<usize> {
+    let end = bytes.iter().position(|b| *b == b';')?;
+    let body = &bytes[1..end];
+    let ok = match body {
+        [b'#', b'x' | b'X', hex @ ..] => !hex.is_empty() && hex.iter().all(u8::is_ascii_hexdigit),
+        [b'#', digits @ ..] => !digits.is_empty() && digits.iter().all(u8::is_ascii_digit),
+        [first, rest @ ..] => {
+            first.is_ascii_alphabetic() && rest.iter().all(u8::is_ascii_alphanumeric)
+        }
+        [] => false,
+    };
+    ok.then_some(end + 1)
+}
 
 impl speedyspec_wp_theme_json_contracts::ports::TextFunctions for AsciiText {
     fn sanitize_title(&self, s: &[u8]) -> Vec<u8> {
         s.to_ascii_lowercase()
     }
     fn sanitize_html_class(&self, s: &[u8]) -> Vec<u8> {
-        s.to_vec()
+        let mut out = Vec::new();
+        let mut i = 0;
+        while i < s.len() {
+            if s[i] == b'%'
+                && i + 2 < s.len()
+                && s[i + 1].is_ascii_hexdigit()
+                && s[i + 2].is_ascii_hexdigit()
+            {
+                i += 3;
+                continue;
+            }
+            if s[i].is_ascii_alphanumeric() || s[i] == b'_' || s[i] == b'-' {
+                out.push(s[i]);
+            }
+            i += 1;
+        }
+        out
     }
     fn esc_html(&self, s: &[u8]) -> Vec<u8> {
         let mut out = Vec::new();
-        for b in s {
-            match b {
+        let mut i = 0;
+        while i < s.len() {
+            match s[i] {
+                b'&' => match entity_len(&s[i..]) {
+                    Some(n) => {
+                        out.extend_from_slice(&s[i..i + n]);
+                        i += n;
+                        continue;
+                    }
+                    None => out.extend_from_slice(b"&amp;"),
+                },
                 b'<' => out.extend_from_slice(b"&lt;"),
                 b'>' => out.extend_from_slice(b"&gt;"),
-                b'&' => out.extend_from_slice(b"&amp;"),
                 b'"' => out.extend_from_slice(b"&quot;"),
                 b'\'' => out.extend_from_slice(b"&#039;"),
-                b => out.push(*b),
+                b => out.push(b),
             }
+            i += 1;
         }
         out
     }

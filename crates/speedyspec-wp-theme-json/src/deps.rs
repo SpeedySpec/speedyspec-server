@@ -3,12 +3,12 @@
 use std::rc::Rc;
 
 use speedyspec_wp_theme_json_contracts::ports::{
-    ActiveTheme, BlockMetadata, Diagnostics, Gettext, GlobalSettings, SafeCss, TextFunctions,
-    ThemeJsonFilters,
+    ActiveTheme, BlockMetadata, Capabilities, Diagnostics, Gettext, GlobalSettings, SafeCss,
+    TextFunctions, ThemeJsonFilters,
 };
 
 use crate::filters::NoFilters;
-use crate::memory::{MemoryGlobalSettings, NoThemeSupports};
+use crate::memory::{MemoryGlobalSettings, NoCapabilities, NoThemeSupports};
 
 /// What the theme.json engine needs from outside.
 #[derive(Clone)]
@@ -29,10 +29,12 @@ pub struct ThemeJsonDeps {
     pub filters: Rc<dyn ThemeJsonFilters>,
     /// The active theme (`current_theme_supports()`).
     pub theme: Rc<dyn ActiveTheme>,
+    /// The current user's capabilities (`current_user_can()`).
+    pub capabilities: Rc<dyn Capabilities>,
 }
 
 impl ThemeJsonDeps {
-    /// The ports, with no site settings, no filters and a theme that supports nothing; set those with the
+    /// The ports, with no site settings, no filters, a theme that supports nothing and no user; set those with the
     /// `with_*` methods.
     pub fn new(
         blocks: Rc<dyn BlockMetadata>,
@@ -50,6 +52,7 @@ impl ThemeJsonDeps {
             global_settings: Rc::new(MemoryGlobalSettings::default()),
             filters: Rc::new(NoFilters),
             theme: Rc::new(NoThemeSupports),
+            capabilities: Rc::new(NoCapabilities),
         }
     }
 
@@ -65,6 +68,12 @@ impl ThemeJsonDeps {
     /// With these filters.
     pub fn with_filters(mut self, filters: Rc<dyn ThemeJsonFilters>) -> ThemeJsonDeps {
         self.filters = filters;
+        self
+    }
+
+    /// With this user's capabilities.
+    pub fn with_capabilities(mut self, capabilities: Rc<dyn Capabilities>) -> ThemeJsonDeps {
+        self.capabilities = capabilities;
         self
     }
 

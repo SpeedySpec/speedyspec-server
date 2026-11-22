@@ -8,9 +8,12 @@ use common::*;
 use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_crypto_contracts::Argon2Variant;
 use speedyspec_wp_password::{
-    DEFAULT_ALGORITHM, DefaultPasswordHasher, PasswordPorts, argon2_phc, parse_phc, prehash,
+    DEFAULT_ALGORITHM, DefaultPasswordHasher, FixedCostLimits, PasswordPorts, argon2_phc,
+    parse_phc, prehash,
 };
-use speedyspec_wp_password_contracts::{PasswordError, PasswordHasher};
+use speedyspec_wp_password_contracts::{
+    CostLimits, PasswordCostLimits, PasswordError, PasswordHasher,
+};
 
 /// Cases where SpeedySpec answers differently on purpose (see the design's divergence table).
 ///
@@ -49,6 +52,7 @@ fn rig(algorithm: Option<Value>, options: Option<Value>, hasher_set: bool) -> Ri
         argon2: argon2.clone(),
         random: Rc::new(FixedBytes(1)),
         warnings: warnings.clone(),
+        limits: Rc::new(speedyspec_wp_password::FixedCostLimits::default()),
     });
     Rig {
         hasher: DefaultPasswordHasher::new(ports),
@@ -292,4 +296,183 @@ fn filter_values_are_read_before_use() {
     );
     let hash = text(rig.hasher.hash(b"pw").unwrap());
     assert!(hash.starts_with("$wp$2y$05$"), "{hash}");
+}
+
+#[test]
+fn non_finite_or_out_of_range_float_algorithm_is_a_value_error() {
+    // PHP's `string|int|null` parameter can't take these floats as integers, so it reads them as strings
+    // ("NAN", "INF", "1.0E+20"), which name no algorithm.
+    for f in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 1e20, -1e20] {
+        let rig = rig(Some(Value::Float(f)), None, false);
+        assert_eq!(
+            rig.hasher.hash(b"pw"),
+            Err(PasswordError::value_error(
+                "password_hash(): Argument #2 ($algo) must be a valid password hashing algorithm"
+            )),
+            "{f}"
+        );
+    }
+}
+
+/// Warnings that fail as a throwing PHP error handler does.
+struct ThrowingWarnings;
+
+impl speedyspec_wp_password_contracts::Warnings for ThrowingWarnings {
+    fn warn(&self, _message: &str) -> Result<(), PasswordError> {
+        Err(PasswordError::Unwinding)
+    }
+}
+
+#[test]
+fn a_failing_warning_stops_the_hash() {
+    let filters = Rc::new(FakeFilters::with(
+        Some(Value::Str("2y".into())),
+        Some(Value::Array(vec![(
+            Key::Str("salt".into()),
+            Value::Str("x".into()),
+        )])),
+        calls(),
+    ));
+    let bcrypt = Rc::new(FakeBcrypt::new());
+    let hasher = DefaultPasswordHasher::new(Rc::new(PasswordPorts {
+        filters,
+        hasher_global: Rc::new(FakeHasher {
+            set: false,
+            calls: calls(),
+        }),
+        bcrypt: bcrypt.clone(),
+        argon2: Rc::new(FakeArgon2::new()),
+        random: Rc::new(FixedBytes(1)),
+        warnings: Rc::new(ThrowingWarnings),
+        limits: Rc::new(speedyspec_wp_password::FixedCostLimits::default()),
+    }));
+    assert_eq!(hasher.hash(b"pw"), Err(PasswordError::Unwinding));
+}
+
+fn options(entries: &[(&str, i64)]) -> Value {
+    Value::Array(
+        entries
+            .iter()
+            .map(|(k, v)| (Key::Str((*k).into()), Value::Int(*v)))
+            .collect(),
+    )
+}
+
+fn limited_hasher(algorithm: &str, opts: Value, limits: CostLimits) -> DefaultPasswordHasher {
+    DefaultPasswordHasher::new(Rc::new(PasswordPorts {
+        filters: Rc::new(FakeFilters::with(
+            Some(Value::Str(algorithm.into())),
+            Some(opts),
+            calls(),
+        )),
+        hasher_global: Rc::new(FakeHasher {
+            set: false,
+            calls: calls(),
+        }),
+        bcrypt: Rc::new(FakeBcrypt::new()),
+        argon2: Rc::new(FakeArgon2::new()),
+        random: Rc::new(FixedBytes(1)),
+        warnings: Rc::new(CollectWarnings(Default::default())),
+        limits: Rc::new(FixedCostLimits(limits)),
+    }))
+}
+
+#[test]
+fn default_cost_limits_are_bcrypt_16_and_argon2_256_mib_10_passes() {
+    assert_eq!(
+        FixedCostLimits::default().limits(),
+        Ok(CostLimits {
+            bcrypt_cost: 16,
+            argon2_memory_kib: 262_144,
+            argon2_time_cost: 10,
+        })
+    );
+}
+
+#[test]
+fn costs_above_the_limits_are_value_errors() {
+    let d = CostLimits::DEFAULT;
+    let err = |algorithm: &str, opts: Value| {
+        limited_hasher(algorithm, opts, d)
+            .hash(b"pw")
+            .err()
+            .map(|e| e.to_string())
+    };
+    assert_eq!(
+        err("2y", options(&[("cost", 17)])),
+        Some("ValueError: Invalid bcrypt cost parameter specified: 17".into())
+    );
+    assert_eq!(err("2y", options(&[("cost", 16)])), None);
+    assert_eq!(
+        err("argon2id", options(&[("memory_cost", 262_145)])),
+        Some("ValueError: Memory cost is outside of allowed memory range".into())
+    );
+    assert_eq!(err("argon2id", options(&[("memory_cost", 262_144)])), None);
+    assert_eq!(
+        err("argon2i", options(&[("time_cost", 11)])),
+        Some("ValueError: Time cost is outside of allowed time range".into())
+    );
+    assert_eq!(err("argon2i", options(&[("time_cost", 10)])), None);
+}
+
+#[test]
+fn a_sites_limits_replace_the_defaults() {
+    let limits = CostLimits {
+        bcrypt_cost: 5,
+        argon2_memory_kib: 1024,
+        argon2_time_cost: 3,
+    };
+    let hash = |algorithm: &str, opts: Value| limited_hasher(algorithm, opts, limits).hash(b"pw");
+    assert!(hash("2y", options(&[("cost", 6)])).is_err());
+    assert!(hash("2y", options(&[("cost", 5)])).is_ok());
+    assert!(
+        hash(
+            "argon2id",
+            options(&[("memory_cost", 1025), ("time_cost", 3)])
+        )
+        .is_err()
+    );
+    assert!(
+        hash(
+            "argon2id",
+            options(&[("memory_cost", 1024), ("time_cost", 4)])
+        )
+        .is_err()
+    );
+    assert!(
+        hash(
+            "argon2id",
+            options(&[("memory_cost", 1024), ("time_cost", 3)])
+        )
+        .is_ok()
+    );
+}
+
+/// Limits that fail, as a broken replacement does.
+struct BrokenLimits;
+
+impl PasswordCostLimits for BrokenLimits {
+    fn limits(&self) -> Result<CostLimits, PasswordError> {
+        Err(PasswordError::Port("no limits".into()))
+    }
+}
+
+#[test]
+fn failing_limits_stop_the_hash() {
+    let hasher = DefaultPasswordHasher::new(Rc::new(PasswordPorts {
+        filters: Rc::new(FakeFilters::with(None, None, calls())),
+        hasher_global: Rc::new(FakeHasher {
+            set: false,
+            calls: calls(),
+        }),
+        bcrypt: Rc::new(FakeBcrypt::new()),
+        argon2: Rc::new(FakeArgon2::new()),
+        random: Rc::new(FixedBytes(1)),
+        warnings: Rc::new(CollectWarnings(Default::default())),
+        limits: Rc::new(BrokenLimits),
+    }));
+    assert_eq!(
+        hasher.hash(b"pw"),
+        Err(PasswordError::Port("no limits".into()))
+    );
 }

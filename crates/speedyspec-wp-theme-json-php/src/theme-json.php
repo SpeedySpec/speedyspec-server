@@ -189,6 +189,25 @@ namespace
             return N\process_blocks_custom_css( $css, $selector );
         }
 
+        public static function remove_insecure_properties( $theme_json, $origin = 'theme' )
+        {
+            return N\remove_insecure_properties( $theme_json, $origin );
+        }
+
+        public function get_svg_filters( $origins )
+        {
+            return N\get_svg_filters( $this->speedyspec_handle, $origins );
+        }
+
+        /**
+         * Replaces the variables in the document's styles, in place, and returns the same object.
+         */
+        public static function resolve_variables( $theme_json )
+        {
+            N\resolve_variables( $theme_json->speedyspec_handle );
+            return $theme_json;
+        }
+
         public static function get_element_class_name( $element )
         {
             return N\get_element_class_name( $element );

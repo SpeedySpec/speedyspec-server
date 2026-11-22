@@ -1,15 +1,17 @@
 //! The password ports over PHP and the Hook API (Adapters).
 
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
+use speedyspec_container::Container;
 use speedyspec_hooks::{Key, Value};
 use speedyspec_php::PhpError;
 use speedyspec_php_ext::PhpObject;
 use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
-use speedyspec_wp_password::php_truthy;
+use speedyspec_wp_password::{php_long, php_truthy};
 use speedyspec_wp_password_contracts::{
-    PasswordChecker, PasswordError, PasswordFilters, PasswordGenerator, PasswordHasher,
-    RandomNumber, RehashPolicy, Warnings, WpHasherGlobal,
+    CostLimits, PASSWORD_COST_LIMITS, PasswordChecker, PasswordCostLimits, PasswordError,
+    PasswordFilters, PasswordGenerator, PasswordHasher, RandomNumber, RehashPolicy, Warnings,
+    WpHasherGlobal,
 };
 
 /// Bytes as a PHP string value.
@@ -35,13 +37,9 @@ pub(crate) fn hook_error(err: HookError) -> PasswordError {
     }
 }
 
-/// Calls `$target->$method(...$args)`, keeping the exception PHP throws.
-fn call_method(target: &Value, method: &str, args: &[Value]) -> Result<Value, PasswordError> {
-    let callable = Value::Array(vec![
-        (Key::Int(0), target.clone()),
-        (Key::Int(1), Value::Str(method.to_owned())),
-    ]);
-    speedyspec_php::call_catching(&callable, args).map_err(|failure| match failure.exception {
+/// Calls `callable(...$args)`, keeping the exception PHP throws; `exit()` and fatal errors stay silent.
+fn call(callable: &Value, args: &[Value]) -> Result<Value, PasswordError> {
+    speedyspec_php::call_catching(callable, args).map_err(|failure| match failure.exception {
         Some(exception) => PasswordError::Rethrow(exception),
         None => match failure.error {
             PhpError::Exit(_) | PhpError::Fatal { .. } => PasswordError::Unwinding,
@@ -50,29 +48,47 @@ fn call_method(target: &Value, method: &str, args: &[Value]) -> Result<Value, Pa
     })
 }
 
+/// Calls `$target->$method(...$args)`, keeping the exception PHP throws.
+fn call_method(target: &Value, method: &str, args: &[Value]) -> Result<Value, PasswordError> {
+    let callable = Value::Array(vec![
+        (Key::Int(0), target.clone()),
+        (Key::Int(1), Value::Str(method.to_owned())),
+    ]);
+    call(&callable, args)
+}
+
 /// WordPress's five password filters over the Hook API. With no callback a run is only counted and PHP is not
 /// entered.
+///
+/// The Hook API is held weakly. These filters live in container bindings, and the Hook API reaches the container
+/// through its hook store, so a strong reference would make a cycle (Container → binding → filters → Hook API →
+/// store → Container). Whoever built the filters keeps the Hook API alive ([`crate::PasswordArea`] does, for the
+/// worker).
 pub struct HookPasswordFilters {
-    hooks: Rc<HookApi>,
+    hooks: Weak<HookApi>,
 }
 
 impl HookPasswordFilters {
-    pub fn new(hooks: Rc<HookApi>) -> HookPasswordFilters {
-        HookPasswordFilters { hooks }
+    /// Filters through `hooks`, without keeping it alive.
+    pub fn new(hooks: &Rc<HookApi>) -> HookPasswordFilters {
+        HookPasswordFilters {
+            hooks: Rc::downgrade(hooks),
+        }
     }
 
     fn apply(&self, name: &str, value: Value, args: Vec<Value>) -> Result<Value, PasswordError> {
-        let name = HookName::from(name);
-        if self
+        let hooks = self
             .hooks
+            .upgrade()
+            .ok_or_else(|| PasswordError::Port("the Hook API is gone".into()))?;
+        let name = HookName::from(name);
+        if hooks
             .skip_if_empty(&name, Count::Filters)
             .map_err(hook_error)?
         {
             return Ok(value);
         }
-        self.hooks
-            .apply_filters(&name, value, args)
-            .map_err(hook_error)
+        hooks.apply_filters(&name, value, args).map_err(hook_error)
     }
 }
 
@@ -161,12 +177,14 @@ impl WpHasherGlobal for PhpWpHasherGlobal {
 pub struct PhpWarnings;
 
 impl Warnings for PhpWarnings {
-    fn warn(&self, message: &str) {
-        // E_USER_WARNING: a native function has no way to raise E_WARNING itself.
-        let _ = speedyspec_php::call(
+    fn warn(&self, message: &str) -> Result<(), PasswordError> {
+        // E_USER_WARNING: a native function has no way to raise E_WARNING itself. An error handler may throw or
+        // exit(); either is passed on.
+        call(
             &Value::Str("trigger_error".into()),
             &[Value::Str(message.to_owned()), Value::Int(512)],
-        );
+        )
+        .map(drop)
     }
 }
 
@@ -221,5 +239,74 @@ impl PasswordGenerator for PhpReplacement {
 impl RandomNumber for PhpReplacement {
     fn rand(&self, min: i64, max: i64) -> Result<Value, PasswordError> {
         self.call("rand", &[Value::Int(min), Value::Int(max)])
+    }
+}
+
+impl PasswordCostLimits for PhpReplacement {
+    fn limits(&self) -> Result<CostLimits, PasswordError> {
+        cost_limits(&self.call("limits", &[])?)
+    }
+}
+
+/// The limits a PHP `limits()` returned: `cost`, `memory_cost` and `time_cost`, each defaulting to
+/// [`CostLimits::DEFAULT`]'s and coerced as `password_hash()` coerces its options.
+fn cost_limits(value: &Value) -> Result<CostLimits, PasswordError> {
+    const METHOD: &str = "SpeedySpec\\WpPassword\\PasswordCostLimits::limits()";
+    let value = &*value.read();
+    let Value::Array(entries) = value else {
+        return Err(PasswordError::type_error(format!(
+            "{METHOD}: Return value must be of type array, {} given",
+            speedyspec_wp_password::php_type_name(value)
+        )));
+    };
+    let read = |name: &str, default: u32, min: u32, max: u32| -> Result<u32, PasswordError> {
+        let Some((_, v)) = entries
+            .iter()
+            .find(|(key, _)| matches!(key, Key::Str(k) if k == name))
+        else {
+            return Ok(default);
+        };
+        let n = php_long(v);
+        u32::try_from(n)
+            .ok()
+            .filter(|n| (min..=max).contains(n))
+            .ok_or_else(|| {
+                PasswordError::value_error(format!(
+                    "{METHOD}: \"{name}\" must be between {min} and {max}, {n} given"
+                ))
+            })
+    };
+    let d = CostLimits::DEFAULT;
+    Ok(CostLimits {
+        bcrypt_cost: read("cost", d.bcrypt_cost, 4, 31)?,
+        argon2_memory_kib: read("memory_cost", d.argon2_memory_kib, 8, u32::MAX)?,
+        argon2_time_cost: read("time_cost", d.argon2_time_cost, 1, u32::MAX)?,
+    })
+}
+
+/// The site's cost limits, resolved from the container each time they're read, so a binding made for the site or
+/// the request (in PHP, `app.<id>.php.bindings` or the container) applies. The container is held weakly: it holds
+/// this adapter's owners.
+pub struct ResolvedCostLimits {
+    container: Weak<Container>,
+}
+
+impl ResolvedCostLimits {
+    /// Limits resolved from `container`, without keeping it alive.
+    pub fn new(container: &Rc<Container>) -> ResolvedCostLimits {
+        ResolvedCostLimits {
+            container: Rc::downgrade(container),
+        }
+    }
+}
+
+impl PasswordCostLimits for ResolvedCostLimits {
+    fn limits(&self) -> Result<CostLimits, PasswordError> {
+        self.container
+            .upgrade()
+            .ok_or_else(|| PasswordError::Port("the container is gone".into()))?
+            .make_port::<dyn PasswordCostLimits>(PASSWORD_COST_LIMITS)
+            .map_err(|err| PasswordError::Port(err.to_string()))?
+            .limits()
     }
 }

@@ -32,11 +32,12 @@ pub use application::{application_password_check, application_password_hash, chu
 pub use check::{
     Argon2Format, BcryptFormat, CheckHandler, DefaultPasswordChecker, Handled, HasherOverride,
     Md5Rejected, PhpassRejected, TooLong, Unrecognized, WpPrefixed, default_chain, verify_argon2,
+    verify_bcrypt,
 };
 pub use hash::{
     ARGON2_DEFAULT_MEMORY_KIB, ARGON2_DEFAULT_THREADS, ARGON2_DEFAULT_TIME_COST, Argon2Strategy,
-    BCRYPT_DEFAULT_COST, BcryptStrategy, DEFAULT_ALGORITHM, DefaultPasswordHasher, HashAlgorithm,
-    MAX_PASSWORD_LEN, PasswordPorts, WpBcryptStrategy,
+    BCRYPT_DEFAULT_COST, BcryptStrategy, DEFAULT_ALGORITHM, DefaultPasswordHasher, FixedCostLimits,
+    HashAlgorithm, MAX_PASSWORD_LEN, PasswordPorts, WpBcryptStrategy,
 };
 pub use phc::{ARGON2_VERSION, Phc, argon2_phc, parse_phc, variant_name};
 pub use prehash::{PREHASH_KEY, php_trim, prehash};

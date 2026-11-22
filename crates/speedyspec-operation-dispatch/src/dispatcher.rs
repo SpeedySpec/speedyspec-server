@@ -87,16 +87,24 @@ impl Dispatcher {
             input: seen.as_ref(),
             raw: &input,
         };
-        let run_handler = || handler.handle(spec.input.mapper.hydrate(&input)?, caller);
+        let run_handler = || {
+            if handler.neutral() {
+                handler
+                    .handle_neutral(&input, caller)
+                    .map(|output| Box::new(NeutralOutput(output)) as Box<dyn Any>)
+            } else {
+                handler.handle(spec.input.mapper.hydrate(&input)?, caller)
+            }
+        };
         let output = match run(&self.middleware, &call, &run_handler)?.downcast::<Bypass>() {
             Ok(bypass) => return Ok(bypass.0),
             Err(output) => output,
         };
-        let extracted = normalize(
-            &spec.output.schema,
-            &spec.output.mapper.extract(output.as_ref())?,
-            self.registries.as_ref(),
-        );
+        let plain = match output.downcast::<NeutralOutput>() {
+            Ok(neutral) => neutral.0,
+            Err(output) => spec.output.mapper.extract(output.as_ref())?,
+        };
+        let extracted = normalize(&spec.output.schema, &plain, self.registries.as_ref());
         validate(&spec.output.schema, &extracted, self.registries.as_ref()).map_err(
             |violations| {
                 OperationError::new(
@@ -110,6 +118,9 @@ impl Dispatcher {
         Ok(extracted)
     }
 }
+
+/// A neutral handler's output: a value already, so it skips extraction (but not validation).
+struct NeutralOutput(Value);
 
 /// Runs `middleware` in order, then `handle`.
 fn run(

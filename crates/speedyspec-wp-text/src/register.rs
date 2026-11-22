@@ -167,8 +167,30 @@ const REGISTRATIONS: &[(&str, &str, i64, i64, bool)] = &[
     ("the_excerpt_embed", "shortcode_unautop", 10, 1, false),
 ];
 
-fn hook_error(e: TextError) -> HookError {
-    HookError::message(e.message)
+/// The distinct functions `default-filters.php` adds as formatting callbacks, in first-seen order: the names a
+/// language bridge may run as Rust callbacks when they are added by name.
+///
+/// @return
+///     Each function name once.
+pub fn default_callback_names() -> Vec<&'static str> {
+    let mut names: Vec<&'static str> = Vec::new();
+    for &(_, function, ..) in REGISTRATIONS {
+        if !names.contains(&function) {
+            names.push(function);
+        }
+    }
+    names
+}
+
+/// The hook error of a callback's failure, keeping its payload so a language bridge can rethrow the original
+/// (a PHP exception object) or stay silent while PHP unwinds.
+///
+/// @param e
+///     The formatting error.
+/// @return
+///     The hook error, with the same message and payload.
+pub fn hook_error(e: TextError) -> HookError {
+    HookError { message: e.message, payload: e.payload }
 }
 
 /// The first argument as a PHP string, or the error PHP 8 raises for a non-scalar.
@@ -223,8 +245,9 @@ fn callback(api: &Rc<TextApi>, function: &'static str) -> Callback {
 /// names), hooks, priorities and accepted arguments, in its order, so `has_filter( 'the_content', 'wpautop' )`
 /// answers 10 and `remove_filter()` finds them.
 ///
-/// It is for Rust-only callers and the seam that ports `default-filters.php`; in the embedded PHP,
-/// `default-filters.php` itself still registers the native functions.
+/// It is for Rust-only callers and the seam that ports `default-filters.php`. In the embedded PHP,
+/// `default-filters.php` itself still registers them by name, and `speedyspec-wp-text-php` stores each such
+/// registration as a Rust callback in the same slot.
 ///
 /// @param api
 ///     The facade the callbacks run.

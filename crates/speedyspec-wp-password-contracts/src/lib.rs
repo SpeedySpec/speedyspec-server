@@ -11,6 +11,9 @@
 //! - [`PasswordGenerator`] is `wp_generate_password()`, under [`PASSWORD_GENERATOR`];
 //! - [`RandomNumber`] is `wp_rand()`, under [`RANDOM_NUMBER`].
 //!
+//! A sixth port, [`PasswordCostLimits`] under [`PASSWORD_COST_LIMITS`], is the site's ceiling on hashing costs. It
+//! has no WordPress counterpart: it keeps a stored hash with a huge cost from pinning a worker.
+//!
 //! Their results are [`Value`]s: WordPress returns what its filters return, untouched, whatever its type.
 //!
 //! What WordPress's own implementations reach outside themselves are ports too: [`PasswordFilters`] (the five
@@ -30,6 +33,8 @@ pub const REHASH_POLICY: &str = "SpeedySpec\\WpPassword\\RehashPolicy";
 pub const PASSWORD_GENERATOR: &str = "SpeedySpec\\WpPassword\\PasswordGenerator";
 /// The container key of [`RandomNumber`].
 pub const RANDOM_NUMBER: &str = "SpeedySpec\\WpPassword\\RandomNumber";
+/// The container key of [`PasswordCostLimits`].
+pub const PASSWORD_COST_LIMITS: &str = "SpeedySpec\\WpPassword\\PasswordCostLimits";
 
 /// Why a password function didn't return.
 #[derive(Clone, Debug, PartialEq)]
@@ -171,5 +176,54 @@ pub trait Bcrypt {
 /// Warnings PHP raises from `password_hash()`, such as its ignored `salt` option.
 pub trait Warnings {
     /// Raises an `E_WARNING` with `message`.
-    fn warn(&self, message: &str);
+    ///
+    /// # Errors
+    ///
+    /// What an error handler did instead of returning: threw ([`PasswordError::Rethrow`]) or ended the request
+    /// ([`PasswordError::Unwinding`]). The caller stops and passes it on, as PHP would.
+    fn warn(&self, message: &str) -> Result<(), PasswordError>;
+}
+
+/// The highest costs a site hashes or verifies with.
+///
+/// PHP's `password_verify()` runs whatever cost a stored hash names, up to bcrypt's 31 and argon2's 4 GiB, so one
+/// planted hash can hold a worker for hours. SpeedySpec doesn't: a stored hash above a limit never verifies (its user
+/// resets their password), and `wp_hash_password()` refuses options above them with PHP's own `ValueError`, so a site
+/// never writes a hash it can't verify.
+///
+/// [`CostLimits::default`] leaves four times the default costs' headroom.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CostLimits {
+    /// The highest bcrypt cost (`$2y$NN$`; PHP's default is 12). At most 31.
+    pub bcrypt_cost: u32,
+    /// The highest argon2 memory cost, in KiB (`m=`; PHP's default is 65536, 64 MiB).
+    pub argon2_memory_kib: u32,
+    /// The highest argon2 time cost (`t=`; PHP's default is 4).
+    pub argon2_time_cost: u32,
+}
+
+impl CostLimits {
+    /// bcrypt cost 16 (about 4 seconds a check), argon2 256 MiB and 10 passes.
+    pub const DEFAULT: CostLimits = CostLimits {
+        bcrypt_cost: 16,
+        argon2_memory_kib: 262_144,
+        argon2_time_cost: 10,
+    };
+}
+
+impl Default for CostLimits {
+    fn default() -> CostLimits {
+        CostLimits::DEFAULT
+    }
+}
+
+/// The site's [`CostLimits`]. A site sets its own by binding this port (in PHP, `app.<id>.php.bindings` or the
+/// container); otherwise [`CostLimits::DEFAULT`] applies.
+pub trait PasswordCostLimits {
+    /// The limits, read when a password is hashed or checked.
+    ///
+    /// # Errors
+    ///
+    /// When a replacement fails or answers limits that aren't valid.
+    fn limits(&self) -> Result<CostLimits, PasswordError>;
 }

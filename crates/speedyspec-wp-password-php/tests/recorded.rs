@@ -109,7 +109,9 @@ impl WpHasherGlobal for NoHasher {
 struct Quiet;
 
 impl Warnings for Quiet {
-    fn warn(&self, _: &str) {}
+    fn warn(&self, _: &str) -> Result<(), PasswordError> {
+        Ok(())
+    }
 }
 
 fn ports(algorithm: Option<Value>, options: Option<Value>) -> Rc<PasswordPorts> {
@@ -121,6 +123,7 @@ fn ports(algorithm: Option<Value>, options: Option<Value>) -> Rc<PasswordPorts> 
         argon2: sodium.clone(),
         random: sodium,
         warnings: Rc::new(Quiet),
+        limits: Rc::new(speedyspec_wp_password::FixedCostLimits::default()),
     })
 }
 

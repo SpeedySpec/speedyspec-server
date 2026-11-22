@@ -327,5 +327,75 @@ fn main() {
         &r,
     );
 
+    let r = eval(
+        "throwing-warning",
+        "add_filter('wp_hash_password_algorithm', static fn () => PASSWORD_BCRYPT);
+         add_filter('wp_hash_password_options', static fn () => ['salt' => 'x', 'cost' => 4]);
+         set_error_handler(static function ($no, $message) { throw new ErrorException($message, 0, $no); });
+         try { wp_hash_password('a'); $r = 'no exception'; } catch (ErrorException $e) { $r = [$e->getSeverity(), $e->getMessage()]; }
+         restore_error_handler();
+         remove_all_filters('wp_hash_password_options'); remove_all_filters('wp_hash_password_algorithm');
+         return $r;",
+    );
+    check(
+        "throwing_error_handler_on_salt_warning_reaches_the_caller",
+        r.as_ref().ok()
+            == Some(&want(vec![
+                HookValue::Int(512),
+                HookValue::Str("password_hash(): The \"salt\" option has been ignored, since providing a custom salt is no longer supported".into()),
+            ])),
+        &r,
+    );
+
+    let r = eval(
+        "binary-override",
+        "\\SpeedySpec\\Container\\Container::getInstance()->bind(\\SpeedySpec\\WpPassword\\PasswordHasher::class, fn () => new class implements \\SpeedySpec\\WpPassword\\PasswordHasher { public function hash($password) { return bin2hex($password); } });
+         return wp_hash_password(\"\\xff\\x00pw\");",
+    );
+    check(
+        "binary_password_reaches_php_override_byte_for_byte",
+        matches!(&r, Ok(HookValue::Str(s)) if s == "ff007077"),
+        &r,
+    );
+    php.restart_request().expect("a new request");
+
+    let r = eval(
+        "binary-filter",
+        "add_filter('check_password', static fn ($check, $password, $hash) => bin2hex($password) . ':' . bin2hex($hash), 10, 3);
+         $r = wp_check_password(\"\\xff\\x00pw\", \"\\xff\\x00\" . str_repeat('x', 40));
+         remove_all_filters('check_password');
+         return $r;",
+    );
+    check(
+        "binary_password_reaches_check_password_filter_byte_for_byte",
+        matches!(&r, Ok(HookValue::Str(s)) if *s == format!("ff007077:ff00{}", "78".repeat(40))),
+        &r,
+    );
+
+    let r = eval(
+        "cost-limits",
+        "$bind = static fn (array $limits) => \\SpeedySpec\\Container\\Container::getInstance()->bind(\\SpeedySpec\\WpPassword\\PasswordCostLimits::class, fn () => new class ($limits) implements \\SpeedySpec\\WpPassword\\PasswordCostLimits { public function __construct(private array $l) {} public function limits() { return $this->l; } });
+         $bind(['cost' => 5]);
+         add_filter('wp_hash_password_algorithm', static fn () => PASSWORD_BCRYPT);
+         add_filter('wp_hash_password_options', static fn () => ['cost' => 6]);
+         try { wp_hash_password('a'); $over = 'no exception'; } catch (ValueError $e) { $over = $e->getMessage(); }
+         remove_all_filters('wp_hash_password_options'); remove_all_filters('wp_hash_password_algorithm');
+         $checks = [wp_check_password('pw', password_hash('pw', PASSWORD_BCRYPT, ['cost' => 6])), wp_check_password('pw', password_hash('pw', PASSWORD_BCRYPT, ['cost' => 5]))];
+         $bind(['cost' => 40]);
+         try { wp_check_password('pw', password_hash('pw', PASSWORD_BCRYPT, ['cost' => 4])); $invalid = 'no exception'; } catch (ValueError $e) { $invalid = $e->getMessage(); }
+         return [$over, $checks, $invalid];",
+    );
+    check(
+        "php_bound_cost_limits_cap_hashing_and_checking",
+        r.as_ref().ok()
+            == Some(&want(vec![
+                HookValue::Str("Invalid bcrypt cost parameter specified: 6".into()),
+                want(vec![HookValue::Bool(false), HookValue::Bool(true)]),
+                HookValue::Str("SpeedySpec\\WpPassword\\PasswordCostLimits::limits(): \"cost\" must be between 4 and 31, 40 given".into()),
+            ])),
+        &r,
+    );
+    php.restart_request().expect("a new request");
+
     println!("wp-password php: all checks passed");
 }

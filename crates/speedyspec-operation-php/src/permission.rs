@@ -11,8 +11,6 @@ use std::collections::HashMap;
 use speedyspec_operation_contracts::{Caller, Category, OperationError, PermissionCheck};
 use speedyspec_php_ext::Value as PhpValue;
 
-use crate::identity::truthy;
-
 thread_local! {
     static CALLBACKS: RefCell<HashMap<String, PhpValue>> = RefCell::new(HashMap::new());
 }
@@ -45,7 +43,14 @@ impl PermissionCheck for PhpPermission {
             .cloned()
             .unwrap_or(PhpValue::Null);
         let allowed = crate::invoke::run(&callable, vec![crate::area::php_caller(caller)?, input])?;
-        if truthy(&allowed) {
+        // Only `true` allows: a WP_Error or any other value a REST-style callback returns denies, never passes.
+        if !matches!(allowed, PhpValue::Bool(_)) {
+            eprintln!(
+                "speedyspec_wordpress: the permission callback of {} returned something other than a bool; denied",
+                self.operation
+            );
+        }
+        if matches!(allowed, PhpValue::Bool(true)) {
             Ok(())
         } else if caller.user.is_none() {
             Err(OperationError::new(

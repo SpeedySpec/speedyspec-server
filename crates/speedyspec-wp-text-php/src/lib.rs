@@ -3,6 +3,8 @@
 //! - [`TextArea`] builds `EscapeApi` and `TextApi` over PHP adapters ([`adapters`]), binds their use cases in the
 //!   container, and registers one native function per ported WordPress function, under WordPress's own name.
 //! - Filters fire through the shared `HookApi`, so PHP and Rust callbacks interleave by priority, as in WordPress.
+//! - Formatting's functions added as callbacks by name (`add_filter( 'the_content', 'wpautop' )`) are stored as Rust
+//!   callbacks in the same slot ([`swap`]), so a chain of them runs without crossing into PHP.
 //! - What WordPress keeps in function statics lasts one request: [`TextArea`] resets it at each request start.
 
 pub mod adapters;
@@ -10,6 +12,7 @@ mod args;
 mod fast;
 mod native;
 mod release;
+pub mod swap;
 
 
 use std::rc::Rc;
@@ -50,6 +53,7 @@ pub struct TextArea {
 
 impl TextArea {
     /// The formatting APIs over `hooks` and `kses` with the PHP adapters, and their use cases bound in `container`.
+    /// The `AddFilter` use case is decorated so formatting's functions added by name become Rust callbacks.
     ///
     /// @param container
     ///     Where the use cases are bound.
@@ -81,6 +85,7 @@ impl TextArea {
         }));
         register_escape_handlers(&container, escape.clone());
         register_text_handlers(&container, api.clone());
+        swap::install(&container, Rc::new(swap::NativeTable::new()));
         let shared = Rc::new(native::Shared::new(container, api.clone()));
         native::SHARED.with(|s| *s.borrow_mut() = Some(shared));
         TextArea { api, escape, mime_types }

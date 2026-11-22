@@ -4,15 +4,16 @@ WordPress's theme.json engine (`WP_Theme_JSON`, `WP_Theme_JSON_Schema`) in Rust,
 `ThemeJsonApi` as the facade behind the PHP class. It follows WordPress 7.1.5, the release every area is recorded
 against. Arrays come back equal to WordPress's by PHP's `==`; CSS is byte for byte the same.
 
-Plans 1 and 2 of 4 are in: the typed model, the schema tables, migration, sanitizing, construction, merging, the
-data methods, and stylesheets (`get_stylesheet` for every type, `get_styles_for_block`, layout styles, preset
-variables and classes, fluid font sizes, `wp_get_block_css_selector`). Security, duotone and the resolver follow.
+Plans 1 to 3 of 4 are in: the typed model, the schema tables, migration, sanitizing, construction, merging, the
+data methods, stylesheets (`get_stylesheet` for every type, `get_styles_for_block`, layout styles, preset variables
+and classes, fluid font sizes, `wp_get_block_css_selector`), `remove_insecure_properties`, duotone SVG filters and
+`resolve_variables`. The resolver follows.
 
 ## The crates
 
 | Crate | Holds |
 |---|---|
-| `speedyspec-wp-theme-json-contracts` | The typed model (`ThemeJson`, `Settings`, `StyleNode`, `Preset`, …), the value objects (`Origin`, `ByOrigin`, `Leaf`), WordPress's class constants and layout definitions as embedded data (`schema`), and the ports (`BlockMetadata`, `TextFunctions`, `Gettext`, `Diagnostics`, `SafeCss` from kses, `GlobalSettings`, `ThemeJsonFilters`, `ActiveTheme`). |
+| `speedyspec-wp-theme-json-contracts` | The typed model (`ThemeJson`, `Settings`, `StyleNode`, `Preset`, …), the value objects (`Origin`, `ByOrigin`, `Leaf`), WordPress's class constants and layout definitions as embedded data (`schema`), and the ports (`BlockMetadata`, `TextFunctions`, `Gettext`, `Diagnostics`, `SafeCss` from kses, `GlobalSettings`, `ThemeJsonFilters`, `ActiveTheme`, `Capabilities`). |
 | `speedyspec-wp-theme-json` (this crate) | `ThemeJsonApi` and its messages, the codec, migration, sanitizing, construction, merging, the data methods, selectors and block metadata, setting and style nodes, presets and fluid font sizes, declarations, layout, the stylesheet, PHP's numeric rules, and memory adapters. No PHP. |
 | `speedyspec-wp-theme-json-php` | `WP_Theme_JSON`, `WP_Theme_JSON_Schema`, `WP_Theme_JSON_Data` and `wp_get_block_css_selector()` as thin PHP over a per-request handle arena; adapters onto WordPress's block registries, text, translation, notice, kses, global settings and theme-support functions, and the Rust Hook API for filters. |
 
@@ -23,8 +24,10 @@ variables and classes, fluid font sizes, `wp_get_block_css_selector`). Security,
 | `selectors` | `split_selector_list`, `append_to_selector`, `scope_selector`, `get_blocks_metadata`, `wp_get_block_css_selector`, … | Selector lists (only split, joined and prefixed, so they stay strings) and each block's computed selectors, cached on the registries' change marker. |
 | `nodes` | `get_setting_nodes`, `get_style_nodes`, `get_block_nodes` | The nodes in WordPress's order (responsive, pseudo-selector and custom-state nodes included), as WordPress's node arrays, through `wp_theme_json_get_style_nodes`. |
 | `presets` | `compute_preset_vars`, `compute_preset_classes`, `flatten_tree`, `_wp_to_kebab_case`, `wp_get_typography_font_size_value` | Preset variables and classes, `custom` variables, and fluid font sizes. |
-| `declarations` | `compute_style_properties`, `get_property_value`, `get_feature_declarations_for_node`, … | Declarations for a node, refs, the style engine's background slice, feature selectors, and the separator, button width and paragraph indent adjustments. |
+| `declarations` | `compute_style_properties`, `get_property_value`, `get_feature_declarations_for_node`, `resolve_variables`, … | Declarations for a node, refs, the style engine's background slice, feature selectors, the separator, button width and paragraph indent adjustments, and variables resolved to values. |
 | `layout` | `get_layout_styles`, `get_root_layout_rules` | Layout rules from WordPress's layout definitions, kept only when kses allows them. |
+| `security` | `remove_insecure_properties`, `remove_insecure_styles`, `remove_insecure_settings`, `is_safe_css_declaration`, … | Only what kses, the escapers and the user's capabilities allow (`styles.css` needs `edit_css`). |
+| `duotone` | `get_svg_filters`, `WP_Duotone::get_filter_svg_from_preset` and its `colord_*` parsing | The SVG filters for duotone presets; the block supports area keeps `WP_Duotone` itself. |
 | `stylesheet` | `get_stylesheet`, `get_styles_for_block`, `process_pseudo_selectors`, `process_blocks_custom_css`, … | The stylesheet, put together part by part over a `Sheet` (the document, the ports, the blocks and their metadata). |
 
 ## Patterns, and where they are used
@@ -42,7 +45,7 @@ variables and classes, fluid font sizes, `wp_get_block_css_selector`). Security,
 - **Builder:** the stylesheet, appended part by part in WordPress's order (`Sheet::stylesheet`).
 - **Adapter:** the memory adapters here, `HookApiFilters` over the Rust Hook API; the PHP adapters in the `-php`
   crate.
-- **Null Object:** `NoFilters`, `NoThemeSupports`, `NoTranslation`.
+- **Null Object:** `NoFilters`, `NoThemeSupports`, `NoCapabilities`, `NoTranslation`.
 
 Operations whose WordPress semantics are array algebra (migrate, sanitize, construct, merge) run on the array form
 and decode into the model at the end; the model is the stored form later readers use. The stylesheet pieces read
@@ -59,7 +62,8 @@ filter may change.
    exist.
 3. **A failing `wp_theme_json_get_style_nodes` callback** surfaces as a PHP `Error` carrying the hook's message,
    not as the callback's own exception.
-4. **`get_custom_css()`** (deprecated) reads block selectors from the computed metadata; WordPress reads its static
+4. **Duotone filters** are always the compact markup WordPress prints without `SCRIPT_DEBUG`.
+5. **`get_custom_css()`** (deprecated) reads block selectors from the computed metadata; WordPress reads its static
    cache, which is empty when nothing filled it earlier in the request.
 
 ## Testing
@@ -71,8 +75,11 @@ filter may change.
   variables and classes, declarations, layout, and whole stylesheets (core's `theme.json`, Twenty Twenty-Five,
   responsive breakpoints, variations, the style nodes filter) compared byte for byte. They bind the Rust kses port
   for `safecss_filter_attr()`.
-- `compat/theme-json`: 246 recorded scenarios (the class constants, migration, the public API, the core
+- Security, duotone and variable tests the same way (every colour notation, kses-rewritten CSS, HTML in preset
+  names, `edit_css`).
+- `compat/theme-json`: 302 recorded scenarios (the class constants, migration, the public API, the core
   `theme.json`, Twenty Twenty-Three to Twenty-Five with style variations, the PHPUnit `themedir1` themes, and each
-  of their stylesheets by type), replayed through the native classes by `speedyspec-wp-theme-json-php`'s `compat`
+  of their stylesheets by type, insecure-property removal, SVG filters, resolved variables and
+  `wp_filter_global_styles_post`), replayed through the native classes by `speedyspec-wp-theme-json-php`'s `compat`
   test.
 - `benches/stylesheet.rs` and `benches/php-baseline.php`; the numbers are in [docs/benchmarks.md](docs/benchmarks.md).

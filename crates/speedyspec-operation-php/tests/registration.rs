@@ -103,6 +103,7 @@ fn main() {
     let b = boot(identity(), Rc::new(FixedSiteKey(site)));
     load(&b.php, HOOKS);
     load(&b.php, FIXTURE);
+    load(&b.php, READY);
 
     // php_schema_matches_rust_export
     let php_schema = eval(

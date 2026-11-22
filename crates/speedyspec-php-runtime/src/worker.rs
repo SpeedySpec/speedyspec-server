@@ -415,8 +415,9 @@ mod tests {
     use speedyspec_wp_hooks_memory::MemoryHookStore;
     use speedyspec_wp_hooks_php::WpHooksArea;
     use speedyspec_wp_password_contracts::{
-        PASSWORD_CHECKER, PASSWORD_GENERATOR, PASSWORD_HASHER, PasswordChecker, PasswordGenerator,
-        PasswordHasher, RANDOM_NUMBER, REHASH_POLICY, RandomNumber, RehashPolicy,
+        CostLimits, PASSWORD_CHECKER, PASSWORD_COST_LIMITS, PASSWORD_GENERATOR, PASSWORD_HASHER,
+        PasswordChecker, PasswordCostLimits, PasswordGenerator, PasswordHasher, RANDOM_NUMBER,
+        REHASH_POLICY, RandomNumber, RehashPolicy,
     };
 
     use super::{password_area, sodium_problem};
@@ -450,6 +451,10 @@ mod tests {
             .make_port::<dyn RandomNumber>(RANDOM_NUMBER)
             .unwrap();
         assert!(matches!(numbers.rand(3, 3), Ok(Value::Int(3))));
+        let limits = container
+            .make_port::<dyn PasswordCostLimits>(PASSWORD_COST_LIMITS)
+            .unwrap();
+        assert_eq!(limits.limits(), Ok(CostLimits::DEFAULT));
     }
 
     #[test]

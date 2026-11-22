@@ -11,9 +11,13 @@ use std::rc::Rc;
 use common::*;
 use speedyspec_hooks::Value;
 use speedyspec_wp_crypto_contracts::{Argon2, Argon2Variant};
-use speedyspec_wp_password::{DefaultPasswordChecker, PasswordPorts, argon2_phc, prehash};
+use speedyspec_wp_password::{
+    DefaultPasswordChecker, FixedCostLimits, PasswordPorts, argon2_phc, prehash,
+};
 use speedyspec_wp_password_bcrypt::BcryptCrate;
-use speedyspec_wp_password_contracts::{Bcrypt, PasswordChecker};
+use speedyspec_wp_password_contracts::{
+    Bcrypt, CostLimits, PasswordChecker, PasswordCostLimits, PasswordError,
+};
 
 /// Formats WordPress verifies and SpeedySpec rejects on purpose: MD5 and phpass (Jacob, 2026-11-21/22), `$2x$`, and
 /// the `crypt()`-only formats.
@@ -47,6 +51,7 @@ fn rig(hasher_set: bool) -> Rig {
         argon2: argon2.clone(),
         random: Rc::new(FixedBytes(1)),
         warnings: Rc::new(CollectWarnings(Default::default())),
+        limits: Rc::new(speedyspec_wp_password::FixedCostLimits::default()),
     });
     Rig {
         checker: DefaultPasswordChecker::new(ports),
@@ -203,4 +208,150 @@ fn argon2_unsupported_params_do_not_verify() {
         );
     }
     assert!(rig.argon2.seen.borrow().is_empty());
+}
+
+/// A checker with `limits`, over a bcrypt double (which verifies the password "right") and the argon2 double.
+fn limited_checker(
+    limits: Rc<dyn PasswordCostLimits>,
+) -> (DefaultPasswordChecker, Rc<FakeBcrypt>, Rc<FakeArgon2>) {
+    let bcrypt = Rc::new(FakeBcrypt::new());
+    let argon2 = Rc::new(FakeArgon2::new());
+    let checker = DefaultPasswordChecker::new(Rc::new(PasswordPorts {
+        filters: Rc::new(FakeFilters::new(calls())),
+        hasher_global: Rc::new(FakeHasher {
+            set: false,
+            calls: calls(),
+        }),
+        bcrypt: bcrypt.clone(),
+        argon2: argon2.clone(),
+        random: Rc::new(FixedBytes(1)),
+        warnings: Rc::new(CollectWarnings(Default::default())),
+        limits,
+    }));
+    (checker, bcrypt, argon2)
+}
+
+fn verdict(checker: &DefaultPasswordChecker, password: &[u8], hash: &str) -> Value {
+    checker
+        .check(password, hash.as_bytes(), &Value::Str(String::new()))
+        .unwrap()
+}
+
+#[test]
+fn bcrypt_above_the_cost_limit_never_verifies_nor_runs() {
+    let (checker, bcrypt, _) = limited_checker(Rc::new(FixedCostLimits::default()));
+    let tail = ".".repeat(53);
+    for hash in [
+        format!("$2y$17${tail}"),
+        format!("$2a$31${tail}"),
+        format!("$2b$20${tail}"),
+        format!("$wp$2y$17${tail}"),
+    ] {
+        assert_eq!(
+            verdict(&checker, b"right", &hash),
+            Value::Bool(false),
+            "{hash}"
+        );
+    }
+    assert!(bcrypt.seen.borrow().is_empty());
+    assert_eq!(
+        verdict(&checker, b"right", &format!("$2y$16${tail}")),
+        Value::Bool(true)
+    );
+}
+
+fn argon2_hash(time_cost: u32, memory_kib: u32) -> String {
+    let salt = [5u8; 16];
+    let digest = FakeArgon2::new()
+        .derive(
+            Argon2Variant::Argon2id,
+            b"pw",
+            &salt,
+            time_cost,
+            memory_kib,
+            32,
+        )
+        .unwrap();
+    argon2_phc(
+        Argon2Variant::Argon2id,
+        time_cost,
+        memory_kib,
+        &salt,
+        &digest,
+    )
+}
+
+#[test]
+fn argon2_above_the_cost_limits_never_verifies_nor_runs() {
+    let (checker, _, argon2) = limited_checker(Rc::new(FixedCostLimits::default()));
+    for hash in [argon2_hash(10, 262_145), argon2_hash(11, 262_144)] {
+        assert_eq!(
+            verdict(&checker, b"pw", &hash),
+            Value::Bool(false),
+            "{hash}"
+        );
+        let prefixed = format!("$wp{hash}");
+        assert_eq!(
+            verdict(&checker, b"pw", &prefixed),
+            Value::Bool(false),
+            "{prefixed}"
+        );
+    }
+    assert!(argon2.seen.borrow().is_empty());
+    assert_eq!(
+        verdict(&checker, b"pw", &argon2_hash(10, 262_144)),
+        Value::Bool(true)
+    );
+}
+
+#[test]
+fn a_sites_cost_limits_replace_the_defaults() {
+    let (checker, _, _) = limited_checker(Rc::new(FixedCostLimits(CostLimits {
+        bcrypt_cost: 10,
+        argon2_memory_kib: 4096,
+        argon2_time_cost: 3,
+    })));
+    let tail = ".".repeat(53);
+    assert_eq!(
+        verdict(&checker, b"right", &format!("$2y$11${tail}")),
+        Value::Bool(false)
+    );
+    assert_eq!(
+        verdict(&checker, b"right", &format!("$2y$10${tail}")),
+        Value::Bool(true)
+    );
+    assert_eq!(
+        verdict(&checker, b"pw", &argon2_hash(3, 4097)),
+        Value::Bool(false)
+    );
+    assert_eq!(
+        verdict(&checker, b"pw", &argon2_hash(4, 4096)),
+        Value::Bool(false)
+    );
+    assert_eq!(
+        verdict(&checker, b"pw", &argon2_hash(3, 4096)),
+        Value::Bool(true)
+    );
+}
+
+/// Limits that fail, as a broken replacement does.
+struct BrokenLimits;
+
+impl PasswordCostLimits for BrokenLimits {
+    fn limits(&self) -> Result<CostLimits, PasswordError> {
+        Err(PasswordError::Port("no limits".into()))
+    }
+}
+
+#[test]
+fn failing_limits_stop_the_check() {
+    let (checker, _, _) = limited_checker(Rc::new(BrokenLimits));
+    assert_eq!(
+        checker.check(
+            b"right",
+            format!("$2y$10${}", ".".repeat(53)).as_bytes(),
+            &Value::Null
+        ),
+        Err(PasswordError::Port("no limits".into()))
+    );
 }

@@ -54,7 +54,38 @@ const CASES: &[(&str, Case)] = &[
         case_block_css_selector,
     ),
     ("scope_selector_keeps_null", case_scope_selector_null),
+    ("remove_insecure_properties_from_php", case_remove_insecure),
+    (
+        "resolve_variables_returns_the_same_object",
+        case_resolve_variables,
+    ),
+    ("get_svg_filters_from_php", case_svg_filters),
 ];
+
+fn case_remove_insecure(php: &Php) -> Result<(), String> {
+    expect_json(
+        php,
+        "return WP_Theme_JSON::remove_insecure_properties(['version'=>3,'styles'=>['color'=>['text'=>'red'],'css'=>'body{x:y}']], 'custom');",
+        r#"{"version":3,"styles":{"color":{"text":"red"}}}"#,
+    )
+}
+
+fn case_resolve_variables(php: &Php) -> Result<(), String> {
+    expect_json(
+        php,
+        "$t = new WP_Theme_JSON(['version'=>3,'settings'=>['color'=>['palette'=>[['slug'=>'a','color'=>'#123','name'=>'A']]]],'styles'=>['color'=>['text'=>'var:preset|color|a']]]); $r = WP_Theme_JSON::resolve_variables($t); return [$r === $t, $t->get_raw_data()['styles']];",
+        r##"[true, {"color":{"text":"#123"}}]"##,
+    )
+}
+
+/// Expected markup from WordPress 7.1.5's `WP_Duotone`.
+fn case_svg_filters(php: &Php) -> Result<(), String> {
+    expect_json(
+        php,
+        "return (new WP_Theme_JSON(['version'=>3,'settings'=>['color'=>['duotone'=>[['slug'=>'d','colors'=>['#000','#fff'],'name'=>'D']]]]]))->get_svg_filters(['theme']);",
+        r#""<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 0 0\" width=\"0\" height=\"0\" focusable=\"false\" role=\"none\" style=\"visibility: hidden; position: absolute; left: -9999px; overflow: hidden;\" ><defs><filter id=\"wp-duotone-d\"><feColorMatrix color-interpolation-filters=\"sRGB\" type=\"matrix\" values=\" .299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 \" /><feComponentTransfer color-interpolation-filters=\"sRGB\" ><feFuncR type=\"table\" tableValues=\"0 1\" /><feFuncG type=\"table\" tableValues=\"0 1\" /><feFuncB type=\"table\" tableValues=\"0 1\" /><feFuncA type=\"table\" tableValues=\"1 1\" /></feComponentTransfer><feComposite in2=\"SourceGraphic\" operator=\"in\" /></filter></defs></svg>""#,
+    )
+}
 
 const SMALL_DOC: &str = "['version'=>3,'settings'=>['color'=>['palette'=>[['slug'=>'Big-1','color'=>'#123','name'=>'B']]],'custom'=>['a'=>['b'=>'c']]],'styles'=>['elements'=>['link'=>['color'=>['text'=>'red'],':hover'=>['color'=>['text'=>'blue']]]]]]";
 
