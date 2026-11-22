@@ -69,3 +69,13 @@ fn a_site_binding_its_cost_limits_caps_the_default_hasher() {
         )))
     );
 }
+
+#[test]
+fn dropping_the_areas_frees_the_container() {
+    let (container, hooks, password) = area();
+    let weak = Rc::downgrade(&container);
+    drop(password);
+    drop(hooks);
+    drop(container);
+    assert!(weak.upgrade().is_none());
+}
