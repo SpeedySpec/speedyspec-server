@@ -17,8 +17,11 @@ knowing about it.
 - An operation with no transport restriction is exposed on every installed transport, including one installed later.
 - An explicit binding wins over the transport's default mapping, and is checked by the transport.
 - A transport with no default mapping for an operation, and no explicit binding, does not expose it.
-- A binding for an unknown operation, or for an installed transport the operation is restricted away from, is an
-  error; a binding for a transport that is not installed is kept and ignored.
+- A binding for an unknown operation, for an installed transport the operation is restricted away from, or that its
+  transport refuses, is skipped and reported in `Exposure::problems`; everything else is still served. Only an open
+  registry makes `expose()` fail. A binding for a transport that is not installed is kept and ignored.
+- A filter through `WpTransportHooks` that changes nothing returns the neutral value it was given, so dates, binary
+  and empty maps keep their shape.
 
 ## Serving a request
 

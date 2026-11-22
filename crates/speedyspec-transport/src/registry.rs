@@ -43,9 +43,10 @@ impl TransportRegistry {
 
     /// Which operations each installed transport exposes. Unrestricted operations go on every transport; an explicit
     /// binding wins over the transport's default mapping; bindings for transports not installed are kept and ignored.
-    pub fn expose(&self, registries: &Registries) -> Result<Exposure, Vec<ExposureError>> {
+    /// A binding that cannot be used is skipped and reported in [`Exposure::problems`]; only an open registry fails.
+    pub fn expose(&self, registries: &Registries) -> Result<Exposure, ExposureError> {
         if !registries.is_closed() {
-            return Err(vec![ExposureError::RegistryOpen]);
+            return Err(ExposureError::RegistryOpen);
         }
         let transports = self.transports.borrow();
         let mut errors = Vec::new();
@@ -103,10 +104,7 @@ impl TransportRegistry {
                 );
             }
         }
-        if errors.is_empty() {
-            Ok(exposure)
-        } else {
-            Err(errors)
-        }
+        exposure.problems = errors;
+        Ok(exposure)
     }
 }

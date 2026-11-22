@@ -8,7 +8,7 @@ use speedyspec_wp_hooks::{HookApi, HookError, HookName, HookValue};
 
 use crate::{from_hook, to_hook};
 
-/// Fires transport hooks through WordPress's Hook API.
+/// Fires transport hooks through WordPress's Hook API. A filter that changes nothing returns the value it was given.
 pub struct WpTransportHooks {
     api: Rc<HookApi>,
 }
@@ -35,14 +35,20 @@ impl TransportHooks for WpTransportHooks {
     }
 
     fn filter(&self, hook: &str, value: Value, args: Vec<Value>) -> Result<Value, OperationError> {
+        let given = to_hook(&value);
         let result = self
             .api
             .apply_filters(
                 &hook_name(hook),
-                to_hook(&value),
+                given.clone(),
                 args.iter().map(to_hook).collect(),
             )
             .map_err(failed)?;
+        // PHP's view of a value loses some of its shape (an empty map is an empty array; a date is a string). When no
+        // callback changed anything, hand back the value as given rather than its round trip through PHP.
+        if result.read().as_ref() == &given {
+            return Ok(value);
+        }
         from_hook(&result)
     }
 }

@@ -96,3 +96,42 @@ fn filters_and_actions_run_through_the_hook_api() {
         .unwrap();
     assert_eq!(api.did_action(&name("xmlrpc_call")).unwrap(), 1);
 }
+
+#[test]
+fn a_filter_that_changes_nothing_returns_the_value_it_was_given() {
+    let api = api();
+    let hooks = WpTransportHooks::new(api.clone());
+    let dt = chrono::NaiveDate::from_ymd_opt(2026, 1, 2)
+        .unwrap()
+        .and_hms_micro_opt(3, 4, 5, 678)
+        .unwrap();
+    let value = Value::map([
+        ("empty", Value::map::<&str>([])),
+        ("when", Value::DateTime(dt)),
+        (
+            "keys",
+            Value::map([("0", Value::Int(1)), ("1", Value::Int(2))]),
+        ),
+    ]);
+    // No callbacks at all.
+    assert_eq!(
+        hooks
+            .filter("rest_post_dispatch", value.clone(), vec![])
+            .unwrap(),
+        value
+    );
+    // A callback that hands the value straight back.
+    api.add_filter(
+        &name("rest_post_dispatch"),
+        Callback::rust("same", |args: &[HookValue]| Ok(args[0].clone())),
+        &HookValue::Int(10),
+        1,
+    )
+    .unwrap();
+    assert_eq!(
+        hooks
+            .filter("rest_post_dispatch", value.clone(), vec![])
+            .unwrap(),
+        value
+    );
+}

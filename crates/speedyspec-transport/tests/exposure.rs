@@ -71,8 +71,11 @@ fn explicit_bindings_override_defaults_and_are_checked() {
     );
     assert!(ex.find("rest", "a/two").is_none()); // no default mapping
     store.bind("a/two", "rest", Value::map::<&str>([]));
+    let ex = reg.expose(&ops).unwrap();
+    assert!(ex.find("rest", "a/two").is_none()); // the bad binding is skipped…
+    assert!(ex.find("rest", "a/one").is_some()); // …and everything else is still served
     assert!(matches!(
-        &reg.expose(&ops).unwrap_err()[..],
+        ex.problems(),
         [ExposureError::InvalidBinding { why, .. }] if why == "method is required"
     ));
 }
@@ -87,7 +90,9 @@ fn bindings_for_unknown_operations_or_outside_the_restriction_are_errors() {
         "xmlrpc",
         Value::map([("method", Value::from("x"))]),
     );
-    let errs = reg.expose(&ops).unwrap_err();
+    let ex = reg.expose(&ops).unwrap();
+    let errs = ex.problems();
+    assert!(ex.find("rest", "a/one").is_some()); // one plugin's bad binding does not take the site down
     assert!(errs.contains(&ExposureError::UnknownOperation {
         operation: "a/nope".into(),
         transport: "rest".into()
@@ -107,7 +112,7 @@ fn bindings_for_transports_not_installed_are_ignored() {
         "graphql",
         Value::map([("field", Value::from("one"))]),
     );
-    assert!(reg.expose(&ops).is_ok());
+    assert!(reg.expose(&ops).unwrap().problems().is_empty());
 }
 
 #[test]
@@ -116,7 +121,7 @@ fn open_registries_and_duplicate_transports_are_refused() {
     assert_eq!(
         reg.expose(&speedyspec_operation::Registries::new())
             .unwrap_err(),
-        [ExposureError::RegistryOpen]
+        ExposureError::RegistryOpen
     );
     assert_eq!(
         reg.install(Rc::new(FakeTransport::new("rest", true))),
