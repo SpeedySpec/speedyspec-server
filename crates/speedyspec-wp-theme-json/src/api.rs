@@ -1,8 +1,8 @@
 //! `ThemeJsonApi`: the one entry point behind `WP_Theme_JSON`, one method per public method (Facade).
 
 use speedyspec_hooks::{Key, Value};
-use speedyspec_wp_theme_json_contracts::model::ThemeJson;
 use speedyspec_wp_theme_json_contracts::Origin;
+use speedyspec_wp_theme_json_contracts::model::ThemeJson;
 
 use crate::array_path::{self, child};
 use crate::php::{Num, to_number};
@@ -37,11 +37,19 @@ impl ThemeJsonApi {
 
     /// `$this->merge( $incoming )` where only `$incoming->get_raw_data()` is known, as WordPress reads it.
     pub fn merge_raw_data(&self, base: &ThemeJson, incoming: Value) -> ThemeJson {
-        ThemeJsonCodec::decode(&crate::merge::merge_value(ThemeJsonCodec::encode(base), incoming, &self.deps))
+        ThemeJsonCodec::decode(&crate::merge::merge_value(
+            ThemeJsonCodec::encode(base),
+            incoming,
+            &self.deps,
+        ))
     }
 
     /// `WP_Theme_JSON::get_viewport_media_queries( $viewport_settings, $options )` as `(state, query)` pairs.
-    pub fn get_viewport_media_queries(&self, viewport: &Value, include_desktop: bool) -> Vec<(String, String)> {
+    pub fn get_viewport_media_queries(
+        &self,
+        viewport: &Value,
+        include_desktop: bool,
+    ) -> Vec<(String, String)> {
         let viewport = (!matches!(viewport, Value::Null)).then_some(viewport);
         crate::sanitize::viewport::media_queries(viewport, include_desktop)
     }
@@ -96,13 +104,17 @@ impl ThemeJsonApi {
     /// After construction the scale is keyed by origin, so WordPress reports it invalid; this keeps that behaviour.
     pub fn set_spacing_sizes(&self, doc: &mut ThemeJson) {
         const METHOD: &str = "WP_Theme_JSON::set_spacing_sizes";
-        self.deps.diagnostics.deprecated_function(METHOD, "6.6.0", "");
+        self.deps
+            .diagnostics
+            .deprecated_function(METHOD, "6.6.0", "");
         let mut raw = ThemeJsonCodec::encode(doc);
         let scale = array_path::get(&raw, &["settings", "spacing", "spacingScale"])
             .filter(|s| !matches!(s, Value::Null))
             .cloned()
             .unwrap_or(Value::Array(Vec::new()));
-        let field = |name: &str| child(&scale, &Key::Str(name.into())).filter(|v| !matches!(v, Value::Null));
+        let field = |name: &str| {
+            child(&scale, &Key::Str(name.into())).filter(|v| !matches!(v, Value::Null))
+        };
         let numeric = |name: &str| field(name).and_then(to_number);
         let operator_ok = matches!(field("operator"), Some(Value::Str(o)) if o == "+" || o == "*");
         let valid = numeric("steps").is_some()
@@ -112,11 +124,16 @@ impl ThemeJsonApi {
             && operator_ok;
         if !valid {
             if crate::merge::truthy(&scale) {
-                let template = self.deps.gettext.translate("Some of the %1$s %2$s values are invalid", "default");
+                let template = self
+                    .deps
+                    .gettext
+                    .translate("Some of the %1$s %2$s values are invalid", "default");
                 let message = String::from_utf8_lossy(&template)
                     .replacen("%1$s", "theme.json", 1)
                     .replacen("%2$s", "settings.spacing.spacingScale", 1);
-                self.deps.diagnostics.trigger_error(METHOD, message.as_bytes());
+                self.deps
+                    .diagnostics
+                    .trigger_error(METHOD, message.as_bytes());
             }
             return;
         }
@@ -128,10 +145,18 @@ impl ThemeJsonApi {
             && let Value::Array(items) = &mut sizes
         {
             for (i, (_, item)) in items.iter_mut().enumerate() {
-                array_path::insert(item, Key::Str("name".into()), Value::Str((i + 1).to_string()));
+                array_path::insert(
+                    item,
+                    Key::Str("name".into()),
+                    Value::Str((i + 1).to_string()),
+                );
             }
         }
-        array_path::set(&mut raw, &["settings", "spacing", "spacingSizes", "default"], sizes);
+        array_path::set(
+            &mut raw,
+            &["settings", "spacing", "spacingSizes", "default"],
+            sizes,
+        );
         *doc = ThemeJsonCodec::decode(&raw);
     }
 }

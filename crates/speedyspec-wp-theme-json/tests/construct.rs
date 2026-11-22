@@ -9,7 +9,10 @@ use speedyspec_hooks::Value;
 use speedyspec_wp_theme_json::presets::spacing::{compute_spacing_sizes, merge_spacing_sizes};
 use std::rc::Rc;
 
-use speedyspec_wp_theme_json::{MemoryBlockMetadata, NoTranslation, RecordedDiagnostics, ThemeJsonCodec, ThemeJsonDeps, construct};
+use speedyspec_wp_theme_json::{
+    MemoryBlockMetadata, NoTranslation, RecordedDiagnostics, ThemeJsonCodec, ThemeJsonDeps,
+    construct,
+};
 use speedyspec_wp_theme_json_contracts::model::ThemeJson;
 use speedyspec_wp_theme_json_contracts::ports::{RegisteredBlock, TextFunctions};
 use support::{assert_php_eq, json};
@@ -60,152 +63,375 @@ fn raw(doc: ThemeJson) -> Value {
 
 #[test]
 fn presets_keyed_by_origin() {
-    let actual = raw(construct(json(r##"{"version":3,"settings":{"color":{"palette":[{"slug":"red","color":"#f00","name":"Red"}]},"blocks":{"core/group":{"color":{"palette":[{"slug":"red","color":"#f00","name":"Red"}],"gradients":[]}}}}}"##), b"theme", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"blocks":{"core/group":{"color":{"gradients":{"theme":[]},"palette":{"theme":[{"color":"#f00","name":"Red","slug":"red"}]}}}},"color":{"palette":{"theme":[{"color":"#f00","name":"Red","slug":"red"}]}}},"version":3}"##));
+    let actual = raw(construct(
+        json(
+            r##"{"version":3,"settings":{"color":{"palette":[{"slug":"red","color":"#f00","name":"Red"}]},"blocks":{"core/group":{"color":{"palette":[{"slug":"red","color":"#f00","name":"Red"}],"gradients":[]}}}}}"##,
+        ),
+        b"theme",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"settings":{"blocks":{"core/group":{"color":{"gradients":{"theme":[]},"palette":{"theme":[{"color":"#f00","name":"Red","slug":"red"}]}}}},"color":{"palette":{"theme":[{"color":"#f00","name":"Red","slug":"red"}]}}},"version":3}"##,
+        ),
+    );
 }
 
 #[test]
 fn already_keyed_presets_not_rewrapped() {
-    let actual = raw(construct(json(r##"{"version":3,"settings":{"color":{"palette":{"theme":[{"slug":"red","color":"#f00","name":"Red"}]}}}}"##), b"custom", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"color":{"palette":{"theme":[{"color":"#f00","name":"Red","slug":"red"}]}}},"version":3}"##));
+    let actual = raw(construct(
+        json(
+            r##"{"version":3,"settings":{"color":{"palette":{"theme":[{"slug":"red","color":"#f00","name":"Red"}]}}}}"##,
+        ),
+        b"custom",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"settings":{"color":{"palette":{"theme":[{"color":"#f00","name":"Red","slug":"red"}]}}},"version":3}"##,
+        ),
+    );
 }
 
 #[test]
 fn invalid_origin_falls_back_to_theme() {
-    let actual = raw(construct(json(r##"{"version":3,"settings":{"color":{"palette":[{"slug":"red","color":"#f00","name":"Red"}]}}}"##), b"bogus", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"color":{"palette":{"theme":[{"color":"#f00","name":"Red","slug":"red"}]}}},"version":3}"##));
+    let actual = raw(construct(
+        json(
+            r##"{"version":3,"settings":{"color":{"palette":[{"slug":"red","color":"#f00","name":"Red"}]}}}"##,
+        ),
+        b"bogus",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"settings":{"color":{"palette":{"theme":[{"color":"#f00","name":"Red","slug":"red"}]}}},"version":3}"##,
+        ),
+    );
 }
 
 #[test]
 fn odd_presets() {
-    let actual = raw(construct(json(r##"{"version":3,"settings":{"color":{"palette":"abc","gradients":0,"duotone":{"x":{"slug":"y"}}},"typography":{"fontSizes":{}}}}"##), b"theme", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"color":{"duotone":{"x":{"slug":"y"}},"gradients":{"theme":0},"palette":{"theme":"abc"}},"typography":{"fontSizes":{"theme":[]}}},"version":3}"##));
+    let actual = raw(construct(
+        json(
+            r##"{"version":3,"settings":{"color":{"palette":"abc","gradients":0,"duotone":{"x":{"slug":"y"}}},"typography":{"fontSizes":{}}}}"##,
+        ),
+        b"theme",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"settings":{"color":{"duotone":{"x":{"slug":"y"}},"gradients":{"theme":0},"palette":{"theme":"abc"}},"typography":{"fontSizes":{"theme":[]}}},"version":3}"##,
+        ),
+    );
 }
 
 #[test]
 fn appearance_true_opts_in() {
-    let actual = raw(construct(json(r##"{"version":3,"settings":{"appearanceTools":true,"border":{"color":false},"blocks":{"core/group":{"appearanceTools":true}}}}"##), b"theme", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"background":{"backgroundImage":true,"backgroundSize":true,"gradient":true},"blocks":{"core/group":{"background":{"backgroundImage":true,"backgroundSize":true,"gradient":true},"border":{"color":true,"radius":true,"style":true,"width":true},"color":{"button":true,"caption":true,"heading":true,"link":true},"dimensions":{"aspectRatio":true,"height":true,"minHeight":true,"minWidth":true,"width":true},"position":{"sticky":true},"spacing":{"blockGap":true,"margin":true,"padding":true},"typography":{"lineHeight":true,"textColumns":true}}},"border":{"color":false,"radius":true,"style":true,"width":true},"color":{"button":true,"caption":true,"heading":true,"link":true},"dimensions":{"aspectRatio":true,"height":true,"minHeight":true,"minWidth":true,"width":true},"position":{"sticky":true},"spacing":{"blockGap":true,"margin":true,"padding":true},"typography":{"lineHeight":true,"textColumns":true}},"version":3}"##));
+    let actual = raw(construct(
+        json(
+            r##"{"version":3,"settings":{"appearanceTools":true,"border":{"color":false},"blocks":{"core/group":{"appearanceTools":true}}}}"##,
+        ),
+        b"theme",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"settings":{"background":{"backgroundImage":true,"backgroundSize":true,"gradient":true},"blocks":{"core/group":{"background":{"backgroundImage":true,"backgroundSize":true,"gradient":true},"border":{"color":true,"radius":true,"style":true,"width":true},"color":{"button":true,"caption":true,"heading":true,"link":true},"dimensions":{"aspectRatio":true,"height":true,"minHeight":true,"minWidth":true,"width":true},"position":{"sticky":true},"spacing":{"blockGap":true,"margin":true,"padding":true},"typography":{"lineHeight":true,"textColumns":true}}},"border":{"color":false,"radius":true,"style":true,"width":true},"color":{"button":true,"caption":true,"heading":true,"link":true},"dimensions":{"aspectRatio":true,"height":true,"minHeight":true,"minWidth":true,"width":true},"position":{"sticky":true},"spacing":{"blockGap":true,"margin":true,"padding":true},"typography":{"lineHeight":true,"textColumns":true}},"version":3}"##,
+        ),
+    );
 }
 
 #[test]
 fn appearance_false_does_not_opt_in() {
-    let actual = raw(construct(json(r##"{"version":3,"settings":{"appearanceTools":false}}"##), b"theme", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"appearanceTools":false},"version":3}"##));
+    let actual = raw(construct(
+        json(r##"{"version":3,"settings":{"appearanceTools":false}}"##),
+        b"theme",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(r##"{"settings":{"appearanceTools":false},"version":3}"##),
+    );
 }
 
 #[test]
 fn appearance_string_does_not_opt_in() {
-    let actual = raw(construct(json(r##"{"version":3,"settings":{"appearanceTools":"true"}}"##), b"theme", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"appearanceTools":"true"},"version":3}"##));
+    let actual = raw(construct(
+        json(r##"{"version":3,"settings":{"appearanceTools":"true"}}"##),
+        b"theme",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(r##"{"settings":{"appearanceTools":"true"},"version":3}"##),
+    );
 }
 
 #[test]
 fn spacing_scale_generates_sizes() {
-    let actual = raw(construct(json(r##"{"version":3,"settings":{"spacing":{"spacingScale":{"steps":7,"mediumStep":1.5,"unit":"rem","operator":"*","increment":1.5}}}}"##), b"theme", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"spacing":{"spacingScale":{"theme":{"increment":1.5,"mediumStep":1.5,"operator":"*","steps":7,"unit":"rem"}},"spacingSizes":{"theme":[{"name":"2X-Small","size":"0.44rem","slug":"20"},{"name":"X-Small","size":"0.67rem","slug":"30"},{"name":"Small","size":"1rem","slug":"40"},{"name":"Medium","size":"1.5rem","slug":"50"},{"name":"Large","size":"2.25rem","slug":"60"},{"name":"X-Large","size":"3.38rem","slug":"70"},{"name":"2X-Large","size":"5.06rem","slug":"80"}]}}},"version":3}"##));
+    let actual = raw(construct(
+        json(
+            r##"{"version":3,"settings":{"spacing":{"spacingScale":{"steps":7,"mediumStep":1.5,"unit":"rem","operator":"*","increment":1.5}}}}"##,
+        ),
+        b"theme",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"settings":{"spacing":{"spacingScale":{"theme":{"increment":1.5,"mediumStep":1.5,"operator":"*","steps":7,"unit":"rem"}},"spacingSizes":{"theme":[{"name":"2X-Small","size":"0.44rem","slug":"20"},{"name":"X-Small","size":"0.67rem","slug":"30"},{"name":"Small","size":"1rem","slug":"40"},{"name":"Medium","size":"1.5rem","slug":"50"},{"name":"Large","size":"2.25rem","slug":"60"},{"name":"X-Large","size":"3.38rem","slug":"70"},{"name":"2X-Large","size":"5.06rem","slug":"80"}]}}},"version":3}"##,
+        ),
+    );
 }
 
 #[test]
 fn spacing_scale_merges_existing_sizes() {
-    let actual = raw(construct(json(r##"{"version":2,"settings":{"spacing":{"spacingScale":{"steps":7,"mediumStep":1.5,"unit":"rem","operator":"*","increment":1.5}}}}"##), b"theme", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"spacing":{"defaultSpacingSizes":false,"spacingScale":{"theme":{"increment":1.5,"mediumStep":1.5,"operator":"*","steps":7,"unit":"rem"}},"spacingSizes":{"theme":[{"name":"2X-Small","size":"0.44rem","slug":"20"},{"name":"X-Small","size":"0.67rem","slug":"30"},{"name":"Small","size":"1rem","slug":"40"},{"name":"Medium","size":"1.5rem","slug":"50"},{"name":"Large","size":"2.25rem","slug":"60"},{"name":"X-Large","size":"3.38rem","slug":"70"},{"name":"2X-Large","size":"5.06rem","slug":"80"}]}}},"version":3}"##));
+    let actual = raw(construct(
+        json(
+            r##"{"version":2,"settings":{"spacing":{"spacingScale":{"steps":7,"mediumStep":1.5,"unit":"rem","operator":"*","increment":1.5}}}}"##,
+        ),
+        b"theme",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"settings":{"spacing":{"defaultSpacingSizes":false,"spacingScale":{"theme":{"increment":1.5,"mediumStep":1.5,"operator":"*","steps":7,"unit":"rem"}},"spacingSizes":{"theme":[{"name":"2X-Small","size":"0.44rem","slug":"20"},{"name":"X-Small","size":"0.67rem","slug":"30"},{"name":"Small","size":"1rem","slug":"40"},{"name":"Medium","size":"1.5rem","slug":"50"},{"name":"Large","size":"2.25rem","slug":"60"},{"name":"X-Large","size":"3.38rem","slug":"70"},{"name":"2X-Large","size":"5.06rem","slug":"80"}]}}},"version":3}"##,
+        ),
+    );
 }
 
 #[test]
 fn spacing_scale_custom_origin() {
-    let actual = raw(construct(json(r##"{"version":3,"settings":{"spacing":{"spacingScale":{"steps":7,"mediumStep":1.5,"unit":"rem","operator":"*","increment":1.5},"spacingSizes":[{"slug":"50","size":"9px","name":"Mine"},{"slug":"small","size":"1px","name":"S"}]}}}"##), b"custom", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"spacing":{"spacingScale":{"custom":{"increment":1.5,"mediumStep":1.5,"operator":"*","steps":7,"unit":"rem"}},"spacingSizes":{"custom":[{"name":"S","size":"1px","slug":"small"},{"name":"2X-Small","size":"0.44rem","slug":"20"},{"name":"X-Small","size":"0.67rem","slug":"30"},{"name":"Small","size":"1rem","slug":"40"},{"name":"Mine","size":"9px","slug":"50"},{"name":"Large","size":"2.25rem","slug":"60"},{"name":"X-Large","size":"3.38rem","slug":"70"},{"name":"2X-Large","size":"5.06rem","slug":"80"}]}}},"version":3}"##));
+    let actual = raw(construct(
+        json(
+            r##"{"version":3,"settings":{"spacing":{"spacingScale":{"steps":7,"mediumStep":1.5,"unit":"rem","operator":"*","increment":1.5},"spacingSizes":[{"slug":"50","size":"9px","name":"Mine"},{"slug":"small","size":"1px","name":"S"}]}}}"##,
+        ),
+        b"custom",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"settings":{"spacing":{"spacingScale":{"custom":{"increment":1.5,"mediumStep":1.5,"operator":"*","steps":7,"unit":"rem"}},"spacingSizes":{"custom":[{"name":"S","size":"1px","slug":"small"},{"name":"2X-Small","size":"0.44rem","slug":"20"},{"name":"X-Small","size":"0.67rem","slug":"30"},{"name":"Small","size":"1rem","slug":"40"},{"name":"Mine","size":"9px","slug":"50"},{"name":"Large","size":"2.25rem","slug":"60"},{"name":"X-Large","size":"3.38rem","slug":"70"},{"name":"2X-Large","size":"5.06rem","slug":"80"}]}}},"version":3}"##,
+        ),
+    );
 }
 
 #[test]
 fn spacing_scale_already_keyed() {
-    let actual = raw(construct(json(r##"{"version":3,"settings":{"spacing":{"spacingScale":{"default":{"steps":7,"mediumStep":1.5,"unit":"rem","operator":"*","increment":1.5}}}}}"##), b"default", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"spacing":{"spacingScale":{"default":{"increment":1.5,"mediumStep":1.5,"operator":"*","steps":7,"unit":"rem"}},"spacingSizes":{"default":[{"name":"2X-Small","size":"0.44rem","slug":"20"},{"name":"X-Small","size":"0.67rem","slug":"30"},{"name":"Small","size":"1rem","slug":"40"},{"name":"Medium","size":"1.5rem","slug":"50"},{"name":"Large","size":"2.25rem","slug":"60"},{"name":"X-Large","size":"3.38rem","slug":"70"},{"name":"2X-Large","size":"5.06rem","slug":"80"}]}}},"version":3}"##));
+    let actual = raw(construct(
+        json(
+            r##"{"version":3,"settings":{"spacing":{"spacingScale":{"default":{"steps":7,"mediumStep":1.5,"unit":"rem","operator":"*","increment":1.5}}}}}"##,
+        ),
+        b"default",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"settings":{"spacing":{"spacingScale":{"default":{"increment":1.5,"mediumStep":1.5,"operator":"*","steps":7,"unit":"rem"}},"spacingSizes":{"default":[{"name":"2X-Small","size":"0.44rem","slug":"20"},{"name":"X-Small","size":"0.67rem","slug":"30"},{"name":"Small","size":"1rem","slug":"40"},{"name":"Medium","size":"1.5rem","slug":"50"},{"name":"Large","size":"2.25rem","slug":"60"},{"name":"X-Large","size":"3.38rem","slug":"70"},{"name":"2X-Large","size":"5.06rem","slug":"80"}]}}},"version":3}"##,
+        ),
+    );
 }
 
 #[test]
 fn registered_blocks_only() {
-    let actual = raw(construct(json(r##"{"version":3,"settings":{"blocks":{"core/group":{"color":{"text":false}},"core/quote":{"color":{"text":false}}}},"styles":{"blocks":{"core/quote":{"color":{"text":"red"}}}}}"##), b"theme", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"blocks":{"core/group":{"color":{"text":false}}}},"version":3}"##));
+    let actual = raw(construct(
+        json(
+            r##"{"version":3,"settings":{"blocks":{"core/group":{"color":{"text":false}},"core/quote":{"color":{"text":false}}}},"styles":{"blocks":{"core/quote":{"color":{"text":"red"}}}}}"##,
+        ),
+        b"theme",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(r##"{"settings":{"blocks":{"core/group":{"color":{"text":false}}}},"version":3}"##),
+    );
 }
 
 #[test]
 fn shared_variations_unwrapped() {
-    let actual = raw(construct(json(r##"{"version":3,"styles":{"variations":{"a":{"color":{"text":"red"}},"b":{"color":{"text":"blue"}}}}}"##), b"theme", &deps(blocks(&[("core/group", &["a", "b"]), ("core/paragraph", &["b"])]))));
-    assert_php_eq(&actual, &json(r##"{"styles":{"blocks":{"core/group":{"variations":{"a":{"color":{"text":"red"}},"b":{"color":{"text":"blue"}}}},"core/paragraph":{"variations":{"b":{"color":{"text":"blue"}}}}}},"version":3}"##));
+    let actual = raw(construct(
+        json(
+            r##"{"version":3,"styles":{"variations":{"a":{"color":{"text":"red"}},"b":{"color":{"text":"blue"}}}}}"##,
+        ),
+        b"theme",
+        &deps(blocks(&[
+            ("core/group", &["a", "b"]),
+            ("core/paragraph", &["b"]),
+        ])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"styles":{"blocks":{"core/group":{"variations":{"a":{"color":{"text":"red"}},"b":{"color":{"text":"blue"}}}},"core/paragraph":{"variations":{"b":{"color":{"text":"blue"}}}}}},"version":3}"##,
+        ),
+    );
 }
 
 #[test]
 fn version_one_document() {
-    let actual = raw(construct(json(r##"{"version":1,"settings":{"border":{"customRadius":true},"typography":{"fontSizes":[{"slug":"s","size":"1px"}]}}}"##), b"theme", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
-    assert_php_eq(&actual, &json(r##"{"settings":{"border":{"radius":true},"typography":{"defaultFontSizes":false,"fontSizes":{"theme":[{"size":"1px","slug":"s"}]}}},"version":3}"##));
+    let actual = raw(construct(
+        json(
+            r##"{"version":1,"settings":{"border":{"customRadius":true},"typography":{"fontSizes":[{"slug":"s","size":"1px"}]}}}"##,
+        ),
+        b"theme",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"settings":{"border":{"radius":true},"typography":{"defaultFontSizes":false,"fontSizes":{"theme":[{"size":"1px","slug":"s"}]}}},"version":3}"##,
+        ),
+    );
 }
 
 #[test]
 fn default_document() {
-    let actual = raw(construct(json(r##"{"version":3}"##), b"theme", &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])]))));
+    let actual = raw(construct(
+        json(r##"{"version":3}"##),
+        b"theme",
+        &deps(blocks(&[("core/group", &["a"]), ("core/paragraph", &[])])),
+    ));
     assert_php_eq(&actual, &json(r##"{"version":3}"##));
 }
 
 #[test]
 fn compute_multiplied_scale() {
-    let actual = compute_spacing_sizes(&json(r##"{"steps":7,"mediumStep":1.5,"unit":"rem","operator":"*","increment":1.5}"##), &deps(blocks(&[])));
-    assert_php_eq(&actual, &json(r##"[{"name":"2X-Small","size":"0.44rem","slug":"20"},{"name":"X-Small","size":"0.67rem","slug":"30"},{"name":"Small","size":"1rem","slug":"40"},{"name":"Medium","size":"1.5rem","slug":"50"},{"name":"Large","size":"2.25rem","slug":"60"},{"name":"X-Large","size":"3.38rem","slug":"70"},{"name":"2X-Large","size":"5.06rem","slug":"80"}]"##));
+    let actual = compute_spacing_sizes(
+        &json(r##"{"steps":7,"mediumStep":1.5,"unit":"rem","operator":"*","increment":1.5}"##),
+        &deps(blocks(&[])),
+    );
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[{"name":"2X-Small","size":"0.44rem","slug":"20"},{"name":"X-Small","size":"0.67rem","slug":"30"},{"name":"Small","size":"1rem","slug":"40"},{"name":"Medium","size":"1.5rem","slug":"50"},{"name":"Large","size":"2.25rem","slug":"60"},{"name":"X-Large","size":"3.38rem","slug":"70"},{"name":"2X-Large","size":"5.06rem","slug":"80"}]"##,
+        ),
+    );
 }
 
 #[test]
 fn compute_added_scale() {
-    let actual = compute_spacing_sizes(&json(r##"{"steps":10,"mediumStep":20,"unit":"px","operator":"+","increment":4}"##), &deps(blocks(&[])));
-    assert_php_eq(&actual, &json(r##"[{"name":"3X-Small","size":"4px","slug":"10"},{"name":"2X-Small","size":"8px","slug":"20"},{"name":"X-Small","size":"12px","slug":"30"},{"name":"Small","size":"16px","slug":"40"},{"name":"Medium","size":"20px","slug":"50"},{"name":"Large","size":"24px","slug":"60"},{"name":"X-Large","size":"28px","slug":"70"},{"name":"2X-Large","size":"32px","slug":"80"},{"name":"3X-Large","size":"36px","slug":"90"},{"name":"4X-Large","size":"40px","slug":"100"}]"##));
+    let actual = compute_spacing_sizes(
+        &json(r##"{"steps":10,"mediumStep":20,"unit":"px","operator":"+","increment":4}"##),
+        &deps(blocks(&[])),
+    );
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[{"name":"3X-Small","size":"4px","slug":"10"},{"name":"2X-Small","size":"8px","slug":"20"},{"name":"X-Small","size":"12px","slug":"30"},{"name":"Small","size":"16px","slug":"40"},{"name":"Medium","size":"20px","slug":"50"},{"name":"Large","size":"24px","slug":"60"},{"name":"X-Large","size":"28px","slug":"70"},{"name":"2X-Large","size":"32px","slug":"80"},{"name":"3X-Large","size":"36px","slug":"90"},{"name":"4X-Large","size":"40px","slug":"100"}]"##,
+        ),
+    );
 }
 
 #[test]
 fn compute_small_increment_multiplies() {
-    let actual = compute_spacing_sizes(&json(r##"{"steps":5,"mediumStep":2,"unit":"%","operator":"*","increment":0.5}"##), &deps(blocks(&[])));
-    assert_php_eq(&actual, &json(r##"[{"name":"X-Small","size":"0.5%","slug":"30"},{"name":"Small","size":"1%","slug":"40"},{"name":"Medium","size":"2%","slug":"50"},{"name":"Large","size":"4%","slug":"60"},{"name":"X-Large","size":"8%","slug":"70"}]"##));
+    let actual = compute_spacing_sizes(
+        &json(r##"{"steps":5,"mediumStep":2,"unit":"%","operator":"*","increment":0.5}"##),
+        &deps(blocks(&[])),
+    );
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[{"name":"X-Small","size":"0.5%","slug":"30"},{"name":"Small","size":"1%","slug":"40"},{"name":"Medium","size":"2%","slug":"50"},{"name":"Large","size":"4%","slug":"60"},{"name":"X-Large","size":"8%","slug":"70"}]"##,
+        ),
+    );
 }
 
 #[test]
 fn compute_steps_hit_zero() {
-    let actual = compute_spacing_sizes(&json(r##"{"steps":9,"mediumStep":3,"unit":"REM","operator":"+","increment":1}"##), &deps(blocks(&[])));
-    assert_php_eq(&actual, &json(r##"[{"name":"X-Small","size":"1rem","slug":"30"},{"name":"Small","size":"2rem","slug":"40"},{"name":"Medium","size":"3rem","slug":"50"},{"name":"Large","size":"4rem","slug":"60"},{"name":"X-Large","size":"5rem","slug":"70"},{"name":"2X-Large","size":"6rem","slug":"80"},{"name":"3X-Large","size":"7rem","slug":"90"},{"name":"4X-Large","size":"8rem","slug":"100"},{"name":"5X-Large","size":"9rem","slug":"110"}]"##));
+    let actual = compute_spacing_sizes(
+        &json(r##"{"steps":9,"mediumStep":3,"unit":"REM","operator":"+","increment":1}"##),
+        &deps(blocks(&[])),
+    );
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[{"name":"X-Small","size":"1rem","slug":"30"},{"name":"Small","size":"2rem","slug":"40"},{"name":"Medium","size":"3rem","slug":"50"},{"name":"Large","size":"4rem","slug":"60"},{"name":"X-Large","size":"5rem","slug":"70"},{"name":"2X-Large","size":"6rem","slug":"80"},{"name":"3X-Large","size":"7rem","slug":"90"},{"name":"4X-Large","size":"8rem","slug":"100"},{"name":"5X-Large","size":"9rem","slug":"110"}]"##,
+        ),
+    );
 }
 
 #[test]
 fn compute_string_numbers() {
-    let actual = compute_spacing_sizes(&json(r##"{"steps":"7","mediumStep":"1.5","unit":"em","operator":"+","increment":"0.25"}"##), &deps(blocks(&[])));
-    assert_php_eq(&actual, &json(r##"[{"name":"2X-Small","size":"0.75em","slug":"20"},{"name":"X-Small","size":"1em","slug":"30"},{"name":"Small","size":"1.25em","slug":"40"},{"name":"Medium","size":"1.5em","slug":"50"},{"name":"Large","size":"1.75em","slug":"60"},{"name":"X-Large","size":"2em","slug":"70"},{"name":"2X-Large","size":"2.25em","slug":"80"}]"##));
+    let actual = compute_spacing_sizes(
+        &json(
+            r##"{"steps":"7","mediumStep":"1.5","unit":"em","operator":"+","increment":"0.25"}"##,
+        ),
+        &deps(blocks(&[])),
+    );
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[{"name":"2X-Small","size":"0.75em","slug":"20"},{"name":"X-Small","size":"1em","slug":"30"},{"name":"Small","size":"1.25em","slug":"40"},{"name":"Medium","size":"1.5em","slug":"50"},{"name":"Large","size":"1.75em","slug":"60"},{"name":"X-Large","size":"2em","slug":"70"},{"name":"2X-Large","size":"2.25em","slug":"80"}]"##,
+        ),
+    );
 }
 
 #[test]
 fn compute_one_step() {
-    let actual = compute_spacing_sizes(&json(r##"{"steps":1,"mediumStep":1,"unit":"px","operator":"+","increment":1}"##), &deps(blocks(&[])));
-    assert_php_eq(&actual, &json(r##"[{"name":"Medium","size":"1px","slug":"50"}]"##));
+    let actual = compute_spacing_sizes(
+        &json(r##"{"steps":1,"mediumStep":1,"unit":"px","operator":"+","increment":1}"##),
+        &deps(blocks(&[])),
+    );
+    assert_php_eq(
+        &actual,
+        &json(r##"[{"name":"Medium","size":"1px","slug":"50"}]"##),
+    );
 }
 
 #[test]
 fn compute_zero_steps() {
-    let actual = compute_spacing_sizes(&json(r##"{"steps":0,"mediumStep":1,"unit":"px","operator":"+","increment":1}"##), &deps(blocks(&[])));
+    let actual = compute_spacing_sizes(
+        &json(r##"{"steps":0,"mediumStep":1,"unit":"px","operator":"+","increment":1}"##),
+        &deps(blocks(&[])),
+    );
     assert_php_eq(&actual, &json(r##"[]"##));
 }
 
 #[test]
 fn compute_invalid_operator() {
-    let actual = compute_spacing_sizes(&json(r##"{"steps":3,"mediumStep":1,"unit":"px","operator":"-","increment":1}"##), &deps(blocks(&[])));
+    let actual = compute_spacing_sizes(
+        &json(r##"{"steps":3,"mediumStep":1,"unit":"px","operator":"-","increment":1}"##),
+        &deps(blocks(&[])),
+    );
     assert_php_eq(&actual, &json(r##"[]"##));
 }
 
 #[test]
 fn compute_float_rounding() {
-    let actual = compute_spacing_sizes(&json(r##"{"steps":8,"mediumStep":1.1,"unit":"rem","operator":"*","increment":1.33}"##), &deps(blocks(&[])));
-    assert_php_eq(&actual, &json(r##"[{"name":"2X-Small","size":"0.47rem","slug":"20"},{"name":"X-Small","size":"0.62rem","slug":"30"},{"name":"Small","size":"0.83rem","slug":"40"},{"name":"Medium","size":"1.1rem","slug":"50"},{"name":"Large","size":"1.46rem","slug":"60"},{"name":"X-Large","size":"1.95rem","slug":"70"},{"name":"2X-Large","size":"2.59rem","slug":"80"},{"name":"3X-Large","size":"3.44rem","slug":"90"}]"##));
+    let actual = compute_spacing_sizes(
+        &json(r##"{"steps":8,"mediumStep":1.1,"unit":"rem","operator":"*","increment":1.33}"##),
+        &deps(blocks(&[])),
+    );
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[{"name":"2X-Small","size":"0.47rem","slug":"20"},{"name":"X-Small","size":"0.62rem","slug":"30"},{"name":"Small","size":"0.83rem","slug":"40"},{"name":"Medium","size":"1.1rem","slug":"50"},{"name":"Large","size":"1.46rem","slug":"60"},{"name":"X-Large","size":"1.95rem","slug":"70"},{"name":"2X-Large","size":"2.59rem","slug":"80"},{"name":"3X-Large","size":"3.44rem","slug":"90"}]"##,
+        ),
+    );
 }
 
 #[test]
 fn merge_sizes_sorts_numerically() {
-    let actual = merge_spacing_sizes(&json(r##"[{"slug":"40","size":"1"},{"slug":"50","size":"2"},{"slug":"60","size":"3"}]"##), &json(r##"[{"slug":"50","size":"x"},{"slug":"small","size":"s"},{"slug":5,"size":"five"},{"slug":"100","size":"h"}]"##));
-    assert_php_eq(&actual, &json(r##"[{"size":"s","slug":"small"},{"size":"five","slug":5},{"size":"1","slug":"40"},{"size":"x","slug":"50"},{"size":"3","slug":"60"},{"size":"h","slug":"100"}]"##));
+    let actual = merge_spacing_sizes(
+        &json(r##"[{"slug":"40","size":"1"},{"slug":"50","size":"2"},{"slug":"60","size":"3"}]"##),
+        &json(
+            r##"[{"slug":"50","size":"x"},{"slug":"small","size":"s"},{"slug":5,"size":"five"},{"slug":"100","size":"h"}]"##,
+        ),
+    );
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[{"size":"s","slug":"small"},{"size":"five","slug":5},{"size":"1","slug":"40"},{"size":"x","slug":"50"},{"size":"3","slug":"60"},{"size":"h","slug":"100"}]"##,
+        ),
+    );
 }
 
 #[test]

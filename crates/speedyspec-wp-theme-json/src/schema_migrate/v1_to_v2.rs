@@ -22,8 +22,14 @@ impl MigrationStep for V1ToV2 {
 
     fn migrate(&self, mut doc: Value, _origin: Origin) -> Value {
         if array_path::isset(&doc, &["settings"]) {
-            let settings = array_path::get(&doc, &["settings"]).cloned().unwrap_or(Value::Null);
-            array_path::insert(&mut doc, Key::Str("settings".into()), rename_paths(settings));
+            let settings = array_path::get(&doc, &["settings"])
+                .cloned()
+                .unwrap_or(Value::Null);
+            array_path::insert(
+                &mut doc,
+                Key::Str("settings".into()),
+                rename_paths(settings),
+            );
         }
         array_path::insert(&mut doc, Key::Str("version".into()), Value::Int(2));
         doc
@@ -35,7 +41,9 @@ fn rename_paths(mut settings: Value) -> Value {
     rename_settings(&mut settings);
     if let Some(Value::Array(_)) = array_path::get(&settings, &["blocks"])
         && let Value::Array(entries) = &mut settings
-        && let Some((_, Value::Array(blocks))) = entries.iter_mut().find(|(k, _)| *k == Key::Str("blocks".into()))
+        && let Some((_, Value::Array(blocks))) = entries
+            .iter_mut()
+            .find(|(k, _)| *k == Key::Str("blocks".into()))
     {
         for (_, block) in blocks.iter_mut() {
             rename_settings(block);

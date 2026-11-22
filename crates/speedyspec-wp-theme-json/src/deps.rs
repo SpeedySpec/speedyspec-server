@@ -2,7 +2,9 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_theme_json_contracts::ports::{BlockMetadata, Diagnostics, Gettext, TextFunctions};
+use speedyspec_wp_theme_json_contracts::ports::{
+    BlockMetadata, Diagnostics, Gettext, TextFunctions,
+};
 
 /// What the theme.json engine needs from outside.
 #[derive(Clone)]

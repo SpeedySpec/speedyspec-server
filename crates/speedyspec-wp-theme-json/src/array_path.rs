@@ -30,7 +30,8 @@ pub fn get<'a>(value: &'a Value, path: &[&str]) -> Option<&'a Value> {
     if path.is_empty() {
         return None;
     }
-    path.iter().try_fold(value, |current, name| child(current, &php_key(name)))
+    path.iter()
+        .try_fold(value, |current, name| child(current, &php_key(name)))
 }
 
 /// `isset( $array[a][b]… )`: the value exists and is not `null`.
@@ -68,7 +69,9 @@ pub fn insert(target: &mut Value, key: Key, new: Value) {
 
 /// `unset( $array[a][b]… )`, when every step before the last is an array.
 pub fn unset(target: &mut Value, path: &[&str]) {
-    let Some((last, init)) = path.split_last() else { return };
+    let Some((last, init)) = path.split_last() else {
+        return;
+    };
     let mut current = target;
     for name in init {
         match child_mut(current, &php_key(name)) {
@@ -93,7 +96,9 @@ pub fn replace_recursive(base: Value, replacements: Value) -> Value {
             Some(slot) => {
                 let old = std::mem::replace(&mut slot.1, Value::Null);
                 slot.1 = match (old, value) {
-                    (old @ Value::Array(_), value @ Value::Array(_)) => replace_recursive(old, value),
+                    (old @ Value::Array(_), value @ Value::Array(_)) => {
+                        replace_recursive(old, value)
+                    }
                     (_, value) => value,
                 };
             }

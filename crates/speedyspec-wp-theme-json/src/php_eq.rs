@@ -8,7 +8,11 @@ pub fn php_loose_eq(a: &Value, b: &Value) -> bool {
     match (a, b) {
         (Value::Array(x), Value::Array(y)) => {
             x.len() == y.len()
-                && x.iter().all(|(k, v)| y.iter().find(|(k2, _)| same_key(k, k2)).is_some_and(|(_, v2)| php_loose_eq(v, v2)))
+                && x.iter().all(|(k, v)| {
+                    y.iter()
+                        .find(|(k2, _)| same_key(k, k2))
+                        .is_some_and(|(_, v2)| php_loose_eq(v, v2))
+                })
         }
         (Value::Array(_), _) | (_, Value::Array(_)) => {
             matches!((a, b), (Value::Array(x), Value::Bool(t)) | (Value::Bool(t), Value::Array(x)) if x.is_empty() != *t)
@@ -57,11 +61,14 @@ fn number(v: &Value) -> Option<f64> {
 /// PHP 8's numeric strings: optional leading whitespace, a number, optional trailing whitespace.
 fn numeric(s: &[u8]) -> Option<f64> {
     let text = std::str::from_utf8(s).ok()?;
-    let trimmed = text.trim_matches(|c: char| matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0b' | '\x0c'));
+    let trimmed =
+        text.trim_matches(|c: char| matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0b' | '\x0c'));
     if trimmed.is_empty() || trimmed.starts_with('+') && trimmed[1..].starts_with(['+', '-']) {
         return None;
     }
-    let ok = trimmed.bytes().all(|c| c.is_ascii_digit() || matches!(c, b'.' | b'e' | b'E' | b'+' | b'-'));
+    let ok = trimmed
+        .bytes()
+        .all(|c| c.is_ascii_digit() || matches!(c, b'.' | b'e' | b'E' | b'+' | b'-'));
     if !ok {
         return None;
     }

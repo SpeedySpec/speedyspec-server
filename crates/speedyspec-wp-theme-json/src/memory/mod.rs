@@ -3,7 +3,9 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use speedyspec_wp_theme_json_contracts::ports::{BlockMetadata, Diagnostics, Gettext, RegisteredBlock};
+use speedyspec_wp_theme_json_contracts::ports::{
+    BlockMetadata, Diagnostics, Gettext, RegisteredBlock,
+};
 
 /// Block metadata held in memory.
 #[derive(Default)]
@@ -58,10 +60,15 @@ pub struct RecordedDiagnostics {
 
 impl Diagnostics for RecordedDiagnostics {
     fn trigger_error(&self, function: &str, message: &[u8]) {
-        self.notices.borrow_mut().push(format!("trigger_error:{function}|{}", String::from_utf8_lossy(message)));
+        self.notices.borrow_mut().push(format!(
+            "trigger_error:{function}|{}",
+            String::from_utf8_lossy(message)
+        ));
     }
 
     fn deprecated_function(&self, function: &str, version: &str, replacement: &str) {
-        self.notices.borrow_mut().push(format!("deprecated_function:{function}|{version}|{replacement}"));
+        self.notices.borrow_mut().push(format!(
+            "deprecated_function:{function}|{version}|{replacement}"
+        ));
     }
 }

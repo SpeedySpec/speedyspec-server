@@ -7,8 +7,18 @@ use speedyspec_wp_theme_json::php::{float_to_string, round};
 
 const ROWS: &[(f64, &str, &str, &str)] = &[
     (1e14_f64, "1.0E+14", "1.0E+14", "1.0E+14"),
-    (99999999999999.0_f64, "99999999999999", "99999999999999", "99999999999999"),
-    (123456789012345.0_f64, "1.2345678901234E+14", "1.2345678901234E+14", "1.2345678901234E+14"),
+    (
+        99999999999999.0_f64,
+        "99999999999999",
+        "99999999999999",
+        "99999999999999",
+    ),
+    (
+        123456789012345.0_f64,
+        "1.2345678901234E+14",
+        "1.2345678901234E+14",
+        "1.2345678901234E+14",
+    ),
     (0.285_f64, "0.285", "0.29", "0"),
     (1.005_f64, "1.005", "1.01", "1"),
     (2.675_f64, "2.675", "2.68", "3"),
@@ -342,7 +352,15 @@ fn floats_print_as_php_prints_them() {
 #[test]
 fn round_matches_php() {
     for (value, _, two, zero) in ROWS {
-        assert_eq!(float_to_string(round(*value, 2)), *two, "round({value:?}, 2)");
-        assert_eq!(float_to_string(round(*value, 0)), *zero, "round({value:?}, 0)");
+        assert_eq!(
+            float_to_string(round(*value, 2)),
+            *two,
+            "round({value:?}, 2)"
+        );
+        assert_eq!(
+            float_to_string(round(*value, 0)),
+            *zero,
+            "round({value:?}, 0)"
+        );
     }
 }

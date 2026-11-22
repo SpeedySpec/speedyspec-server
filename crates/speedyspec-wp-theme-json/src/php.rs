@@ -23,7 +23,9 @@ impl Num {
 
     fn op(self, other: Num, int: fn(i64, i64) -> Option<i64>, float: fn(f64, f64) -> f64) -> Num {
         match (self, other) {
-            (Num::Int(a), Num::Int(b)) => int(a, b).map(Num::Int).unwrap_or_else(|| Num::Float(float(a as f64, b as f64))),
+            (Num::Int(a), Num::Int(b)) => int(a, b)
+                .map(Num::Int)
+                .unwrap_or_else(|| Num::Float(float(a as f64, b as f64))),
             _ => Num::Float(float(self.as_f64(), other.as_f64())),
         }
     }
@@ -61,7 +63,17 @@ impl std::ops::Div for Num {
 
     /// `$a / $b`: an integer when both are integers and the division is exact.
     fn div(self, other: Num) -> Num {
-        self.op(other, |a, b| if b != 0 && a % b == 0 { a.checked_div(b) } else { None }, |a, b| a / b)
+        self.op(
+            other,
+            |a, b| {
+                if b != 0 && a % b == 0 {
+                    a.checked_div(b)
+                } else {
+                    None
+                }
+            },
+            |a, b| a / b,
+        )
     }
 }
 
@@ -138,10 +150,23 @@ pub fn round(value: f64, places: i32) -> f64 {
         return value;
     }
     let exponent = 10f64.powi(places.abs());
-    let scaled = if places > 0 { value * exponent } else { value / exponent };
-    let (mut integral, next) =
-        if value >= 0.0 { (scaled.floor(), scaled.floor() + 1.0) } else { (scaled.ceil(), scaled.ceil() - 1.0) };
-    let back = |x: f64| if places > 0 { x / exponent } else { x * exponent };
+    let scaled = if places > 0 {
+        value * exponent
+    } else {
+        value / exponent
+    };
+    let (mut integral, next) = if value >= 0.0 {
+        (scaled.floor(), scaled.floor() + 1.0)
+    } else {
+        (scaled.ceil(), scaled.ceil() - 1.0)
+    };
+    let back = |x: f64| {
+        if places > 0 {
+            x / exponent
+        } else {
+            x * exponent
+        }
+    };
     if back(next) == value {
         integral = next;
     }
@@ -152,7 +177,11 @@ pub fn round(value: f64, places: i32) -> f64 {
     if value.abs() >= edge {
         integral += 1.0f64.copysign(integral);
     }
-    if places.abs() < 23 { back(integral) } else { value }
+    if places.abs() < 23 {
+        back(integral)
+    } else {
+        value
+    }
 }
 
 /// A float as PHP's string cast writes it (`precision = 14`): 14 significant digits, trailing zeros dropped, the
@@ -165,7 +194,11 @@ pub fn float_to_string(f: f64) -> String {
         return if f > 0.0 { "INF".into() } else { "-INF".into() };
     }
     if f == 0.0 {
-        return if f.is_sign_negative() { "-0".into() } else { "0".into() };
+        return if f.is_sign_negative() {
+            "-0".into()
+        } else {
+            "0".into()
+        };
     }
     let sci = format!("{:.13e}", f.abs());
     let (mantissa, exp) = sci.split_once('e').expect("{:e} has an exponent");
@@ -178,7 +211,11 @@ pub fn float_to_string(f: f64) -> String {
     if (-4..14).contains(&exp) {
         let body = if exp >= 0 {
             if n > exp + 1 {
-                format!("{}.{}", &digits[..(exp + 1) as usize], &digits[(exp + 1) as usize..])
+                format!(
+                    "{}.{}",
+                    &digits[..(exp + 1) as usize],
+                    &digits[(exp + 1) as usize..]
+                )
             } else {
                 format!("{digits}{}", "0".repeat((exp + 1 - n) as usize))
             }
@@ -188,7 +225,12 @@ pub fn float_to_string(f: f64) -> String {
         format!("{sign}{body}")
     } else {
         let frac = if n > 1 { &digits[1..] } else { "0" };
-        format!("{sign}{}.{frac}E{}{}", &digits[..1], if exp < 0 { '-' } else { '+' }, exp.abs())
+        format!(
+            "{sign}{}.{frac}E{}{}",
+            &digits[..1],
+            if exp < 0 { '-' } else { '+' },
+            exp.abs()
+        )
     }
 }
 

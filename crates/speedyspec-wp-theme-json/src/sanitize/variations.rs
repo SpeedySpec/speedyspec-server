@@ -14,17 +14,22 @@ pub fn unwrap_shared_block_style_variations(doc: Value, valid: &ValidNames) -> V
     let mut new = doc;
     for (block, names) in &valid.variations {
         for name in names {
-            let block_level = array_path::get(&new, &["styles", "blocks", block, "variations", name])
-                .filter(|v| !matches!(v, Value::Null))
-                .cloned()
-                .unwrap_or(Value::Array(Vec::new()));
+            let block_level =
+                array_path::get(&new, &["styles", "blocks", block, "variations", name])
+                    .filter(|v| !matches!(v, Value::Null))
+                    .cloned()
+                    .unwrap_or(Value::Array(Vec::new()));
             let top_level = array_path::get(&shared, &[name])
                 .filter(|v| !matches!(v, Value::Null))
                 .cloned()
                 .unwrap_or(Value::Array(Vec::new()));
             let merged = array_path::replace_recursive(top_level, block_level);
             if php_non_empty(Some(&merged)) {
-                array_path::set(&mut new, &["styles", "blocks", block, "variations", name], merged);
+                array_path::set(
+                    &mut new,
+                    &["styles", "blocks", block, "variations", name],
+                    merged,
+                );
             }
         }
     }

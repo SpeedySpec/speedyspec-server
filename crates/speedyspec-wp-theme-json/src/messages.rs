@@ -5,7 +5,9 @@
 use std::rc::Rc;
 
 use speedyspec_container::Container;
-use speedyspec_cqrs::{Command, CommandHandler, Query, QueryHandler, bind_command_handler, bind_query_handler};
+use speedyspec_cqrs::{
+    Command, CommandHandler, Query, QueryHandler, bind_command_handler, bind_query_handler,
+};
 use speedyspec_hooks::Value;
 use speedyspec_wp_theme_json_contracts::model::ThemeJson;
 
