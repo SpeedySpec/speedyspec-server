@@ -6,6 +6,7 @@ use speedyspec_container::Container;
 use speedyspec_data_mysql::MySqlEngineFactory;
 use speedyspec_data_query::{EngineRegistry, Query};
 use speedyspec_php::NativeArea;
+use speedyspec_wp_cron_php::CronArea;
 use speedyspec_wp_db::WpDbConfig;
 use speedyspec_wp_db_php::WpDbArea;
 use speedyspec_wp_hooks::HookApi;
@@ -49,8 +50,8 @@ fn check(registry: &EngineRegistry) -> Result<(), String> {
 }
 
 /// The `default` engine from `config`, and the areas that use it, in the order they must be registered:
-/// `WpDbArea`, `ObjectCacheArea`, `OptionsArea`. The engine must answer before `WpDbArea` is built. The object cache has no persistent level yet (request lifetime, as
-/// WordPress's default).
+/// `WpDbArea`, `ObjectCacheArea`, `OptionsArea`, `CronArea`. The engine must answer before `WpDbArea` is built. The
+/// object cache has no persistent level yet (request lifetime, as WordPress's default).
 pub fn boot_database(
     config: WpDbConfig,
     container: &Rc<Container>,
@@ -73,8 +74,14 @@ pub fn boot_database(
     );
     let cache = ObjectCacheArea::new(container.clone(), None);
     let options = OptionsArea::new(container.clone(), hook_api.clone(), cache.api(), wpdb.api());
+    let cron = CronArea::new(hook_api.clone(), options.api());
     let database = WorkerDatabase { registry };
-    let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(wpdb), Rc::new(cache), Rc::new(options)];
+    let areas: Vec<Rc<dyn NativeArea>> = vec![
+        Rc::new(wpdb),
+        Rc::new(cache),
+        Rc::new(options),
+        Rc::new(cron),
+    ];
     Ok((database, areas))
 }
 

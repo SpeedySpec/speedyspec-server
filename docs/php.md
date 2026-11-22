@@ -143,8 +143,10 @@ read each other's process environment.
 
 ### Native WordPress areas
 
-`DB_NAME` in a worker's environment turns on the database, object cache and options areas: native `$wpdb`,
-`wp_cache_*` and `get_option()` and the rest, over one engine kept for the worker's life. The variables are
+`DB_NAME` in a worker's environment turns on the database, object cache, options and cron areas: native `$wpdb`,
+`wp_cache_*`, `get_option()`, `wp_schedule_event()` and the rest, over one engine kept for the worker's life. Cron's
+writes to the `cron` option are compare-and-swap: two workers (or replicas) scheduling at once both keep their
+events. The variables are
 WordPress's `wp-config.php` names:
 
 | Variable | Default |
@@ -165,7 +167,8 @@ answer at start. Each request is answered 500 without running PHP while a `db.ph
 (`php_worker_open_transaction`).
 
 A release served this way must not load WordPress's own `option.php`, `cache.php` or `class-wpdb.php` functions beside
-the native ones: each port's `prepare_release` writes a copy of WordPress without them.
+the native ones (nor `cron.php`'s ported functions): each port's `prepare_release` writes a copy of WordPress without
+them.
 
 ## `php.bindings`
 

@@ -112,3 +112,22 @@ async fn release_drop_in_is_refused_without_a_site_dir() {
         assert!(answer.body().contains("db.php"), "{}", answer.stdout);
     }
 }
+
+#[tokio::test(flavor = "current_thread")]
+async fn worker_serves_native_cron() {
+    let Some(env) = mysql_env("cronworker_") else {
+        println!("skip: SPEEDYSPEC_TEST_MYSQL_URL is not set");
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let app = fixture("cron-app");
+    let mut worker = spawn(dir.path(), &app, None, &env);
+    worker.ready().await;
+    let answer = worker.get(&app.join("index.php"), "/").await;
+    assert_eq!(
+        answer.body(),
+        "speedyspec://wp-cron|scheduled",
+        "{}",
+        answer.stdout
+    );
+}
