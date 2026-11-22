@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-cqrs-php"
-version = "0.1.1"
+version = "0.1.2"
 description = "The command and query buses from PHP, and PHP classes as handlers that override Rust ones."
 edition.workspace = true
 rust-version.workspace = true

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-text-escape"
-version = "0.1.1"
+version = "0.1.2"
 description = "WordPress's escaping functions (esc_html, esc_attr, _wp_specialchars and the rest) in Rust, byte for byte, with PHP's own htmlspecialchars underneath."
 edition.workspace = true
 rust-version.workspace = true
