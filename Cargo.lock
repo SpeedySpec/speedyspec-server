@@ -9,6 +9,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "adler32"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aae1277d39aeec15cb388266ecc24b11c80469deae6067e17a1a7aa9e5c1f234"
+
+[[package]]
 name = "aes"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -67,6 +73,12 @@ checksum = "e5a7d05ea6aea7e9e64d25b9156ba2fee3fdd659e34e41063cd2fc7cd020d7f4"
 dependencies = [
  "cc",
 ]
+
+[[package]]
+name = "allocator-api2"
+version = "0.2.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "android_system_properties"
@@ -1123,6 +1135,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dary_heap"
+version = "0.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b1e3a325bc115f096c8b77bbf027a7c2592230e70be2d985be950d3d5e60ebe"
+
+[[package]]
 name = "data-encoding"
 version = "2.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1788,6 +1806,17 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+dependencies = [
+ "allocator-api2",
+ "equivalent",
+ "foldhash",
+]
+
+[[package]]
+name = "hashbrown"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
@@ -1801,7 +1830,7 @@ version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a596f1b20ed2cc5ecac41a164aaebc7258057060f06c0cf7a2ba3991ee7990fb"
 dependencies = [
- "hashbrown",
+ "hashbrown 0.17.1",
 ]
 
 [[package]]
@@ -2233,7 +2262,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc4e190f5d26ca7051642629da2c52fc03bde85a03197c99408dcd291734c855"
 dependencies = [
  "equivalent",
- "hashbrown",
+ "hashbrown 0.17.1",
 ]
 
 [[package]]
@@ -2561,6 +2590,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
+name = "libflate"
+version = "2.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "561a8da1a50e1428d3c51321dafeca849df992a5bb67720c386131234caba82e"
+dependencies = [
+ "adler32",
+ "crc32fast",
+ "dary_heap",
+ "libflate_lz77",
+ "no_std_io2",
+]
+
+[[package]]
+name = "libflate_lz77"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff7a10e427698aef6eef269482776debfef63384d30f13aad39a1a95e0e098fd"
+dependencies = [
+ "hashbrown 0.16.1",
+ "no_std_io2",
+ "rle-decode-fast",
+]
+
+[[package]]
 name = "libloading"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2583,6 +2636,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61ff90caf6077a803a240f62fdbe88645a890bbca49ef8174c3cb0404362171d"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "libsodium-sys-stable"
+version = "1.24.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6513f7ca2de7338a74fab1e69ffaee2bf9897d111d571915355251e0ca661f5"
+dependencies = [
+ "cc",
+ "libc",
+ "libflate",
+ "minisign-verify 0.3.0",
+ "pkg-config",
+ "tar",
+ "ureq",
+ "vcpkg",
+ "zip",
 ]
 
 [[package]]
@@ -2741,6 +2811,12 @@ name = "minisign-verify"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22f9645cb765ea72b8111f36c522475d2daa0d22c957a9826437e97534bc4e9e"
+
+[[package]]
+name = "minisign-verify"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "871285dc19d8d0ebe0eef3d0e99a205f2a71363b122632cbbfa4a6c370a960ce"
 
 [[package]]
 name = "miniz_oxide"
@@ -2908,6 +2984,15 @@ dependencies = [
  "cfg-if",
  "cfg_aliases",
  "libc",
+]
+
+[[package]]
+name = "no_std_io2"
+version = "0.9.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "418abd1b6d34fbf6cae440dc874771b0525a604428704c76e48b29a5e67b8003"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -4052,6 +4137,12 @@ dependencies = [
  "untrusted 0.9.0",
  "windows-sys 0.52.0",
 ]
+
+[[package]]
+name = "rle-decode-fast"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3582f63211428f83597b51b2ddb88e2a91a9d52d12831f9d08f5e624e8977422"
 
 [[package]]
 name = "rpassword"
@@ -5224,7 +5315,9 @@ dependencies = [
 name = "speedyspec-php-runtime"
 version = "1.0.4"
 dependencies = [
+ "bytes",
  "clap",
+ "futures-util",
  "libc",
  "semver",
  "serde",
@@ -5237,10 +5330,14 @@ dependencies = [
  "speedyspec-php",
  "speedyspec-php-ext",
  "speedyspec-runtime-contract",
+ "speedyspec-wp-crypto-contracts",
+ "speedyspec-wp-crypto-php",
+ "speedyspec-wp-crypto-sodium",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -5485,7 +5582,7 @@ name = "speedyspec-server-infra-minisign"
 version = "0.1.3"
 dependencies = [
  "minisign",
- "minisign-verify",
+ "minisign-verify 0.2.5",
  "speedyspec-server-domain",
  "tempfile",
 ]
@@ -5524,6 +5621,55 @@ dependencies = [
  "speedyspec-server-domain",
  "tempfile",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "speedyspec-wp-crypto"
+version = "0.1.0"
+dependencies = [
+ "sha2 0.10.9",
+ "speedyspec-wp-crypto-contracts",
+]
+
+[[package]]
+name = "speedyspec-wp-crypto-contracts"
+version = "0.1.0"
+
+[[package]]
+name = "speedyspec-wp-crypto-php"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-wp-crypto",
+ "speedyspec-wp-crypto-contracts",
+ "speedyspec-wp-crypto-sodium",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-text-contracts",
+ "speedyspec-wp-text-escape",
+ "ureq",
+]
+
+[[package]]
+name = "speedyspec-wp-crypto-sodium"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "libsodium-sys-stable",
+ "serde_json",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-wp-crypto",
+ "speedyspec-wp-crypto-contracts",
 ]
 
 [[package]]
@@ -5635,7 +5781,7 @@ name = "speedyspec-wp-i18n"
 version = "0.1.0"
 dependencies = [
  "foldhash",
- "hashbrown",
+ "hashbrown 0.17.1",
  "indexmap",
  "md-5",
  "serde_json",
@@ -6074,7 +6220,7 @@ dependencies = [
  "base64 0.22.1",
  "criterion 0.8.2",
  "foldhash",
- "hashbrown",
+ "hashbrown 0.17.1",
  "memchr",
  "proptest",
  "serde_json",

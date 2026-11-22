@@ -39,7 +39,25 @@ pdo_mysql pdo_sqlite phar session simplexml sodium sqlite3 tokenizer xml xmlread
 ```
 
 with gd's JPEG, PNG, WebP, AVIF and FreeType support. `cargo test -p speedyspec-php --test extensions` checks that
-every one loads. The `speedyspec_wordpress` extension (the Rust side: the container, the Hook API) is built in.
+every one loads.
+
+**ext-sodium is guaranteed.** WordPress needs libsodium, and loads the `sodium_compat` polyfill when ext-sodium is
+missing. The runtime never needs that polyfill, because it never runs without ext-sodium:
+
+- `build-php.sh` fetches libsodium 1.0.22 itself, checks its SHA-256 (verified against the release's minisign
+  signature), and hands that tarball to spc. Afterwards it fails unless `lib/libsodium.a` exists, `link-flags.txt`
+  has `-lsodium`, spc built from the pinned tarball, and PHP reports `SODIUM_LIBRARY_VERSION` 1.0.22.
+- `speedyspec-php`'s build script refuses a PHP prefix without `-lsodium` or `libsodium.a`.
+- The `extensions` test checks the version too.
+- A runtime worker checks ext-sodium at start-up and exits with `php_worker_sodium_missing` without it, and the
+  release smoke check fails a runtime whose manifest doesn't report the pinned libsodium.
+
+The Rust crypto port (`speedyspec-wp-crypto*`) links the same `libsodium.a`, so PHP and Rust share one libsodium:
+`.cargo/config.toml` sets `SODIUM_LIB_DIR` to the buildroot's `lib`, and `speedyspec-php`'s build script refuses any
+other directory. Point `SODIUM_LIB_DIR` at `<prefix>/lib` whenever you set `SPEEDYSPEC_PHP_PREFIX`, `PHP` and
+`PHP_CONFIG` to another PHP build.
+
+The `speedyspec_wordpress` extension (the Rust side: the container, the Hook API) is built in.
 
 ## The release
 

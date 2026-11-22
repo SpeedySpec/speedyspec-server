@@ -1,0 +1,9 @@
+[package]
+name = "speedyspec-wp-crypto-contracts"
+version = "0.1.0"
+description = "Contracts for WordPress's sodium functions: the hash, signature, encoding, clock, translation and filter ports."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]

@@ -44,13 +44,13 @@ fn smoke_refuses_a_wrong_version() {
     assert!(stderr(&output).contains("version"), "{}", stderr(&output));
 }
 
-/// The runtime's manifest has no `app`: its version and contracts are what count.
+/// The runtime's manifest has no `app`: its version, contracts and libsodium are what count.
 #[test]
 fn smoke_runtime_needs_no_app() {
     let dir = tempfile::tempdir().unwrap();
     let good = fake_runtime(
         dir.path(),
-        r#"{"version":"1.0.0","contracts":[1],"php":"8.5.12"}"#,
+        r#"{"version":"1.0.0","contracts":[1],"php":"8.5.12","sodium":"1.0.22"}"#,
     );
     let output = smoke(&good, "speedyspec-php-runtime", "1.0.0");
     // The stand-in is a shell script, not a static executable, so on Linux only the static check may fail.
@@ -62,11 +62,25 @@ fn smoke_runtime_needs_no_app() {
 
     let none = fake_runtime(
         dir.path(),
-        r#"{"version":"1.0.0","contracts":[],"php":"8.5.12"}"#,
+        r#"{"version":"1.0.0","contracts":[],"php":"8.5.12","sodium":"1.0.22"}"#,
     );
     let output = smoke(&none, "speedyspec-php-runtime", "1.0.0");
     assert_eq!(output.status.code(), Some(1));
     assert!(stderr(&output).contains("contracts"), "{}", stderr(&output));
+}
+
+/// WordPress needs libsodium: a runtime must report the version `scripts/build-php.sh` pins.
+#[test]
+fn smoke_runtime_needs_the_pinned_libsodium() {
+    let dir = tempfile::tempdir().unwrap();
+    for json in [
+        r#"{"version":"1.0.0","contracts":[1],"php":"8.5.12"}"#,
+        r#"{"version":"1.0.0","contracts":[1],"php":"8.5.12","sodium":"1.0.18"}"#,
+    ] {
+        let output = smoke(&fake_runtime(dir.path(), json), "speedyspec-php-runtime", "1.0.0");
+        assert_eq!(output.status.code(), Some(1), "{json}");
+        assert!(stderr(&output).contains("libsodium"), "{}", stderr(&output));
+    }
 }
 
 #[test]

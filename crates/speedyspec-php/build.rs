@@ -22,6 +22,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=SPEEDYSPEC_PHP_PREFIX");
     println!("cargo:rerun-if-env-changed=PHP");
     println!("cargo:rerun-if-env-changed=PHP_CONFIG");
+    println!("cargo:rerun-if-env-changed=SODIUM_LIB_DIR");
 
     let prefix = env::var_os("SPEEDYSPEC_PHP_PREFIX")
         .map(PathBuf::from)
@@ -48,6 +49,17 @@ fn main() {
                 expected.display()
             ));
         }
+    }
+
+    // libsodium-sys-stable (the Rust crypto port) links libsodium.a from SODIUM_LIB_DIR. It must be this PHP's own
+    // archive: two libsodium archives in one link resolve symbol by symbol, mixing objects of both versions.
+    let sodium_dir = env::var_os("SODIUM_LIB_DIR").map(PathBuf::from);
+    if sodium_dir.as_deref().map(canonical) != Some(canonical(&prefix.join("lib"))) {
+        fail(&format!(
+            "sodium: SODIUM_LIB_DIR is {sodium_dir:?} but must be {} so Rust links PHP's own libsodium; \
+             set it alongside SPEEDYSPEC_PHP_PREFIX (see .cargo/config.toml)",
+            prefix.join("lib").display()
+        ));
     }
 
     let version_file = workspace.join("php-version");
@@ -81,6 +93,20 @@ fn link(prefix: &Path) {
             flags_file.display()
         ))
     });
+
+    // WordPress needs ext-sodium and the runtime guarantees it; a PHP built without it must not link.
+    if !flags.split_whitespace().any(|token| token == "-lsodium") {
+        fail(&format!(
+            "sodium: {} has no -lsodium; ext-sodium is required, rerun scripts/build-php.sh",
+            flags_file.display()
+        ));
+    }
+    if !lib_dir.join("libsodium.a").is_file() {
+        fail(&format!(
+            "sodium: {} is missing; ext-sodium is required, rerun scripts/build-php.sh",
+            lib_dir.join("libsodium.a").display()
+        ));
+    }
 
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     let mut tokens = flags.split_whitespace();

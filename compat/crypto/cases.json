@@ -1,0 +1,695 @@
+{
+    "wordpress": "7.1.5",
+    "php": "8.5.12",
+    "sodium": "1.0.22",
+    "trusted_keys": [],
+    "fast_hash": [
+        {
+            "message_b64": "",
+            "hash": "$generic$XJQGK2eUryTa4vHbU0bDv1Ml3wGPwaC1ATczq0o_"
+        },
+        {
+            "message_b64": "YQ==",
+            "hash": "$generic$BlPpiI8BQNn0n2N8UyDNalqefg-kBenPJ2QV3FLD"
+        },
+        {
+            "message_b64": "AP/+",
+            "hash": "$generic$rXPgwQHnKTddcrpkGrvyeT-GsoMvpp0EMCV0lPdH"
+        },
+        {
+            "message_b64": "Y2Fm6Q==",
+            "hash": "$generic$pJth_kuYPT_2gE-cljNL5d787AfNvE0AEjnVS7sF"
+        },
+        {
+            "message_b64": "QW4gYXBwbGljYXRpb24gcGFzc3dvcmQ6IHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eA==",
+            "hash": "$generic$vmVTYBupNbcsicLj6xxTEq-4bkXrVw8IMYbUEFHz"
+        },
+        {
+            "message_b64": "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",
+            "hash": "$generic$byodtvBxmz88JFHQtbffnCxeGr-1aQ15AZ6k9wYE"
+        }
+    ],
+    "verify": [
+        {
+            "name": "own-hash",
+            "message_b64": "",
+            "hash": "$generic$XJQGK2eUryTa4vHbU0bDv1Ml3wGPwaC1ATczq0o_",
+            "result": true
+        },
+        {
+            "name": "partial",
+            "message_b64": "",
+            "hash": "$generic$XJQGK2eUryTa4vHbU0bDv1Ml3wGPwaC1ATczq0o",
+            "result": false
+        },
+        {
+            "name": "unprefixed",
+            "message_b64": "",
+            "hash": "XJQGK2eUryTa4vHbU0bDv1Ml3wGPwaC1ATczq0o_",
+            "result": false
+        },
+        {
+            "name": "own-hash",
+            "message_b64": "YQ==",
+            "hash": "$generic$BlPpiI8BQNn0n2N8UyDNalqefg-kBenPJ2QV3FLD",
+            "result": true
+        },
+        {
+            "name": "partial",
+            "message_b64": "YQ==",
+            "hash": "$generic$BlPpiI8BQNn0n2N8UyDNalqefg-kBenPJ2QV3FL",
+            "result": false
+        },
+        {
+            "name": "unprefixed",
+            "message_b64": "YQ==",
+            "hash": "BlPpiI8BQNn0n2N8UyDNalqefg-kBenPJ2QV3FLD",
+            "result": false
+        },
+        {
+            "name": "own-hash",
+            "message_b64": "AP/+",
+            "hash": "$generic$rXPgwQHnKTddcrpkGrvyeT-GsoMvpp0EMCV0lPdH",
+            "result": true
+        },
+        {
+            "name": "partial",
+            "message_b64": "AP/+",
+            "hash": "$generic$rXPgwQHnKTddcrpkGrvyeT-GsoMvpp0EMCV0lPd",
+            "result": false
+        },
+        {
+            "name": "unprefixed",
+            "message_b64": "AP/+",
+            "hash": "rXPgwQHnKTddcrpkGrvyeT-GsoMvpp0EMCV0lPdH",
+            "result": false
+        },
+        {
+            "name": "own-hash",
+            "message_b64": "Y2Fm6Q==",
+            "hash": "$generic$pJth_kuYPT_2gE-cljNL5d787AfNvE0AEjnVS7sF",
+            "result": true
+        },
+        {
+            "name": "partial",
+            "message_b64": "Y2Fm6Q==",
+            "hash": "$generic$pJth_kuYPT_2gE-cljNL5d787AfNvE0AEjnVS7s",
+            "result": false
+        },
+        {
+            "name": "unprefixed",
+            "message_b64": "Y2Fm6Q==",
+            "hash": "pJth_kuYPT_2gE-cljNL5d787AfNvE0AEjnVS7sF",
+            "result": false
+        },
+        {
+            "name": "own-hash",
+            "message_b64": "QW4gYXBwbGljYXRpb24gcGFzc3dvcmQ6IHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eA==",
+            "hash": "$generic$vmVTYBupNbcsicLj6xxTEq-4bkXrVw8IMYbUEFHz",
+            "result": true
+        },
+        {
+            "name": "partial",
+            "message_b64": "QW4gYXBwbGljYXRpb24gcGFzc3dvcmQ6IHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eA==",
+            "hash": "$generic$vmVTYBupNbcsicLj6xxTEq-4bkXrVw8IMYbUEFH",
+            "result": false
+        },
+        {
+            "name": "unprefixed",
+            "message_b64": "QW4gYXBwbGljYXRpb24gcGFzc3dvcmQ6IHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eA==",
+            "hash": "vmVTYBupNbcsicLj6xxTEq-4bkXrVw8IMYbUEFHz",
+            "result": false
+        },
+        {
+            "name": "own-hash",
+            "message_b64": "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",
+            "hash": "$generic$byodtvBxmz88JFHQtbffnCxeGr-1aQ15AZ6k9wYE",
+            "result": true
+        },
+        {
+            "name": "partial",
+            "message_b64": "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",
+            "hash": "$generic$byodtvBxmz88JFHQtbffnCxeGr-1aQ15AZ6k9wY",
+            "result": false
+        },
+        {
+            "name": "unprefixed",
+            "message_b64": "i69OaPBmbK4mb29Ql4r+mOGdDtxKlwRH+TEebEDcYkTwT/fJCg3LHmCiMChc0jFlXxF+lzZaNd56Xl2w9LRU3d9RTqtkXmyMK/EG55UfZOF/y46bHowlT9FbT0mH7G2HhwKT7oGoONUGDaCS53KNNHrC87HL5eHPV2e2EFQ1OS34zxGaXhDUh9DI+YDouyAzDWzu1TAxsoMTRlmgKPKAxD8hfymTr9qsEPRPfSNtpFzdmPEHqOLozQnhe+4JYYLTXDGhEsLWqNINpNE+skoVQYJDORlxX6iqDbKAqZ11fq8Q3W7lYOlQVJ72mBv2NpT6iuYPtT9Hc+00dAZtaqgPDnUyNIlhrPo9jAz2Y9GSG7Cwdg64ykP13Uax7yhYA45uma+Ln09tBUlJz1TYQQe4dHyZq6WV5Rnnaq5sXEyAn4jwC2PTnP3oVo6VuMPs2gAfyFu/epo71qEyPNHlHPrZcDrP7cEKQFJ5FFqTvd1UVp+DsyBynvC7dIeVsHk64i277RXzCq92DBN3HDoUm4TQBdFMg2CcUWB6IrTvJduAOkot7Nv8Il3BQ8t1rXI5k7xxHzHBB2QJMXG01bBCfGk01JW/tY4xIKwJKXfAutZcAwhFJevJEMHhwOGav0opcmuqj/ObVvu+sWtOM/YvJkskHTggec8NKgAS90vQRnDxUNhvdPniTGBfd4D4Yc0cNCOkitF7jyCoWSkbm8/fBNHR9nYzkOOI6wQavDeAyg/5TXGjk32WPHv9eQFMY0LUgsx0nz+k9whQR/Ld9eeX3IIW7W0hd4s2AOiiURI403GHGTa2e72K3QYDVj6JrX+/QJM5Y60zWfFhmFz1FWthk8pnSAXVn8qy3D7QKsW8NALkAlrDQ+OuhSMkocjCKxLJssiuLveWQHd7It8l36z2lidacoL5sym9zqVTrf/x1l1oJeWoWRN6LWOgoMsOU1xBitbRH9STzIy4o6dRB4uhJWRXtXzkP8jszmC5HKzr78Plys9xMS1u3Sypgp+L1mPodmoaIB8SUtskVTX44Y5GsVpMI6YOkLgPOuA1assBp/zwhkz5jVtcVi6bFmdlEytJa5swsqVravO8ch4o+FJOnufE+BPpIsti90WY7GmtWCV5FTCWyUSvyT4gPjtRw7zRExpi1zGRWuZ3GBen5Nz7kvrGyrF9eNeVm9V2dRz9fh3k/6uoLIrN2bhDrW053Q3x7nNBVk/4rAKFwY5/pSaIJfGWF3TQgoghZ9lK5vT9ncE+lf57yTJEwnIvbVy+vMIYugTyYkM53Ap3QW5uyromeGgiYWxdu8LDNDuUpQosoe1ezXqIqUpe/SedhFWJ8fdxw5tzvtUByAPh8uf+ltczF18xp0+Yia/u124EaKd7kHSGt7xOtEYmMYajZyyL8YjGXfLgn6t6htVksYf0tEMYowyrKZmVwbVduj+B5T7XkGYp9WaTQxnADpnOdmZw5wHw+ceOT4zWcxsOnEbMiszpVaoD8tWlgMmFbjaMVQJKo/1R0UfrasNTaB/YNIXMBP31KJKdhit6sFTS8rMdbwIvc57tFYmZzv/7aLa1kk5nRwCieETB0fJjSjN00OXGo6bTR7pL2kOCgETsV6Oi52DtuUoWOzHqK3t8bziVaTajHwSZ5AhyjwFVcrrlvSwin0i72uM8plLlYIAiZLHUSrZ2JYFWWJTB0MXMQVluP8GFBvl8XfPMPlH3vCYxPjaSmjzySxSIwr6yq1yvwAljKDVfQpK9js88g9LqzepkQwiskcwIwEEkGP36ICDgOSWE/+6QkfRIn5F3Wb3b9v704lke+CnHHV3J8j05A56ipjzPGmDgjYmSMdXGz8qifVOdZB0KeEQuXr9ylTuRnnP651LcXChYDCOShjCCuW2OB8NFhmR2QkZ1DuNgWkHhWTZKtvWZ8eral/JyzQNdJHquh5WmHyJJsiRLR5uysOslpm2qe9LrlpAHGoIUDPCmAHcN5onJaWjQOVo81+gPlYIy+Z6fVLf84g3zqnUFkh10mrL/9V2XkHKQ02UIeJxAge4UgUle3H2mhPG+q4qvNNBfhL0C158IsNZy9Il2nVrOTJ/9pOjYX66FKxoWBqAkLA6taQ5IdPvU1iLRYFGX34KoCvv8IdZUXakYez8/G27f0z6Cv9TW3RpgEMUCUo8JdM12geaBCamxHhHP0khaVKo5R/9ir8seAGMDOBatV8clRypPCLOcB6ZAvw9L7AdntVXwkKxDOeS343FA26+Q56x6ejMOdbedCGZPF8MkSnfiD00janbVqev4+shirdnEzUgRaHJXrKJWztVpjD7SlKRUWNgy3pCeFGTjCY0KYA7Cfv0NlI6Yx1HD1pePkvu9BVFdNKq9T/b7+0Oh+R3A8ljxnwtTSjXHv7dXVPjSiV20xGSdMK2NzJrQbYO3tJv4s2TBEkae8yhnvtheykiCJET2r4EmkxgFu9KIxDlnwstYjd4o6dHVYw+kZRWv2451LCsHBj8d1eNzTdhyGRKX4ReEeTg9p6IDnAkYAL+QfX2/lm9KgznmEwR6SvtDXP+dTb6fMkBuNVdb3cvff6nnK40H6W74HkUJAkTs/C1Tlwgb+sRyLrpYmruNZYdKmNxZDwcWPdhaPGwMbWechMl+1VeJhpgdjoZ2DyNBb1shIRdRRMSfi5EKoW1yh69z7K5pc8ILjffFF0ed9jTtNp809DwR2WvD1luNZFCYt5JlFitcmE0AFv4RRR15i+HqKkkIDAEYt4rPUmYJku+CINBvxZ8yeHzZHbOMqEM0ZYuDrM8+c1al2oFNmgdRUbN9I11evn/uCxgga9can3DVljML2/mTW6drCt2jy2bcfefYsTQk4CINqB+ft7NMey2p5HmRtmgQoxQ9A/vv1uoHeobrDlfnmPuIi+vfyD+Rd4OzCOMwsREVM75dOXu4jlD+7WXXZbsbLoDepPlc4C3AnoCHwoTEjbrdn2un4dxzML9L8GsvgkrWZmosk5dXmiM2zTloBFFqRNVb35zf4QxYBBXGBvQ1mwmxjWlWzsRFjq3i7TMTGf0lh2yKCbOAYFfOlb47CagqsQwUgXQP3yvpgPZThbYT8XHvRUbySiWzjIrJ/2nWq1SGgwTytotqM95JPIZVEmSqVqpcF/cO3JxrYwUpogr0u5B9yFrW7iIiI+Ay6arAyGjtMXIAEw/bX7KFzrlv0LIYuzwYzfnVv6ujp123UT9skCEGXFXCvfImh1DRkGFgW6zsb1T1fIudMSBoFxf+woiOmWnxPNy5LMcFcgHyO4A9FALGpg06/JScU2Ps2Cz7xSbYCHC/vvxFv33Sud3YTpWeoUb23T/hjziJi9mxDzR7neogvyCikSPTzt9mAiIwcPwz9m6IBUp5ZWSY5+AvbFH0Xj4mCu6orNwFyhexOEegIaQAdSvwBJL5+Et3E50y5DBdzpaXmgoPfF6bxFZ/8Prelicwx1NKiB1O/XldGaGZIF4dg9pqom3be7Ysq6ck+aF8qxp9SIwV1mY9DTZBDNYiVQU69laRFZVE7YQnAMzgXfQFLuMXRtbyesefl/qrSWfrjwcvrmFQxIBtRTj55DcmmwBSdQ+BqCnQ5tYAiuSp856GpAKlWBu44cX8SndGPf65P3hOwF1xiMomgRmTZZAN6aBxZsCXiU+HEG5+A51cbsqk5VlFY9L466irDbiWfxWvLGGsgbwbPBG9hnd/JxnaKBJMAOVu3kMUtur2bqxoxseQIBCtxrwZe18RCXykTisygvI2P10aXSrAIq2hpoCR9HzEbGuLcn3FmVzfRcRWj2bnd92BcR2EGHpNfbCynWVXrt1GQ/4uisBcza4DEXDurctZOXp2wbQsKsKcbnaGND100IAPAFhlAbpuziqxN59zWzrbWK2ZQbHwiC8lhQtMzFGQqo7S7RF3vOHo2PKmHAEFEYvWnoofuIx1UmXl84JDzYX0eDkACDvIIUsj4RWH5neJ5GqzLjuL1Gz+RMSFAQb6+4xtPIadWdD5h/ouREwa/i1Dfp8cCW2TjRL921X5HrxdQp3M5rad6WHjhh249pRPNI3feOTgpfMeHRFal4K4XhAqhSiK0Fp1BeJqPjbIKvydS2xbZYzUTs70Nl3SKvPPGXy6T7V2LNV76lHSlLXwkStVeB93O3yqY1mhVlt8DkQo+M4DqKmEOYRCNkwl5qdtp8uzxZJ08t0FvYLZ1/tXAM+xV9ErxWoaIfUMN1LUpcZ71tCHO1QBkyVUajJgR58HulJXWcPk9Ka15cuk94JWkc2vIYMx/qKcwyoXoi6hfKpckc4F2mnQavCaCdzhYfhZ6Dt2BIoJYlIC8BPHdyXjXE/wf3cBhM+qxnXFelZtIbiWZLaasUE36kh6WYJ2ywc2np+ADxCtP7qFZyCCFN5l/IqOzg7NBX/h2GiOyPMNwkXff23dkoiRMOkpYFVtVjiVj8r7fsWIkhJW+0oczwyI4fmuGzZX0vkfaqRcOdSnYJeZMbj9TtSmPPDV5s7Bbq7Uu9KiZJLZuewBdHRBVHaXE9gpE9KWDQjPTUKDi+qnIDKw+LGkdDn6kLn/YTFCWWZh30+KyhC1tDjEkr3WrGVbIN9NVn95jRHSxsd/4CodFCATibYwLXMJ4KLzhOQoeXDEhYfPfPvFnKeZEiaRbM34TDZ4Y25FldU+ctsk1vcpO3G6G3aaBoy6NdStHyfm8ae35SlOROhps/kgXiWfEIGpTBWC2rba7SHQkItffzhoYlX+Sd9IKpc2wo/uxfSOTWMuRkd9ISQAV6FQf2AGkkLmFdvHTNVY20/M+VViPxGPvNFvbgBk97GbFgVjJNCw9rgVeiTkOwc5zt8VdmOq7AdSPqGV+OFLIaivNMa4aLdqma0J1AOaPLBxwLcEpdDoV47Dba9LqhDurXUXFchkVY2Ig3tXl8km940YvW3NQ+I1el6Bp17PQC7wnuT5q9kut95aU2LPZ/CbFQfvXalIcwLbUKTo+/6fvbPbQ6yukeVcFEnRLVjCEHk2PBmg/mGz08CvwKHQZ/8V59TfxTnMeTAbDItzCCH1JDRFn81XOOauJYcHHg3zDJeUDG00VV8wpic0/Ojse1y52MQ97hafCOufLn1mKAodDow+aTN3F/rTLIPEFiuPlpMfgSQFQZryYtB5vAIqdX/UKay15R7X3jR7NOjRqRDF1Qg95A0jRvarBMk9w8SNcpkKG/Gs8V9eyw9rsp16/G9VLhQbl+/KBwU61nVl8neblQLAAfAivLh4eGHREHGevDqfHvZEljMUguPYatVGAcxpAOd9AZku5HifYrFBAAGAYV9cITCGYXa3r/NP2VXovBowUgBLlS1mFvZlWlhVnvbRFWEfEBhv19H/pch7czlReeFrzOO71sjeoc5LjNtsu+2vLap6nmnRJlCmxvvFDFdcE1RayUOasPHWJZyH0WZyhqqUs1jRh+icC+d+v6PHKOr1Mn/WoXkjal0stbZubg==",
+            "hash": "byodtvBxmz88JFHQtbffnCxeGr-1aQ15AZ6k9wYE",
+            "result": false
+        },
+        {
+            "name": "phpass",
+            "message_b64": "cGFzc3dvcmQ=",
+            "hash": "$P$BWA7diblJelEl//zIxB6l5dp7JPtwU/",
+            "result": true
+        }
+    ],
+    "signature": [
+        {
+            "name": "valid",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "valid-array",
+            "file": "hello.txt",
+            "signatures": [
+                "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ=="
+            ],
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "wrong-key",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": [
+                "gTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": [
+                        "gTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q="
+                    ],
+                    "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+                    "hash": "bef15bb9682f2fcd241cc3e75f5c67f169e8063dea3f8827637006c9b9e8dbc311a3fef0899918f5e2cfade7b5335c7b",
+                    "skipped_key": 0,
+                    "skipped_sig": 0
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "wrong-file",
+            "file": "binary.bin",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": [
+                        "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+                    ],
+                    "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+                    "hash": "55fd17eeb1611f9193f6ac600238ce63aa298c2e332f042b80c8f691f800e4c7505af20c1a86a31f08504587395f081f",
+                    "skipped_key": 0,
+                    "skipped_sig": 0
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "binary",
+            "file": "binary.bin",
+            "signatures": "rKS/S2N/vTTwJY2guX4IdgB5XIAbDpSvc9GGS2xlYHjkMbtfUawqzBaJpPLlAyCDGaEL3yasUo5UgHax40ghAA==",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "short-signature",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUs",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": [
+                        "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+                    ],
+                    "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUs",
+                    "hash": "bef15bb9682f2fcd241cc3e75f5c67f169e8063dea3f8827637006c9b9e8dbc311a3fef0899918f5e2cfade7b5335c7b",
+                    "skipped_key": 0,
+                    "skipped_sig": 1
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "short-key",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQP"
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": [
+                        "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQP"
+                    ],
+                    "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+                    "hash": "bef15bb9682f2fcd241cc3e75f5c67f169e8063dea3f8827637006c9b9e8dbc311a3fef0899918f5e2cfade7b5335c7b",
+                    "skipped_key": 1,
+                    "skipped_sig": 0
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "bad-base64",
+            "file": "hello.txt",
+            "signatures": "!!!not base64!!!",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": [
+                        "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+                    ],
+                    "signatures": "!!!not base64!!!",
+                    "hash": "bef15bb9682f2fcd241cc3e75f5c67f169e8063dea3f8827637006c9b9e8dbc311a3fef0899918f5e2cfade7b5335c7b",
+                    "skipped_key": 0,
+                    "skipped_sig": 1
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "signature-with-newlines",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1\nKknJPhdPYwHRnfYo\nbOEwiiDpz4fguF8r\nhjusVtAzOyZMv/I4\nFIVpdZ3TSzOHoXcn\n7OUsBQ==\n",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "two-signatures-second-valid",
+            "file": "hello.txt",
+            "signatures": [
+                "qRuyhcPHWPsYX/OCKwWeR9Dj0IbmWYOn44/ypD1kIPZMBimTja7kJQ6LKWRTPIQ6PSEBrwBqg1LT7iCW2pBTDw==",
+                "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ=="
+            ],
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "two-keys-second-valid",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": [
+                "gTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=",
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "skips-counted",
+            "file": "hello.txt",
+            "signatures": [
+                "QUJD",
+                "qRuyhcPHWPsYX/OCKwWeR9Dj0IbmWYOn44/ypD1kIPZMBimTja7kJQ6LKWRTPIQ6PSEBrwBqg1LT7iCW2pBTDw=="
+            ],
+            "filter": [
+                "QUJD",
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": [
+                        "QUJD",
+                        "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+                    ],
+                    "signatures": [
+                        "QUJD",
+                        "qRuyhcPHWPsYX/OCKwWeR9Dj0IbmWYOn44/ypD1kIPZMBimTja7kJQ6LKWRTPIQ6PSEBrwBqg1LT7iCW2pBTDw=="
+                    ],
+                    "hash": "bef15bb9682f2fcd241cc3e75f5c67f169e8063dea3f8827637006c9b9e8dbc311a3fef0899918f5e2cfade7b5335c7b",
+                    "skipped_key": 1,
+                    "skipped_sig": 1
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "signatures-zero-string",
+            "file": "hello.txt",
+            "signatures": "0",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_no_signature",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified as no signature was found.",
+                "data": {
+                    "filename": "WordPress"
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "signatures-empty-string",
+            "file": "hello.txt",
+            "signatures": "",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_no_signature",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified as no signature was found.",
+                "data": {
+                    "filename": "WordPress"
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "signatures-empty-array",
+            "file": "hello.txt",
+            "signatures": [],
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_no_signature",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified as no signature was found.",
+                "data": {
+                    "filename": "WordPress"
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "signatures-array-of-empty",
+            "file": "hello.txt",
+            "signatures": [
+                ""
+            ],
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": [
+                        "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+                    ],
+                    "signatures": [
+                        ""
+                    ],
+                    "hash": "bef15bb9682f2fcd241cc3e75f5c67f169e8063dea3f8827637006c9b9e8dbc311a3fef0899918f5e2cfade7b5335c7b",
+                    "skipped_key": 0,
+                    "skipped_sig": 1
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "no-keys",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": [],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": [],
+                    "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+                    "hash": "bef15bb9682f2fcd241cc3e75f5c67f169e8063dea3f8827637006c9b9e8dbc311a3fef0899918f5e2cfade7b5335c7b",
+                    "skipped_key": 0,
+                    "skipped_sig": 0
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "filter-string",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "filter-null",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": null,
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": null,
+                    "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+                    "hash": "bef15bb9682f2fcd241cc3e75f5c67f169e8063dea3f8827637006c9b9e8dbc311a3fef0899918f5e2cfade7b5335c7b",
+                    "skipped_key": 0,
+                    "skipped_sig": 0
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "filter-int-key",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": [
+                5,
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "filter-assoc",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": {
+                "primary": "gTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=",
+                "backup": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            },
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "filter-array-key-after-match",
+            "file": "hello.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+                [
+                    "x"
+                ]
+            ],
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "filter-array-key-short-signature",
+            "file": "hello.txt",
+            "signatures": "QUJD",
+            "filter": [
+                [
+                    "x"
+                ]
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": [
+                        [
+                            "x"
+                        ]
+                    ],
+                    "signatures": "QUJD",
+                    "hash": "bef15bb9682f2fcd241cc3e75f5c67f169e8063dea3f8827637006c9b9e8dbc311a3fef0899918f5e2cfade7b5335c7b",
+                    "skipped_key": 0,
+                    "skipped_sig": 1
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "array-signature-after-match",
+            "file": "hello.txt",
+            "signatures": [
+                "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+                [
+                    "x"
+                ]
+            ],
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": []
+        },
+        {
+            "name": "empty-file",
+            "file": "empty.txt",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": [
+                        "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+                    ],
+                    "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+                    "hash": "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b",
+                    "skipped_key": 0,
+                    "skipped_sig": 0
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "missing-file",
+            "file": "missing.zip",
+            "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">WordPress</span> could not be verified.",
+                "data": {
+                    "filename": "WordPress",
+                    "keys": [
+                        "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+                    ],
+                    "signatures": "c7tvHidm1UeHEoB1KknJPhdPYwHRnfYobOEwiiDpz4fguF8rhjusVtAzOyZMv/I4FIVpdZ3TSzOHoXcn7OUsBQ==",
+                    "hash": "",
+                    "skipped_key": 0,
+                    "skipped_sig": 0
+                }
+            },
+            "warnings": [
+                "hash_file(<files>/missing.zip): Failed to open stream: No such file or directory"
+            ]
+        },
+        {
+            "name": "missing-file-signed-empty",
+            "file": "missing.zip",
+            "signatures": "d4zaBjTAIfrosan6ZVuhMjD2/PxcXVGa+why7Jvx1kJBzD7titRycNhtMOdirRdnfG+xeX41vKfrowOIJX4CDw==",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "WordPress",
+            "result": true,
+            "warnings": [
+                "hash_file(<files>/missing.zip): Failed to open stream: No such file or directory"
+            ]
+        },
+        {
+            "name": "default-filename",
+            "file": "hello.txt",
+            "signatures": "qRuyhcPHWPsYX/OCKwWeR9Dj0IbmWYOn44/ypD1kIPZMBimTja7kJQ6LKWRTPIQ6PSEBrwBqg1LT7iCW2pBTDw==",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": false,
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">hello.txt</span> could not be verified.",
+                "data": {
+                    "filename": "hello.txt",
+                    "keys": [
+                        "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+                    ],
+                    "signatures": "qRuyhcPHWPsYX/OCKwWeR9Dj0IbmWYOn44/ypD1kIPZMBimTja7kJQ6LKWRTPIQ6PSEBrwBqg1LT7iCW2pBTDw==",
+                    "hash": "bef15bb9682f2fcd241cc3e75f5c67f169e8063dea3f8827637006c9b9e8dbc311a3fef0899918f5e2cfade7b5335c7b",
+                    "skipped_key": 0,
+                    "skipped_sig": 0
+                }
+            },
+            "warnings": []
+        },
+        {
+            "name": "escaped-filename",
+            "file": "hello.txt",
+            "signatures": "qRuyhcPHWPsYX/OCKwWeR9Dj0IbmWYOn44/ypD1kIPZMBimTja7kJQ6LKWRTPIQ6PSEBrwBqg1LT7iCW2pBTDw==",
+            "filter": [
+                "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+            ],
+            "filename_for_errors": "a<b>&\"c'.zip",
+            "result": {
+                "code": "signature_verification_failed",
+                "message": "The authenticity of <span class=\"code\">a&lt;b&gt;&amp;&quot;c&#039;.zip</span> could not be verified.",
+                "data": {
+                    "filename": "a<b>&\"c'.zip",
+                    "keys": [
+                        "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+                    ],
+                    "signatures": "qRuyhcPHWPsYX/OCKwWeR9Dj0IbmWYOn44/ypD1kIPZMBimTja7kJQ6LKWRTPIQ6PSEBrwBqg1LT7iCW2pBTDw==",
+                    "hash": "bef15bb9682f2fcd241cc3e75f5c67f169e8063dea3f8827637006c9b9e8dbc311a3fef0899918f5e2cfade7b5335c7b",
+                    "skipped_key": 0,
+                    "skipped_sig": 0
+                }
+            },
+            "warnings": []
+        }
+    ]
+}
