@@ -1,0 +1,45 @@
+# Media corpus provenance
+
+Every file in `corpus/` was made by `make-corpus.sh` (Alpine 3.22's FFmpeg in a throwaway container) from synthetic
+sources only, so nothing here carries anyone else's rights:
+
+- `src.wav` (not kept): FFmpeg `lavfi` `sine` 440 Hz left, 660 Hz right, 2 s, 44.1 kHz, 16-bit.
+- covers (not kept): `lavfi` `testsrc2` frames, 64×48 JPEG and 48×64 PNG.
+- video source: `lavfi` `testsrc2` 160×120, 10 fps, 2 s, with a 440 Hz `sine`.
+
+| File | How |
+|---|---|
+| `tone.mp3` | `src.wav` → libmp3lame CBR 128k |
+| `tone-vbr.mp3` | `src.wav` → libmp3lame `-q:a 4` (Xing header) |
+| `tagged-v23.mp3` | libmp3lame 128k, ID3v2.3: title, artist, album, date 2024, genre, track 3, comment, JPEG cover |
+| `tagged-v24.mp3` | mono 440 Hz, libmp3lame 96k, ID3v2.4: title, artist, PNG cover |
+| `v1-only.mp3` | mono, libmp3lame 96k, no ID3v2; ID3v1 (title "Only v1", artist "Old") appended by the script |
+| `latin1-v1.mp3` | `v1-only.mp3`'s audio with an ID3v1 title of the Latin-1 bytes `Caf\xe9` |
+| `tone.m4a` | AAC 96k in MP4, title, artist, album, JPEG cover (attached picture) |
+| `tone.flac` | FLAC, Vorbis comments title and artist, PNG cover (picture block) |
+| `tone.ogg` | Vorbis q2, title, artist |
+| `tone.opus` | Opus 64k, title |
+| `tone.wav` / `tone-24.wav` | PCM s16le stereo / s24le mono |
+| `tone.aiff` | PCM s16be |
+| `tone.wma` | WMA v2 64k in ASF, title, artist |
+| `tone.ra` | RealAudio 1.0 (`real_144`), 8 kHz mono, in RealMedia |
+| `tone.ac3` | AC-3 128k |
+| `tone.dts` | DTS (`dca`, `-strict -2`) |
+| `tone.aac` | AAC in ADTS |
+| `tone.mka` | Vorbis in Matroska, title |
+| `note.mid` | the test kit's MIDI file (format 0, one note, track name "Song") |
+| `bars.mp4` | H.264 + AAC, `creation_time=2024-05-06T07:08:09Z` |
+| `bars.mov` | the same with brand `qt` |
+| `bars.m4v` | H.264 + AAC, `ipod` muxer |
+| `bars.3gp` | MPEG-4 Part 2 + AAC (the image's FFmpeg has no AMR encoder, so the H.263/AMR attempt falls back) |
+| `bars.webm` | VP9 + Opus, creation time set |
+| `bars.mkv` | H.264 + AAC, creation time set |
+| `bars.ogv` | Theora + Vorbis |
+| `bars.flv` | Sorenson H.263 (`flv1`) + MP3 |
+| `bars.avi` | MPEG-4 Part 2 + MP3 |
+| `bars.wmv` | WMV2 + WMA v2, creation time set |
+| `bars.mpg` | MPEG-2 + MP2, program stream (`vob`) |
+| `bars.ts` | MPEG-2 + MP2, transport stream |
+| `truncated.mp4` | the first 2 KiB of `bars.mp4` |
+| `garbage.mp3` | 4096 bytes of a fixed printable pattern |
+| `empty.wav` | 0 bytes |
