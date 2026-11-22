@@ -39,7 +39,10 @@ fn read_error_displays_the_limit() {
 
 #[test]
 fn tree_bytes_reads_both_string_kinds() {
-    assert_eq!(Tree::Bytes(b"Caf\xe9".to_vec()).bytes(), Some(&b"Caf\xe9"[..]));
+    assert_eq!(
+        Tree::Bytes(b"Caf\xe9".to_vec()).bytes(),
+        Some(&b"Caf\xe9"[..])
+    );
     assert_eq!(Tree::Str("x".into()).bytes(), Some(&b"x"[..]));
     assert_eq!(Tree::Int(1).bytes(), None);
 }

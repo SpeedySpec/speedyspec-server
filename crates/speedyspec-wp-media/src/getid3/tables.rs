@@ -38,14 +38,34 @@ pub fn fileformat(container: &ContainerKind) -> Option<&'static str> {
 }
 
 /// getID3's `mime_type`.
-pub fn mime_type(container: &ContainerKind, has_video: bool, audio: Option<&Codec>) -> Option<&'static str> {
+pub fn mime_type(
+    container: &ContainerKind,
+    has_video: bool,
+    audio: Option<&Codec>,
+) -> Option<&'static str> {
     Some(match container {
         ContainerKind::Mp3 => "audio/mpeg",
         ContainerKind::Mp4 | ContainerKind::QuickTime | ContainerKind::ThreeGp => {
-            if has_video { "video/mp4" } else { "audio/mp4" }
+            if has_video {
+                "video/mp4"
+            } else {
+                "audio/mp4"
+            }
         }
-        ContainerKind::Matroska => if has_video { "video/x-matroska" } else { "audio/x-matroska" },
-        ContainerKind::WebM => if has_video { "video/webm" } else { "audio/webm" },
+        ContainerKind::Matroska => {
+            if has_video {
+                "video/x-matroska"
+            } else {
+                "audio/x-matroska"
+            }
+        }
+        ContainerKind::WebM => {
+            if has_video {
+                "video/webm"
+            } else {
+                "audio/webm"
+            }
+        }
         ContainerKind::Ogg => {
             if has_video {
                 "video/ogg"
@@ -55,7 +75,13 @@ pub fn mime_type(container: &ContainerKind, has_video: bool, audio: Option<&Code
                 "application/ogg"
             }
         }
-        ContainerKind::Asf => if has_video { "video/x-ms-wmv" } else { "audio/x-ms-wma" },
+        ContainerKind::Asf => {
+            if has_video {
+                "video/x-ms-wmv"
+            } else {
+                "audio/x-ms-wma"
+            }
+        }
         ContainerKind::Wav => "audio/wav",
         ContainerKind::Avi => "video/avi",
         ContainerKind::Aiff => "audio/x-aiff",
@@ -104,9 +130,16 @@ pub fn audio_dataformat(container: &ContainerKind, codec: &Codec) -> Option<&'st
 }
 
 /// getID3's `audio.codec`, for the formats where getID3 writes one.
-pub fn audio_codec(container: &ContainerKind, codec: &Codec, bits: Option<u16>, channels: Option<u16>) -> Option<&'static str> {
+pub fn audio_codec(
+    container: &ContainerKind,
+    codec: &Codec,
+    bits: Option<u16>,
+    channels: Option<u16>,
+) -> Option<&'static str> {
     Some(match (container, codec) {
-        (ContainerKind::Mp4 | ContainerKind::QuickTime | ContainerKind::ThreeGp, Codec::Aac) => "ISO/IEC 14496-3 AAC",
+        (ContainerKind::Mp4 | ContainerKind::QuickTime | ContainerKind::ThreeGp, Codec::Aac) => {
+            "ISO/IEC 14496-3 AAC"
+        }
         (ContainerKind::Wav, Codec::Pcm { .. }) => {
             if bits.unwrap_or(16) > 16 || channels.unwrap_or(2) > 2 {
                 "WAVE_FORMAT_EXTENSIBLE"
@@ -133,10 +166,19 @@ pub fn wma_name(codec: &Codec) -> Option<&'static str> {
 }
 
 /// getID3's RIFF `wformattag` for WAV and AVI audio.
-pub fn wformattag(container: &ContainerKind, codec: &Codec, bits: Option<u16>, channels: Option<u16>) -> Option<i64> {
+pub fn wformattag(
+    container: &ContainerKind,
+    codec: &Codec,
+    bits: Option<u16>,
+    channels: Option<u16>,
+) -> Option<i64> {
     match (container, codec) {
         (ContainerKind::Wav, Codec::Pcm { float: false, .. }) => {
-            Some(if bits.unwrap_or(16) > 16 || channels.unwrap_or(2) > 2 { 65534 } else { 1 })
+            Some(if bits.unwrap_or(16) > 16 || channels.unwrap_or(2) > 2 {
+                65534
+            } else {
+                1
+            })
         }
         (ContainerKind::Wav | ContainerKind::Avi, Codec::Pcm { float: true, .. }) => Some(3),
         (ContainerKind::Avi, Codec::Mp3) => Some(85),
@@ -149,7 +191,11 @@ pub fn wformattag(container: &ContainerKind, codec: &Codec, bits: Option<u16>, c
 pub fn video_dataformat(container: &ContainerKind, codec: &Codec) -> Option<&'static str> {
     Some(match container {
         ContainerKind::Mp4 | ContainerKind::QuickTime | ContainerKind::ThreeGp => {
-            if *codec == Codec::Mpeg4Part2 { "mpeg4" } else { "quicktime" }
+            if *codec == Codec::Mpeg4Part2 {
+                "mpeg4"
+            } else {
+                "quicktime"
+            }
         }
         ContainerKind::Matroska | ContainerKind::WebM => match codec {
             Codec::H264 => "h264",
@@ -201,12 +247,20 @@ pub fn comment_name(key: &TagKey, system: TagSystem) -> String {
         TagKey::Track => "track_number".into(),
         TagKey::Disc => "part_of_a_set".into(),
         TagKey::Comment => {
-            if system == TagSystem::Id3v2 { "text".into() } else { "comment".into() }
+            if system == TagSystem::Id3v2 {
+                "text".into()
+            } else {
+                "comment".into()
+            }
         }
         TagKey::Composer => "composer".into(),
         TagKey::Copyright => "copyright_message".into(),
         TagKey::Encoder => {
-            if system == TagSystem::Id3v2 { "encoder_settings".into() } else { "encoder".into() }
+            if system == TagSystem::Id3v2 {
+                "encoder_settings".into()
+            } else {
+                "encoder".into()
+            }
         }
         TagKey::Lyrics => "unsynchronised_lyric".into(),
         TagKey::Other(name) => name.to_ascii_lowercase(),

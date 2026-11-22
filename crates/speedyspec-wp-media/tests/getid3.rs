@@ -4,8 +4,8 @@ use std::time::{Duration, UNIX_EPOCH};
 
 use speedyspec_wp_media::getid3::{getid3_view, playtime_string};
 use speedyspec_wp_media_contracts::{
-    AudioStream, Codec, ContainerKind, MediaInfo, Picture, RawViews, Stream, Tag, TagKey, TagSystem, Tree,
-    VideoStream,
+    AudioStream, Codec, ContainerKind, MediaInfo, Picture, RawViews, Stream, Tag, TagKey,
+    TagSystem, Tree, VideoStream,
 };
 
 fn audio(codec: Codec, rate: u32, channels: u16) -> Stream {
@@ -38,10 +38,11 @@ fn info(container: ContainerKind, streams: Vec<Stream>) -> MediaInfo {
 }
 
 fn path<'a>(tree: &'a Tree, keys: &[&str]) -> Option<&'a Tree> {
-    keys.iter().try_fold(tree, |t, k| match (t, k.parse::<usize>()) {
-        (Tree::List(items), Ok(i)) => items.get(i),
-        _ => t.get(k),
-    })
+    keys.iter()
+        .try_fold(tree, |t, k| match (t, k.parse::<usize>()) {
+            (Tree::List(items), Ok(i)) => items.get(i),
+            _ => t.get(k),
+        })
 }
 
 fn bytes(s: &str) -> Tree {
@@ -52,8 +53,16 @@ fn bytes(s: &str) -> Tree {
 fn mp3_view_has_id3v2_comments_and_apic() {
     let mut i = info(ContainerKind::Mp3, vec![audio(Codec::Mp3, 44100, 2)]);
     i.tags = vec![
-        Tag { key: TagKey::Title, system: TagSystem::Id3v2, values: vec!["T".into()] },
-        Tag { key: TagKey::Track, system: TagSystem::Id3v2, values: vec!["3".into()] },
+        Tag {
+            key: TagKey::Title,
+            system: TagSystem::Id3v2,
+            values: vec!["T".into()],
+        },
+        Tag {
+            key: TagKey::Track,
+            system: TagSystem::Id3v2,
+            values: vec!["3".into()],
+        },
     ];
     i.pictures = vec![Picture {
         data: vec![1, 2],
@@ -68,28 +77,60 @@ fn mp3_view_has_id3v2_comments_and_apic() {
     assert_eq!(path(&v, &["mime_type"]), Some(&bytes("audio/mpeg")));
     assert_eq!(path(&v, &["audio", "dataformat"]), Some(&bytes("mp3")));
     assert_eq!(path(&v, &["audio", "channelmode"]), Some(&bytes("stereo")));
-    assert_eq!(path(&v, &["id3v2", "comments", "title", "0"]), Some(&bytes("T")));
-    assert_eq!(path(&v, &["id3v2", "comments", "track_number", "0"]), Some(&bytes("3")));
-    assert_eq!(path(&v, &["id3v2", "APIC", "0", "image_mime"]), Some(&bytes("image/jpeg")));
-    assert_eq!(path(&v, &["id3v2", "APIC", "0", "image_width"]), Some(&Tree::Int(64)));
-    assert_eq!(path(&v, &["comments", "picture", "0", "data"]), Some(&Tree::Bytes(vec![1, 2])));
+    assert_eq!(
+        path(&v, &["id3v2", "comments", "title", "0"]),
+        Some(&bytes("T"))
+    );
+    assert_eq!(
+        path(&v, &["id3v2", "comments", "track_number", "0"]),
+        Some(&bytes("3"))
+    );
+    assert_eq!(
+        path(&v, &["id3v2", "APIC", "0", "image_mime"]),
+        Some(&bytes("image/jpeg"))
+    );
+    assert_eq!(
+        path(&v, &["id3v2", "APIC", "0", "image_width"]),
+        Some(&Tree::Int(64))
+    );
+    assert_eq!(
+        path(&v, &["comments", "picture", "0", "data"]),
+        Some(&Tree::Bytes(vec![1, 2]))
+    );
 }
 
 #[test]
 fn id3v1_comments_carry_its_five_fields() {
     let mut i = info(ContainerKind::Mp3, vec![audio(Codec::Mp3, 44100, 1)]);
-    i.tags = vec![Tag { key: TagKey::Title, system: TagSystem::Id3v1, values: vec!["Only".into()] }];
+    i.tags = vec![Tag {
+        key: TagKey::Title,
+        system: TagSystem::Id3v1,
+        values: vec!["Only".into()],
+    }];
     let v = getid3_view(&i);
-    assert_eq!(path(&v, &["id3v1", "comments", "title", "0"]), Some(&bytes("Only")));
-    assert_eq!(path(&v, &["id3v1", "comments", "album", "0"]), Some(&bytes("")));
-    assert_eq!(path(&v, &["id3v1", "comments", "comment", "0"]), Some(&bytes("")));
+    assert_eq!(
+        path(&v, &["id3v1", "comments", "title", "0"]),
+        Some(&bytes("Only"))
+    );
+    assert_eq!(
+        path(&v, &["id3v1", "comments", "album", "0"]),
+        Some(&bytes(""))
+    );
+    assert_eq!(
+        path(&v, &["id3v1", "comments", "comment", "0"]),
+        Some(&bytes(""))
+    );
     assert_eq!(path(&v, &["audio", "channelmode"]), Some(&bytes("mono")));
 }
 
 #[test]
 fn flac_view_has_merged_comments_and_picture() {
     let mut i = info(ContainerKind::Flac, vec![audio(Codec::Flac, 44100, 2)]);
-    i.tags = vec![Tag { key: TagKey::Title, system: TagSystem::Vorbis, values: vec!["F".into()] }];
+    i.tags = vec![Tag {
+        key: TagKey::Title,
+        system: TagSystem::Vorbis,
+        values: vec!["F".into()],
+    }];
     i.pictures = vec![Picture {
         data: vec![9],
         mime: "image/png".into(),
@@ -100,7 +141,10 @@ fn flac_view_has_merged_comments_and_picture() {
     }];
     let v = getid3_view(&i);
     assert_eq!(path(&v, &["comments", "title", "0"]), Some(&bytes("F")));
-    assert_eq!(path(&v, &["comments", "picture", "0", "image_mime"]), Some(&bytes("image/png")));
+    assert_eq!(
+        path(&v, &["comments", "picture", "0", "image_mime"]),
+        Some(&bytes("image/png"))
+    );
     assert_eq!(path(&v, &["id3v2"]), None);
 }
 
@@ -110,11 +154,23 @@ fn mp4_creation_time_is_under_quicktime_moov() {
     i.created_at = Some(UNIX_EPOCH + Duration::from_secs(1_714_979_289));
     let v = getid3_view(&i);
     assert_eq!(path(&v, &["fileformat"]), Some(&bytes("mp4")));
-    assert_eq!(path(&v, &["quicktime", "moov", "subatoms", "0", "creation_time_unix"]), Some(&Tree::Int(1_714_979_289)));
+    assert_eq!(
+        path(
+            &v,
+            &["quicktime", "moov", "subatoms", "0", "creation_time_unix"]
+        ),
+        Some(&Tree::Int(1_714_979_289))
+    );
     // An ISO file without a creation time has a zero mvhd time: getID3 reports the 1904 epoch.
     i.created_at = None;
     let v = getid3_view(&i);
-    assert_eq!(path(&v, &["quicktime", "moov", "subatoms", "0", "creation_time_unix"]), Some(&Tree::Int(-2_082_844_800)));
+    assert_eq!(
+        path(
+            &v,
+            &["quicktime", "moov", "subatoms", "0", "creation_time_unix"]
+        ),
+        Some(&Tree::Int(-2_082_844_800))
+    );
 }
 
 #[test]
@@ -128,13 +184,19 @@ fn matroska_creation_time_is_unix() {
         lossless: None,
         encoder: None,
     });
-    let mut i = info(ContainerKind::WebM, vec![video, audio(Codec::Opus, 48000, 1)]);
+    let mut i = info(
+        ContainerKind::WebM,
+        vec![video, audio(Codec::Opus, 48000, 1)],
+    );
     i.created_at = Some(UNIX_EPOCH + Duration::from_secs(1_714_979_289));
     let v = getid3_view(&i);
     assert_eq!(path(&v, &["fileformat"]), Some(&bytes("webm")));
     assert_eq!(path(&v, &["video", "dataformat"]), Some(&bytes("V_VP9")));
     assert_eq!(path(&v, &["video", "resolution_x"]), Some(&Tree::Int(160)));
-    assert_eq!(path(&v, &["matroska", "info", "0", "DateUTC_unix"]), Some(&Tree::Int(1_714_979_289)));
+    assert_eq!(
+        path(&v, &["matroska", "info", "0", "DateUTC_unix"]),
+        Some(&Tree::Int(1_714_979_289))
+    );
 }
 
 #[test]
@@ -142,8 +204,14 @@ fn asf_creation_time_is_under_file_properties() {
     let i = info(ContainerKind::Asf, vec![audio(Codec::WmaV2, 44100, 2)]);
     let v = getid3_view(&i);
     assert_eq!(path(&v, &["fileformat"]), Some(&bytes("asf")));
-    assert_eq!(path(&v, &["asf", "file_properties_object", "creation_date_unix"]), Some(&Tree::Int(0)));
-    assert_eq!(path(&v, &["audio", "codec"]), Some(&bytes("Windows Media Audio V8")));
+    assert_eq!(
+        path(&v, &["asf", "file_properties_object", "creation_date_unix"]),
+        Some(&Tree::Int(0))
+    );
+    assert_eq!(
+        path(&v, &["audio", "codec"]),
+        Some(&bytes("Windows Media Audio V8"))
+    );
 }
 
 #[test]
@@ -156,10 +224,25 @@ fn playtime_string_formats() {
 
 #[test]
 fn audio_streams_listed() {
-    let i = info(ContainerKind::Wav, vec![audio(Codec::Pcm { bits: 16, float: false }, 44100, 2)]);
+    let i = info(
+        ContainerKind::Wav,
+        vec![audio(
+            Codec::Pcm {
+                bits: 16,
+                float: false,
+            },
+            44100,
+            2,
+        )],
+    );
     let v = getid3_view(&i);
-    let Some(Tree::List(streams)) = path(&v, &["audio", "streams"]) else { panic!("streams") };
+    let Some(Tree::List(streams)) = path(&v, &["audio", "streams"]) else {
+        panic!("streams")
+    };
     assert_eq!(streams.len(), 1);
-    assert_eq!(path(&v, &["audio", "codec"]), Some(&bytes("Pulse Code Modulation (PCM)")));
+    assert_eq!(
+        path(&v, &["audio", "codec"]),
+        Some(&bytes("Pulse Code Modulation (PCM)"))
+    );
     assert_eq!(path(&v, &["playtime_string"]), Some(&bytes("0:02")));
 }

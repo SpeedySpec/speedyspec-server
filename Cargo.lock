@@ -6209,6 +6209,7 @@ dependencies = [
  "libc",
  "speedyspec-wp-media-contracts",
  "speedyspec-wp-media-testkit",
+ "tempfile",
 ]
 
 [[package]]
