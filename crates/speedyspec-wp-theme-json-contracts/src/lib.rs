@@ -5,6 +5,7 @@
 
 mod by_origin;
 pub mod model;
+pub mod ports;
 pub mod schema;
 mod error;
 mod leaf;
