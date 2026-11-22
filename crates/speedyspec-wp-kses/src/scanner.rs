@@ -429,7 +429,7 @@ impl KsesApi {
         let elem = &token[head.name.clone()];
         let attrlist = &token[head.attrs.clone()];
         let allowed_html = self.resolve_allowed(allowed)?;
-        let Some(tag) = allowed_html.get(&lower(elem)) else {
+        let Some((index, _, tag)) = allowed_html.tags.get_full(&*lower(elem)) else {
             return Ok(());
         };
         if head.slash {
@@ -438,7 +438,38 @@ impl KsesApi {
             out.push(b'>');
             return Ok(());
         }
-        self.attr_into(elem, Some(tag), attrlist, protocols, out)
+        self.attr_into(
+            elem,
+            &allowed_html,
+            Some((index, tag)),
+            attrlist,
+            protocols,
+            out,
+        )
+    }
+
+    /// Whether the tag at `index` in `allowed` has a required attribute, from a table made once per allowlist (most
+    /// tags have none, so their attributes need not be walked on every tag).
+    ///
+    /// The table holds its allowlist weakly: an allowlist that is replaced must still be freed then (a PHP value
+    /// callback in it may have a destructor that runs kses). The weak reference keeps the allocation, so no other
+    /// allowlist can take its address while the table names it.
+    fn tag_has_required(&self, allowed: &Rc<AllowedHtml>, index: usize) -> bool {
+        let mut table = self.required_tags.borrow_mut();
+        let current =
+            matches!(&*table, Some((a, _)) if std::ptr::eq(a.as_ptr(), Rc::as_ptr(allowed)));
+        if !current {
+            let flags = allowed
+                .tags
+                .values()
+                .map(|tag| match tag {
+                    AllowedAttrs::Attrs(a) => a.values().any(AttrRules::is_required),
+                    AllowedAttrs::Empty => false,
+                })
+                .collect();
+            *table = Some((Rc::downgrade(allowed), flags));
+        }
+        table.as_ref().is_some_and(|(_, flags)| flags[index])
     }
 
     fn resolve_allowed(&self, allowed: &AllowedSpec) -> Result<Rc<AllowedHtml>, KsesError> {
@@ -458,28 +489,28 @@ impl KsesApi {
     ) -> Result<Vec<u8>, KsesError> {
         let allowed_html = self.resolve_allowed(allowed)?;
         let mut out = Vec::new();
-        self.attr_into(
-            element,
-            allowed_html.get(&lower(element)),
-            attr,
-            protocols,
-            &mut out,
-        )?;
+        let tag = allowed_html
+            .tags
+            .get_full(&*lower(element))
+            .map(|(index, _, tag)| (index, tag));
+        self.attr_into(element, &allowed_html, tag, attr, protocols, &mut out)?;
         Ok(out)
     }
 
-    /// `wp_kses_attr()` for an element whose allowlist entry is `tag`, written to `out`.
+    /// `wp_kses_attr()` for an element whose allowlist entry is `tag` (with its index in `allowed`), written to
+    /// `out`.
     fn attr_into(
         &self,
         element: &[u8],
-        tag: Option<&AllowedAttrs>,
+        allowed: &Rc<AllowedHtml>,
+        tag: Option<(usize, &AllowedAttrs)>,
         attr: &[u8],
         protocols: &Protocols,
         out: &mut Vec<u8>,
     ) -> Result<(), KsesError> {
         let slash: &[u8] = if xhtml_slash(attr) { b" /" } else { b"" };
-        let attrs = match tag {
-            Some(AllowedAttrs::Attrs(a)) if !a.is_empty() => a,
+        let (index, attrs) = match tag {
+            Some((index, AllowedAttrs::Attrs(a))) if !a.is_empty() => (index, a),
             _ => {
                 out.push(b'<');
                 out.extend_from_slice(element);
@@ -499,11 +530,15 @@ impl KsesApi {
             }
         };
         hair_attrs_into(attr, protocols, is_uri, &mut parsed);
-        let mut required: Vec<&[u8]> = attrs
-            .iter()
-            .filter(|(_, r)| r.is_required())
-            .map(|(n, _)| &**n)
-            .collect();
+        let mut required: Vec<&[u8]> = if self.tag_has_required(allowed, index) {
+            attrs
+                .iter()
+                .filter(|(_, r)| r.is_required())
+                .map(|(n, _)| &**n)
+                .collect()
+        } else {
+            Vec::new()
+        };
         let mut whole = self.scratch.take();
         // The kept attributes go straight to `out`, after the tag's name; they are taken back when the tag loses them.
         let tag_start = out.len();

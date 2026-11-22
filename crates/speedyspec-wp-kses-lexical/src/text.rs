@@ -71,7 +71,11 @@ fn remove_slash_zero(s: &[u8]) -> Vec<u8> {
 
 /// `wp_kses_stripslashes()`: `\"` becomes `"`, left to right.
 pub fn stripslashes(content: &[u8]) -> Cow<'_, [u8]> {
-    let quoted = memchr::memchr_iter(b'\\', content).any(|i| content.get(i + 1) == Some(&b'"'));
+    // Most tokens hold no backslash at all: one search answers for them.
+    let quoted = memchr::memchr(b'\\', content).is_some_and(|first| {
+        memchr::memchr_iter(b'\\', &content[first..])
+            .any(|i| content.get(first + i + 1) == Some(&b'"'))
+    });
     if !quoted {
         return Cow::Borrowed(content);
     }

@@ -503,15 +503,20 @@ impl KsesApi {
     /// `safecss_filter_attr()`: the declarations of an inline style that kses allows, joined by `;`.
     pub fn safecss_filter_attr(&self, css: &[u8]) -> Result<Vec<u8>, KsesError> {
         let css = no_null(css, false);
-        let css: Vec<u8> = css
-            .iter()
-            .copied()
-            .filter(|b| !matches!(b, b'\n' | b'\r' | b'\t'))
-            .collect();
+        let css: Cow<'_, [u8]> = if memchr::memchr3(b'\n', b'\r', b'\t', &css).is_none() {
+            css
+        } else {
+            Cow::Owned(
+                css.iter()
+                    .copied()
+                    .filter(|b| !matches!(b, b'\n' | b'\r' | b'\t'))
+                    .collect(),
+            )
+        };
         let protocols = self.allowed_protocols()?;
         let mut allowed = self.safe_style_css()?;
         if allowed.is_empty() {
-            return Ok(css);
+            return Ok(css.into_owned());
         }
         let mut out: Vec<u8> = Vec::new();
         for raw in trim(&css).split(|b| *b == b';') {

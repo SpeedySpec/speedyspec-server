@@ -44,6 +44,8 @@ pub struct KsesApi {
     /// The buffer `attr_into` writes a restyled attribute's whole to, reused across tags. Taken while in use, so a
     /// filter that runs kses again gets a fresh one.
     pub(crate) scratch: RefCell<Vec<u8>>,
+    /// The allowlist `attr_into` last read and, per tag in it, whether any attribute is required.
+    pub(crate) required_tags: RefCell<Option<(std::rc::Weak<AllowedHtml>, Vec<bool>)>>,
     /// The buffer `attr_into` reads a tag's attributes into, kept empty between tags; taken while in use.
     pub(crate) hair_scratch: RefCell<Vec<HairAttr<'static>>>,
     /// What the nested passes of the current outermost `kses()` call may still process; `None` outside a call.
@@ -210,6 +212,7 @@ impl KsesApi {
             hook_names: RefCell::new(Vec::new()),
             scratch: RefCell::new(Vec::new()),
             hair_scratch: RefCell::new(Vec::new()),
+            required_tags: RefCell::new(None),
             nested_budget: std::cell::Cell::new(None),
             me: RefCell::new(std::rc::Weak::new()),
         }
