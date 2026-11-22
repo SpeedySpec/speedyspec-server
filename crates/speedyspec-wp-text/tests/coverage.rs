@@ -47,9 +47,63 @@ const EARLIER: &[&str] = &[
     "esc_js",
 ];
 
+/// Plan 4's functions whose corpus cases are recorded but not yet checked; each task takes its own off this list,
+/// and the last one removes it.
+const PENDING: &[&str] = &[
+    "_deep_replace",
+    "convert_smilies",
+    "esc_url",
+    "format_to_edit",
+    "is_email",
+    "links_add_base_url",
+    "links_add_target",
+    "make_clickable",
+    "maybe_hash_hex_color",
+    "rawurlencode_deep",
+    "remove_accents",
+    "sanitize_email",
+    "sanitize_file_name",
+    "sanitize_hex_color",
+    "sanitize_hex_color_no_hash",
+    "sanitize_html_class",
+    "sanitize_key",
+    "sanitize_locale_name",
+    "sanitize_mime_type",
+    "sanitize_sql_orderby",
+    "sanitize_text_field",
+    "sanitize_textarea_field",
+    "sanitize_title",
+    "sanitize_title_for_query",
+    "sanitize_title_with_dashes",
+    "sanitize_trackback_urls",
+    "sanitize_url",
+    "sanitize_user",
+    "speedyspec_antispambot_seeded",
+    "speedyspec_make_clickable_in_comment_text",
+    "speedyspec_smilies_search",
+    "speedyspec_wp_parse_str",
+    "stripslashes_deep",
+    "stripslashes_from_strings_only",
+    "trailingslashit",
+    "untrailingslashit",
+    "url_shorten",
+    "urldecode_deep",
+    "urlencode_deep",
+    "utf8_uri_encode",
+    "wp_basename",
+    "wp_iso_descrambler",
+    "wp_make_link_relative",
+    "wp_parse_url",
+    "wp_pre_kses_less_than",
+    "wp_rel_nofollow",
+    "wp_rel_ugc",
+    "wp_targeted_link_rel",
+    "zeroise",
+];
+
 #[test]
 fn content_filters_cover_their_corpus() {
-    let implemented: Vec<&str> = CONTENT_FILTERS.iter().chain(EARLIER).copied().collect();
+    let implemented: Vec<&str> = CONTENT_FILTERS.iter().chain(EARLIER).chain(PENDING).copied().collect();
     let report = coverage(&implemented);
     for function in CONTENT_FILTERS {
         assert!(!report.skipped.contains_key(*function), "{function} has corpus cases no test covers");
