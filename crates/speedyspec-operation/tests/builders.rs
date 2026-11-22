@@ -1,43 +1,13 @@
 //! The Type and Operation builders.
 
+mod common;
+
 use std::rc::Rc;
 
+use common::*;
 use speedyspec_operation::identity::MemoryIdentity;
-use speedyspec_operation::{Operation, OperationBuilder, RegistrationError, S, Type};
+use speedyspec_operation::{Operation, RegistrationError, S, Type};
 use speedyspec_operation_contracts::*;
-
-#[derive(Debug, PartialEq)]
-struct GetPost {
-    id: i64,
-}
-
-impl Hydrate for GetPost {
-    fn hydrate(v: &Value) -> Result<Self, OperationError> {
-        match v.get("id") {
-            Some(Value::Int(id)) => Ok(GetPost { id: *id }),
-            _ => Err(OperationError::new("bad", Category::InvalidArgument, "id")),
-        }
-    }
-}
-
-struct Post {
-    title: String,
-}
-
-impl Extract for Post {
-    fn extract(&self) -> Value {
-        Value::map([("title", Value::from(self.title.as_str()))])
-    }
-}
-
-fn get_post() -> OperationBuilder {
-    Operation::query("core/get-post")
-        .resource("post", Action::Get, &["id"])
-        .input::<GetPost>(S::object([("id", S::integer().required())]))
-        .output::<Post>(Type::reference("post"))
-        .error("post_not_found", Category::NotFound)
-        .permission(|c: &Caller, i: &GetPost| c.can("read_post", &[Value::Int(i.id)]))
-}
 
 #[test]
 fn builds_a_query_with_its_traits() {

@@ -1,7 +1,9 @@
 //! Rendering the specification as JSON documents.
 
 use serde_json::{Map, Value as Json, json};
-use speedyspec_operation_contracts::{Schema, SchemaKind};
+use speedyspec_operation_contracts::{
+    Kind, OperationSpec, Pagination, Schema, SchemaKind, TypeSpec,
+};
 
 use crate::json::to_json;
 
@@ -143,4 +145,54 @@ fn insert_number(out: &mut Map<String, Json>, key: &str, value: Option<f64>) {
         };
         out.insert(key.into(), n);
     }
+}
+
+/// The document of one operation: its traits and its contracts' JSON Schemas.
+pub fn operation_document(spec: &OperationSpec) -> Json {
+    let kind = match spec.kind {
+        Kind::Query => "query",
+        Kind::Command => "command",
+        Kind::Subscription => "subscription",
+    };
+    let pagination = spec.pagination.map(|p| match p {
+        Pagination::Cursor => "cursor",
+        Pagination::Offset => "offset",
+    });
+    json!({
+        "kind": kind,
+        "resource": spec.resource.as_ref().map(|r| json!({
+            "type": r.type_name,
+            "action": r.action.as_str(),
+            "identity": r.identity,
+        })),
+        "idempotent": spec.idempotent,
+        "destructive": spec.destructive,
+        "pagination": pagination,
+        "input": json_schema(&spec.input.schema),
+        "input_type": spec.input.mapper.type_name(),
+        "output": json_schema(&spec.output.schema),
+        "output_type": spec.output.mapper.type_name(),
+        "errors": spec.errors.iter().map(|e| json!({"code": e.code, "category": e.category.as_str()})).collect::<Vec<_>>(),
+        "labels": {"title": spec.labels.title, "description": spec.labels.description},
+        "deprecated": spec.deprecated,
+        "transports": spec.transports.as_ref().map(|t| t.iter().collect::<Vec<_>>()),
+    })
+}
+
+/// The document of one type: its fields as JSON Schema properties, and its relations.
+pub fn type_document(spec: &TypeSpec) -> Json {
+    let object = Schema::of(SchemaKind::Object {
+        properties: spec.fields.clone(),
+        additional_properties: true,
+    });
+    let rendered = json_schema(&object);
+    json!({
+        "properties": rendered["properties"],
+        "required": rendered.get("required").cloned().unwrap_or_else(|| json!([])),
+        "relations": spec.relations.iter().map(|r| json!({
+            "field": r.field,
+            "operation": r.operation,
+            "args": r.args.iter().map(|(k, v)| (k.clone(), json!(v))).collect::<Map<String, Json>>(),
+        })).collect::<Vec<_>>(),
+    })
 }
