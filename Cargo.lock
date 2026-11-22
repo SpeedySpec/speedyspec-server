@@ -6405,7 +6405,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-text-diff"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
  "criterion 0.8.2",
@@ -6415,6 +6415,7 @@ dependencies = [
  "proptest",
  "serde_json",
  "simdutf8",
+ "speedyspec-hooks",
  "speedyspec-wp-text-diff-contracts",
 ]
 

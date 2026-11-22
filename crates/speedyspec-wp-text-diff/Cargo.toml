@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-text-diff"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "WordPress's wp_text_diff(): a port of Horde's native diff engine and WordPress's table renderer, with SIMD string work."
 edition.workspace = true
@@ -12,6 +12,7 @@ foldhash = "0.2"
 hashbrown = { version = "0.17", default-features = false, features = ["default-hasher", "inline-more"] }
 memchr = "2.8"
 simdutf8 = "0.1.5"
+speedyspec-hooks = { path = "../speedyspec-hooks" }
 speedyspec-wp-text-diff-contracts = { path = "../speedyspec-wp-text-diff-contracts" }
 
 [dev-dependencies]
