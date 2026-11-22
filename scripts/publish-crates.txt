@@ -1,0 +1,14 @@
+# Crates published to crates.io, in publishing order (each after the crates it depends on). Every other crate in
+# the workspace sets `publish = false`; scripts/release-crates.sh checks both.
+speedyspec-hooks
+speedyspec-hooks-memory
+speedyspec-container
+speedyspec-cqrs
+speedyspec-wp-hooks
+speedyspec-wp-hooks-memory
+speedyspec-php-port-macros
+speedyspec-php
+speedyspec-php-ext
+speedyspec-compat
+speedyspec-container-php
+speedyspec-wp-hooks-php

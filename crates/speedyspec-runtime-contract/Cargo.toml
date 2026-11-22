@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-runtime-contract"
-version = "0.1.0"
+version = "0.2.0"
+publish = false
 description = "What speedyspec-server and speedyspec-php-runtime agree on: the worker spec, the per-request report and the contract version."
 edition.workspace = true
 rust-version.workspace = true

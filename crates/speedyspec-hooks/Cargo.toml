@@ -1,9 +1,13 @@
 [package]
 name = "speedyspec-hooks"
-version = "0.1.0"
+version = "0.1.1"
 description = "Hook contract for speedyspec: the Hooks trait, the Value type and a backend conformance suite. No storage."
 edition.workspace = true
 rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+# The tests read the repository's compat/ and tests/php, so they run in this repository only.
+exclude = ["tests/"]
 
 [features]
 # Exposes `conformance`, the suite every backend must pass.

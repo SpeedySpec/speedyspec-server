@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-router-presentation"
-version = "0.1.0"
+version = "0.1.1"
+publish = false
 description = "Routing as request stage 3 (eager mode): the routing middleware, redirect sources and WordPress's requested path."
 edition.workspace = true
 rust-version.workspace = true

@@ -72,7 +72,7 @@ jobs:
           path: |
             ${{ matrix.php-build }}/spc
             ${{ matrix.php-build }}/buildroot
-          key: php-${{ matrix.name }}-${{ hashFiles('php-version', 'scripts/build-php.sh') }}
+          key: php-${{ matrix.name }}-${{ hashFiles('crates/speedyspec-php/php-version', 'scripts/build-php.sh') }}
       - name: Build static PHP
         env:
           SPEEDYSPEC_ALLOW_HOST_INSTALL: "1"

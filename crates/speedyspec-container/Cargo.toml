@@ -1,10 +1,13 @@
 [package]
 name = "speedyspec-container"
-version = "0.1.0"
+version = "0.1.1"
 description = "A service container with the functionality of Laravel's: bindings, singletons, scoped instances, aliases, extenders, contextual bindings, tags and resolving callbacks, with worker and request lifetimes."
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+# The tests read the repository's compat/ and tests/php, so they run in this repository only.
+exclude = ["tests/"]
 
 [dependencies]
 thiserror = "2"

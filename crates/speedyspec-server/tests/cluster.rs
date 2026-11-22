@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 
 use support::release_host::ReleaseHost;
 use support::run::{BIN, Running, command, get, start_with};
+use support::versions::next;
 
 /// One pod's config: its own run_dir and listener, the shared data_dir, and fast cluster timings.
 fn pod_config(dir: &Path, pod: &str, extra: &str) -> PathBuf {
@@ -396,18 +397,18 @@ fn rolling_upgrade_goes_pod_by_pod() {
     let _serial = serial();
     let pods = cluster("c", &["a", "b"], |_| Vec::new());
     pods.serve_admin("c");
-    pods.host.publish_server("0.2.0", Path::new(BIN));
-    pods.ok("c", &["release", "install", "server", "0.2.0"]);
-    let (failed, most_on_trial, order) = watching(&pods, "0.2.0", || {
-        let out = pods.ok("c", &["release", "switch", "server@0.2.0"]);
+    pods.host.publish_server(next(), Path::new(BIN));
+    pods.ok("c", &["release", "install", "server", next()]);
+    let (failed, most_on_trial, order) = watching(&pods, next(), || {
+        let out = pods.ok("c", &["release", "switch", &format!("server@{}", next())]);
         assert!(
-            out.contains("rolling out server 0.2.0 across 3 pods"),
+            out.contains(&format!("rolling out server {} across 3 pods", next())),
             "{out}"
         );
         assert!(
             wait_for(Duration::from_secs(90), || {
                 let state = pods.state();
-                state["server"]["confirmed"] == "0.2.0" && state["rollout"].is_null()
+                state["server"]["confirmed"] == next() && state["rollout"].is_null()
             }),
             "the rollout never finished: {}",
             pods.state()
@@ -420,7 +421,7 @@ fn rolling_upgrade_goes_pod_by_pod() {
     );
     assert_eq!(order, vec!["a", "b", "c"], "pods by name, the leader last");
     for pod in &pods.pods {
-        assert_eq!(pods.generation(&pod.name).unwrap().1, "0.2.0");
+        assert_eq!(pods.generation(&pod.name).unwrap().1, next());
     }
 }
 
@@ -430,7 +431,7 @@ fn rolling_upgrade_stops_and_reverts_on_one_failed_trial() {
     let pods = cluster("c", &["a", "b"], |name| {
         if name == "b" {
             vec![
-                ("SPEEDYSPEC_TEST_EXIT_VERSION", "0.2.0"),
+                ("SPEEDYSPEC_TEST_EXIT_VERSION", next()),
                 ("SPEEDYSPEC_TEST_EXIT_AFTER_READY_MS", "1000"),
             ]
         } else {
@@ -438,18 +439,18 @@ fn rolling_upgrade_stops_and_reverts_on_one_failed_trial() {
         }
     });
     pods.serve_admin("c");
-    pods.host.publish_server("0.2.0", Path::new(BIN));
-    pods.ok("c", &["release", "install", "server", "0.2.0"]);
-    pods.ok("c", &["release", "switch", "server@0.2.0"]);
+    pods.host.publish_server(next(), Path::new(BIN));
+    pods.ok("c", &["release", "install", "server", next()]);
+    pods.ok("c", &["release", "switch", &format!("server@{}", next())]);
     assert!(
         wait_for(Duration::from_secs(90), || {
             let state = pods.state();
-            state["rollout"].is_null() && state["server"]["failed"]["0.2.0"].is_string()
+            state["rollout"].is_null() && state["server"]["failed"][next()].is_string()
         }),
         "the rollout never reverted: {}",
         pods.state()
     );
-    let reason = pods.state()["server"]["failed"]["0.2.0"]
+    let reason = pods.state()["server"]["failed"][next()]
         .as_str()
         .unwrap()
         .to_string();
@@ -472,7 +473,8 @@ fn rolling_upgrade_stops_and_reverts_on_one_failed_trial() {
             .keeper
             .log()
             .iter()
-            .any(|l| l.contains("\"generation_started\"") && l.contains("server/0.2.0")),
+            .any(|l| l.contains("\"generation_started\"")
+                && l.contains(&format!("server/{}", next()))),
         "c never upgraded"
     );
 }
@@ -752,13 +754,13 @@ fn pod_that_missed_a_rollout_catches_up_on_start() {
         .leader("a")
         .as_deref()
         == Some("a")));
-    pods.host.publish_server("0.2.0", Path::new(BIN));
-    pods.ok("a", &["release", "install", "server", "0.2.0"]);
-    pods.ok("a", &["release", "switch", "server@0.2.0"]);
+    pods.host.publish_server(next(), Path::new(BIN));
+    pods.ok("a", &["release", "install", "server", next()]);
+    pods.ok("a", &["release", "switch", &format!("server@{}", next())]);
     assert!(
         wait_for(Duration::from_secs(60), || {
             let state = pods.state();
-            state["server"]["confirmed"] == "0.2.0" && state["rollout"].is_null()
+            state["server"]["confirmed"] == next() && state["rollout"].is_null()
         }),
         "{}",
         pods.events()
@@ -774,7 +776,7 @@ fn pod_that_missed_a_rollout_catches_up_on_start() {
     assert!(
         wait_for(Duration::from_secs(10), || pods
             .generation("z")
-            .is_some_and(|g| g.1 == "0.2.0" && g.2 == "confirmed")),
+            .is_some_and(|g| g.1 == next() && g.2 == "confirmed")),
         "z still runs {:?}",
         pods.generation("z")
     );
@@ -788,6 +790,6 @@ fn pod_that_missed_a_rollout_catches_up_on_start() {
     );
     let report: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(members.join("z.json")).unwrap()).unwrap();
-    assert_eq!(report["server"]["confirmed"], "0.2.0");
+    assert_eq!(report["server"]["confirmed"], next());
     assert!(report["server"]["trial"].is_null());
 }

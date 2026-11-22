@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-data-conformance"
 version = "0.1.0"
+publish = false
 description = "Conformance suites every speedyspec data store must pass."
 edition.workspace = true
 rust-version.workspace = true

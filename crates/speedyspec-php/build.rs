@@ -1,10 +1,10 @@
 //! Links the static PHP built by `scripts/build-php.sh` into this crate.
 //!
-//! The PHP install prefix comes from `SPEEDYSPEC_PHP_PREFIX` (default
-//! `<workspace>/.php-build/buildroot`). ext-php-rs's own build script, which
-//! runs first, finds PHP through `PHP` and `PHP_CONFIG`; `.cargo/config.toml`
-//! points those at the same prefix, and this script refuses to build if they
-//! point anywhere else, so headers, bindings and library always agree.
+//! The PHP install prefix (the build's `buildroot`) comes from `SPEEDYSPEC_PHP_PREFIX`, which is required: a
+//! published crate has no repository around it to guess from. ext-php-rs's own build script, which runs first, finds
+//! PHP through `PHP` and `PHP_CONFIG`; this script refuses to build if they point anywhere but the prefix, so headers,
+//! bindings and library always agree. The PHP version it must be is pinned in this crate's own `php-version` file,
+//! which ships in the package. On docs.rs (`DOCS_RS`) nothing is linked.
 
 use std::env;
 use std::fs;
@@ -13,20 +13,33 @@ use std::process::Command;
 
 fn main() {
     let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
-    let workspace = manifest
-        .parent()
-        .and_then(Path::parent)
-        .expect("crate lives in <workspace>/crates/<name>")
-        .to_path_buf();
 
     println!("cargo:rerun-if-env-changed=SPEEDYSPEC_PHP_PREFIX");
     println!("cargo:rerun-if-env-changed=PHP");
     println!("cargo:rerun-if-env-changed=PHP_CONFIG");
     println!("cargo:rerun-if-env-changed=SODIUM_LIB_DIR");
+    println!("cargo:rerun-if-env-changed=DOCS_RS");
+
+    let version_file = manifest.join("php-version");
+    println!("cargo:rerun-if-changed={}", version_file.display());
+    let pinned = fs::read_to_string(&version_file)
+        .unwrap_or_else(|e| fail(&format!("reading {}: {e}", version_file.display())));
+    let pinned = pinned.trim();
+    println!("cargo:rustc-env=SPEEDYSPEC_PHP_VERSION={pinned}");
+
+    // docs.rs builds the documentation without any PHP; ext-php-rs uses its bundled bindings there.
+    if env::var_os("DOCS_RS").is_some() {
+        return;
+    }
 
     let prefix = env::var_os("SPEEDYSPEC_PHP_PREFIX")
         .map(PathBuf::from)
-        .unwrap_or_else(|| workspace.join(".php-build/buildroot"));
+        .unwrap_or_else(|| {
+            fail(
+                "SPEEDYSPEC_PHP_PREFIX is not set; point it at a static PHP built by scripts/build-php.sh \
+                 (its buildroot), with PHP, PHP_CONFIG and SODIUM_LIB_DIR beside it",
+            )
+        });
     let php_config = prefix.join("bin/php-config");
     let libphp = prefix.join("lib/libphp.a");
     if !php_config.is_file() || !libphp.is_file() {
@@ -62,19 +75,13 @@ fn main() {
         ));
     }
 
-    let version_file = workspace.join("php-version");
-    println!("cargo:rerun-if-changed={}", version_file.display());
-    let pinned = fs::read_to_string(&version_file)
-        .unwrap_or_else(|e| fail(&format!("reading {}: {e}", version_file.display())));
-    let pinned = pinned.trim();
     let built = php_config_output(&php_config, "--version");
     if built != pinned {
         fail(&format!(
-            "php-version pins {pinned} but {} is {built}; rerun scripts/build-php.sh",
+            "php-version pins {pinned} but {} is {built}; build PHP {pinned} with scripts/build-php.sh",
             prefix.display()
         ));
     }
-    println!("cargo:rustc-env=SPEEDYSPEC_PHP_VERSION={pinned}");
 
     link(&prefix);
 }

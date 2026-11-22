@@ -10,7 +10,9 @@ use speedyspec_operation_contracts::{
     Caller, Category, Kind, OperationCatalog, OperationError, Value,
 };
 
-use crate::{Call, OperationHandler, OperationMiddleware, PermissionMiddleware, handler_key};
+use crate::{
+    Bypass, Call, OperationHandler, OperationMiddleware, PermissionMiddleware, handler_key,
+};
 
 /// Calls operations by name with neutral values.
 pub struct Dispatcher {
@@ -83,9 +85,13 @@ impl Dispatcher {
             spec: &spec,
             caller,
             input: seen.as_ref(),
+            raw: &input,
         };
         let run_handler = || handler.handle(spec.input.mapper.hydrate(&input)?, caller);
-        let output = run(&self.middleware, &call, &run_handler)?;
+        let output = match run(&self.middleware, &call, &run_handler)?.downcast::<Bypass>() {
+            Ok(bypass) => return Ok(bypass.0),
+            Err(output) => output,
+        };
         let extracted = spec.output.mapper.extract(output.as_ref())?;
         validate(&spec.output.schema, &extracted, self.registries.as_ref()).map_err(
             |violations| {

@@ -1,0 +1,21 @@
+[package]
+name = "speedyspec-wp-options-tests"
+version = "0.1.1"
+publish = false
+description = "Integration tests of speedyspec-wp-options with the in-memory option repository. A crate of its own so no crate has a dev-dependency on one that depends on it (release-please's cargo-workspace plugin refuses such cycles)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dev-dependencies]
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-uow = { path = "../speedyspec-data-uow" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
+speedyspec-wp-options = { path = "../speedyspec-wp-options" }
+speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }

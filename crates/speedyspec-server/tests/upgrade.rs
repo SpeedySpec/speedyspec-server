@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 
 use support::release_host::ReleaseHost;
 use support::run::{BIN, Running, command, get, poll, start_with};
+use support::versions::{after_next, next};
 
 const BASE: &str = env!("CARGO_PKG_VERSION");
 
@@ -154,17 +155,17 @@ fn upgrade_switches_generation_and_confirms() {
     let w = world(&[], FAST);
     let (old_pid, version, _) = w.generation();
     assert_eq!(version, BASE);
-    publish_and_install(&w, "0.2.0");
+    publish_and_install(&w, next());
     assert!(
-        w.ok(&["release", "switch", "server@0.2.0"])
-            .starts_with("switched server 0.2.0 (on trial")
+        w.ok(&["release", "switch", &format!("server@{}", next())])
+            .starts_with(&format!("switched server {} (on trial", next()))
     );
     let (new_pid, version, trial) = w.generation();
     assert_ne!(new_pid, old_pid);
-    assert_eq!((version.as_str(), trial.as_str()), ("0.2.0", "trial"));
+    assert_eq!((version.as_str(), trial.as_str()), (next(), "trial"));
     assert_eq!(get(w.addr, "/").1, "admin-1.0.0");
     assert!(wait_for(Duration::from_secs(8), || w.generation().2 == "confirmed"));
-    assert_eq!(w.state()["server"]["confirmed"], "0.2.0");
+    assert_eq!(w.state()["server"]["confirmed"], next());
     assert!(
         wait_for(Duration::from_secs(8), || !alive(old_pid)),
         "the old generation exits after the trial"
@@ -175,14 +176,14 @@ fn upgrade_switches_generation_and_confirms() {
 fn failed_trial_resumes_old_generation() {
     let w = world(
         &[
-            ("SPEEDYSPEC_TEST_EXIT_VERSION", "0.2.0"),
+            ("SPEEDYSPEC_TEST_EXIT_VERSION", next()),
             ("SPEEDYSPEC_TEST_EXIT_AFTER_READY_MS", "1000"),
         ],
         FAST,
     );
     let (old_pid, _, _) = w.generation();
-    publish_and_install(&w, "0.2.0");
-    w.ok(&["release", "switch", "server@0.2.0"]);
+    publish_and_install(&w, next());
+    w.ok(&["release", "switch", &format!("server@{}", next())]);
     let mut failures = 0;
     let resumed = wait_for(Duration::from_secs(8), || {
         // The trial generation crashes on purpose; a request it had just accepted is reset with it, which clients
@@ -198,7 +199,7 @@ fn failed_trial_resumes_old_generation() {
     });
     assert!(resumed, "log: {:?}", w.keeper.log());
     assert_eq!(failures, 0, "requests failed during the failed trial");
-    assert!(w.state()["server"]["failed"]["0.2.0"].is_string());
+    assert!(w.state()["server"]["failed"][next()].is_string());
     assert_eq!(w.state()["server"]["trial"], serde_json::Value::Null);
 }
 
@@ -206,14 +207,14 @@ fn failed_trial_resumes_old_generation() {
 fn failed_trial_after_old_exited_starts_confirmed_binary() {
     let w = world(
         &[
-            ("SPEEDYSPEC_TEST_EXIT_VERSION", "0.2.0"),
+            ("SPEEDYSPEC_TEST_EXIT_VERSION", next()),
             ("SPEEDYSPEC_TEST_EXIT_AFTER_READY_MS", "2000"),
         ],
         FAST,
     );
     let (old_pid, _, _) = w.generation();
-    publish_and_install(&w, "0.2.0");
-    w.ok(&["release", "switch", "server@0.2.0"]);
+    publish_and_install(&w, next());
+    w.ok(&["release", "switch", &format!("server@{}", next())]);
     assert!(
         Command::new("kill")
             .arg("-KILL")
@@ -230,31 +231,35 @@ fn failed_trial_after_old_exited_starts_confirmed_binary() {
         poll(w.addr, "/", Duration::from_secs(5), |s, _| s == 200).1,
         "admin-1.0.0"
     );
-    assert!(w.state()["server"]["failed"]["0.2.0"].is_string());
+    assert!(w.state()["server"]["failed"][next()].is_string());
 }
 
 #[test]
 fn never_ready_binary_is_refused() {
-    let w = world(&[("SPEEDYSPEC_TEST_NEVER_READY_VERSION", "0.2.0")], FAST);
+    let w = world(&[("SPEEDYSPEC_TEST_NEVER_READY_VERSION", next())], FAST);
     let (old_pid, _, _) = w.generation();
-    publish_and_install(&w, "0.2.0");
-    let (code, _, stderr) = w.cmd(&["release", "switch", "server@0.2.0"]);
+    publish_and_install(&w, next());
+    let (code, _, stderr) = w.cmd(&["release", "switch", &format!("server@{}", next())]);
     assert_eq!(code, 1);
     assert!(
-        stderr.contains("0.2.0") && stderr.contains("ready"),
+        stderr.contains(next()) && stderr.contains("ready"),
         "{stderr}"
     );
     assert_eq!(w.generation().0, old_pid);
     assert_eq!(get(w.addr, "/").1, "admin-1.0.0");
-    assert!(w.state()["server"]["failed"]["0.2.0"].is_string());
+    assert!(w.state()["server"]["failed"][next()].is_string());
 }
 
 #[test]
 fn binary_exiting_before_ready_is_refused() {
-    let w = world(&[("SPEEDYSPEC_TEST_CRASH_VERSION", "0.2.0")], FAST);
+    let w = world(&[("SPEEDYSPEC_TEST_CRASH_VERSION", next())], FAST);
     let (old_pid, _, _) = w.generation();
-    publish_and_install(&w, "0.2.0");
-    assert_eq!(w.cmd(&["release", "switch", "server@0.2.0"]).0, 1);
+    publish_and_install(&w, next());
+    assert_eq!(
+        w.cmd(&["release", "switch", &format!("server@{}", next())])
+            .0,
+        1
+    );
     assert_eq!(w.generation().0, old_pid);
     assert_eq!(get(w.addr, "/").1, "admin-1.0.0");
 }
@@ -265,13 +270,13 @@ fn second_upgrade_refused_during_trial() {
         &[],
         "trial_period = \"10s\"\nready_timeout = \"5s\"\ndrain_timeout = \"5s\"",
     );
-    publish_and_install(&w, "0.2.0");
-    publish_and_install(&w, "0.3.0");
-    w.ok(&["release", "switch", "server@0.2.0"]);
-    let (code, _, stderr) = w.cmd(&["release", "switch", "server@0.3.0"]);
+    publish_and_install(&w, next());
+    publish_and_install(&w, after_next());
+    w.ok(&["release", "switch", &format!("server@{}", next())]);
+    let (code, _, stderr) = w.cmd(&["release", "switch", &format!("server@{}", after_next())]);
     assert_eq!(code, 1);
     assert!(
-        stderr.contains("0.2.0") && stderr.contains("trial"),
+        stderr.contains(next()) && stderr.contains("trial"),
         "{stderr}"
     );
 }
@@ -280,15 +285,20 @@ fn second_upgrade_refused_during_trial() {
 fn group_switch_with_server() {
     let w = world(&[], FAST);
     w.host
-        .publish_static_requiring("admin", "2.0.0", r#""server":"^0.2""#);
+        .publish_static_requiring("admin", "2.0.0", &format!(r#""server":"={}""#, next()));
     w.ok(&["release", "install", "admin", "2.0.0"]);
-    publish_and_install(&w, "0.2.0");
+    publish_and_install(&w, next());
     assert_eq!(
         w.cmd(&["release", "switch", "admin@2.0.0"]).0,
         1,
-        "admin 2 alone needs server 0.2"
+        "admin 2 alone needs the next server"
     );
-    w.ok(&["release", "switch", "admin@2.0.0", "server@0.2.0"]);
+    w.ok(&[
+        "release",
+        "switch",
+        "admin@2.0.0",
+        &format!("server@{}", next()),
+    ]);
     assert_eq!(
         poll(w.addr, "/", Duration::from_secs(5), |_, b| b
             == "admin-2.0.0")
@@ -303,18 +313,23 @@ fn group_switch_with_server() {
 fn failed_group_trial_reverts_apps() {
     let w = world(
         &[
-            ("SPEEDYSPEC_TEST_EXIT_VERSION", "0.2.0"),
+            ("SPEEDYSPEC_TEST_EXIT_VERSION", next()),
             ("SPEEDYSPEC_TEST_EXIT_AFTER_READY_MS", "1500"),
         ],
         FAST,
     );
     w.host
-        .publish_static_requiring("admin", "2.0.0", r#""server":"^0.2""#);
+        .publish_static_requiring("admin", "2.0.0", &format!(r#""server":"={}""#, next()));
     w.ok(&["release", "install", "admin", "2.0.0"]);
-    publish_and_install(&w, "0.2.0");
-    w.ok(&["release", "switch", "admin@2.0.0", "server@0.2.0"]);
+    publish_and_install(&w, next());
+    w.ok(&[
+        "release",
+        "switch",
+        "admin@2.0.0",
+        &format!("server@{}", next()),
+    ]);
     assert!(wait_for(Duration::from_secs(10), || {
-        w.state()["server"]["failed"]["0.2.0"].is_string()
+        w.state()["server"]["failed"][next()].is_string()
     }));
     assert_eq!(
         poll(w.addr, "/", Duration::from_secs(5), |_, b| b
@@ -328,8 +343,8 @@ fn failed_group_trial_reverts_apps() {
 #[test]
 fn server_rollback_is_an_upgrade_to_older_binary() {
     let w = world(&[], FAST);
-    publish_and_install(&w, "0.2.0");
-    w.ok(&["release", "switch", "server@0.2.0"]);
+    publish_and_install(&w, next());
+    w.ok(&["release", "switch", &format!("server@{}", next())]);
     assert!(wait_for(Duration::from_secs(8), || w.generation().2 == "confirmed"));
     assert!(
         w.ok(&["release", "rollback", "server", BASE])
@@ -348,8 +363,8 @@ fn sigterm_during_upgrade_exits_cleanly() {
         "trial_period = \"20s\"\nready_timeout = \"5s\"\ndrain_timeout = \"3s\"",
     );
     let (old_pid, _, _) = w.generation();
-    publish_and_install(&w, "0.2.0");
-    w.ok(&["release", "switch", "server@0.2.0"]);
+    publish_and_install(&w, next());
+    w.ok(&["release", "switch", &format!("server@{}", next())]);
     let (new_pid, _, _) = w.generation();
     w.keeper.term();
     assert!(wait_for(Duration::from_secs(10), || !alive(old_pid)
@@ -399,7 +414,7 @@ async fn handoff_under_load() {
         (tcp, udp.expect("an h3 listener"))
     };
     let (plain, secure, quic) = (found.0[0], found.0[1], found.1);
-    for version in ["0.2.0", "0.3.0"] {
+    for version in [next(), after_next()] {
         w.host.publish_server(version, Path::new(BIN));
         w.ok(&["release", "install", "server", version]);
     }
@@ -494,19 +509,23 @@ async fn handoff_under_load() {
     }
 
     let config = w.config.to_str().unwrap().to_string();
-    let switch = |target: &'static str, config: String| {
+    let switch = |target: String, config: String| {
         tokio::task::spawn_blocking(move || {
-            command(&["release", "switch", "--config", &config, target])
+            command(&["release", "switch", "--config", &config, &target])
         })
     };
     tokio::time::sleep(Duration::from_secs(2)).await;
-    let (code, _, stderr) = switch("server@0.2.0", config.clone()).await.unwrap();
+    let (code, _, stderr) = switch(format!("server@{}", next()), config.clone())
+        .await
+        .unwrap();
     assert_eq!(code, 0, "{stderr}");
     tokio::time::sleep(Duration::from_secs(3)).await;
     // The first generation may still be draining the slow response; the keeper refuses until it is gone.
     let deadline = Instant::now() + Duration::from_secs(15);
     let (code, _, stderr) = loop {
-        let result = switch("server@0.3.0", config.clone()).await.unwrap();
+        let result = switch(format!("server@{}", after_next()), config.clone())
+            .await
+            .unwrap();
         if result.0 == 0 || !result.2.contains("still draining") || Instant::now() > deadline {
             break result;
         }
@@ -608,8 +627,8 @@ fn keeper_reexecs_after_upgrade() {
     let w = world(&[], FAST);
     let keeper_pid = w.keeper.child.id();
     assert_eq!(keeper_version(&w), BASE);
-    publish_and_install(&w, "0.2.0");
-    w.ok(&["release", "switch", "server@0.2.0"]);
+    publish_and_install(&w, next());
+    w.ok(&["release", "switch", &format!("server@{}", next())]);
     let mut failures = 0;
     let reexecuted = wait_for(Duration::from_secs(15), || {
         if get(w.addr, "/").0 != 200 {
@@ -617,7 +636,7 @@ fn keeper_reexecs_after_upgrade() {
         }
         command(&["status", "--config", w.config.to_str().unwrap()])
             .1
-            .contains("keeper\t0.2.0")
+            .contains(&format!("keeper\t{}", next()))
     });
     assert!(reexecuted, "log: {:?}", w.keeper.log());
     assert_eq!(failures, 0);
@@ -627,19 +646,19 @@ fn keeper_reexecs_after_upgrade() {
             .wait_for_event("keeper_reexecuted", Duration::from_secs(2))
     );
     assert_eq!(get(w.addr, "/").1, "admin-1.0.0");
-    assert_eq!(w.generation().1, "0.2.0");
+    assert_eq!(w.generation().1, next());
 }
 
 #[test]
 fn newer_protocol_binary_refused() {
     let w = world(&[], FAST);
-    publish_and_install(&w, "0.2.0");
-    let kept = w
-        .dir
-        .path()
-        .join("data/releases/server/0.2.0/speedyspec-server.test-protocol");
+    publish_and_install(&w, next());
+    let kept = w.dir.path().join(&format!(
+        "data/releases/server/{}/speedyspec-server.test-protocol",
+        next()
+    ));
     std::fs::write(kept, "99").unwrap();
-    let (code, _, stderr) = w.cmd(&["release", "switch", "server@0.2.0"]);
+    let (code, _, stderr) = w.cmd(&["release", "switch", &format!("server@{}", next())]);
     assert_eq!(code, 1);
     assert!(stderr.contains("protocol 99"), "{stderr}");
 }
@@ -655,10 +674,10 @@ async fn keeper_reexec_keeps_listeners_and_socket() {
     );
     let w = tokio::task::spawn_blocking(move || {
         let w = world_with(&[], FAST, &tls);
-        publish_and_install(&w, "0.2.0");
-        w.ok(&["release", "switch", "server@0.2.0"]);
+        publish_and_install(&w, next());
+        w.ok(&["release", "switch", &format!("server@{}", next())]);
         assert!(
-            wait_for(Duration::from_secs(15), || keeper_version(&w) == "0.2.0"),
+            wait_for(Duration::from_secs(15), || keeper_version(&w) == next()),
             "log: {:?}",
             w.keeper.log()
         );
@@ -771,17 +790,17 @@ fn retiring_generation_blocks_upgrades_and_is_stopped() {
         &[],
         "trial_period = \"2s\"\nready_timeout = \"5s\"\ndrain_timeout = \"20s\"",
     );
-    publish_and_install(&w, "0.2.0");
-    publish_and_install(&w, "0.3.0");
+    publish_and_install(&w, next());
+    publish_and_install(&w, after_next());
     let (old_pid, _, _) = w.generation();
     let _slow = hold_slow_request(w.addr, 30);
-    w.ok(&["release", "switch", "server@0.2.0"]);
+    w.ok(&["release", "switch", &format!("server@{}", next())]);
     assert!(wait_for(Duration::from_secs(8), || w.generation().2 == "confirmed"));
     assert!(
         alive(old_pid),
         "the old generation drains its open response"
     );
-    let (code, _, stderr) = w.cmd(&["release", "switch", "server@0.3.0"]);
+    let (code, _, stderr) = w.cmd(&["release", "switch", &format!("server@{}", after_next())]);
     assert_eq!(
         code, 1,
         "an upgrade during the previous generation's drain is refused"
@@ -806,9 +825,9 @@ fn retiring_generation_blocks_upgrades_and_is_stopped() {
 #[test]
 fn switch_refused_during_reload_trial_leaves_no_trial() {
     let w = world(&[], FAST);
-    publish_and_install(&w, "0.2.0");
+    publish_and_install(&w, next());
     w.ok(&["reload"]);
-    let (code, _, stderr) = w.cmd(&["release", "switch", "server@0.2.0"]);
+    let (code, _, stderr) = w.cmd(&["release", "switch", &format!("server@{}", next())]);
     assert_eq!(code, 1);
     assert!(stderr.contains("a reload is on trial"), "{stderr}");
     let state = w.state();
@@ -818,11 +837,17 @@ fn switch_refused_during_reload_trial_leaves_no_trial() {
 
 #[test]
 fn release_commands_refused_while_a_server_switch_starts() {
-    let w = world(&[("SPEEDYSPEC_TEST_NEVER_READY_VERSION", "0.2.0")], FAST);
-    publish_and_install(&w, "0.2.0");
+    let w = world(&[("SPEEDYSPEC_TEST_NEVER_READY_VERSION", next())], FAST);
+    publish_and_install(&w, next());
     let config = w.config.to_str().unwrap().to_string();
     let switch = std::thread::spawn(move || {
-        command(&["release", "switch", "server@0.2.0", "--config", &config])
+        command(&[
+            "release",
+            "switch",
+            &format!("server@{}", next()),
+            "--config",
+            &config,
+        ])
     });
     std::thread::sleep(Duration::from_millis(1500));
     let (code, _, stderr) = w.cmd(&["release", "pin", "admin", "1.0.0"]);
@@ -841,10 +866,10 @@ fn release_commands_refused_while_a_server_switch_starts() {
 
 #[test]
 fn failed_confirm_fails_the_trial() {
-    let w = world(&[("SPEEDYSPEC_TEST_CONFIRM_FAIL_VERSION", "0.2.0")], FAST);
+    let w = world(&[("SPEEDYSPEC_TEST_CONFIRM_FAIL_VERSION", next())], FAST);
     let (old_pid, _, _) = w.generation();
-    publish_and_install(&w, "0.2.0");
-    w.ok(&["release", "switch", "server@0.2.0"]);
+    publish_and_install(&w, next());
+    w.ok(&["release", "switch", &format!("server@{}", next())]);
     assert!(
         wait_for(Duration::from_secs(10), || w.generation().0 == old_pid),
         "the old generation took over again; log: {:?}",
@@ -852,7 +877,7 @@ fn failed_confirm_fails_the_trial() {
     );
     let state = w.state();
     assert_eq!(state["server"]["confirmed"], BASE, "{state}");
-    assert!(state["server"]["failed"]["0.2.0"].is_string(), "{state}");
+    assert!(state["server"]["failed"][next()].is_string(), "{state}");
     assert_eq!(state["server"]["trial"], serde_json::Value::Null, "{state}");
     assert_eq!(keeper_version(&w), BASE);
 }
