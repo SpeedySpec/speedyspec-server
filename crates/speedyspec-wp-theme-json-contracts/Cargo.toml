@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-theme-json-contracts"
-version = "0.1.2"
+version = "0.1.3"
 publish = false
 description = "WordPress's theme.json contracts: the typed model, the value objects, the schema tables and the ports."
 edition.workspace = true
