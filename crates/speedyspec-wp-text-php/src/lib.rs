@@ -10,6 +10,7 @@ mod args;
 mod fast;
 mod native;
 mod release;
+pub mod swap;
 
 
 use std::rc::Rc;
@@ -81,6 +82,7 @@ impl TextArea {
         }));
         register_escape_handlers(&container, escape.clone());
         register_text_handlers(&container, api.clone());
+        swap::install(&container, Rc::new(swap::NativeTable::new()));
         let shared = Rc::new(native::Shared::new(container, api.clone()));
         native::SHARED.with(|s| *s.borrow_mut() = Some(shared));
         TextArea { api, escape, mime_types }

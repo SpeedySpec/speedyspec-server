@@ -65,6 +65,7 @@ fn main() {
     let kses = KsesArea::new(container.clone(), hooks.api());
     let text = TextArea::new(container.clone(), hooks.api(), kses.api());
     let api = text.api();
+    let hook_api = hooks.api();
     let areas: Vec<Rc<dyn NativeArea>> =
         vec![twins_area(), Rc::new(ContainerArea::new("tests", container.clone())), Rc::new(hooks), Rc::new(kses), Rc::new(text)];
     let php = Php::boot(BootOptions { hooks: Rc::new(MemoryHooks::new()), preload: &[], areas }).expect("PHP boots");
@@ -113,6 +114,7 @@ fn main() {
 
     natives(&php, &api);
     review_fixes(&php, &container);
+    swap(&php, &hook_api);
     println!("all text-php native checks passed");
 }
 
@@ -290,4 +292,129 @@ fn review_fixes(php: &Php, container: &Rc<Container>) {
     bind_query_handler::<ConvertChars>(container, |_, _| Ok(Rc::new(Fixed) as Rc<dyn QueryHandler<ConvertChars>>));
     bind_query_handler::<WpStripAllTags>(container, |_, _| Ok(Rc::new(Fixed) as Rc<dyn QueryHandler<WpStripAllTags>>));
     yes("fast_path_honours_a_rebound_handler", "return convert_chars('a') === 'bound' && wp_strip_all_tags('a') === 'bound';");
+}
+
+/// Whether the callback `id` at `priority` on `hook` is stored as a Rust callback.
+fn is_rust(hooks: &speedyspec_wp_hooks::HookApi, hook: &str, id: &str, priority: i64) -> bool {
+    use speedyspec_wp_hooks::{ArrayKey, Callback, HookName};
+    let name = HookName::from(hook);
+    let Some(found) = name.key().ok().and_then(|k| hooks.store().hook(k)) else {
+        return false;
+    };
+    let state = found.state();
+    state
+        .callbacks
+        .get(&ArrayKey::Int(priority))
+        .and_then(|slice| slice.get(&ArrayKey::from_str_key(id)))
+        .is_some_and(|e| matches!(e.callback, Callback::Rust { .. }))
+}
+
+/// Formatting's callbacks added by name run as Rust callbacks, unchanged in every way a plugin can see.
+fn swap(php: &Php, hooks: &Rc<speedyspec_wp_hooks::HookApi>) {
+    // The probe: whether a `clean_url` callback (fired on every esc_url() call) sees an `esc_url` frame.
+    const PROBE: &str = r#"function swap_probe($url) {
+        $GLOBALS['frame'] = in_array('esc_url', array_column(debug_backtrace(), 'function'), true);
+        return $url;
+    }
+    function swap_unswapped($hook, $callback, $priority = 10, $args = 1) {
+        if (!isset($GLOBALS['wp_filter'][$hook])) { $GLOBALS['wp_filter'][$hook] = new WP_Hook(); }
+        $GLOBALS['wp_filter'][$hook]->add_filter($hook, $callback, $priority, $args);
+    }
+    add_filter('clean_url', 'swap_probe');
+    return true;"#;
+    request(php);
+    yes("probe loads", PROBE);
+    yes(
+        "swapped_callback_has_no_php_frame",
+        r#"add_filter('swap_a', 'esc_url'); apply_filters('swap_a', 'http://a.b'); $swapped = $GLOBALS['frame'];
+        swap_unswapped('swap_b', 'esc_url'); apply_filters('swap_b', 'http://a.b'); $unswapped = $GLOBALS['frame'];
+        return $swapped === false && $unswapped === true;"#,
+    );
+    yes(
+        "identity_is_unchanged",
+        r#"add_filter('swap_c', 'wpautop');
+        $ok = has_filter('swap_c', 'wpautop') === 10
+            && $GLOBALS['wp_filter']['swap_c']->callbacks[10]['wpautop'] === ['function' => 'wpautop', 'accepted_args' => 1];
+        return $ok && remove_filter('swap_c', 'wpautop') === true && has_filter('swap_c', 'wpautop') === false;"#,
+    );
+    yes(
+        "order_is_kept",
+        r#"$run = function ($hook, $add) {
+            $GLOBALS['log'] = [];
+            $a = function ($t) use ($hook, $add) { $GLOBALS['log'][] = 'a'; remove_filter($hook, 'wpautop'); $add($hook, 'wpautop'); return $t; };
+            $b = function ($t) { $GLOBALS['log'][] = 'b:' . $t; return $t; };
+            $add($hook, $a); $add($hook, 'wpautop'); $add($hook, $b);
+            return [apply_filters($hook, 'x'), $GLOBALS['log']];
+        };
+        $swapped = $run('swap_d', 'add_filter');
+        $unswapped = $run('swap_e', 'swap_unswapped');
+        $plain = function ($hook, $cb) { add_filter($hook, $cb); };
+        $GLOBALS['log'] = [];
+        add_filter('swap_f', function ($t) { $GLOBALS['log'][] = 'a'; return $t; });
+        add_filter('swap_f', 'wpautop');
+        add_filter('swap_f', function ($t) { $GLOBALS['log'][] = 'b:' . $t; return $t; });
+        apply_filters('swap_f', 'x');
+        return $swapped === $unswapped && $GLOBALS['log'] === ['a', "b:<p>x</p>\n"];"#,
+    );
+    yes(
+        "case_and_backslash_swap",
+        r#"$GLOBALS['frame'] = null; add_filter('swap_g', '\\ESC_URL'); apply_filters('swap_g', 'http://a.b');
+        return $GLOBALS['frame'] === false && has_filter('swap_g', '\\ESC_URL') === 10;"#,
+    );
+    check("case_and_backslash_swap is Rust", is_rust(hooks, "swap_g", "\\ESC_URL", 10), ());
+    yes(
+        "namespaced_name_is_not_swapped",
+        r#"eval('namespace Other; function wpautop($t) { return "other"; }');
+        add_filter('swap_h', 'Other\\wpautop');
+        return apply_filters('swap_h', 'x') === 'other';"#,
+    );
+    check("namespaced_name_is_not_swapped is PHP", !is_rust(hooks, "swap_h", "Other\\wpautop", 10), ());
+    yes(
+        "second_argument_reaches_the_body",
+        r#"add_filter('swap_i', 'wpautop', 10, 2);
+        return apply_filters('swap_i', "a\nb", false) === wpautop("a\nb", false) && wpautop("a\nb", false) !== wpautop("a\nb");"#,
+    );
+    yes(
+        "zero_accepted_args_throws_as_php",
+        r#"$catch = function ($f) { try { $f(); return null; } catch (Throwable $e) { return [get_class($e), $e->getMessage()]; } };
+        add_filter('swap_j', 'wpautop', 10, 0);
+        swap_unswapped('swap_k', 'wpautop', 10, 0);
+        $swapped = $catch(function () { apply_filters('swap_j', 'x'); });
+        $unswapped = $catch(function () { apply_filters('swap_k', 'x'); });
+        return $swapped !== null && $swapped === $unswapped;"#,
+    );
+    yes(
+        "non_string_values_match_a_php_call",
+        r#"$catch = function ($f) { try { return ['ok', @$f()]; } catch (Throwable $e) { return [get_class($e), $e->getMessage()]; } };
+        add_filter('swap_l', 'wpautop'); add_filter('swap_m', 'sanitize_text_field');
+        foreach ([null, 5, [], new stdClass] as $v) {
+            foreach (['swap_l' => 'wpautop', 'swap_m' => 'sanitize_text_field'] as $hook => $f) {
+                $hooked = $catch(function () use ($hook, $v) { return apply_filters($hook, $v); });
+                $direct = $catch(function () use ($f, $v) { return $f($v); });
+                if ($hooked != $direct) { return var_export([$f, $v, $hooked, $direct], true); }
+            }
+        }
+        return true;"#,
+    );
+    yes(
+        "inner_exception_is_the_same_object",
+        r#"$e = new RuntimeException('inner');
+        add_filter('clean_url', function () use ($e) { throw $e; });
+        add_filter('swap_n', 'esc_url');
+        try { apply_filters('swap_n', 'http://a.b'); return false; } catch (RuntimeException $caught) { return $caught === $e; }"#,
+    );
+    check("inner_exception_is_the_same_object is Rust", is_rust(hooks, "swap_n", "esc_url", 10), ());
+    request(php);
+    let exited = eval("add_filter('clean_url', function () { exit(); }); add_filter('swap_o', 'esc_url'); apply_filters('swap_o', 'http://a.b'); return 'kept going';");
+    check("exit_in_inner_filter_unwinds", !matches!(&exited, Ok(Value::Str(s)) if s == "kept going"), &exited);
+    request(php);
+    yes("next request works after an exit", "add_filter('swap_p', 'esc_html'); return apply_filters('swap_p', '<') === '&lt;';");
+    // review_fixes() bound a fixed ConvertChars handler.
+    yes("rebound_handler_is_honoured", "add_filter('swap_q', 'convert_chars'); return apply_filters('swap_q', 'a') === 'bound';");
+    let mut names = speedyspec_wp_text::default_callback_names();
+    names.push("wp_targeted_link_rel");
+    for name in names {
+        eval(&format!("add_filter('swap_all', '{name}'); return true;")).unwrap();
+        check(&format!("default_filters_get_rust_callbacks: {name}"), is_rust(hooks, "swap_all", name, 10), ());
+    }
 }

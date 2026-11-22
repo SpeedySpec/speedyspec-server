@@ -28,7 +28,35 @@ use speedyspec_wp_text_escape::{QuoteStyle, backslashit, htmlentities2, wp_slash
 
 use crate::args::{arg, bool_or, int_or, native_error, required, string, string_or, stringable};
 
-type R = Result<Value, NativeError>;
+/// Why a native body failed: before its work, reading its arguments (PHP's own error for the call), or during it
+/// (a use case's error, whose payload a language bridge may need).
+pub(crate) enum Fail {
+    /// Arity, coercion or dispatch: raised before any work, so calling the function again from PHP repeats nothing.
+    Native(NativeError),
+    /// The use case's own error.
+    Text(TextError),
+}
+
+impl From<NativeError> for Fail {
+    fn from(e: NativeError) -> Fail {
+        Fail::Native(e)
+    }
+}
+
+impl Fail {
+    /// The error PHP gets when the function itself was called.
+    ///
+    /// @return
+    ///     The native error, a use case's payload mapped as [`native_error`] maps it.
+    pub(crate) fn into_native(self) -> NativeError {
+        match self {
+            Fail::Native(e) => e,
+            Fail::Text(e) => native_error(e),
+        }
+    }
+}
+
+type R = Result<Value, Fail>;
 
 /// A native's body: its converted arguments to its PHP return value.
 pub(crate) type Native = fn(&[Value]) -> R;
@@ -102,7 +130,7 @@ fn bus(e: BusError) -> NativeError {
 }
 
 /// Asks a use case through its bound handler; no borrow is held while the handler runs, since it may re-enter PHP.
-fn ask<Q: Query<Result = Result<T, TextError>> + 'static, T>(q: Q) -> Result<T, NativeError> {
+fn ask<Q: Query<Result = Result<T, TextError>> + 'static, T>(q: Q) -> Result<T, Fail> {
     let shared = shared()?;
     let handler: Rc<QueryRef<Q>> = {
         let mut refs = shared.refs.borrow_mut();
@@ -112,7 +140,7 @@ fn ask<Q: Query<Result = Result<T, TextError>> + 'static, T>(q: Q) -> Result<T, 
             .clone();
         entry.downcast::<QueryRef<Q>>().expect("one QueryRef per message type")
     };
-    handler.call(q).map_err(bus)?.map_err(native_error)
+    handler.call(q).map_err(bus)?.map_err(Fail::Text)
 }
 
 fn bytes(v: Vec<u8>) -> R {
@@ -244,7 +272,7 @@ fn wp_unslash(a: &[Value]) -> R {
     if holds_object(&value) {
         // stripslashes_deep() stays PHP: it walks object properties.
         return speedyspec_php::call_catching(&Value::Str("stripslashes_deep".into()), &[value])
-            .map_err(|f| native_error(crate::adapters::call_error(f)));
+            .map_err(|f| Fail::Text(crate::adapters::call_error(f)));
     }
     Ok(wp_unslash_value(&value))
 }
@@ -662,7 +690,7 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
         .map(|(php_name, name, req, max, f)| {
             native::function(&php_name, move |args: &[Value]| {
                 required(name, args, req, max)?;
-                f(args)
+                f(args).map_err(Fail::into_native)
             })
         })
         .chain(crate::fast::functions())
