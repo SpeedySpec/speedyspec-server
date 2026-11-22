@@ -6191,6 +6191,18 @@ name = "speedyspec-wp-media-contracts"
 version = "0.1.0"
 
 [[package]]
+name = "speedyspec-wp-media-ffmpeg"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "libc",
+ "speedyspec-ffmpeg-sys",
+ "speedyspec-wp-media-contracts",
+ "speedyspec-wp-media-testkit",
+ "tempfile",
+]
+
+[[package]]
 name = "speedyspec-wp-media-testkit"
 version = "0.1.0"
 dependencies = [
