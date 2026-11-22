@@ -204,3 +204,49 @@ fn integral_float_ids_reach_the_handler_as_integers() {
         .unwrap();
     assert_eq!(out.get("title"), Some(&Value::from("post 42")));
 }
+
+struct Short;
+
+impl OperationMiddleware for Short {
+    fn around(
+        &self,
+        call: &Call<'_>,
+        _: &dyn Fn() -> Result<Box<dyn std::any::Any>, OperationError>,
+    ) -> Result<Box<dyn std::any::Any>, OperationError> {
+        Ok(Box::new(Bypass(Value::map([("seen", call.raw.clone())]))))
+    }
+}
+
+#[test]
+fn middleware_sees_the_normalized_input_and_can_bypass_the_handler() {
+    let ran = Rc::new(RefCell::new(false));
+    let seen = ran.clone();
+    let d = dispatcher(handler_fn(move |_: GetPost, _: &Caller| {
+        *seen.borrow_mut() = true;
+        Ok(Post { title: "x".into() })
+    }))
+    .with_middleware(Rc::new(Short));
+    let out = d
+        .call(
+            "core/get-post",
+            Value::map([("id", Value::Float(5.0))]),
+            &caller(Some(1)),
+        )
+        .unwrap();
+    assert_eq!(
+        out,
+        Value::map([("seen", Value::map([("id", Value::Int(5))]))])
+    );
+    assert!(!*ran.borrow());
+}
+
+#[test]
+fn bypass_still_runs_after_the_permission_check() {
+    let d = dispatcher(ok_handler()).with_middleware(Rc::new(Short));
+    assert_eq!(
+        d.call("core/get-post", input(1), &caller(None))
+            .unwrap_err()
+            .category,
+        Category::Unauthenticated
+    );
+}

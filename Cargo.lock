@@ -5654,6 +5654,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-transport"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-container",
+ "speedyspec-operation",
+ "speedyspec-operation-contracts",
+ "speedyspec-operation-dispatch",
+ "speedyspec-transport-contracts",
+]
+
+[[package]]
+name = "speedyspec-transport-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-operation-contracts",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "speedyspec-transport-hooks-wp"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "speedyspec-operation-contracts",
+ "speedyspec-transport-contracts",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+]
+
+[[package]]
 name = "speedyspec-wp-crypto"
 version = "0.1.0"
 dependencies = [
