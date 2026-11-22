@@ -167,8 +167,30 @@ const REGISTRATIONS: &[(&str, &str, i64, i64, bool)] = &[
     ("the_excerpt_embed", "shortcode_unautop", 10, 1, false),
 ];
 
-fn hook_error(e: TextError) -> HookError {
-    HookError::message(e.message)
+/// The distinct functions `default-filters.php` adds as formatting callbacks, in first-seen order: the names a
+/// language bridge may run as Rust callbacks when they are added by name.
+///
+/// @return
+///     Each function name once.
+pub fn default_callback_names() -> Vec<&'static str> {
+    let mut names: Vec<&'static str> = Vec::new();
+    for &(_, function, ..) in REGISTRATIONS {
+        if !names.contains(&function) {
+            names.push(function);
+        }
+    }
+    names
+}
+
+/// The hook error of a callback's failure, keeping its payload so a language bridge can rethrow the original
+/// (a PHP exception object) or stay silent while PHP unwinds.
+///
+/// @param e
+///     The formatting error.
+/// @return
+///     The hook error, with the same message and payload.
+pub fn hook_error(e: TextError) -> HookError {
+    HookError { message: e.message, payload: e.payload }
 }
 
 /// The first argument as a PHP string, or the error PHP 8 raises for a non-scalar.

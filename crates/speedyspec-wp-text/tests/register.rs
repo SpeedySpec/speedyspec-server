@@ -222,3 +222,29 @@ fn registers_plan_4_rows() {
     let content = h.hooks.apply_filters(&HookName::from("pre_kses"), HookValue::Str("a < b".into()), Vec::new()).unwrap();
     assert_eq!(*content.read(), HookValue::Str("a &lt; b".into()));
 }
+
+#[test]
+fn callback_errors_keep_their_payload() {
+    use speedyspec_wp_hooks::{Callback, HookError};
+    let h = api::harness();
+    register_text_filters(&h.api, &h.hooks, FilterContext { admin: false }).unwrap();
+    let boom = Callback::rust("boom", |_: &[HookValue]| -> Result<HookValue, HookError> {
+        Err(HookError { message: "boom".into(), payload: Some(Rc::new(42_i32)) })
+    });
+    h.hooks.add_filter(&HookName::from("run_wptexturize"), boom, &HookValue::Int(10), 1).unwrap();
+    let err = h.hooks.apply_filters(&HookName::from("the_title"), HookValue::Str("a".into()), Vec::new()).unwrap_err();
+    let payload = err.payload.expect("the payload is kept");
+    assert_eq!(payload.downcast_ref::<i32>(), Some(&42));
+}
+
+#[test]
+fn default_callback_names_lists_each_function_once() {
+    let names = speedyspec_wp_text::default_callback_names();
+    assert_eq!(names.len(), 23);
+    assert_eq!(&names[..5], &["sanitize_text_field", "sanitize_email", "wp_strip_all_tags", "sanitize_url", "esc_url"]);
+    let mut unique = names.clone();
+    unique.sort();
+    unique.dedup();
+    assert_eq!(unique.len(), names.len());
+    assert!(names.contains(&"wpautop") && names.contains(&"capital_P_dangit"));
+}
