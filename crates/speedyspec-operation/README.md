@@ -12,6 +12,7 @@ carries it.
 | `speedyspec-operation-contracts` | Plain value objects and ports, depending on no SpeedySpec crate: the neutral `Value`, `Schema`, `TypeSpec` and relations, `OperationSpec`, `OperationError` and its `Category`, `Caller` and the `Identity` port, the `ContractMapper` port, `RawInput`/`RawOutput`, the catalogue ports |
 | `speedyspec-operation` | The `S` schema builder, the validator, the `Type` and `Operation` builders, typed mappers, `Registries` with their registration checks, document export, and the contract round-trip test helper |
 | `speedyspec-operation-dispatch` | Handlers bound in the service container by operation name, middleware (permission first), and `Dispatcher::call` by name with neutral values |
+| `speedyspec-rest-contracts`, `speedyspec-rest`, `speedyspec-rest-php` | The REST transport: default routes, WordPress's hook order and error shapes, `_links`/`_embed`, and the PHP hooks adapter with `WP_REST_Request`/`WP_REST_Response` proxies. See their READMEs |
 | `speedyspec-operation-php` | The PHP facade: `SpeedySpec\Operation\{S, Type, Operation, Handler, Caller, Operations}`, `wp_register_operation`, `wp_operation_transports`, PHP value-object mappers, the `user_can` identity adapter and per-site registries. See its README |
 
 ## A call

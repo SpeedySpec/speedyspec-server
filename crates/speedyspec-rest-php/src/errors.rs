@@ -115,18 +115,27 @@ pub fn from_php(value: &PhpValue) -> Option<RestOutcome> {
     }
 }
 
-/// `error` as a `WP_Error` (`data` is its details with `status`).
+/// `error` as a `WP_Error`, in WordPress's own words: the code, message and data its REST response would carry
+/// (`rest_invalid_param` with its `params` and `details`, `rest_forbidden`, …), `status` included.
 pub fn to_wp_error(error: &OperationError) -> PhpValue {
-    let mut data = match error.details.as_ref() {
-        Value::Map(map) => map.clone(),
-        _ => IndexMap::new(),
+    let body = speedyspec_rest::errors::error_response(error).data;
+    let text = |key: &str| match body.get(key) {
+        Some(Value::String(s)) => s.clone(),
+        _ => String::new(),
     };
-    data.insert("status".into(), Value::Int(i64::from(status_of(error))));
+    let data = match body.get("data") {
+        Some(Value::Map(map)) => map.clone(),
+        _ => {
+            let mut data = IndexMap::new();
+            data.insert("status".into(), Value::Int(i64::from(status_of(error))));
+            data
+        }
+    };
     adapter(
         "error",
         &[
-            PhpValue::Str(error.code.clone()),
-            PhpValue::Str(error.message.clone()),
+            PhpValue::Str(text("code")),
+            PhpValue::Str(text("message")),
             to_php(&Value::Map(data)),
         ],
     )

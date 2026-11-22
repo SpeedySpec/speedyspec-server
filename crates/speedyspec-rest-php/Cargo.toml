@@ -31,3 +31,7 @@ speedyspec-transport = { path = "../speedyspec-transport" }
 [[test]]
 name = "hooks"
 harness = false
+
+[[test]]
+name = "end_to_end"
+harness = false
