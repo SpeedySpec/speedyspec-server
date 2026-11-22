@@ -56,3 +56,39 @@ fn str_replace_sees_searches_created_at_the_edges() {
     assert_eq!(&*StrReplace::new(pairs(&[("b", ""), ("ac", "Y")])).apply(b"abc"), b"Y");
     assert_eq!(&*StrReplace::new(pairs(&[("``", "'"), ("''", "CLOSE")])).apply(b"``'"), b"CLOSE");
 }
+
+#[test]
+fn urlencode_family() {
+    use speedyspec_wp_text::strings::{rawurldecode, rawurlencode, urldecode, urlencode};
+    assert_eq!(urlencode(b" ~+-_.aZ09\xFF{"), b"+%7E%2B-_.aZ09%FF%7B");
+    assert_eq!(rawurlencode(b" ~+-_.aZ09\xFF{"), b"%20~%2B-_.aZ09%FF%7B");
+    assert_eq!(urldecode(b"a+b%20c%zz%4"), b"a b c%zz%4");
+    assert_eq!(rawurldecode(b"a+b%20c%zz%4a"), b"a+b c%zzJ");
+}
+
+#[test]
+fn mb_strtolower_follows_php() {
+    use speedyspec_wp_text::strings::mb_strtolower;
+    // From PHP 8.5.12's mbstring: final sigma, the capital sharp s and the dotted capital I.
+    assert_eq!(mb_strtolower("ẞİΣ"), "ßi̇ς");
+    assert_eq!(mb_strtolower("ΣΑΣ ΑΣ"), "σας ας");
+}
+
+#[test]
+fn pathinfo_parts() {
+    use speedyspec_wp_text::strings::{pathinfo_extension, pathinfo_filename};
+    assert_eq!(pathinfo_extension(b"a/b.c.jpg"), Some(&b"jpg"[..]));
+    assert_eq!(pathinfo_filename(b"a/b.c.jpg"), b"b.c");
+    assert_eq!(pathinfo_extension(b"noext"), None);
+    assert_eq!(pathinfo_filename(b"noext"), b"noext");
+    assert_eq!(pathinfo_extension(b".hidden"), Some(&b"hidden"[..]));
+    assert_eq!(pathinfo_filename(b".hidden"), b"");
+    assert_eq!(pathinfo_extension(b"a.b/c"), None);
+}
+
+#[test]
+fn mb_ord_decodes_one_character() {
+    use speedyspec_wp_text::strings::mb_ord;
+    assert_eq!(mb_ord("é".as_bytes()), Some(0xE9));
+    assert_eq!(mb_ord(b"\xff"), None);
+}

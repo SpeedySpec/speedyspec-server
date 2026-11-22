@@ -3294,12 +3294,9 @@ dependencies = [
 [[package]]
 name = "pcre2-sys"
 version = "0.2.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18b9073c1a2549bd409bf4a32c94d903bb1a09bf845bc306ae148897fa0760a4"
 dependencies = [
  "cc",
  "libc",
- "pkg-config",
 ]
 
 [[package]]
@@ -5275,6 +5272,16 @@ name = "speedyspec-native-stage"
 version = "0.1.0"
 
 [[package]]
+name = "speedyspec-pcre2-link-test"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-wp-text",
+]
+
+[[package]]
 name = "speedyspec-php"
 version = "0.3.0"
 dependencies = [
@@ -6175,12 +6182,16 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-html-split",
+ "speedyspec-wp-kses",
+ "speedyspec-wp-kses-contracts",
+ "speedyspec-wp-kses-lexical",
  "speedyspec-wp-shortcode-contracts",
  "speedyspec-wp-text-contracts",
  "speedyspec-wp-text-corpus",
  "speedyspec-wp-text-escape",
  "speedyspec-wp-text-memory",
  "speedyspec-wp-utf8",
+ "unicode-normalization",
 ]
 
 [[package]]
@@ -6247,6 +6258,7 @@ dependencies = [
  "criterion 0.5.1",
  "libc",
  "memchr",
+ "proptest",
  "speedyspec-hooks",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",

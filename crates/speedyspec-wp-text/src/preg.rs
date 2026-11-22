@@ -1,5 +1,8 @@
 //! PHP's `preg_*` functions over PCRE2, the engine PHP itself uses.
 //!
+//! The PCRE2 underneath is the static PHP's own version (10.44), vendored in `vendor/pcre2-sys` with every symbol
+//! renamed, so a binary that also embeds PHP keeps both copies apart.
+//!
 //! WordPress's formatting functions are mostly regular expressions, and their exact output depends on PCRE's
 //! semantics: possessive quantifiers, conditionals, lookbehind with alternatives, byte mode. Running WordPress's
 //! patterns unchanged on PCRE2 keeps those semantics; this module adds PHP's pattern syntax (delimiters and
@@ -106,6 +109,8 @@ impl Pattern {
                     builder.utf(true).ucp(true);
                 }
                 b'U' => prefix.push_str("(?U)"),
+                // `S` (extra study) is a no-op since PHP 7.3: PCRE2 always studies.
+                b'S' => {}
                 b'\n' | b'\r' | b' ' => {}
                 other => return Err(error(format!("unknown or unsupported modifier '{}'", other as char))),
             }

@@ -1,5 +1,7 @@
 //! The outside facts formatting reads.
 
+use std::rc::Rc;
+
 use crate::TextError;
 
 /// How `wp_trim_words()` counts, as `wp_get_word_count_type()` answers.
@@ -89,4 +91,44 @@ pub type ReplacementPairs = Vec<(Vec<u8>, Vec<u8>)>;
 pub trait TexturizeOverrides {
     /// The pairs, in the array's order; `None` when the global is not set.
     fn cockney(&self) -> Result<Option<ReplacementPairs>, TextError>;
+}
+
+/// `(extension pattern, MIME type)` pairs, in order, as `wp_get_mime_types()` returns them (`jpg|jpeg|jpe`).
+pub type MimePairs = Vec<(Vec<u8>, Vec<u8>)>;
+
+/// The MIME lists `sanitize_file_name()` reads.
+///
+/// The PHP adapter calls WordPress's functions, so their `mime_types` and `upload_mimes` filters fire there.
+pub trait MimeTypes {
+    /// `wp_get_mime_types()`, shared so a lookup copies nothing.
+    fn mime_types(&self) -> Result<Rc<MimePairs>, TextError>;
+    /// `get_allowed_mime_types()` for the current user.
+    fn allowed_mime_types(&self) -> Result<Rc<MimePairs>, TextError>;
+}
+
+/// PHP's `rand( $min, $max )`, which `antispambot()` uses to choose how to write each character.
+pub trait RandomSource {
+    /// A number from `min` to `max`, both included.
+    fn rand(&self, min: i64, max: i64) -> Result<i64, TextError>;
+}
+
+/// The smileys `convert_smilies()` replaces: `$wp_smiliessearch`, `$wpsmiliestrans` and where the images are.
+pub trait Smilies {
+    /// `$wp_smiliessearch`, or `None` when it is empty (smilies off, or no table).
+    fn search(&self) -> Result<Option<Vec<u8>>, TextError>;
+    /// The keys of `$wpsmiliestrans`, in order (a fast matcher is used only when they rebuild the search).
+    fn smileys(&self) -> Result<Vec<Vec<u8>>, TextError>;
+    /// `$wpsmiliestrans[ $smiley ]`: the image file (or the text) for a smiley; `None` when it has none.
+    fn image(&self, smiley: &[u8]) -> Result<Option<Vec<u8>>, TextError>;
+    /// `includes_url( $path )`.
+    fn includes_url(&self, path: &[u8]) -> Result<Vec<u8>, TextError>;
+    /// `site_url()`.
+    fn site_url(&self) -> Result<Vec<u8>, TextError>;
+}
+
+/// Whether a link points at this site, as `wp_is_internal_link()` answers (its `wp_internal_hosts` filter fires in
+/// the PHP adapter).
+pub trait LinkContext {
+    /// `wp_is_internal_link( $url )`.
+    fn is_internal_link(&self, url: &[u8]) -> Result<bool, TextError>;
 }

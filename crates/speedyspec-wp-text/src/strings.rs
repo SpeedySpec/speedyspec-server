@@ -309,3 +309,161 @@ pub fn bytes_value(bytes: Vec<u8>) -> HookValue {
         Err(e) => HookValue::Bytes(e.into_bytes()),
     }
 }
+
+/// The hex digits PHP's URL encoders write.
+const HEX_UPPER: &[u8; 16] = b"0123456789ABCDEF";
+
+/// PHP's `php_url_encode_impl`: letters, digits and `-_.` stay; `raw` keeps `~` and writes a space as `%20`.
+fn url_encode(text: &[u8], raw: bool) -> Vec<u8> {
+    let mut out = Vec::with_capacity(text.len() + text.len() / 2);
+    for &c in text {
+        if !raw && c == b' ' {
+            out.push(b'+');
+        } else if c.is_ascii_alphanumeric() || matches!(c, b'-' | b'.' | b'_') || (raw && c == b'~') {
+            out.push(c);
+        } else {
+            out.extend_from_slice(&[b'%', HEX_UPPER[usize::from(c >> 4)], HEX_UPPER[usize::from(c & 15)]]);
+        }
+    }
+    out
+}
+
+/// PHP's `php_url_decode_ex`: `%XX` with two hex digits becomes that byte; `plus` turns `+` into a space.
+fn url_decode(text: &[u8], plus: bool) -> Vec<u8> {
+    let mut out = Vec::with_capacity(text.len());
+    let mut i = 0;
+    while i < text.len() {
+        let c = text[i];
+        if plus && c == b'+' {
+            out.push(b' ');
+        } else if c == b'%' && i + 2 < text.len() && text[i + 1].is_ascii_hexdigit() && text[i + 2].is_ascii_hexdigit() {
+            out.push(hex_value(text[i + 1]) * 16 + hex_value(text[i + 2]));
+            i += 2;
+        } else {
+            out.push(c);
+        }
+        i += 1;
+    }
+    out
+}
+
+/// The value of one hex digit.
+fn hex_value(c: u8) -> u8 {
+    match c {
+        b'0'..=b'9' => c - b'0',
+        b'a'..=b'f' => c - b'a' + 10,
+        _ => c - b'A' + 10,
+    }
+}
+
+/// PHP's `urlencode()`.
+///
+/// @param text
+///     The bytes to encode.
+/// @return
+///     Letters, digits and `-_.` as they are, a space as `+`, everything else as `%XX` (upper-case hex).
+pub fn urlencode(text: &[u8]) -> Vec<u8> {
+    url_encode(text, false)
+}
+
+/// PHP's `rawurlencode()` (RFC 3986).
+///
+/// @param text
+///     The bytes to encode.
+/// @return
+///     Letters, digits and `-_.~` as they are, everything else as `%XX`.
+pub fn rawurlencode(text: &[u8]) -> Vec<u8> {
+    url_encode(text, true)
+}
+
+/// PHP's `urldecode()`.
+///
+/// @param text
+///     The bytes to decode.
+/// @return
+///     `+` as a space, `%XX` with two hex digits as that byte, anything else as it is.
+pub fn urldecode(text: &[u8]) -> Vec<u8> {
+    url_decode(text, true)
+}
+
+/// PHP's `rawurldecode()`.
+///
+/// @param text
+///     The bytes to decode.
+/// @return
+///     `%XX` with two hex digits as that byte, anything else (`+` included) as it is.
+pub fn rawurldecode(text: &[u8]) -> Vec<u8> {
+    url_decode(text, false)
+}
+
+/// PHP's `basename()` with no suffix, on `/` separators.
+fn php_basename(path: &[u8]) -> &[u8] {
+    let end = path.iter().rposition(|&b| b != b'/').map_or(0, |i| i + 1);
+    let trimmed = &path[..end];
+    let start = trimmed.iter().rposition(|&b| b == b'/').map_or(0, |i| i + 1);
+    &trimmed[start..]
+}
+
+/// `pathinfo( $path, PATHINFO_EXTENSION )`.
+///
+/// @param path
+///     The path.
+/// @return
+///     What follows the last `.` of the base name, or `None` when the base name has no `.`.
+pub fn pathinfo_extension(path: &[u8]) -> Option<&[u8]> {
+    let base = php_basename(path);
+    base.iter().rposition(|&b| b == b'.').map(|dot| &base[dot + 1..])
+}
+
+/// `pathinfo( $path, PATHINFO_FILENAME )`.
+///
+/// @param path
+///     The path.
+/// @return
+///     The base name up to its last `.`, or all of it when it has none.
+pub fn pathinfo_filename(path: &[u8]) -> &[u8] {
+    let base = php_basename(path);
+    base.iter().rposition(|&b| b == b'.').map_or(base, |dot| &base[..dot])
+}
+
+/// `mb_strtolower( $text, 'UTF-8' )`, as PHP 8.5's mbstring lowercases.
+///
+/// Rust's lowercasing plus the code points where PHP's differs (`mb_lower_table`, generated from the embedded PHP;
+/// empty for PHP 8.5.12). Both apply Unicode's final-sigma rule.
+///
+/// @param text
+///     Valid UTF-8 text.
+/// @return
+///     The lowercased text.
+pub fn mb_strtolower(text: &str) -> String {
+    use crate::mb_lower_table::MB_LOWER_EXCEPTIONS;
+    if MB_LOWER_EXCEPTIONS.is_empty() || !text.chars().any(|c| MB_LOWER_EXCEPTIONS.binary_search_by_key(&c, |e| e.0).is_ok()) {
+        return text.to_lowercase();
+    }
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        match MB_LOWER_EXCEPTIONS.binary_search_by_key(&c, |e| e.0) {
+            Ok(i) => out.push_str(MB_LOWER_EXCEPTIONS[i].1),
+            Err(_) => out.extend(c.to_lowercase()),
+        }
+    }
+    out
+}
+
+/// `mb_ord( $text, 'UTF-8' )`.
+///
+/// @param text
+///     The bytes.
+/// @return
+///     The code point of the first character, or `None` when the text doesn't start with a valid UTF-8 character.
+pub fn mb_ord(text: &[u8]) -> Option<u32> {
+    let len = match *text.first()? {
+        0x00..=0x7F => 1,
+        0xC2..=0xDF => 2,
+        0xE0..=0xEF => 3,
+        0xF0..=0xF4 => 4,
+        _ => return None,
+    };
+    let head = std::str::from_utf8(text.get(..len)?).ok()?;
+    head.chars().next().map(u32::from)
+}

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*"]
+members = ["crates/*", "vendor/pcre2-sys"]
 
 [workspace.package]
 edition = "2024"
@@ -12,3 +12,8 @@ license = "MIT"
 strip = "symbols"
 lto = "thin"
 codegen-units = 1
+
+# The Rust patterns (speedyspec-wp-text) run on the static PHP's own PCRE2 version, built with every symbol
+# renamed so it links into the same binary as PHP's copy. See vendor/pcre2-sys/README.md.
+[patch.crates-io]
+pcre2-sys = { path = "vendor/pcre2-sys" }

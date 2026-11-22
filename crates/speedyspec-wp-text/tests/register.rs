@@ -9,20 +9,61 @@ use speedyspec_wp_text::{FilterContext, register_text_filters};
 mod api;
 
 /// `(hook, function, priority, admin only)` for every `add_filter()` line in WordPress 7.1.5's
-/// `wp-includes/default-filters.php` that names a function this crate ports, in file order (lines 77 to 762).
+/// `wp-includes/default-filters.php` that names a function this crate ports, in file order.
 const EXPECTED: &[(&str, &str, i64, i64, bool)] = &[
+    ("pre_term_name", "sanitize_text_field", 10, 1, false),
+    ("pre_comment_author_name", "sanitize_text_field", 10, 1, false),
+    ("pre_link_name", "sanitize_text_field", 10, 1, false),
+    ("pre_link_target", "sanitize_text_field", 10, 1, false),
+    ("pre_link_rel", "sanitize_text_field", 10, 1, false),
+    ("pre_user_display_name", "sanitize_text_field", 10, 1, false),
+    ("pre_user_first_name", "sanitize_text_field", 10, 1, false),
+    ("pre_user_last_name", "sanitize_text_field", 10, 1, false),
+    ("pre_user_nickname", "sanitize_text_field", 10, 1, false),
+    ("term_name", "sanitize_text_field", 10, 1, true),
+    ("comment_author_name", "sanitize_text_field", 10, 1, true),
+    ("link_name", "sanitize_text_field", 10, 1, true),
+    ("link_target", "sanitize_text_field", 10, 1, true),
+    ("link_rel", "sanitize_text_field", 10, 1, true),
+    ("user_display_name", "sanitize_text_field", 10, 1, true),
+    ("user_first_name", "sanitize_text_field", 10, 1, true),
+    ("user_last_name", "sanitize_text_field", 10, 1, true),
+    ("user_nickname", "sanitize_text_field", 10, 1, true),
+    ("pre_comment_author_email", "sanitize_email", 10, 1, false),
+    ("pre_user_email", "sanitize_email", 10, 1, false),
+    ("comment_author_email", "sanitize_email", 10, 1, false),
+    ("user_email", "sanitize_email", 10, 1, false),
     ("pre_comment_author_url", "wp_strip_all_tags", 10, 1, false),
+    ("pre_comment_author_url", "sanitize_url", 10, 1, false),
     ("pre_user_url", "wp_strip_all_tags", 10, 1, false),
+    ("pre_user_url", "sanitize_url", 10, 1, false),
     ("pre_link_url", "wp_strip_all_tags", 10, 1, false),
+    ("pre_link_url", "sanitize_url", 10, 1, false),
     ("pre_link_image", "wp_strip_all_tags", 10, 1, false),
+    ("pre_link_image", "sanitize_url", 10, 1, false),
     ("pre_link_rss", "wp_strip_all_tags", 10, 1, false),
+    ("pre_link_rss", "sanitize_url", 10, 1, false),
     ("pre_post_guid", "wp_strip_all_tags", 10, 1, false),
+    ("pre_post_guid", "sanitize_url", 10, 1, false),
     ("user_url", "wp_strip_all_tags", 10, 1, true),
+    ("user_url", "esc_url", 10, 1, false),
     ("link_url", "wp_strip_all_tags", 10, 1, true),
+    ("link_url", "esc_url", 10, 1, false),
     ("link_image", "wp_strip_all_tags", 10, 1, true),
+    ("link_image", "esc_url", 10, 1, false),
     ("link_rss", "wp_strip_all_tags", 10, 1, true),
+    ("link_rss", "esc_url", 10, 1, false),
     ("comment_url", "wp_strip_all_tags", 10, 1, true),
+    ("comment_url", "esc_url", 10, 1, false),
     ("post_guid", "wp_strip_all_tags", 10, 1, true),
+    ("post_guid", "esc_url", 10, 1, false),
+    ("pre_term_slug", "sanitize_title", 10, 1, false),
+    ("pre_post_type", "sanitize_key", 10, 1, false),
+    ("pre_post_status", "sanitize_key", 10, 1, false),
+    ("pre_post_comment_status", "sanitize_key", 10, 1, false),
+    ("pre_post_ping_status", "sanitize_key", 10, 1, false),
+    ("pre_post_mime_type", "sanitize_mime_type", 10, 1, false),
+    ("post_mime_type", "sanitize_mime_type", 10, 1, false),
     ("content_save_pre", "convert_invalid_entities", 10, 1, false),
     ("content_save_pre", "balanceTags", 50, 1, false),
     ("excerpt_save_pre", "convert_invalid_entities", 10, 1, false),
@@ -72,23 +113,29 @@ const EXPECTED: &[(&str, &str, i64, i64, bool)] = &[
     ("the_title", "wptexturize", 10, 1, false),
     ("the_title", "convert_chars", 10, 1, false),
     ("the_content", "wptexturize", 10, 1, false),
+    ("the_content", "convert_smilies", 20, 1, false),
     ("the_content", "wpautop", 10, 1, false),
     ("the_content", "shortcode_unautop", 10, 1, false),
     ("the_excerpt", "wptexturize", 10, 1, false),
+    ("the_excerpt", "convert_smilies", 10, 1, false),
     ("the_excerpt", "convert_chars", 10, 1, false),
     ("the_excerpt", "wpautop", 10, 1, false),
     ("the_excerpt", "shortcode_unautop", 10, 1, false),
     ("the_post_thumbnail_caption", "wptexturize", 10, 1, false),
+    ("the_post_thumbnail_caption", "convert_smilies", 10, 1, false),
     ("the_post_thumbnail_caption", "convert_chars", 10, 1, false),
     ("comment_text", "wptexturize", 10, 1, false),
     ("comment_text", "convert_chars", 10, 1, false),
+    ("comment_text", "make_clickable", 9, 1, false),
     ("comment_text", "force_balance_tags", 25, 1, false),
+    ("comment_text", "convert_smilies", 20, 1, false),
     ("comment_text", "wpautop", 30, 1, false),
     ("comment_excerpt", "convert_chars", 10, 1, false),
     ("list_cats", "wptexturize", 10, 1, false),
     ("widget_text", "balanceTags", 10, 1, false),
     ("widget_text_content", "capital_P_dangit", 11, 1, false),
     ("widget_text_content", "wptexturize", 10, 1, false),
+    ("widget_text_content", "convert_smilies", 20, 1, false),
     ("widget_text_content", "wpautop", 10, 1, false),
     ("widget_text_content", "shortcode_unautop", 10, 1, false),
     ("the_title_rss", "ent2ncr", 8, 1, false),
@@ -99,6 +146,11 @@ const EXPECTED: &[(&str, &str, i64, i64, bool)] = &[
     ("comment_text_rss", "ent2ncr", 8, 1, false),
     ("bloginfo_rss", "ent2ncr", 8, 1, false),
     ("the_author", "ent2ncr", 8, 1, false),
+    ("the_guid", "esc_url", 10, 1, false),
+    ("pre_kses", "wp_pre_kses_less_than", 10, 1, false),
+    ("sanitize_title", "sanitize_title_with_dashes", 10, 3, false),
+    ("pre_comment_content", "wp_rel_ugc", 15, 1, false),
+    ("comment_email", "antispambot", 10, 1, false),
     ("the_excerpt_embed", "wptexturize", 10, 1, false),
     ("the_excerpt_embed", "convert_chars", 10, 1, false),
     ("the_excerpt_embed", "wpautop", 10, 1, false),
@@ -154,4 +206,19 @@ fn the_content_chain_runs() {
     let unautop = api.shortcode_unautop(&autop).unwrap();
     let expected = api.capital_p_dangit(&unautop).unwrap().into_owned();
     assert_eq!(out, HookValue::Str(String::from_utf8(expected).unwrap()));
+}
+
+#[test]
+fn registers_plan_4_rows() {
+    let h = api::harness();
+    register_text_filters(&h.api, &h.hooks, FilterContext { admin: false }).unwrap();
+    let title = h
+        .hooks
+        .apply_filters(&HookName::from("sanitize_title"), HookValue::Str("A B".into()), vec![HookValue::Str("A B".into()), HookValue::Str("save".into())])
+        .unwrap();
+    assert_eq!(*title.read(), HookValue::Str("a-b".into()));
+    let email = h.hooks.apply_filters(&HookName::from("pre_user_email"), HookValue::Str(" a@b.co ".into()), Vec::new()).unwrap();
+    assert_eq!(*email.read(), HookValue::Str("a@b.co".into()));
+    let content = h.hooks.apply_filters(&HookName::from("pre_kses"), HookValue::Str("a < b".into()), Vec::new()).unwrap();
+    assert_eq!(*content.read(), HookValue::Str("a &lt; b".into()));
 }

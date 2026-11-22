@@ -54,11 +54,11 @@ function speedyspec_formatting_encode(mixed $value): mixed
 /** The test case base class the capture mode gives the rewritten tests: every assertion and expectation is a no-op. */
 abstract class SpeedySpecCaptureCase
 {
-    public function set_up(): void
+    public function set_up()
     {
     }
 
-    public function tear_down(): void
+    public function tear_down()
     {
     }
 
@@ -93,9 +93,36 @@ function speedyspec_capture(string $function, mixed ...$args): mixed
 }
 
 foreach (['add_filter', 'remove_filter', 'switch_to_locale', 'restore_previous_locale', 'benchmark_pcre_backtracking',
-    '_get_wptexturize_split_regex', '_get_wptexturize_shortcode_regex', 'get_shortcode_regex'] as $stub) {
+    '_get_wptexturize_split_regex', '_get_wptexturize_shortcode_regex', 'get_shortcode_regex', 'smilies_init',
+    'update_option'] as $stub) {
     if (!function_exists($stub)) {
         eval("function $stub(...\$args) { return null; }");
+    }
+}
+
+// What data providers call to build their rows: the home URL a WordPress test site has.
+if (!function_exists('home_url')) {
+    function home_url($path = '')
+    {
+        return 'http://example.org' . ($path ? '/' . ltrim($path, '/') : '');
+    }
+}
+if (!class_exists('WP_Query')) {
+    // sanitizeTextField.php's provider passes one as an argument; the encoder drops its row.
+    class WP_Query
+    {
+    }
+}
+if (!function_exists('includes_url')) {
+    function includes_url($path = '')
+    {
+        return 'https://example.org/wp-includes/' . $path;
+    }
+}
+if (!function_exists('set_url_scheme')) {
+    function set_url_scheme($url, $scheme = null)
+    {
+        return preg_replace('#^\w+://#', $scheme . '://', $url);
     }
 }
 
