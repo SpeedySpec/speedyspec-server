@@ -59,6 +59,19 @@ pub fn numeric_str(s: &str) -> Option<f64> {
     (i == b.len()).then(|| t.parse::<f64>().ok()).flatten()
 }
 
+/// `(float) $string`: the leading numeric part, 0 when there is none.
+pub fn numeric_prefix(s: &str) -> f64 {
+    let t = s.trim_start_matches([' ', '\t', '\n', '\r', '\x0b', '\x0c']);
+    let mut end = 0;
+    for i in (1..=t.len()).rev() {
+        if t.is_char_boundary(i) && numeric_str(&t[..i]).is_some() {
+            end = i;
+            break;
+        }
+    }
+    t[..end].parse::<f64>().unwrap_or(0.0)
+}
+
 /// `is_numeric( $value )`.
 pub fn is_numeric(value: &HookValue) -> bool {
     match &*value.read() {
