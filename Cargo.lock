@@ -5520,6 +5520,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-crypto-contracts"
+version = "0.1.0"
+
+[[package]]
 name = "speedyspec-wp-db"
 version = "0.1.0"
 dependencies = [
