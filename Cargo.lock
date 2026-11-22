@@ -2730,6 +2730,9 @@ name = "lru"
 version = "0.18.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef9ac18847474e638e3702b76c65d4eb93428471a74778ef0f1be711717f89b5"
+dependencies = [
+ "hashbrown 0.17.1",
+]
 
 [[package]]
 name = "lru-slab"
@@ -4586,6 +4589,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "seccompiler"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4ae55de56877481d112a559bbc12667635fdaf5e005712fd4e2b2fa50ffc884"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "secrecy"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6207,6 +6219,26 @@ dependencies = [
  "libc",
  "speedyspec-ffmpeg-sys",
  "speedyspec-wp-media-contracts",
+ "speedyspec-wp-media-testkit",
+ "tempfile",
+]
+
+[[package]]
+name = "speedyspec-wp-media-isolate"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "lru",
+ "postcard",
+ "seccompiler",
+ "serde",
+ "sha2 0.10.9",
+ "speedyspec-cache",
+ "speedyspec-cache-memory",
+ "speedyspec-wp-media",
+ "speedyspec-wp-media-contracts",
+ "speedyspec-wp-media-ffmpeg",
+ "speedyspec-wp-media-midi",
  "speedyspec-wp-media-testkit",
  "tempfile",
 ]
