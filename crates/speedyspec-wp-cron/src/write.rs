@@ -80,7 +80,7 @@ impl CronApi {
     }
 
     /// `! is_numeric( $timestamp ) || $timestamp <= 0`.
-    fn bad_timestamp(timestamp: &HookValue) -> bool {
+    pub(crate) fn bad_timestamp(timestamp: &HookValue) -> bool {
         !is_numeric(timestamp) || number(timestamp).is_none_or(|n| n <= 0.0)
     }
 
@@ -139,7 +139,10 @@ impl CronApi {
                 .store
                 .save_if(&version, with_version(cron.to_value()))?
             {
-                SaveOutcome::Written => return Ok(Ok(())),
+                SaveOutcome::Written => {
+                    self.report_wake(&cron);
+                    return Ok(Ok(()));
+                }
                 SaveOutcome::Unchanged => return Ok(Err(self.could_not_set(wp_error))),
                 SaveOutcome::Conflict if attempts >= ATTEMPTS => {
                     return Ok(Err(self.could_not_set(wp_error)));
@@ -154,6 +157,7 @@ impl CronApi {
                             return Ok(Err(done));
                         }
                         return Ok(if self.p.store.save(with_version(cron.to_value()))? {
+                            self.report_wake(&cron);
                             Ok(())
                         } else {
                             Err(self.could_not_set(wp_error))
@@ -174,7 +178,14 @@ impl CronApi {
         self.p.clock.pause(base / 2 + jitter);
     }
 
-    fn saved(result: Result<(), CronResult>) -> CronResult {
+    /// Reports the array's earliest timestamp, if any, as when cron is next due.
+    pub(crate) fn report_wake(&self, cron: &CronArray) {
+        if let Some(next) = cron.earliest() {
+            self.p.wake.wake_at(next);
+        }
+    }
+
+    pub(crate) fn saved(result: Result<(), CronResult>) -> CronResult {
         match result {
             Ok(()) => CronResult::Value(HookValue::Bool(true)),
             Err(done) => done,
@@ -195,7 +206,7 @@ impl CronApi {
     }
 
     /// Writes `$crons[ $event->timestamp ][ $event->hook ][ $key ] = array( … )` and `uksort`s.
-    fn insert_event(
+    pub(crate) fn insert_event(
         &self,
         cron: &mut CronArray,
         event: &HookValue,
@@ -322,19 +333,40 @@ impl CronApi {
         args: &HookValue,
         wp_error: bool,
     ) -> Result<CronResult, CronError> {
+        let (event, key) =
+            match self.plan_schedule_event(timestamp, recurrence, hook, args, wp_error)? {
+                Ok(planned) => planned,
+                Err(done) => return Ok(done),
+            };
+        let result = self.commit(wp_error, None, &|cron| {
+            self.insert_event(cron, &event, &key, true)
+        })?;
+        Ok(Self::saved(result))
+    }
+
+    /// `wp_schedule_event()` up to its write: validation, `pre_schedule_event` and `schedule_event`. `Ok` is the
+    /// filtered event and its key; `Err` is what the function returns without writing.
+    pub(crate) fn plan_schedule_event(
+        &self,
+        timestamp: &HookValue,
+        recurrence: &HookValue,
+        hook: &HookValue,
+        args: &HookValue,
+        wp_error: bool,
+    ) -> Result<Result<(HookValue, String), CronResult>, CronError> {
         if Self::bad_timestamp(timestamp) {
-            return Ok(self.invalid_timestamp(wp_error));
+            return Ok(Err(self.invalid_timestamp(wp_error)));
         }
         let schedules = self.get_schedules()?;
         let Some(schedule) = array_key(recurrence)
             .and_then(|k| get(&schedules, &k).cloned())
             .filter(|s| !matches!(s, HookValue::Null))
         else {
-            return Ok(self.error_or_false(
+            return Ok(Err(self.error_or_false(
                 wp_error,
                 "invalid_schedule",
                 "Event schedule does not exist.",
-            ));
+            )));
         };
         let event = self.event_object(vec![
             ("hook", hook.clone()),
@@ -359,15 +391,15 @@ impl CronApi {
             "pre_schedule_event_false",
             "A plugin prevented the event from being scheduled.",
         ) {
-            return Ok(done);
+            return Ok(Err(done));
         }
         let event = self.filter("schedule_event", event, Vec::new())?;
         if !truthy(&event) {
-            return Ok(self.error_or_false(
+            return Ok(Err(self.error_or_false(
                 wp_error,
                 "schedule_event_false",
                 "A plugin disallowed this event.",
-            ));
+            )));
         }
         let key = self
             .p
@@ -375,10 +407,7 @@ impl CronApi {
             .key(&self.prop(&event, "args"))?
             .as_str()
             .to_string();
-        let result = self.commit(wp_error, None, &|cron| {
-            self.insert_event(cron, &event, &key, true)
-        })?;
-        Ok(Self::saved(result))
+        Ok(Ok((event, key)))
     }
 
     /// `wp_reschedule_event( $timestamp, $recurrence, $hook, $args, $wp_error )`.
@@ -390,8 +419,24 @@ impl CronApi {
         args: &HookValue,
         wp_error: bool,
     ) -> Result<CronResult, CronError> {
+        match self.plan_reschedule(timestamp, recurrence, hook, args, wp_error)? {
+            Ok(next) => self.schedule_event(&next, recurrence, hook, args, wp_error),
+            Err(done) => Ok(done),
+        }
+    }
+
+    /// `wp_reschedule_event()` up to its call to `wp_schedule_event()`: validation, the interval,
+    /// `pre_reschedule_event` and the next timestamp. `Ok` is the next timestamp; `Err` is the return.
+    pub(crate) fn plan_reschedule(
+        &self,
+        timestamp: &HookValue,
+        recurrence: &HookValue,
+        hook: &HookValue,
+        args: &HookValue,
+        wp_error: bool,
+    ) -> Result<Result<HookValue, CronResult>, CronError> {
         if Self::bad_timestamp(timestamp) {
-            return Ok(self.invalid_timestamp(wp_error));
+            return Ok(Err(self.invalid_timestamp(wp_error)));
         }
         let schedules = self.get_schedules()?;
         let mut interval = match array_key(recurrence).and_then(|k| get(&schedules, &k).cloned()) {
@@ -429,14 +474,14 @@ impl CronApi {
             "pre_reschedule_event_false",
             "A plugin prevented the event from being rescheduled.",
         ) {
-            return Ok(done);
+            return Ok(Err(done));
         }
         if interval == HookValue::Int(0) {
-            return Ok(self.error_or_false(
+            return Ok(Err(self.error_or_false(
                 wp_error,
                 "invalid_schedule",
                 "Event schedule does not exist.",
-            ));
+            )));
         }
         let now = self.p.clock.time();
         let ts = number(timestamp).unwrap_or(0.0);
@@ -458,7 +503,7 @@ impl CronApi {
                 _ => HookValue::Float(now as f64 + (step - rest as f64)),
             }
         };
-        self.schedule_event(&next, recurrence, hook, args, wp_error)
+        Ok(Ok(next))
     }
 
     /// `wp_unschedule_event( $timestamp, $hook, $args, $wp_error )`.
@@ -619,7 +664,10 @@ impl CronApi {
             v @ HookValue::Array(_) => v,
             _ => HookValue::Array(Vec::new()),
         };
-        let saved = self.p.store.save(with_version(cron))?;
+        let saved = self.p.store.save(with_version(cron.clone()))?;
+        if saved {
+            self.report_wake(&CronArray::from_value(cron));
+        }
         Ok(if !saved && wp_error {
             self.could_not_set(true)
         } else {

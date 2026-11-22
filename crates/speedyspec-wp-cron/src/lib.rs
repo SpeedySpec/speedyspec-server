@@ -9,6 +9,7 @@ mod keyer;
 pub mod memory;
 mod php;
 mod read;
+mod run;
 mod schedules;
 mod write;
 

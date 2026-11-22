@@ -13,8 +13,11 @@ mod ports;
 
 pub use array::{CronArray, EventData, EventKey, ScheduledEvent, key_for};
 pub use natsort::strnatcasecmp;
-pub use outcome::{CronError, CronResult, SaveOutcome, Version};
-pub use ports::{ArgsKeyer, Clock, CronStore, PhpObjects, Translator};
+pub use outcome::{CronError, CronResult, RunSummary, SaveOutcome, Version};
+pub use ports::{
+    ArgsKeyer, Clock, CronStep, CronStore, DoingCron, ErrorReporter, PhpObjects, Translator,
+    WakeReporter,
+};
 
 /// A PHP-shaped value, as the Hook API carries it.
 pub type PhpValue = speedyspec_hooks::Value;

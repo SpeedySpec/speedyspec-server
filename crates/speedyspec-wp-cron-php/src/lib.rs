@@ -67,6 +67,10 @@ impl CronArea {
                 clock: Rc::new(SystemClock),
                 translator: Rc::new(PhpTranslator),
                 objects: Rc::new(PhpEventObjects),
+                // Replaced with the runtime's slot, the doing_cron transient and error_log() in the next tasks.
+                wake: Rc::new(speedyspec_wp_cron::memory::RecordingWake::new()),
+                doing_cron: Rc::new(speedyspec_wp_cron::memory::MemoryDoingCron::new()),
+                errors: Rc::new(speedyspec_wp_cron::memory::CollectingErrors::new()),
             })),
         }
     }

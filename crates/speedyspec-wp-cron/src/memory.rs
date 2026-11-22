@@ -1,10 +1,15 @@
-//! [`MemoryCronStore`]: the `cron` option in memory, for tests. It can stand in for another process's writes.
+//! In-memory stand-ins for tests: [`MemoryCronStore`] (the `cron` option, which can stand in for another process's
+//! writes), [`RecordingWake`], [`MemoryDoingCron`] and [`CollectingErrors`].
 
 use std::cell::{Cell, RefCell};
 
 use speedyspec_php_serialize::{from_hook_value, serialize};
-use speedyspec_wp_cron_contracts::{CronError, CronStore, SaveOutcome, Version};
+use speedyspec_wp_cron_contracts::{
+    CronError, CronResult, CronStep, CronStore, DoingCron, ErrorReporter, SaveOutcome, Version,
+    WakeReporter,
+};
 use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks::Key;
 
 type BeforeSave = Box<dyn FnOnce(&MemoryCronStore)>;
 
@@ -117,5 +122,101 @@ impl CronStore for MemoryCronStore {
         self.writes.set(self.writes.get() + 1);
         self.unconditional.set(self.unconditional.get() + 1);
         Ok(true)
+    }
+}
+
+/// Keeps the earliest wake time reported.
+#[derive(Default)]
+pub struct RecordingWake(Cell<Option<i64>>);
+
+impl RecordingWake {
+    pub fn new() -> RecordingWake {
+        RecordingWake::default()
+    }
+
+    pub fn earliest(&self) -> Option<i64> {
+        self.0.get()
+    }
+}
+
+impl WakeReporter for RecordingWake {
+    fn wake_at(&self, timestamp: i64) {
+        self.0
+            .set(Some(self.0.get().map_or(timestamp, |t| t.min(timestamp))));
+    }
+}
+
+/// The `doing_cron` transient in memory, with every change kept.
+#[derive(Default)]
+pub struct MemoryDoingCron {
+    value: RefCell<Option<String>>,
+    history: RefCell<Vec<Option<String>>>,
+}
+
+impl MemoryDoingCron {
+    pub fn new() -> MemoryDoingCron {
+        MemoryDoingCron::default()
+    }
+
+    /// Each set (`Some`) and delete (`None`), in order.
+    pub fn history(&self) -> Vec<Option<String>> {
+        self.history.borrow().clone()
+    }
+}
+
+impl DoingCron for MemoryDoingCron {
+    fn get(&self) -> Result<Option<String>, CronError> {
+        Ok(self.value.borrow().clone())
+    }
+
+    fn set(&self, value: &str) -> Result<(), CronError> {
+        *self.value.borrow_mut() = Some(value.to_string());
+        self.history.borrow_mut().push(Some(value.to_string()));
+        Ok(())
+    }
+
+    fn delete(&self) -> Result<(), CronError> {
+        *self.value.borrow_mut() = None;
+        self.history.borrow_mut().push(None);
+        Ok(())
+    }
+}
+
+/// Keeps each reported failure as (step, hook, code); the error handed to the action is an array tagged
+/// `__wp_error` with the code.
+#[derive(Default)]
+pub struct CollectingErrors(RefCell<Vec<(CronStep, String, String)>>);
+
+impl CollectingErrors {
+    pub fn new() -> CollectingErrors {
+        CollectingErrors::default()
+    }
+
+    pub fn reported(&self) -> Vec<(CronStep, String, String)> {
+        self.0.borrow().clone()
+    }
+}
+
+impl ErrorReporter for CollectingErrors {
+    fn report(
+        &self,
+        step: CronStep,
+        hook: &HookValue,
+        error: &CronResult,
+        _event: &HookValue,
+    ) -> HookValue {
+        let code = match error {
+            CronResult::Error { code, .. } => (*code).to_string(),
+            _ => "value".to_string(),
+        };
+        let hook = match hook {
+            HookValue::Str(s) => s.clone(),
+            other => format!("{other:?}"),
+        };
+        self.0.borrow_mut().push((step, hook, code.clone()));
+        HookValue::Array(vec![
+            (Key::Str("__wp_error".into()), HookValue::Bool(true)),
+            (Key::Str("code".into()), HookValue::Str(code)),
+        ])
     }
 }
