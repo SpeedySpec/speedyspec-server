@@ -5576,6 +5576,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-transport-hooks-wp"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "speedyspec-operation-contracts",
+ "speedyspec-transport-contracts",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+]
+
+[[package]]
 name = "speedyspec-wp-db"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,16 @@
+[package]
+name = "speedyspec-transport-hooks-wp"
+version = "0.1.0"
+description = "Transport hooks over WordPress's Hook API: neutral values to and from hook values, filters and actions through speedyspec-wp-hooks."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
+speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+
+[dev-dependencies]
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
