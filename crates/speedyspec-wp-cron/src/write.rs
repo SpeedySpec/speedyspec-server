@@ -145,6 +145,7 @@ impl CronApi {
                     return Ok(Err(self.could_not_set(wp_error)));
                 }
                 SaveOutcome::Conflict => {
+                    self.back_off(attempts);
                     let (raw, fresh_version, stored) = self.p.store.reload()?;
                     let fresh = self.cron_from_option(raw)?;
                     if !stored {
@@ -163,6 +164,14 @@ impl CronApi {
                 }
             }
         }
+    }
+
+    /// A randomised pause after the `attempt`th conflict (about 1–2, 2–4, 4–8 and 8–16 ms), so two writers that
+    /// keep colliding drift apart instead of one starving the other.
+    fn back_off(&self, attempt: u32) {
+        let base = 2u64 << attempt.saturating_sub(1).min(3);
+        let jitter = (self.p.clock.microtime().fract() * 1_000_000.0) as u64 % (base / 2).max(1);
+        self.p.clock.pause(base / 2 + jitter);
     }
 
     fn saved(result: Result<(), CronResult>) -> CronResult {

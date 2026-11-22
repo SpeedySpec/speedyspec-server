@@ -5751,6 +5751,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-cron-options"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+ "speedyspec-data-mysql",
+ "speedyspec-data-query",
+ "speedyspec-wp-cron",
+ "speedyspec-wp-cron-contracts",
+ "speedyspec-wp-db",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-object-cache",
+ "speedyspec-wp-options",
+ "speedyspec-wp-options-memory",
+ "speedyspec-wp-options-sql",
+]
+
+[[package]]
 name = "speedyspec-wp-crypto"
 version = "0.3.0"
 dependencies = [

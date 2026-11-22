@@ -25,10 +25,12 @@ pub trait ArgsKeyer {
     fn key(&self, args: &Value) -> Result<EventKey, CronError>;
 }
 
-/// `microtime( true )` and `time()`.
+/// `microtime( true )` and `time()`, and a pause between compare-and-swap attempts.
 pub trait Clock {
     fn microtime(&self) -> f64;
     fn time(&self) -> i64;
+    /// Waits about `millis` milliseconds (a test clock need not wait).
+    fn pause(&self, millis: u64);
 }
 
 /// `__( $text )`.

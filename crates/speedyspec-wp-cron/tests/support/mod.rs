@@ -24,6 +24,7 @@ impl Clock for FixedClock {
     fn time(&self) -> i64 {
         self.0.get() as i64
     }
+    fn pause(&self, _millis: u64) {}
 }
 
 pub struct SameText;
