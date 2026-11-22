@@ -23,7 +23,7 @@ class Tests_Formatting_SanitizeKey extends WP_UnitTestCase {
 	 *
 	 * @return array
 	 */
-	public function data_sanitize_key() {
+	public static function data_sanitize_key() {
 		return array(
 			'an empty string key'            => array(
 				'key'      => '',
@@ -76,7 +76,7 @@ class Tests_Formatting_SanitizeKey extends WP_UnitTestCase {
 	 *
 	 * @return array
 	 */
-	public function data_sanitize_key_nonstring_scalar() {
+	public static function data_sanitize_key_nonstring_scalar() {
 		return array(
 			'integer type'  => array(
 				'key'      => 0,
@@ -103,18 +103,18 @@ class Tests_Formatting_SanitizeKey extends WP_UnitTestCase {
 	 *
 	 * @param mixed $nonscalar_key A non-scalar data type given as a key.
 	 */
-	public function test_sanitize_key_with_non_scalars( $nonscalar_key ) {
+	public function test_sanitize_key_with_non_scalars( $key, $expected ) {
 		add_filter(
 			'sanitize_key',
-			function ( $sanitized_key, $key ) use ( $nonscalar_key ) {
+			function ( $sanitized_key, $given ) use ( $key ) {
 				$this->assertEmpty( $sanitized_key, 'Empty string not passed as first filtered argument' );
-				$this->assertSame( $nonscalar_key, $key, 'Given unsanitized key not passed as second filtered argument' );
+				$this->assertSame( $key, $given, 'Given unsanitized key not passed as second filtered argument' );
 				return $sanitized_key;
 			},
 			10,
 			2
 		);
-		$this->assertEmpty( sanitize_key( $nonscalar_key ), 'Non-scalar key did not return empty string' );
+		$this->assertEmpty( sanitize_key( $key ), 'Non-scalar key did not return empty string' );
 	}
 
 	/**
@@ -122,7 +122,7 @@ class Tests_Formatting_SanitizeKey extends WP_UnitTestCase {
 	 *
 	 * @return array
 	 */
-	public function data_sanitize_key_with_non_scalars() {
+	public static function data_sanitize_key_with_non_scalars() {
 		return array(
 			'array type' => array(
 				'key'      => array( 'key' ),

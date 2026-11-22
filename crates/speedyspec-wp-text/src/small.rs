@@ -7,7 +7,7 @@ use memchr::memmem;
 use speedyspec_wp_text_escape::{Charset, EntFlags, htmlspecialchars};
 
 use crate::ent2ncr_table::ENT2NCR;
-use crate::preg::{Pattern, preg_replace};
+
 use crate::strings::{PHP_TRIM_DEFAULT, StrReplace, StrtrTable, php_trim, replace_one, strtr};
 
 /// The fragment `wp_spaces_regexp()` returns by default, before its filter: what counts as a space in
@@ -43,9 +43,6 @@ pub fn normalize_whitespace(s: &[u8]) -> Cow<'_, [u8]> {
     Cow::Owned(out)
 }
 
-// formatting.php, convert_chars().
-static CONVERT_CHARS: LazyLock<Pattern> = LazyLock::new(|| Pattern::php("/&([^#])(?![a-z1-4]{1,8};)/i"));
-
 /// WordPress's `convert_chars()`: a bare `&` that doesn't start a reference becomes `&#038;`.
 ///
 /// The deprecated second argument is the facade's to report.
@@ -55,10 +52,41 @@ static CONVERT_CHARS: LazyLock<Pattern> = LazyLock::new(|| Pattern::php("/&([^#]
 /// @return
 ///     The converted text, borrowed when there is nothing to convert.
 pub fn convert_chars(content: &[u8]) -> Cow<'_, [u8]> {
-    if memchr::memchr(b'&', content).is_none() {
-        return Cow::Borrowed(content);
+    // `/&([^#])(?![a-z1-4]{1,8};)/i` by hand: an `&` and the byte after it (not `#`) match unless that byte is
+    // followed by 1 to 8 of `[a-zA-Z1-4]` and then `;`; a match is replaced by `&#038;` and that byte.
+    let entity_like = |rest: &[u8]| {
+        let run = rest.iter().take(9).take_while(|b| b.is_ascii_alphabetic() || (b'1'..=b'4').contains(b)).count();
+        (1..=8).contains(&run) && rest.get(run) == Some(&b';')
+    };
+    let mut out: Option<Vec<u8>> = None;
+    let mut copied = 0;
+    let mut i = match memchr::memchr(b'&', content) {
+        Some(i) => i,
+        None => return Cow::Borrowed(content),
+    };
+    while i < content.len() {
+        if content[i] == b'&' && content.get(i + 1).is_some_and(|&c| c != b'#') && !entity_like(&content[i + 2..]) {
+            let buf = out.get_or_insert_with(|| Vec::with_capacity(content.len() + 16));
+            buf.extend_from_slice(&content[copied..i]);
+            buf.extend_from_slice(b"&#038;");
+            buf.push(content[i + 1]);
+            i += 2;
+            copied = i;
+            continue;
+        }
+        i += 1;
+        match memchr::memchr(b'&', &content[i.min(content.len())..]) {
+            Some(next) => i += next,
+            None => break,
+        }
     }
-    preg_replace(&CONVERT_CHARS, content, b"&#038;$1", None).map_or(Cow::Borrowed(content), |(out, _)| out)
+    match out {
+        None => Cow::Borrowed(content),
+        Some(mut buf) => {
+            buf.extend_from_slice(&content[copied..]);
+            Cow::Owned(buf)
+        }
+    }
 }
 
 /// `convert_invalid_entities()`'s `$wp_htmltranswinuni`: Windows-1252 code points written as references to the
@@ -121,6 +149,16 @@ pub fn capital_p_dangit<'a>(text: &'a [u8], in_title: bool, opening_double_quote
     if in_title {
         return replace_one(text, b"Wordpress", b"WordPress");
     }
+    capital_p_dangit_replace(opening_double_quote).apply(text)
+}
+
+/// `capital_P_dangit()`'s `str_replace()` outside titles, for one opening double quote; build it once and reuse it.
+///
+/// @param opening_double_quote
+///     The translated opening double quote.
+/// @return
+///     The prepared replacement.
+pub fn capital_p_dangit_replace(opening_double_quote: &[u8]) -> StrReplace {
     let quoted = |prefix: &[u8], word: &[u8]| [prefix, word].concat();
     StrReplace::new(
         [&b" "[..], b"&#8216;", opening_double_quote, b">", b"("]
@@ -128,7 +166,6 @@ pub fn capital_p_dangit<'a>(text: &'a [u8], in_title: bool, opening_double_quote
             .map(|p| (quoted(p, b"Wordpress"), quoted(p, b"WordPress")))
             .collect(),
     )
-    .apply(text)
 }
 
 /// `format_for_editor()`'s escaping: a truthy text gets `htmlspecialchars( $text, ENT_NOQUOTES, $charset )`.

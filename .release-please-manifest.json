@@ -49,6 +49,7 @@
   "crates/speedyspec-wp-utf8-php": "0.1.3",
   "crates/speedyspec-wp-kses-php": "0.1.2",
   "crates/speedyspec-wp-text": "0.1.2",
+  "crates/speedyspec-wp-text-php": "0.1.2",
   "crates/speedyspec-wp-token-map-php": "0.1.2",
   "crates/speedyspec-wp-crypto": "0.2.0",
   "crates/speedyspec-wp-crypto-contracts": "0.2.0",

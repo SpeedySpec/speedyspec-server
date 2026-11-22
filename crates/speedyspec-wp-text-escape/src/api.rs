@@ -22,9 +22,10 @@ use crate::xml::esc_xml_after_check;
 /// @param e
 ///     The hook error.
 /// @return
-///     The same message, as a `TextError`.
+///     The same message as a `TextError`, keeping the hook error's payload (a PHP exception object, for the PHP
+///     surface to rethrow).
 pub fn text_error(e: HookError) -> TextError {
-    TextError::message(e.to_string())
+    TextError { message: e.message, payload: e.payload }
 }
 
 /// The hook names `EscapeApi` fires, hashed once.
@@ -52,6 +53,12 @@ pub struct EscapeApi {
 }
 
 impl EscapeApi {
+    /// Forgets what WordPress keeps for one request in function statics (`wp_check_invalid_utf8()`'s `$is_utf8`), so
+    /// the next request reads `blog_charset` again.
+    pub fn new_request(&self) {
+        self.is_utf8.set(None);
+    }
+
     /// A facade on the hooks and ports.
     ///
     /// @param hooks

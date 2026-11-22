@@ -39,7 +39,7 @@ jobs:
           --exclude speedyspec-data-corpus --exclude speedyspec-data-sqlite --exclude speedyspec-data-postgres
           --exclude speedyspec-wp-utf8-php --exclude speedyspec-wp-i18n-php --exclude speedyspec-wp-token-map-php
           --exclude speedyspec-router-php --exclude speedyspec-wp-rewrite-php
-          --exclude speedyspec-wp-kses-php --exclude speedyspec-wp-kses --exclude speedyspec-wp-kses-lexical
+          --exclude speedyspec-wp-kses-php --exclude speedyspec-wp-text-php --exclude speedyspec-wp-kses --exclude speedyspec-wp-kses-lexical
           --exclude speedyspec-wp-kses-testkit --exclude speedyspec-wp-html-syntax
           --exclude speedyspec-wp-crypto-sodium --exclude speedyspec-wp-crypto-php
           --exclude speedyspec-pcre2-link-test

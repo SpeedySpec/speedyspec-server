@@ -84,3 +84,18 @@ fn iso_site_keeps_bytes() {
     let (_, api) = api_with(Rc::new(settings));
     assert_eq!(api.esc_html(b"\xE9<").unwrap(), HookValue::Bytes(b"\xE9&lt;".to_vec()));
 }
+
+#[test]
+fn escape_new_request_rereads_charset() {
+    let (_, api) = api_with(Rc::new(Changing(Cell::new(0))));
+    assert_eq!(api.check_invalid_utf8(b"a\xC0b", false).unwrap(), b"");
+    api.new_request();
+    assert_eq!(api.check_invalid_utf8(b"a\xC0b", false).unwrap(), b"a\xC0b");
+}
+
+#[test]
+fn text_error_keeps_the_payload() {
+    use speedyspec_wp_hooks::HookError;
+    let error = speedyspec_wp_text_escape::text_error(HookError { message: "x".into(), payload: Some(Rc::new(7u8)) });
+    assert_eq!(error.payload.and_then(|p| p.downcast_ref::<u8>().copied()), Some(7));
+}

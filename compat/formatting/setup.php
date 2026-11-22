@@ -10,7 +10,10 @@
 
 declare(strict_types=1);
 
-if (!SPEEDYSPEC_COMPAT_PORT) {
+// Both sides run this file. With `SPEEDYSPEC_COMPAT_PORT` true the release is the port's prepared copy (formatting.php
+// and kses.php without their ported functions), the hooks are native so plugin.php is not loaded, and copied helpers
+// a native area already declares are skipped.
+if (true) {
     define('ABSPATH', SPEEDYSPEC_COMPAT_WP_ROOT);
     define('WPINC', 'wp-includes');
 
@@ -28,6 +31,11 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
 
     function get_option($option, $default_value = false)
     {
+        // WordPress's short-circuit, which WordPress's own tests use to change an option for one test.
+        $pre = apply_filters("pre_option_{$option}", false, $option, $default_value);
+        if (false !== $pre) {
+            return $pre;
+        }
         return match ($option) {
             'blog_charset' => 'UTF-8',
             'use_smilies' => '1',
@@ -182,7 +190,9 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
     require ABSPATH . WPINC . '/compat-utf8.php';
     require ABSPATH . WPINC . '/compat.php';
     require ABSPATH . WPINC . '/utf8.php';
-    require ABSPATH . WPINC . '/plugin.php';
+    if (!SPEEDYSPEC_COMPAT_PORT) {
+        require ABSPATH . WPINC . '/plugin.php';
+    }
     // wp_kses_hair() reads attributes with the HTML Tag Processor; these are the files wp-settings.php loads for it.
     require ABSPATH . WPINC . '/class-wp-token-map.php';
     foreach (['html5-named-character-references', 'class-wp-html-attribute-token', 'class-wp-html-span',
@@ -348,13 +358,12 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
      */
     function speedyspec_capital_P_dangit_in_filter($text, $filter)
     {
-        global $wp_current_filter;
-        $saved = $wp_current_filter;
-        $wp_current_filter = [$filter];
+        // Run it as a callback of $filter, so current_filter() answers $filter with WordPress's hooks or native ones.
+        add_filter($filter, 'capital_P_dangit', 11);
         try {
-            return capital_P_dangit($text);
+            return apply_filters($filter, $text);
         } finally {
-            $wp_current_filter = $saved;
+            remove_filter($filter, 'capital_P_dangit', 11);
         }
     }
 
@@ -1043,6 +1052,7 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
      *                  This covers all common link protocols, except for 'javascript' which should not
      *                  be allowed for untrusted users.
      */
+    if (!function_exists('wp_allowed_protocols')) {
     function wp_allowed_protocols() {
     	static $protocols = array();
 
@@ -1063,6 +1073,7 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
 
     	return $protocols;
     }
+    } // function_exists( 'wp_allowed_protocols' ): kses-php declares it natively on the port's side.
 
     // Copied verbatim from WordPress 7.1.5's wp-includes/functions.php.
     /**
@@ -1203,13 +1214,13 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
      */
     function speedyspec_make_clickable_in_comment_text($text)
     {
-        global $wp_current_filter;
-        $saved = $wp_current_filter;
-        $wp_current_filter = ['comment_text'];
+        // Run it as a comment_text callback (priority 9, as default-filters.php has it), so current_filter() answers
+        // comment_text with WordPress's hooks or native ones.
+        add_filter('comment_text', 'make_clickable', 9);
         try {
-            return make_clickable($text);
+            return apply_filters('comment_text', $text);
         } finally {
-            $wp_current_filter = $saved;
+            remove_filter('comment_text', 'make_clickable', 9);
         }
     }
     /**
