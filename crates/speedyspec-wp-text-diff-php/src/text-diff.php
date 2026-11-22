@@ -18,7 +18,40 @@ namespace SpeedySpec\WpTextDiff
             'title_right'     => '',
             'show_split_view' => true,
         );
-        return wp_parse_args($args, $defaults);
+        return KeptArgs::$args = wp_parse_args($args, $defaults);
+    }
+
+    /**
+     * The arguments {@link parse_args()} last returned, for a call whose arguments Rust cannot read.
+     *
+     * @internal
+     */
+    final class KeptArgs
+    {
+        /**
+         * The arguments after `wp_parse_args()`.
+         *
+         * @var array<array-key, mixed>
+         */
+        public static array $args = array();
+    }
+
+    /**
+     * Renders with WordPress's own classes and the arguments {@link parse_args()} last returned, for a call whose
+     * parsed arguments cannot reach Rust (a key that isn't UTF-8, a recursive array).
+     *
+     * @param mixed $left_string
+     *   The "old" (left) version of the string.
+     * @param mixed $right_string
+     *   The "new" (right) version of the string.
+     * @return string
+     *   An empty string if the strings are equivalent, otherwise the HTML table.
+     */
+    function legacy_with_kept_args($left_string, $right_string)
+    {
+        $args           = KeptArgs::$args;
+        KeptArgs::$args = array();
+        return legacy_wp_text_diff($left_string, $right_string, $args);
     }
 
     /**

@@ -172,6 +172,40 @@ fn main() {
         &r,
     );
 
+    // Values Rust cannot read go to WordPress's classes, as they did before the port.
+    let r = php.eval(
+        "speedyspec://test/unreadable-arg-key",
+        "$seen = array(); set_error_handler(function ($no, $msg) use (&$seen) { $seen[] = $msg; return true; }, E_USER_DEPRECATED);
+         $r = wp_text_diff('a', 'b', array(\"caf\\xE9\" => 1)); restore_error_handler();
+         return str_starts_with($r, \"<table class='diff is-split-view'>\") && count($seen) === 1;",
+    );
+    check(
+        "unreadable_argument_keys_use_wordpress_classes",
+        matches!(r, Ok(HookValue::Bool(true))),
+        &r,
+    );
+    let r = php.eval(
+        "speedyspec://test/unreadable-query-string",
+        "$seen = array(); set_error_handler(function ($no, $msg) use (&$seen) { $seen[] = $msg; return true; }, E_USER_DEPRECATED);
+         $r = wp_text_diff('a', 'b', 'caf%E9=1'); restore_error_handler();
+         return str_starts_with($r, \"<table class='diff is-split-view'>\") && count($seen) === 1;",
+    );
+    check(
+        "unreadable_parsed_arguments_use_wordpress_classes",
+        matches!(r, Ok(HookValue::Bool(true))),
+        &r,
+    );
+    let r = php.eval(
+        "speedyspec://test/recursive-text",
+        "$a = array(); $a[] = &$a;
+         try { wp_text_diff($a, 'b'); return 'no error'; } catch (TypeError $e) { return $e->getMessage(); }",
+    );
+    check(
+        "unreadable_texts_fail_as_in_wordpress",
+        text(&r).starts_with("trim(): Argument #1"),
+        &r,
+    );
+
     // A PHP object bound to the twin replaces wp_text_diff() for the request, with WordPress's raw arguments.
     let r = php.eval(
         "speedyspec://test/bound-twin",

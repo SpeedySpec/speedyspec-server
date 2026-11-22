@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use speedyspec_php::PhpError;
+use speedyspec_php::{CallFailure, PhpError};
 use speedyspec_php_ext::PhpObject;
 use speedyspec_wp_hooks::{HookApi, HookValue as Value, Key};
 use speedyspec_wp_text_diff::contracts::{
@@ -13,15 +13,20 @@ use crate::filter::HookLineFilter;
 
 const HELPERS: &str = "SpeedySpec\\WpTextDiff\\";
 
-/// Calls `callable(...$args)`, keeping the exception PHP throws.
-fn call(callable: &Value, args: &[Value]) -> Result<Value, TextDifferError> {
-    speedyspec_php::call_catching(callable, args).map_err(|failure| match failure.exception {
+/// A failed call as the port's error: the exception PHP threw is kept, and PHP unwinding stays silent.
+fn call_error(failure: CallFailure) -> TextDifferError {
+    match failure.exception {
         Some(exception) => TextDifferError::Rethrow(exception),
         None => match failure.error {
             PhpError::Exit(_) | PhpError::Fatal { .. } => TextDifferError::Unwinding,
             other => TextDifferError::Port(other.to_string()),
         },
-    })
+    }
+}
+
+/// Calls `callable(...$args)`, keeping the exception PHP throws.
+fn call(callable: &Value, args: &[Value]) -> Result<Value, TextDifferError> {
+    speedyspec_php::call_catching(callable, args).map_err(call_error)
 }
 
 /// Calls one of the facade's helpers in `SpeedySpec\WpTextDiff`.
@@ -39,6 +44,10 @@ fn bytes(value: &Value) -> Option<Vec<u8>> {
 }
 
 /// What WordPress's `wp_text_diff()` reaches in PHP: the facade's helpers and the Hook API.
+///
+/// When the parsed arguments cannot reach Rust (a key that isn't UTF-8, a recursive or too deep array),
+/// [`TextDiffHost::parse_args`] answers `null`, which no parse gives, so the call takes the fallback; the fallback then
+/// renders with the array the facade kept, instead of parsing the arguments (and running `wp_parse_str`) twice.
 pub struct PhpTextDiffHost {
     hooks: Rc<HookApi>,
 }
@@ -52,7 +61,16 @@ impl PhpTextDiffHost {
 
 impl TextDiffHost for PhpTextDiffHost {
     fn parse_args(&self, args: &Value) -> Result<Value, TextDifferError> {
-        helper("parse_args", std::slice::from_ref(args))
+        let callable = Value::Str(format!("{HELPERS}parse_args"));
+        match speedyspec_php::call_catching(&callable, std::slice::from_ref(args)) {
+            Err(failure)
+                if failure.exception.is_none()
+                    && matches!(failure.error, PhpError::Conversion(_)) =>
+            {
+                Ok(Value::Null)
+            }
+            other => other.map_err(call_error),
+        }
     }
 
     fn load_renderer(&self) -> Result<(), TextDifferError> {
@@ -79,10 +97,13 @@ impl TextDiffHost for PhpTextDiffHost {
     }
 
     fn legacy(&self, left: &Value, right: &Value, args: &Value) -> Result<Value, TextDifferError> {
-        helper(
-            "legacy_wp_text_diff",
-            &[left.clone(), right.clone(), args.clone()],
-        )
+        match args {
+            Value::Null => helper("legacy_with_kept_args", &[left.clone(), right.clone()]),
+            _ => helper(
+                "legacy_wp_text_diff",
+                &[left.clone(), right.clone(), args.clone()],
+            ),
+        }
     }
 
     fn line_filter(&self) -> Box<dyn CheckedLineFilter> {

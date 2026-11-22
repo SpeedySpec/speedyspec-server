@@ -26,7 +26,7 @@ use speedyspec_container_php::ContainerArea;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
-use speedyspec_wp_hooks::{HookApi, HookValue};
+use speedyspec_wp_hooks::HookApi;
 use speedyspec_wp_text_diff::WordPressTextDiffer;
 use speedyspec_wp_text_diff::contracts::{TEXT_DIFFER, TextDiffer, TextDifferError};
 
@@ -76,14 +76,15 @@ fn native_error(err: TextDifferError) -> NativeError {
 impl NativeArea for TextDiffArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
         let container = self.container.clone();
-        vec![native::function(
+        // The arguments pass through unconverted: Rust reads only what it needs, and a value it cannot read
+        // (a key that isn't UTF-8, a recursive array) goes back to PHP untouched for WordPress's own classes.
+        vec![native::raw_function(
             "SpeedySpec\\WpTextDiff\\Native\\wp_text_diff",
             move |args| {
-                let arg = |i: usize| args.get(i).cloned().unwrap_or(HookValue::Null);
                 container
                     .make_port::<dyn TextDiffer>(TEXT_DIFFER)
                     .map_err(|err| NativeError::throw("Error", err.to_string()))?
-                    .diff(&arg(0), &arg(1), &arg(2))
+                    .diff(&args.pass(0), &args.pass(1), &args.pass(2))
                     .map_err(native_error)
             },
         )]
