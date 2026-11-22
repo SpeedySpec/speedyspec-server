@@ -29,4 +29,12 @@ pub trait BlockMetadata {
     /// The block registered under `name` right now (`WP_Block_Type_Registry::get_registered()`), which may differ
     /// from what `registered()` remembers: WordPress's layout styles read the live registry.
     fn current(&self, name: &str) -> Option<RegisteredBlock>;
+    /// Every block registered right now, with its current supports (`get_all_registered()`).
+    fn registered_now(&self) -> Vec<RegisteredBlock> {
+        self.registered().to_vec()
+    }
+    /// `WP_Block_Styles_Registry::get_instance()->get_all_registered()`: block name → style name → style.
+    fn registered_styles(&self) -> Value {
+        Value::Array(Vec::new())
+    }
 }

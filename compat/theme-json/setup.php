@@ -279,3 +279,166 @@ function compat_release_json(string $path): mixed
 {
     return json_decode(file_get_contents(SPEEDYSPEC_COMPAT_WP_ROOT . $path), true);
 }
+
+/*
+ * The theme environment the resolver and the global styles functions read, the same on both sides: a theme stub over
+ * the directories compat_switch_theme() sets, theme supports, the user's global styles post, and the object cache.
+ */
+
+/** A minimal `WP_Theme` over a theme directory: its `style.css` headers, `get_file_path()` and its parent. */
+class Compat_Theme
+{
+    public function __construct(public string $dir, public ?string $template_dir = null) {}
+
+    private function header(string $name): string|false
+    {
+        $css = @file_get_contents($this->dir . '/style.css');
+        if (false !== $css && preg_match('/^[ \t\/*#@]*' . preg_quote($name, '/') . ':(.*)$/mi', $css, $m)) {
+            return trim(preg_replace('/\s*(?:\*\/|\?>).*/', '', $m[1]));
+        }
+        return false;
+    }
+
+    public function get($header) { return $this->header($header); }
+    public function get_stylesheet() { return basename($this->dir); }
+    public function get_stylesheet_directory() { return $this->dir; }
+    public function get_template_directory() { return $this->template_dir ?? $this->dir; }
+    public function parent() { return null === $this->template_dir ? false : new Compat_Theme($this->template_dir); }
+    public function get_file_path($file = '')
+    {
+        $file = ltrim($file, '/');
+        $stylesheet = $this->get_stylesheet_directory();
+        $template = $this->get_template_directory();
+        if (empty($file)) {
+            $path = $stylesheet;
+        } elseif ($stylesheet !== $template && file_exists($stylesheet . '/' . $file)) {
+            $path = $stylesheet . '/' . $file;
+        } else {
+            $path = $template . '/' . $file;
+        }
+        return apply_filters('theme_file_path', $path, $file);
+    }
+}
+
+/** Activates the theme in `$dir` (with the parent in `$template_dir`). */
+function compat_switch_theme(string $dir, ?string $template_dir = null): void
+{
+    $GLOBALS['compat_theme'] = new Compat_Theme($dir, $template_dir);
+}
+
+if (!function_exists('wp_get_theme')) {
+    function wp_get_theme($stylesheet = '', $theme_root = '') { return $GLOBALS['compat_theme'] ?? new Compat_Theme(''); }
+}
+if (!function_exists('get_stylesheet')) {
+    function get_stylesheet() { return wp_get_theme()->get_stylesheet(); }
+}
+if (!function_exists('get_stylesheet_directory')) {
+    function get_stylesheet_directory() { return wp_get_theme()->get_stylesheet_directory(); }
+}
+if (!function_exists('get_template_directory')) {
+    function get_template_directory() { return wp_get_theme()->get_template_directory(); }
+}
+if (!function_exists('wp_is_development_mode')) {
+    function wp_is_development_mode($mode) { return in_array($mode, $GLOBALS['compat_development_modes'] ?? array(), true); }
+}
+if (!function_exists('wp_is_block_theme')) {
+    function wp_is_block_theme() { return file_exists(get_template_directory() . '/templates/index.html') || file_exists(get_template_directory() . '/block-templates/index.html'); }
+}
+if (!function_exists('get_theme_support')) {
+    function get_theme_support($feature, ...$args) { return $GLOBALS['compat_theme_support_args'][$feature] ?? false; }
+}
+if (!function_exists('translate_with_gettext_context')) {
+    function translate_with_gettext_context($text, $context, $domain = 'default') { return $text; }
+}
+if (!function_exists('get_theme_file_uri')) {
+    function get_theme_file_uri($file = '') { return 'https://example.org/wp-content/themes/' . get_stylesheet() . '/' . ltrim($file, '/'); }
+}
+if (!function_exists('wp_check_filetype')) {
+    function wp_check_filetype($filename, $mimes = null)
+    {
+        $types = array('jpg|jpeg|jpe' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp', 'avif' => 'image/avif');
+        foreach ($types as $exts => $mime) {
+            if (preg_match('!\.(' . $exts . ')$!i', $filename, $m)) {
+                return array('ext' => $m[1], 'type' => $mime);
+            }
+        }
+        return array('ext' => false, 'type' => false);
+    }
+}
+if (!function_exists('is_wp_error')) {
+    function is_wp_error($thing) { return false; }
+}
+
+/** Gives the theme a feature with arguments, as `add_theme_support( $feature, $args )` would. */
+function compat_add_theme_support_args(string $feature, $args): void
+{
+    $GLOBALS['compat_theme_support_args'][$feature] = array($args);
+    $GLOBALS['compat_theme_supports'][] = $feature;
+}
+
+/** The user's global styles posts, by theme stylesheet. */
+if (!class_exists('WP_Post', false)) {
+    class WP_Post
+    {
+        public $ID; public $post_content = ''; public $post_status = 'publish'; public $post_type = 'wp_global_styles';
+        public $post_title = ''; public $post_name = '';
+        public function __construct(array $fields) { foreach ($fields as $k => $v) { $this->$k = $v; } }
+    }
+}
+if (!class_exists('WP_Query', false)) {
+    class WP_Query
+    {
+        public function query($args)
+        {
+            $stylesheet = $args['tax_query'][0]['terms'] ?? '';
+            $statuses = (array) ($args['post_status'] ?? array('publish'));
+            foreach (array_reverse($GLOBALS['compat_posts'] ?? array()) as $post) {
+                if (($post['stylesheet'] ?? '') === $stylesheet && in_array($post['post_status'] ?? 'publish', $statuses, true)) {
+                    return array(new WP_Post(array_diff_key($post, array('stylesheet' => 1))));
+                }
+            }
+            return array();
+        }
+    }
+}
+if (!function_exists('wp_insert_post')) {
+    function wp_insert_post($postarr, $wp_error = false)
+    {
+        $id = 100 + count($GLOBALS['compat_posts'] ?? array());
+        $GLOBALS['compat_posts'][] = array('ID' => $id, 'stylesheet' => $postarr['tax_input']['wp_theme'][0] ?? '') + $postarr;
+        return $id;
+    }
+}
+if (!function_exists('get_post')) {
+    function get_post($id)
+    {
+        foreach ($GLOBALS['compat_posts'] ?? array() as $post) {
+            if (($post['ID'] ?? null) === $id) {
+                return new WP_Post(array_diff_key($post, array('stylesheet' => 1)));
+            }
+        }
+        return null;
+    }
+}
+
+/** Saves the user's global styles for a theme. */
+function compat_add_user_styles(string $stylesheet, array $data, string $status = 'publish'): void
+{
+    $id = 100 + count($GLOBALS['compat_posts'] ?? array());
+    $GLOBALS['compat_posts'][] = array('ID' => $id, 'stylesheet' => $stylesheet, 'post_status' => $status,
+        'post_content' => json_encode($data), 'post_type' => 'wp_global_styles');
+}
+
+/** Loads WordPress's resolver and what it calls (the recorder; the port defines its own). */
+function compat_load_resolver(): void
+{
+    compat_load_functions('wp-includes/functions.php', ['wp_json_file_decode', 'wp_normalize_path', 'wp_is_stream']);
+    compat_load_functions('wp-includes/l10n.php', ['translate_settings_using_i18n_schema']);
+    compat_load_functions('wp-includes/block-editor.php', ['get_classic_theme_supports_block_editor_settings']);
+    compat_load_functions('wp-includes/block-supports/block-style-variations.php', ['wp_register_block_style_variations_from_theme_json_partials']);
+    compat_load_functions('wp-includes/blocks.php', ['register_block_style']);
+    if (!SPEEDYSPEC_COMPAT_PORT) {
+        compat_load_functions('wp-includes/global-styles-and-settings.php', ['wp_theme_has_theme_json']);
+        require_once SPEEDYSPEC_COMPAT_WP_ROOT . 'wp-includes/class-wp-theme-json-resolver.php';
+    }
+}

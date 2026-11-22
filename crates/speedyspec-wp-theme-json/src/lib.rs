@@ -28,9 +28,11 @@ pub mod filters;
 pub mod layout;
 mod memory;
 pub mod nodes;
+pub mod php_json;
 #[allow(dead_code)] // Used by the stylesheet pieces as they land.
 pub(crate) mod php_value;
 pub mod presets;
+pub mod resolver;
 pub mod security;
 pub mod selectors;
 pub mod sheet;
@@ -39,8 +41,9 @@ pub mod stylesheet;
 pub use construct::{construct, construct_value, valid_names};
 pub use deps::ThemeJsonDeps;
 pub use memory::{
-    MemoryBlockMetadata, MemoryCapabilities, MemoryGlobalSettings, MemoryThemeSupports,
-    NoCapabilities, NoThemeSupports, NoTranslation, RecordedDiagnostics,
+    MemoryActiveTheme, MemoryBlockMetadata, MemoryCapabilities, MemoryGlobalSettings,
+    MemoryGlobalStylesPosts, MemoryThemeSupports, MemoryVariationRegistrar, MemoryWpCache,
+    NoCapabilities, NoLayerFilters, NoThemeSupports, NoTranslation, RecordedDiagnostics,
 };
 pub mod merge;
 
