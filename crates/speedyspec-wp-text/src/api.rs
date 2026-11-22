@@ -18,7 +18,7 @@ use crate::autop::AutopOptions;
 use crate::autop_fast::wpautop;
 use crate::balance::force_balance_tags;
 use crate::small::{DEFAULT_SPACES, capital_p_dangit, convert_chars, ent2ncr, format_for_editor_core};
-use crate::strings::{bytes_value, to_php_string};
+use crate::strings::{StrReplace, bytes_value, to_php_string};
 use crate::strip::wp_strip_all_tags_core;
 use crate::texturize::{HandTexturizer, TexturizeScope, TexturizeTables, Texturizer};
 use crate::trim::{wp_html_excerpt, wp_trim_words_core};
@@ -52,8 +52,8 @@ pub type AutopFn = for<'a> fn(&'a [u8], AutopOptions) -> Cow<'a, [u8]>;
 struct Statics {
     /// `wp_spaces_regexp()`'s `$spaces`, once non-empty.
     spaces: Option<Vec<u8>>,
-    /// `capital_P_dangit()`'s `$dblq`.
-    opening_double_quote: Option<Vec<u8>>,
+    /// `capital_P_dangit()`'s `$dblq`, and its replacement built once.
+    opening_double_quote: Option<(Vec<u8>, Rc<StrReplace>)>,
     /// `wptexturize()`'s tables, built on the first non-empty call and on `$reset`.
     tables: Option<Rc<TexturizeTables>>,
     /// `wptexturize()`'s `$run_texturize`: once a filter turns it off, it stays off.
@@ -351,16 +351,21 @@ impl TextApi {
         if in_title {
             return Ok(capital_p_dangit(text, true, b""));
         }
-        let cached = self.statics.borrow().opening_double_quote.clone();
-        let quote = match cached {
-            Some(quote) => quote,
+        // `static $dblq`: translated on the first call, as WordPress does, whatever the text.
+        let cached = self.statics.borrow().opening_double_quote.as_ref().map(|(_, r)| r.clone());
+        let replace = match cached {
+            Some(replace) => replace,
             None => {
                 let quote = self.translate_x("&#8220;", "opening curly double quote")?.into_bytes();
-                self.statics.borrow_mut().opening_double_quote = Some(quote.clone());
-                quote
+                let replace = Rc::new(crate::small::capital_p_dangit_replace(&quote));
+                self.statics.borrow_mut().opening_double_quote = Some((quote, replace.clone()));
+                replace
             }
         };
-        Ok(capital_p_dangit(text, false, &quote))
+        if memchr::memmem::find(text, b"Wordpress").is_none() {
+            return Ok(Cow::Borrowed(text));
+        }
+        Ok(replace.apply(text))
     }
 
     /// `convert_chars( $content, $deprecated )`.

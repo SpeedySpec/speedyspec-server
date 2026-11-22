@@ -2,11 +2,13 @@
 //! uses, so its filters (`gettext`, `locale`, `mime_types`, `upload_mimes`, `wp_internal_hosts`, ...) fire in PHP.
 
 use std::any::Any;
+use std::cell::RefCell;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
 use speedyspec_php::{CallFailure, PhpError};
 use speedyspec_php_ext::{Key, Value};
+use speedyspec_wp_hooks::{HasFilterResult, HookApi, HookName};
 use speedyspec_wp_shortcode_contracts::{ShortcodeTagNames, TagName};
 use speedyspec_wp_text::strings::to_php_string;
 use speedyspec_wp_text_contracts::{
@@ -182,15 +184,71 @@ impl ShortcodeTagNames for PhpShortcodeTags {
 }
 
 /// `wp_get_mime_types()` and `get_allowed_mime_types()` (their `mime_types` and `upload_mimes` filters fire in PHP).
-pub struct PhpMimeTypes;
+///
+/// While nothing is hooked to those filters the lists can't change within a request, so each is read from PHP once
+/// per request; with a callback on either, every call goes to PHP, as WordPress's does.
+pub struct PhpMimeTypes {
+    hooks: Option<Rc<HookApi>>,
+    cache: RefCell<MimeCache>,
+}
+
+/// The known and the allowed lists, once read this request.
+type MimeCache = (Option<Rc<MimePairs>>, Option<Rc<MimePairs>>);
+
+impl PhpMimeTypes {
+    /// An adapter that always asks PHP.
+    pub fn uncached() -> PhpMimeTypes {
+        PhpMimeTypes { hooks: None, cache: RefCell::new((None, None)) }
+    }
+
+    /// An adapter that keeps the lists for a request while `hooks` has nothing on `mime_types` or `upload_mimes`.
+    ///
+    /// @param hooks
+    ///     The shared hook store's API.
+    /// @return
+    ///     The adapter.
+    pub fn cached(hooks: Rc<HookApi>) -> PhpMimeTypes {
+        PhpMimeTypes { hooks: Some(hooks), cache: RefCell::new((None, None)) }
+    }
+
+    /// Forgets the lists (at the start of a request).
+    pub fn new_request(&self) {
+        *self.cache.borrow_mut() = (None, None);
+    }
+
+    /// Whether the lists may be kept: nothing is hooked to either filter.
+    fn steady(&self) -> bool {
+        let Some(hooks) = &self.hooks else { return false };
+        ["mime_types", "upload_mimes"].iter().all(|name| {
+            matches!(hooks.has_filter(&HookName::from(*name), None, None), Ok(HasFilterResult::No))
+        })
+    }
+
+    fn read(&self, allowed: bool, function: &str) -> Result<Rc<MimePairs>, TextError> {
+        let steady = self.steady();
+        if steady {
+            let cache = self.cache.borrow();
+            let slot = if allowed { &cache.1 } else { &cache.0 };
+            if let Some(list) = slot {
+                return Ok(list.clone());
+            }
+        }
+        let list = Rc::new(string_pairs(&call(function, &[])?));
+        if steady {
+            let mut cache = self.cache.borrow_mut();
+            *(if allowed { &mut cache.1 } else { &mut cache.0 }) = Some(list.clone());
+        }
+        Ok(list)
+    }
+}
 
 impl MimeTypes for PhpMimeTypes {
     fn mime_types(&self) -> Result<Rc<MimePairs>, TextError> {
-        Ok(Rc::new(string_pairs(&call("wp_get_mime_types", &[])?)))
+        self.read(false, "wp_get_mime_types")
     }
 
     fn allowed_mime_types(&self) -> Result<Rc<MimePairs>, TextError> {
-        Ok(Rc::new(string_pairs(&call("get_allowed_mime_types", &[])?)))
+        self.read(true, "get_allowed_mime_types")
     }
 }
 

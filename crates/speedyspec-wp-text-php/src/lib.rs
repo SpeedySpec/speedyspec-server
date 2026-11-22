@@ -7,6 +7,7 @@
 
 pub mod adapters;
 mod args;
+mod fast;
 mod native;
 mod release;
 
@@ -44,6 +45,7 @@ pub fn native_names() -> Vec<&'static str> {
 pub struct TextArea {
     api: Rc<TextApi>,
     escape: Rc<EscapeApi>,
+    mime_types: Rc<PhpMimeTypes>,
 }
 
 impl TextArea {
@@ -61,6 +63,7 @@ impl TextArea {
         let settings = Rc::new(PhpSiteSettings);
         let diagnostics = Rc::new(PhpDiagnostics);
         let escape = Rc::new(EscapeApi::new(hooks.clone(), settings.clone(), diagnostics.clone()));
+        let mime_types = Rc::new(PhpMimeTypes::cached(hooks.clone()));
         let api = Rc::new(TextApi::new(TextDeps {
             hooks,
             settings,
@@ -71,16 +74,16 @@ impl TextArea {
             escape: escape.clone(),
             kses,
             locale: Rc::new(PhpLocale),
-            mime_types: Rc::new(PhpMimeTypes),
+            mime_types: mime_types.clone(),
             random: Rc::new(PhpRandom),
             smilies: Rc::new(PhpSmilies),
             link_context: Rc::new(PhpLinkContext),
         }));
         register_escape_handlers(&container, escape.clone());
         register_text_handlers(&container, api.clone());
-        let shared = Rc::new(native::Shared::new(container));
+        let shared = Rc::new(native::Shared::new(container, api.clone()));
         native::SHARED.with(|s| *s.borrow_mut() = Some(shared));
-        TextArea { api, escape }
+        TextArea { api, escape, mime_types }
     }
 
     /// The formatting API for Rust callers.
@@ -102,6 +105,7 @@ impl NativeArea for TextArea {
     fn request_start(&self) {
         self.api.new_request();
         self.escape.new_request();
+        self.mime_types.new_request();
         if let Err(err) = speedyspec_php::eval("speedyspec://wp-text", FACADE) {
             eprintln!("speedyspec_wordpress: installing the formatting functions failed: {err}");
         }

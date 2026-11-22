@@ -41,7 +41,7 @@ function wp_get_word_count_type() { return 'characters_excluding_spaces'; }
 function __($text, $domain = 'default') { return apply_filters('gettext', $text, $text, $domain); }
 function _x($text, $context, $domain = 'default') { return apply_filters('gettext_with_context', $text, $text, $context, $domain); }
 function get_locale() { return 'de_DE'; }
-function wp_get_mime_types() { return ['jpg|jpeg' => 'image/jpeg', 'txt' => 'text/plain']; }
+function wp_get_mime_types() { return apply_filters('mime_types', ['jpg|jpeg' => 'image/jpeg', 'txt' => 'text/plain']); }
 function get_allowed_mime_types() { return ['txt' => 'text/plain']; }
 function wp_is_internal_link($url) { return str_contains($url, 'example.org'); }
 function includes_url($path = '') { return 'http://example.org/wp-includes/' . $path; }
@@ -75,9 +75,9 @@ fn main() {
     check("use_balance_tags", settings.use_balance_tags().ok() == Some(true), ());
     check("word_count_type", settings.word_count_type().ok() == Some(WordCountType::CharactersExcludingSpaces), ());
     check("locale", PhpLocale.locale().ok().as_deref() == Some("de_DE"), ());
-    let mimes = PhpMimeTypes.mime_types().unwrap();
+    let mimes = PhpMimeTypes::uncached().mime_types().unwrap();
     check("mime_types", mimes.first().map(|(e, t)| (e.clone(), t.clone())) == Some((b"jpg|jpeg".to_vec(), b"image/jpeg".to_vec())), &mimes);
-    check("allowed_mime_types", PhpMimeTypes.allowed_mime_types().unwrap().len() == 1, ());
+    check("allowed_mime_types", PhpMimeTypes::uncached().allowed_mime_types().unwrap().len() == 1, ());
     eval("mt_srand(1); return true;").unwrap();
     let draws: Vec<i64> = (0..5).map(|_| PhpRandom.rand(0, 2).unwrap()).collect();
     check("rand follows mt_srand", draws == vec![1, 2, 0, 2, 1], &draws);
@@ -233,6 +233,15 @@ fn natives(php: &Php, api: &std::rc::Rc<speedyspec_wp_text::TextApi>) {
     yes(
         "unstringable_object_throws",
         r#"try { esc_html(new stdClass()); return false; } catch (Error $e) { return str_contains($e->getMessage(), 'could not be converted to string'); }"#,
+    );
+    yes(
+        "mime_types_filter_is_seen_on_every_call",
+        r#"$before = sanitize_file_name('zzz');
+        add_filter('mime_types', function ($m) { $m['zzz'] = 'x/y'; return $m; });
+        $during = sanitize_file_name('zzz');
+        remove_all_filters('mime_types');
+        $after = sanitize_file_name('zzz');
+        return $before === 'zzz' && $during === 'unnamed-file.zzz' && $after === 'zzz';"#,
     );
     yes("seems_utf8_is_bool", "return seems_utf8('a') === true;");
     yes("sanitize_hex_color_null", "return sanitize_hex_color('nope') === null && sanitize_hex_color('') === '';");

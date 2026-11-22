@@ -6316,6 +6316,7 @@ dependencies = [
 name = "speedyspec-wp-text-php"
 version = "0.1.1"
 dependencies = [
+ "memchr",
  "serde_json",
  "sha2 0.10.9",
  "speedyspec-compat",

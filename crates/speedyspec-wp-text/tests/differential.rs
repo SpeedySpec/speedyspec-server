@@ -156,3 +156,32 @@ proptest! {
         prop_assert!(may_link(&input) || !any);
     }
 }
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(4096))]
+
+    #[test]
+    fn convert_chars_matches_pattern(input in proptest::collection::vec(proptest::sample::select(vec![
+        &b"&"[..], b"#", b";", b"a", b"Z", b"1", b"4", b"5", b"x", b" ", b"\n", b"amp", b"abcdefgh", b"abcdefghi", b"&&",
+    ]), 0..14).prop_map(|p| p.concat())) {
+        use speedyspec_wp_text::preg::{Pattern, preg_replace};
+        let pattern = Pattern::php("/&([^#])(?![a-z1-4]{1,8};)/i");
+        let expected = preg_replace(&pattern, &input, b"&#038;$1", None).unwrap().0.into_owned();
+        prop_assert_eq!(speedyspec_wp_text::convert_chars(&input).into_owned(), expected);
+    }
+
+    #[test]
+    fn strip_all_tags_prefilter_is_exact(input in proptest::collection::vec(proptest::sample::select(vec![
+        &b"<"[..], b">", b"/", b"script", b"SCRIPT", b"style", b"Style", b"x", b" ", b"\n", b"<br />",
+    ]), 0..14).prop_map(|p| p.concat()), breaks in any::<bool>()) {
+        use speedyspec_wp_text::preg::{Pattern, preg_replace};
+        let pattern = Pattern::php("@<(script|style)[^>]*?>.*?</\\1>@si");
+        let without = preg_replace(&pattern, &input, b"", None).unwrap().0.into_owned();
+        let mut expected = speedyspec_wp_text::strip_tags(&without).into_owned();
+        if breaks {
+            expected = preg_replace(&Pattern::php("/[\\r\\n\\t ]+/"), &expected, b" ", None).unwrap().0.into_owned();
+        }
+        let expected = speedyspec_wp_text::strings::php_trim(&expected, speedyspec_wp_text::strings::PHP_TRIM_DEFAULT).to_vec();
+        prop_assert_eq!(speedyspec_wp_text::wp_strip_all_tags_core(&input, breaks).into_owned(), expected);
+    }
+}

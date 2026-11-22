@@ -39,12 +39,13 @@ pub(crate) const NATIVE: &str = "SpeedySpec\\WpText\\Native\\";
 /// What the natives share on the request thread: the container, and each use case's resolved handler.
 pub(crate) struct Shared {
     pub container: Rc<Container>,
+    pub api: Rc<speedyspec_wp_text::TextApi>,
     refs: RefCell<HashMap<TypeId, Rc<dyn Any>>>,
 }
 
 impl Shared {
-    pub(crate) fn new(container: Rc<Container>) -> Shared {
-        Shared { container, refs: RefCell::new(HashMap::new()) }
+    pub(crate) fn new(container: Rc<Container>, api: Rc<speedyspec_wp_text::TextApi>) -> Shared {
+        Shared { container, api, refs: RefCell::new(HashMap::new()) }
     }
 }
 
@@ -54,6 +55,11 @@ thread_local! {
 
 fn shared() -> Result<Rc<Shared>, NativeError> {
     SHARED.with(|s| s.borrow().clone()).ok_or_else(|| NativeError::throw("Error", "the formatting API is not available"))
+}
+
+/// The formatting API, for the fast path.
+pub(crate) fn shared_api() -> Option<Rc<speedyspec_wp_text::TextApi>> {
+    SHARED.with(|s| s.borrow().as_ref().map(|s| s.api.clone()))
 }
 
 fn bus(e: BusError) -> NativeError {
@@ -607,9 +613,14 @@ fn wrapped() -> Vec<(&'static str, usize, usize, Native)> {
     vec![("wp_parse_str", 1, 1, wp_parse_str as Native)]
 }
 
-/// The PHP functions to register.
+/// The PHP functions to register: the fast ones under WordPress's names with their full natives under
+/// [`crate::fast::SLOW`], every other under WordPress's name.
 pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
-    let direct = entries().into_iter().map(|(name, req, max, f)| (name.to_string(), name, req, max, f));
+    let direct = entries().into_iter().map(|(name, req, max, f)| {
+        let php_name =
+            if crate::fast::FAST.contains(&name) { format!("{}{name}", crate::fast::SLOW) } else { name.to_string() };
+        (php_name, name, req, max, f)
+    });
     let wrapped = wrapped().into_iter().map(|(name, req, max, f)| (format!("{NATIVE}{name}"), name, req, max, f));
     direct
         .chain(wrapped)
@@ -619,5 +630,6 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
                 f(args)
             })
         })
+        .chain(crate::fast::functions())
         .collect()
 }

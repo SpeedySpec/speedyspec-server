@@ -195,7 +195,6 @@ pub fn strip_tags(text: &[u8]) -> Cow<'_, [u8]> {
 
 // formatting.php, wp_strip_all_tags().
 static SCRIPT_STYLE: LazyLock<Pattern> = LazyLock::new(|| Pattern::php("@<(script|style)[^>]*?>.*?</\\1>@si"));
-static BREAKS: LazyLock<Pattern> = LazyLock::new(|| Pattern::php("/[\\r\\n\\t ]+/"));
 
 /// WordPress's `wp_strip_all_tags()` for a string: drops `<script>` and `<style>` elements with their contents,
 /// strips the remaining tags, optionally collapses whitespace, and trims.
@@ -209,19 +208,26 @@ static BREAKS: LazyLock<Pattern> = LazyLock::new(|| Pattern::php("/[\\r\\n\\t ]+
 /// @return
 ///     The plain text.
 pub fn wp_strip_all_tags_core(text: &[u8], remove_breaks: bool) -> Cow<'_, [u8]> {
-    let without_scripts = match preg_replace(&SCRIPT_STYLE, text, b"", None) {
-        Ok((out, _)) => out,
-        Err(_) => Cow::Borrowed(&text[..0]),
+    // The element pattern needs `<script` or `<style` (any case).
+    let opens_element = memchr::memchr_iter(b'<', text).any(|at| {
+        let rest = &text[at + 1..];
+        rest.get(..6).is_some_and(|w| w.eq_ignore_ascii_case(b"script")) || rest.get(..5).is_some_and(|w| w.eq_ignore_ascii_case(b"style"))
+    });
+    let without_scripts = if !opens_element {
+        Cow::Borrowed(text)
+    } else {
+        match preg_replace(&SCRIPT_STYLE, text, b"", None) {
+            Ok((out, _)) => out,
+            Err(_) => Cow::Borrowed(&text[..0]),
+        }
     };
     let stripped = match without_scripts {
         Cow::Borrowed(b) => strip_tags(b),
         Cow::Owned(o) => Cow::Owned(strip_tags(&o).into_owned()),
     };
+    // `/[\r\n\t ]+/` to one space.
     let collapsed = if remove_breaks {
-        match preg_replace(&BREAKS, &stripped, b" ", None) {
-            Ok((Cow::Owned(o), _)) => Cow::Owned(o),
-            _ => stripped,
-        }
+        Cow::Owned(crate::sanitize::collapse_runs(&stripped, |b| matches!(b, b'\r' | b'\n' | b'\t' | b' ')))
     } else {
         stripped
     };
