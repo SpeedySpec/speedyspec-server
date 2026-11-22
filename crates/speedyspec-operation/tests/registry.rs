@@ -122,3 +122,27 @@ fn invalid_pattern_fails_at_registration() {
         matches!(r.register_type(bad), Err(RegistrationError::InvalidSchema { at, .. }) if at == "t.slug")
     );
 }
+
+#[test]
+fn close_checks_the_resource_type_and_identity_fields() {
+    let r = Registries::new();
+    r.register_operation(
+        speedyspec_operation::Operation::query("core/get-nope")
+            .resource("nope", Action::Get, &["slug"])
+            .input::<GetPost>(S::object([("id", S::integer().required())]))
+            .output::<Post>(S::any())
+            .public()
+            .build()
+            .unwrap(),
+    )
+    .unwrap();
+    let errs = r.close().unwrap_err();
+    assert!(errs.contains(&RegistrationError::UnknownType {
+        at: "core/get-nope.resource".into(),
+        type_name: "nope".into()
+    }));
+    assert!(errs.contains(&RegistrationError::UnknownIdentityField {
+        operation: "core/get-nope".into(),
+        field: "slug".into()
+    }));
+}

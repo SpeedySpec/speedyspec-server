@@ -192,3 +192,15 @@ fn open_registries_refuse_calls() {
         "registry_open"
     );
 }
+
+#[test]
+fn integral_float_ids_reach_the_handler_as_integers() {
+    let out = dispatcher(ok_handler())
+        .call(
+            "core/get-post",
+            Value::map([("id", Value::Float(42.0))]),
+            &caller(Some(1)),
+        )
+        .unwrap();
+    assert_eq!(out.get("title"), Some(&Value::from("post 42")));
+}

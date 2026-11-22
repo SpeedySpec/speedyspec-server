@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use speedyspec_container::Container;
 use speedyspec_operation::Registries;
-use speedyspec_operation::validate::{validate, violations_value};
+use speedyspec_operation::validate::{normalize, validate, violations_value};
 use speedyspec_operation_contracts::{
     Caller, Category, Kind, OperationCatalog, OperationError, Value,
 };
@@ -60,6 +60,7 @@ impl Dispatcher {
                 format!("{name} is a subscription, which is not served yet"),
             ));
         }
+        let input = normalize(&spec.input.schema, &input, self.registries.as_ref());
         validate(&spec.input.schema, &input, self.registries.as_ref()).map_err(|violations| {
             OperationError::new(
                 "invalid_input",

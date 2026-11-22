@@ -146,3 +146,38 @@ fn formats_and_enum_and_ref() {
         [("".into(), "ref")]
     );
 }
+
+#[test]
+fn normalize_turns_integral_floats_into_integers_under_integer_schemas() {
+    use speedyspec_operation::validate::normalize;
+    let s = S::object([
+        ("id", S::integer().enum_values(vec![Value::Int(1)])),
+        ("ratio", S::number()),
+        ("ids", S::array(S::integer())),
+    ])
+    .build();
+    let v = Value::map([
+        ("id", Value::Float(1.0)),
+        ("ratio", Value::Float(2.0)),
+        (
+            "ids",
+            Value::List(vec![Value::Float(3.0), Value::Float(3.5)]),
+        ),
+    ]);
+    let n = normalize(&s, &v, &NoTypes);
+    assert_eq!(n.get("id"), Some(&Value::Int(1)));
+    assert_eq!(n.get("ratio"), Some(&Value::Float(2.0)));
+    assert_eq!(
+        n.get("ids"),
+        Some(&Value::List(vec![Value::Int(3), Value::Float(3.5)]))
+    );
+    assert!(validate(&s, &Value::map([("id", Value::Float(1.0))]), &NoTypes).is_err());
+    assert!(
+        validate(
+            &s,
+            &normalize(&s, &Value::map([("id", Value::Float(1.0))]), &NoTypes),
+            &NoTypes
+        )
+        .is_ok()
+    );
+}

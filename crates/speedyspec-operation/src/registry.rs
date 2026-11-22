@@ -122,10 +122,7 @@ impl Registries {
                         operation: relation.operation.clone(),
                     });
                 }
-                let inputs = match &target.input.schema.kind {
-                    SchemaKind::Object { properties, .. } => Some(properties),
-                    _ => None,
-                };
+                let inputs = object_properties(&target.input.schema, &types);
                 for arg in relation
                     .args
                     .keys()
@@ -152,6 +149,25 @@ impl Registries {
                 &types,
                 &mut errors,
             );
+            if let Some(resource) = &spec.resource {
+                if !types.contains_key(&resource.type_name) {
+                    errors.push(RegistrationError::UnknownType {
+                        at: format!("{name}.resource"),
+                        type_name: resource.type_name.clone(),
+                    });
+                }
+                let inputs = object_properties(&spec.input.schema, &types);
+                for field in resource
+                    .identity
+                    .iter()
+                    .filter(|f| !inputs.is_some_and(|p| p.contains_key(*f)))
+                {
+                    errors.push(RegistrationError::UnknownIdentityField {
+                        operation: name.clone(),
+                        field: field.clone(),
+                    });
+                }
+            }
         }
         if errors.is_empty() {
             self.closed.set(true);
@@ -260,4 +276,16 @@ fn check_refs(
             });
         }
     });
+}
+
+/// The properties of an object schema, or of the named type a `Ref` points at.
+fn object_properties<'a>(
+    schema: &'a Schema,
+    types: &'a BTreeMap<String, Rc<TypeSpec>>,
+) -> Option<&'a indexmap::IndexMap<String, speedyspec_operation_contracts::Property>> {
+    match &schema.kind {
+        SchemaKind::Object { properties, .. } => Some(properties),
+        SchemaKind::Ref { type_name } => types.get(type_name).map(|t| &t.fields),
+        _ => None,
+    }
 }

@@ -5202,6 +5202,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-operation-dispatch"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-container",
+ "speedyspec-operation",
+ "speedyspec-operation-contracts",
+]
+
+[[package]]
 name = "speedyspec-pcre2-link-test"
 version = "0.1.0"
 dependencies = [

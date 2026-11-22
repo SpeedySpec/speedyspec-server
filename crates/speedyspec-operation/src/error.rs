@@ -54,6 +54,10 @@ pub enum RegistrationError {
         type_name: String,
         field: String,
     },
+    UnknownIdentityField {
+        operation: String,
+        field: String,
+    },
     Closed {
         name: String,
     },
@@ -116,6 +120,12 @@ impl std::fmt::Display for RegistrationError {
             ),
             RegistrationError::RelationFieldCollides { type_name, field } => {
                 write!(f, "{type_name}.{field} is both a field and a relation")
+            }
+            RegistrationError::UnknownIdentityField { operation, field } => {
+                write!(
+                    f,
+                    "{operation} names {field} as an identity field, which is not one of its inputs"
+                )
             }
             RegistrationError::Closed { name } => write!(
                 f,

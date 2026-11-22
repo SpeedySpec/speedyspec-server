@@ -318,3 +318,52 @@ fn format_ok(format: StringFormat, s: &str) -> bool {
         StringFormat::Ip => s.parse::<IpAddr>().is_ok(),
     }
 }
+
+/// `value` with every integral float under an `integer` schema turned into an integer, as WordPress casts after
+/// `rest_is_integer`. Run before [`validate`] so enums and hydrators see integers. One-of branches are left alone.
+pub fn normalize(schema: &Schema, value: &Value, types: &dyn TypeCatalog) -> Value {
+    match (&schema.kind, value) {
+        (SchemaKind::Integer { .. }, Value::Float(f))
+            if f.is_finite()
+                && f.fract() == 0.0
+                && *f >= i64::MIN as f64
+                && *f < i64::MAX as f64 =>
+        {
+            Value::Int(*f as i64)
+        }
+        (SchemaKind::Array { items, .. }, Value::List(list)) => Value::List(
+            list.iter()
+                .map(|item| normalize(items, item, types))
+                .collect(),
+        ),
+        (SchemaKind::Object { properties, .. }, Value::Map(_)) => {
+            normalize_object(properties, value, types)
+        }
+        (SchemaKind::Ref { type_name }, Value::Map(_)) => match types.get_type(type_name) {
+            Some(spec) => normalize_object(&spec.fields, value, types),
+            None => value.clone(),
+        },
+        _ => value.clone(),
+    }
+}
+
+fn normalize_object(
+    properties: &IndexMap<String, Property>,
+    value: &Value,
+    types: &dyn TypeCatalog,
+) -> Value {
+    let Value::Map(map) = value else {
+        return value.clone();
+    };
+    Value::Map(
+        map.iter()
+            .map(|(k, v)| {
+                let v = match properties.get(k) {
+                    Some(p) => normalize(&p.schema, v, types),
+                    None => v.clone(),
+                };
+                (k.clone(), v)
+            })
+            .collect(),
+    )
+}
