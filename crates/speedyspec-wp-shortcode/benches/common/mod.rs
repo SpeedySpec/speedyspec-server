@@ -70,8 +70,8 @@ impl KsesAttributes for NoKses {
     fn attr_parse<'a>(&self, _: &'a [u8]) -> Option<Vec<&'a [u8]>> {
         None
     }
-    fn one_attr(&self, attr: &[u8], _: &[u8]) -> Vec<u8> {
-        attr.to_vec()
+    fn one_attr(&self, attr: &[u8], _: &[u8]) -> Result<Vec<u8>, ShortcodeError> {
+        Ok(attr.to_vec())
     }
 }
 

@@ -1,43 +1,13 @@
-//! Adapters onto WordPress's own PHP: `_doing_it_wrong()` and `__()` and the kses functions (until their Rust ports
-//! land), and PHP's string conversion.
+//! Adapters onto WordPress's own PHP: `_doing_it_wrong()` and `__()` (until their Rust ports land), and PHP's string
+//! conversion.
 
 use speedyspec_hooks::Value;
 use speedyspec_wp_shortcode_contracts::{
-    DiagnosticMessage, Diagnostics, KsesAttributes, PhpKey, PhpStrings, PhpValue, ShortcodeError, php_bytes,
+    DiagnosticMessage, Diagnostics, PhpKey, PhpStrings, PhpValue, ShortcodeError, php_bytes,
     php_str_bytes,
 };
 
 use crate::handler::thrown;
-
-fn call(function: &str, args: &[Value]) -> Option<Value> {
-    match speedyspec_php::call(&Value::Str(function.into()), args) {
-        Ok(v) => Some(v),
-        Err(err) => {
-            eprintln!("speedyspec_wordpress: {function}() failed: {err}");
-            None
-        }
-    }
-}
-
-/// Slices `whole` into consecutive pieces of the lengths PHP returned, so they borrow from it; `None` when PHP's
-/// pieces are not consecutive slices of it.
-fn reslice<'a>(whole: &'a [u8], pieces: &Value) -> Option<Vec<&'a [u8]>> {
-    let Value::Array(entries) = pieces else {
-        return None;
-    };
-    let mut at = 0;
-    let mut out = Vec::with_capacity(entries.len());
-    for (_, piece) in entries {
-        let bytes = php_str_bytes(piece)?;
-        let slice = whole.get(at..at + bytes.len())?;
-        if slice != bytes {
-            return None;
-        }
-        out.push(slice);
-        at += bytes.len();
-    }
-    Some(out)
-}
 
 /// WordPress's notices through its own functions, so translations and `doing_it_wrong_run` behave as before.
 pub struct PhpDiagnostics;
@@ -69,22 +39,6 @@ impl Diagnostics for PhpDiagnostics {
             PhpKey::Str(s) => Value::Str(s.clone()),
         };
         speedyspec_php::call_catching(&read, &[key]).map(|_| ()).map_err(thrown)
-    }
-}
-
-/// `wp_kses_attr_parse()` and `wp_kses_one_attr()` in WordPress's PHP.
-pub struct PhpKsesAttributes;
-
-impl KsesAttributes for PhpKsesAttributes {
-    fn attr_parse<'a>(&self, element: &'a [u8]) -> Option<Vec<&'a [u8]>> {
-        let parts = call("wp_kses_attr_parse", &[php_bytes(element.to_vec())])?;
-        reslice(element, &parts)
-    }
-
-    fn one_attr(&self, attr: &[u8], element: &[u8]) -> Vec<u8> {
-        call("wp_kses_one_attr", &[php_bytes(attr.to_vec()), php_bytes(element.to_vec())])
-            .and_then(|v| php_str_bytes(&v).map(<[u8]>::to_vec))
-            .unwrap_or_default()
     }
 }
 
