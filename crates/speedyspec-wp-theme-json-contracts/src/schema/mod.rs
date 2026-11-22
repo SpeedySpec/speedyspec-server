@@ -23,7 +23,8 @@ thread_local! {
 }
 
 fn load() -> Value {
-    let php = speedyspec_php_serialize::unserialize(SERIALIZED).expect("the embedded constants unserialize");
+    let php = speedyspec_php_serialize::unserialize(SERIALIZED)
+        .expect("the embedded constants unserialize");
     speedyspec_php_serialize::to_hook_value(&php)
 }
 
@@ -125,7 +126,9 @@ fn build_presets() -> Vec<PresetMetadata> {
             use_default_names: matches!(get(m, "use_default_names"), Some(Value::Bool(true))),
             value_key: string(get(m, "value_key")),
             value_func: match get(m, "value_func") {
-                Some(Value::Str(s)) if s == "wp_get_typography_font_size_value" => Some(ValueFunc::FontSize),
+                Some(Value::Str(s)) if s == "wp_get_typography_font_size_value" => {
+                    Some(ValueFunc::FontSize)
+                }
                 _ => None,
             },
             css_vars: string(get(m, "css_vars")).unwrap_or_default(),
@@ -133,7 +136,9 @@ fn build_presets() -> Vec<PresetMetadata> {
                 Some(Value::Array(c)) => c
                     .iter()
                     .filter_map(|(k, v)| match (k, v) {
-                        (Key::Str(class), Value::Str(property)) => Some((class.clone(), property.clone())),
+                        (Key::Str(class), Value::Str(property)) => {
+                            Some((class.clone(), property.clone()))
+                        }
                         _ => None,
                     })
                     .collect(),
@@ -169,7 +174,10 @@ mod tests {
 
     #[test]
     fn presets_metadata_order() {
-        let paths: Vec<String> = presets_metadata().iter().map(|m| m.path.join(".")).collect();
+        let paths: Vec<String> = presets_metadata()
+            .iter()
+            .map(|m| m.path.join("."))
+            .collect();
         assert_eq!(
             paths,
             [
@@ -191,7 +199,10 @@ mod tests {
     fn preset_metadata_fields() {
         let all = presets_metadata();
         let palette = &all[1];
-        assert_eq!(palette.prevent_override.as_deref(), Some(&["color".to_owned(), "defaultPalette".to_owned()][..]));
+        assert_eq!(
+            palette.prevent_override.as_deref(),
+            Some(&["color".to_owned(), "defaultPalette".to_owned()][..])
+        );
         assert_eq!(palette.value_key.as_deref(), Some("color"));
         assert_eq!(palette.css_vars, "--wp--preset--color--$slug");
         let font_sizes = &all[4];
@@ -218,7 +229,10 @@ mod tests {
     #[test]
     fn constant_names_in_declaration_order() {
         let names = constant_names();
-        assert_eq!(names.first().map(String::as_str), Some("ROOT_CSS_PROPERTIES_SELECTOR"));
+        assert_eq!(
+            names.first().map(String::as_str),
+            Some("ROOT_CSS_PROPERTIES_SELECTOR")
+        );
         assert_eq!(names.last().map(String::as_str), Some("LATEST_SCHEMA"));
         assert_eq!(names.len(), 20);
     }

@@ -9,7 +9,15 @@ fn string(bytes: &[u8]) -> String {
             b'\'' => out.push_str("\\'"),
             b'\\' => out.push_str("\\\\"),
             0x20..=0x7e => out.push(b as char),
-            _ => return format!("\"{}\"", bytes.iter().map(|c| format!("\\x{c:02x}")).collect::<String>()),
+            _ => {
+                return format!(
+                    "\"{}\"",
+                    bytes
+                        .iter()
+                        .map(|c| format!("\\x{c:02x}"))
+                        .collect::<String>()
+                );
+            }
         }
     }
     out.push('\'');

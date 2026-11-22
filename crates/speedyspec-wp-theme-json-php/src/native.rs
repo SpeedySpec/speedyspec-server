@@ -8,8 +8,9 @@ use speedyspec_hooks::{Key, Value};
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_wp_theme_json::messages::{
-    ConstructThemeJson, GetCustomTemplates, GetData, GetElementClassName, GetFromEditorSettings, GetPatterns,
-    GetRawData, GetSettings, GetTemplateParts, GetViewportMediaQueries, MergeRawData, SchemaMigrate, SetSpacingSizes,
+    ConstructThemeJson, GetCustomTemplates, GetData, GetElementClassName, GetFromEditorSettings,
+    GetPatterns, GetRawData, GetSettings, GetTemplateParts, GetViewportMediaQueries, MergeRawData,
+    SchemaMigrate, SetSpacingSizes,
 };
 use speedyspec_wp_theme_json_contracts::model::ThemeJson;
 
@@ -93,7 +94,8 @@ fn handle(args: &[Value]) -> i64 {
 }
 
 fn doc(args: &[Value]) -> Result<Rc<ThemeJson>, NativeError> {
-    HandleArena::get(handle(args)).ok_or_else(|| NativeError::throw("Error", "WP_Theme_JSON: the document is gone"))
+    HandleArena::get(handle(args))
+        .ok_or_else(|| NativeError::throw("Error", "WP_Theme_JSON: the document is gone"))
 }
 
 fn string_value(bytes: Vec<u8>) -> Value {
@@ -110,43 +112,136 @@ pub(crate) fn functions(h: Rc<Handlers>) -> Vec<FunctionBuilder<'static>> {
         native::function(&format!("{NATIVE}{name}"), move |args| body(&h, args))
     };
     vec![
-        f("construct", Box::new(|h, a| {
-            let doc = ask(&h.construct, ConstructThemeJson { data: arg(a, 0), origin: bytes(a, 1) })?;
-            Ok(Value::Int(HandleArena::insert(doc)))
-        })),
-        f("restore", Box::new(|_, a| {
-            Ok(Value::Int(HandleArena::insert(speedyspec_wp_theme_json::ThemeJsonCodec::decode(&arg(a, 0)))))
-        })),
-        f("duplicate", Box::new(|_, a| Ok(Value::Int(HandleArena::duplicate(handle(a)))))),
-        f("release", Box::new(|_, a| {
-            HandleArena::release(handle(a));
-            Ok(Value::Null)
-        })),
-        f("merge", Box::new(|h, a| {
-            let merged = ask(&h.merge, MergeRawData { base: doc(a)?, incoming: arg(a, 1) })?;
-            HandleArena::replace(handle(a), merged);
-            Ok(Value::Null)
-        })),
-        f("get_raw_data", Box::new(|h, a| ask(&h.raw, GetRawData { doc: doc(a)? }))),
-        f("get_settings", Box::new(|h, a| ask(&h.settings, GetSettings { doc: doc(a)? }))),
-        f("get_data", Box::new(|h, a| ask(&h.data, GetData { doc: doc(a)? }))),
-        f("get_custom_templates", Box::new(|h, a| ask(&h.templates, GetCustomTemplates { doc: doc(a)? }))),
-        f("get_template_parts", Box::new(|h, a| ask(&h.parts, GetTemplateParts { doc: doc(a)? }))),
-        f("get_patterns", Box::new(|h, a| ask(&h.patterns, GetPatterns { doc: doc(a)? }))),
-        f("set_spacing_sizes", Box::new(|h, a| {
-            let updated = send(&h.spacing, SetSpacingSizes { doc: doc(a)? })?;
-            HandleArena::replace(handle(a), updated);
-            Ok(Value::Null)
-        })),
-        f("get_element_class_name", Box::new(|h, a| {
-            Ok(string_value(ask(&h.element, GetElementClassName { element: bytes(a, 0) })?))
-        })),
-        f("get_from_editor_settings", Box::new(|h, a| ask(&h.editor, GetFromEditorSettings { settings: arg(a, 0) }))),
-        f("schema_migrate", Box::new(|h, a| ask(&h.migrate, SchemaMigrate { data: arg(a, 0), origin: bytes(a, 1) }))),
-        f("get_viewport_media_queries", Box::new(|h, a| {
-            let include_desktop = matches!(arg(a, 1), Value::Bool(true));
-            let pairs = ask(&h.viewport, GetViewportMediaQueries { viewport: arg(a, 0), include_desktop })?;
-            Ok(Value::Array(pairs.into_iter().map(|(k, v)| (Key::Str(k), Value::Str(v))).collect()))
-        })),
+        f(
+            "construct",
+            Box::new(|h, a| {
+                let doc = ask(
+                    &h.construct,
+                    ConstructThemeJson {
+                        data: arg(a, 0),
+                        origin: bytes(a, 1),
+                    },
+                )?;
+                Ok(Value::Int(HandleArena::insert(doc)))
+            }),
+        ),
+        f(
+            "restore",
+            Box::new(|_, a| {
+                Ok(Value::Int(HandleArena::insert(
+                    speedyspec_wp_theme_json::ThemeJsonCodec::decode(&arg(a, 0)),
+                )))
+            }),
+        ),
+        f(
+            "duplicate",
+            Box::new(|_, a| Ok(Value::Int(HandleArena::duplicate(handle(a))))),
+        ),
+        f(
+            "release",
+            Box::new(|_, a| {
+                HandleArena::release(handle(a));
+                Ok(Value::Null)
+            }),
+        ),
+        f(
+            "merge",
+            Box::new(|h, a| {
+                let merged = ask(
+                    &h.merge,
+                    MergeRawData {
+                        base: doc(a)?,
+                        incoming: arg(a, 1),
+                    },
+                )?;
+                HandleArena::replace(handle(a), merged);
+                Ok(Value::Null)
+            }),
+        ),
+        f(
+            "get_raw_data",
+            Box::new(|h, a| ask(&h.raw, GetRawData { doc: doc(a)? })),
+        ),
+        f(
+            "get_settings",
+            Box::new(|h, a| ask(&h.settings, GetSettings { doc: doc(a)? })),
+        ),
+        f(
+            "get_data",
+            Box::new(|h, a| ask(&h.data, GetData { doc: doc(a)? })),
+        ),
+        f(
+            "get_custom_templates",
+            Box::new(|h, a| ask(&h.templates, GetCustomTemplates { doc: doc(a)? })),
+        ),
+        f(
+            "get_template_parts",
+            Box::new(|h, a| ask(&h.parts, GetTemplateParts { doc: doc(a)? })),
+        ),
+        f(
+            "get_patterns",
+            Box::new(|h, a| ask(&h.patterns, GetPatterns { doc: doc(a)? })),
+        ),
+        f(
+            "set_spacing_sizes",
+            Box::new(|h, a| {
+                let updated = send(&h.spacing, SetSpacingSizes { doc: doc(a)? })?;
+                HandleArena::replace(handle(a), updated);
+                Ok(Value::Null)
+            }),
+        ),
+        f(
+            "get_element_class_name",
+            Box::new(|h, a| {
+                Ok(string_value(ask(
+                    &h.element,
+                    GetElementClassName {
+                        element: bytes(a, 0),
+                    },
+                )?))
+            }),
+        ),
+        f(
+            "get_from_editor_settings",
+            Box::new(|h, a| {
+                ask(
+                    &h.editor,
+                    GetFromEditorSettings {
+                        settings: arg(a, 0),
+                    },
+                )
+            }),
+        ),
+        f(
+            "schema_migrate",
+            Box::new(|h, a| {
+                ask(
+                    &h.migrate,
+                    SchemaMigrate {
+                        data: arg(a, 0),
+                        origin: bytes(a, 1),
+                    },
+                )
+            }),
+        ),
+        f(
+            "get_viewport_media_queries",
+            Box::new(|h, a| {
+                let include_desktop = matches!(arg(a, 1), Value::Bool(true));
+                let pairs = ask(
+                    &h.viewport,
+                    GetViewportMediaQueries {
+                        viewport: arg(a, 0),
+                        include_desktop,
+                    },
+                )?;
+                Ok(Value::Array(
+                    pairs
+                        .into_iter()
+                        .map(|(k, v)| (Key::Str(k), Value::Str(v)))
+                        .collect(),
+                ))
+            }),
+        ),
     ]
 }

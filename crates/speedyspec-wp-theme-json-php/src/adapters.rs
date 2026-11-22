@@ -5,7 +5,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use speedyspec_hooks::{Key, Value};
-use speedyspec_wp_theme_json_contracts::ports::{BlockMetadata, Diagnostics, Gettext, RegisteredBlock, TextFunctions};
+use speedyspec_wp_theme_json_contracts::ports::{
+    BlockMetadata, Diagnostics, Gettext, RegisteredBlock, TextFunctions,
+};
 
 fn call(function: &str, args: &[Value]) -> Option<Value> {
     speedyspec_php::call(&Value::Str(function.into()), args).ok()
@@ -36,7 +38,9 @@ pub struct PhpBlockRegistry {
 
 impl Default for PhpBlockRegistry {
     fn default() -> Self {
-        PhpBlockRegistry { seen: RefCell::new((Value::Null, Rc::new(Vec::new()))) }
+        PhpBlockRegistry {
+            seen: RefCell::new((Value::Null, Rc::new(Vec::new()))),
+        }
     }
 }
 
@@ -63,17 +67,28 @@ fn strings(value: Option<&Value>) -> Vec<String> {
 
 impl BlockMetadata for PhpBlockRegistry {
     fn registered(&self) -> Rc<Vec<RegisteredBlock>> {
-        let marker = call("SpeedySpec\\WpThemeJson\\Support\\block_marker", &[]).unwrap_or(Value::Null);
+        let marker =
+            call("SpeedySpec\\WpThemeJson\\Support\\block_marker", &[]).unwrap_or(Value::Null);
         if self.seen.borrow().0 == marker && !matches!(marker, Value::Null) {
             return self.seen.borrow().1.clone();
         }
-        let listed = call("SpeedySpec\\WpThemeJson\\Support\\registered_blocks", &[]).unwrap_or(Value::Null);
+        let listed =
+            call("SpeedySpec\\WpThemeJson\\Support\\registered_blocks", &[]).unwrap_or(Value::Null);
         let mut blocks = (*self.seen.borrow().1).clone();
         if let Value::Array(entries) = listed {
             for (_, entry) in entries {
-                let Value::Array(fields) = entry else { continue };
-                let field = |i: i64| fields.iter().find(|(k, _)| *k == Key::Int(i)).map(|(_, v)| v);
-                let Some(Value::Str(name)) = field(0) else { continue };
+                let Value::Array(fields) = entry else {
+                    continue;
+                };
+                let field = |i: i64| {
+                    fields
+                        .iter()
+                        .find(|(k, _)| *k == Key::Int(i))
+                        .map(|(_, v)| v)
+                };
+                let Some(Value::Str(name)) = field(0) else {
+                    continue;
+                };
                 let styles = strings(field(3));
                 match blocks.iter_mut().find(|b| b.name == *name) {
                     Some(known) => {
@@ -116,7 +131,10 @@ pub struct PhpTextFunctions;
 
 impl PhpTextFunctions {
     fn through(function: &str, text: &[u8]) -> Vec<u8> {
-        call(function, &[string_value(text)]).as_ref().and_then(bytes_of).unwrap_or_else(|| text.to_vec())
+        call(function, &[string_value(text)])
+            .as_ref()
+            .and_then(bytes_of)
+            .unwrap_or_else(|| text.to_vec())
     }
 }
 
@@ -155,10 +173,24 @@ pub struct PhpDiagnostics;
 
 impl Diagnostics for PhpDiagnostics {
     fn trigger_error(&self, function: &str, message: &[u8]) {
-        call("wp_trigger_error", &[Value::Str(function.into()), string_value(message), Value::Int(1024)]);
+        call(
+            "wp_trigger_error",
+            &[
+                Value::Str(function.into()),
+                string_value(message),
+                Value::Int(1024),
+            ],
+        );
     }
 
     fn deprecated_function(&self, function: &str, version: &str, replacement: &str) {
-        call("_deprecated_function", &[Value::Str(function.into()), Value::Str(version.into()), Value::Str(replacement.into())]);
+        call(
+            "_deprecated_function",
+            &[
+                Value::Str(function.into()),
+                Value::Str(version.into()),
+                Value::Str(replacement.into()),
+            ],
+        );
     }
 }

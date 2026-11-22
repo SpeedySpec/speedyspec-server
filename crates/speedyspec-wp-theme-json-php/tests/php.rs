@@ -29,7 +29,10 @@ const CASES: &[(&str, Case)] = &[
     ("default_constructor", case_default_constructor),
     ("clone_does_not_share_state", case_clone),
     ("merge_reads_incoming_raw_data", case_merge_raw),
-    ("data_update_with_returns_this_and_merges", case_data_update_with),
+    (
+        "data_update_with_returns_this_and_merges",
+        case_data_update_with,
+    ),
     ("invalid_utf8_value_round_trips", case_invalid_utf8),
     ("constants_exist", case_constants),
     ("static_methods", case_static_methods),
@@ -45,22 +48,39 @@ fn run(php: &Php, code: &str) -> Result<Value, String> {
 }
 
 fn expect_json(php: &Php, code: &str, want: &str) -> Result<(), String> {
-    let got = run(php, &format!("return json_encode((function() {{ {code} }})());"))?;
+    let got = run(
+        php,
+        &format!("return json_encode((function() {{ {code} }})());"),
+    )?;
     let got = match got {
         Value::Str(s) => s,
         other => return Err(format!("{code}\n  got {other:?}")),
     };
-    let (g, w): (serde_json::Value, serde_json::Value) =
-        (serde_json::from_str(&got).map_err(|e| e.to_string())?, serde_json::from_str(want).map_err(|e| e.to_string())?);
-    if g == w { Ok(()) } else { Err(format!("{code}\n  got  {got}\n  want {want}")) }
+    let (g, w): (serde_json::Value, serde_json::Value) = (
+        serde_json::from_str(&got).map_err(|e| e.to_string())?,
+        serde_json::from_str(want).map_err(|e| e.to_string())?,
+    );
+    if g == w {
+        Ok(())
+    } else {
+        Err(format!("{code}\n  got  {got}\n  want {want}"))
+    }
 }
 
 fn case_new_and_get_settings(php: &Php) -> Result<(), String> {
-    expect_json(php, "return (new WP_Theme_JSON(['version'=>3,'settings'=>['color'=>['custom'=>false]]]))->get_settings();", r#"{"color":{"custom":false}}"#)
+    expect_json(
+        php,
+        "return (new WP_Theme_JSON(['version'=>3,'settings'=>['color'=>['custom'=>false]]]))->get_settings();",
+        r#"{"color":{"custom":false}}"#,
+    )
 }
 
 fn case_default_constructor(php: &Php) -> Result<(), String> {
-    expect_json(php, "return (new WP_Theme_JSON())->get_raw_data();", r#"{"version":3}"#)
+    expect_json(
+        php,
+        "return (new WP_Theme_JSON())->get_raw_data();",
+        r#"{"version":3}"#,
+    )
 }
 
 fn case_clone(php: &Php) -> Result<(), String> {
@@ -99,7 +119,11 @@ fn case_invalid_utf8(php: &Php) -> Result<(), String> {
         "$d = new WP_Theme_JSON_Data(['version'=>3]); $d->update_with(['version'=>3,'settings'=>['custom'=>['x'=>\"\\xff\\xfe\"]]]);
          return bin2hex($d->get_data()['settings']['custom']['x']);",
     )?;
-    if got == Value::Str("fffe".into()) { Ok(()) } else { Err(format!("got {got:?}")) }
+    if got == Value::Str("fffe".into()) {
+        Ok(())
+    } else {
+        Err(format!("got {got:?}"))
+    }
 }
 
 fn case_constants(php: &Php) -> Result<(), String> {
@@ -189,7 +213,11 @@ fn main() -> ExitCode {
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
     let theme_json = ThemeJsonArea::new(container.clone());
     let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(theme_json)];
-    let php = match Php::boot(BootOptions { hooks: Rc::new(MemoryHooks::new()), preload: &[], areas }) {
+    let php = match Php::boot(BootOptions {
+        hooks: Rc::new(MemoryHooks::new()),
+        preload: &[],
+        areas,
+    }) {
         Ok(php) => php,
         Err(err) => {
             println!("FAILED: boot: {err}");
@@ -211,5 +239,9 @@ fn main() -> ExitCode {
         }
     }
     drop(php);
-    if failed == 0 { ExitCode::SUCCESS } else { ExitCode::FAILURE }
+    if failed == 0 {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
 }

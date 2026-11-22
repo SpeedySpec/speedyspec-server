@@ -39,7 +39,9 @@ pub fn facade_source() -> String {
             }
         }
     }
-    FACADE.replace("/*CONSTANTS*/", &lines.join("\n        ")).replace("/*SCHEMA_CONSTANTS*/", SCHEMA_CONSTANTS)
+    FACADE
+        .replace("/*CONSTANTS*/", &lines.join("\n        "))
+        .replace("/*SCHEMA_CONSTANTS*/", SCHEMA_CONSTANTS)
 }
 
 /// The theme.json area: the native functions and the classes over them.
@@ -61,7 +63,12 @@ impl ThemeJsonArea {
             diagnostics: Rc::new(PhpDiagnostics),
         }));
         register_theme_json_handlers(&container, api.clone());
-        Self { api, handlers: Rc::new(native::Handlers::new(&container)), blocks, source: facade_source() }
+        Self {
+            api,
+            handlers: Rc::new(native::Handlers::new(&container)),
+            blocks,
+            source: facade_source(),
+        }
     }
 
     /// The engine behind the classes.
@@ -89,14 +96,22 @@ impl NativeArea for ThemeJsonArea {
 
 /// The compat runner for the `theme-json` area on the port's side: `compat/theme-json/setup.php` with the native
 /// classes loaded and WordPress's theme.json files not.
-pub fn theme_json_scenario_runner(php: speedyspec_php::Php, release: &std::path::Path) -> speedyspec_compat::PhpRunner {
+pub fn theme_json_scenario_runner(
+    php: speedyspec_php::Php,
+    release: &std::path::Path,
+) -> speedyspec_compat::PhpRunner {
     let code = format!(
         "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', true); \
          define('SPEEDYSPEC_COMPAT_MULTISITE', false); require {:?};",
         format!("{}/", release.display()),
-        speedyspec_compat::compat_dir().join("theme-json/setup.php").display().to_string()
+        speedyspec_compat::compat_dir()
+            .join("theme-json/setup.php")
+            .display()
+            .to_string()
     );
     speedyspec_compat::PhpRunner::new(php, move |php| {
-        php.eval("speedyspec://compat/theme-json-setup", &code).map(|_| ()).map_err(|e| e.to_string())
+        php.eval("speedyspec://compat/theme-json-setup", &code)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
     })
 }
