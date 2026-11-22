@@ -4,6 +4,7 @@
 //! per file ([`SniffingReader`]); WordPress's rules (the getID3 view, the audio, video and image functions, MIME
 //! tables) join it in later plans.
 
+pub mod getid3;
 mod sniffing;
 
 pub use sniffing::SniffingReader;
