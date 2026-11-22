@@ -11,6 +11,19 @@ use speedyspec_hooks::Value;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Version(pub Option<Vec<u8>>);
 
+/// What a run of due events did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RunSummary {
+    /// Events this run claimed and ran.
+    pub ran: u64,
+    /// Due events another runner claimed first: skipped, with no hook fired.
+    pub claimed_by_others: u64,
+    /// Due events this runner could not claim (its write kept conflicting): not run, left for the next call.
+    pub unclaimed: u64,
+    /// When the next event is due (the current time when the run stopped at its budget); `None` with none left.
+    pub next: Option<i64>,
+}
+
 /// What a compare-and-swap save did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SaveOutcome {

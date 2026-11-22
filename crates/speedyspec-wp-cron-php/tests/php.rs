@@ -58,6 +58,9 @@ function wp_parse_args($args, $defaults = array()) {
     if (is_array($defaults) && $defaults) { return array_merge($defaults, $parsed_args); }
     return $parsed_args;
 }
+function site_url($path = '') { return 'http://example.org/' . ltrim($path, '/'); }
+function add_query_arg($key, $value, $url) { return $url . '?' . $key . '=' . $value; }
+function wp_json_encode($value, $flags = 0, $depth = 512) { return json_encode($value, $flags, $depth); }
 function is_wp_error($thing) {
     $is_wp_error = ($thing instanceof WP_Error);
     if ($is_wp_error) { do_action('is_wp_error_instance', $thing); }
@@ -135,7 +138,7 @@ fn main() {
         "foreach (['wp_schedule_event', 'wp_schedule_single_event', 'wp_reschedule_event', 'wp_unschedule_event',
             'wp_clear_scheduled_hook', 'wp_unschedule_hook', 'wp_get_scheduled_event', 'wp_next_scheduled',
             'wp_get_ready_cron_jobs', 'wp_get_schedules', 'wp_get_schedule', '_get_cron_array', '_set_cron_array',
-            '_upgrade_cron_array'] as $f) {
+            '_upgrade_cron_array', 'spawn_cron', 'wp_cron', '_wp_cron'] as $f) {
             if ((new ReflectionFunction($f))->getFileName() !== 'speedyspec://wp-cron') { return $f; }
         }
         return true;",
@@ -195,6 +198,51 @@ fn main() {
         "$seen = array(); add_action('deprecated_argument_run', function ($f) use (&$seen) { $seen[] = $f; });
         $t = time() + 20000; wp_schedule_single_event($t, 'discrete', array('x', 'y'));
         return wp_clear_scheduled_hook('discrete', 'x', 'y') === 1 && $seen === array('wp_clear_scheduled_hook');",
+    );
+    yes(
+        "run_due_events_runs_and_reports",
+        "_set_cron_array(array());
+        $ran = array(); add_action('due_hook', function ($a) use (&$ran) { $ran[] = $a; });
+        wp_schedule_single_event(time() - 30, 'due_hook', array('x'));
+        wp_schedule_single_event(time() + 900, 'later_hook');
+        $r = SpeedySpec\\WpCron\\run_due_events();
+        return $ran === array('x') && $r['ran'] === 1 && $r['claimed_by_others'] === 0
+            && $r['next'] === wp_next_scheduled('later_hook') && false === wp_next_scheduled('due_hook', array('x'));",
+    );
+    yes(
+        "throwing_callback_stays_claimed",
+        "_set_cron_array(array());
+        add_action('boom_hook', function () { throw new RuntimeException('boom'); });
+        wp_schedule_single_event(time() - 30, 'boom_hook');
+        try { SpeedySpec\\WpCron\\run_due_events(30.0); $r = false; }
+        catch (RuntimeException $e) { $r = $e->getMessage() === 'boom'; }
+        return $r && false === wp_next_scheduled('boom_hook');",
+    );
+    yes(
+        "reschedule_error_is_logged_and_reported",
+        "_set_cron_array(array());
+        wp_schedule_event(time() - 30, 'hourly', 'failing_reschedule');
+        $seen = null; add_action('cron_reschedule_event_error', function ($e, $hook, $v) use (&$seen) { $seen = array($e, $hook, $v); }, 10, 3);
+        $cb = function () { return false; }; add_filter('pre_reschedule_event', $cb);
+        SpeedySpec\\WpCron\\run_due_events();
+        remove_filter('pre_reschedule_event', $cb);
+        return $seen[0] instanceof WP_Error && $seen[0]->get_error_code() === 'pre_reschedule_event_false'
+            && $seen[1] === 'failing_reschedule' && $seen[2]['schedule'] === 'hourly';",
+    );
+    yes(
+        "spawn_cron_sends_nothing",
+        "_set_cron_array(array()); delete_transient('doing_cron');
+        wp_schedule_single_event(time() - 30, 'spawn_hook');
+        $request = null; add_filter('cron_request', function ($r) use (&$request) { $request = $r; return $r; });
+        $spawned = spawn_cron();
+        return true === $spawned && array_keys($request) === array('url', 'key', 'args')
+            && $request['key'] === get_transient('doing_cron')
+            && str_starts_with($request['url'], 'http://example.org/wp-cron.php?doing_wp_cron=')
+            && false === spawn_cron();",
+    );
+    yes(
+        "disable_wp_cron_returns_zero",
+        "define('DISABLE_WP_CRON', true); $_SERVER['REQUEST_URI'] = '/'; return 0 === _wp_cron();",
     );
     yes(
         "cron_option_round_trips",

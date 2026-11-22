@@ -7,6 +7,7 @@ use std::rc::Rc;
 use speedyspec_data::EngineConfig;
 use speedyspec_data_mysql::MySqlEngineFactory;
 use speedyspec_data_query::EngineRegistry;
+use speedyspec_wp_cron::memory::{CollectingErrors, MemoryDoingCron, RecordingWake};
 use speedyspec_wp_cron::{CronApi, CronParts, RustArgsKeyer};
 use speedyspec_wp_cron_contracts::{Clock, CronResult, PhpObjects, Translator};
 use speedyspec_wp_cron_options::OptionCronStore;
@@ -112,6 +113,9 @@ fn cron_api(db: Rc<WpDb>) -> CronApi {
         clock: Rc::new(Now),
         translator: Rc::new(Same),
         objects: Rc::new(Arrays),
+        wake: Rc::new(RecordingWake::new()),
+        doing_cron: Rc::new(MemoryDoingCron::new()),
+        errors: Rc::new(CollectingErrors::new()),
     })
 }
 

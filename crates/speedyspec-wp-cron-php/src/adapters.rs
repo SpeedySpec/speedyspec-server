@@ -2,7 +2,10 @@
 
 use speedyspec_hooks::Key;
 use speedyspec_wp_cron::{RustArgsKeyer, md5_hex};
-use speedyspec_wp_cron_contracts::{ArgsKeyer, Clock, CronError, EventKey, PhpObjects, Translator};
+use speedyspec_wp_cron_contracts::{
+    ArgsKeyer, Clock, CronError, CronResult, CronStep, DoingCron, ErrorReporter, EventKey,
+    PhpObjects, Translator,
+};
 use speedyspec_wp_hooks::HookValue;
 
 fn call(function: &str, args: &[HookValue]) -> Option<HookValue> {
@@ -115,5 +118,72 @@ impl Clock for SystemClock {
 
     fn pause(&self, millis: u64) {
         std::thread::sleep(std::time::Duration::from_millis(millis));
+    }
+}
+
+/// The `doing_cron` transient through WordPress's (native) transient functions; nothing when they are not loaded.
+pub struct PhpDoingCron;
+
+impl DoingCron for PhpDoingCron {
+    fn get(&self) -> Result<Option<String>, CronError> {
+        if !function_exists("get_transient") {
+            return Ok(None);
+        }
+        Ok(
+            match call("get_transient", &[HookValue::Str("doing_cron".into())]) {
+                Some(HookValue::Str(s)) => Some(s),
+                Some(HookValue::Int(n)) => Some(n.to_string()),
+                Some(HookValue::Float(f)) => Some(format!("{f:.22}")),
+                _ => None,
+            },
+        )
+    }
+
+    fn set(&self, value: &str) -> Result<(), CronError> {
+        if function_exists("set_transient") {
+            call(
+                "set_transient",
+                &[
+                    HookValue::Str("doing_cron".into()),
+                    HookValue::Str(value.into()),
+                ],
+            );
+        }
+        Ok(())
+    }
+
+    fn delete(&self) -> Result<(), CronError> {
+        if function_exists("delete_transient") {
+            call("delete_transient", &[HookValue::Str("doing_cron".into())]);
+        }
+        Ok(())
+    }
+}
+
+/// `wp-cron.php`'s error reporting, through `cron.php`'s `report_error()` helper.
+pub struct PhpErrorReporter;
+
+impl ErrorReporter for PhpErrorReporter {
+    fn report(
+        &self,
+        step: CronStep,
+        hook: &HookValue,
+        error: &CronResult,
+        event: &HookValue,
+    ) -> HookValue {
+        let step = match step {
+            CronStep::Reschedule => "reschedule",
+            CronStep::Unschedule => "unschedule",
+        };
+        call(
+            "SpeedySpec\\WpCron\\report_error",
+            &[
+                HookValue::Str(step.into()),
+                hook.clone(),
+                crate::natives::marker(error.clone()),
+                event.clone(),
+            ],
+        )
+        .unwrap_or(HookValue::Null)
     }
 }

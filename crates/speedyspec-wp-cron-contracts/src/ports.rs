@@ -2,7 +2,7 @@
 
 use speedyspec_hooks::Value;
 
-use crate::{CronError, EventKey, SaveOutcome, Version};
+use crate::{CronError, CronResult, EventKey, SaveOutcome, Version};
 
 /// The `cron` option (Repository). Values are the option as `get_option( 'cron' )` returns it, `version` included.
 pub trait CronStore {
@@ -46,4 +46,30 @@ pub trait PhpObjects {
     /// `$object->$name`, or `None` when it is unset or `object` is not an object.
     fn property(&self, object: &Value, name: &str) -> Option<Value>;
     fn is_wp_error(&self, value: &Value) -> bool;
+}
+
+/// Where the next due time goes: the runtime's report to the server. The earliest time reported in a request wins.
+pub trait WakeReporter {
+    fn wake_at(&self, timestamp: i64);
+}
+
+/// The `doing_cron` transient, which the runner keeps for display (it is not the lock; the claim is).
+pub trait DoingCron {
+    fn get(&self) -> Result<Option<String>, CronError>;
+    fn set(&self, value: &str) -> Result<(), CronError>;
+    fn delete(&self) -> Result<(), CronError>;
+}
+
+/// The step of a due event that failed: rescheduling it, or unscheduling it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CronStep {
+    Reschedule,
+    Unschedule,
+}
+
+/// `wp-cron.php`'s error reporting for a failed step.
+pub trait ErrorReporter {
+    /// Logs the failure as `wp-cron.php` does (`error_log()` of the translated message with the hook, the error's
+    /// code and message, and the event as JSON) and returns the `WP_Error` to hand to the step's error action.
+    fn report(&self, step: CronStep, hook: &Value, error: &CronResult, event: &Value) -> Value;
 }

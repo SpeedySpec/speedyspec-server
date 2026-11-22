@@ -19,11 +19,14 @@ use std::rc::Rc;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_wp_cron::{CronApi, CronParts};
+use speedyspec_wp_cron_contracts::WakeReporter;
 use speedyspec_wp_cron_options::OptionCronStore;
 use speedyspec_wp_hooks::HookApi;
 use speedyspec_wp_options::OptionsApi;
 
-pub use adapters::{PhpArgsKeyer, PhpEventObjects, PhpTranslator, SystemClock};
+pub use adapters::{
+    PhpArgsKeyer, PhpDoingCron, PhpErrorReporter, PhpEventObjects, PhpTranslator, SystemClock,
+};
 pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
 
 const FACADE: &str = include_str!("cron.php");
@@ -54,20 +57,47 @@ pub fn cron_scenario_runner(
 /// The native cron functions and their wrapper.
 pub struct CronArea {
     api: Rc<CronApi>,
+    hooks: Rc<HookApi>,
+    options: Rc<OptionsApi>,
+}
+
+/// Reports nothing: a worker that does not report wake times.
+struct NoWake;
+
+impl WakeReporter for NoWake {
+    fn wake_at(&self, _: i64) {}
+}
+
+fn api(hooks: &Rc<HookApi>, options: &Rc<OptionsApi>, wake: Rc<dyn WakeReporter>) -> Rc<CronApi> {
+    Rc::new(CronApi::new(CronParts {
+        hooks: hooks.clone(),
+        store: Rc::new(OptionCronStore::new(options.clone())),
+        keyer: Rc::new(PhpArgsKeyer),
+        clock: Rc::new(SystemClock),
+        translator: Rc::new(PhpTranslator),
+        objects: Rc::new(PhpEventObjects),
+        wake,
+        doing_cron: Rc::new(PhpDoingCron),
+        errors: Rc::new(PhpErrorReporter),
+    }))
 }
 
 impl CronArea {
-    /// The area over the worker's Hook API and options API.
+    /// The area over the worker's Hook API and options API, reporting no wake times.
     pub fn new(hooks: Rc<HookApi>, options: Rc<OptionsApi>) -> CronArea {
         CronArea {
-            api: Rc::new(CronApi::new(CronParts {
-                hooks,
-                store: Rc::new(OptionCronStore::new(options)),
-                keyer: Rc::new(PhpArgsKeyer),
-                clock: Rc::new(SystemClock),
-                translator: Rc::new(PhpTranslator),
-                objects: Rc::new(PhpEventObjects),
-            })),
+            api: api(&hooks, &options, Rc::new(NoWake)),
+            hooks,
+            options,
+        }
+    }
+
+    /// The area reporting when cron is next due to `wake` (the runtime's report to the server).
+    pub fn with_wake(self, wake: Rc<dyn WakeReporter>) -> CronArea {
+        CronArea {
+            api: api(&self.hooks, &self.options, wake),
+            hooks: self.hooks,
+            options: self.options,
         }
     }
 
