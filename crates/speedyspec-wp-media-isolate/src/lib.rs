@@ -6,5 +6,11 @@
 //! reader (MIDI or FFmpeg), and writes the outcome in the [`wire`] format to stdout.
 
 pub mod child;
+mod isolated;
+mod log;
+#[cfg(target_os = "macos")]
+mod rss;
 mod sandbox;
 pub mod wire;
+
+pub use isolated::{IsolatedReader, ProbeCommand};

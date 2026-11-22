@@ -38,3 +38,7 @@ path = "src/bin/speedyspec-media-probe.rs"
 [[test]]
 name = "isolated"
 required-features = ["test-modes"]
+
+[[test]]
+name = "isolated_fds"
+required-features = ["test-modes"]
