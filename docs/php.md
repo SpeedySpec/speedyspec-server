@@ -159,7 +159,8 @@ WordPress's `wp-config.php` names:
 The configuration is read from the environment, not from `wp-config.php`, because the areas are fixed when PHP boots.
 The app's `wp-config.php` reads the same variables. The worker logs and exits when it cannot use the database:
 `php_worker_boot_failed` for a refused configuration, `php_worker_database_unreachable` when the engine does not
-answer at start. Each request with a `site_dir` whose `wp-content/db.php` exists is answered 500 without running PHP
+answer at start. Each request is answered 500 without running PHP while a `db.php` drop-in exists where
+`WP_CONTENT_DIR` points: `site_dir/wp-content`, or the release's `wp-content` without a `site_dir`
 (`php_worker_drop_in_refused`). A transaction a request leaves open is rolled back when it ends
 (`php_worker_open_transaction`).
 

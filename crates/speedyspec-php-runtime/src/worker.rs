@@ -328,13 +328,15 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
                 params,
                 broken: false,
             };
-            // A db.php drop-in would replace the native wpdb: refused, every request, before PHP runs.
-            let drop_in = match (&database, &spec.site_dir) {
-                (Some(_), Some(site)) => {
-                    speedyspec_wp_db_php::WpDbArea::check_drop_in(&site.join("wp-content")).err()
-                }
-                _ => None,
-            };
+            // A db.php drop-in would replace the native wpdb: refused, every request, before PHP runs. It is looked
+            // for where WP_CONTENT_DIR points: the site directory's wp-content, or the release's without one.
+            let drop_in = database.as_ref().and_then(|_| {
+                let content = match &spec.site_dir {
+                    Some(site) => site.join("wp-content"),
+                    None => spec.release_dir.join("wp-content"),
+                };
+                speedyspec_wp_db_php::WpDbArea::check_drop_in(&content).err()
+            });
             let (poisoned, peak) = match (drop_in, inside) {
                 (Some(err), _) => {
                     log("php_worker_drop_in_refused", &spec, &err.to_string());
