@@ -6158,6 +6158,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-password-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-hooks",
+]
+
+[[package]]
 name = "speedyspec-wp-rewrite"
 version = "0.1.1"
 dependencies = [
