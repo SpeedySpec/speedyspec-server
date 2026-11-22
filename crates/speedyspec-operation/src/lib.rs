@@ -8,5 +8,6 @@
 pub mod export;
 mod json;
 mod s;
+pub mod validate;
 
 pub use s::{S, SchemaBuilder, SchemaError};
