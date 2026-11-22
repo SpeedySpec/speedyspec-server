@@ -21,3 +21,7 @@ speedyspec-php-ext = { path = "../speedyspec-php-ext" }
 
 [dev-dependencies]
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+
+[[test]]
+name = "registration"
+harness = false

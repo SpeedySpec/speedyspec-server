@@ -20,6 +20,8 @@ use crate::export::{operation_document, type_document};
 pub struct Registries {
     types: RefCell<BTreeMap<String, Rc<TypeSpec>>>,
     operations: RefCell<BTreeMap<String, Rc<OperationSpec>>>,
+    /// Restrictions applied with [`Registries::restrict`], applied again to identical re-registrations.
+    restrictions: RefCell<BTreeMap<String, BTreeSet<String>>>,
     closed: Cell<bool>,
 }
 
@@ -53,8 +55,13 @@ impl Registries {
         Ok(())
     }
 
-    pub fn register_operation(&self, spec: OperationSpec) -> Result<(), RegistrationError> {
+    pub fn register_operation(&self, mut spec: OperationSpec) -> Result<(), RegistrationError> {
         let name = spec.name.as_str().to_owned();
+        if spec.transports.is_none()
+            && let Some(restriction) = self.restrictions.borrow().get(&name)
+        {
+            spec.transports = Some(restriction.clone());
+        }
         if self.closed.get() {
             let same =
                 self.operations.borrow().get(&name).is_some_and(|existing| {
@@ -95,7 +102,10 @@ impl Registries {
             };
         }
         let mut restricted = (*existing).clone();
-        restricted.transports = Some(wanted);
+        restricted.transports = Some(wanted.clone());
+        self.restrictions
+            .borrow_mut()
+            .insert(name.to_owned(), wanted);
         self.operations
             .borrow_mut()
             .insert(name.to_owned(), Rc::new(restricted));

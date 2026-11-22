@@ -301,6 +301,10 @@ fn invalid(why: impl Into<String>) -> SchemaError {
 }
 
 fn parse(json: &Value) -> Result<Schema, SchemaError> {
+    // PHP writes an empty schema object (`S::any()`) as an empty array.
+    if matches!(json, Value::List(l) if l.is_empty()) {
+        return Ok(Schema::of(SchemaKind::Any));
+    }
     let Value::Map(map) = json else {
         return Err(invalid("a schema must be an object"));
     };

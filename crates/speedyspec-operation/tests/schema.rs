@@ -91,3 +91,11 @@ fn from_value_keeps_property_order() {
     };
     assert_eq!(properties.keys().collect::<Vec<_>>(), ["z", "a", "m"]);
 }
+
+#[test]
+fn from_value_reads_an_empty_list_as_any() {
+    use speedyspec_operation_contracts::Value;
+    // PHP writes an empty schema object, `S::any()`, as `[]`.
+    let schema = S::from_value(&Value::List(vec![])).unwrap().build();
+    assert_eq!(schema.kind, SchemaKind::Any);
+}

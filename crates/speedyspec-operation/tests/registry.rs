@@ -199,3 +199,22 @@ fn close_lenient_drops_what_errors_name() {
     assert!(r.get_operation("a/bad").is_none());
     assert!(r.get_operation("core/get-user").is_some());
 }
+
+#[test]
+fn a_restriction_survives_identical_re_registration_after_close() {
+    let r = Registries::new();
+    r.register_type(user_type()).unwrap();
+    r.register_type(post_type()).unwrap();
+    r.register_operation(get_user().build().unwrap()).unwrap();
+    r.register_operation(get_post().build().unwrap()).unwrap();
+    r.restrict("core/get-user", &["rest"]).unwrap();
+    r.close().unwrap();
+    // Legacy code registers, then restricts, on every request.
+    assert_eq!(r.register_operation(get_user().build().unwrap()), Ok(()));
+    assert_eq!(r.restrict("core/get-user", &["rest"]), Ok(()));
+    assert!(
+        !r.get_operation("core/get-user")
+            .unwrap()
+            .exposed_on("xmlrpc")
+    );
+}
