@@ -27,3 +27,6 @@ pub mod presets;
 pub use construct::{construct, construct_value, valid_names};
 pub use deps::ThemeJsonDeps;
 pub use memory::{MemoryBlockMetadata, NoTranslation, RecordedDiagnostics};
+pub mod merge;
+
+pub use merge::merge;
