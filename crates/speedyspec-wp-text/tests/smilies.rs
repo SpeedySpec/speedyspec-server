@@ -123,3 +123,19 @@ fn text_starting_with_an_unclosed_lt_is_left_alone() {
     // Reported from CI on main (#61): the same case with 8O.
     assert_eq!(&*h.api.convert_smilies(b"< 8O").unwrap(), b"< 8O");
 }
+
+/// WordPress leaves a piece starting with `<` alone, including a trailing `<` that never closes.
+#[test]
+fn unclosed_lt_piece_keeps_its_smileys() {
+    let smilies = FixedSmilies::wordpress(api::INCLUDES, api::HOME);
+    let search = smilies.search().unwrap().unwrap();
+    let keys = smilies.smileys().unwrap();
+    let hand = SmileyEngine::new(&search, &keys).expect("a valid search");
+    let reference = SmileyEngine::reference(&search).expect("a valid search");
+    let mark = |m: &[u8]| [&b"["[..], m, b"]"].concat();
+    for input in [&b"< :)"[..], b"a :) <b> c < :)", b"a < :)", b"<"] {
+        let expected = convert_smilies_reference(input, &reference, &mut |m| mark(m)).into_owned();
+        assert_eq!(convert_smilies_core(input, &hand, &mut |m| mark(m)).into_owned(), expected, "{:?}", String::from_utf8_lossy(input));
+    }
+    assert_eq!(&*convert_smilies_core(b"< :)", &hand, &mut |m| mark(m)), b"< :)");
+}
