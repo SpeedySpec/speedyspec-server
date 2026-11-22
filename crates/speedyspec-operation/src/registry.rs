@@ -1,7 +1,7 @@
 //! The in-memory type and operation registries.
 
 use std::cell::{Cell, RefCell};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use regex::Regex;
@@ -20,6 +20,8 @@ use crate::export::{operation_document, type_document};
 pub struct Registries {
     types: RefCell<BTreeMap<String, Rc<TypeSpec>>>,
     operations: RefCell<BTreeMap<String, Rc<OperationSpec>>>,
+    /// Restrictions applied with [`Registries::restrict`], applied again to identical re-registrations.
+    restrictions: RefCell<BTreeMap<String, BTreeSet<String>>>,
     closed: Cell<bool>,
 }
 
@@ -53,8 +55,13 @@ impl Registries {
         Ok(())
     }
 
-    pub fn register_operation(&self, spec: OperationSpec) -> Result<(), RegistrationError> {
+    pub fn register_operation(&self, mut spec: OperationSpec) -> Result<(), RegistrationError> {
         let name = spec.name.as_str().to_owned();
+        if spec.transports.is_none()
+            && let Some(restriction) = self.restrictions.borrow().get(&name)
+        {
+            spec.transports = Some(restriction.clone());
+        }
         if self.closed.get() {
             let same =
                 self.operations.borrow().get(&name).is_some_and(|existing| {
@@ -75,8 +82,72 @@ impl Registries {
         Ok(())
     }
 
+    /// Limits the operation `name` to the named transports. After closing, the same restriction is a no-op and any
+    /// other is refused.
+    pub fn restrict(&self, name: &str, transports: &[&str]) -> Result<(), RegistrationError> {
+        let Some(existing) = self.operations.borrow().get(name).cloned() else {
+            return Err(RegistrationError::UnknownOperation {
+                at: format!("{name}.transports"),
+                operation: name.to_owned(),
+            });
+        };
+        let wanted: BTreeSet<String> = transports.iter().map(|t| (*t).to_owned()).collect();
+        if self.closed.get() {
+            return if existing.transports.as_ref() == Some(&wanted) {
+                Ok(())
+            } else {
+                Err(RegistrationError::Closed {
+                    name: name.to_owned(),
+                })
+            };
+        }
+        let mut restricted = (*existing).clone();
+        restricted.transports = Some(wanted.clone());
+        self.restrictions
+            .borrow_mut()
+            .insert(name.to_owned(), wanted);
+        self.operations
+            .borrow_mut()
+            .insert(name.to_owned(), Rc::new(restricted));
+        Ok(())
+    }
+
     /// Checks every reference and relation, collecting all failures. Closes registration only when there are none.
     pub fn close(&self) -> Result<(), Vec<RegistrationError>> {
+        let errors = self.check();
+        if errors.is_empty() {
+            self.closed.set(true);
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+
+    /// Closes registration whatever the checks find: every operation or type an error names is dropped, and the
+    /// checks run again until the rest passes. Returns every error seen, so one plugin's broken reference costs only
+    /// its own definitions.
+    pub fn close_lenient(&self) -> Vec<RegistrationError> {
+        let mut seen = Vec::new();
+        loop {
+            let errors = self.check();
+            if errors.is_empty() {
+                break;
+            }
+            let mut dropped = false;
+            for owner in errors.iter().filter_map(owner_of) {
+                dropped |= self.operations.borrow_mut().remove(&owner).is_some();
+                dropped |= self.types.borrow_mut().remove(&owner).is_some();
+            }
+            seen.extend(errors);
+            if !dropped {
+                break;
+            }
+        }
+        self.closed.set(true);
+        seen
+    }
+
+    fn check(&self) -> Vec<RegistrationError> {
         let mut errors = Vec::new();
         let types = self.types.borrow();
         let operations = self.operations.borrow();
@@ -169,12 +240,7 @@ impl Registries {
                 }
             }
         }
-        if errors.is_empty() {
-            self.closed.set(true);
-            Ok(())
-        } else {
-            Err(errors)
-        }
+        errors
     }
 
     pub fn is_closed(&self) -> bool {
@@ -221,6 +287,22 @@ impl OperationCatalog for Registries {
     fn operation_names(&self) -> Vec<String> {
         self.operations.borrow().keys().cloned().collect()
     }
+}
+
+/// The operation or type a close-time error belongs to. Paths start with the owner's name; neither operation nor
+/// type names contain dots.
+fn owner_of(error: &RegistrationError) -> Option<String> {
+    let path = |at: &str| at.split('.').next().unwrap_or(at).to_owned();
+    Some(match error {
+        RegistrationError::UnknownType { at, .. }
+        | RegistrationError::UnknownOperation { at, .. } => path(at),
+        RegistrationError::RelationTargetNotQuery { type_name, .. }
+        | RegistrationError::RelationArgMissing { type_name, .. }
+        | RegistrationError::RelationSourceMissing { type_name, .. }
+        | RegistrationError::RelationFieldCollides { type_name, .. } => type_name.clone(),
+        RegistrationError::UnknownIdentityField { operation, .. } => operation.clone(),
+        _ => return None,
+    })
 }
 
 /// Calls `visit` on `schema` and every schema nested in it, with its path.

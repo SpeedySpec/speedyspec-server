@@ -32,6 +32,22 @@ impl Category {
             Category::Internal => "internal",
         }
     }
+
+    /// The category named `name` (an [`as_str`](Category::as_str) name).
+    pub fn parse(name: &str) -> Option<Category> {
+        Some(match name {
+            "not_found" => Category::NotFound,
+            "permission_denied" => Category::PermissionDenied,
+            "unauthenticated" => Category::Unauthenticated,
+            "invalid_argument" => Category::InvalidArgument,
+            "already_exists" => Category::AlreadyExists,
+            "conflict" => Category::Conflict,
+            "resource_exhausted" => Category::ResourceExhausted,
+            "unavailable" => Category::Unavailable,
+            "internal" => Category::Internal,
+            _ => return None,
+        })
+    }
 }
 
 /// Why an operation failed: a stable code, its category, a human message and structured details.

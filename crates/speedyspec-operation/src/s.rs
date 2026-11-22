@@ -103,7 +103,13 @@ impl S {
 
     /// A schema from JSON Schema, limited to the keywords `export::json_schema` emits.
     pub fn raw(json: &Json) -> Result<SchemaBuilder, SchemaError> {
-        parse(json).map(SchemaBuilder::from_schema)
+        S::from_value(&from_json(json))
+    }
+
+    /// A schema from JSON Schema held as a neutral value, keeping its property order (`serde_json` objects do not).
+    /// The PHP facade's `S` builders arrive this way.
+    pub fn from_value(value: &Value) -> Result<SchemaBuilder, SchemaError> {
+        parse(value).map(SchemaBuilder::from_schema)
     }
 }
 
@@ -294,8 +300,12 @@ fn invalid(why: impl Into<String>) -> SchemaError {
     SchemaError::Invalid { why: why.into() }
 }
 
-fn parse(json: &Json) -> Result<Schema, SchemaError> {
-    let Json::Object(map) = json else {
+fn parse(json: &Value) -> Result<Schema, SchemaError> {
+    // PHP writes an empty schema object (`S::any()`) as an empty array.
+    if matches!(json, Value::List(l) if l.is_empty()) {
+        return Ok(Schema::of(SchemaKind::Any));
+    }
+    let Value::Map(map) = json else {
         return Err(invalid("a schema must be an object"));
     };
     if let Some(keyword) = map.keys().find(|k| !KEYWORDS.contains(&k.as_str())) {
@@ -303,25 +313,36 @@ fn parse(json: &Json) -> Result<Schema, SchemaError> {
             keyword: keyword.clone(),
         });
     }
-    let num = |key: &str| map.get(key).and_then(Json::as_f64);
+    let num = |key: &str| match map.get(key) {
+        Some(Value::Int(i)) => Some(*i as f64),
+        Some(Value::Float(f)) => Some(*f),
+        _ => None,
+    };
     let size = |key: &str| -> Result<Option<usize>, SchemaError> {
         match map.get(key) {
             None => Ok(None),
-            Some(v) => v
-                .as_u64()
-                .map(|n| Some(n as usize))
-                .ok_or_else(|| invalid(format!("{key} must be a non-negative integer"))),
+            Some(Value::Int(n)) if *n >= 0 => Ok(Some(*n as usize)),
+            Some(_) => Err(invalid(format!("{key} must be a non-negative integer"))),
         }
     };
-    let text = |key: &str| map.get(key).and_then(Json::as_str).map(str::to_owned);
+    let text = |key: &str| match map.get(key) {
+        Some(Value::String(s)) => Some(s.clone()),
+        _ => None,
+    };
 
     let (type_name, mut nullable) = match map.get("type") {
         None => (None, false),
-        Some(Json::String(t)) => (Some(t.as_str()), false),
-        Some(Json::Array(types)) => {
-            let names: Vec<&str> = types.iter().filter_map(Json::as_str).collect();
+        Some(Value::String(t)) => (Some(t.as_str()), false),
+        Some(Value::List(types)) => {
+            let names: Vec<&str> = types
+                .iter()
+                .filter_map(|t| match t {
+                    Value::String(s) => Some(s.as_str()),
+                    _ => None,
+                })
+                .collect();
             match names.as_slice() {
-                [t, "null"] | ["null", t] => (Some(*t), true),
+                [t, "null"] | ["null", t] if names.len() == types.len() => (Some(*t), true),
                 _ => return Err(invalid("type lists must be [\"<type>\", \"null\"]")),
             }
         }
@@ -337,20 +358,21 @@ fn parse(json: &Json) -> Result<Schema, SchemaError> {
                 SchemaKind::Ref {
                     type_name: type_name.to_owned(),
                 }
-            } else if let Some(Json::Array(variants)) = map.get("oneOf") {
+            } else if let Some(Value::List(variants)) = map.get("oneOf") {
+                let null_only = Value::map([("type", Value::from("null"))]);
                 let mut parsed = Vec::new();
                 for variant in variants {
-                    if variant == &serde_json::json!({"type": "null"}) {
+                    if variant == &null_only {
                         nullable = true;
                     } else {
                         parsed.push(parse(variant)?);
                     }
                 }
-                let discriminator = map
-                    .get("discriminator")
-                    .and_then(|d| d.get("propertyName"))
-                    .and_then(Json::as_str)
-                    .map(str::to_owned);
+                let discriminator =
+                    match map.get("discriminator").and_then(|d| d.get("propertyName")) {
+                        Some(Value::String(s)) => Some(s.clone()),
+                        _ => None,
+                    };
                 if parsed.len() == 1 && discriminator.is_none() && nullable {
                     // How `json_schema` renders a nullable reference.
                     let mut only = parsed.remove(0);
@@ -404,35 +426,43 @@ fn parse(json: &Json) -> Result<Schema, SchemaError> {
             }),
             min_items: size("minItems")?,
             max_items: size("maxItems")?,
-            unique_items: map
-                .get("uniqueItems")
-                .and_then(Json::as_bool)
-                .unwrap_or(false),
+            unique_items: matches!(map.get("uniqueItems"), Some(Value::Bool(true))),
         },
         Some("object") => {
-            let required: Vec<&str> = map
-                .get("required")
-                .and_then(Json::as_array)
-                .map(|r| r.iter().filter_map(Json::as_str).collect())
-                .unwrap_or_default();
+            let required: Vec<&str> = match map.get("required") {
+                Some(Value::List(r)) => r
+                    .iter()
+                    .filter_map(|v| match v {
+                        Value::String(s) => Some(s.as_str()),
+                        _ => None,
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
             let mut properties = IndexMap::new();
-            if let Some(Json::Object(props)) = map.get("properties") {
-                for (name, schema) in props {
-                    properties.insert(
-                        name.clone(),
-                        Property {
-                            schema: parse(schema)?,
-                            required: required.contains(&name.as_str()),
-                        },
-                    );
+            match map.get("properties") {
+                Some(Value::Map(props)) => {
+                    for (name, schema) in props {
+                        properties.insert(
+                            name.clone(),
+                            Property {
+                                schema: parse(schema)?,
+                                required: required.contains(&name.as_str()),
+                            },
+                        );
+                    }
                 }
+                // PHP writes an empty properties object as an empty array.
+                Some(Value::List(l)) if l.is_empty() => {}
+                None => {}
+                Some(_) => return Err(invalid("properties must be an object")),
             }
             SchemaKind::Object {
                 properties,
-                additional_properties: map
-                    .get("additionalProperties")
-                    .and_then(Json::as_bool)
-                    .unwrap_or(true),
+                additional_properties: !matches!(
+                    map.get("additionalProperties"),
+                    Some(Value::Bool(false))
+                ),
             }
         }
         Some(other) => return Err(invalid(format!("unsupported type {other}"))),
@@ -442,12 +472,12 @@ fn parse(json: &Json) -> Result<Schema, SchemaError> {
     Ok(schema)
 }
 
-fn with_common(mut schema: Schema, map: &serde_json::Map<String, Json>) -> Schema {
-    if let Some(description) = map.get("description").and_then(Json::as_str) {
-        schema.description = Some(description.to_owned());
+fn with_common(mut schema: Schema, map: &IndexMap<String, Value>) -> Schema {
+    if let Some(Value::String(description)) = map.get("description") {
+        schema.description = Some(description.clone());
     }
-    if let Some(Json::Array(values)) = map.get("enum") {
-        schema.enum_values = values.iter().map(from_json).collect();
+    if let Some(Value::List(values)) = map.get("enum") {
+        schema.enum_values = values.clone();
     }
     schema
 }
