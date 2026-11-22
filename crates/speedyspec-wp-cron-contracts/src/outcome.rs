@@ -2,6 +2,7 @@
 
 use std::any::Any;
 use std::fmt;
+use std::rc::Rc;
 
 use speedyspec_hooks::Value;
 
@@ -32,7 +33,7 @@ pub enum CronResult {
 pub struct CronError {
     pub message: String,
     /// A PHP exception or other payload from a hook, carried through unchanged.
-    pub payload: Option<Box<dyn Any>>,
+    pub payload: Option<Rc<dyn Any>>,
 }
 
 impl CronError {

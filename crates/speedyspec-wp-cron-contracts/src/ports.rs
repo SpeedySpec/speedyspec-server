@@ -2,7 +2,7 @@
 
 use speedyspec_hooks::Value;
 
-use crate::{CronError, EventKey, SaveOutcome, ScheduledEvent, Version};
+use crate::{CronError, EventKey, SaveOutcome, Version};
 
 /// The `cron` option (Repository). Values are the option as `get_option( 'cron' )` returns it, `version` included.
 pub trait CronStore {
@@ -39,8 +39,8 @@ pub trait Translator {
 /// What only PHP can do: the `stdClass` events WordPress hands to filters, reading an object's property, and
 /// recognising a `WP_Error`.
 pub trait PhpObjects {
-    /// `(object) array( 'hook' => …, 'timestamp' => …, 'schedule' => …, 'args' => …[, 'interval' => …] )`.
-    fn event_object(&self, event: &ScheduledEvent) -> Value;
+    /// `(object) $array`: `wp_get_scheduled_event()` builds its event this way.
+    fn to_object(&self, array: Value) -> Value;
     /// `$object->$name`, or `None` when it is unset or `object` is not an object.
     fn property(&self, object: &Value, name: &str) -> Option<Value>;
     fn is_wp_error(&self, value: &Value) -> bool;
