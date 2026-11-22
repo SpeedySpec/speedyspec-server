@@ -4403,84 +4403,84 @@
         {
             "name": "argon2_php/argon2i/0/plain",
             "password": "70617373776f7264",
-            "hash": "$argon2i$v=19$m=65536,t=4,p=1$adpc/zvRYPLU2PyWKiUArg$JRueR9jk1vANUWcc63SP7HhVsSpuSJGwrD5FFww6Bmc",
+            "hash": "$argon2i$v=19$m=65536,t=4,p=1$VDJEyl5kRiNU5tqd+tXvvg$HgpHMoGgelDDfzQrga1auRXsJEEoDgAZDMpktfZlJ9o",
             "verify_right": true,
             "verify_wrong": false
         },
         {
             "name": "argon2_php/argon2i/0/binary",
             "password": "fffe7077",
-            "hash": "$argon2i$v=19$m=65536,t=4,p=1$Oze9/EVIjW9qvtLn08XgNw$yukKIXOj3UWa9SzsB5cRW1CmWqdnakb+Qsrp1a8maeU",
+            "hash": "$argon2i$v=19$m=65536,t=4,p=1$lO0qnG67O743HvAZQv4l/A$Bc1TULejGArhBRo1fSunIyv0wviyzzJfO6rQ42HmCNA",
             "verify_right": true,
             "verify_wrong": false
         },
         {
             "name": "argon2_php/argon2i/0/spaced",
             "password": "207061737320",
-            "hash": "$argon2i$v=19$m=65536,t=4,p=1$+ZjYxLKgYJEaQZCPjjHJYw$3T94sL5hRjr5DMua3sRrSU1QEp8mtrwOFkQClo+83lo",
+            "hash": "$argon2i$v=19$m=65536,t=4,p=1$0BF2ad3twDPUrVfywZSlWg$4svayBkneux+c22y+QLJ2vI0qT67kptaRSiWJTuOfd4",
             "verify_right": true,
             "verify_wrong": false
         },
         {
             "name": "argon2_php/argon2i/1/plain",
             "password": "70617373776f7264",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$OqxSqwyrWay9JX++wVw3Tg$2VgvAr76g30GfI79nVruMxcGzhuEqU5/NbQ7wPb0SxY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$BkJ+rcOK0I1vW6Tm3BrfCw$5Z7RufIdqRbRRNTYWQVofQ/cvmmBiEOFplzjuXb1j8o",
             "verify_right": true,
             "verify_wrong": false
         },
         {
             "name": "argon2_php/argon2i/1/binary",
             "password": "fffe7077",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$0duJkoq1S/MDBi4nPjlIcw$xjTt2AWGbRQOYPPBlia/VcHba44xQjnsL0kSM7x7Cf4",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$ViwLI/U12Bks66hjAV36tw$Ap94o0B07e1i2ciYl8ALIqyropfr2rZh9Xyx8hq7VNE",
             "verify_right": true,
             "verify_wrong": false
         },
         {
             "name": "argon2_php/argon2i/1/spaced",
             "password": "207061737320",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$3lNSeQSMsH2w+eIkaiOqRw$0KiOuk3/noEHIWomJGK05YjfKBZoUEnES+tIrWFua1U",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$r95+hxoLxSchXr1t3Yvx1g$U6luiRGa9lxTa7FRK/TdHntkX2Zzjzi1EFrC0R7q6pg",
             "verify_right": true,
             "verify_wrong": false
         },
         {
             "name": "argon2_php/argon2id/0/plain",
             "password": "70617373776f7264",
-            "hash": "$argon2id$v=19$m=65536,t=4,p=1$IzpMoRTz0iMZ09S/gQg1jA$0FhsMSzzLKCIVJPYADs2rULHt592dYDxTqhhfeuxzlk",
+            "hash": "$argon2id$v=19$m=65536,t=4,p=1$6RYdzOrlZQquwn2CEJ4a4g$7/Vq+nxtqCK7U1RmNQAra8PLJZ/UL7GGNsJU4lS3qPk",
             "verify_right": true,
             "verify_wrong": false
         },
         {
             "name": "argon2_php/argon2id/0/binary",
             "password": "fffe7077",
-            "hash": "$argon2id$v=19$m=65536,t=4,p=1$iblvwQrrgf553ViWH22OJg$ZiQzgmQFJnS37cP7lFKT8VZkW5lRIhjJDab1/eGOm9o",
+            "hash": "$argon2id$v=19$m=65536,t=4,p=1$g6N4n58kNeG19/Rukm1OoQ$D6mG4Wq6+8zllDd+QlLA4Nqa3MLuqoihEn8uAMwMQrc",
             "verify_right": true,
             "verify_wrong": false
         },
         {
             "name": "argon2_php/argon2id/0/spaced",
             "password": "207061737320",
-            "hash": "$argon2id$v=19$m=65536,t=4,p=1$7gJjrM0REshunjR2IEqGLA$IT+q0Bj4AcoPIbTrrERiPu/yzc/C4B/p/GhiBNJoPFE",
+            "hash": "$argon2id$v=19$m=65536,t=4,p=1$QHpScK/NDfcpWt2AnTzHRA$p63y5exQfinWIlyfV1G/5IKVoDO6LPO38q/Ph1jEnEA",
             "verify_right": true,
             "verify_wrong": false
         },
         {
             "name": "argon2_php/argon2id/1/plain",
             "password": "70617373776f7264",
-            "hash": "$argon2id$v=19$m=4096,t=3,p=1$W0n0gX+59HtX/QzDoZCK4Q$XogamU2WA8sZk0uKERpsP09D8mcRxyrs3Mr/EZQ2dIs",
+            "hash": "$argon2id$v=19$m=4096,t=3,p=1$/DkkQJFAjkgMTReTcqhOhA$5pDPxcUu5bgBi/rtJPsb+7JR2b5GeXw2+FdrqeYi6ik",
             "verify_right": true,
             "verify_wrong": false
         },
         {
             "name": "argon2_php/argon2id/1/binary",
             "password": "fffe7077",
-            "hash": "$argon2id$v=19$m=4096,t=3,p=1$h+YVGR/+TsLfpku51k7evA$yNE1VXpb/e9bj0MGQedAzAs/nRlk6TrnyhOh2G5Qht4",
+            "hash": "$argon2id$v=19$m=4096,t=3,p=1$TReZmdr1oFoorA7myqu3OQ$/Mx6mEGnJ2QBZo4TpEhbyYkrc3VkE8Y+KE/a+sbteeA",
             "verify_right": true,
             "verify_wrong": false
         },
         {
             "name": "argon2_php/argon2id/1/spaced",
             "password": "207061737320",
-            "hash": "$argon2id$v=19$m=4096,t=3,p=1$Xb729x4MSF40GkNjNgP5ug$PEp0rRsMTmJl5JMKWvkJgvSJSRSylAkDWp6jXSjZirs",
+            "hash": "$argon2id$v=19$m=4096,t=3,p=1$46VVgaksSdnszzCebbjn5g$WD+0M0wFhzbMHNsxLzzRGU1VlW3A6j2FEYOjRmf4Aq4",
             "verify_right": true,
             "verify_wrong": false
         }
@@ -4607,7 +4607,7 @@
             },
             "password": "70617373776f7264",
             "warnings": [],
-            "head": "$argon2id$v=19$m=65536,t=4,p=1$CzXLZfHeMCZf86RIoNYj3Q$",
+            "head": "$argon2id$v=19$m=65536,t=4,p=1$lXkL7R0X0xL+BTsr3d4xgg$",
             "length": 97,
             "wp_check_password": {
                 "result": true,
@@ -4625,7 +4625,7 @@
             },
             "password": "207061737320",
             "warnings": [],
-            "head": "$argon2id$v=19$m=65536,t=4,p=1$/BMxqoRS1oCikA59oAhooA$",
+            "head": "$argon2id$v=19$m=65536,t=4,p=1$ExPXskh+3nKIinpKR0Itxw$",
             "length": 97,
             "wp_check_password": {
                 "result": true,
@@ -4643,7 +4643,7 @@
             },
             "password": "70770078",
             "warnings": [],
-            "head": "$argon2id$v=19$m=65536,t=4,p=1$9JMaNgfq4TPcLfO8ymB0YA$",
+            "head": "$argon2id$v=19$m=65536,t=4,p=1$ok9oFg+wioKO6V3wzZTO5w$",
             "length": 97,
             "wp_check_password": {
                 "result": true,
@@ -4661,7 +4661,7 @@
             },
             "password": "61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161",
             "warnings": [],
-            "head": "$argon2id$v=19$m=65536,t=4,p=1$J3FZ0c0DyKNkMJyYmTfwTw$",
+            "head": "$argon2id$v=19$m=65536,t=4,p=1$wYDAK4GTAInHbSaSFE+qDQ$",
             "length": 97,
             "wp_check_password": {
                 "result": true,
@@ -4682,7 +4682,7 @@
                 "times": 4096
             },
             "warnings": [],
-            "head": "$argon2id$v=19$m=65536,t=4,p=1$zVyKJekvc9k22CK23mE75A$",
+            "head": "$argon2id$v=19$m=65536,t=4,p=1$j/sjotFtaeyslwardxN3eA$",
             "length": 97,
             "wp_check_password": {
                 "result": true,
@@ -4721,7 +4721,7 @@
             },
             "password": "70617373776f7264",
             "warnings": [],
-            "head": "$argon2i$v=19$m=65536,t=4,p=1$8gTgrMfbTRzJKMsSy/3ZWA$",
+            "head": "$argon2i$v=19$m=65536,t=4,p=1$urWCt6YEzCIGdIcz56UGsA$",
             "length": 96,
             "wp_check_password": {
                 "result": true,
@@ -4739,7 +4739,7 @@
             },
             "password": "207061737320",
             "warnings": [],
-            "head": "$argon2i$v=19$m=65536,t=4,p=1$f5QRS3ZdSvxHZ4l2u87FfQ$",
+            "head": "$argon2i$v=19$m=65536,t=4,p=1$A43rq5WHhWtkraBMOIc4AA$",
             "length": 96,
             "wp_check_password": {
                 "result": true,
@@ -4757,7 +4757,7 @@
             },
             "password": "70770078",
             "warnings": [],
-            "head": "$argon2i$v=19$m=65536,t=4,p=1$TyCtMgDAWCWpC4NyPfuy0w$",
+            "head": "$argon2i$v=19$m=65536,t=4,p=1$517cz5JFq6qTRS7CD+LL5g$",
             "length": 96,
             "wp_check_password": {
                 "result": true,
@@ -4775,7 +4775,7 @@
             },
             "password": "61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161",
             "warnings": [],
-            "head": "$argon2i$v=19$m=65536,t=4,p=1$GjgwEuKzbuubhI1NnIpATA$",
+            "head": "$argon2i$v=19$m=65536,t=4,p=1$84Ivtv9Mr7fOD58NOGnhVw$",
             "length": 96,
             "wp_check_password": {
                 "result": true,
@@ -4796,7 +4796,7 @@
                 "times": 4096
             },
             "warnings": [],
-            "head": "$argon2i$v=19$m=65536,t=4,p=1$W2BDf/jWLRxIoadlXP4s1w$",
+            "head": "$argon2i$v=19$m=65536,t=4,p=1$7kt/rlhGKjfGZPx+coTcCw$",
             "length": 96,
             "wp_check_password": {
                 "result": true,
@@ -5273,7 +5273,7 @@
             },
             "password": "70617373776f7264",
             "warnings": [],
-            "head": "$argon2i$v=19$m=65536,t=4,p=1$GVr/z+wms0sQ45lm8o/CzQ$",
+            "head": "$argon2i$v=19$m=65536,t=4,p=1$FvpD0KZOwLFQEZpmRaejQQ$",
             "length": 96,
             "wp_check_password": {
                 "result": true,
@@ -5291,7 +5291,7 @@
             },
             "password": "207061737320",
             "warnings": [],
-            "head": "$argon2i$v=19$m=65536,t=4,p=1$f6RxwK2rIxoKRoSORkWWwQ$",
+            "head": "$argon2i$v=19$m=65536,t=4,p=1$MJkrcaq/XsMt04VXCwUejA$",
             "length": 96,
             "wp_check_password": {
                 "result": true,
@@ -5309,7 +5309,7 @@
             },
             "password": "70770078",
             "warnings": [],
-            "head": "$argon2i$v=19$m=65536,t=4,p=1$sm3wnS4ZeZayeJSFJT6wgA$",
+            "head": "$argon2i$v=19$m=65536,t=4,p=1$cB2V+3BUkVZs7QCScSjW3A$",
             "length": 96,
             "wp_check_password": {
                 "result": true,
@@ -5327,7 +5327,7 @@
             },
             "password": "61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161",
             "warnings": [],
-            "head": "$argon2i$v=19$m=65536,t=4,p=1$OnDEp065YD+KYhzA39bjww$",
+            "head": "$argon2i$v=19$m=65536,t=4,p=1$aANN+Di2J/EiZd+9gRwqYQ$",
             "length": 96,
             "wp_check_password": {
                 "result": true,
@@ -5348,7 +5348,7 @@
                 "times": 4096
             },
             "warnings": [],
-            "head": "$argon2i$v=19$m=65536,t=4,p=1$/4QF1JPOsGIViCnZiRy6HA$",
+            "head": "$argon2i$v=19$m=65536,t=4,p=1$pQ7fONVD6CvBqsGvpOj3Hw$",
             "length": 96,
             "wp_check_password": {
                 "result": true,
@@ -5387,7 +5387,7 @@
             },
             "password": "70617373776f7264",
             "warnings": [],
-            "head": "$argon2id$v=19$m=65536,t=4,p=1$3r2Of9FQCaT8bDvX9vq2vg$",
+            "head": "$argon2id$v=19$m=65536,t=4,p=1$QmUqYsPFR2RhwBUci46a4w$",
             "length": 97,
             "wp_check_password": {
                 "result": true,
@@ -5405,7 +5405,7 @@
             },
             "password": "207061737320",
             "warnings": [],
-            "head": "$argon2id$v=19$m=65536,t=4,p=1$SKBlJd4YK00gLHvBowm75Q$",
+            "head": "$argon2id$v=19$m=65536,t=4,p=1$erzQ3SnFKsBjqKi2oEfgDA$",
             "length": 97,
             "wp_check_password": {
                 "result": true,
@@ -5423,7 +5423,7 @@
             },
             "password": "70770078",
             "warnings": [],
-            "head": "$argon2id$v=19$m=65536,t=4,p=1$tdTCsHkYwmqxTmtCk0ddzg$",
+            "head": "$argon2id$v=19$m=65536,t=4,p=1$auzffxNE7yenGnAJ45Ycbw$",
             "length": 97,
             "wp_check_password": {
                 "result": true,
@@ -5441,7 +5441,7 @@
             },
             "password": "61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161",
             "warnings": [],
-            "head": "$argon2id$v=19$m=65536,t=4,p=1$BwKcuTwrY54AvKiaHy1oag$",
+            "head": "$argon2id$v=19$m=65536,t=4,p=1$Vkw7QftO28qd8zFmU/XYDQ$",
             "length": 97,
             "wp_check_password": {
                 "result": true,
@@ -5462,7 +5462,7 @@
                 "times": 4096
             },
             "warnings": [],
-            "head": "$argon2id$v=19$m=65536,t=4,p=1$axdj7vZqkql3AKZHDSI3rQ$",
+            "head": "$argon2id$v=19$m=65536,t=4,p=1$cxpFywsN0pbgGc4NS3VT/w$",
             "length": 97,
             "wp_check_password": {
                 "result": true,
@@ -6231,7 +6231,7 @@
                 "memory_cost": 8
             },
             "warnings": [],
-            "head": "$argon2id$v=19$m=8,t=4,p=1$LWwM6+E744B1FEPw06Z4+A$",
+            "head": "$argon2id$v=19$m=8,t=4,p=1$vruTed4K2chiNxl88LXmaw$",
             "length": 93,
             "wp_check_password": true
         },
@@ -6244,7 +6244,7 @@
                 "memory_cost": 4096
             },
             "warnings": [],
-            "head": "$argon2id$v=19$m=4096,t=4,p=1$UKeY3BTtQy9zSifpcLpHug$",
+            "head": "$argon2id$v=19$m=4096,t=4,p=1$nTGzVo+FaR0mtx23hDIAPA$",
             "length": 96,
             "wp_check_password": true
         },
@@ -6272,7 +6272,7 @@
                 "memory_cost": 4096
             },
             "warnings": [],
-            "head": "$argon2id$v=19$m=4096,t=1,p=1$McYdYy580LtkomPD0fQCaA$",
+            "head": "$argon2id$v=19$m=4096,t=1,p=1$f8I4oMUjzc/W93xv6NYoxQ$",
             "length": 96,
             "wp_check_password": true
         },
@@ -6286,7 +6286,7 @@
                 "memory_cost": 4096
             },
             "warnings": [],
-            "head": "$argon2id$v=19$m=4096,t=2,p=1$Ep5GmcapU+8OaHvhKBxtUg$",
+            "head": "$argon2id$v=19$m=4096,t=2,p=1$Uo8Aj1mRDbW/E33oO1eSpQ$",
             "length": 96,
             "wp_check_password": true
         },
@@ -6300,7 +6300,7 @@
                 "memory_cost": 4096
             },
             "warnings": [],
-            "head": "$argon2id$v=19$m=4096,t=4,p=1$mWsDZ7E26GH33Ot1XzuGvw$",
+            "head": "$argon2id$v=19$m=4096,t=4,p=1$3PmBZnonuk76f8yNoghd/Q$",
             "length": 96,
             "wp_check_password": true
         },
@@ -6313,7 +6313,7 @@
                 "threads": 2
             },
             "warnings": [],
-            "head": "$argon2id$v=19$m=65536,t=4,p=2$pJajdTm4V16awmyKIx8D9Q$",
+            "head": "$argon2id$v=19$m=65536,t=4,p=2$+I5vm93wwdlfxRqCc6FlQA$",
             "length": 97,
             "wp_check_password": true
         },
@@ -6326,7 +6326,7 @@
                 "memory_cost": "4096"
             },
             "warnings": [],
-            "head": "$argon2id$v=19$m=4096,t=4,p=1$KMewjYUQygzjxc/uX6slcw$",
+            "head": "$argon2id$v=19$m=4096,t=4,p=1$yf+9SQHZVv8V6zE6bG8rvw$",
             "length": 96,
             "wp_check_password": true
         },
@@ -6340,7 +6340,7 @@
                 "memory_cost": 4096
             },
             "warnings": [],
-            "head": "$argon2id$v=19$m=4096,t=4,p=1$/XA6jicrB1tz2Xs8+C5c3g$",
+            "head": "$argon2id$v=19$m=4096,t=4,p=1$Fo/fkoCDmCa4OiX2zjdqHw$",
             "length": 96,
             "wp_check_password": true
         },
@@ -6365,7 +6365,7 @@
                 "time_cost": 1
             },
             "warnings": [],
-            "head": "$argon2i$v=19$m=65536,t=1,p=1$gzcfB7p/DxI4OeuCcoi/MA$",
+            "head": "$argon2i$v=19$m=65536,t=1,p=1$tG8AjJ/TadD9QzsRkrCH5g$",
             "length": 96,
             "wp_check_password": true
         },
@@ -6378,7 +6378,7 @@
                 "time_cost": 2
             },
             "warnings": [],
-            "head": "$argon2i$v=19$m=65536,t=2,p=1$nbLjDy4vZGPbXXkOAYDu6w$",
+            "head": "$argon2i$v=19$m=65536,t=2,p=1$NphxmNKLK2xG439ErGdksg$",
             "length": 96,
             "wp_check_password": true
         },
@@ -6392,7 +6392,7 @@
                 "memory_cost": 4096
             },
             "warnings": [],
-            "head": "$argon2i$v=19$m=4096,t=3,p=1$jGtO5RZIUq18mlP1iZWNSw$",
+            "head": "$argon2i$v=19$m=4096,t=3,p=1$5JZRu+CPViiEXos5OKhtHQ$",
             "length": 95,
             "wp_check_password": true
         }
@@ -6402,7 +6402,7 @@
             "name": "check/wp-2y/right",
             "format": "wp-2y",
             "password": "70617373776f7264",
-            "hash": "$wp$2y$12$Ajnngq8uohjvOyTL9tcyKOJJbbe9DStrrObHycrjtXTwo10Rgahhy",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
             "result": true,
             "warnings": []
         },
@@ -6410,7 +6410,7 @@
             "name": "check/wp-2y/wrong",
             "format": "wp-2y",
             "password": "70617373776f726478",
-            "hash": "$wp$2y$12$Ajnngq8uohjvOyTL9tcyKOJJbbe9DStrrObHycrjtXTwo10Rgahhy",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
             "result": false,
             "warnings": []
         },
@@ -6418,7 +6418,7 @@
             "name": "check/wp-2y/spaced",
             "format": "wp-2y",
             "password": "2070617373776f726420",
-            "hash": "$wp$2y$12$Ajnngq8uohjvOyTL9tcyKOJJbbe9DStrrObHycrjtXTwo10Rgahhy",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
             "result": false,
             "warnings": []
         },
@@ -6426,7 +6426,7 @@
             "name": "check/wp-2y/empty",
             "format": "wp-2y",
             "password": "",
-            "hash": "$wp$2y$12$Ajnngq8uohjvOyTL9tcyKOJJbbe9DStrrObHycrjtXTwo10Rgahhy",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
             "result": false,
             "warnings": []
         },
@@ -6437,7 +6437,7 @@
                 "repeat": "61",
                 "times": 4097
             },
-            "hash": "$wp$2y$12$Ajnngq8uohjvOyTL9tcyKOJJbbe9DStrrObHycrjtXTwo10Rgahhy",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
             "result": false,
             "warnings": []
         },
@@ -6445,7 +6445,7 @@
             "name": "check/wp-2y-spaced/right",
             "format": "wp-2y-spaced",
             "password": "70617373776f7264",
-            "hash": "$wp$2y$12$koh/eNNHimJYRGFIkCwyKO/u7oRcFkl4n9n.k.NrSNsYtZLu34cr.",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
             "result": true,
             "warnings": []
         },
@@ -6453,7 +6453,7 @@
             "name": "check/wp-2y-spaced/wrong",
             "format": "wp-2y-spaced",
             "password": "70617373776f726478",
-            "hash": "$wp$2y$12$koh/eNNHimJYRGFIkCwyKO/u7oRcFkl4n9n.k.NrSNsYtZLu34cr.",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
             "result": false,
             "warnings": []
         },
@@ -6461,7 +6461,7 @@
             "name": "check/wp-2y-spaced/spaced",
             "format": "wp-2y-spaced",
             "password": "2070617373776f726420",
-            "hash": "$wp$2y$12$koh/eNNHimJYRGFIkCwyKO/u7oRcFkl4n9n.k.NrSNsYtZLu34cr.",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
             "result": false,
             "warnings": []
         },
@@ -6469,7 +6469,7 @@
             "name": "check/wp-2y-spaced/empty",
             "format": "wp-2y-spaced",
             "password": "",
-            "hash": "$wp$2y$12$koh/eNNHimJYRGFIkCwyKO/u7oRcFkl4n9n.k.NrSNsYtZLu34cr.",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
             "result": false,
             "warnings": []
         },
@@ -6480,7 +6480,7 @@
                 "repeat": "61",
                 "times": 4097
             },
-            "hash": "$wp$2y$12$koh/eNNHimJYRGFIkCwyKO/u7oRcFkl4n9n.k.NrSNsYtZLu34cr.",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
             "result": false,
             "warnings": []
         },
@@ -6488,7 +6488,7 @@
             "name": "check/2y/right",
             "format": "2y",
             "password": "70617373776f7264",
-            "hash": "$2y$05$4l59yu1D2vkkTQ/9tp9NvuhZZPokWVlhbW7VNSt7Sh3ArM4gCIWay",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
             "result": true,
             "warnings": []
         },
@@ -6496,7 +6496,7 @@
             "name": "check/2y/wrong",
             "format": "2y",
             "password": "70617373776f726478",
-            "hash": "$2y$05$4l59yu1D2vkkTQ/9tp9NvuhZZPokWVlhbW7VNSt7Sh3ArM4gCIWay",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
             "result": false,
             "warnings": []
         },
@@ -6504,7 +6504,7 @@
             "name": "check/2y/spaced",
             "format": "2y",
             "password": "2070617373776f726420",
-            "hash": "$2y$05$4l59yu1D2vkkTQ/9tp9NvuhZZPokWVlhbW7VNSt7Sh3ArM4gCIWay",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
             "result": false,
             "warnings": []
         },
@@ -6512,7 +6512,7 @@
             "name": "check/2y/empty",
             "format": "2y",
             "password": "",
-            "hash": "$2y$05$4l59yu1D2vkkTQ/9tp9NvuhZZPokWVlhbW7VNSt7Sh3ArM4gCIWay",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
             "result": false,
             "warnings": []
         },
@@ -6523,7 +6523,7 @@
                 "repeat": "61",
                 "times": 4097
             },
-            "hash": "$2y$05$4l59yu1D2vkkTQ/9tp9NvuhZZPokWVlhbW7VNSt7Sh3ArM4gCIWay",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
             "result": false,
             "warnings": []
         },
@@ -6660,7 +6660,7 @@
             "name": "check/argon2i/right",
             "format": "argon2i",
             "password": "70617373776f7264",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$af3ZrWdnshYWYq9kaCf3WQ$Zq1L0RCJFpUgYRaWwnZGCzhL7cjtL1xW2moFFXtvKsY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
             "result": true,
             "warnings": []
         },
@@ -6668,7 +6668,7 @@
             "name": "check/argon2i/wrong",
             "format": "argon2i",
             "password": "70617373776f726478",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$af3ZrWdnshYWYq9kaCf3WQ$Zq1L0RCJFpUgYRaWwnZGCzhL7cjtL1xW2moFFXtvKsY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
             "result": false,
             "warnings": []
         },
@@ -6676,7 +6676,7 @@
             "name": "check/argon2i/spaced",
             "format": "argon2i",
             "password": "2070617373776f726420",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$af3ZrWdnshYWYq9kaCf3WQ$Zq1L0RCJFpUgYRaWwnZGCzhL7cjtL1xW2moFFXtvKsY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
             "result": false,
             "warnings": []
         },
@@ -6684,7 +6684,7 @@
             "name": "check/argon2i/empty",
             "format": "argon2i",
             "password": "",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$af3ZrWdnshYWYq9kaCf3WQ$Zq1L0RCJFpUgYRaWwnZGCzhL7cjtL1xW2moFFXtvKsY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
             "result": false,
             "warnings": []
         },
@@ -6695,7 +6695,7 @@
                 "repeat": "61",
                 "times": 4097
             },
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$af3ZrWdnshYWYq9kaCf3WQ$Zq1L0RCJFpUgYRaWwnZGCzhL7cjtL1xW2moFFXtvKsY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
             "result": false,
             "warnings": []
         },
@@ -6703,7 +6703,7 @@
             "name": "check/argon2id/right",
             "format": "argon2id",
             "password": "70617373776f7264",
-            "hash": "$argon2id$v=19$m=4096,t=1,p=1$DVv0Lt2I10qeOXASG7BFrw$lmpah3Sm5LMz1TIV+8mzWO8s8LHacWbQwVDxxLSQ130",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
             "result": true,
             "warnings": []
         },
@@ -6711,7 +6711,7 @@
             "name": "check/argon2id/wrong",
             "format": "argon2id",
             "password": "70617373776f726478",
-            "hash": "$argon2id$v=19$m=4096,t=1,p=1$DVv0Lt2I10qeOXASG7BFrw$lmpah3Sm5LMz1TIV+8mzWO8s8LHacWbQwVDxxLSQ130",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
             "result": false,
             "warnings": []
         },
@@ -6719,7 +6719,7 @@
             "name": "check/argon2id/spaced",
             "format": "argon2id",
             "password": "2070617373776f726420",
-            "hash": "$argon2id$v=19$m=4096,t=1,p=1$DVv0Lt2I10qeOXASG7BFrw$lmpah3Sm5LMz1TIV+8mzWO8s8LHacWbQwVDxxLSQ130",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
             "result": false,
             "warnings": []
         },
@@ -6727,7 +6727,7 @@
             "name": "check/argon2id/empty",
             "format": "argon2id",
             "password": "",
-            "hash": "$argon2id$v=19$m=4096,t=1,p=1$DVv0Lt2I10qeOXASG7BFrw$lmpah3Sm5LMz1TIV+8mzWO8s8LHacWbQwVDxxLSQ130",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
             "result": false,
             "warnings": []
         },
@@ -6738,7 +6738,7 @@
                 "repeat": "61",
                 "times": 4097
             },
-            "hash": "$argon2id$v=19$m=4096,t=1,p=1$DVv0Lt2I10qeOXASG7BFrw$lmpah3Sm5LMz1TIV+8mzWO8s8LHacWbQwVDxxLSQ130",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
             "result": false,
             "warnings": []
         },
@@ -6746,7 +6746,7 @@
             "name": "check/wp-argon2id/right",
             "format": "wp-argon2id",
             "password": "70617373776f7264",
-            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$oWNM2KkrLNvOdxy9VdYWvg$5r1E3sPfd/q0xEaStFdlPsdkRxsQzbRnlhYprt/SGjw",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
             "result": true,
             "warnings": []
         },
@@ -6754,7 +6754,7 @@
             "name": "check/wp-argon2id/wrong",
             "format": "wp-argon2id",
             "password": "70617373776f726478",
-            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$oWNM2KkrLNvOdxy9VdYWvg$5r1E3sPfd/q0xEaStFdlPsdkRxsQzbRnlhYprt/SGjw",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
             "result": false,
             "warnings": []
         },
@@ -6762,7 +6762,7 @@
             "name": "check/wp-argon2id/spaced",
             "format": "wp-argon2id",
             "password": "2070617373776f726420",
-            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$oWNM2KkrLNvOdxy9VdYWvg$5r1E3sPfd/q0xEaStFdlPsdkRxsQzbRnlhYprt/SGjw",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
             "result": false,
             "warnings": []
         },
@@ -6770,7 +6770,7 @@
             "name": "check/wp-argon2id/empty",
             "format": "wp-argon2id",
             "password": "",
-            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$oWNM2KkrLNvOdxy9VdYWvg$5r1E3sPfd/q0xEaStFdlPsdkRxsQzbRnlhYprt/SGjw",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
             "result": false,
             "warnings": []
         },
@@ -6781,7 +6781,7 @@
                 "repeat": "61",
                 "times": 4097
             },
-            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$oWNM2KkrLNvOdxy9VdYWvg$5r1E3sPfd/q0xEaStFdlPsdkRxsQzbRnlhYprt/SGjw",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
             "result": false,
             "warnings": []
         },
@@ -6789,7 +6789,7 @@
             "name": "check/phpass/right",
             "format": "phpass",
             "password": "70617373776f7264",
-            "hash": "$P$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "result": true,
             "warnings": []
         },
@@ -6797,7 +6797,7 @@
             "name": "check/phpass/wrong",
             "format": "phpass",
             "password": "70617373776f726478",
-            "hash": "$P$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "result": false,
             "warnings": []
         },
@@ -6805,7 +6805,7 @@
             "name": "check/phpass/spaced",
             "format": "phpass",
             "password": "2070617373776f726420",
-            "hash": "$P$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "result": false,
             "warnings": []
         },
@@ -6813,7 +6813,7 @@
             "name": "check/phpass/empty",
             "format": "phpass",
             "password": "",
-            "hash": "$P$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "result": false,
             "warnings": []
         },
@@ -6824,7 +6824,7 @@
                 "repeat": "61",
                 "times": 4097
             },
-            "hash": "$P$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "result": false,
             "warnings": []
         },
@@ -6832,7 +6832,7 @@
             "name": "check/phpass-H/right",
             "format": "phpass-H",
             "password": "70617373776f7264",
-            "hash": "$H$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "result": false,
             "warnings": []
         },
@@ -6840,7 +6840,7 @@
             "name": "check/phpass-H/wrong",
             "format": "phpass-H",
             "password": "70617373776f726478",
-            "hash": "$H$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "result": false,
             "warnings": []
         },
@@ -6848,7 +6848,7 @@
             "name": "check/phpass-H/spaced",
             "format": "phpass-H",
             "password": "2070617373776f726420",
-            "hash": "$H$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "result": false,
             "warnings": []
         },
@@ -6856,7 +6856,7 @@
             "name": "check/phpass-H/empty",
             "format": "phpass-H",
             "password": "",
-            "hash": "$H$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "result": false,
             "warnings": []
         },
@@ -6867,7 +6867,7 @@
                 "repeat": "61",
                 "times": 4097
             },
-            "hash": "$H$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "result": false,
             "warnings": []
         },
@@ -7305,7 +7305,7 @@
     "needs_rehash": [
         {
             "name": "needs_rehash/wp-2y/bcrypt-5",
-            "hash": "$wp$2y$12$Ajnngq8uohjvOyTL9tcyKOJJbbe9DStrrObHycrjtXTwo10Rgahhy",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
             "algorithm": {
                 "value": "2y"
             },
@@ -7323,7 +7323,7 @@
         },
         {
             "name": "needs_rehash/wp-2y/bcrypt-default",
-            "hash": "$wp$2y$12$Ajnngq8uohjvOyTL9tcyKOJJbbe9DStrrObHycrjtXTwo10Rgahhy",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
             "algorithm": {
                 "value": "2y"
             },
@@ -7339,7 +7339,7 @@
         },
         {
             "name": "needs_rehash/wp-2y/argon2id-default",
-            "hash": "$wp$2y$12$Ajnngq8uohjvOyTL9tcyKOJJbbe9DStrrObHycrjtXTwo10Rgahhy",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -7355,7 +7355,7 @@
         },
         {
             "name": "needs_rehash/wp-2y/argon2id-1-4096",
-            "hash": "$wp$2y$12$Ajnngq8uohjvOyTL9tcyKOJJbbe9DStrrObHycrjtXTwo10Rgahhy",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -7374,7 +7374,7 @@
         },
         {
             "name": "needs_rehash/wp-2y/argon2i-3-4096",
-            "hash": "$wp$2y$12$Ajnngq8uohjvOyTL9tcyKOJJbbe9DStrrObHycrjtXTwo10Rgahhy",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
             "algorithm": {
                 "value": "argon2i"
             },
@@ -7393,7 +7393,7 @@
         },
         {
             "name": "needs_rehash/wp-2y/plain-bcrypt-1",
-            "hash": "$wp$2y$12$Ajnngq8uohjvOyTL9tcyKOJJbbe9DStrrObHycrjtXTwo10Rgahhy",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
             "algorithm": {
                 "value": 1
             },
@@ -7411,7 +7411,7 @@
         },
         {
             "name": "needs_rehash/wp-2y/null",
-            "hash": "$wp$2y$12$Ajnngq8uohjvOyTL9tcyKOJJbbe9DStrrObHycrjtXTwo10Rgahhy",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
             "algorithm": {
                 "value": null
             },
@@ -7426,8 +7426,124 @@
             }
         },
         {
+            "name": "needs_rehash/wp-2y/unknown",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-2y/int-4",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-2y/array-algo",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-2y/options-string",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-2y/argon2-options-string",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-2y/bcrypt-cost-string",
+            "hash": "$wp$2y$12$zuItxZNoud1OzvDzec503.703bh3VnGfZ9dv1lhL0zRyfg65fsmie",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/wp-2y-spaced/bcrypt-5",
-            "hash": "$wp$2y$12$koh/eNNHimJYRGFIkCwyKO/u7oRcFkl4n9n.k.NrSNsYtZLu34cr.",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
             "algorithm": {
                 "value": "2y"
             },
@@ -7445,7 +7561,7 @@
         },
         {
             "name": "needs_rehash/wp-2y-spaced/bcrypt-default",
-            "hash": "$wp$2y$12$koh/eNNHimJYRGFIkCwyKO/u7oRcFkl4n9n.k.NrSNsYtZLu34cr.",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
             "algorithm": {
                 "value": "2y"
             },
@@ -7461,7 +7577,7 @@
         },
         {
             "name": "needs_rehash/wp-2y-spaced/argon2id-default",
-            "hash": "$wp$2y$12$koh/eNNHimJYRGFIkCwyKO/u7oRcFkl4n9n.k.NrSNsYtZLu34cr.",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -7477,7 +7593,7 @@
         },
         {
             "name": "needs_rehash/wp-2y-spaced/argon2id-1-4096",
-            "hash": "$wp$2y$12$koh/eNNHimJYRGFIkCwyKO/u7oRcFkl4n9n.k.NrSNsYtZLu34cr.",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -7496,7 +7612,7 @@
         },
         {
             "name": "needs_rehash/wp-2y-spaced/argon2i-3-4096",
-            "hash": "$wp$2y$12$koh/eNNHimJYRGFIkCwyKO/u7oRcFkl4n9n.k.NrSNsYtZLu34cr.",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
             "algorithm": {
                 "value": "argon2i"
             },
@@ -7515,7 +7631,7 @@
         },
         {
             "name": "needs_rehash/wp-2y-spaced/plain-bcrypt-1",
-            "hash": "$wp$2y$12$koh/eNNHimJYRGFIkCwyKO/u7oRcFkl4n9n.k.NrSNsYtZLu34cr.",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
             "algorithm": {
                 "value": 1
             },
@@ -7533,7 +7649,7 @@
         },
         {
             "name": "needs_rehash/wp-2y-spaced/null",
-            "hash": "$wp$2y$12$koh/eNNHimJYRGFIkCwyKO/u7oRcFkl4n9n.k.NrSNsYtZLu34cr.",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
             "algorithm": {
                 "value": null
             },
@@ -7548,8 +7664,124 @@
             }
         },
         {
+            "name": "needs_rehash/wp-2y-spaced/unknown",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-2y-spaced/int-4",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-2y-spaced/array-algo",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-2y-spaced/options-string",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-2y-spaced/argon2-options-string",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-2y-spaced/bcrypt-cost-string",
+            "hash": "$wp$2y$12$mlk2zE6fPwqnejO7x9b7WOelda8m2/SWmrZEnL2cpH.pKboPB3Rn.",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/2y/bcrypt-5",
-            "hash": "$2y$05$4l59yu1D2vkkTQ/9tp9NvuhZZPokWVlhbW7VNSt7Sh3ArM4gCIWay",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
             "algorithm": {
                 "value": "2y"
             },
@@ -7567,7 +7799,7 @@
         },
         {
             "name": "needs_rehash/2y/bcrypt-default",
-            "hash": "$2y$05$4l59yu1D2vkkTQ/9tp9NvuhZZPokWVlhbW7VNSt7Sh3ArM4gCIWay",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
             "algorithm": {
                 "value": "2y"
             },
@@ -7583,7 +7815,7 @@
         },
         {
             "name": "needs_rehash/2y/argon2id-default",
-            "hash": "$2y$05$4l59yu1D2vkkTQ/9tp9NvuhZZPokWVlhbW7VNSt7Sh3ArM4gCIWay",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -7599,7 +7831,7 @@
         },
         {
             "name": "needs_rehash/2y/argon2id-1-4096",
-            "hash": "$2y$05$4l59yu1D2vkkTQ/9tp9NvuhZZPokWVlhbW7VNSt7Sh3ArM4gCIWay",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -7618,7 +7850,7 @@
         },
         {
             "name": "needs_rehash/2y/argon2i-3-4096",
-            "hash": "$2y$05$4l59yu1D2vkkTQ/9tp9NvuhZZPokWVlhbW7VNSt7Sh3ArM4gCIWay",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
             "algorithm": {
                 "value": "argon2i"
             },
@@ -7637,7 +7869,7 @@
         },
         {
             "name": "needs_rehash/2y/plain-bcrypt-1",
-            "hash": "$2y$05$4l59yu1D2vkkTQ/9tp9NvuhZZPokWVlhbW7VNSt7Sh3ArM4gCIWay",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
             "algorithm": {
                 "value": 1
             },
@@ -7655,13 +7887,126 @@
         },
         {
             "name": "needs_rehash/2y/null",
-            "hash": "$2y$05$4l59yu1D2vkkTQ/9tp9NvuhZZPokWVlhbW7VNSt7Sh3ArM4gCIWay",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
             "algorithm": {
                 "value": null
             },
             "options": [],
             "php": {
                 "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2y/unknown",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2y/int-4",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2y/array-algo",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2y/options-string",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2y/argon2-options-string",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2y/bcrypt-cost-string",
+            "hash": "$2y$05$C.CJWsGw9vjxW16ieK8OTeuB8fh0Ztu/xGFRT3cwD9S2x8DRnKd0G",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": false,
                 "warnings": []
             },
             "wp": {
@@ -7782,6 +8127,119 @@
                 "value": null
             },
             "options": [],
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2a/unknown",
+            "hash": "$2a$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2a/int-4",
+            "hash": "$2a$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2a/array-algo",
+            "hash": "$2a$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2a/options-string",
+            "hash": "$2a$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2a/argon2-options-string",
+            "hash": "$2a$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2a/bcrypt-cost-string",
+            "hash": "$2a$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
             "php": {
                 "result": true,
                 "warnings": []
@@ -7914,6 +8372,119 @@
             }
         },
         {
+            "name": "needs_rehash/2b/unknown",
+            "hash": "$2b$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2b/int-4",
+            "hash": "$2b$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2b/array-algo",
+            "hash": "$2b$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2b/options-string",
+            "hash": "$2b$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2b/argon2-options-string",
+            "hash": "$2b$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2b/bcrypt-cost-string",
+            "hash": "$2b$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/2x/bcrypt-5",
             "hash": "$2x$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
             "algorithm": {
@@ -8036,8 +8607,121 @@
             }
         },
         {
+            "name": "needs_rehash/2x/unknown",
+            "hash": "$2x$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2x/int-4",
+            "hash": "$2x$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2x/array-algo",
+            "hash": "$2x$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2x/options-string",
+            "hash": "$2x$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2x/argon2-options-string",
+            "hash": "$2x$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/2x/bcrypt-cost-string",
+            "hash": "$2x$05$abcdefghijklmnopqrstuuWG29KuyeAicPCJODk1zjyGvyQUU2awu",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/argon2i/bcrypt-5",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$af3ZrWdnshYWYq9kaCf3WQ$Zq1L0RCJFpUgYRaWwnZGCzhL7cjtL1xW2moFFXtvKsY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
             "algorithm": {
                 "value": "2y"
             },
@@ -8055,7 +8739,7 @@
         },
         {
             "name": "needs_rehash/argon2i/bcrypt-default",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$af3ZrWdnshYWYq9kaCf3WQ$Zq1L0RCJFpUgYRaWwnZGCzhL7cjtL1xW2moFFXtvKsY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
             "algorithm": {
                 "value": "2y"
             },
@@ -8071,7 +8755,7 @@
         },
         {
             "name": "needs_rehash/argon2i/argon2id-default",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$af3ZrWdnshYWYq9kaCf3WQ$Zq1L0RCJFpUgYRaWwnZGCzhL7cjtL1xW2moFFXtvKsY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -8087,7 +8771,7 @@
         },
         {
             "name": "needs_rehash/argon2i/argon2id-1-4096",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$af3ZrWdnshYWYq9kaCf3WQ$Zq1L0RCJFpUgYRaWwnZGCzhL7cjtL1xW2moFFXtvKsY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -8106,7 +8790,7 @@
         },
         {
             "name": "needs_rehash/argon2i/argon2i-3-4096",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$af3ZrWdnshYWYq9kaCf3WQ$Zq1L0RCJFpUgYRaWwnZGCzhL7cjtL1xW2moFFXtvKsY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
             "algorithm": {
                 "value": "argon2i"
             },
@@ -8125,7 +8809,7 @@
         },
         {
             "name": "needs_rehash/argon2i/plain-bcrypt-1",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$af3ZrWdnshYWYq9kaCf3WQ$Zq1L0RCJFpUgYRaWwnZGCzhL7cjtL1xW2moFFXtvKsY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
             "algorithm": {
                 "value": 1
             },
@@ -8143,7 +8827,7 @@
         },
         {
             "name": "needs_rehash/argon2i/null",
-            "hash": "$argon2i$v=19$m=4096,t=3,p=1$af3ZrWdnshYWYq9kaCf3WQ$Zq1L0RCJFpUgYRaWwnZGCzhL7cjtL1xW2moFFXtvKsY",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
             "algorithm": {
                 "value": null
             },
@@ -8158,8 +8842,121 @@
             }
         },
         {
+            "name": "needs_rehash/argon2i/unknown",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/argon2i/int-4",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/argon2i/array-algo",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/argon2i/options-string",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/argon2i/argon2-options-string",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/argon2i/bcrypt-cost-string",
+            "hash": "$argon2i$v=19$m=4096,t=3,p=1$5a6OyiHe+mT7hlajUJCP9w$2ip7FHHXhzBCe3k2f+UbTHPhRw83WmpT+qpzXAYf1Z4",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/argon2id/bcrypt-5",
-            "hash": "$argon2id$v=19$m=4096,t=1,p=1$DVv0Lt2I10qeOXASG7BFrw$lmpah3Sm5LMz1TIV+8mzWO8s8LHacWbQwVDxxLSQ130",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
             "algorithm": {
                 "value": "2y"
             },
@@ -8177,7 +8974,7 @@
         },
         {
             "name": "needs_rehash/argon2id/bcrypt-default",
-            "hash": "$argon2id$v=19$m=4096,t=1,p=1$DVv0Lt2I10qeOXASG7BFrw$lmpah3Sm5LMz1TIV+8mzWO8s8LHacWbQwVDxxLSQ130",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
             "algorithm": {
                 "value": "2y"
             },
@@ -8193,7 +8990,7 @@
         },
         {
             "name": "needs_rehash/argon2id/argon2id-default",
-            "hash": "$argon2id$v=19$m=4096,t=1,p=1$DVv0Lt2I10qeOXASG7BFrw$lmpah3Sm5LMz1TIV+8mzWO8s8LHacWbQwVDxxLSQ130",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -8209,7 +9006,7 @@
         },
         {
             "name": "needs_rehash/argon2id/argon2id-1-4096",
-            "hash": "$argon2id$v=19$m=4096,t=1,p=1$DVv0Lt2I10qeOXASG7BFrw$lmpah3Sm5LMz1TIV+8mzWO8s8LHacWbQwVDxxLSQ130",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -8228,7 +9025,7 @@
         },
         {
             "name": "needs_rehash/argon2id/argon2i-3-4096",
-            "hash": "$argon2id$v=19$m=4096,t=1,p=1$DVv0Lt2I10qeOXASG7BFrw$lmpah3Sm5LMz1TIV+8mzWO8s8LHacWbQwVDxxLSQ130",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
             "algorithm": {
                 "value": "argon2i"
             },
@@ -8247,7 +9044,7 @@
         },
         {
             "name": "needs_rehash/argon2id/plain-bcrypt-1",
-            "hash": "$argon2id$v=19$m=4096,t=1,p=1$DVv0Lt2I10qeOXASG7BFrw$lmpah3Sm5LMz1TIV+8mzWO8s8LHacWbQwVDxxLSQ130",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
             "algorithm": {
                 "value": 1
             },
@@ -8265,7 +9062,7 @@
         },
         {
             "name": "needs_rehash/argon2id/null",
-            "hash": "$argon2id$v=19$m=4096,t=1,p=1$DVv0Lt2I10qeOXASG7BFrw$lmpah3Sm5LMz1TIV+8mzWO8s8LHacWbQwVDxxLSQ130",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
             "algorithm": {
                 "value": null
             },
@@ -8280,8 +9077,121 @@
             }
         },
         {
+            "name": "needs_rehash/argon2id/unknown",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/argon2id/int-4",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/argon2id/array-algo",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/argon2id/options-string",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/argon2id/argon2-options-string",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/argon2id/bcrypt-cost-string",
+            "hash": "$argon2id$v=19$m=4096,t=1,p=1$p+whq+k4en7sDdNdwCFOXg$/7BQ4eisRh2Eikpk9EnH6ZoyleCK7ghrrBVYR8+AGMA",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/wp-argon2id/bcrypt-5",
-            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$oWNM2KkrLNvOdxy9VdYWvg$5r1E3sPfd/q0xEaStFdlPsdkRxsQzbRnlhYprt/SGjw",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
             "algorithm": {
                 "value": "2y"
             },
@@ -8299,7 +9209,7 @@
         },
         {
             "name": "needs_rehash/wp-argon2id/bcrypt-default",
-            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$oWNM2KkrLNvOdxy9VdYWvg$5r1E3sPfd/q0xEaStFdlPsdkRxsQzbRnlhYprt/SGjw",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
             "algorithm": {
                 "value": "2y"
             },
@@ -8315,7 +9225,7 @@
         },
         {
             "name": "needs_rehash/wp-argon2id/argon2id-default",
-            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$oWNM2KkrLNvOdxy9VdYWvg$5r1E3sPfd/q0xEaStFdlPsdkRxsQzbRnlhYprt/SGjw",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -8331,7 +9241,7 @@
         },
         {
             "name": "needs_rehash/wp-argon2id/argon2id-1-4096",
-            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$oWNM2KkrLNvOdxy9VdYWvg$5r1E3sPfd/q0xEaStFdlPsdkRxsQzbRnlhYprt/SGjw",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -8350,7 +9260,7 @@
         },
         {
             "name": "needs_rehash/wp-argon2id/argon2i-3-4096",
-            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$oWNM2KkrLNvOdxy9VdYWvg$5r1E3sPfd/q0xEaStFdlPsdkRxsQzbRnlhYprt/SGjw",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
             "algorithm": {
                 "value": "argon2i"
             },
@@ -8369,7 +9279,7 @@
         },
         {
             "name": "needs_rehash/wp-argon2id/plain-bcrypt-1",
-            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$oWNM2KkrLNvOdxy9VdYWvg$5r1E3sPfd/q0xEaStFdlPsdkRxsQzbRnlhYprt/SGjw",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
             "algorithm": {
                 "value": 1
             },
@@ -8387,7 +9297,7 @@
         },
         {
             "name": "needs_rehash/wp-argon2id/null",
-            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$oWNM2KkrLNvOdxy9VdYWvg$5r1E3sPfd/q0xEaStFdlPsdkRxsQzbRnlhYprt/SGjw",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
             "algorithm": {
                 "value": null
             },
@@ -8402,8 +9312,124 @@
             }
         },
         {
+            "name": "needs_rehash/wp-argon2id/unknown",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-argon2id/int-4",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-argon2id/array-algo",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-argon2id/options-string",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-argon2id/argon2-options-string",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-argon2id/bcrypt-cost-string",
+            "hash": "$wp$argon2id$v=19$m=4096,t=1,p=1$AAUo8k8uDAnxWytq22tdYw$XYbVYzQfKuE1Qf77c7ZXPGRt9oi4M5bNUHeurvNRn+s",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/phpass/bcrypt-5",
-            "hash": "$P$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": "2y"
             },
@@ -8421,7 +9447,7 @@
         },
         {
             "name": "needs_rehash/phpass/bcrypt-default",
-            "hash": "$P$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": "2y"
             },
@@ -8437,7 +9463,7 @@
         },
         {
             "name": "needs_rehash/phpass/argon2id-default",
-            "hash": "$P$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -8453,7 +9479,7 @@
         },
         {
             "name": "needs_rehash/phpass/argon2id-1-4096",
-            "hash": "$P$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -8472,7 +9498,7 @@
         },
         {
             "name": "needs_rehash/phpass/argon2i-3-4096",
-            "hash": "$P$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": "argon2i"
             },
@@ -8491,7 +9517,7 @@
         },
         {
             "name": "needs_rehash/phpass/plain-bcrypt-1",
-            "hash": "$P$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": 1
             },
@@ -8509,7 +9535,7 @@
         },
         {
             "name": "needs_rehash/phpass/null",
-            "hash": "$P$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": null
             },
@@ -8524,8 +9550,121 @@
             }
         },
         {
+            "name": "needs_rehash/phpass/unknown",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/phpass/int-4",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/phpass/array-algo",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/phpass/options-string",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/phpass/argon2-options-string",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/phpass/bcrypt-cost-string",
+            "hash": "$P$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/phpass-H/bcrypt-5",
-            "hash": "$H$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": "2y"
             },
@@ -8543,7 +9682,7 @@
         },
         {
             "name": "needs_rehash/phpass-H/bcrypt-default",
-            "hash": "$H$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": "2y"
             },
@@ -8559,7 +9698,7 @@
         },
         {
             "name": "needs_rehash/phpass-H/argon2id-default",
-            "hash": "$H$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -8575,7 +9714,7 @@
         },
         {
             "name": "needs_rehash/phpass-H/argon2id-1-4096",
-            "hash": "$H$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": "argon2id"
             },
@@ -8594,7 +9733,7 @@
         },
         {
             "name": "needs_rehash/phpass-H/argon2i-3-4096",
-            "hash": "$H$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": "argon2i"
             },
@@ -8613,7 +9752,7 @@
         },
         {
             "name": "needs_rehash/phpass-H/plain-bcrypt-1",
-            "hash": "$H$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": 1
             },
@@ -8631,11 +9770,124 @@
         },
         {
             "name": "needs_rehash/phpass-H/null",
-            "hash": "$H$BVkP4YJLLuyFz5/ET/s3/CCIACHapk/",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
             "algorithm": {
                 "value": null
             },
             "options": [],
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/phpass-H/unknown",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/phpass-H/int-4",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/phpass-H/array-algo",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/phpass-H/options-string",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/phpass-H/argon2-options-string",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/phpass-H/bcrypt-cost-string",
+            "hash": "$H$BqgY7kt6FvsCowBqIRcsbTrGa8MGlw0",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
             "php": {
                 "result": true,
                 "warnings": []
@@ -8768,6 +10020,119 @@
             }
         },
         {
+            "name": "needs_rehash/md5/unknown",
+            "hash": "5f4dcc3b5aa765d61d8327deb882cf99",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/md5/int-4",
+            "hash": "5f4dcc3b5aa765d61d8327deb882cf99",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/md5/array-algo",
+            "hash": "5f4dcc3b5aa765d61d8327deb882cf99",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/md5/options-string",
+            "hash": "5f4dcc3b5aa765d61d8327deb882cf99",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/md5/argon2-options-string",
+            "hash": "5f4dcc3b5aa765d61d8327deb882cf99",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/md5/bcrypt-cost-string",
+            "hash": "5f4dcc3b5aa765d61d8327deb882cf99",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/md5-crypt/bcrypt-5",
             "hash": "$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
             "algorithm": {
@@ -8880,6 +10245,119 @@
                 "value": null
             },
             "options": [],
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/md5-crypt/unknown",
+            "hash": "$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/md5-crypt/int-4",
+            "hash": "$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/md5-crypt/array-algo",
+            "hash": "$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/md5-crypt/options-string",
+            "hash": "$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/md5-crypt/argon2-options-string",
+            "hash": "$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/md5-crypt/bcrypt-cost-string",
+            "hash": "$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
             "php": {
                 "result": true,
                 "warnings": []
@@ -9012,6 +10490,119 @@
             }
         },
         {
+            "name": "needs_rehash/sha256-crypt/unknown",
+            "hash": "$5$rounds=5000$saltsaltsaltsalt$WsFBeg1qQ90JL3VkUTuM7xVV/5njhLngIVm6ftSnBR2",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/sha256-crypt/int-4",
+            "hash": "$5$rounds=5000$saltsaltsaltsalt$WsFBeg1qQ90JL3VkUTuM7xVV/5njhLngIVm6ftSnBR2",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/sha256-crypt/array-algo",
+            "hash": "$5$rounds=5000$saltsaltsaltsalt$WsFBeg1qQ90JL3VkUTuM7xVV/5njhLngIVm6ftSnBR2",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/sha256-crypt/options-string",
+            "hash": "$5$rounds=5000$saltsaltsaltsalt$WsFBeg1qQ90JL3VkUTuM7xVV/5njhLngIVm6ftSnBR2",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/sha256-crypt/argon2-options-string",
+            "hash": "$5$rounds=5000$saltsaltsaltsalt$WsFBeg1qQ90JL3VkUTuM7xVV/5njhLngIVm6ftSnBR2",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/sha256-crypt/bcrypt-cost-string",
+            "hash": "$5$rounds=5000$saltsaltsaltsalt$WsFBeg1qQ90JL3VkUTuM7xVV/5njhLngIVm6ftSnBR2",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/sha512-crypt/bcrypt-5",
             "hash": "$6$rounds=5000$saltsaltsaltsalt$bcXJ8qxwY5sQ4v8MTl.0B1jeZ0z0JlA9jjmbUoCJZ.1wYXiLTU.q2ILyrDJLm890lyfuF7sWAeli0yjOyFPkf0",
             "algorithm": {
@@ -9124,6 +10715,119 @@
                 "value": null
             },
             "options": [],
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/sha512-crypt/unknown",
+            "hash": "$6$rounds=5000$saltsaltsaltsalt$bcXJ8qxwY5sQ4v8MTl.0B1jeZ0z0JlA9jjmbUoCJZ.1wYXiLTU.q2ILyrDJLm890lyfuF7sWAeli0yjOyFPkf0",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/sha512-crypt/int-4",
+            "hash": "$6$rounds=5000$saltsaltsaltsalt$bcXJ8qxwY5sQ4v8MTl.0B1jeZ0z0JlA9jjmbUoCJZ.1wYXiLTU.q2ILyrDJLm890lyfuF7sWAeli0yjOyFPkf0",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/sha512-crypt/array-algo",
+            "hash": "$6$rounds=5000$saltsaltsaltsalt$bcXJ8qxwY5sQ4v8MTl.0B1jeZ0z0JlA9jjmbUoCJZ.1wYXiLTU.q2ILyrDJLm890lyfuF7sWAeli0yjOyFPkf0",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/sha512-crypt/options-string",
+            "hash": "$6$rounds=5000$saltsaltsaltsalt$bcXJ8qxwY5sQ4v8MTl.0B1jeZ0z0JlA9jjmbUoCJZ.1wYXiLTU.q2ILyrDJLm890lyfuF7sWAeli0yjOyFPkf0",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/sha512-crypt/argon2-options-string",
+            "hash": "$6$rounds=5000$saltsaltsaltsalt$bcXJ8qxwY5sQ4v8MTl.0B1jeZ0z0JlA9jjmbUoCJZ.1wYXiLTU.q2ILyrDJLm890lyfuF7sWAeli0yjOyFPkf0",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/sha512-crypt/bcrypt-cost-string",
+            "hash": "$6$rounds=5000$saltsaltsaltsalt$bcXJ8qxwY5sQ4v8MTl.0B1jeZ0z0JlA9jjmbUoCJZ.1wYXiLTU.q2ILyrDJLm890lyfuF7sWAeli0yjOyFPkf0",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
             "php": {
                 "result": true,
                 "warnings": []
@@ -9256,6 +10960,119 @@
             }
         },
         {
+            "name": "needs_rehash/des/unknown",
+            "hash": "abJnggxhB/yWI",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/des/int-4",
+            "hash": "abJnggxhB/yWI",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/des/array-algo",
+            "hash": "abJnggxhB/yWI",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/des/options-string",
+            "hash": "abJnggxhB/yWI",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/des/argon2-options-string",
+            "hash": "abJnggxhB/yWI",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/des/bcrypt-cost-string",
+            "hash": "abJnggxhB/yWI",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/len-32/bcrypt-5",
             "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
             "algorithm": {
@@ -9368,6 +11185,119 @@
                 "value": null
             },
             "options": [],
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/len-32/unknown",
+            "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/len-32/int-4",
+            "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/len-32/array-algo",
+            "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/len-32/options-string",
+            "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/len-32/argon2-options-string",
+            "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/len-32/bcrypt-cost-string",
+            "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
             "php": {
                 "result": true,
                 "warnings": []
@@ -9500,6 +11430,119 @@
             }
         },
         {
+            "name": "needs_rehash/len-33/unknown",
+            "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/len-33/int-4",
+            "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/len-33/array-algo",
+            "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/len-33/options-string",
+            "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/len-33/argon2-options-string",
+            "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/len-33/bcrypt-cost-string",
+            "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/empty/bcrypt-5",
             "hash": "",
             "algorithm": {
@@ -9612,6 +11655,119 @@
                 "value": null
             },
             "options": [],
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/empty/unknown",
+            "hash": "",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/empty/int-4",
+            "hash": "",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/empty/array-algo",
+            "hash": "",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/empty/options-string",
+            "hash": "",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/empty/argon2-options-string",
+            "hash": "",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/empty/bcrypt-cost-string",
+            "hash": "",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
             "php": {
                 "result": true,
                 "warnings": []
@@ -9744,6 +11900,122 @@
             }
         },
         {
+            "name": "needs_rehash/wp-only/unknown",
+            "hash": "$wp",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-only/int-4",
+            "hash": "$wp",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-only/array-algo",
+            "hash": "$wp",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-only/options-string",
+            "hash": "$wp",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-only/argon2-options-string",
+            "hash": "$wp",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/wp-only/bcrypt-cost-string",
+            "hash": "$wp",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": true,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
             "name": "needs_rehash/garbage/bcrypt-5",
             "hash": "$2y$05$!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
             "algorithm": {
@@ -9864,6 +12136,119 @@
                 "result": true,
                 "warnings": []
             }
+        },
+        {
+            "name": "needs_rehash/garbage/unknown",
+            "hash": "$2y$05$!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            "algorithm": {
+                "value": "nope"
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/garbage/int-4",
+            "hash": "$2y$05$!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            "algorithm": {
+                "value": 4
+            },
+            "options": [],
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": false,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/garbage/array-algo",
+            "hash": "$2y$05$!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            "algorithm": {
+                "value": []
+            },
+            "options": [],
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #2 ($algo) must be of type string|int|null, array given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/garbage/options-string",
+            "hash": "$2y$05$!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/garbage/argon2-options-string",
+            "hash": "$2y$05$!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            "algorithm": {
+                "value": "argon2id"
+            },
+            "options": "x",
+            "php": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            },
+            "wp": {
+                "exception": {
+                    "class": "TypeError",
+                    "message": "password_needs_rehash(): Argument #3 ($options) must be of type array, string given"
+                },
+                "warnings": []
+            }
+        },
+        {
+            "name": "needs_rehash/garbage/bcrypt-cost-string",
+            "hash": "$2y$05$!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            "algorithm": {
+                "value": "2y"
+            },
+            "options": {
+                "cost": "5"
+            },
+            "php": {
+                "result": false,
+                "warnings": []
+            },
+            "wp": {
+                "result": true,
+                "warnings": []
+            }
         }
     ],
     "rand": [
@@ -9871,8 +12256,8 @@
             "name": "rand/defaults",
             "min": null,
             "max": null,
-            "lowest": 2352385,
-            "highest": 4284217522,
+            "lowest": 16715597,
+            "highest": 4288453425,
             "all_ints": true
         },
         {
@@ -9927,8 +12312,8 @@
             "name": "rand/min-only",
             "min": 5,
             "max": null,
-            "lowest": 1377680,
-            "highest": 4289742433,
+            "lowest": 30321,
+            "highest": 4257898040,
             "all_ints": true
         },
         {

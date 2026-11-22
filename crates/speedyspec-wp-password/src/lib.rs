@@ -2,19 +2,29 @@
 //!
 //! - [`DefaultPasswordHasher`] is `wp_hash_password()`: a Strategy per algorithm ([`WpBcryptStrategy`],
 //!   [`BcryptStrategy`], [`Argon2Strategy`]) chosen by the filtered algorithm, argon2id by default.
+//! - [`DefaultPasswordChecker`] is `wp_check_password()`: a Chain of Responsibility over hash formats
+//!   ([`default_chain`]), in WordPress's order.
+//! - [`DefaultRehashPolicy`] is `wp_password_needs_rehash()`, over [`password_needs_rehash`].
 //!
 //! What the rules need from outside comes in through the ports of `speedyspec-wp-password-contracts` and
-//! `speedyspec-wp-crypto-contracts`, gathered in [`PasswordPorts`]. Two answers differ from WordPress on purpose:
-//! argon2id is the default algorithm, and argon2 hashes the trimmed password, as WordPress's bcrypt does.
+//! `speedyspec-wp-crypto-contracts`, gathered in [`PasswordPorts`]. Answers that differ from WordPress on purpose:
+//! argon2id is the default algorithm; argon2 hashes the trimmed password, as WordPress's bcrypt does; raw MD5, phpass,
+//! `$2x$` and `crypt()`-only hashes never verify.
 
 mod algorithm;
+mod check;
 mod hash;
 mod phc;
 mod prehash;
+mod rehash;
 
 pub use algorithm::{
     Algorithm, HashOptions, algorithm_type_error, is_wp_bcrypt, php_long, php_type_name,
     resolve_algorithm, resolve_options,
+};
+pub use check::{
+    Argon2Format, BcryptFormat, CheckHandler, DefaultPasswordChecker, Handled, HasherOverride,
+    Md5Rejected, PhpassRejected, TooLong, Unrecognized, WpPrefixed, default_chain, verify_argon2,
 };
 pub use hash::{
     ARGON2_DEFAULT_MEMORY_KIB, ARGON2_DEFAULT_THREADS, ARGON2_DEFAULT_TIME_COST, Argon2Strategy,
@@ -23,3 +33,4 @@ pub use hash::{
 };
 pub use phc::{ARGON2_VERSION, Phc, argon2_phc, parse_phc, variant_name};
 pub use prehash::{PREHASH_KEY, php_trim, prehash};
+pub use rehash::{DefaultRehashPolicy, password_needs_rehash};

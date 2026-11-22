@@ -312,6 +312,12 @@ $settings = [
     'argon2i-3-4096'   => [PASSWORD_ARGON2I, ['time_cost' => 3, 'memory_cost' => 4096]],
     'plain-bcrypt-1'   => [1, ['cost' => 5]],
     'null'             => [null, []],
+    'unknown'          => ['nope', []],
+    'int-4'            => [4, []],
+    'array-algo'       => [[], []],
+    'options-string'   => [PASSWORD_BCRYPT, 'x'],
+    'argon2-options-string' => [PASSWORD_ARGON2ID, 'x'],
+    'bcrypt-cost-string' => [PASSWORD_BCRYPT, ['cost' => '5']],
 ];
 foreach ($formats as $fname => $hash) {
     foreach ($settings as $sname => [$algorithm, $options]) {

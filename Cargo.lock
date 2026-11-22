@@ -6191,6 +6191,7 @@ dependencies = [
  "speedyspec-hooks",
  "speedyspec-wp-crypto",
  "speedyspec-wp-crypto-contracts",
+ "speedyspec-wp-password-bcrypt",
  "speedyspec-wp-password-contracts",
  "subtle",
 ]

@@ -106,10 +106,11 @@ pub trait PasswordFilters {
     fn algorithm(&self, default: Value) -> Result<Value, PasswordError>;
     /// `wp_hash_password_options`, given the filtered algorithm.
     fn options(&self, options: Value, algorithm: &Value) -> Result<Value, PasswordError>;
-    /// `check_password`.
+    /// `check_password`. `check` is a value, not a bool: when `$wp_hasher` answered, WordPress passes on whatever
+    /// its `CheckPassword()` returned.
     fn check_password(
         &self,
-        check: bool,
+        check: Value,
         password: &[u8],
         hash: &[u8],
         user_id: &Value,

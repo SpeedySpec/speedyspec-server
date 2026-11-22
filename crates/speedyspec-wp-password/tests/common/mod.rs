@@ -70,7 +70,7 @@ pub struct FakeFilters {
     pub options: Option<Value>,
     pub calls: Rc<RefCell<Vec<String>>>,
     pub seen_algorithm_for_options: RefCell<Option<Value>>,
-    pub check_args: RefCell<Option<(bool, Vec<u8>, Vec<u8>, Value)>>,
+    pub check_args: RefCell<Option<(Value, Vec<u8>, Vec<u8>, Value)>>,
     pub rehash_args: RefCell<Option<(bool, Vec<u8>, Value)>>,
     pub random_args: RefCell<Option<(Vec<u8>, i64, bool, bool)>>,
 }
@@ -112,15 +112,19 @@ impl PasswordFilters for FakeFilters {
     }
     fn check_password(
         &self,
-        check: bool,
+        check: Value,
         password: &[u8],
         hash: &[u8],
         user_id: &Value,
     ) -> Result<Value, PasswordError> {
         self.calls.borrow_mut().push("check_password".into());
-        *self.check_args.borrow_mut() =
-            Some((check, password.to_vec(), hash.to_vec(), user_id.clone()));
-        Ok(Value::Bool(check))
+        *self.check_args.borrow_mut() = Some((
+            check.clone(),
+            password.to_vec(),
+            hash.to_vec(),
+            user_id.clone(),
+        ));
+        Ok(check)
     }
     fn needs_rehash(
         &self,
