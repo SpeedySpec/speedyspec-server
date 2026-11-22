@@ -31,6 +31,11 @@ if (true) {
 
     function get_option($option, $default_value = false)
     {
+        // WordPress's short-circuit, which WordPress's own tests use to change an option for one test.
+        $pre = apply_filters("pre_option_{$option}", false, $option, $default_value);
+        if (false !== $pre) {
+            return $pre;
+        }
         return match ($option) {
             'blog_charset' => 'UTF-8',
             'use_smilies' => '1',

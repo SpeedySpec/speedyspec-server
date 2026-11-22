@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    bootstrap="formatting-bootstrap.php"
+    colors="false"
+    cacheResult="false"
+    failOnWarning="false"
+    failOnDeprecation="false"
+    displayDetailsOnTestsThatTriggerDeprecations="true"
+    displayDetailsOnPhpunitDeprecations="false"
+>
+    <testsuites>
+        <testsuite name="wordpress-formatting">
+            <directory suffix=".php">wordpress/formatting</directory>
+            <!-- Functions outside the formatting port (dates, excerpts, redirects, emoji, deprecated.php, ...). -->
+            <exclude>wordpress/formatting/date.php</exclude>
+            <exclude>wordpress/formatting/humanTimeDiff.php</exclude>
+            <exclude>wordpress/formatting/getUrlInContent.php</exclude>
+            <exclude>wordpress/formatting/wpTrimExcerpt.php</exclude>
+            <exclude>wordpress/formatting/excerptRemoveBlocks.php</exclude>
+            <exclude>wordpress/formatting/excerptRemoveFootnotes.php</exclude>
+            <exclude>wordpress/formatting/redirect.php</exclude>
+            <exclude>wordpress/formatting/getBloginfo.php</exclude>
+            <exclude>wordpress/formatting/likeEscape.php</exclude>
+            <exclude>wordpress/formatting/sanitizePost.php</exclude>
+            <exclude>wordpress/formatting/emoji.php</exclude>
+            <exclude>wordpress/formatting/cleanPre.php</exclude>
+            <exclude>wordpress/formatting/wpRicheditPre.php</exclude>
+            <exclude>wordpress/formatting/wpHtmleditPre.php</exclude>
+            <exclude>wordpress/formatting/deprecatedUtfEncodeDecode.php</exclude>
+        </testsuite>
+    </testsuites>
+    <groups>
+        <exclude>
+            <group>documented-break</group>
+            <group>needs-wordpress-core</group>
+        </exclude>
+    </groups>
+</phpunit>

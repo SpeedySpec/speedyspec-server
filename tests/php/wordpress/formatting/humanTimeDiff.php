@@ -19,7 +19,7 @@ class Tests_Formatting_HumanTimeDiff extends WP_UnitTestCase {
 	}
 
 	// Data for test_human_time_diff.
-	public function data_human_time_diff() {
+	public static function data_human_time_diff() {
 		return array(
 			array(
 				'37 seconds',

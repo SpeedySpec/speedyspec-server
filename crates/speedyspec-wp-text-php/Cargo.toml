@@ -43,3 +43,7 @@ name = "release"
 [[test]]
 name = "compat"
 harness = false
+
+[[test]]
+name = "wordpress"
+harness = false

@@ -34,14 +34,34 @@ pub(crate) fn arg(args: &[Value], i: usize) -> Value {
     args.get(i).map(|v| v.read().into_owned()).unwrap_or(Value::Null)
 }
 
-/// Argument `i` as PHP's `(string)`; an array or object reads as `""`.
-pub(crate) fn string(args: &[Value], i: usize) -> Vec<u8> {
-    to_php_string(&arg(args, i)).unwrap_or_default()
+/// Argument `i` as PHP's `(string)`: an object goes through PHP's own `strval()` (its `__toString()`, or PHP's
+/// error for an object without one); an array reads as `""`.
+pub(crate) fn string(args: &[Value], i: usize) -> Result<Vec<u8>, NativeError> {
+    let value = arg(args, i);
+    if let Value::Opaque(_) = value {
+        let cast = speedyspec_php::call_catching(&Value::Str("strval".into()), &[value])
+            .map_err(|f| native_error(crate::adapters::call_error(f)))?;
+        return Ok(to_php_string(&cast.read()).unwrap_or_default());
+    }
+    Ok(to_php_string(&value).unwrap_or_default())
 }
 
 /// Argument `i` as PHP's `(string)`, or `default` when it wasn't passed.
-pub(crate) fn string_or(args: &[Value], i: usize, default: &[u8]) -> Vec<u8> {
-    if args.len() > i { string(args, i) } else { default.to_vec() }
+pub(crate) fn string_or(args: &[Value], i: usize, default: &[u8]) -> Result<Vec<u8>, NativeError> {
+    if args.len() > i { string(args, i) } else { Ok(default.to_vec()) }
+}
+
+/// Argument `i`, with an object that has `__toString()` already cast, for the functions WordPress lets take one.
+pub(crate) fn stringable(args: &[Value], i: usize) -> Result<Value, NativeError> {
+    let value = arg(args, i);
+    if let Value::Opaque(_) = value {
+        let has = speedyspec_php::call_catching(&Value::Str("method_exists".into()), &[value.clone(), Value::Str("__toString".into())])
+            .map_err(|f| native_error(crate::adapters::call_error(f)))?;
+        if matches!(has, Value::Bool(true)) {
+            return Ok(speedyspec_wp_text::strings::bytes_value(string(args, i)?));
+        }
+    }
+    Ok(value)
 }
 
 /// Argument `i` as PHP's truthiness, or `default` when it wasn't passed.
@@ -71,7 +91,7 @@ pub(crate) fn int_or(args: &[Value], i: usize, default: i64) -> i64 {
         Value::Int(n) => n,
         Value::Float(f) => f as i64,
         Value::Str(_) | Value::Bytes(_) => {
-            let text = string(args, i);
+            let text = to_php_string(&arg(args, i)).unwrap_or_default();
             let text = String::from_utf8_lossy(&text);
             let trimmed = text.trim_start_matches([' ', '\t', '\n', '\r', '\x0B', '\x0C']);
             let end = trimmed

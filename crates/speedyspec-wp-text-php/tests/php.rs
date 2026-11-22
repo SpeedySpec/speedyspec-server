@@ -224,6 +224,16 @@ fn natives(php: &Php, api: &std::rc::Rc<speedyspec_wp_text::TextApi>) {
         function stripslashes_deep($value) { return map_deep($value, 'stripslashes_from_strings_only'); }
         $o = new stdClass(); $o->x = "a\\'b"; $r = wp_unslash(['k' => $o]); return $r['k']->x === "a'b";"#,
     );
+    yes(
+        "stringable_objects_are_cast",
+        r#"$o = new class { public function __toString(): string { return 'foo<bar'; } };
+        wp_parse_str($o, $out);
+        return esc_html($o) === 'foo&lt;bar' && $out === ['foo<bar' => ''];"#,
+    );
+    yes(
+        "unstringable_object_throws",
+        r#"try { esc_html(new stdClass()); return false; } catch (Error $e) { return str_contains($e->getMessage(), 'could not be converted to string'); }"#,
+    );
     yes("seems_utf8_is_bool", "return seems_utf8('a') === true;");
     yes("sanitize_hex_color_null", "return sanitize_hex_color('nope') === null && sanitize_hex_color('') === '';");
     yes("is_email_false", "return is_email('x') === false;");

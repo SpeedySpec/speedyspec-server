@@ -26,7 +26,7 @@ use speedyspec_wp_text_contracts::TextError;
 use speedyspec_wp_text_escape::messages::*;
 use speedyspec_wp_text_escape::{QuoteStyle, backslashit, htmlentities2, wp_slash_value, wp_specialchars_decode, wp_unslash_value};
 
-use crate::args::{arg, bool_or, int_or, native_error, required, string, string_or};
+use crate::args::{arg, bool_or, int_or, native_error, required, string, string_or, stringable};
 
 type R = Result<Value, NativeError>;
 
@@ -95,10 +95,10 @@ fn strings_of(value: &Value) -> Vec<Vec<u8>> {
 }
 
 /// An optional string argument: `null` (or missing) is `None`.
-fn optional(args: &[Value], i: usize) -> Option<Vec<u8>> {
+fn optional(args: &[Value], i: usize) -> Result<Option<Vec<u8>>, NativeError> {
     match arg(args, i) {
-        Value::Null => None,
-        _ => Some(string(args, i)),
+        Value::Null => Ok(None),
+        _ => string(args, i).map(Some),
     }
 }
 
@@ -135,7 +135,7 @@ fn holds_object(value: &Value) -> bool {
 // html-split and escaping.
 
 fn wp_html_split(a: &[Value]) -> R {
-    let input = string(a, 0);
+    let input = string(a, 0)?;
     Ok(list(speedyspec_wp_html_split::wp_html_split(&input)))
 }
 
@@ -144,18 +144,18 @@ fn get_html_split_regex(_: &[Value]) -> R {
 }
 
 fn wp_specialchars(a: &[Value]) -> R {
-    let text = string(a, 0);
+    let text = string(a, 0)?;
     if text.is_empty() {
         return Ok(Value::Str(String::new()));
     }
     // A falsy `$charset` means `blog_charset`.
-    let charset = bool_or(a, 2, false).then(|| String::from_utf8_lossy(&string(a, 2)).into_owned());
+    let charset = if bool_or(a, 2, false) { Some(String::from_utf8_lossy(&string(a, 2)?).into_owned()) } else { None };
     let style = QuoteStyle::for_specialchars(&arg(a, 1));
     bytes(ask(WpSpecialchars { text, style, charset, double_encode: bool_or(a, 3, false) })?)
 }
 
 fn wp_specialchars_decode_native(a: &[Value]) -> R {
-    let text = string(a, 0);
+    let text = string(a, 0)?;
     if text.is_empty() {
         return Ok(Value::Str(String::new()));
     }
@@ -163,35 +163,35 @@ fn wp_specialchars_decode_native(a: &[Value]) -> R {
 }
 
 fn wp_check_invalid_utf8(a: &[Value]) -> R {
-    bytes(ask(WpCheckInvalidUtf8 { text: string(a, 0), strip: bool_or(a, 1, false) })?)
+    bytes(ask(WpCheckInvalidUtf8 { text: string(a, 0)?, strip: bool_or(a, 1, false) })?)
 }
 
 fn seems_utf8(a: &[Value]) -> R {
-    Ok(Value::Bool(ask(SeemsUtf8 { text: string(a, 0) })?))
+    Ok(Value::Bool(ask(SeemsUtf8 { text: string(a, 0)? })?))
 }
 
 fn esc_html(a: &[Value]) -> R {
-    ask(EscHtml { text: string(a, 0) })
+    ask(EscHtml { text: string(a, 0)? })
 }
 
 fn esc_attr(a: &[Value]) -> R {
-    ask(EscAttr { text: string(a, 0) })
+    ask(EscAttr { text: string(a, 0)? })
 }
 
 fn esc_textarea(a: &[Value]) -> R {
-    ask(EscTextarea { text: string(a, 0) })
+    ask(EscTextarea { text: string(a, 0)? })
 }
 
 fn esc_xml(a: &[Value]) -> R {
-    ask(EscXml { text: string(a, 0) })
+    ask(EscXml { text: string(a, 0)? })
 }
 
 fn esc_js(a: &[Value]) -> R {
-    ask(EscJs { text: string(a, 0) })
+    ask(EscJs { text: string(a, 0)? })
 }
 
 fn htmlentities2_native(a: &[Value]) -> R {
-    bytes(htmlentities2(&string(a, 0)))
+    bytes(htmlentities2(&string(a, 0)?))
 }
 
 fn wp_slash(a: &[Value]) -> R {
@@ -209,11 +209,11 @@ fn wp_unslash(a: &[Value]) -> R {
 }
 
 fn backslashit_native(a: &[Value]) -> R {
-    bytes(backslashit(&string(a, 0)))
+    bytes(backslashit(&string(a, 0)?))
 }
 
 fn tag_escape(a: &[Value]) -> R {
-    ask(TagEscape { text: string(a, 0) })
+    ask(TagEscape { text: string(a, 0)? })
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -224,11 +224,11 @@ fn wptexturize(a: &[Value]) -> R {
 }
 
 fn wpautop(a: &[Value]) -> R {
-    bytes(ask(Wpautop { text: string(a, 0), br: bool_or(a, 1, true) })?)
+    bytes(ask(Wpautop { text: string(a, 0)?, br: bool_or(a, 1, true) })?)
 }
 
 fn wp_replace_in_html_tags_native(a: &[Value]) -> R {
-    let haystack = string(a, 0);
+    let haystack = string(a, 0)?;
     let pairs: Vec<(Vec<u8>, Vec<u8>)> = match arg(a, 1) {
         Value::Array(items) => items
             .iter()
@@ -247,52 +247,52 @@ fn wp_replace_in_html_tags_native(a: &[Value]) -> R {
 }
 
 fn shortcode_unautop(a: &[Value]) -> R {
-    bytes(ask(ShortcodeUnautop { text: string(a, 0) })?)
+    bytes(ask(ShortcodeUnautop { text: string(a, 0)? })?)
 }
 
 fn convert_chars(a: &[Value]) -> R {
     let deprecated = if a.len() > 1 { arg(a, 1) } else { Value::Str(String::new()) };
-    bytes(ask(ConvertChars { content: string(a, 0), deprecated })?)
+    bytes(ask(ConvertChars { content: string(a, 0)?, deprecated })?)
 }
 
 fn convert_invalid_entities_native(a: &[Value]) -> R {
-    bytes(convert_invalid_entities(&string(a, 0)).into_owned())
+    bytes(convert_invalid_entities(&string(a, 0)?).into_owned())
 }
 
 fn ent2ncr(a: &[Value]) -> R {
-    ask(Ent2ncr { text: string(a, 0) })
+    ask(Ent2ncr { text: string(a, 0)? })
 }
 
 fn balance_tags(a: &[Value]) -> R {
-    bytes(ask(BalanceTags { text: string(a, 0), force: bool_or(a, 1, false) })?)
+    bytes(ask(BalanceTags { text: string(a, 0)?, force: bool_or(a, 1, false) })?)
 }
 
 fn force_balance_tags_native(a: &[Value]) -> R {
-    bytes(force_balance_tags(&string(a, 0)).into_owned())
+    bytes(force_balance_tags(&string(a, 0)?).into_owned())
 }
 
 fn capital_p_dangit(a: &[Value]) -> R {
-    bytes(ask(CapitalPDangit { text: string(a, 0) })?)
+    bytes(ask(CapitalPDangit { text: string(a, 0)? })?)
 }
 
 fn wp_trim_words(a: &[Value]) -> R {
-    ask(WpTrimWords { text: string(a, 0), num_words: int_or(a, 1, 55), more: optional(a, 2) })
+    ask(WpTrimWords { text: string(a, 0)?, num_words: int_or(a, 1, 55), more: optional(a, 2)? })
 }
 
 fn wp_html_excerpt(a: &[Value]) -> R {
-    bytes(ask(WpHtmlExcerpt { text: string(a, 0), count: int_or(a, 1, 0), more: optional(a, 2) })?)
+    bytes(ask(WpHtmlExcerpt { text: string(a, 0)?, count: int_or(a, 1, 0), more: optional(a, 2)? })?)
 }
 
 fn normalize_whitespace_native(a: &[Value]) -> R {
-    bytes(normalize_whitespace(&string(a, 0)).into_owned())
+    bytes(normalize_whitespace(&string(a, 0)?).into_owned())
 }
 
 fn wp_strip_all_tags(a: &[Value]) -> R {
-    bytes(ask(WpStripAllTags { text: arg(a, 0), remove_breaks: bool_or(a, 1, false) })?)
+    bytes(ask(WpStripAllTags { text: stringable(a, 0)?, remove_breaks: bool_or(a, 1, false) })?)
 }
 
 fn format_for_editor(a: &[Value]) -> R {
-    ask(FormatForEditor { text: string(a, 0), default_editor: arg(a, 1) })
+    ask(FormatForEditor { text: string(a, 0)?, default_editor: arg(a, 1) })
 }
 
 fn wp_spaces_regexp(_: &[Value]) -> R {
@@ -300,7 +300,7 @@ fn wp_spaces_regexp(_: &[Value]) -> R {
 }
 
 fn convert_smilies(a: &[Value]) -> R {
-    bytes(ask(ConvertSmilies { text: string(a, 0) })?)
+    bytes(ask(ConvertSmilies { text: string(a, 0)? })?)
 }
 
 fn translate_smiley(a: &[Value]) -> R {
@@ -316,21 +316,21 @@ fn translate_smiley(a: &[Value]) -> R {
 }
 
 fn make_clickable(a: &[Value]) -> R {
-    bytes(ask(MakeClickable { text: string(a, 0) })?)
+    bytes(ask(MakeClickable { text: string(a, 0)? })?)
 }
 
 fn split_str_by_whitespace_native(a: &[Value]) -> R {
-    let text = string(a, 0);
+    let text = string(a, 0)?;
     let goal = usize::try_from(int_or(a, 1, 0)).unwrap_or(0);
     Ok(list(split_str_by_whitespace(&text, goal)))
 }
 
 fn wp_rel_callback(a: &[Value]) -> R {
-    bytes(ask(WpRelCallback { inner: matched(a, 1), rel: string(a, 1) })?)
+    bytes(ask(WpRelCallback { inner: matched(a, 1), rel: string(a, 1)? })?)
 }
 
 fn wp_rel_nofollow(a: &[Value]) -> R {
-    bytes(ask(WpRelNofollow { text: string(a, 0) })?)
+    bytes(ask(WpRelNofollow { text: string(a, 0)? })?)
 }
 
 fn wp_rel_nofollow_callback(a: &[Value]) -> R {
@@ -338,11 +338,11 @@ fn wp_rel_nofollow_callback(a: &[Value]) -> R {
 }
 
 fn wp_rel_ugc(a: &[Value]) -> R {
-    bytes(ask(WpRelUgc { text: string(a, 0) })?)
+    bytes(ask(WpRelUgc { text: string(a, 0)? })?)
 }
 
 fn wp_targeted_link_rel(a: &[Value]) -> R {
-    bytes(ask(WpTargetedLinkRel { text: string(a, 0) })?)
+    bytes(ask(WpTargetedLinkRel { text: string(a, 0)? })?)
 }
 
 fn wp_targeted_link_rel_callback(a: &[Value]) -> R {
@@ -351,28 +351,28 @@ fn wp_targeted_link_rel_callback(a: &[Value]) -> R {
 
 fn links_add_base_url(a: &[Value]) -> R {
     let attrs = if a.len() > 2 { strings_of(&arg(a, 2)) } else { vec![b"src".to_vec(), b"href".to_vec()] };
-    bytes(ask(LinksAddBaseUrl { content: string(a, 0), base: string(a, 1), attrs })?)
+    bytes(ask(LinksAddBaseUrl { content: string(a, 0)?, base: string(a, 1)?, attrs })?)
 }
 
 fn links_add_target(a: &[Value]) -> R {
     let tags = if a.len() > 2 { strings_of(&arg(a, 2)) } else { vec![b"a".to_vec()] };
-    bytes(ask(LinksAddTarget { content: string(a, 0), target: string_or(a, 1, b"_blank"), tags })?)
+    bytes(ask(LinksAddTarget { content: string(a, 0)?, target: string_or(a, 1, b"_blank")?, tags })?)
 }
 
 fn format_to_edit(a: &[Value]) -> R {
-    ask(FormatToEdit { content: string(a, 0), rich_text: bool_or(a, 1, false) })
+    ask(FormatToEdit { content: string(a, 0)?, rich_text: bool_or(a, 1, false) })
 }
 
 fn wp_pre_kses_less_than(a: &[Value]) -> R {
-    bytes(ask(WpPreKsesLessThan { content: string(a, 0) })?)
+    bytes(ask(WpPreKsesLessThan { content: string(a, 0)? })?)
 }
 
 // ---------------------------------------------------------------------------------------------------------------
 // Sanitizers and URLs.
 
 fn sanitize_title(a: &[Value]) -> R {
-    let context = SanitizeContext::from_bytes(&string_or(a, 2, b"save"));
-    ask(SanitizeTitle { title: arg(a, 0), fallback: string_or(a, 1, b""), context })
+    let context = SanitizeContext::from_bytes(&string_or(a, 2, b"save")?);
+    ask(SanitizeTitle { title: arg(a, 0), fallback: string_or(a, 1, b"")?, context })
 }
 
 fn sanitize_title_for_query(a: &[Value]) -> R {
@@ -380,27 +380,27 @@ fn sanitize_title_for_query(a: &[Value]) -> R {
 }
 
 fn sanitize_title_with_dashes_native(a: &[Value]) -> R {
-    let context = SanitizeContext::from_bytes(&string_or(a, 2, b"display"));
-    bytes(sanitize_title_with_dashes(&string(a, 0), &context))
+    let context = SanitizeContext::from_bytes(&string_or(a, 2, b"display")?);
+    bytes(sanitize_title_with_dashes(&string(a, 0)?, &context))
 }
 
 fn remove_accents(a: &[Value]) -> R {
-    let locale = string_or(a, 1, b"");
+    let locale = string_or(a, 1, b"")?;
     let locale = (!locale.is_empty()).then(|| String::from_utf8_lossy(&locale).into_owned());
-    bytes(ask(RemoveAccents { text: string(a, 0), locale })?)
+    bytes(ask(RemoveAccents { text: string(a, 0)?, locale })?)
 }
 
 fn utf8_uri_encode(a: &[Value]) -> R {
     let length = usize::try_from(int_or(a, 1, 0)).unwrap_or(0);
-    bytes(helpers::utf8_uri_encode(&string(a, 0), length, bool_or(a, 2, false)))
+    bytes(helpers::utf8_uri_encode(&string(a, 0)?, length, bool_or(a, 2, false)))
 }
 
 fn sanitize_file_name(a: &[Value]) -> R {
-    ask(SanitizeFileName { filename: string(a, 0) })
+    ask(SanitizeFileName { filename: string(a, 0)? })
 }
 
 fn sanitize_user(a: &[Value]) -> R {
-    ask(SanitizeUser { username: string(a, 0), strict: bool_or(a, 1, false) })
+    ask(SanitizeUser { username: string(a, 0)?, strict: bool_or(a, 1, false) })
 }
 
 fn sanitize_key(a: &[Value]) -> R {
@@ -408,11 +408,11 @@ fn sanitize_key(a: &[Value]) -> R {
 }
 
 fn sanitize_html_class(a: &[Value]) -> R {
-    ask(SanitizeHtmlClass { classname: string(a, 0), fallback: string_or(a, 1, b"") })
+    ask(SanitizeHtmlClass { classname: string(a, 0)?, fallback: string_or(a, 1, b"")? })
 }
 
 fn sanitize_locale_name(a: &[Value]) -> R {
-    ask(SanitizeLocaleName { locale_name: string(a, 0) })
+    ask(SanitizeLocaleName { locale_name: string(a, 0)? })
 }
 
 fn sanitize_text_field(a: &[Value]) -> R {
@@ -424,7 +424,7 @@ fn sanitize_textarea_field(a: &[Value]) -> R {
 }
 
 fn sanitize_email(a: &[Value]) -> R {
-    ask(SanitizeEmail { email: string(a, 0) })
+    ask(SanitizeEmail { email: string(a, 0)? })
 }
 
 fn is_email(a: &[Value]) -> R {
@@ -438,84 +438,84 @@ fn optional_color(v: Option<&[u8]>) -> R {
 }
 
 fn sanitize_hex_color_native(a: &[Value]) -> R {
-    optional_color(sanitize_hex_color(&string(a, 0)))
+    optional_color(sanitize_hex_color(&string(a, 0)?))
 }
 
 fn sanitize_hex_color_no_hash_native(a: &[Value]) -> R {
-    optional_color(sanitize_hex_color_no_hash(&string(a, 0)))
+    optional_color(sanitize_hex_color_no_hash(&string(a, 0)?))
 }
 
 fn maybe_hash_hex_color_native(a: &[Value]) -> R {
-    bytes(maybe_hash_hex_color(&string(a, 0)).into_owned())
+    bytes(maybe_hash_hex_color(&string(a, 0)?).into_owned())
 }
 
 fn sanitize_mime_type(a: &[Value]) -> R {
-    ask(SanitizeMimeType { mime_type: string(a, 0) })
+    ask(SanitizeMimeType { mime_type: string(a, 0)? })
 }
 
 fn sanitize_trackback_urls(a: &[Value]) -> R {
-    ask(SanitizeTrackbackUrls { to_ping: string(a, 0) })
+    ask(SanitizeTrackbackUrls { to_ping: string(a, 0)? })
 }
 
 fn sanitize_sql_orderby_native(a: &[Value]) -> R {
-    Ok(sanitize_sql_orderby(&string(a, 0)).map_or(Value::Bool(false), |v| bytes_value(v.to_vec())))
+    Ok(sanitize_sql_orderby(&string(a, 0)?).map_or(Value::Bool(false), |v| bytes_value(v.to_vec())))
 }
 
 fn esc_url(a: &[Value]) -> R {
-    ask(EscUrl { url: string(a, 0), protocols: protocols(a, 1), context: string_or(a, 2, b"display") })
+    ask(EscUrl { url: string(a, 0)?, protocols: protocols(a, 1), context: string_or(a, 2, b"display")? })
 }
 
 fn esc_url_raw(a: &[Value]) -> R {
-    ask(EscUrlRaw { url: string(a, 0), protocols: protocols(a, 1) })
+    ask(EscUrlRaw { url: string(a, 0)?, protocols: protocols(a, 1) })
 }
 
 fn sanitize_url(a: &[Value]) -> R {
-    ask(SanitizeUrl { url: string(a, 0), protocols: protocols(a, 1) })
+    ask(SanitizeUrl { url: string(a, 0)?, protocols: protocols(a, 1) })
 }
 
 fn deep_replace(a: &[Value]) -> R {
     let search = strings_of(&arg(a, 0));
     let search: Vec<&[u8]> = search.iter().map(Vec::as_slice).collect();
-    bytes(helpers::deep_replace(&search, &string(a, 1)))
+    bytes(helpers::deep_replace(&search, &string(a, 1)?))
 }
 
 fn wp_make_link_relative(a: &[Value]) -> R {
-    bytes(helpers::wp_make_link_relative(&string(a, 0)).into_owned())
+    bytes(helpers::wp_make_link_relative(&string(a, 0)?).into_owned())
 }
 
 fn url_shorten(a: &[Value]) -> R {
-    bytes(helpers::url_shorten(&string(a, 0), int_or(a, 1, 35)))
+    bytes(helpers::url_shorten(&string(a, 0)?, int_or(a, 1, 35)))
 }
 
 fn antispambot(a: &[Value]) -> R {
-    bytes(ask(Antispambot { email: string(a, 0), hex_encoding: int_or(a, 1, 0) })?)
+    bytes(ask(Antispambot { email: string(a, 0)?, hex_encoding: int_or(a, 1, 0) })?)
 }
 
 // ---------------------------------------------------------------------------------------------------------------
 // Helpers.
 
 fn zeroise(a: &[Value]) -> R {
-    bytes(helpers::zeroise(&string(a, 0), int_or(a, 1, 0)))
+    bytes(helpers::zeroise(&string(a, 0)?, int_or(a, 1, 0)))
 }
 
 fn trailingslashit(a: &[Value]) -> R {
-    bytes(helpers::trailingslashit(&string(a, 0)))
+    bytes(helpers::trailingslashit(&string(a, 0)?))
 }
 
 fn untrailingslashit(a: &[Value]) -> R {
-    bytes(helpers::untrailingslashit(&string(a, 0)).to_vec())
+    bytes(helpers::untrailingslashit(&string(a, 0)?).to_vec())
 }
 
 fn wp_basename(a: &[Value]) -> R {
-    bytes(helpers::wp_basename(&string(a, 0), &string_or(a, 1, b"")))
+    bytes(helpers::wp_basename(&string(a, 0)?, &string_or(a, 1, b"")?))
 }
 
 fn wp_iso_descrambler(a: &[Value]) -> R {
-    bytes(helpers::wp_iso_descrambler(&string(a, 0)).into_owned())
+    bytes(helpers::wp_iso_descrambler(&string(a, 0)?).into_owned())
 }
 
 fn wp_parse_str(a: &[Value]) -> R {
-    ask(WpParseStr { input: arg(a, 0) })
+    ask(WpParseStr { input: stringable(a, 0)? })
 }
 
 /// Every native: (WordPress name, required arguments, all arguments, body).
