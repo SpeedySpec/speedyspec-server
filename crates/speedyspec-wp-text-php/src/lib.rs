@@ -8,6 +8,7 @@
 pub mod adapters;
 mod args;
 mod native;
+mod release;
 
 
 use std::rc::Rc;
@@ -20,6 +21,7 @@ use speedyspec_wp_kses::KsesApi;
 use speedyspec_wp_text::{TextApi, TextDeps, register_text_handlers};
 use speedyspec_wp_text_escape::{EscapeApi, register_escape_handlers};
 
+pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
 pub use speedyspec_wp_text::adapters::EscapeAttributes;
 
 use crate::adapters::*;

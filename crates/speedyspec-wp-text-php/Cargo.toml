@@ -36,3 +36,6 @@ ureq = "3"
 [[test]]
 name = "php"
 harness = false
+
+[[test]]
+name = "release"
