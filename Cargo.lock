@@ -5402,6 +5402,7 @@ dependencies = [
  "speedyspec-data-mysql",
  "speedyspec-data-query",
  "speedyspec-fastcgi",
+ "speedyspec-ffmpeg-sys",
  "speedyspec-hooks",
  "speedyspec-hooks-memory",
  "speedyspec-php",

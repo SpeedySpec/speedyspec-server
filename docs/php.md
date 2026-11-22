@@ -62,7 +62,7 @@ The `speedyspec_wordpress` extension (the Rust side: the container, the Hook API
 ### FFmpeg
 
 The runtime reads audio, video and image metadata with FFmpeg instead of WordPress's getID3 (see
-`docs/licensing.md` for the licence). `scripts/build-ffmpeg.sh` builds it, and `build-php.sh` runs it at its end, so
+[licensing](licensing.md) for the licence and how releases meet it). `scripts/build-ffmpeg.sh` builds it, and `build-php.sh` runs it at its end, so
 building PHP builds FFmpeg too (into `.php-build/ffmpeg/prefix`, or `.php-build-linux*/ffmpeg/prefix` in the Linux
 container). Run it alone to rebuild FFmpeg against an existing PHP build; `--print-configure` prints its configure
 arguments.

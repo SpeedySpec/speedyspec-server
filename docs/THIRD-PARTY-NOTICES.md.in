@@ -1,0 +1,15 @@
+# Third-party notices
+
+## FFmpeg
+
+`speedyspec-php-runtime` statically links FFmpeg @FFMPEG_VERSION@ (`libavformat`, `libavcodec`, `libavutil`) to read
+media metadata.
+
+- Licence: GNU Lesser General Public License, version 2.1 or later (`COPYING.LGPLv2.1`, attached to this release).
+  The build enables nothing GPL, version 3 or nonfree.
+- Source: `ffmpeg-@FFMPEG_VERSION@.tar.xz`, attached to this release, from @FFMPEG_URL@
+  (SHA-256 `@FFMPEG_SHA256@`). Configuration: `ffmpeg-configure-line.txt`, attached.
+- Copyright: the FFmpeg developers. See the source's `CREDITS` and file headers.
+
+The runtime's complete source, including the scripts that build FFmpeg and link it, is at @RUNTIME_SOURCE@ (MIT).
+To use a modified FFmpeg, follow "Relinking FFmpeg" in that source's `docs/licensing.md`.

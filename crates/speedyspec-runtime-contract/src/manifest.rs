@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 ///     contracts: vec![1],
 ///     php: "8.5.12".into(),
 ///     sodium: None,
+///     ffmpeg: None,
 /// };
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,6 +30,10 @@ pub struct RuntimeManifest {
     /// added, so it stays optional within contract 1; the release smoke check requires it of new releases.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sodium: Option<String>,
+    /// The FFmpeg release the runtime reads media metadata with, linked statically under LGPL 2.1 (each release attaches
+    /// its source). Optional within contract 1, like `sodium`; the release smoke check requires it of new releases.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ffmpeg: Option<String>,
 }
 
 impl RuntimeManifest {
@@ -39,12 +44,19 @@ impl RuntimeManifest {
             contracts,
             php: php.into(),
             sodium: None,
+            ffmpeg: None,
         }
     }
 
     /// The manifest, reporting libsodium `version`.
     pub fn with_sodium(mut self, version: impl Into<String>) -> Self {
         self.sodium = Some(version.into());
+        self
+    }
+
+    /// The manifest, reporting FFmpeg `version`.
+    pub fn with_ffmpeg(mut self, version: impl Into<String>) -> Self {
+        self.ffmpeg = Some(version.into());
         self
     }
 }
@@ -67,6 +79,7 @@ mod tests {
             contracts: vec![1],
             php: "8.5.12".into(),
             sodium: Some("1.0.22".into()),
+            ffmpeg: None,
         };
         let json = serde_json::to_string(&manifest).unwrap();
         assert!(json.contains(r#""sodium":"1.0.22""#), "{json}");
@@ -77,12 +90,29 @@ mod tests {
     }
 
     #[test]
+    fn manifest_without_ffmpeg_still_parses() {
+        // What runtimes released before the ffmpeg field print.
+        let json = r#"{"version":"1.0.4","contracts":[1],"php":"8.5.12","sodium":"1.0.22"}"#;
+        let manifest: RuntimeManifest = serde_json::from_str(json).unwrap();
+        assert_eq!(manifest.ffmpeg, None);
+    }
+
+    #[test]
+    fn manifest_round_trips_ffmpeg() {
+        let manifest = RuntimeManifest::new("1.2.3".parse().unwrap(), vec![1], "8.5.12").with_ffmpeg("9.1");
+        let json = serde_json::to_string(&manifest).unwrap();
+        assert!(json.contains(r#""ffmpeg":"9.1""#), "{json}");
+        assert_eq!(serde_json::from_str::<RuntimeManifest>(&json).unwrap(), manifest);
+    }
+
+    #[test]
     fn manifest_round_trips() {
         let manifest = RuntimeManifest {
             version: "1.2.3".parse().unwrap(),
             contracts: vec![1],
             php: "8.5.12".into(),
             sodium: None,
+            ffmpeg: None,
         };
         let json = serde_json::to_string(&manifest).unwrap();
         assert_eq!(

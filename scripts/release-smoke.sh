@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Checks a release binary before it is published: its `manifest` must name the version being released (and, for the
 # server, the `server` app; the runtime's manifest has no app but must offer a contract and report the pinned
-# libsodium), and on Linux it must be a static executable.
+# libsodium and FFmpeg), and on Linux it must be a static executable.
 #
 #   scripts/release-smoke.sh <binary> speedyspec-server|speedyspec-php-runtime <version>
 set -euo pipefail
@@ -33,6 +33,11 @@ case "$component" in
         [ -n "$pinned" ] || fail "scripts/build-php.sh pins no libsodium_version"
         sodium="$(jq -r '.sodium // empty' <<<"$manifest")"
         [ "$sodium" = "$pinned" ] || fail "libsodium is ${sodium:-missing}, not $pinned"
+        # Media metadata is read with the FFmpeg build-ffmpeg.sh pins, statically linked (docs/licensing.md).
+        pinned="$(sed -n 's/^ffmpeg_version="\(.*\)"$/\1/p' "$(dirname "${BASH_SOURCE[0]}")/build-ffmpeg.sh")"
+        [ -n "$pinned" ] || fail "scripts/build-ffmpeg.sh pins no ffmpeg_version"
+        ffmpeg="$(jq -r '.ffmpeg // empty' <<<"$manifest")"
+        [ "$ffmpeg" = "$pinned" ] || fail "FFmpeg is ${ffmpeg:-missing}, not $pinned"
         ;;
     *)
         echo "release-smoke.sh: unknown component $component" >&2
