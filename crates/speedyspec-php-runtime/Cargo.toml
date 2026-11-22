@@ -27,6 +27,12 @@ speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
 speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+speedyspec-wp-crypto-contracts = { path = "../speedyspec-wp-crypto-contracts" }
+speedyspec-wp-crypto-php = { path = "../speedyspec-wp-crypto-php" }
+speedyspec-wp-crypto-sodium = { path = "../speedyspec-wp-crypto-sodium" }
 
 [dev-dependencies]
 tempfile = "3"
+bytes = "1"
+futures-util = "0.3"
+tokio = { version = "1", features = ["rt", "macros", "net", "time"] }

@@ -1,0 +1,11 @@
+[package]
+name = "speedyspec-wp-crypto"
+version = "0.1.0"
+description = "WordPress's sodium functions' rules: the fast hash format, trusted keys and file signature checks."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-wp-crypto-contracts = { path = "../speedyspec-wp-crypto-contracts" }
+sha2 = "0.10"

@@ -424,6 +424,26 @@ abstract class WP_UnitTestCase extends TestCase
     /**
      * Asserts that two arrays hold the same values, in any order.
      */
+    /**
+     * Asserts that a value is a WP_Error, as WordPress's test case does.
+     */
+    public function assertWPError($actual, $message = '')
+    {
+        $this->assertInstanceOf('WP_Error', $actual, $message);
+    }
+
+    /**
+     * Asserts that a value is not a WP_Error, naming the error's message when it is, as WordPress's test case does.
+     */
+    public function assertNotWPError($actual, $message = '')
+    {
+        if ('' === $message && $actual instanceof WP_Error)
+        {
+            $message = $actual->get_error_message();
+        }
+        $this->assertNotInstanceOf('WP_Error', $actual, $message);
+    }
+
     public function assertSameSets($expected, $actual, $message = '')
     {
         $this->assertIsArray($expected, $message . ' Expected value must be an array.');

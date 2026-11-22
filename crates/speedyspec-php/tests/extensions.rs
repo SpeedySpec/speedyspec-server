@@ -43,6 +43,10 @@ const EXTENSIONS: &[&str] = &[
     "zlib",
 ];
 
+/// The libsodium version `scripts/build-php.sh` pins. WordPress needs ext-sodium, and the runtime guarantees it, so
+/// the build must link exactly this one.
+const SODIUM: &str = "1.0.22";
+
 fn main() {
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),
@@ -67,6 +71,10 @@ fn main() {
             if (!class_exists($c)) {{ $missing[] = "class $c"; }}
         }}
         if (!defined('SODIUM_LIBRARY_VERSION')) {{ $missing[] = 'constant SODIUM_LIBRARY_VERSION'; }}
+        elseif (SODIUM_LIBRARY_VERSION !== '{SODIUM}') {{
+            $missing[] = 'sodium: expected libsodium {SODIUM}, got ' . SODIUM_LIBRARY_VERSION;
+        }}
+        if (!function_exists('sodium_crypto_sign_verify_detached')) {{ $missing[] = 'function sodium_crypto_sign_verify_detached'; }}
         if (function_exists('gd_info')) {{
             $gd = gd_info();
             foreach (['JPEG Support','PNG Support','WebP Support','AVIF Support','FreeType Support'] as $k) {{
