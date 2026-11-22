@@ -28,7 +28,7 @@ enum Reschedule {
     Done(CronResult),
 }
 
-enum Ran {
+enum EventOutcome {
     Ran,
     ClaimedByOthers,
     /// The claim's write kept conflicting: not run, left for the next call.
@@ -102,8 +102,8 @@ impl CronApi {
                 for (key, event) in keys {
                     match self.run_event(timestamp, hook, key, event, foreign)? {
                         Ran::Ran => summary.ran += 1,
-                        Ran::ClaimedByOthers => summary.claimed_by_others += 1,
-                        Ran::Unclaimed => summary.unclaimed += 1,
+                        EventOutcome::ClaimedByOthers => summary.claimed_by_others += 1,
+                        EventOutcome::Unclaimed => summary.unclaimed += 1,
                     }
                     if self.p.clock.microtime() - started >= budget.as_secs_f64() {
                         stopped = true;
@@ -132,7 +132,7 @@ impl CronApi {
         event_key: &Key,
         event: &HookValue,
         foreign: bool,
-    ) -> Result<Ran, CronError> {
+    ) -> Result<EventOutcome, CronError> {
         let timestamp = key_value(timestamp_key);
         let hook = key_value(hook_key);
         let schedule = get(event, &field("schedule"))
@@ -234,11 +234,11 @@ impl CronApi {
             Ok(())
         })?;
         if claimed_by_others.get() {
-            return Ok(Ran::ClaimedByOthers);
+            return Ok(EventOutcome::ClaimedByOthers);
         }
         if written.is_err() {
             // Other runners are writing and one of them may claim it: running it unclaimed could run it twice.
-            return Ok(Ran::Unclaimed);
+            return Ok(EventOutcome::Unclaimed);
         }
         self.run_action(&hook, &args)?;
         Ok(Ran::Ran)
