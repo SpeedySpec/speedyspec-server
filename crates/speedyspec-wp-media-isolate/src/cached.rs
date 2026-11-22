@@ -11,26 +11,32 @@ use std::num::NonZeroUsize;
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use lru::LruCache;
 use sha2::{Digest, Sha256};
 use speedyspec_cache::CachingStore;
-use speedyspec_wp_media_contracts::{MediaInfo, MediaReader, MediaSource, ProbeLimits, ReadError};
+use speedyspec_wp_media_contracts::{
+    Limit, MediaInfo, MediaReader, MediaSource, ProbeLimits, ReadError,
+};
 
 use crate::{log, wire};
 
 const GROUP: &str = "speedyspec_media";
 const HEAD: u64 = 64 * 1024;
+/// How long a failure that may not repeat (a timeout, a crash, a CPU or memory limit) is remembered.
+const TRANSIENT_TTL: Duration = Duration::from_secs(300);
 
-/// Caches successful reads of paths. Descriptors bypass it (they have no stable identity), and errors are never
-/// cached, so a file that couldn't be read is tried again next time.
+/// Caches reads of paths. Descriptors bypass it (they have no stable identity). Failures are cached too, so one bad
+/// upload doesn't start a probe child on every page view: failures the same bytes always produce (unrecognized,
+/// truncated, a byte, stream or output limit) for the full TTL, failures that may not repeat (a timeout, a crash, a
+/// CPU or memory limit) for five minutes. A missing or unreadable file is never cached.
 pub struct CachedReader<R: MediaReader> {
     inner: R,
     store: Rc<dyn CachingStore>,
     root: PathBuf,
     ttl: Duration,
-    local: RefCell<LruCache<String, Vec<u8>>>,
+    local: RefCell<LruCache<String, (Vec<u8>, Instant)>>,
     failures_logged: Cell<u32>,
 }
 
@@ -51,6 +57,22 @@ impl<R: MediaReader> CachedReader<R> {
             ttl,
             local: RefCell::new(LruCache::new(local_entries)),
             failures_logged: Cell::new(0),
+        }
+    }
+
+    /// How long the outcome `result` is cached, given the cache's TTL for successes; `None` for never.
+    pub fn ttl_for(result: &Result<MediaInfo, ReadError>, ttl: Duration) -> Option<Duration> {
+        match result {
+            Ok(_)
+            | Err(ReadError::Unrecognized)
+            | Err(ReadError::Truncated)
+            | Err(ReadError::LimitExceeded(Limit::Bytes | Limit::Streams | Limit::Output)) => {
+                Some(ttl)
+            }
+            Err(ReadError::TimedOut)
+            | Err(ReadError::Crashed(_))
+            | Err(ReadError::LimitExceeded(_)) => Some(TRANSIENT_TTL.min(ttl)),
+            Err(_) => None,
         }
     }
 
@@ -104,11 +126,8 @@ impl<R: MediaReader> CachedReader<R> {
     }
 }
 
-fn decoded(bytes: &[u8]) -> Option<MediaInfo> {
-    match wire::decode(bytes) {
-        Ok(Ok(info)) => Some(info),
-        _ => None,
-    }
+fn decoded(bytes: &[u8]) -> Option<Result<MediaInfo, ReadError>> {
+    wire::decode(bytes).ok()
 }
 
 impl<R: MediaReader> MediaReader for CachedReader<R> {
@@ -119,33 +138,40 @@ impl<R: MediaReader> MediaReader for CachedReader<R> {
         let Some(key) = self.key(&path) else {
             return self.inner.read(MediaSource::Path(path), limits);
         };
-        if let Some(info) = self
-            .local
-            .borrow_mut()
-            .get(&key)
-            .and_then(|bytes| decoded(bytes))
-        {
-            return Ok(info);
+        let local_hit = match self.local.borrow_mut().get(&key) {
+            Some((bytes, expires)) if *expires > Instant::now() => decoded(bytes),
+            _ => None,
+        };
+        if let Some(result) = local_hit {
+            return result;
         }
         match self.store.get(GROUP, &key) {
             Ok(Some(bytes)) => {
-                if let Some(info) = decoded(&bytes) {
-                    self.local.borrow_mut().put(key, bytes);
-                    return Ok(info);
+                if let Some(result) = decoded(&bytes) {
+                    if let Some(ttl) = Self::ttl_for(&result, self.ttl) {
+                        self.local
+                            .borrow_mut()
+                            .put(key, (bytes, Instant::now() + ttl));
+                    }
+                    return result;
                 }
             }
             Ok(None) => {}
             Err(err) => self.store_failed(&err),
         }
-        let info = self.inner.read(MediaSource::Path(path.clone()), limits)?;
+        let result = self.inner.read(MediaSource::Path(path.clone()), limits);
         // A file that changed while it was read is not cached under the key it had before.
-        if self.key(&path).as_deref() == Some(key.as_str()) {
-            let bytes = wire::encode(&Ok(info.clone()));
-            if let Err(err) = self.store.set(GROUP, &key, &bytes, Some(self.ttl)) {
+        if let Some(ttl) = Self::ttl_for(&result, self.ttl)
+            && self.key(&path).as_deref() == Some(key.as_str())
+        {
+            let bytes = wire::encode(&result);
+            if let Err(err) = self.store.set(GROUP, &key, &bytes, Some(ttl)) {
                 self.store_failed(&err);
             }
-            self.local.borrow_mut().put(key, bytes);
+            self.local
+                .borrow_mut()
+                .put(key, (bytes, Instant::now() + ttl));
         }
-        Ok(info)
+        result
     }
 }

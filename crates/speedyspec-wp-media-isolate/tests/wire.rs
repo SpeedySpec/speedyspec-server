@@ -117,7 +117,34 @@ fn round_trips_errors() {
 #[test]
 fn rejects_other_versions() {
     let mut bytes = wire::encode(&Err(ReadError::NotFound));
-    bytes[0] = 2;
-    assert_eq!(wire::decode(&bytes), Err(WireError::Version(2)));
+    bytes[0] = 99;
+    assert_eq!(wire::decode(&bytes), Err(WireError::Version(99)));
     assert!(matches!(wire::decode(&[1]), Err(WireError::Malformed(_))));
+}
+
+#[test]
+fn a_deeply_nested_tree_is_refused_not_a_crash() {
+    let mut tree = Tree::Int(1);
+    for _ in 0..200 {
+        tree = Tree::List(vec![tree]);
+    }
+    let info = MediaInfo {
+        raw: RawViews {
+            getid3: None,
+            reader: Some(("x".into(), tree)),
+        },
+        ..everything()
+    };
+    let bytes = wire::encode(&Ok(info));
+    assert!(matches!(wire::decode(&bytes), Err(WireError::Malformed(_))));
+}
+
+#[test]
+fn hostile_nesting_bytes_do_not_overflow_the_stack() {
+    // What a compromised child could write: a million nested one-element lists, in the wire's own node encoding.
+    let mut bytes = wire::encode(&Err(ReadError::NotFound));
+    bytes.truncate(2);
+    let nested = wire::hostile_nesting_for_tests(1_000_000);
+    bytes.extend_from_slice(&nested);
+    assert!(wire::decode(&bytes).is_err());
 }

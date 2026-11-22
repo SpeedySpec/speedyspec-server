@@ -9,7 +9,11 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use speedyspec_wp_media_contracts as c;
 
-const VERSION: u16 = 1;
+const VERSION: u16 = 2;
+
+/// The deepest raw-view tree decoding accepts. FFmpeg's and getID3's views are a few levels deep; a hostile child
+/// (or a poisoned cache entry) nesting deeper is malformed, not a stack overflow in the worker.
+const MAX_TREE_DEPTH: usize = 64;
 
 /// Why bytes could not be decoded.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -57,8 +61,8 @@ struct InfoDto {
     streams: Vec<StreamDto>,
     tags: Vec<TagDto>,
     pictures: Vec<PictureDto>,
-    getid3: Option<TreeDto>,
-    reader: Option<(String, TreeDto)>,
+    getid3: Option<Vec<NodeDto>>,
+    reader: Option<(String, Vec<NodeDto>)>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -135,16 +139,19 @@ struct PictureDto {
     system: String,
 }
 
+/// A tree flattened in pre-order: containers carry their child count, map values follow their `Key`. Flat, so
+/// decoding never recurses, whatever the bytes say.
 #[derive(Serialize, Deserialize)]
-enum TreeDto {
+enum NodeDto {
     Null,
     Bool(bool),
     Int(i64),
     Float(f64),
     Str(String),
     Bytes(Vec<u8>),
-    List(Vec<TreeDto>),
-    Map(Vec<(String, TreeDto)>),
+    List(u32),
+    Map(u32),
+    Key(String),
 }
 
 macro_rules! named {
@@ -306,30 +313,139 @@ fn system_back(name: &str) -> Result<c::TagSystem, WireError> {
     system_from(name).ok_or_else(|| bad("tag system"))
 }
 
-fn tree_dto(tree: &c::Tree) -> TreeDto {
+fn flatten(tree: &c::Tree, out: &mut Vec<NodeDto>) {
     match tree {
-        c::Tree::Null => TreeDto::Null,
-        c::Tree::Bool(b) => TreeDto::Bool(*b),
-        c::Tree::Int(i) => TreeDto::Int(*i),
-        c::Tree::Float(f) => TreeDto::Float(*f),
-        c::Tree::Str(s) => TreeDto::Str(s.clone()),
-        c::Tree::Bytes(b) => TreeDto::Bytes(b.clone()),
-        c::Tree::List(l) => TreeDto::List(l.iter().map(tree_dto).collect()),
-        c::Tree::Map(m) => TreeDto::Map(m.iter().map(|(k, v)| (k.clone(), tree_dto(v))).collect()),
+        c::Tree::Null => out.push(NodeDto::Null),
+        c::Tree::Bool(b) => out.push(NodeDto::Bool(*b)),
+        c::Tree::Int(i) => out.push(NodeDto::Int(*i)),
+        c::Tree::Float(f) => out.push(NodeDto::Float(*f)),
+        c::Tree::Str(s) => out.push(NodeDto::Str(s.clone())),
+        c::Tree::Bytes(b) => out.push(NodeDto::Bytes(b.clone())),
+        c::Tree::List(items) => {
+            out.push(NodeDto::List(items.len() as u32));
+            for item in items {
+                flatten(item, out);
+            }
+        }
+        c::Tree::Map(entries) => {
+            out.push(NodeDto::Map(entries.len() as u32));
+            for (key, value) in entries {
+                out.push(NodeDto::Key(key.clone()));
+                flatten(value, out);
+            }
+        }
     }
 }
 
-fn tree_back(dto: TreeDto) -> c::Tree {
-    match dto {
-        TreeDto::Null => c::Tree::Null,
-        TreeDto::Bool(b) => c::Tree::Bool(b),
-        TreeDto::Int(i) => c::Tree::Int(i),
-        TreeDto::Float(f) => c::Tree::Float(f),
-        TreeDto::Str(s) => c::Tree::Str(s),
-        TreeDto::Bytes(b) => c::Tree::Bytes(b),
-        TreeDto::List(l) => c::Tree::List(l.into_iter().map(tree_back).collect()),
-        TreeDto::Map(m) => c::Tree::Map(m.into_iter().map(|(k, v)| (k, tree_back(v))).collect()),
+fn tree_dto(tree: &c::Tree) -> Vec<NodeDto> {
+    let mut out = Vec::new();
+    flatten(tree, &mut out);
+    out
+}
+
+enum Frame {
+    List(u32, Vec<c::Tree>),
+    Map(u32, Vec<(String, c::Tree)>, Option<String>),
+}
+
+/// Rebuilds a flattened tree without recursion, refusing more than `MAX_TREE_DEPTH` levels or leftover nodes.
+fn tree_back(nodes: Vec<NodeDto>) -> Result<c::Tree, WireError> {
+    let malformed = |why: &str| WireError::Malformed(format!("raw view: {why}"));
+    let mut stack: Vec<Frame> = Vec::new();
+    let mut done: Option<c::Tree> = None;
+    for node in nodes {
+        if done.is_some() {
+            return Err(malformed("nodes after the root"));
+        }
+        if let Some(Frame::Map(_, _, pending @ None)) = stack.last_mut() {
+            match node {
+                NodeDto::Key(key) => {
+                    *pending = Some(key);
+                    continue;
+                }
+                _ => return Err(malformed("a map value without its key")),
+            }
+        }
+        let mut value = match node {
+            NodeDto::Null => c::Tree::Null,
+            NodeDto::Bool(b) => c::Tree::Bool(b),
+            NodeDto::Int(i) => c::Tree::Int(i),
+            NodeDto::Float(f) => c::Tree::Float(f),
+            NodeDto::Str(s) => c::Tree::Str(s),
+            NodeDto::Bytes(b) => c::Tree::Bytes(b),
+            NodeDto::Key(_) => return Err(malformed("a key outside a map")),
+            NodeDto::List(_) | NodeDto::Map(_) if stack.len() >= MAX_TREE_DEPTH => {
+                return Err(malformed("nested too deeply"));
+            }
+            NodeDto::List(0) => c::Tree::List(Vec::new()),
+            NodeDto::Map(0) => c::Tree::Map(Vec::new()),
+            NodeDto::List(n) => {
+                stack.push(Frame::List(n, Vec::new()));
+                continue;
+            }
+            NodeDto::Map(n) => {
+                stack.push(Frame::Map(n, Vec::new(), None));
+                continue;
+            }
+        };
+        // Attach the finished value, closing every container it completes.
+        loop {
+            match stack.last_mut() {
+                None => {
+                    done = Some(value);
+                    break;
+                }
+                Some(Frame::List(n, items)) => {
+                    items.push(value);
+                    if items.len() as u32 == *n {
+                        let Some(Frame::List(_, items)) = stack.pop() else {
+                            unreachable!()
+                        };
+                        value = c::Tree::List(items);
+                        continue;
+                    }
+                    break;
+                }
+                Some(Frame::Map(n, entries, pending)) => {
+                    let key = pending
+                        .take()
+                        .ok_or_else(|| malformed("a map value without its key"))?;
+                    entries.push((key, value));
+                    if entries.len() as u32 == *n {
+                        let Some(Frame::Map(_, entries, _)) = stack.pop() else {
+                            unreachable!()
+                        };
+                        value = c::Tree::Map(entries);
+                        continue;
+                    }
+                    break;
+                }
+            }
+        }
     }
+    done.ok_or_else(|| malformed("incomplete tree"))
+}
+
+/// Test only: the postcard bytes (after the version) of a result whose raw view nests `depth` one-element lists, as
+/// a hostile child could write them.
+#[doc(hidden)]
+pub fn hostile_nesting_for_tests(depth: usize) -> Vec<u8> {
+    let mut nodes: Vec<NodeDto> = (0..depth).map(|_| NodeDto::List(1)).collect();
+    nodes.push(NodeDto::Int(1));
+    let info = InfoDto {
+        container: ContainerDto::Named("Wav".into()),
+        mime_type: None,
+        duration: None,
+        bitrate: None,
+        file_size: None,
+        created_at: None,
+        streams: Vec::new(),
+        tags: Vec::new(),
+        pictures: Vec::new(),
+        getid3: None,
+        reader: Some(("x".into(), nodes)),
+    };
+    postcard::to_stdvec(&ResultDto::Ok(Box::new(info))).expect("serializes")
 }
 
 fn duration_dto(d: Duration) -> (u64, u32) {
@@ -550,8 +666,11 @@ fn info_back(dto: InfoDto) -> Result<c::MediaInfo, WireError> {
         tags,
         pictures,
         raw: c::RawViews {
-            getid3: dto.getid3.map(tree_back),
-            reader: dto.reader.map(|(n, t)| (n, tree_back(t))),
+            getid3: dto.getid3.map(tree_back).transpose()?,
+            reader: dto
+                .reader
+                .map(|(n, t)| tree_back(t).map(|t| (n, t)))
+                .transpose()?,
         },
     })
 }

@@ -148,7 +148,7 @@ fn changed_file_misses() {
 }
 
 #[test]
-fn errors_are_not_cached() {
+fn deterministic_errors_are_cached() {
     let file = kit::write_temp(b"junk", "bin");
     let (inner, calls) = counting(true);
     let reader = cached(
@@ -156,17 +156,45 @@ fn errors_are_not_cached() {
         Rc::new(MemoryCache::new()),
         file.path().parent().unwrap(),
     );
-    assert!(
-        reader
-            .read(path_of(&file), &ProbeLimits::default())
-            .is_err()
+    assert_eq!(
+        reader.read(path_of(&file), &ProbeLimits::default()),
+        Err(ReadError::Unrecognized)
     );
-    assert!(
-        reader
-            .read(path_of(&file), &ProbeLimits::default())
-            .is_err()
+    assert_eq!(
+        reader.read(path_of(&file), &ProbeLimits::default()),
+        Err(ReadError::Unrecognized)
     );
-    assert_eq!(calls.get(), 2);
+    assert_eq!(calls.get(), 1);
+}
+
+#[test]
+fn transient_errors_are_cached_briefly() {
+    assert_eq!(
+        CachedReader::<Counting>::ttl_for(&Err(ReadError::TimedOut), Duration::from_secs(3600)),
+        Some(Duration::from_secs(300))
+    );
+    assert_eq!(
+        CachedReader::<Counting>::ttl_for(
+            &Err(ReadError::Crashed("x".into())),
+            Duration::from_secs(3600)
+        ),
+        Some(Duration::from_secs(300))
+    );
+    assert_eq!(
+        CachedReader::<Counting>::ttl_for(&Err(ReadError::Truncated), Duration::from_secs(3600)),
+        Some(Duration::from_secs(3600))
+    );
+    assert_eq!(
+        CachedReader::<Counting>::ttl_for(
+            &Err(ReadError::Io("x".into())),
+            Duration::from_secs(3600)
+        ),
+        None
+    );
+    assert_eq!(
+        CachedReader::<Counting>::ttl_for(&Err(ReadError::NotFound), Duration::from_secs(3600)),
+        None
+    );
 }
 
 #[test]

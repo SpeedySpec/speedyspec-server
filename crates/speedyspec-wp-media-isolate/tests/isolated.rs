@@ -122,3 +122,21 @@ fn seccomp_allows_the_fixtures() {
         assert!(result.is_ok(), "{name}: {result:?}");
     }
 }
+
+/// A descriptor the worker opened without close-on-exec (PHP's files and sockets) never reaches the child.
+#[test]
+fn inherited_descriptors_are_closed_in_the_child() {
+    let file = kit::write_temp(&kit::wav_pcm16(1.0, 8000, 1), "wav");
+    let c = std::ffi::CString::new(file.path().to_str().unwrap()).unwrap();
+    let leaky = unsafe { libc::open(c.as_ptr(), libc::O_RDONLY) };
+    assert!(leaky >= 3);
+    let probe = reader(&["--simulate", "fds"]);
+    let result = probe.read(
+        MediaSource::Path(file.path().to_path_buf()),
+        &ProbeLimits::default(),
+    );
+    unsafe { libc::close(leaky) };
+    // The child exits 10 + the number of descriptors above stderr it can see.
+    let detail = format!("{result:?}");
+    assert!(detail.contains("exit Some(10)"), "{detail}");
+}

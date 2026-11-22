@@ -82,6 +82,15 @@ pub fn run(args: &[OsString]) -> ExitCode {
         eprintln!("speedyspec media-probe: bad arguments");
         return ExitCode::from(2);
     };
+    #[cfg(feature = "test-modes")]
+    if _simulate.as_deref() == Some("fds") {
+        // Exit 10 + the number of open descriptors above stderr, before this process opens any of its own.
+        // SAFETY: F_GETFD only queries.
+        let open = (3..1024)
+            .filter(|&fd| unsafe { libc::fcntl(fd, libc::F_GETFD) } != -1)
+            .count();
+        std::process::exit(10 + open as i32);
+    }
     let reader = SniffingReader::new(Box::new(MidiReader), Box::new(FfmpegReader::new(&limits)));
     let stdin: OwnedFd = match std::io::stdin().as_fd().try_clone_to_owned() {
         Ok(fd) => fd,

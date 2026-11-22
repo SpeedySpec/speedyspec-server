@@ -50,6 +50,26 @@ fn rlimit(resource: i32, value: u64) {
     unsafe { libc::setrlimit(resource as _, &limit) };
 }
 
+/// Marks every descriptor above stderr close-on-exec, so nothing the worker opened without `O_CLOEXEC` (PHP's files,
+/// database sockets) reaches the child: exec then leaves it only stdin, stdout and stderr. Marking rather than closing
+/// keeps the standard library's own exec-error pipe working. Async-signal-safe: one syscall, or `fcntl` in a loop.
+fn cloexec_inherited() {
+    #[cfg(target_os = "linux")]
+    {
+        const CLOSE_RANGE_CLOEXEC: libc::c_uint = 1 << 2;
+        // SAFETY: close_range only changes descriptor flags in this (forked) process.
+        if unsafe { libc::syscall(libc::SYS_close_range, 3u32, u32::MAX, CLOSE_RANGE_CLOEXEC) } == 0
+        {
+            return;
+        }
+    }
+    // SAFETY: getdtablesize and fcntl are async-signal-safe and only touch this process's descriptor table.
+    let top = unsafe { libc::getdtablesize() }.clamp(3, 65536);
+    for fd in 3..top {
+        unsafe { libc::fcntl(fd, libc::F_SETFD, libc::FD_CLOEXEC) };
+    }
+}
+
 fn drain(
     mut pipe: impl Read + Send + 'static,
     cap: usize,
@@ -122,6 +142,7 @@ impl IsolatedReader {
         unsafe {
             command.pre_exec(move || {
                 libc::setpgid(0, 0);
+                cloexec_inherited();
                 rlimit(libc::RLIMIT_CPU as i32, cpu);
                 rlimit(libc::RLIMIT_NOFILE as i32, 16);
                 rlimit(libc::RLIMIT_FSIZE as i32, 0);
