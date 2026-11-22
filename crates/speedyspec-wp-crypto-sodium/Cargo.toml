@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-crypto-sodium"
-version = "0.2.0"
+version = "0.3.0"
 publish = false
 description = "The WordPress crypto ports over libsodium: the same libsodium.a the static PHP's ext-sodium links."
 edition.workspace = true

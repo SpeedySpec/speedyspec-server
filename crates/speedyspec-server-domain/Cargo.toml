@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-server-domain"
-version = "0.1.4"
+version = "0.1.5"
 publish = false
 description = "Value types and contracts for the SpeedySpec server. No I/O."
 edition.workspace = true

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-text-diff-php"
-version = "0.1.4"
+version = "0.1.5"
 publish = false
 description = "WordPress's wp_text_diff() as a native PHP function over the Rust text diff."
 edition.workspace = true
