@@ -17,3 +17,28 @@ reason here.
 - **Tags from every tag format.** WordPress copies titles, artists and the rest only from ID3v2 or ID3v1. When a file
   has neither, the native function copies them from its own tags (MP4, Vorbis, ASF, Matroska, RIFF, APE) under the
   same keys, through the same kses filtering (Jacob's ruling, 2026-11-22).
+
+## Library differences
+
+Each is a path in `differences.json`; the corpus test fails if one stops differing.
+
+- **Bitrates.** getID3 computes bitrates from frame headers and Xing/VBRI/Ogg granule positions (a "CBR" LAME file
+  comes out as a variable 129634.05… b/s); FFmpeg reports the container's or stream header's figure (128000). The
+  `compression_ratio` getID3 derives from it differs with it.
+- **Encoder options.** getID3 reads LAME and Vorbis encoder headers into `encoder_options` ("VBR", "CBR64",
+  "Nominal bitrate: 96kbps"); FFmpeg doesn't expose them.
+- **Vorbis vendor string.** getID3 reports an Ogg file's vendor string as `encoder`; FFmpeg drops the vendor and
+  reports the ENCODER comment instead.
+- **Default track language.** getID3 writes `"und"` as a Matroska track's language when the file names none; FFmpeg
+  reports none.
+- **QuickTime compressor name.** For a `qt`-brand file getID3 reports the sample description's compressor name
+  ("Lavc60.31.102 libx264") as the video codec; FFmpeg doesn't expose it.
+- **DTS resolution and Opus input rate.** getID3 reads a DTS header's PCM resolution (`bits_per_sample`) and an Opus
+  header's original input rate (`sample_rate_input`); FFmpeg doesn't expose either without decoding.
+- **Latin-1 tags.** ID3v1 text is Latin-1. WordPress returns the raw bytes (invalid UTF-8 in a JSON response); the
+  native function decodes them to UTF-8.
+- **Unreadable files.** For a file neither can parse, getID3 still guesses a MIME type or format from its first bytes
+  (`garbage.mp3`, `truncated.mp4`); the native function reports only the size.
+- **Files getID3 can't read.** getID3 returns only the size and a MIME guess for MPEG program and transport streams,
+  ADTS AAC, RealAudio and MIDI, and only the Theora stream of an Ogg video; FFmpeg (or the MIDI reader) reads them,
+  so the native functions return their full metadata.

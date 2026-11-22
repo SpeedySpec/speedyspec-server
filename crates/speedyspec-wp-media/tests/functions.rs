@@ -115,8 +115,10 @@ fn audio_keys_in_wordpress_order() {
             "sample_rate",
             "channels",
             "bitrate",
+            "bitrate_mode",
             "lossless",
             "channelmode",
+            "compression_ratio",
             "fileformat",
             "filesize",
             "mime_type",
@@ -155,8 +157,8 @@ fn video_keys_in_wordpress_order() {
     .unwrap();
     assert_eq!(
         keys(&out.metadata),
+        // getID3 writes no `lossless` for video in MP4 files.
         [
-            "lossless",
             "bitrate",
             "filesize",
             "mime_type",

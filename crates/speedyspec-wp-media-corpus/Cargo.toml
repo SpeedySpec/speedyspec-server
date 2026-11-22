@@ -1,0 +1,16 @@
+[package]
+name = "speedyspec-wp-media-corpus"
+version = "0.1.0"
+description = "Test only: the media corpus read through FFmpeg and WordPress's rules, against WordPress 7.1.5 and getID3."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dev-dependencies]
+serde_json = "1"
+sha2 = "0.10"
+speedyspec-wp-media = { path = "../speedyspec-wp-media" }
+speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
+speedyspec-wp-media-ffmpeg = { path = "../speedyspec-wp-media-ffmpeg" }
+speedyspec-wp-media-midi = { path = "../speedyspec-wp-media-midi" }

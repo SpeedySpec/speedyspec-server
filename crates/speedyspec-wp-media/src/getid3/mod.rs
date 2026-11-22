@@ -62,7 +62,12 @@ pub fn playtime_string(seconds: f64) -> String {
     }
 }
 
-fn audio_map(container: &ContainerKind, a: &AudioStream) -> Map {
+fn audio_map(
+    container: &ContainerKind,
+    a: &AudioStream,
+    file_has_video: bool,
+    vendor: Option<&str>,
+) -> Map {
     let mut m = Map::default();
     m.opt(
         "dataformat",
@@ -80,21 +85,28 @@ fn audio_map(container: &ContainerKind, a: &AudioStream) -> Map {
     m.opt("channels", a.channels.map(int));
     m.opt("bits_per_sample", a.bits_per_sample.map(int));
     m.opt("bitrate", a.bitrate.map(|b| int(b as i64)));
-    m.opt(
-        "bitrate_mode",
-        a.bitrate_mode.map(|mode| {
-            s(
-                if mode == speedyspec_wp_media_contracts::BitrateMode::Variable {
-                    "vbr"
-                } else {
-                    "cbr"
-                },
-            )
-        }),
-    );
-    m.opt("lossless", a.lossless.map(Tree::Bool));
+    let mode = match a.bitrate_mode {
+        Some(mode) => Some(
+            if mode == speedyspec_wp_media_contracts::BitrateMode::Variable {
+                "vbr"
+            } else {
+                "cbr"
+            },
+        ),
+        None => tables::audio_bitrate_mode(container, &a.codec, file_has_video),
+    };
+    m.opt("bitrate_mode", mode.map(s));
+    if tables::has_lossless(container, false, file_has_video) {
+        // getID3 counts WAVE_FORMAT_EXTENSIBLE PCM as lossy.
+        let extensible =
+            tables::wformattag(container, &a.codec, a.bits_per_sample, a.channels) == Some(65534);
+        m.opt("lossless", a.lossless.map(|l| Tree::Bool(l && !extensible)));
+    }
     if let (ContainerKind::Asf, Some(name)) = (container, tables::wma_name(&a.codec)) {
         m.set("encoder", s(name));
+    } else if let (ContainerKind::Flac | ContainerKind::Ogg, Some(vendor)) = (container, vendor) {
+        // The Vorbis comments' vendor string, which getID3 reports as the encoder.
+        m.set("encoder", s(vendor));
     } else {
         m.opt("encoder", a.encoder.as_deref().map(s));
     }
@@ -102,6 +114,15 @@ fn audio_map(container: &ContainerKind, a: &AudioStream) -> Map {
         "channelmode",
         a.channels.map(|c| s(tables::channelmode(container, c))),
     );
+    if let (Some(rate), Some(ch), Some(bitrate)) = (a.sample_rate, a.channels, a.bitrate)
+        && !(file_has_video && matches!(container, ContainerKind::Matroska | ContainerKind::WebM))
+    {
+        let bits = f64::from(a.bits_per_sample.unwrap_or(16));
+        m.set(
+            "compression_ratio",
+            Tree::Float(bitrate as f64 / (f64::from(rate) * f64::from(ch) * bits)),
+        );
+    }
     m
 }
 
@@ -121,7 +142,16 @@ fn video_map(container: &ContainerKind, v: &VideoStream) -> Map {
             .map(|(n, d)| Tree::Float(f64::from(n) / f64::from(d))),
     );
     m.opt("bitrate", v.bitrate.map(|b| int(b as i64)));
-    m.opt("lossless", v.lossless.map(Tree::Bool));
+    m.opt("bitrate_mode", tables::video_bitrate_mode(container).map(s));
+    if tables::has_lossless(container, true, true) {
+        // getID3 writes `false` for the lossy video codecs it knows in FLV, AVI and ASF files.
+        let lossless = v.lossless.or(matches!(
+            container,
+            ContainerKind::Flv | ContainerKind::Avi | ContainerKind::Asf
+        )
+        .then_some(false));
+        m.opt("lossless", lossless.map(Tree::Bool));
+    }
     m.opt("encoder", v.encoder.as_deref().map(s));
     if let (ContainerKind::Asf, Codec::Wmv(name)) = (container, &v.codec) {
         m.set("encoder", s(name));
@@ -158,9 +188,21 @@ pub fn getid3_view(info: &MediaInfo) -> Tree {
 
     top.opt("filesize", info.file_size.map(|n| int(n as i64)));
     top.opt("fileformat", tables::fileformat(c).map(s));
+    let vendor = info
+        .tags
+        .iter()
+        .find(|t| {
+            t.key == speedyspec_wp_media_contracts::TagKey::Encoder && t.system == TagSystem::Vorbis
+        })
+        .and_then(|t| t.values.first())
+        .map(String::as_str);
+    let has_video = !video.is_empty();
     if let Some(first) = audio.first() {
-        let mut a = audio_map(c, first);
-        let streams = audio.iter().map(|st| audio_map(c, st).tree()).collect();
+        let mut a = audio_map(c, first, has_video, vendor);
+        let streams = audio
+            .iter()
+            .map(|st| audio_map(c, st, has_video, vendor).tree())
+            .collect();
         a.set("streams", Tree::List(streams));
         top.set("audio", a.tree());
     }

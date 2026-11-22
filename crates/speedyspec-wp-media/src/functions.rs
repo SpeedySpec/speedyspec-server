@@ -183,14 +183,28 @@ fn comment_value(list: &Tree, sanitizer: &dyn TagSanitizer) -> Tree {
     }
 }
 
+/// Comments the all-formats extension leaves out: technical fields (the muxer's name, the language) and pictures,
+/// which WordPress's ID3 copy never meets because getID3 doesn't put them among ID3 comments.
+const NOT_DESCRIPTIVE: &[&str] = &[
+    "picture",
+    "encoder",
+    "encoder_settings",
+    "encoded_by",
+    "software",
+    "language",
+];
+
 fn copy_comments(
     metadata: &mut Tree,
     comments: &Tree,
     sanitizer: &dyn TagSanitizer,
-    skip_picture: bool,
+    other_formats: bool,
 ) {
     for (key, list) in entries(comments) {
-        if key == "length" || (skip_picture && key == "picture") || empty(Some(list)) {
+        if key == "length"
+            || (other_formats && NOT_DESCRIPTIVE.contains(&key.as_str()))
+            || empty(Some(list))
+        {
             continue;
         }
         let mut value = comment_value(list, sanitizer);

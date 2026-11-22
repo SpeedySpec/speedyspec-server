@@ -165,6 +165,49 @@ pub fn wma_name(codec: &Codec) -> Option<&'static str> {
     })
 }
 
+/// getID3's `audio.bitrate_mode` when the reader didn't say: what getID3 reports per format on the corpus. MP3 is
+/// "vbr" because encoders write a Xing/Info frame, which getID3 reads as variable.
+pub fn audio_bitrate_mode(
+    container: &ContainerKind,
+    codec: &Codec,
+    has_video: bool,
+) -> Option<&'static str> {
+    if has_video && matches!(container, ContainerKind::Matroska | ContainerKind::WebM) {
+        return None;
+    }
+    Some(match (container, codec) {
+        (ContainerKind::Mp3, _) => "vbr",
+        (ContainerKind::Avi, _) => "cbr",
+        (
+            _,
+            Codec::Pcm { .. } | Codec::Ac3 | Codec::Eac3 | Codec::Dts | Codec::WmaV1 | Codec::WmaV2,
+        ) => "cbr",
+        (_, Codec::Flac | Codec::Vorbis | Codec::Opus | Codec::WmaPro | Codec::WmaLossless) => {
+            "vbr"
+        }
+        _ => return None,
+    })
+}
+
+/// getID3's `video.bitrate_mode`, for the containers where it writes one.
+pub fn video_bitrate_mode(container: &ContainerKind) -> Option<&'static str> {
+    match container {
+        ContainerKind::Avi => Some("vbr"),
+        ContainerKind::Asf => Some("cbr"),
+        _ => None,
+    }
+}
+
+/// Whether getID3 writes `lossless` for this stream: not for video in ISO or Matroska files, and not for the audio
+/// of Matroska and WebM files with video.
+pub fn has_lossless(container: &ContainerKind, video: bool, file_has_video: bool) -> bool {
+    match container {
+        ContainerKind::Mp4 | ContainerKind::ThreeGp => !video,
+        ContainerKind::Matroska | ContainerKind::WebM => !video && !file_has_video,
+        _ => true,
+    }
+}
+
 /// getID3's RIFF `wformattag` for WAV and AVI audio.
 pub fn wformattag(
     container: &ContainerKind,
