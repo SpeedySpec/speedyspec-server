@@ -262,4 +262,17 @@ impl ThemeJsonApi {
     ) -> Result<Value, ThemeJsonError> {
         crate::security::remove_insecure_properties(doc, origin, &self.deps, &self.blocks_metadata)
     }
+
+    /// `get_svg_filters( $origins )`.
+    pub fn get_svg_filters(&self, doc: &ThemeJson, origins: &Value) -> Vec<u8> {
+        let raw = ThemeJsonCodec::encode(doc);
+        // Unlike get_stylesheet, `null` here is no origins (WordPress loops over it).
+        let origins: Vec<Origin> = crate::php_value::entries(origins)
+            .iter()
+            .filter_map(|(_, o)| {
+                crate::php_value::as_str(o).and_then(|s| Origin::parse(s.as_bytes()))
+            })
+            .collect();
+        crate::duotone::svg_filters(&raw, &self.blocks_metadata(), &origins, &self.deps)
+    }
 }

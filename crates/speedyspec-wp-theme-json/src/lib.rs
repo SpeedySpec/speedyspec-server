@@ -23,6 +23,7 @@ mod construct;
 pub mod css;
 pub mod declarations;
 mod deps;
+pub mod duotone;
 pub mod filters;
 pub mod layout;
 mod memory;
