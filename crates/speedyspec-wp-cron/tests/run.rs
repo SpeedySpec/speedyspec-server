@@ -284,3 +284,20 @@ fn nothing_due_reports_earliest() {
     );
     assert!(f.doing.history().is_empty());
 }
+
+#[test]
+fn reschedule_error_is_reported_before_unschedule() {
+    let f = fixture();
+    f.api
+        .schedule_event(&t(NOW - 100), &s("hourly"), &s("r"), &empty(), true)
+        .unwrap();
+    f.answer("pre_reschedule_event", HookValue::Bool(false));
+    f.record("cron_reschedule_event_error");
+    f.record("pre_unschedule_event");
+    f.api.run_due_events(budget()).unwrap();
+    // wp-cron.php reports the reschedule's error before it unschedules.
+    assert_eq!(
+        f.ran(),
+        ["cron_reschedule_event_error", "pre_unschedule_event"]
+    );
+}

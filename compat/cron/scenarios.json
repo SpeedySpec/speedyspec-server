@@ -17989,6 +17989,1009 @@
           ]
         }
       ]
+    },
+    {
+      "name": "run_cron_single_and_recurring",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_schedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_schedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "schedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:schedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_reschedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_reschedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_unschedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_unschedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_clear_scheduled_hook",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_clear_scheduled_hook"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_unschedule_hook",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_unschedule_hook"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_get_scheduled_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_get_scheduled_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_next_scheduled",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_next_scheduled"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_schedule",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_schedule"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_get_ready_cron_jobs",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_get_ready_cron_jobs"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_update_option_cron",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_update_option_cron"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_option_cron",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_option_cron"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "cron_reschedule_event_error",
+            {
+              "callback": "return_arg",
+              "label": "rec:cron_reschedule_event_error"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "cron_unschedule_event_error",
+            {
+              "callback": "return_arg",
+              "label": "rec:cron_unschedule_event_error"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "past_single",
+            {
+              "callback": "return_arg",
+              "label": "rec:past_single"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "past_recurring",
+            {
+              "callback": "return_arg",
+              "label": "rec:past_recurring"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "r",
+            {
+              "callback": "return_arg",
+              "label": "rec:r"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "s",
+            {
+              "callback": "return_arg",
+              "label": "rec:s"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_cron_single",
+            -60,
+            "past_single",
+            [
+              "a"
+            ]
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_cron_event",
+            -100,
+            "hourly",
+            "past_recurring"
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_cron_single",
+            900,
+            "future"
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_compat_run_cron"
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_cron_array"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "run_cron_reschedule_error",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_schedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_schedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "schedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:schedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_reschedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_reschedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_unschedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_unschedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_clear_scheduled_hook",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_clear_scheduled_hook"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_unschedule_hook",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_unschedule_hook"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_get_scheduled_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_get_scheduled_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_next_scheduled",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_next_scheduled"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_schedule",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_schedule"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_get_ready_cron_jobs",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_get_ready_cron_jobs"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_update_option_cron",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_update_option_cron"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_option_cron",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_option_cron"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "cron_reschedule_event_error",
+            {
+              "callback": "return_arg",
+              "label": "rec:cron_reschedule_event_error"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "cron_unschedule_event_error",
+            {
+              "callback": "return_arg",
+              "label": "rec:cron_unschedule_event_error"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "past_single",
+            {
+              "callback": "return_arg",
+              "label": "rec:past_single"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "past_recurring",
+            {
+              "callback": "return_arg",
+              "label": "rec:past_recurring"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "r",
+            {
+              "callback": "return_arg",
+              "label": "rec:r"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "s",
+            {
+              "callback": "return_arg",
+              "label": "rec:s"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_reschedule_event",
+            "__return_false",
+            10,
+            99
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_cron_event",
+            -100,
+            "hourly",
+            "r"
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_compat_run_cron"
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_cron_array"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "run_cron_unschedule_error",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_schedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_schedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "schedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:schedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_reschedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_reschedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_unschedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_unschedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_clear_scheduled_hook",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_clear_scheduled_hook"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_unschedule_hook",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_unschedule_hook"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_get_scheduled_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_get_scheduled_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_next_scheduled",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_next_scheduled"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_schedule",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_schedule"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_get_ready_cron_jobs",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_get_ready_cron_jobs"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_update_option_cron",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_update_option_cron"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_option_cron",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_option_cron"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "cron_reschedule_event_error",
+            {
+              "callback": "return_arg",
+              "label": "rec:cron_reschedule_event_error"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "cron_unschedule_event_error",
+            {
+              "callback": "return_arg",
+              "label": "rec:cron_unschedule_event_error"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "past_single",
+            {
+              "callback": "return_arg",
+              "label": "rec:past_single"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "past_recurring",
+            {
+              "callback": "return_arg",
+              "label": "rec:past_recurring"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "r",
+            {
+              "callback": "return_arg",
+              "label": "rec:r"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "s",
+            {
+              "callback": "return_arg",
+              "label": "rec:s"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_unschedule_event",
+            "speedyspec_cron_plugin_error",
+            10,
+            99
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_cron_single",
+            -60,
+            "s"
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_compat_run_cron"
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_cron_array"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "run_cron_nothing_due",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_schedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_schedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "schedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:schedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_reschedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_reschedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_unschedule_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_unschedule_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_clear_scheduled_hook",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_clear_scheduled_hook"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_unschedule_hook",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_unschedule_hook"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_get_scheduled_event",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_get_scheduled_event"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_next_scheduled",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_next_scheduled"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_schedule",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_schedule"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_get_ready_cron_jobs",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_get_ready_cron_jobs"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_update_option_cron",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_update_option_cron"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_option_cron",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_option_cron"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "cron_reschedule_event_error",
+            {
+              "callback": "return_arg",
+              "label": "rec:cron_reschedule_event_error"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "cron_unschedule_event_error",
+            {
+              "callback": "return_arg",
+              "label": "rec:cron_unschedule_event_error"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "past_single",
+            {
+              "callback": "return_arg",
+              "label": "rec:past_single"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "past_recurring",
+            {
+              "callback": "return_arg",
+              "label": "rec:past_recurring"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "r",
+            {
+              "callback": "return_arg",
+              "label": "rec:r"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "s",
+            {
+              "callback": "return_arg",
+              "label": "rec:s"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_cron_single",
+            900,
+            "future"
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_compat_run_cron"
+          ]
+        },
+        {
+          "call": "speedyspec_cron_call",
+          "args": [
+            "speedyspec_cron_array"
+          ]
+        }
+      ]
     }
   ]
 }

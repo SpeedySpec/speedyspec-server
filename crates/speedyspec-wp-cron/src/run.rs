@@ -146,6 +146,14 @@ impl CronApi {
         } else {
             Reschedule::Single
         };
+        // A reschedule that ended without a write is reported now, before the unschedule, as wp-cron.php reports it.
+        let reschedule = match reschedule {
+            Reschedule::Done(result) => {
+                self.report(CronStep::Reschedule, &hook, &result, event)?;
+                Reschedule::Single
+            }
+            other => other,
+        };
         // wp_unschedule_event()'s checks, then its filter.
         let unschedule_early = if Self::bad_timestamp(&timestamp) {
             Some(self.error_or_false(

@@ -1,0 +1,9 @@
+{
+  "breaks": [
+    {
+      "scenario": "run_cron_single_and_recurring",
+      "step": 21,
+      "why": "Running a due recurring event, wp-cron.php writes the cron option twice (wp_reschedule_event(), then wp_unschedule_event()), so pre_update_option_cron and update_option_cron fire twice; the runner claims the event with one compare-and-swap write that adds the next occurrence and removes this one, so they fire once. Every other hook fires in WordPress's order, and the option ends the same (the next step compares it). Deliberate difference of the cron design: \"Running a due event: one write, so the option's update hooks fire once per event\"."
+    }
+  ]
+}
