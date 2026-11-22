@@ -309,8 +309,8 @@ fn main() {
     );
     let v = json(&r);
     check(
-        "avif_info_through_the_reader",
-        v["width"] == 64 && v["height"] == 48,
+        "avif_info_matches_wordpress",
+        v["width"] == 64 && v["height"] == 48 && v["bit_depth"] == 8 && v["num_channels"] == 3,
         &r,
     );
 

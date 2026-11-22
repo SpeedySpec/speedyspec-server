@@ -42,3 +42,16 @@ Each is a path in `differences.json`; the corpus test fails if one stops differi
 - **Files getID3 can't read.** getID3 returns only the size and a MIME guess for MPEG program and transport streams,
   ADTS AAC, RealAudio and MIDI, and only the Theora stream of an Ogg video; FFmpeg (or the MIDI reader) reads them,
   so the native functions return their full metadata.
+
+## Images
+
+The image functions are compared with WordPress 7.1.5 on PHP 8.5.12 (`recorded-images.json`, made by
+`record-images.php` over `images/`); allowed differences are in `image-differences.json`.
+
+- **The fast path is PHP's.** For every type PHP 8.5's `getimagesize()` reads (JPEG, PNG, GIF, BMP, TIFF, WebP, AVIF,
+  HEIF, JPEG 2000, PSD, ICO) `wp_getimagesize()` returns PHP's own answer, `$image_info` and PHP 8.5's
+  `width_unit`/`height_unit` included, and `wp_get_avif_info()` takes its figures from it: identical to WordPress.
+- **More types.** For JPEG XL, QOI, PCX, PPM/PGM, SGI and Radiance HDR, WordPress returns `false` from
+  `wp_getimagesize()` and `wp_get_image_mime()`; the native functions type them by content and size them through
+  FFmpeg (`IMAGETYPE_UNKNOWN`, with `bits` and `channels` when FFmpeg knows them).
+- **TGA** has no magic number, so the image functions return `false` for it, as WordPress does.

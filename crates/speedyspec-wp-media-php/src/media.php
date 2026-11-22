@@ -144,6 +144,16 @@ namespace
             if ('image/avif' !== wp_get_image_mime($filename)) {
                 return $none;
             }
+            // PHP 8.5's getimagesize() reads AVIF, bit depth and channel count included: WordPress's numbers exactly.
+            $size = @getimagesize($filename);
+            if (!empty($size[0]) && !empty($size[1])) {
+                return array(
+                    'width'        => $size[0],
+                    'height'       => $size[1],
+                    'bit_depth'    => $size['bits'] ?? false,
+                    'num_channels' => $size['channels'] ?? false,
+                );
+            }
             $local = \SpeedySpec\WpMedia\local($filename);
             return $local === null ? $none : \SpeedySpec\WpMedia\Native\avif_info($local);
         }
