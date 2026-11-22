@@ -6227,6 +6227,7 @@ dependencies = [
 name = "speedyspec-wp-media-isolate"
 version = "0.1.0"
 dependencies = [
+ "criterion 0.5.1",
  "libc",
  "lru",
  "postcard",

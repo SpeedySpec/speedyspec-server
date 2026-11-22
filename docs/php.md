@@ -108,6 +108,26 @@ cd fuzz-media && FFMPEG_PREFIX=/tmp/ffmpeg-fuzz/prefix cargo +nightly fuzz run f
 
 libFuzzer is unreliable on musl (Alpine): use a glibc host or the workflow.
 
+### Media reading cost
+
+Median per call, Apple M-series laptop, release build, 2026-11-22 (`cargo bench -p speedyspec-wp-media-isolate`,
+`scripts/bench-media-php.sh`), on the test kit's files:
+
+| File | FFmpeg in-process | Isolated child, cold | Cached, local hit | Cached, shared-store hit |
+|---|---|---|---|---|
+| PNG 640×480 | 0.48 ms | 7.2 ms | 0.14 ms | 0.14 ms |
+| MP3, 2000 frames, ID3v2 + 300×300 PNG cover | 15.7 ms | 24.0 ms | 0.28 ms | 0.29 ms |
+| WAV, 30 s stereo 44.1 kHz | 19.8 ms | 34.5 ms | 0.14 ms | 0.14 ms |
+
+PHP on the same files: `getimagesize()` on the PNG 10.5 µs; `finfo_file()` 170 µs (PNG), 403 µs (MP3), 1544 µs (WAV).
+
+- A probe child costs about 7 ms to start and read; every later read of an unchanged file is a cache hit.
+- A cache hit is dominated by its key (stat plus a SHA-256 of the first 64 KiB).
+- The MP3's cost is its cover: the same MP3 without a cover reads in 0.23 ms; FFmpeg decodes an embedded PNG to learn
+  its size.
+- PCM WAV levels off near 20 ms from about 10 s of audio up; plan 3 investigates with real files.
+- getID3's cost is measured in plan 3, with the pinned WordPress release.
+
 ## The release
 
 A php release's `speedyspec-release.json` may have a `php` section; without one, the defaults apply:
