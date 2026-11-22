@@ -64,15 +64,20 @@ impl FileHasher for PhpFileHasher {
                 HookValue::Bool(true),
             ],
         )
-        .map_err(|failure| match failure.exception {
-            Some(exception) => NativeError::Rethrow(exception),
-            None => NativeError::Silent,
-        })?;
+        .map_err(rethrow)?;
         Ok(match digest {
             HookValue::Str(s) => s.as_bytes().try_into().ok(),
             HookValue::Bytes(b) => b.as_slice().try_into().ok(),
             _ => None,
         })
+    }
+}
+
+/// A PHP call's failure as the native function's: its exception rethrown, or nothing while PHP unwinds.
+pub(crate) fn rethrow(failure: speedyspec_php::CallFailure) -> NativeError {
+    match failure.exception {
+        Some(exception) => NativeError::Rethrow(exception),
+        None => NativeError::Silent,
     }
 }
 
@@ -116,10 +121,7 @@ pub(crate) fn base64_text(value: &HookValue) -> Result<Vec<u8>, NativeError> {
         &HookValue::Str("base64_decode".into()),
         std::slice::from_ref(value),
     )
-    .map_err(|failure| match failure.exception {
-        Some(exception) => NativeError::Rethrow(exception),
-        None => NativeError::Silent,
-    })?;
+    .map_err(rethrow)?;
     let bytes = match decoded.read().as_ref() {
         HookValue::Str(s) => s.as_bytes().to_vec(),
         HookValue::Bytes(b) => b.clone(),
@@ -141,19 +143,28 @@ pub(crate) fn native_error(err: HookError) -> NativeError {
     }
 }
 
-/// WordPress's `__()` when it is loaded; the text itself otherwise (the runtime runs without WordPress).
+/// WordPress's `__()` when it is loaded; the text itself otherwise (the runtime runs without WordPress). An exception
+/// a `gettext` filter throws propagates, as in WordPress.
 pub struct PhpTranslator;
 
 impl Translator for PhpTranslator {
-    fn translate(&self, text: &str) -> String {
+    type Error = NativeError;
+
+    fn translate(&self, text: &str) -> Result<String, NativeError> {
         if !function_exists("__") {
-            return text.to_string();
+            return Ok(text.to_string());
         }
-        match speedyspec_php::call(&HookValue::Str("__".into()), &[HookValue::Str(text.into())]) {
-            Ok(HookValue::Str(s)) => s,
-            Ok(HookValue::Bytes(b)) => String::from_utf8_lossy(&b).into_owned(),
+        let translated = speedyspec_php::call_catching(
+            &HookValue::Str("__".into()),
+            &[HookValue::Str(text.into())],
+        )
+        .map_err(rethrow)?;
+        Ok(match translated {
+            HookValue::Str(s) => s,
+            HookValue::Bytes(b) => String::from_utf8_lossy(&b).into_owned(),
+            // A gettext filter that returns no string leaves WordPress's English text.
             _ => text.to_string(),
-        }
+        })
     }
 }
 

@@ -15,7 +15,7 @@ use speedyspec_wp_text_escape::EscapeApi;
 
 use crate::adapters::{
     HookTrustedKeysFilter, PhpFileHasher, PhpSiteSettings, PhpTranslator, QuietDiagnostics,
-    SystemClock, base64_text, elements, php_string,
+    SystemClock, base64_text, elements, php_string, rethrow,
 };
 
 /// What the native functions share: libsodium, the filter, the file hasher and the escaping facade.
@@ -208,9 +208,6 @@ fn strval(value: &HookValue) -> Result<String, NativeError> {
     ) {
         // strval() returns a string or throws.
         Ok(converted) => Ok(text(&converted).unwrap_or_default()),
-        Err(failure) => Err(match failure.exception {
-            Some(exception) => NativeError::Rethrow(exception),
-            None => NativeError::Silent,
-        }),
+        Err(failure) => Err(rethrow(failure)),
     }
 }

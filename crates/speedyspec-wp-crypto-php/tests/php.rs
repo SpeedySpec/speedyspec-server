@@ -315,5 +315,16 @@ fn main() {
         matches!(&r, Ok(HookValue::Str(s)) if s == "The authenticity of <span class=\"code\">5</span> could not be verified as no signature was found."),
         &r,
     );
+    let r = php.eval(
+        "speedyspec://test/gettext-throws",
+        "add_filter('gettext', static function () { throw new RuntimeException('gettext failed'); });
+         try { verify_file_signature('/nonexistent/x.zip', '', 'x'); return 'no exception'; }
+         catch (RuntimeException $e) { return $e->getMessage(); } finally { remove_all_filters('gettext'); }",
+    );
+    check(
+        "a_gettext_filters_exception_propagates",
+        matches!(&r, Ok(HookValue::Str(s)) if s == "gettext failed"),
+        &r,
+    );
     println!("wp-crypto php: all checks passed");
 }

@@ -70,9 +70,14 @@ pub trait FileHasher {
 }
 
 /// WordPress's translation of its own strings, as `__()` in the `default` domain.
+///
+/// Translating runs the `gettext` filters, whose callbacks may throw; WordPress lets that exception propagate.
 pub trait Translator {
+    /// Why translating failed (a filter callback's exception).
+    type Error;
+
     /// The translation of `text`, or `text` itself.
-    fn translate(&self, text: &str) -> String;
+    fn translate(&self, text: &str) -> Result<String, Self::Error>;
 }
 
 /// The `wp_trusted_keys` filter.
