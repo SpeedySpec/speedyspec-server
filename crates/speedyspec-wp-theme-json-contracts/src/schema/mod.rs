@@ -62,6 +62,22 @@ pub fn constant_names() -> Vec<String> {
     }
 }
 
+thread_local! {
+    static TABLES: std::cell::RefCell<std::collections::HashMap<String, Rc<Value>>> = Default::default();
+}
+
+/// One class constant's value, shared (no copy): for readers that only look.
+pub fn table(name: &str) -> Rc<Value> {
+    TABLES.with(|tables| {
+        if let Some(found) = tables.borrow().get(name) {
+            return found.clone();
+        }
+        let value = Rc::new(constant(name).unwrap_or(Value::Null));
+        tables.borrow_mut().insert(name.to_owned(), value.clone());
+        value
+    })
+}
+
 /// One class constant's value.
 pub fn constant(name: &str) -> Option<Value> {
     get(&constants(), name).cloned()

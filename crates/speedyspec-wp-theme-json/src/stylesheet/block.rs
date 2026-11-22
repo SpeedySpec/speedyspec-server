@@ -60,7 +60,7 @@ fn wrap_media(media: &str, inner: &[u8]) -> Vec<u8> {
 }
 
 fn element_pseudo_selectors(element: &str) -> Vec<String> {
-    let table = schema::constant("VALID_ELEMENT_PSEUDO_SELECTORS").unwrap_or(Value::Null);
+    let table = schema::table("VALID_ELEMENT_PSEUDO_SELECTORS");
     entries(array_path::get(&table, &[element]).unwrap_or(&Value::Null))
         .iter()
         .filter_map(|(_, v)| as_str(v).map(|c| c.into_owned()))
@@ -68,7 +68,7 @@ fn element_pseudo_selectors(element: &str) -> Vec<String> {
 }
 
 fn block_pseudo_selectors(block: &str) -> Option<Vec<String>> {
-    let table = schema::constant("VALID_BLOCK_PSEUDO_SELECTORS").unwrap_or(Value::Null);
+    let table = schema::table("VALID_BLOCK_PSEUDO_SELECTORS");
     array_path::get(&table, &[block])
         .filter(|v| !matches!(v, Value::Null))
         .map(|list| {
@@ -517,9 +517,8 @@ impl Sheet<'_> {
             declarations = update_separator_declarations(declarations);
         }
         let element_only = is_root || current_element.as_deref().is_some_and(|element| {
-            let elements = schema::constant("ELEMENTS").unwrap_or(Value::Null);
-            let class_names =
-                schema::constant("__EXPERIMENTAL_ELEMENT_CLASS_NAMES").unwrap_or(Value::Null);
+            let elements = schema::table("ELEMENTS");
+            let class_names = schema::table("__EXPERIMENTAL_ELEMENT_CLASS_NAMES");
             matches!(array_path::get(&elements, &[element]), Some(Value::Str(s)) if *s == selector)
                 && !array_path::isset(&class_names, &[element])
         });

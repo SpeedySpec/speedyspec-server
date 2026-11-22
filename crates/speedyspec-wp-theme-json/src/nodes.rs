@@ -67,7 +67,7 @@ pub fn setting_nodes(doc: &Value, meta: &Value) -> Vec<Value> {
 }
 
 fn constant_list(table: &str, entry: &str) -> Vec<String> {
-    let table = schema::constant(table).unwrap_or(Value::Null);
+    let table = schema::table(table);
     entries(child(&table, &array_path::php_key(entry)).unwrap_or(&Value::Null))
         .iter()
         .filter_map(|(_, v)| as_str(v).map(|c| c.into_owned()))
@@ -91,7 +91,7 @@ pub fn style_nodes(
         ("selector", s(ROOT_BLOCK_SELECTOR)),
     ]));
     if array_path::isset(doc, &["styles", "elements"]) {
-        let elements = schema::constant("ELEMENTS").unwrap_or(Value::Null);
+        let elements = schema::table("ELEMENTS");
         for (element, selector) in entries(&elements) {
             let element = key_str(element);
             if !array_path::isset(doc, &["styles", "elements", &element]) {

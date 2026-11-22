@@ -18,7 +18,7 @@ use crate::php_value::{as_str, empty, entries, key_str, map, s};
 /// `get_block_element_selectors( $root_selector )`: each element's selector inside the block.
 pub fn element_selectors(root_selector: &str) -> Value {
     let block_selectors: Vec<&str> = root_selector.split(',').collect();
-    let elements = schema::constant("ELEMENTS").unwrap_or(Value::Null);
+    let elements = schema::table("ELEMENTS");
     let mut out = Vec::new();
     for (name, el_selector) in entries(&elements) {
         let el_selector = as_str(el_selector)
@@ -43,7 +43,7 @@ fn block_selectors(block: &RegisteredBlock, root: &str) -> Value {
         return block.selectors.clone();
     }
     let mut selectors = vec![(Key::Str("root".into()), s(root))];
-    let features = schema::constant("BLOCK_SUPPORT_FEATURE_LEVEL_SELECTORS").unwrap_or(Value::Null);
+    let features = schema::table("BLOCK_SUPPORT_FEATURE_LEVEL_SELECTORS");
     for (key, feature) in entries(&features) {
         if let Some(found) = block_css_selector(block, &s(key_str(key)), false) {
             let feature =

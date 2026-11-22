@@ -91,7 +91,7 @@ pub fn compute_style_properties(
     let properties = match properties {
         Some(p) => p,
         None => {
-            default_properties = schema::constant("PROPERTIES_METADATA").unwrap_or(Value::Null);
+            default_properties = schema::table("PROPERTIES_METADATA");
             &default_properties
         }
     };
