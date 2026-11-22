@@ -3736,6 +3736,872 @@
           ]
         }
       }
+    ],
+    "schema_migrate_custom": [
+      {
+        "returned": {
+          "array": [
+            [
+              "settings",
+              {
+                "array": [
+                  [
+                    "typography",
+                    {
+                      "array": [
+                        [
+                          "fontSizes",
+                          {
+                            "array": []
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "version",
+              3
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "schema_migrate_missing_version": [
+      {
+        "returned": {
+          "array": [
+            [
+              "version",
+              3
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "schema_migrate_null_renamed": [
+      {
+        "returned": {
+          "array": [
+            [
+              "settings",
+              {
+                "array": [
+                  [
+                    "spacing",
+                    {
+                      "array": [
+                        [
+                          "customMargin",
+                          null
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "version",
+              3
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "schema_migrate_null_version": [
+      {
+        "returned": {
+          "array": [
+            [
+              "version",
+              3
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "schema_migrate_scale_dropped": [
+      {
+        "returned": {
+          "array": [
+            [
+              "settings",
+              {
+                "array": [
+                  [
+                    "spacing",
+                    {
+                      "array": [
+                        [
+                          "defaultSpacingSizes",
+                          false
+                        ],
+                        [
+                          "spacingSizes",
+                          {
+                            "array": []
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "version",
+              3
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "schema_migrate_string_version_one": [
+      {
+        "returned": {
+          "array": [
+            [
+              "settings",
+              {
+                "array": [
+                  [
+                    "border",
+                    {
+                      "array": [
+                        [
+                          "radius",
+                          true
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "version",
+              3
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "schema_migrate_true_version": [
+      {
+        "returned": {
+          "array": [
+            [
+              "settings",
+              {
+                "array": [
+                  [
+                    "border",
+                    {
+                      "array": [
+                        [
+                          "radius",
+                          true
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "version",
+              3
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "schema_migrate_v1": [
+      {
+        "returned": {
+          "array": [
+            [
+              "settings",
+              {
+                "array": [
+                  [
+                    "blocks",
+                    {
+                      "array": [
+                        [
+                          "core/group",
+                          {
+                            "array": [
+                              [
+                                "border",
+                                {
+                                  "array": [
+                                    [
+                                      "color",
+                                      true
+                                    ],
+                                    [
+                                      "radius",
+                                      true
+                                    ],
+                                    [
+                                      "style",
+                                      true
+                                    ],
+                                    [
+                                      "width",
+                                      true
+                                    ]
+                                  ]
+                                }
+                              ],
+                              [
+                                "typography",
+                                {
+                                  "array": [
+                                    [
+                                      "fontStyle",
+                                      true
+                                    ],
+                                    [
+                                      "fontWeight",
+                                      true
+                                    ],
+                                    [
+                                      "letterSpacing",
+                                      true
+                                    ],
+                                    [
+                                      "textDecoration",
+                                      true
+                                    ],
+                                    [
+                                      "textTransform",
+                                      true
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "border",
+                    {
+                      "array": [
+                        [
+                          "color",
+                          false
+                        ],
+                        [
+                          "radius",
+                          false
+                        ],
+                        [
+                          "style",
+                          false
+                        ],
+                        [
+                          "width",
+                          false
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "color",
+                    {
+                      "array": [
+                        [
+                          "custom",
+                          false
+                        ],
+                        [
+                          "link",
+                          true
+                        ],
+                        [
+                          "palette",
+                          {
+                            "array": [
+                              [
+                                0,
+                                {
+                                  "array": [
+                                    [
+                                      "color",
+                                      "#f78da7"
+                                    ],
+                                    [
+                                      "name",
+                                      "Pale Pink"
+                                    ],
+                                    [
+                                      "slug",
+                                      "pale-pink"
+                                    ]
+                                  ]
+                                }
+                              ],
+                              [
+                                1,
+                                {
+                                  "array": [
+                                    [
+                                      "color",
+                                      "#cf2e2e"
+                                    ],
+                                    [
+                                      "name",
+                                      "Vivid Red"
+                                    ],
+                                    [
+                                      "slug",
+                                      "vivid-red"
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "typography",
+                    {
+                      "array": [
+                        [
+                          "defaultFontSizes",
+                          false
+                        ],
+                        [
+                          "fontSizes",
+                          {
+                            "array": [
+                              [
+                                0,
+                                {
+                                  "array": [
+                                    [
+                                      "name",
+                                      "Small"
+                                    ],
+                                    [
+                                      "size",
+                                      12
+                                    ],
+                                    [
+                                      "slug",
+                                      "small"
+                                    ]
+                                  ]
+                                }
+                              ],
+                              [
+                                1,
+                                {
+                                  "array": [
+                                    [
+                                      "name",
+                                      "Normal"
+                                    ],
+                                    [
+                                      "size",
+                                      16
+                                    ],
+                                    [
+                                      "slug",
+                                      "normal"
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ]
+                          }
+                        ],
+                        [
+                          "fontStyle",
+                          false
+                        ],
+                        [
+                          "fontWeight",
+                          false
+                        ],
+                        [
+                          "letterSpacing",
+                          false
+                        ],
+                        [
+                          "textDecoration",
+                          false
+                        ],
+                        [
+                          "textTransform",
+                          false
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "styles",
+              {
+                "array": [
+                  [
+                    "blocks",
+                    {
+                      "array": [
+                        [
+                          "core/group",
+                          {
+                            "array": [
+                              [
+                                "color",
+                                {
+                                  "array": [
+                                    [
+                                      "background",
+                                      "red"
+                                    ]
+                                  ]
+                                }
+                              ],
+                              [
+                                "elements",
+                                {
+                                  "array": [
+                                    [
+                                      "link",
+                                      {
+                                        "array": [
+                                          [
+                                            "color",
+                                            {
+                                              "array": [
+                                                [
+                                                  "text",
+                                                  "yellow"
+                                                ]
+                                              ]
+                                            }
+                                          ]
+                                        ]
+                                      }
+                                    ]
+                                  ]
+                                }
+                              ],
+                              [
+                                "spacing",
+                                {
+                                  "array": [
+                                    [
+                                      "padding",
+                                      {
+                                        "array": [
+                                          [
+                                            "top",
+                                            "10px"
+                                          ]
+                                        ]
+                                      }
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "color",
+                    {
+                      "array": [
+                        [
+                          "background",
+                          "purple"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "elements",
+                    {
+                      "array": [
+                        [
+                          "link",
+                          {
+                            "array": [
+                              [
+                                "color",
+                                {
+                                  "array": [
+                                    [
+                                      "text",
+                                      "red"
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "version",
+              3
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "schema_migrate_v2": [
+      {
+        "returned": {
+          "array": [
+            [
+              "settings",
+              {
+                "array": [
+                  [
+                    "spacing",
+                    {
+                      "array": [
+                        [
+                          "defaultSpacingSizes",
+                          false
+                        ],
+                        [
+                          "spacingSizes",
+                          {
+                            "array": [
+                              [
+                                0,
+                                {
+                                  "array": [
+                                    [
+                                      "name",
+                                      "Small"
+                                    ],
+                                    [
+                                      "size",
+                                      "20px"
+                                    ],
+                                    [
+                                      "slug",
+                                      20
+                                    ]
+                                  ]
+                                }
+                              ],
+                              [
+                                1,
+                                {
+                                  "array": [
+                                    [
+                                      "name",
+                                      "Large"
+                                    ],
+                                    [
+                                      "size",
+                                      "80px"
+                                    ],
+                                    [
+                                      "slug",
+                                      80
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "typography",
+                    {
+                      "array": [
+                        [
+                          "defaultFontSizes",
+                          false
+                        ],
+                        [
+                          "fontSizes",
+                          {
+                            "array": [
+                              [
+                                0,
+                                {
+                                  "array": [
+                                    [
+                                      "name",
+                                      "Small"
+                                    ],
+                                    [
+                                      "size",
+                                      12
+                                    ],
+                                    [
+                                      "slug",
+                                      "small"
+                                    ]
+                                  ]
+                                }
+                              ],
+                              [
+                                1,
+                                {
+                                  "array": [
+                                    [
+                                      "name",
+                                      "Normal"
+                                    ],
+                                    [
+                                      "size",
+                                      16
+                                    ],
+                                    [
+                                      "slug",
+                                      "normal"
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "version",
+              3
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "schema_migrate_version_four": [
+      {
+        "returned": {
+          "array": [
+            [
+              "settings",
+              {
+                "array": [
+                  [
+                    "border",
+                    {
+                      "array": [
+                        [
+                          "customRadius",
+                          true
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "version",
+              4
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
     ]
   }
 }

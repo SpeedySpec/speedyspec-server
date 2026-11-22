@@ -8,3 +8,7 @@ mod php_eq;
 
 pub use codec::ThemeJsonCodec;
 pub use php_eq::php_loose_eq;
+pub mod array_path;
+mod schema_migrate;
+
+pub use schema_migrate::{MigrationStep, migrate};

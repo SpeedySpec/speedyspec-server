@@ -182,3 +182,9 @@ function compat_constant(string $name): mixed
 {
     return compat_canon(constant("WP_Theme_JSON::$name"));
 }
+
+/** `WP_Theme_JSON_Schema::migrate()`, canonicalised. */
+function compat_migrate(mixed $data, string $origin = 'theme'): mixed
+{
+    return compat_canon(WP_Theme_JSON_Schema::migrate($data, $origin));
+}
