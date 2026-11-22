@@ -18,9 +18,9 @@ mod web;
 
 pub use area::NativeArea;
 pub use callable::Callable;
-pub use global_array::{global_array_contains, global_array_get, global_array_keys};
 /// ext-php-rs, for areas building their functions and classes.
 pub use ext_php_rs;
+pub use global_array::{global_array_contains, global_array_get, global_array_keys};
 pub use runtime::{
     BootOptions, CallFailure, Output, Php, PhpError, Served, call, call_catching, eval, global,
     global_pop, global_push, object_id, set_global, set_ini,

@@ -12,23 +12,27 @@ namespace SpeedySpec\WpCrypto
      *   The native function's error.
      * @param mixed $signatures
      *   The signatures as the caller passed them, which WordPress returns in its data.
+     * @param mixed $filename_for_errors
+     *   The caller's friendly file name, which WordPress returns in its data as passed (an int stays an int); the
+     *   native base name when falsy.
      * @return \WP_Error|false
      *   The error.
      */
-    function wp_error(array $marker, $signatures)
+    function wp_error(array $marker, $signatures, $filename_for_errors)
     {
         if (!class_exists('WP_Error', false))
         {
             return false;
         }
+        $filename = $filename_for_errors ? $filename_for_errors : $marker['filename'];
         if ('signature_verification_no_signature' === $marker['code'])
         {
-            $data = array('filename' => $marker['filename']);
+            $data = array('filename' => $filename);
         }
         else
         {
             $data = array(
-                'filename'    => $marker['filename'],
+                'filename'    => $filename,
                 'keys'        => $marker['keys'],
                 'signatures'  => $signatures,
                 'hash'        => $marker['hash'],
@@ -120,7 +124,7 @@ namespace
                 $signatures ? (array) $signatures : null,
                 $filename_for_errors ? (string) $filename_for_errors : null
             );
-            return is_array($result) ? \SpeedySpec\WpCrypto\wp_error($result, $signatures) : $result;
+            return is_array($result) ? \SpeedySpec\WpCrypto\wp_error($result, $signatures, $filename_for_errors) : $result;
         }
     }
 }

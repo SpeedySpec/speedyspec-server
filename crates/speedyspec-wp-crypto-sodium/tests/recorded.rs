@@ -38,8 +38,10 @@ fn b64(value: &Value) -> Vec<u8> {
 struct Untranslated;
 
 impl Translator for Untranslated {
-    fn translate(&self, text: &str) -> String {
-        text.to_string()
+    type Error = ();
+
+    fn translate(&self, text: &str) -> Result<String, ()> {
+        Ok(text.to_string())
     }
 }
 

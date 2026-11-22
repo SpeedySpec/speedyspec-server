@@ -4,7 +4,9 @@
 //! needs its keys and one entry, not a copy of every value. These functions run no PHP code and allocate no PHP
 //! memory.
 
-use ext_php_rs::ffi::{Bucket, IS_ARRAY, IS_UNDEF, zend_array, zend_hash_index_find, zend_hash_str_find, zval};
+use ext_php_rs::ffi::{
+    Bucket, IS_ARRAY, IS_UNDEF, zend_array, zend_hash_index_find, zend_hash_str_find, zval,
+};
 use speedyspec_hooks::Value;
 
 use crate::convert;

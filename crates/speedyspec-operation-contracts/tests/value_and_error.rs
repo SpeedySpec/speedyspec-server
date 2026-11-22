@@ -45,3 +45,23 @@ fn error_displays_code_and_message_and_carries_details() {
     assert_eq!(e.to_string(), "post_not_found: No post 7.");
     assert_eq!(e.details.get("id"), Some(&Value::Int(7)));
 }
+
+#[test]
+fn category_parse_inverts_as_str() {
+    use speedyspec_operation_contracts::Category;
+    let all = [
+        Category::NotFound,
+        Category::PermissionDenied,
+        Category::Unauthenticated,
+        Category::InvalidArgument,
+        Category::AlreadyExists,
+        Category::Conflict,
+        Category::ResourceExhausted,
+        Category::Unavailable,
+        Category::Internal,
+    ];
+    for c in all {
+        assert_eq!(Category::parse(c.as_str()), Some(c));
+    }
+    assert_eq!(Category::parse("teapot"), None);
+}

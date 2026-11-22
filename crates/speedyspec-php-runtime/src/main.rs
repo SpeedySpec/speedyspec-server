@@ -69,14 +69,14 @@ fn main() -> ExitCode {
                     return ExitCode::from(1);
                 }
             };
-            let manifest = RuntimeManifest {
-                version: env!("CARGO_PKG_VERSION")
+            let manifest = RuntimeManifest::new(
+                env!("CARGO_PKG_VERSION")
                     .parse()
                     .expect("the package version is SemVer"),
-                contracts: vec![CONTRACT_MAJOR],
-                php: speedyspec_php::PHP_VERSION.to_string(),
-                sodium: Some(sodium),
-            };
+                vec![CONTRACT_MAJOR],
+                speedyspec_php::PHP_VERSION,
+            )
+            .with_sodium(sodium);
             println!(
                 "{}",
                 serde_json::to_string(&manifest).expect("a manifest serializes")

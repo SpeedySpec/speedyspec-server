@@ -140,13 +140,14 @@ impl SignatureMessage {
 
 /// One error message, built as WordPress builds it, only when it returns that error:
 /// `sprintf( __( … ), '<span class="code">' . esc_html( $name ) . '</span>' )`. PHP evaluates `__()` before the
-/// escaping, so `escaped_name` runs after the translation; its failure (a throwing `esc_html` filter) is the message's.
+/// escaping, so `escaped_name` runs after the translation. A failure of either (a throwing `gettext` or `esc_html`
+/// filter) is the message's, and a failed translation leaves the name unescaped.
 pub fn signature_message<E>(
-    translator: &dyn Translator,
+    translator: &dyn Translator<Error = E>,
     which: SignatureMessage,
     escaped_name: impl FnOnce() -> Result<String, E>,
 ) -> Result<String, E> {
-    let format = translator.translate(which.text());
+    let format = translator.translate(which.text())?;
     let name = format!("<span class=\"code\">{}</span>", escaped_name()?);
     Ok(sprintf_one(&format, &name))
 }
