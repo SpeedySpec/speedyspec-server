@@ -24,9 +24,8 @@ fn json_files(dir: &str, out: &mut Vec<String>) {
     for entry in read.flatten() {
         let name = entry.file_name().to_string_lossy().into_owned();
         let path = format!("{dir}/{name}");
-        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false)
-            || (entry.file_type().map(|t| t.is_symlink()).unwrap_or(false)
-                && std::path::Path::new(&path).is_dir());
+        // `RecursiveDirectoryIterator` without `FOLLOW_SYMLINKS`: a symlinked directory is a leaf, not descended.
+        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
         if is_dir {
             json_files(&path, out);
         } else {

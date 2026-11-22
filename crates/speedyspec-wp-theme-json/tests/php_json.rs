@@ -301,3 +301,59 @@ fn json_decode_18() {
         &json(r##"[{"//":"c","a":{"//":"d","b":1}},"No error"]"##),
     );
 }
+
+/// WordPress's `RecursiveDirectoryIterator` does not follow symlinked directories (no `FOLLOW_SYMLINKS`), so
+/// variations under a linked folder are not listed (checked against WordPress 7.1.5: only "Own").
+#[cfg(unix)]
+#[test]
+fn style_variations_do_not_follow_symlinked_directories() {
+    use speedyspec_wp_theme_json::resolver::{ResolverDeps, ThemeJsonResolver};
+    use speedyspec_wp_theme_json::*;
+    use std::rc::Rc;
+    let root = std::env::temp_dir().join(format!("theme-json-symlink-{}", std::process::id()));
+    let theme = root.join("theme");
+    std::fs::create_dir_all(theme.join("styles")).unwrap();
+    std::fs::create_dir_all(root.join("shared")).unwrap();
+    std::fs::write(
+        theme.join("styles/own.json"),
+        r#"{"version":3,"title":"Own"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("shared/s.json"),
+        r#"{"version":3,"title":"Shared"}"#,
+    )
+    .unwrap();
+    std::os::unix::fs::symlink("../../shared", theme.join("styles/linked")).unwrap();
+    let deps = ThemeJsonDeps::new(
+        Rc::new(MemoryBlockMetadata::new()),
+        Rc::new(support::AsciiText),
+        Rc::new(NoTranslation),
+        Rc::new(RecordedDiagnostics::default()),
+        support::safe_css(),
+    );
+    let blocks = Rc::new(MemoryBlockMetadata::new());
+    let resolver = ThemeJsonResolver::new(
+        Rc::new(ThemeJsonApi::new(deps)),
+        ResolverDeps {
+            theme: Rc::new(MemoryActiveTheme::new(&theme.to_string_lossy(), None)),
+            filters: Rc::new(NoLayerFilters),
+            posts: Rc::new(MemoryGlobalStylesPosts::default()),
+            registrar: Rc::new(MemoryVariationRegistrar(blocks)),
+            core_dir: String::new(),
+        },
+    );
+    let titles: Vec<Value> = match resolver.get_style_variations("theme") {
+        Value::Array(items) => items
+            .into_iter()
+            .map(|(_, v)| {
+                speedyspec_wp_theme_json::array_path::get(&v, &["title"])
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+    std::fs::remove_dir_all(&root).unwrap();
+    assert_eq!(titles, vec![Value::Str("Own".into())]);
+}
