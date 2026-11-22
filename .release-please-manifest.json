@@ -91,5 +91,21 @@
   "crates/speedyspec-wp-password": "0.1.0",
   "crates/speedyspec-wp-password-bcrypt": "0.1.0",
   "crates/speedyspec-wp-password-contracts": "0.1.0",
-  "crates/speedyspec-wp-password-php": "0.1.0"
+  "crates/speedyspec-wp-password-php": "0.1.0",
+  "crates/speedyspec-cache": "0.1.0",
+  "crates/speedyspec-data": "0.1.0",
+  "crates/speedyspec-data-mysql": "0.1.0",
+  "crates/speedyspec-data-query": "0.1.0",
+  "crates/speedyspec-data-uow": "0.1.0",
+  "crates/speedyspec-cache-conformance": "0.1.0",
+  "crates/speedyspec-cache-file": "0.1.0",
+  "crates/speedyspec-cache-kv": "0.1.0",
+  "crates/speedyspec-cache-memory": "0.1.0",
+  "crates/speedyspec-data-conformance": "0.1.0",
+  "crates/speedyspec-data-counter": "0.1.0",
+  "crates/speedyspec-data-file": "0.1.0",
+  "crates/speedyspec-data-memory": "0.1.0",
+  "crates/speedyspec-data-redb": "0.1.0",
+  "crates/speedyspec-data-translate": "0.1.0",
+  "crates/speedyspec-data-valkey": "0.1.0"
 }
