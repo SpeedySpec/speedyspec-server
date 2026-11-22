@@ -62,12 +62,20 @@ fn main() -> ExitCode {
             }
         },
         Command::Manifest => {
+            let sodium = match speedyspec_wp_crypto_sodium::Sodium::init() {
+                Ok(sodium) => speedyspec_wp_crypto_contracts::CryptoLibrary::version(&sodium),
+                Err(err) => {
+                    eprintln!("speedyspec-php-runtime manifest: {err}; WordPress needs libsodium");
+                    return ExitCode::from(1);
+                }
+            };
             let manifest = RuntimeManifest {
                 version: env!("CARGO_PKG_VERSION")
                     .parse()
                     .expect("the package version is SemVer"),
                 contracts: vec![CONTRACT_MAJOR],
                 php: speedyspec_php::PHP_VERSION.to_string(),
+                sodium: Some(sodium),
             };
             println!(
                 "{}",

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Checks a release binary before it is published: its `manifest` must name the version being released (and, for the
-# server, the `server` app; the runtime's manifest has no app but must offer a contract), and on Linux it must be a
-# static executable.
+# server, the `server` app; the runtime's manifest has no app but must offer a contract and report the pinned
+# libsodium), and on Linux it must be a static executable.
 #
 #   scripts/release-smoke.sh <binary> speedyspec-server|speedyspec-php-runtime <version>
 set -euo pipefail
@@ -28,6 +28,11 @@ case "$component" in
     speedyspec-php-runtime)
         contracts="$(jq '.contracts | length' <<<"$manifest")"
         [ "$contracts" -gt 0 ] || fail "the manifest offers no contracts"
+        # WordPress needs libsodium, and the runtime guarantees it at the version build-php.sh pins.
+        pinned="$(sed -n 's/^libsodium_version="\(.*\)"$/\1/p' "$(dirname "${BASH_SOURCE[0]}")/build-php.sh")"
+        [ -n "$pinned" ] || fail "scripts/build-php.sh pins no libsodium_version"
+        sodium="$(jq -r '.sodium // empty' <<<"$manifest")"
+        [ "$sodium" = "$pinned" ] || fail "libsodium is ${sodium:-missing}, not $pinned"
         ;;
     *)
         echo "release-smoke.sh: unknown component $component" >&2
