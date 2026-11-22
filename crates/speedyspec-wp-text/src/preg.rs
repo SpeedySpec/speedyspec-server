@@ -106,6 +106,8 @@ impl Pattern {
                     builder.utf(true).ucp(true);
                 }
                 b'U' => prefix.push_str("(?U)"),
+                // `S` (extra study) is a no-op since PHP 7.3: PCRE2 always studies.
+                b'S' => {}
                 b'\n' | b'\r' | b' ' => {}
                 other => return Err(error(format!("unknown or unsupported modifier '{}'", other as char))),
             }

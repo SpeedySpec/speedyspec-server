@@ -6029,12 +6029,16 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-html-split",
+ "speedyspec-wp-kses",
+ "speedyspec-wp-kses-contracts",
+ "speedyspec-wp-kses-lexical",
  "speedyspec-wp-shortcode-contracts",
  "speedyspec-wp-text-contracts",
  "speedyspec-wp-text-corpus",
  "speedyspec-wp-text-escape",
  "speedyspec-wp-text-memory",
  "speedyspec-wp-utf8",
+ "unicode-normalization",
 ]
 
 [[package]]
@@ -6101,6 +6105,7 @@ dependencies = [
  "criterion 0.5.1",
  "libc",
  "memchr",
+ "proptest",
  "speedyspec-hooks",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",

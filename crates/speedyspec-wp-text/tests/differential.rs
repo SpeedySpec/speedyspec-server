@@ -122,3 +122,37 @@ fn translated_tables_use_the_hand_path() {
         assert_eq!(String::from_utf8_lossy(&hand), String::from_utf8_lossy(&reference));
     }
 }
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(4096))]
+
+    #[test]
+    fn slug_matches_reference(input in proptest::collection::vec(proptest::sample::select(vec![
+        &b"a"[..], b"Z", b"0", b"-", b"--", b"---", b".", b" ", b"\t", b"\n", b"&", b";", b"&amp;", b"&nbsp;", b"%", b"%2f", b"%C3%A9",
+        b"_", b"/", b"<b>", b"\xC3\xA9", b"\xE2\x80\x93", b"\xC2\xA0", b"\xFF", b"\xC3\x97", b"\xE2\x80\x8B",
+    ]), 0..90).prop_map(|p| p.concat()), save in any::<bool>()) {
+        use speedyspec_wp_text::title::{SanitizeContext, sanitize_title_with_dashes, sanitize_title_with_dashes_reference};
+        let context = if save { SanitizeContext::Save } else { SanitizeContext::Display };
+        prop_assert_eq!(sanitize_title_with_dashes(&input, &context), sanitize_title_with_dashes_reference(&input, &context));
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(4096))]
+
+    #[test]
+    fn clickable_tag_checks_match_patterns(input in proptest::collection::vec(proptest::sample::select(vec![
+        &b"<"[..], b"code", b"CODE", b"pre", b"script", b"style", b" ", b"\t", b"\x0B", b">", b"http", b"://", b"a", b"_", b"1",
+        b"aaaaaaaaaaaaaaaaaaaa", b":", b"/", b"www.", b"FTP.", b"@", b".",
+    ]), 1..10).prop_map(|p| [&b"<"[..], &p.concat()].concat())) {
+        use speedyspec_wp_text::links::{may_link, opens, tag_starts_with_url};
+        use speedyspec_wp_text::preg::{Pattern, preg_match};
+        let found = |source: &str| matches!(preg_match(&Pattern::php(source), &input), Ok(Some(_)));
+        for name in ["code", "pre", "script", "style"] {
+            prop_assert_eq!(opens(&input, name.as_bytes()), found(&format!("|^<{name}[\\s>]|i")));
+        }
+        prop_assert_eq!(tag_starts_with_url(&input), found("|^<\\s*[\\w]{1,20}+://|"));
+        let any = found("~[\\w]{1,20}+://~") || found("#(www|ftp)\\.#i") || found("/@/");
+        prop_assert!(may_link(&input) || !any);
+    }
+}

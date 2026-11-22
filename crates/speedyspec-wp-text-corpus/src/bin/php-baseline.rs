@@ -6,7 +6,7 @@
 //!
 //! `php-baseline the_content` times `apply_filters( 'the_content', ... )` with only formatting's ported callbacks
 //! registered as `default-filters.php` registers them (`wptexturize`, `wpautop`, `shortcode_unautop`, then
-//! `capital_P_dangit` at 11), over `wptexturize`'s inputs.
+//! `capital_P_dangit` at 11, `convert_smilies` at 20), over `wptexturize`'s inputs.
 
 use std::rc::Rc;
 use std::time::Duration;
@@ -34,6 +34,7 @@ function speedyspec_formatting_time(string $function, string $inputs_json, float
         add_filter('the_content', 'wpautop');
         add_filter('the_content', 'shortcode_unautop');
         add_filter('the_content', 'capital_P_dangit', 11);
+        add_filter('the_content', 'convert_smilies', 20);
         $run = static fn ($input) => apply_filters('the_content', $input);
     } else {
         $run = $function;
@@ -98,7 +99,11 @@ fn run() -> Result<(), String> {
         .collect();
     let seconds = Duration::from_secs(2).as_secs_f64();
     println!("WordPress {WORDPRESS} {function} in the embedded PHP");
-    let mut groups = vec![("whole_posts", posts), ("page", vec![page(source)])];
+    let mut groups = Vec::new();
+    if !posts.is_empty() {
+        groups.push(("whole_posts", posts));
+        groups.push(("page", vec![page(source)]));
+    }
     let short = short_inputs(source);
     if !short.is_empty() && function != "the_content" {
         groups.push(("short", short));
