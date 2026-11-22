@@ -12,12 +12,14 @@ mod html401;
 mod htmlspecialchars;
 mod js;
 mod legacy;
+pub mod messages;
 mod slash;
 mod specialchars;
 mod tag;
 mod xml;
 
 pub use api::{EscapeApi, text_error};
+pub use messages::register_escape_handlers;
 pub use charset::{Charset, SingleByte, canonical_charset};
 pub use decode::{QuoteStyle, wp_specialchars_decode};
 pub use entities2::htmlentities2;
