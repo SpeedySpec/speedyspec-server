@@ -1858,10 +1858,18 @@
     "name": "deep_replace_0",
     "function": "_deep_replace",
     "args": [
-      [
-        "%0d",
-        "%0a"
-      ],
+      {
+        "array": [
+          [
+            0,
+            "%0d"
+          ],
+          [
+            1,
+            "%0a"
+          ]
+        ]
+      },
       "a%0%0dd%0a"
     ]
   },
@@ -1877,10 +1885,18 @@
     "name": "deep_replace_2",
     "function": "_deep_replace",
     "args": [
-      [
-        "ab",
-        "b"
-      ],
+      {
+        "array": [
+          [
+            0,
+            "ab"
+          ],
+          [
+            1,
+            "b"
+          ]
+        ]
+      },
       "aabbb"
     ]
   },
@@ -1902,10 +1918,18 @@
     "name": "stripslashes_strings_only_2",
     "function": "stripslashes_from_strings_only",
     "args": [
-      [
-        "a\\'",
-        "b\\\\c"
-      ]
+      {
+        "array": [
+          [
+            0,
+            "a\\'"
+          ],
+          [
+            1,
+            "b\\\\c"
+          ]
+        ]
+      }
     ]
   },
   {
@@ -1940,12 +1964,25 @@
     "name": "rawurlencode_deep_2",
     "function": "rawurlencode_deep",
     "args": [
-      [
-        "a b",
-        [
-          "c+d"
+      {
+        "array": [
+          [
+            0,
+            "a b"
+          ],
+          [
+            1,
+            {
+              "array": [
+                [
+                  0,
+                  "c+d"
+                ]
+              ]
+            }
+          ]
         ]
-      ]
+      }
     ]
   },
   {
@@ -1973,12 +2010,25 @@
     "name": "urldecode_deep_2",
     "function": "urldecode_deep",
     "args": [
-      [
-        "a%2Bb",
-        [
-          "c+d"
+      {
+        "array": [
+          [
+            0,
+            "a%2Bb"
+          ],
+          [
+            1,
+            {
+              "array": [
+                [
+                  0,
+                  "c+d"
+                ]
+              ]
+            }
+          ]
         ]
-      ]
+      }
     ]
   },
   {
@@ -2283,10 +2333,18 @@
     "function": "esc_url",
     "args": [
       "example.org/x",
-      [
-        "https",
-        "http"
-      ]
+      {
+        "array": [
+          [
+            0,
+            "https"
+          ],
+          [
+            1,
+            "http"
+          ]
+        ]
+      }
     ]
   },
   {
@@ -2409,9 +2467,14 @@
     "name": "sanitize_key_array",
     "function": "sanitize_key",
     "args": [
-      [
-        "key"
-      ]
+      {
+        "array": [
+          [
+            0,
+            "key"
+          ]
+        ]
+      }
     ]
   },
   {

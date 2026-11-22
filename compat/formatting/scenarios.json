@@ -21881,10 +21881,18 @@
       "steps": [
         {
           "args": [
-            [
-              "%0d",
-              "%0a"
-            ],
+            {
+              "array": [
+                [
+                  0,
+                  "%0d"
+                ],
+                [
+                  1,
+                  "%0a"
+                ]
+              ]
+            },
             "a%0%0dd%0a"
           ],
           "call": "_deep_replace"
@@ -21908,10 +21916,18 @@
       "steps": [
         {
           "args": [
-            [
-              "ab",
-              "b"
-            ],
+            {
+              "array": [
+                [
+                  0,
+                  "ab"
+                ],
+                [
+                  1,
+                  "b"
+                ]
+              ]
+            },
             "aabbb"
           ],
           "call": "_deep_replace"
@@ -21945,10 +21961,18 @@
       "steps": [
         {
           "args": [
-            [
-              "a\\'",
-              "b\\\\c"
-            ]
+            {
+              "array": [
+                [
+                  0,
+                  "a\\'"
+                ],
+                [
+                  1,
+                  "b\\\\c"
+                ]
+              ]
+            }
           ],
           "call": "stripslashes_from_strings_only"
         }
@@ -22003,12 +22027,25 @@
       "steps": [
         {
           "args": [
-            [
-              "a b",
-              [
-                "c+d"
+            {
+              "array": [
+                [
+                  0,
+                  "a b"
+                ],
+                [
+                  1,
+                  {
+                    "array": [
+                      [
+                        0,
+                        "c+d"
+                      ]
+                    ]
+                  }
+                ]
               ]
-            ]
+            }
           ],
           "call": "rawurlencode_deep"
         }
@@ -22052,12 +22089,25 @@
       "steps": [
         {
           "args": [
-            [
-              "a%2Bb",
-              [
-                "c+d"
+            {
+              "array": [
+                [
+                  0,
+                  "a%2Bb"
+                ],
+                [
+                  1,
+                  {
+                    "array": [
+                      [
+                        0,
+                        "c+d"
+                      ]
+                    ]
+                  }
+                ]
               ]
-            ]
+            }
           ],
           "call": "urldecode_deep"
         }
@@ -22534,10 +22584,18 @@
         {
           "args": [
             "example.org/x",
-            [
-              "https",
-              "http"
-            ]
+            {
+              "array": [
+                [
+                  0,
+                  "https"
+                ],
+                [
+                  1,
+                  "http"
+                ]
+              ]
+            }
           ],
           "call": "esc_url"
         }
@@ -22724,9 +22782,14 @@
       "steps": [
         {
           "args": [
-            [
-              "key"
-            ]
+            {
+              "array": [
+                [
+                  0,
+                  "key"
+                ]
+              ]
+            }
           ],
           "call": "sanitize_key"
         }
