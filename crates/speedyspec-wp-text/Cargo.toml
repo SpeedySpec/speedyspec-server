@@ -17,6 +17,7 @@ speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contrac
 speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
 speedyspec-wp-text-escape = { path = "../speedyspec-wp-text-escape" }
 speedyspec-wp-utf8 = { path = "../speedyspec-wp-utf8" }
+unicode-normalization = "0.1"
 
 [dev-dependencies]
 criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
