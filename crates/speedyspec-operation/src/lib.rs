@@ -16,6 +16,7 @@ mod mapper;
 mod operation;
 mod registry;
 mod s;
+pub mod testing;
 mod types;
 pub mod validate;
 
