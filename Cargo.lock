@@ -5181,6 +5181,15 @@ name = "speedyspec-native-stage"
 version = "0.1.0"
 
 [[package]]
+name = "speedyspec-operation-contracts"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "indexmap",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "speedyspec-pcre2-link-test"
 version = "0.1.0"
 dependencies = [
