@@ -157,3 +157,73 @@ fn write_between_reads_is_not_mistaken_for_a_filter() {
         SaveOutcome::Conflict
     );
 }
+
+#[test]
+fn false_from_a_filter_still_writes() {
+    use speedyspec_wp_cron::{CronApi, CronParts, RustArgsKeyer};
+    use speedyspec_wp_cron_contracts::{Clock, CronResult, PhpObjects, Translator};
+    struct Fixed;
+    impl Clock for Fixed {
+        fn microtime(&self) -> f64 {
+            1_700_000_000.0
+        }
+        fn time(&self) -> i64 {
+            1_700_000_000
+        }
+        fn pause(&self, _: u64) {}
+    }
+    struct Same;
+    impl Translator for Same {
+        fn translate(&self, text: &str) -> String {
+            text.into()
+        }
+    }
+    struct Arrays;
+    impl PhpObjects for Arrays {
+        fn to_object(&self, array: HookValue) -> HookValue {
+            array
+        }
+        fn property(&self, object: &HookValue, name: &str) -> Option<HookValue> {
+            match object {
+                HookValue::Array(items) => items
+                    .iter()
+                    .find(|(k, _)| *k == Key::Str(name.into()))
+                    .map(|(_, v)| v.clone()),
+                _ => None,
+            }
+        }
+        fn is_wp_error(&self, _: &HookValue) -> bool {
+            false
+        }
+    }
+    let r = rig();
+    let (_, v) = r.store.load().unwrap();
+    r.store.save_if(&v, cron(1)).unwrap();
+    // A filter that hides the option: get_option( 'cron' ) is false while a row exists.
+    r.hooks
+        .add_filter(
+            &HookName::from("option_cron"),
+            Callback::rust("hide", |_: &[HookValue]| Ok(HookValue::Bool(false))),
+            &HookValue::Int(10),
+            1,
+        )
+        .unwrap();
+    let api = CronApi::new(CronParts {
+        hooks: r.hooks.clone(),
+        store: Rc::new(r.store),
+        keyer: Rc::new(RustArgsKeyer),
+        clock: Rc::new(Fixed),
+        translator: Rc::new(Same),
+        objects: Rc::new(Arrays),
+    });
+    // WordPress writes here (add_option's INSERT ... ON DUPLICATE KEY UPDATE); so must the port.
+    let result = api
+        .schedule_single_event(
+            &HookValue::Int(1_700_003_600),
+            &HookValue::Str("h".into()),
+            &HookValue::Array(vec![]),
+            true,
+        )
+        .unwrap();
+    assert_eq!(result, CronResult::Value(HookValue::Bool(true)));
+}

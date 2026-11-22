@@ -600,3 +600,29 @@ fn set_cron_array_is_unconditional() {
         Some(arr(vec![(Key::Str("version".into()), HookValue::Int(2))]))
     );
 }
+
+#[test]
+fn a_write_between_two_reads_is_never_overwritten() {
+    let f = fixture();
+    f.store.set_raw(Some(option_with(&[(NOW + 100, "first")])));
+    // Another process writes after this one's first read of the option.
+    f.store.before_load(2, |store| {
+        let HookValue::Array(mut items) = store.raw().unwrap() else {
+            unreachable!()
+        };
+        let HookValue::Array(theirs) = option_with(&[(NOW + 200, "theirs")]) else {
+            unreachable!()
+        };
+        items.insert(0, theirs[0].clone());
+        store.set_raw(Some(HookValue::Array(items)));
+    });
+    assert_eq!(
+        val(f
+            .api
+            .schedule_single_event(&HookValue::Int(NOW + 5000), &s("mine"), &empty(), t())
+            .unwrap()),
+        HookValue::Bool(true)
+    );
+    assert!(has(&f, NOW + 200, "theirs"));
+    assert!(has(&f, NOW + 5000, "mine"));
+}

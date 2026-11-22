@@ -318,9 +318,10 @@ impl OptionRepository for SqlOptionRepository {
         self.affected(query.build())
     }
 
-    /// The compare is `MD5(option_value) = '<md5 of the expected bytes>'`: `option_value`'s case- and
-    /// accent-insensitive collation would let a plain `=` match different bytes, and the builder cannot bind a
-    /// parameter inside a raw fragment. MD5 compares the bytes themselves.
+    /// The compare is `MD5(CONVERT(option_value USING <connection charset>)) = '<md5 of the expected bytes>'`:
+    /// `option_value`'s case- and accent-insensitive collation would let a plain `=` match different bytes, and the
+    /// builder cannot bind a parameter inside a raw fragment. MD5 compares the bytes themselves, as the client reads
+    /// them.
     fn update_if(
         &self,
         name: &OptionName,
@@ -342,7 +343,19 @@ impl OptionRepository for SqlOptionRepository {
         }
         let digest = md5::Md5::digest(expected.as_bytes());
         let hex: String = digest.iter().map(|b| format!("{b:02x}")).collect();
-        let compare = Partial::expr(&format!("MD5(option_value) = '{hex}'"))
+        // The expected bytes are what the client read, in the connection's charset; the column may hold another
+        // (a latin1 table), so the stored value is converted to the connection's charset before hashing.
+        let charset = self.wpdb.charset();
+        let stored = if !charset.is_empty()
+            && charset
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'_')
+        {
+            format!("CONVERT(option_value USING {charset})")
+        } else {
+            "option_value".to_string()
+        };
+        let compare = Partial::expr(&format!("MD5({stored}) = '{hex}'"))
             .map_err(|e| OptionsError::Db(e.to_string()))?;
         let mut query = Query::update(&table);
         query.set("option_value", value.map_or(DbValue::Null, self::value_of));
