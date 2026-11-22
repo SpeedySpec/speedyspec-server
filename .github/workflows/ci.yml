@@ -45,7 +45,8 @@ jobs:
           --exclude speedyspec-wp-crypto-sodium --exclude speedyspec-wp-crypto-php --exclude speedyspec-wp-password-php
           --exclude speedyspec-operation-php --exclude speedyspec-rest-php --exclude speedyspec-wp-theme-json-php
           --exclude speedyspec-pcre2-link-test --exclude speedyspec-ffmpeg-sys
-          --exclude speedyspec-wp-media-ffmpeg --exclude speedyspec-wp-media-isolate
+          --exclude speedyspec-wp-media-ffmpeg --exclude speedyspec-wp-media-isolate --exclude speedyspec-wp-media-corpus
+          --exclude speedyspec-wp-media-php
       - run: test -z "$(cargo tree -i aws-lc-sys --target all 2>/dev/null)"
 
   # The static PHP (scripts/build-php.sh) and everything that embeds it, with PHP apps on.
@@ -108,7 +109,8 @@ jobs:
       # The media readers over FFmpeg, the probe child (with its test-only simulations) and the cache.
       - name: Media
         run: >-
-          ${{ matrix.run }} cargo test -p speedyspec-wp-media-ffmpeg -p speedyspec-wp-media-isolate
+          ${{ matrix.run }} cargo test -p speedyspec-wp-media-ffmpeg -p speedyspec-wp-media-isolate -p speedyspec-wp-media-corpus
+          -p speedyspec-wp-media-php
           --features speedyspec-wp-media-isolate/test-modes
       - name: Test with php
         run: ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks

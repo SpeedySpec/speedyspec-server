@@ -5408,8 +5408,13 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "speedyspec-cache",
+ "speedyspec-cache-file",
+ "speedyspec-cache-memory",
  "speedyspec-container",
  "speedyspec-container-php",
+ "speedyspec-data",
+ "speedyspec-data-file",
  "speedyspec-data-mysql",
  "speedyspec-data-query",
  "speedyspec-fastcgi",
@@ -5429,6 +5434,9 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
+ "speedyspec-wp-media-contracts",
+ "speedyspec-wp-media-isolate",
+ "speedyspec-wp-media-php",
  "speedyspec-wp-object-cache-php",
  "speedyspec-wp-options-php",
  "speedyspec-wp-password-contracts",
@@ -6209,11 +6217,24 @@ dependencies = [
  "libc",
  "speedyspec-wp-media-contracts",
  "speedyspec-wp-media-testkit",
+ "tempfile",
 ]
 
 [[package]]
 name = "speedyspec-wp-media-contracts"
 version = "0.1.0"
+
+[[package]]
+name = "speedyspec-wp-media-corpus"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-wp-media",
+ "speedyspec-wp-media-contracts",
+ "speedyspec-wp-media-ffmpeg",
+ "speedyspec-wp-media-midi",
+]
 
 [[package]]
 name = "speedyspec-wp-media-ffmpeg"
@@ -6254,6 +6275,30 @@ version = "0.1.0"
 dependencies = [
  "speedyspec-wp-media-contracts",
  "speedyspec-wp-media-testkit",
+]
+
+[[package]]
+name = "speedyspec-wp-media-php"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-media",
+ "speedyspec-wp-media-contracts",
+ "speedyspec-wp-media-ffmpeg",
+ "speedyspec-wp-media-midi",
+ "speedyspec-wp-media-testkit",
+ "ureq",
 ]
 
 [[package]]

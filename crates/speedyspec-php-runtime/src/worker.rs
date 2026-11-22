@@ -15,6 +15,7 @@ use speedyspec_wp_crypto_sodium::Sodium;
 use speedyspec_wp_hooks::{HookApi, HookStore};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::{HOOK_STORE, PhpHookStore, WpHooksArea};
+use speedyspec_wp_media_php::MediaArea;
 use speedyspec_wp_password_php::PasswordArea;
 use speedyspec_wp_text_diff_php::TextDiffArea;
 
@@ -26,6 +27,74 @@ fn password_area(hooks: Rc<HookApi>, container: &Rc<Container>, sodium: Sodium) 
 }
 
 /// `wp_text_diff()`, with WordPress's implementation bound in `container` under its pluggable port.
+/// A reader that always fails, bound when the worker can't find its own binary to start probe children.
+struct MediaUnavailable(String);
+
+impl speedyspec_wp_media_contracts::MediaReader for MediaUnavailable {
+    fn read(
+        &self,
+        _: speedyspec_wp_media_contracts::MediaSource,
+        _: &speedyspec_wp_media_contracts::ProbeLimits,
+    ) -> Result<speedyspec_wp_media_contracts::MediaInfo, speedyspec_wp_media_contracts::ReadError>
+    {
+        Err(speedyspec_wp_media_contracts::ReadError::Crashed(
+            self.0.clone(),
+        ))
+    }
+}
+
+/// The shared media result cache: files under `<site_dir>/cache/speedyspec-media` when the app has a site
+/// directory, memory otherwise (or when the directory can't be used).
+fn media_store(spec: &WorkerSpec) -> Rc<dyn speedyspec_cache::CachingStore> {
+    if let Some(site) = &spec.site_dir {
+        use speedyspec_data::DirectStore as _;
+        let store = speedyspec_data_file::FileStore::new("files", site.join("cache"));
+        match store.connect().map_err(|e| e.to_string()).and_then(|()| {
+            speedyspec_cache_file::FileCache::new(&store, "speedyspec-media")
+                .map_err(|e| e.to_string())
+        }) {
+            Ok(cache) => return Rc::new(cache),
+            Err(err) => log("php_worker_media_cache_unavailable", spec, &err),
+        }
+    }
+    Rc::new(speedyspec_cache_memory::MemoryCache::new())
+}
+
+/// WordPress's media functions over the isolated, cached reader: each uncached read runs in a `media-probe` child
+/// of this binary.
+fn media_area(hooks: Rc<HookApi>, container: &Rc<Container>, spec: &WorkerSpec) -> MediaArea {
+    use speedyspec_wp_media_isolate::{CachedReader, IsolatedReader, ProbeCommand};
+    let limits = speedyspec_wp_media_contracts::ProbeLimits::default();
+    let area = MediaArea::new(hooks, container.clone(), limits);
+    let reader: Rc<dyn speedyspec_wp_media_contracts::MediaReader> = match std::env::current_exe() {
+        Ok(program) => {
+            let isolated = IsolatedReader::new(ProbeCommand {
+                program,
+                args: vec!["media-probe".into()],
+            });
+            let root = spec
+                .site_dir
+                .clone()
+                .unwrap_or_else(|| spec.release_dir.clone());
+            Rc::new(CachedReader::new(
+                isolated,
+                media_store(spec),
+                root,
+                std::time::Duration::from_secs(30 * 86_400),
+                std::num::NonZeroUsize::new(256).expect("non-zero"),
+            ))
+        }
+        Err(err) => {
+            log("php_worker_media_unavailable", spec, &err.to_string());
+            Rc::new(MediaUnavailable(format!(
+                "the runtime binary can't be found: {err}"
+            )))
+        }
+    };
+    area.bind_defaults(reader);
+    area
+}
+
 fn text_diff_area(hooks: Rc<HookApi>, container: &Rc<Container>) -> TextDiffArea {
     let area = TextDiffArea::new(hooks, container.clone());
     area.bind_defaults();
@@ -237,8 +306,9 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         .port::<dyn HookStore>(HOOK_STORE, |object| Rc::new(PhpHookStore::new(object)))
         .stateful(HOOK_STORE)
         .bindings(spec.bindings.clone());
-    let container_area = TextDiffArea::ports(PasswordArea::ports(container_area));
     let hook_api = hooks.api();
+    let media = media_area(hook_api.clone(), &container, &spec);
+    let container_area = media.ports(TextDiffArea::ports(PasswordArea::ports(container_area)));
     // When the app wants its scheduled call next: reported to the server after each request.
     let next_wake = crate::wake::NextWake::new();
     let crypto = CryptoArea::new(hook_api.clone(), sodium);
@@ -271,6 +341,7 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
     areas.push(Rc::new(crypto));
     areas.push(Rc::new(password));
     areas.push(Rc::new(text_diff));
+    areas.push(Rc::new(media));
     let preload = preload(&spec);
     let php = match Php::boot(BootOptions {
         hooks: legacy,

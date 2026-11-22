@@ -36,3 +36,38 @@ fn read_error_displays_the_limit() {
     );
     assert!(ReadError::TimedOut.to_string().contains("time"));
 }
+
+#[test]
+fn tree_bytes_reads_both_string_kinds() {
+    assert_eq!(
+        Tree::Bytes(b"Caf\xe9".to_vec()).bytes(),
+        Some(&b"Caf\xe9"[..])
+    );
+    assert_eq!(Tree::Str("x".into()).bytes(), Some(&b"x"[..]));
+    assert_eq!(Tree::Int(1).bytes(), None);
+}
+
+struct Upper;
+
+impl speedyspec_wp_media_contracts::TagSanitizer for Upper {
+    fn post(&self, value: &[u8]) -> Vec<u8> {
+        value.to_ascii_uppercase()
+    }
+    fn post_deep(&self, value: &Tree) -> Tree {
+        value.clone()
+    }
+}
+
+#[test]
+fn ports_are_object_safe() {
+    let sanitizer: &dyn speedyspec_wp_media_contracts::TagSanitizer = &Upper;
+    assert_eq!(sanitizer.post(b"a"), b"A");
+    struct Never;
+    impl speedyspec_wp_media_contracts::TimeParser for Never {
+        fn strtotime(&self, _: &[u8]) -> Option<i64> {
+            None
+        }
+    }
+    let time: &dyn speedyspec_wp_media_contracts::TimeParser = &Never;
+    assert_eq!(time.strtotime(b"now"), None);
+}

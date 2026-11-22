@@ -33,6 +33,14 @@ speedyspec-wp-crypto-php = { path = "../speedyspec-wp-crypto-php" }
 speedyspec-wp-crypto-sodium = { path = "../speedyspec-wp-crypto-sodium" }
 # The pinned FFmpeg, reported in the manifest; plan 2 adds the media adapter over it.
 speedyspec-ffmpeg-sys = { path = "../speedyspec-ffmpeg-sys" }
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache-file = { path = "../speedyspec-cache-file" }
+speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-file = { path = "../speedyspec-data-file" }
+speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
+speedyspec-wp-media-isolate = { path = "../speedyspec-wp-media-isolate" }
+speedyspec-wp-media-php = { path = "../speedyspec-wp-media-php" }
 speedyspec-wp-db = { path = "../speedyspec-wp-db" }
 speedyspec-wp-db-php = { path = "../speedyspec-wp-db-php" }
 speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }

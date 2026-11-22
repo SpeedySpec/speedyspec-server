@@ -88,6 +88,9 @@ deny_demuxer_prefixes=(pcm_)
 decoders=(
     mjpeg jpegls png apng gif bmp tiff webp jpeg2000 qoi pcx targa ppm pgm pgmyuv pbm pam sgi sunrast xbm xpm xwd dds
     psd hdr
+    # Stream properties the demuxers leave unset without them (corpus: FLV dimensions, DTS channels and duration,
+    # FLAC bit depth).
+    flv h263 dca flac
 )
 
 denied() {

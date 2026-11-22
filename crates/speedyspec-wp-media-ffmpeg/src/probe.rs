@@ -62,10 +62,23 @@ fn slice<'a, T>(ptr: *const T, len: i32) -> &'a [T] {
     unsafe { std::slice::from_raw_parts(ptr, len as usize) }
 }
 
+/// Tag text as UTF-8; text that isn't (FFmpeg passes ID3v1's Latin-1 through undecoded) is read as Latin-1.
+fn text(ptr: *const c_char) -> Option<String> {
+    if ptr.is_null() {
+        return None;
+    }
+    // SAFETY: as in `string`.
+    let bytes = unsafe { CStr::from_ptr(ptr) }.to_bytes();
+    Some(match std::str::from_utf8(bytes) {
+        Ok(s) => s.to_owned(),
+        Err(_) => bytes.iter().map(|&b| char::from(b)).collect(),
+    })
+}
+
 fn tags(ptr: *const SsTag, len: i32) -> Vec<(String, String)> {
     slice(ptr, len)
         .iter()
-        .filter_map(|tag| Some((string(tag.key)?, string(tag.value)?)))
+        .filter_map(|tag| Some((string(tag.key)?, text(tag.value)?)))
         .collect()
 }
 

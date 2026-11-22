@@ -50,6 +50,8 @@ impl<R: MediaReader> CachedReader<R> {
         ttl: Duration,
         local_entries: NonZeroUsize,
     ) -> Self {
+        // Canonical, so a root reached through a symlink still prefixes the canonical paths callers pass.
+        let root = std::fs::canonicalize(&root).unwrap_or(root);
         CachedReader {
             inner,
             store,
@@ -92,7 +94,7 @@ impl<R: MediaReader> CachedReader<R> {
     }
 
     /// The content key of `path`: its path relative to the root, size, modification time and the hash of its first
-    /// 64 KiB. `None` when the path isn't a readable regular file (the inner reader then reports why).
+    /// 64 KiB. `None` when the path isn't a readable regular file under the root (it is then read uncached).
     fn key(&self, path: &Path) -> Option<String> {
         let meta = std::fs::symlink_metadata(path)
             .ok()
@@ -106,7 +108,14 @@ impl<R: MediaReader> CachedReader<R> {
             .take(HEAD)
             .read_to_end(&mut head)
             .ok()?;
-        let relative = path.strip_prefix(&self.root).unwrap_or(path);
+        // Only files under the app's root: anything else (a stream wrapper's temporary copy, a new path every time)
+        // would leave entries nothing can hit.
+        // The directory is canonicalized, the final component kept as given (a symlinked file is refused by the
+        // reader, not resolved here).
+        let canonical = std::fs::canonicalize(path.parent()?)
+            .ok()?
+            .join(path.file_name()?);
+        let relative = canonical.strip_prefix(&self.root).ok()?;
         let mtime_ns = i128::from(meta.mtime()) * 1_000_000_000 + i128::from(meta.mtime_nsec());
         let mut hasher = Sha256::new();
         hasher.update(relative.as_os_str().as_encoded_bytes());

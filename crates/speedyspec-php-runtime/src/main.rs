@@ -37,6 +37,14 @@ enum Command {
     },
     /// Print this runtime's manifest as JSON.
     Manifest,
+    /// Read one media file on standard input and write its description to standard output: the isolated child a
+    /// worker starts for every untrusted read. Not for people to run.
+    #[command(hide = true, name = "media-probe")]
+    MediaProbe {
+        /// The read's limits, as the worker passes them.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
+        args: Vec<std::ffi::OsString>,
+    },
 }
 
 /// The spec, from the argument or from standard input.
@@ -63,6 +71,7 @@ fn main() -> ExitCode {
                 ExitCode::from(2)
             }
         },
+        Command::MediaProbe { args } => speedyspec_wp_media_isolate::child::run(&args),
         Command::Manifest => {
             let sodium = match speedyspec_wp_crypto_sodium::Sodium::init() {
                 Ok(sodium) => speedyspec_wp_crypto_contracts::CryptoLibrary::version(&sodium),

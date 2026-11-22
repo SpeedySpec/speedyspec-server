@@ -12,4 +12,5 @@ speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
 
 [dev-dependencies]
 libc = "0.2"
+tempfile = "3"
 speedyspec-wp-media-testkit = { path = "../speedyspec-wp-media-testkit" }

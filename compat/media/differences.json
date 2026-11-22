@@ -1,0 +1,197 @@
+[
+  {
+    "file": "*",
+    "path": ".metadata.bitrate",
+    "reason": "getID3 computes bitrates from frame headers and Xing/VBRI/Ogg granules; FFmpeg estimates them from the container or stream header (see DIFFERENCES.md, Bitrates)"
+  },
+  {
+    "file": "*",
+    "path": ".metadata.audio.bitrate",
+    "reason": "getID3 computes bitrates from frame headers and Xing/VBRI/Ogg granules; FFmpeg estimates them from the container or stream header (see DIFFERENCES.md, Bitrates)"
+  },
+  {
+    "file": "*",
+    "path": ".metadata.compression_ratio",
+    "reason": "follows the bitrate (bitrate / (sample rate \u00d7 channels \u00d7 bits))"
+  },
+  {
+    "file": "*",
+    "path": ".metadata.audio.compression_ratio",
+    "reason": "follows the bitrate (bitrate / (sample rate \u00d7 channels \u00d7 bits))"
+  },
+  {
+    "file": "*",
+    "path": ".metadata.encoder_options",
+    "reason": "encoder settings getID3 reads from LAME and Vorbis headers; FFmpeg doesn't expose them"
+  },
+  {
+    "file": "*",
+    "path": ".metadata.audio.encoder_options",
+    "reason": "encoder settings getID3 reads from LAME and Vorbis headers; FFmpeg doesn't expose them"
+  },
+  {
+    "file": "bars.mkv",
+    "path": ".metadata.audio.language",
+    "reason": "the default track language: getID3 writes \"und\" for Matroska tracks without one; FFmpeg reports none"
+  },
+  {
+    "file": "bars.webm",
+    "path": ".metadata.audio.language",
+    "reason": "the default track language: getID3 writes \"und\" for Matroska tracks without one; FFmpeg reports none"
+  },
+  {
+    "file": "tone.mka",
+    "path": ".metadata.language",
+    "reason": "the default track language: getID3 writes \"und\" for Matroska tracks without one; FFmpeg reports none"
+  },
+  {
+    "file": "bars.mov",
+    "path": ".metadata.codec",
+    "reason": "getID3 reports a QuickTime sample description's compressor name (\"Lavc60.31.102 libx264\") as the codec; FFmpeg doesn't expose it"
+  },
+  {
+    "file": "garbage.mp3",
+    "path": ".metadata.mime_type",
+    "reason": "an unreadable file: getID3 still guesses a MIME type or format from its first bytes; the native function reports only the size"
+  },
+  {
+    "file": "truncated.mp4",
+    "path": ".file_format",
+    "reason": "an unreadable file: getID3 still guesses a MIME type or format from its first bytes; the native function reports only the size"
+  },
+  {
+    "file": "truncated.mp4",
+    "path": ".metadata.fileformat",
+    "reason": "an unreadable file: getID3 still guesses a MIME type or format from its first bytes; the native function reports only the size"
+  },
+  {
+    "file": "truncated.mp4",
+    "path": ".metadata.mime_type",
+    "reason": "an unreadable file: getID3 still guesses a MIME type or format from its first bytes; the native function reports only the size"
+  },
+  {
+    "file": "latin1-v1.mp3",
+    "path": ".metadata.title",
+    "reason": "ID3v1 text is Latin-1: WordPress returns the raw bytes (invalid UTF-8); the native function decodes them to UTF-8 (\"Caf\u00e9\")"
+  },
+  {
+    "file": "tone.dts",
+    "path": ".metadata.bits_per_sample",
+    "reason": "getID3 reads the DTS header's PCM resolution; FFmpeg doesn't expose it without decoding"
+  },
+  {
+    "file": "tone.ogg",
+    "path": ".metadata.encoder",
+    "reason": "getID3 reports the Vorbis comment vendor string as the encoder; FFmpeg drops the vendor and reports the ENCODER comment"
+  },
+  {
+    "file": "tone.opus",
+    "path": ".metadata.encoder",
+    "reason": "getID3 reports the Vorbis comment vendor string as the encoder; FFmpeg drops the vendor and reports the ENCODER comment"
+  },
+  {
+    "file": "tone.opus",
+    "path": ".metadata.sample_rate_input",
+    "reason": "the Opus header's original input sample rate, which FFmpeg doesn't expose"
+  },
+  {
+    "file": "tone.flac",
+    "path": ".metadata.title",
+    "reason": "deliberate: tags from every tag format when a file has no ID3 (Jacob's ruling, 2026-11-22)"
+  },
+  {
+    "file": "tone.flac",
+    "path": ".metadata.artist",
+    "reason": "deliberate: tags from every tag format when a file has no ID3 (Jacob's ruling, 2026-11-22)"
+  },
+  {
+    "file": "tone.m4a",
+    "path": ".metadata.title",
+    "reason": "deliberate: tags from every tag format when a file has no ID3 (Jacob's ruling, 2026-11-22)"
+  },
+  {
+    "file": "tone.m4a",
+    "path": ".metadata.artist",
+    "reason": "deliberate: tags from every tag format when a file has no ID3 (Jacob's ruling, 2026-11-22)"
+  },
+  {
+    "file": "tone.m4a",
+    "path": ".metadata.album",
+    "reason": "deliberate: tags from every tag format when a file has no ID3 (Jacob's ruling, 2026-11-22)"
+  },
+  {
+    "file": "tone.mka",
+    "path": ".metadata.title",
+    "reason": "deliberate: tags from every tag format when a file has no ID3 (Jacob's ruling, 2026-11-22)"
+  },
+  {
+    "file": "tone.ogg",
+    "path": ".metadata.title",
+    "reason": "deliberate: tags from every tag format when a file has no ID3 (Jacob's ruling, 2026-11-22)"
+  },
+  {
+    "file": "tone.ogg",
+    "path": ".metadata.artist",
+    "reason": "deliberate: tags from every tag format when a file has no ID3 (Jacob's ruling, 2026-11-22)"
+  },
+  {
+    "file": "tone.opus",
+    "path": ".metadata.title",
+    "reason": "deliberate: tags from every tag format when a file has no ID3 (Jacob's ruling, 2026-11-22)"
+  },
+  {
+    "file": "tone.wma",
+    "path": ".metadata.title",
+    "reason": "deliberate: tags from every tag format when a file has no ID3 (Jacob's ruling, 2026-11-22)"
+  },
+  {
+    "file": "tone.wma",
+    "path": ".metadata.artist",
+    "reason": "deliberate: tags from every tag format when a file has no ID3 (Jacob's ruling, 2026-11-22)"
+  },
+  {
+    "file": "bars.mpg",
+    "path": ".**",
+    "reason": "getID3 can't read this file (it returns only the size and a MIME guess); FFmpeg reads it, so the native function returns its full metadata"
+  },
+  {
+    "file": "bars.ts",
+    "path": ".**",
+    "reason": "getID3 can't read this file (it returns only the size and a MIME guess); FFmpeg reads it, so the native function returns its full metadata"
+  },
+  {
+    "file": "tone.aac",
+    "path": ".**",
+    "reason": "getID3 can't read this file (it returns only the size and a MIME guess); FFmpeg reads it, so the native function returns its full metadata"
+  },
+  {
+    "file": "tone.ra",
+    "path": ".**",
+    "reason": "getID3 can't read this file (it returns only the size and a MIME guess); FFmpeg reads it, so the native function returns its full metadata"
+  },
+  {
+    "file": "note.mid",
+    "path": ".**",
+    "reason": "getID3 can't read this file (it returns only the size and a MIME guess); FFmpeg reads it, so the native function returns its full metadata"
+  },
+  {
+    "file": "bars.ogv",
+    "path": ".metadata.audio",
+    "reason": "getID3 reads only the Theora stream of an Ogg video; FFmpeg also reads its Vorbis audio and duration"
+  },
+  {
+    "file": "bars.ogv",
+    "path": ".metadata.length",
+    "reason": "getID3 reads only the Theora stream of an Ogg video; FFmpeg also reads its Vorbis audio and duration"
+  },
+  {
+    "file": "bars.ogv",
+    "path": ".metadata.length_formatted",
+    "reason": "getID3 reads only the Theora stream of an Ogg video; FFmpeg also reads its Vorbis audio and duration"
+  },
+  {
+    "file": "bars.ogv",
+    "path": ".metadata.lossless",
+    "reason": "getID3 reads only the Theora stream of an Ogg video; FFmpeg also reads its Vorbis audio and duration"
+  }
+]

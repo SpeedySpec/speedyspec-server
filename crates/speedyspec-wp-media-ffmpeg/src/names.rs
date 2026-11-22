@@ -19,7 +19,12 @@ pub fn container(format: &str, brand: Option<&str>, codecs: &[Codec]) -> Contain
             }
         }
         "matroska,webm" => {
-            let webm = !codecs.is_empty()
+            // FFmpeg doesn't report the DocType, so WebM is told by its codecs, and needs a video stream: an
+            // audio-only file is far more often .mka than .weba.
+            let has_video = codecs
+                .iter()
+                .any(|c| matches!(c, Codec::Vp8 | Codec::Vp9 | Codec::Av1));
+            let webm = has_video
                 && codecs.iter().all(|c| {
                     matches!(
                         c,

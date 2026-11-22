@@ -102,7 +102,17 @@ pub fn map(probe: RawProbe) -> MediaInfo {
     let has_theora = streams
         .iter()
         .any(|s| matches!(s, Stream::Video(v) if v.codec == Codec::Theora));
-    let tags = tags(&probe.tags, system);
+    // Ogg keeps its Vorbis comments (and the vendor string, as `encoder`) on the streams, not the file.
+    let mut raw_tags = probe.tags.clone();
+    if container == ContainerKind::Ogg
+        && let Some(first) = probe
+            .streams
+            .iter()
+            .find(|s| !s.attached_pic && (s.media_type == AUDIO || s.media_type == VIDEO))
+    {
+        raw_tags.extend(first.tags.iter().filter(|(k, _)| k != "language").cloned());
+    }
+    let tags = tags(&raw_tags, system);
     let created_at = probe
         .tags
         .iter()

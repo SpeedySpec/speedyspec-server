@@ -1,0 +1,39 @@
+[package]
+name = "speedyspec-wp-media-php"
+version = "0.1.0"
+description = "WordPress's audio and video metadata functions as native PHP functions over the media reader port."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-media = { path = "../speedyspec-wp-media" }
+speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
+
+[dev-dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+speedyspec-wp-media = { path = "../speedyspec-wp-media" }
+speedyspec-wp-media-ffmpeg = { path = "../speedyspec-wp-media-ffmpeg" }
+speedyspec-wp-media-midi = { path = "../speedyspec-wp-media-midi" }
+speedyspec-wp-media-testkit = { path = "../speedyspec-wp-media-testkit" }
+serde_json = "1"
+sha2 = "0.10"
+ureq = "3"
+
+[[test]]
+name = "php"
+harness = false
+
+[[test]]
+name = "wordpress"
+harness = false
