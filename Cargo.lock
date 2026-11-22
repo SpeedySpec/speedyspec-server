@@ -5557,6 +5557,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-transport"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-container",
+ "speedyspec-operation",
+ "speedyspec-operation-contracts",
+ "speedyspec-operation-dispatch",
+ "speedyspec-transport-contracts",
+]
+
+[[package]]
 name = "speedyspec-transport-contracts"
 version = "0.1.0"
 dependencies = [
