@@ -274,3 +274,28 @@ fn avif_info_fields() {
     let unknown = avif_info(&image(Some(64), Some(48), None, None));
     assert_eq!(unknown.get("bit_depth"), Some(&Tree::Bool(false)));
 }
+
+#[test]
+fn avif_compatible_brand_anywhere_in_ftyp_is_avif() {
+    // mif1 major, avif as the fifth compatible brand (past byte 32).
+    let mut h = vec![0, 0, 0, 0x24];
+    h.extend_from_slice(b"ftypmif1\0\0\0\0mif1miafMA1AMA1Bavif");
+    h.resize(64, 0);
+    assert_eq!(sniff(&h).map(|t| t.mime), Some("image/avif"));
+    // msf1 major with avis compatible.
+    let mut h = vec![0, 0, 0, 0x18];
+    h.extend_from_slice(b"ftypmsf1\0\0\0\0avismsf1");
+    h.resize(64, 0);
+    assert_eq!(sniff(&h).map(|t| t.mime), Some("image/avif"));
+}
+
+#[test]
+fn more_heif_brands() {
+    for brand in [b"heif", b"hevm", b"hevs"] {
+        assert_eq!(
+            sniff(&ftyp(brand, &[])).map(|t| t.mime),
+            Some("image/heif"),
+            "{brand:?}"
+        );
+    }
+}

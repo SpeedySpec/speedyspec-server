@@ -53,7 +53,7 @@ fn head(path: &Path, n: usize) -> Vec<u8> {
 fn native(path: &Path, recorded: &Value) -> [Value; 4] {
     let limits = ProbeLimits::default();
     let reader = FfmpegReader::new(&limits);
-    let t = sniff(&head(path, 32));
+    let t = sniff(&head(path, 64));
     let mime = t.map_or(json!(false), |t| json!(t.mime));
     let size = match t {
         None => json!(false),
@@ -164,7 +164,7 @@ fn fast_path_list_matches_the_recording() {
     let mut proven = Vec::new();
     for (name, rec) in recorded["files"].as_object().unwrap() {
         let path = compat().join("images").join(name);
-        let Some(t) = sniff(&head(&path, 32)) else {
+        let Some(t) = sniff(&head(&path, 64)) else {
             continue;
         };
         let php = &rec["getimagesize"];

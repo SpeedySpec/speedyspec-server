@@ -85,11 +85,12 @@ deny_demuxer_prefixes=(pcm_)
 
 # Decoders avformat_find_stream_info needs for stream properties the demuxers and parsers don't fill, and nothing
 # else: each one's removal changes a result of the corpus or reader tests (plan 4's minimization, one at a time and
-# together). MJPEG and PNG for cover art sizes (with jpegls also gone, JPEG covers lose theirs), BMP for BMP sizes, QOI, PCX, SGI and Radiance HDR for those reader-path
+# together). MJPEG, PNG, GIF and WebP for cover art sizes (an ID3 APIC frame carries none; the GIF and WebP covers are
+# proven by speedyspec-wp-media-ffmpeg's gif_and_webp_covers_have_dimensions) (with jpegls also gone, JPEG covers lose theirs), BMP for BMP sizes, QOI, PCX, SGI and Radiance HDR for those reader-path
 # image sizes; FLV dimensions, DTS channels and duration, FLAC bit depth. JPEG and the other formats get their sizes
 # from parsers and headers, and the fast-path image types are sized by PHP.
 decoders=(
-    mjpeg png bmp qoi pcx sgi hdr flv dca flac
+    mjpeg png gif webp bmp qoi pcx sgi hdr flv dca flac
 )
 
 denied() {

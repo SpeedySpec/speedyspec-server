@@ -78,7 +78,12 @@ async fn wp_getimagesize_in_a_worker() {
     let mut worker = support::spawn(dir.path(), &app, Some(&site), &[]);
     worker.ready().await;
     let answer = worker.get(&app.join("index.php"), "/").await;
-    assert_eq!(answer.body(), r#"[64,"image\/jxl",64,"image\/png"]"#, "{}", answer.stdout);
+    assert_eq!(
+        answer.body(),
+        r#"[64,"image\/jxl",64,"image\/png"]"#,
+        "{}",
+        answer.stdout
+    );
 }
 
 #[test]

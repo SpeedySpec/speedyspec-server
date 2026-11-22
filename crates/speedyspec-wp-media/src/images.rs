@@ -59,10 +59,12 @@ pub const TYPES: &[ImageType] = &[
 ];
 
 const HEIF_BRANDS: &[&[u8]] = &[
-    b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"mif1", b"msf1",
+    b"heic", b"heix", b"heif", b"hevc", b"hevx", b"hevm", b"hevs", b"heim", b"heis", b"mif1",
+    b"msf1",
 ];
 
-/// The image type of a file from its first bytes (32 are enough), or `None` for anything else.
+/// The image type of a file from its first bytes (64, so a long `ftyp` brand list is seen), or `None` for anything
+/// else.
 pub fn sniff(head: &[u8]) -> Option<ImageType> {
     let starts = |sig: &[u8]| head.starts_with(sig);
     if starts(&[0xFF, 0xD8, 0xFF]) {
@@ -94,9 +96,10 @@ pub fn sniff(head: &[u8]) -> Option<ImageType> {
             .unwrap_or(&[])
             .as_chunks::<4>()
             .0;
+        // AVIF by its major brand or any compatible one, as libavifinfo (PHP's getimagesize()) decides.
         if major == b"avif"
             || major == b"avis"
-            || (major == b"mif1" && compatible.contains(b"avif"))
+            || compatible.iter().any(|b| b == b"avif" || b == b"avis")
         {
             return Some(AVIF);
         }

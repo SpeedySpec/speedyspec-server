@@ -249,6 +249,19 @@ fn main() {
     check("jpeg_app13_reaches_image_info", text(&r) == "yes", &r);
 
     let r = php.eval(
+        "speedyspec://test/stale-info",
+        &format!(
+            "$i = array('APP13' => 'old'); wp_getimagesize({:?}, $i); return json_encode($i);",
+            img("photo.qoi")
+        ),
+    );
+    check(
+        "image_info_is_reset_on_the_reader_path",
+        text(&r) == "[]",
+        &r,
+    );
+
+    let r = php.eval(
         "speedyspec://test/jxl",
         &format!(
             "return json_encode(wp_getimagesize({:?}));",

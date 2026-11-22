@@ -94,7 +94,7 @@ namespace
     if (!function_exists('wp_get_image_mime')) {
         function wp_get_image_mime($file)
         {
-            $type = \SpeedySpec\WpMedia\Native\image_type(\SpeedySpec\WpMedia\head($file, 32));
+            $type = \SpeedySpec\WpMedia\Native\image_type(\SpeedySpec\WpMedia\head($file, 64));
             return $type ? $type['mime'] : false;
         }
     }
@@ -102,7 +102,7 @@ namespace
     if (!function_exists('wp_getimagesize')) {
         function wp_getimagesize($filename, ?array &$image_info = null)
         {
-            $type = \SpeedySpec\WpMedia\Native\image_type(\SpeedySpec\WpMedia\head($filename, 32));
+            $type = \SpeedySpec\WpMedia\Native\image_type(\SpeedySpec\WpMedia\head($filename, 64));
             // PHP's own getimagesize() for every type it reads correctly, and for anything not sniffed: its answer
             // (and $image_info) are then exactly WordPress's.
             if (!$type || $type['fast']) {
@@ -115,9 +115,14 @@ namespace
                 if (!empty($info) && !(empty($info[0]) && empty($info[1]))) {
                     return $info;
                 }
-                if (!$type) {
+                // WordPress falls back only for WebP, AVIF and HEIC (its own parsers or Imagick); every other type
+                // PHP couldn't size is false, without a probe child.
+                if (!$type || !in_array($type['mime'], array('image/webp', 'image/avif', 'image/heif'), true)) {
                     return false;
                 }
+            } elseif (2 === func_num_args()) {
+                // WordPress's getimagesize() call always resets $image_info; a reader-path type has no segments.
+                $image_info = array();
             }
             $local = \SpeedySpec\WpMedia\local($filename);
             if ($local === null) {
