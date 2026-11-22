@@ -1,0 +1,19 @@
+[package]
+name = "speedyspec-pcre2-link-test"
+version = "0.1.0"
+description = "Test only: the static PHP's PCRE2 and speedyspec-wp-text's PCRE2 linked into one binary, each keeping its own."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# Nothing depends on this crate, so the embedded PHP stays out of every released crate's dependency graph.
+[dev-dependencies]
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-wp-text = { path = "../speedyspec-wp-text" }
+
+[[test]]
+name = "pcre2"
+harness = false

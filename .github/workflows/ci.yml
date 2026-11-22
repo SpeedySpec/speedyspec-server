@@ -41,6 +41,7 @@ jobs:
           --exclude speedyspec-router-php --exclude speedyspec-wp-rewrite-php
           --exclude speedyspec-wp-kses-php --exclude speedyspec-wp-kses --exclude speedyspec-wp-kses-lexical
           --exclude speedyspec-wp-kses-testkit --exclude speedyspec-wp-html-syntax
+          --exclude speedyspec-pcre2-link-test
       - run: test -z "$(cargo tree -i aws-lc-sys --target all 2>/dev/null)"
 
   # The static PHP (scripts/build-php.sh) and everything that embeds it, with PHP apps on.
