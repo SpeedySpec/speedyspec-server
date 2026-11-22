@@ -192,6 +192,10 @@ pub(crate) fn functions(api: &Rc<CronApi>) -> Vec<FunctionBuilder<'static>> {
                     HookValue::Int(summary.claimed_by_others as i64),
                 ),
                 (
+                    Key::Str("unclaimed".into()),
+                    HookValue::Int(summary.unclaimed as i64),
+                ),
+                (
                     Key::Str("next".into()),
                     summary.next.map_or(HookValue::Null, HookValue::Int),
                 ),

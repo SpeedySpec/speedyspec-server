@@ -36,7 +36,8 @@ async fn twenty_due_events_run_once_across_two_workers() {
         }
     }
     let check = a.get(&app.join("check.php"), "/check.php").await;
-    let state: serde_json::Value = serde_json::from_str(check.body()).unwrap_or_else(|_| panic!("{}", check.stdout));
+    let state: serde_json::Value =
+        serde_json::from_str(check.body()).unwrap_or_else(|_| panic!("{}", check.stdout));
     assert_eq!(state["runs"], 21, "{state}");
     assert_eq!(state["distinct"], 21, "{state}");
     assert_eq!(state["hourly"], serde_json::json!(["future"]), "{state}");

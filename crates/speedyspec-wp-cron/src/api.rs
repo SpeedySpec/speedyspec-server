@@ -25,6 +25,8 @@ pub struct CronParts {
 /// WordPress's cron API. Each method takes PHP's arguments as passed and answers as WordPress does.
 pub struct CronApi {
     pub(crate) p: CronParts,
+    /// A run is in progress: its writes do not report wake times (the run reports when cron is next due).
+    pub(crate) running: std::cell::Cell<bool>,
 }
 
 pub(crate) fn hook_error(e: HookError) -> CronError {
@@ -36,7 +38,10 @@ pub(crate) fn hook_error(e: HookError) -> CronError {
 
 impl CronApi {
     pub fn new(parts: CronParts) -> CronApi {
-        CronApi { p: parts }
+        CronApi {
+            p: parts,
+            running: std::cell::Cell::new(false),
+        }
     }
 
     /// `apply_filters( $hook, $value, ...$args )`.
