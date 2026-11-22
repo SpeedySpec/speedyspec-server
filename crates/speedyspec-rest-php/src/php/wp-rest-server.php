@@ -51,9 +51,20 @@ class WP_REST_Server extends SpeedySpec_TrunkRestServer
     /** Dispatches through the Rust REST server, for any WP_REST_Request: new-style operations and legacy routes alike. */
     public function dispatch( $request )
     {
+        $route = (string) $request->get_route();
+        if ( '' === $route || '/' === $route ) {
+            // The index route is the one WordPress's constructor registers itself: trunk serves it, from get_routes().
+            return parent::dispatch( $request );
+        }
         $this->dispatching_requests[] = $request;
         try {
-            return \SpeedySpec\Rest\Native\dispatch( $request );
+            $result = \SpeedySpec\Rest\Native\dispatch( $request );
+            // WordPress's dispatch changes the request it is given: URL parameters, defaults, sanitized values.
+            $request->set_url_params( $result['request']['url'] );
+            $request->set_query_params( $result['request']['query'] );
+            $request->set_body_params( $result['request']['body'] );
+            $request->set_default_params( $result['request']['defaults'] );
+            return $result['response'];
         } finally {
             array_pop( $this->dispatching_requests );
         }

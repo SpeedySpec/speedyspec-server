@@ -48,7 +48,9 @@ fn binding_round_trips_and_validates() {
 #[test]
 fn method_parse_is_case_insensitive() {
     assert_eq!(RestMethod::parse("pAtCh"), Some(RestMethod::Patch));
-    assert_eq!(RestMethod::parse("head"), None);
+    assert_eq!(RestMethod::parse("head"), Some(RestMethod::Head));
+    assert_eq!(RestMethod::parse("options"), Some(RestMethod::Options));
+    assert_eq!(RestMethod::parse("trace"), None);
     assert_eq!(RestMethod::Delete.as_str(), "DELETE");
 }
 

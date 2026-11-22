@@ -272,7 +272,7 @@ impl RestServer {
     }
 
     fn index_or_no_route(&self, method: RestMethod, path: &str) -> RestResponse {
-        if method == RestMethod::Get {
+        if matches!(method, RestMethod::Get | RestMethod::Head) {
             let trimmed = path.trim_matches('/');
             if trimmed.is_empty() {
                 return RestResponse::ok(index::root(

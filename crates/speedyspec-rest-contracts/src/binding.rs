@@ -2,10 +2,13 @@
 
 use speedyspec_operation_contracts::Value;
 
-/// An HTTP method a REST route serves. `HEAD` is served as `GET`.
+/// An HTTP method a REST route serves. A `HEAD` request with no `HEAD` route is served by the `GET` route.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum RestMethod {
     Get,
+    Head,
+    /// No route serves `OPTIONS`; WordPress answers it from `rest_pre_dispatch` (`rest_handle_options_request`).
+    Options,
     Post,
     Put,
     Patch,
@@ -17,6 +20,8 @@ impl RestMethod {
     pub fn parse(name: &str) -> Option<RestMethod> {
         Some(match name.to_ascii_uppercase().as_str() {
             "GET" => RestMethod::Get,
+            "HEAD" => RestMethod::Head,
+            "OPTIONS" => RestMethod::Options,
             "POST" => RestMethod::Post,
             "PUT" => RestMethod::Put,
             "PATCH" => RestMethod::Patch,
@@ -28,6 +33,8 @@ impl RestMethod {
     pub fn as_str(&self) -> &'static str {
         match self {
             RestMethod::Get => "GET",
+            RestMethod::Head => "HEAD",
+            RestMethod::Options => "OPTIONS",
             RestMethod::Post => "POST",
             RestMethod::Put => "PUT",
             RestMethod::Patch => "PATCH",

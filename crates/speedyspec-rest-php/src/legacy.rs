@@ -320,6 +320,18 @@ impl OperationHandler for LegacyHandler {
     fn handle_neutral(&self, _input: &Value, _caller: &Caller) -> Result<Value, OperationError> {
         let handler = handler(&self.operation).ok_or_else(|| missing(&self.operation))?;
         let callback = field(&handler, "callback");
+        let callable = speedyspec_php::call(
+            &PhpValue::Str("is_callable".into()),
+            std::slice::from_ref(&callback),
+        );
+        if !matches!(callable, Ok(PhpValue::Bool(true))) {
+            return Err(OperationError::new(
+                "rest_invalid_handler",
+                Category::Internal,
+                "The handler for the route is invalid.",
+            )
+            .with_details(Value::map([("status", Value::Int(500))])));
+        }
         let proxy = current_proxy()?;
         let returned = speedyspec_php::call_catching(&callback, &[proxy])
             .map_err(|f| failed("callback", f.error))?;

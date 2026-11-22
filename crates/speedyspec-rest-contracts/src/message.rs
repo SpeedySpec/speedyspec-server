@@ -58,7 +58,10 @@ impl RestRequest {
 
     /// Whether the request carries body parameters WordPress reads (`POST`, `PUT`, `PATCH`, `DELETE`).
     fn reads_body(&self) -> bool {
-        self.method != RestMethod::Get
+        matches!(
+            self.method,
+            RestMethod::Post | RestMethod::Put | RestMethod::Patch | RestMethod::Delete
+        )
     }
 
     /// The parameter sources in priority order (`WP_REST_Request::get_parameter_order`): the JSON body when the body is

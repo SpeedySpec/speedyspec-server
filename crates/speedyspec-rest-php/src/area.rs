@@ -64,8 +64,7 @@ fn native_legacy_register(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     let route = arg_text(args, 1);
     let handlers = args.get(2).cloned().unwrap_or(PhpValue::Null);
     let replace = matches!(args.get(3), Some(PhpValue::Bool(true)));
-    for problem in crate::legacy::register(&service, &namespace, &route, &handlers, replace)
-    {
+    for problem in crate::legacy::register(&service, &namespace, &route, &handlers, replace) {
         eprintln!("speedyspec_wordpress: a legacy REST route was not registered: {problem}");
     }
     Ok(PhpValue::Null)
@@ -106,7 +105,7 @@ fn native_dispatch(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
         _ => "GET".into(),
     };
     let (method, head) = if method_name.eq_ignore_ascii_case("HEAD") {
-        (RestMethod::Get, true)
+        (RestMethod::Head, true)
     } else {
         (
             RestMethod::parse(&method_name).unwrap_or(RestMethod::Get),
@@ -199,9 +198,23 @@ fn native_dispatch(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
             (Key::Str("handler".into()), handler),
         ])],
     );
-    made.ok_or_else(|| {
+    let made = made.ok_or_else(|| {
         NativeError::throw("RuntimeException", "the REST response could not be built")
-    })
+    })?;
+    // As WordPress's dispatch changes the caller's request (URL parameters, defaults, sanitized values), hand them back.
+    let r = shared.borrow();
+    Ok(PhpValue::Array(vec![
+        (Key::Str("response".into()), made),
+        (
+            Key::Str("request".into()),
+            PhpValue::Array(vec![
+                (Key::Str("url".into()), map_value(&r.url_params)),
+                (Key::Str("query".into()), map_value(&r.query_params)),
+                (Key::Str("body".into()), map_value(&r.body_params)),
+                (Key::Str("defaults".into()), map_value(&r.default_params)),
+            ]),
+        ),
+    ]))
 }
 
 /// The new-style operations' routes, for `WP_REST_Server::get_routes()`.

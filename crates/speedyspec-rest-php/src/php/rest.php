@@ -91,6 +91,12 @@ final class Adapter
         return [ 'kind' => 'value', 'data' => $extract( $value ) ];
     }
 
+    /** The REST server of this request, when one exists. */
+    public static function server(): mixed
+    {
+        return ( $GLOBALS['wp_rest_server'] ?? null ) instanceof \WP_REST_Server ? $GLOBALS['wp_rest_server'] : null;
+    }
+
     /** On wp_operations_init: builds WordPress's REST server, which fires rest_api_init, so legacy routes register. */
     public static function rest_init(): void
     {

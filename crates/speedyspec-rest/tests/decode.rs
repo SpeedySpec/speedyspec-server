@@ -52,7 +52,7 @@ fn method_override() {
     assert_eq!(decode::rest_request(&h).unwrap().method, RestMethod::Put);
     let head =
         decode::rest_request(&request(Method::Head, "http://x.test/wp-json/a/v1/b")).unwrap();
-    assert_eq!((head.method, head.head), (RestMethod::Get, true));
+    assert_eq!((head.method, head.head), (RestMethod::Head, true));
 }
 
 #[test]
