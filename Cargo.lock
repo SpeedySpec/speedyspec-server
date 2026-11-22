@@ -5396,6 +5396,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-rest-contracts"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "speedyspec-operation-contracts",
+]
+
+[[package]]
 name = "speedyspec-router"
 version = "0.1.0"
 dependencies = [
