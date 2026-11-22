@@ -41,11 +41,41 @@ pub(crate) struct Shared {
     pub container: Rc<Container>,
     pub api: Rc<speedyspec_wp_text::TextApi>,
     refs: RefCell<HashMap<TypeId, Rc<dyn Any>>>,
+    /// The fast path's handler keys, each with its generation when the text API's handlers were bound.
+    baseline: Vec<(&'static str, u64)>,
 }
 
+/// The handler keys of the use cases the fast path serves without dispatch.
+const FAST_KEYS: [&str; 4] = [ConvertChars::KEY, WpStripAllTags::KEY, ShortcodeUnautop::KEY, WpRelNofollow::KEY];
+
 impl Shared {
+    /// What the natives share, with the fast path's bindings as they are now (right after the text API's handlers
+    /// were bound).
+    ///
+    /// @param container
+    ///     The container the handlers are bound in.
+    /// @param api
+    ///     The formatting API.
+    /// @return
+    ///     The shared state.
     pub(crate) fn new(container: Rc<Container>, api: Rc<speedyspec_wp_text::TextApi>) -> Shared {
-        Shared { container, api, refs: RefCell::new(HashMap::new()) }
+        let baseline = FAST_KEYS.iter().map(|&k| (k, container.generation(k))).collect();
+        Shared { container, api, refs: RefCell::new(HashMap::new()), baseline }
+    }
+
+    /// Whether the handler for `key` is still the text API's own, so the fast path may serve it without dispatch.
+    ///
+    /// @param key
+    ///     A handler key.
+    /// @return
+    ///     False once anything has rebound or extended it.
+    pub(crate) fn unchanged(&self, key: &str) -> bool {
+        // The keys are no aliases when bound, so "still no alias, same generation" is "unchanged" (and cheaper to ask
+        // per call than resolving the alias chain twice).
+        self.baseline
+            .iter()
+            .find(|(k, _)| *k == key)
+            .is_none_or(|(k, generation)| !self.container.is_alias(k) && self.container.generation(k) == *generation)
     }
 }
 
@@ -60,6 +90,11 @@ fn shared() -> Result<Rc<Shared>, NativeError> {
 /// The formatting API, for the fast path.
 pub(crate) fn shared_api() -> Option<Rc<speedyspec_wp_text::TextApi>> {
     SHARED.with(|s| s.borrow().as_ref().map(|s| s.api.clone()))
+}
+
+/// Whether the fast path may serve the use case behind `key` (its handler is still the text API's own).
+pub(crate) fn fast_allowed(key: &str) -> bool {
+    SHARED.with(|s| s.borrow().as_ref().is_some_and(|s| s.unchanged(key)))
 }
 
 fn bus(e: BusError) -> NativeError {
@@ -294,7 +329,7 @@ fn normalize_whitespace_native(a: &[Value]) -> R {
 }
 
 fn wp_strip_all_tags(a: &[Value]) -> R {
-    bytes(ask(WpStripAllTags { text: stringable(a, 0)?, remove_breaks: bool_or(a, 1, false) })?)
+    bytes(ask(WpStripAllTags { text: arg(a, 0), remove_breaks: bool_or(a, 1, false) })?)
 }
 
 fn format_for_editor(a: &[Value]) -> R {

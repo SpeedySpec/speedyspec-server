@@ -34,11 +34,11 @@ pub(crate) fn arg(args: &[Value], i: usize) -> Value {
     args.get(i).map(|v| v.read().into_owned()).unwrap_or(Value::Null)
 }
 
-/// Argument `i` as PHP's `(string)`: an object goes through PHP's own `strval()` (its `__toString()`, or PHP's
-/// error for an object without one); an array reads as `""`.
+/// Argument `i` as PHP's `(string)`: an object or an array goes through PHP's own `strval()` (an object's
+/// `__toString()`, or PHP's error for an object without one; `"Array"` and PHP's warning for an array).
 pub(crate) fn string(args: &[Value], i: usize) -> Result<Vec<u8>, NativeError> {
     let value = arg(args, i);
-    if let Value::Opaque(_) = value {
+    if let Value::Opaque(_) | Value::Array(_) = value {
         let cast = speedyspec_php::call_catching(&Value::Str("strval".into()), &[value])
             .map_err(|f| native_error(crate::adapters::call_error(f)))?;
         return Ok(to_php_string(&cast.read()).unwrap_or_default());

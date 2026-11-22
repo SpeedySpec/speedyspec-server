@@ -4,12 +4,13 @@
 //!
 //! A call is served here only when its arguments are plain strings (and simple flags) and the work runs no PHP: the
 //! argument is read in place, and when nothing changes the caller's own string is returned with one more reference.
-//! Any other call goes to the full native function (registered under `SpeedySpec\WpText\Slow\`) with the same
+//! A call whose use case has been rebound in the container, and any other call, goes to the full native function (registered under `SpeedySpec\WpText\Slow\`) with the same
 //! arguments, which handles arity errors, coercion, filters and diagnostics.
 
 use std::borrow::Cow;
 use std::os::raw::c_char;
 
+use speedyspec_cqrs::Query;
 use speedyspec_php::ext_php_rs::args::Arg;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::ext_php_rs::ffi::{
@@ -19,6 +20,7 @@ use speedyspec_php::ext_php_rs::ffi::{
 use speedyspec_php::ext_php_rs::flags::DataType;
 use speedyspec_php::ext_php_rs::types::{ZendStr, Zval};
 use speedyspec_php::ext_php_rs::zend::ExecuteData;
+use speedyspec_wp_text::messages::{ConvertChars, ShortcodeUnautop, WpRelNofollow, WpStripAllTags};
 
 /// Where the full native functions behind the fast ones are registered.
 pub(crate) const SLOW: &str = "SpeedySpec\\WpText\\Slow\\";
@@ -108,6 +110,17 @@ fn write(ret: &mut Zval, ex: &ExecuteData, input: &[u8], out: Cow<'_, [u8]>) {
 
 /// The work of one fast call, or `None` when the call must go to the full function.
 fn serve_fast(name: &str, ex: &ExecuteData, ret: &mut Zval) -> Option<()> {
+    // A use case whose handler has been rebound goes through the binding, on the full function.
+    let key = match name {
+        "convert_chars" => Some(ConvertChars::KEY),
+        "wp_strip_all_tags" => Some(WpStripAllTags::KEY),
+        "shortcode_unautop" => Some(ShortcodeUnautop::KEY),
+        "wp_rel_nofollow" => Some(WpRelNofollow::KEY),
+        _ => None,
+    };
+    if key.is_some_and(|k| !crate::native::fast_allowed(k)) {
+        return None;
+    }
     let n = num_args(ex);
     let text = bytes(string_arg(ex, 0)?);
     match name {

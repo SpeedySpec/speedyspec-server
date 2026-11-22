@@ -139,7 +139,8 @@ checked equal before each is timed; each rate is the best of three 0.3-second ru
 
 `convert_chars()`, `normalize_whitespace()`, `force_balance_tags()`, `wp_strip_all_tags()`, `shortcode_unautop()`
 and `wp_rel_nofollow()` on text without links take a zero-copy path: the argument is read in place and returned as
-the same string when unchanged.
+the same string when unchanged. For the four of them that are bound use cases (`convert_chars`, `wp_strip_all_tags`,
+`shortcode_unautop`, `wp_rel_nofollow`), the path first checks that the handler hasn't been rebound in the container.
 
 Machine: Apple M4 Max, rustc 1.99.0 release, PHP 8.5.12 static embed. Load average 9 to 15 during the two
 back-to-back runs; ranges below are from those runs (MiB/s).
@@ -187,7 +188,7 @@ back-to-back runs; ranges below are from those runs (MiB/s).
 | `force_balance_tags` | short | 13.8 to 14.8 | 9.8 to 11.3 | 1.31 to 1.40x |
 |  | whole_posts | 90.2 to 101.0 | 47.1 to 48.2 | 1.91 to 2.10x |
 |  | page | 98.3 to 104.4 | 19.4 to 24.7 | 4.23 to 5.08x |
-| `wp_strip_all_tags` | short | 159.8 to 184.4 | 163.9 to 185.3 | 0.97 to 1.00x |
+| `wp_strip_all_tags` | short | 150.6 to 168.7 | 215.9 to 222.5 | 0.68 to 0.76x |
 |  | whole_posts | 904.4 to 983.0 | 536.5 to 603.2 | 1.63 to 1.69x |
 |  | page | 1499.7 to 1660.0 | 981.6 to 1077.5 | 1.53 to 1.54x |
 | `convert_smilies` | short | 3582.8 to 3951.5 | 1750.4 to 1880.3 | 2.05 to 2.10x |
@@ -207,10 +208,14 @@ whole posts. Met, with these exceptions:
 - **`esc_textarea` on short inputs runs at about 0.85x.** WordPress's own body calls `get_option( 'blog_charset' )`
   on every call, and the native has to make that call through PHP. On a value of a few bytes, the round trip costs
   more than the escaping. On whole posts it is about 3x.
+- **`wp_strip_all_tags` on short inputs runs at about 0.7x.** On values of a few bytes the cost is in the call
+  itself. The check that the handler is still the text API's own (two lookups in the container per call) costs
+  about a fifth: without it the fast path ran at 0.96x to 1.00x. On whole posts it is about 1.7x.
 - **`wp_rel_nofollow` is level with PHP** (0.94x to 1.08x on whole posts and the page). Its time goes on slashing
   and unslashing the whole text, which PHP also does in C.
 - **The `the_content` chain is at 5.1x to 5.2x on whole posts** (target met), **and 4.4x to 4.7x on the long page.**
   `wpautop` is still its largest cost.
 
 `bench_php` gates on these numbers. Every function must reach 0.95x of PHP (a 5% margin for noise on a loaded
-machine), `wp_rel_nofollow` 0.9x, `esc_textarea` on short inputs 0.8x, and the chain 3.5x.
+machine), `wp_rel_nofollow` 0.9x, `esc_textarea` on short inputs 0.8x, `wp_strip_all_tags` on short inputs 0.65x,
+and the chain 3.5x.

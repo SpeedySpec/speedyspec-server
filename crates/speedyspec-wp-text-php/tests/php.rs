@@ -18,6 +18,9 @@ use speedyspec_wp_text_contracts::{
 };
 use speedyspec_wp_text_php::TextArea;
 use speedyspec_wp_text_php::adapters::*;
+use speedyspec_cqrs::{QueryHandler, bind_query_handler};
+use speedyspec_wp_text::messages::{ConvertChars, WpStripAllTags};
+use speedyspec_wp_text_contracts::TextError;
 
 fn check(name: &str, ok: bool, detail: impl std::fmt::Debug) {
     if ok {
@@ -42,7 +45,7 @@ function __($text, $domain = 'default') { return apply_filters('gettext', $text,
 function _x($text, $context, $domain = 'default') { return apply_filters('gettext_with_context', $text, $text, $context, $domain); }
 function get_locale() { return 'de_DE'; }
 function wp_get_mime_types() { return apply_filters('mime_types', ['jpg|jpeg' => 'image/jpeg', 'txt' => 'text/plain']); }
-function get_allowed_mime_types() { return ['txt' => 'text/plain']; }
+function get_allowed_mime_types() { return $GLOBALS['allowed'] ?? ['txt' => 'text/plain']; }
 function wp_is_internal_link($url) { return str_contains($url, 'example.org'); }
 function includes_url($path = '') { return 'http://example.org/wp-includes/' . $path; }
 function site_url() { return 'http://example.org'; }
@@ -109,6 +112,7 @@ fn main() {
     println!("all text-php adapter checks passed");
 
     natives(&php, &api);
+    review_fixes(&php, &container);
     println!("all text-php native checks passed");
 }
 
@@ -249,4 +253,41 @@ fn natives(php: &Php, api: &std::rc::Rc<speedyspec_wp_text::TextApi>) {
     yes("wp_html_split_array", "return wp_html_split('a<b>c') === ['a', '<b>', 'c'];");
     yes("translate_smiley_array_arg", "return translate_smiley([':)']) !== '';");
     yes("wp_rel_callback_array_arg", r#"return wp_rel_callback(['<a href="/x">', 'href="/x"'], 'nofollow') === '<a href="/x" rel="nofollow">';"#);
+}
+
+/// A handler bound in place of the text API's, as a site or plugin may bind one.
+struct Fixed;
+
+impl QueryHandler<ConvertChars> for Fixed {
+    fn handle(&self, _: ConvertChars) -> Result<Vec<u8>, TextError> {
+        Ok(b"bound".to_vec())
+    }
+}
+
+impl QueryHandler<WpStripAllTags> for Fixed {
+    fn handle(&self, _: WpStripAllTags) -> Result<Vec<u8>, TextError> {
+        Ok(b"bound".to_vec())
+    }
+}
+
+fn review_fixes(php: &Php, container: &Rc<Container>) {
+    request(php);
+    yes(
+        "allowed_mime_types_follow_the_current_user",
+        r#"$GLOBALS['allowed'] = ['txt' => 'text/plain'];
+        $before = sanitize_file_name('page.html.txt');
+        $GLOBALS['allowed'] = ['txt' => 'text/plain', 'html' => 'text/html'];
+        $after = sanitize_file_name('page.html.txt');
+        return $before === 'page.html_.txt' && $after === 'page.html.txt';"#,
+    );
+    yes("array_reads_as_Array", "return @esc_html(['x']) === 'Array' && @esc_attr([]) === 'Array';");
+    yes(
+        "wp_strip_all_tags_rejects_stringable_objects",
+        r#"$o = new class { public function __toString(): string { return '<b>x</b>'; } };
+        $GLOBALS['seen'] = [];
+        return wp_strip_all_tags($o) === '' && count($GLOBALS['seen']) === 1;"#,
+    );
+    bind_query_handler::<ConvertChars>(container, |_, _| Ok(Rc::new(Fixed) as Rc<dyn QueryHandler<ConvertChars>>));
+    bind_query_handler::<WpStripAllTags>(container, |_, _| Ok(Rc::new(Fixed) as Rc<dyn QueryHandler<WpStripAllTags>>));
+    yes("fast_path_honours_a_rebound_handler", "return convert_chars('a') === 'bound' && wp_strip_all_tags('a') === 'bound';");
 }

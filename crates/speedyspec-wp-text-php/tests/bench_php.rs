@@ -1,14 +1,17 @@
 //! The native formatting functions against WordPress 7.1.5's own formatting.php in the same embedded PHP, on the
 //! corpus's inputs, called from PHP as WordPress calls them. Run on demand:
-//! `SPEEDYSPEC_TEXT_BENCH=1 cargo test --release -p speedyspec-wp-text-php --test bench_php`.
+//! `SPEEDYSPEC_TEXT_BENCH=1 cargo test --release -p speedyspec-wp-text-php --test bench_php` (add
+//! `SPEEDYSPEC_TEXT_BENCH_ONLY=<function>` to time one function).
 //!
 //! The release's formatting.php is loaded a second time inside `namespace Legacy`, its string callbacks pointed at
 //! the `Legacy\` functions, so both run side by side over the same globals, settings and hooks.
 //!
 //! Gates: every function at least as fast as PHP on every input group, less a 5% margin for noise on a loaded
-//! machine (0.95x); two documented exceptions, `wp_rel_nofollow` (0.9x: plan 4 measured it level with PHP, its time is
+//! machine (0.95x); three documented exceptions, `wp_rel_nofollow` (0.9x: plan 4 measured it level with PHP, its time is
 //! slashing the whole text) and `esc_textarea` on short inputs (0.8x: WordPress's own body calls `get_option()` on
 //! every call, which the native must make through PHP, and on a few bytes that call costs more than the escaping);
+//! `wp_strip_all_tags` on short inputs (0.65x: the fast path's check that its handler hasn't been rebound costs
+//! about a fifth of a call on a few bytes);
 //! and the `the_content` chain at least 3.5x. The chain's 5x target is reported.
 
 use std::rc::Rc;
@@ -149,7 +152,9 @@ fn main() {
 
     println!("{:<28} {:<12} {:>13} {:>13} {:>7} {:>6}", "function", "group", "native MB/s", "legacy MB/s", "ratio", "met");
     let mut missed = Vec::new();
-    for function in FUNCTIONS {
+    // SPEEDYSPEC_TEXT_BENCH_ONLY=name times one function (and skips the chain).
+    let only = std::env::var("SPEEDYSPEC_TEXT_BENCH_ONLY").ok();
+    for function in FUNCTIONS.iter().filter(|f| only.as_deref().is_none_or(|o| o == **f)) {
         let posts: Vec<Vec<u8>> =
             inputs(function).into_iter().filter(|(s, _)| s.contains("/whole_posts/")).map(|(_, b)| b).collect();
         let mut groups: Vec<(&str, Vec<Vec<u8>>)> = Vec::new();
@@ -171,6 +176,7 @@ fn main() {
             let floor = match (*function, group) {
                 ("wp_rel_nofollow", _) => 0.9,
                 ("esc_textarea", "short") => 0.8,
+                ("wp_strip_all_tags", "short") => 0.65,
                 _ => 0.95,
             };
             set_docs(&docs);
@@ -194,6 +200,13 @@ fn main() {
         }
     }
 
+    if only.is_some() {
+        if !missed.is_empty() {
+            eprintln!("FAIL: under the gate: {}", missed.join(", "));
+            std::process::exit(1);
+        }
+        return;
+    }
     // the_content's formatting chain, as default-filters.php registers it, natives against legacy.
     speedyspec_php::eval(
         "chain",

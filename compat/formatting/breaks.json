@@ -50,5 +50,23 @@
       "test": "Tests_Formatting_wpStripAllTags::test_wp_strip_all_tags_should_return_empty_string_and_trigger_an_error_for_non_string_arg",
       "why": "The test uses PHPUnit's expectError()/expectErrorMessage(), which PHPUnit 10 removed; the pinned PHPUnit is 11. The behaviour it checks (an empty string and a wp_trigger_error() warning for a non-string argument) is in the recorded corpus with its diagnostics, which the natives replay."
     }
+  ],
+  "engine_behaviour": [
+    {
+      "what": "PHP 8.1 'Passing null to parameter' deprecations",
+      "why": "Where a stock body hands null to an internal string function (trailingslashit(null) and untrailingslashit(null) through rtrim, wp_basename(null) through urlencode, normalize_whitespace(null) through trim, backslashit(null) through preg_replace, and the like), PHP raises E_DEPRECATED. The natives read null as '' and raise nothing; the results are the same."
+    },
+    {
+      "what": "TypeError for an array passed where a stock body calls an internal string function",
+      "why": "trailingslashit([]), esc_url([]), normalize_whitespace([]), htmlentities2([]) and similar throw TypeError in PHP 8 from the internal function inside the stock body. The natives cast the array as PHP's (string) does ('Array', with PHP's 'Array to string conversion' warning) and return a result. Code that would stop with a fatal error carries on with the 'Array' text."
+    },
+    {
+      "what": "Named arguments",
+      "why": "The natives take their arguments by position only; a named argument (esc_html(text: $x), sanitize_title($t, context: 'query')) is not mapped to its parameter. WordPress does not support named arguments to its functions (its parameter names may change between releases), so callers use positions."
+    },
+    {
+      "what": "did_filter('mime_types') while nothing is hooked to it",
+      "why": "sanitize_file_name() reads wp_get_mime_types() from PHP once per request while nothing is hooked to mime_types, so did_filter('mime_types') counts fewer calls than stock. With a callback on the filter, every call goes to PHP and the count matches."
+    }
   ]
 }
