@@ -56,6 +56,11 @@ impl RestService {
         &self.container
     }
 
+    /// The current user as a REST caller.
+    pub fn caller(&self) -> speedyspec_operation_contracts::Caller {
+        PhpRestAuthenticator::new(self.identity.clone()).current()
+    }
+
     /// The operation area legacy routes register into.
     pub fn operations(&self) -> &Rc<OperationArea> {
         &self.operations

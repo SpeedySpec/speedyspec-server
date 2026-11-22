@@ -40,4 +40,48 @@ class WP_REST_Server extends SpeedySpec_TrunkRestServer
         }
         \SpeedySpec\Rest\Native\legacy_register( (string) $route_namespace, (string) $route, $handlers, (bool) $override );
     }
+
+    /** Dispatches through the Rust REST server, for any WP_REST_Request: new-style operations and legacy routes alike. */
+    public function dispatch( $request )
+    {
+        $this->dispatching_requests[] = $request;
+        try {
+            return \SpeedySpec\Rest\Native\dispatch( $request );
+        } finally {
+            array_pop( $this->dispatching_requests );
+        }
+    }
+
+    /** Trunk's routes (this request's legacy registrations), plus the new-style operations' routes. */
+    public function get_routes( $route_namespace = '' )
+    {
+        $routes = parent::get_routes( $route_namespace );
+        foreach ( \SpeedySpec\Rest\Native\routes( (string) $route_namespace ) as $route ) {
+            if ( isset( $routes[ $route['route'] ] ) ) {
+                continue;
+            }
+            $this->route_options[ $route['route'] ] = [ 'namespace' => $route['namespace'] ];
+            $methods = [];
+            foreach ( $route['methods'] as $method ) {
+                $methods[ $method ] = true;
+            }
+            $routes[ $route['route'] ] = [
+                [
+                    'methods'             => $methods,
+                    'callback'            => null,
+                    'permission_callback' => null,
+                    'args'                => $route['args'],
+                    'accept_json'         => false,
+                    'accept_raw'          => false,
+                    'show_in_index'       => true,
+                ],
+            ];
+        }
+        return $routes;
+    }
+
+    public function get_namespaces()
+    {
+        return array_values( array_unique( array_merge( parent::get_namespaces(), \SpeedySpec\Rest\Native\namespaces() ) ) );
+    }
 }
