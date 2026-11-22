@@ -182,10 +182,12 @@ pub fn update_button_width_declarations(
         }
         let prefix = "var(--wp--preset--dimension--";
         if percentage.is_none() && value.starts_with(prefix) {
-            let slug = if value.len() > prefix.len() {
-                &value[prefix.len()..value.len() - 1]
+            // `substr( $value, strlen( $prefix ), -1 )`, in bytes as PHP counts them.
+            let bytes = value.as_bytes();
+            let slug: &[u8] = if bytes.len() > prefix.len() {
+                &bytes[prefix.len()..bytes.len() - 1]
             } else {
-                ""
+                b""
             };
             let mut sizes: Vec<(Key, Value)> = entries(
                 array_path::get(
@@ -208,7 +210,7 @@ pub fn update_button_width_declarations(
                     continue;
                 };
                 for (_, preset) in presets {
-                    let slug_matches = matches!(array_path::get(preset, &["slug"]), Some(Value::Str(s)) if s == slug);
+                    let slug_matches = matches!(array_path::get(preset, &["slug"]), Some(Value::Str(s)) if s.as_bytes() == slug);
                     if slug_matches && array_path::isset(preset, &["size"]) {
                         if let Some(Value::Str(size)) = array_path::get(preset, &["size"])
                             && size.ends_with('%')

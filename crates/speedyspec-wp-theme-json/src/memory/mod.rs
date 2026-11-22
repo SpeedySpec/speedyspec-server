@@ -42,6 +42,14 @@ impl BlockMetadata for MemoryBlockMetadata {
     fn change_marker(&self) -> u64 {
         self.marker.get()
     }
+
+    fn current(&self, name: &str) -> Option<RegisteredBlock> {
+        self.blocks
+            .borrow()
+            .iter()
+            .find(|b| b.name == name)
+            .cloned()
+    }
 }
 
 /// Translations that return the text unchanged, as an English site does.

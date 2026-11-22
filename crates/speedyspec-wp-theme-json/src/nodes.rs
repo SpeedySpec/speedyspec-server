@@ -82,9 +82,30 @@ pub fn style_nodes(
     options: NodeOptions,
     filters: &dyn ThemeJsonFilters,
 ) -> Result<Vec<Value>, ThemeJsonError> {
+    Ok(style_nodes_keyed(doc, meta, options, filters)?
+        .into_iter()
+        .map(|(_, v)| v)
+        .collect())
+}
+
+/// `style_nodes`, keeping the array keys a `wp_theme_json_get_style_nodes` callback returned (`get_stylesheet`
+/// reads the root node back by key).
+pub fn style_nodes_keyed(
+    doc: &Value,
+    meta: &Value,
+    options: NodeOptions,
+    filters: &dyn ThemeJsonFilters,
+) -> Result<Vec<(Key, Value)>, ThemeJsonError> {
+    let keyed = |nodes: Vec<Value>| -> Vec<(Key, Value)> {
+        nodes
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (Key::Int(i as i64), v))
+            .collect()
+    };
     let mut nodes = Vec::new();
     if !array_path::isset(doc, &["styles"]) {
-        return Ok(nodes);
+        return Ok(keyed(nodes));
     }
     nodes.push(map(vec![
         ("path", path(&["styles"])),
@@ -113,11 +134,11 @@ pub fn style_nodes(
         }
     }
     if !array_path::isset(doc, &["styles", "blocks"]) {
-        return Ok(nodes);
+        return Ok(keyed(nodes));
     }
     nodes.extend(block_nodes(doc, meta, options));
     match filters.style_nodes(list(nodes))? {
-        Value::Array(filtered) => Ok(filtered.into_iter().map(|(_, v)| v).collect()),
+        Value::Array(filtered) => Ok(filtered),
         _ => Ok(Vec::new()),
     }
 }

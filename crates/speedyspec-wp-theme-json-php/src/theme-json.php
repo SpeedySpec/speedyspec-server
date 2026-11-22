@@ -32,6 +32,21 @@ namespace SpeedySpec\WpThemeJson\Support
     }
 
     /**
+     * The block registered under this name right now, as `registered_blocks()` lists one, or null.
+     */
+    function registered_block($name)
+    {
+        if (!class_exists('WP_Block_Type_Registry', false)) {
+            return null;
+        }
+        $type = \WP_Block_Type_Registry::get_instance()->get_registered($name);
+        if (null === $type) {
+            return null;
+        }
+        return array($name, $type->selectors ?? array(), $type->supports ?? array(), array());
+    }
+
+    /**
      * Fingerprints the registered block and block style names, so the engine re-reads the registries only after
      *  something is registered or unregistered.
      */

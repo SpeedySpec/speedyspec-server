@@ -169,6 +169,28 @@ impl BlockMetadata for PhpBlockRegistry {
         let _ = self.registered();
         self.seen.borrow().generation
     }
+
+    fn current(&self, name: &str) -> Option<RegisteredBlock> {
+        let found = call(
+            "SpeedySpec\\WpThemeJson\\Support\\registered_block",
+            &[Value::Str(name.into())],
+        )?;
+        let Value::Array(fields) = found.read().into_owned() else {
+            return None;
+        };
+        let field = |i: i64| {
+            fields
+                .iter()
+                .find(|(k, _)| *k == Key::Int(i))
+                .map(|(_, v)| v.clone())
+        };
+        Some(RegisteredBlock {
+            name: name.to_owned(),
+            selectors: field(1).unwrap_or(Value::Null),
+            supports: field(2).unwrap_or(Value::Null),
+            style_names: strings(field(3).as_ref()),
+        })
+    }
 }
 
 /// The text functions, as PHP defines them (WordPress's `formatting.php`, or the native text port).

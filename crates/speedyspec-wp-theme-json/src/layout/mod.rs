@@ -52,11 +52,14 @@ impl Sheet<'_> {
         if self.deps.theme.supports("disable-layout-styles") {
             return rules;
         }
+        let current;
         let mut block_type = None;
         if let Some(name) =
             array_path::get(metadata, &["name"]).filter(|n| !matches!(n, Value::Null))
         {
-            block_type = self.block(&text(name));
+            // WordPress reads the live registry here, not its remembered metadata.
+            current = self.deps.blocks.current(&text(name));
+            block_type = current.as_ref();
             if !has_support(block_type, "layout")
                 && !has_support(block_type, "__experimentalLayout")
             {
@@ -70,19 +73,17 @@ impl Sheet<'_> {
         let is_root = selector == ROOT_BLOCK_SELECTOR;
         let has_block_gap_support =
             array_path::isset(self.doc, &["settings", "spacing", "blockGap"]);
-        let node = match &options.node {
-            Some(n) => n.clone(),
-            None => {
-                let path: Vec<String> =
-                    entries(array_path::get(metadata, &["path"]).unwrap_or(&Value::Null))
-                        .iter()
-                        .map(|(_, v)| text(v))
-                        .collect();
+        let node = match (&options.node, array_path::get(metadata, &["path"])) {
+            (Some(n), _) => n.clone(),
+            (None, Some(path @ Value::Array(_))) => {
+                let path: Vec<String> = entries(path).iter().map(|(_, v)| text(v)).collect();
                 let refs: Vec<&str> = path.iter().map(String::as_str).collect();
                 array_path::get(self.doc, &refs)
                     .cloned()
                     .unwrap_or(Value::Array(Vec::new()))
             }
+            // `_wp_array_get()` with no path gives its default.
+            (None, _) => Value::Array(Vec::new()),
         };
         let definitions = layout_definitions();
 

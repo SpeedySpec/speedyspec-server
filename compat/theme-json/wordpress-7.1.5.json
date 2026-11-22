@@ -17510,6 +17510,43 @@
         }
       }
     ],
+    "stylesheet_layout_reads_live_registry": [
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              ":root :where(.wp-block-group-is-layout-flow) > :first-child{margin-block-start: 0;}:root :where(.wp-block-group-is-layout-flow) > :last-child{margin-block-end: 0;}:root :where(.wp-block-group-is-layout-flow) > *{margin-block-start: 3px;margin-block-end: 0;}:root :where(.wp-block-group-is-layout-constrained) > :first-child{margin-block-start: 0;}:root :where(.wp-block-group-is-layout-constrained) > :last-child{margin-block-end: 0;}:root :where(.wp-block-group-is-layout-constrained) > *{margin-block-start: 3px;margin-block-end: 0;}:root :where(.wp-block-group-is-layout-flex){gap: 3px;}:root :where(.wp-block-group-is-layout-grid){gap: 3px;}"
+            ],
+            [
+              1,
+              ""
+            ],
+            [
+              2,
+              ""
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
     "stylesheet_layout_styles_disabled": [
       {
         "returned": null,
@@ -18419,6 +18456,111 @@
             [
               0,
               ":where(body) { margin: 0; }.wp-site-blocks > .alignleft { float: left; margin-right: 2em; }.wp-site-blocks > .alignright { float: right; margin-left: 2em; }.wp-site-blocks > .aligncenter { justify-content: center; margin-left: auto; margin-right: auto; }:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}.is-layout-flow > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}.is-layout-flow > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}.is-layout-flow > .aligncenter{margin-left: auto !important;margin-right: auto !important;}.is-layout-constrained > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}.is-layout-constrained > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}.is-layout-constrained > .aligncenter{margin-left: auto !important;margin-right: auto !important;}.is-layout-constrained > :where(:not(.alignleft):not(.alignright):not(.alignfull)){margin-left: auto !important;margin-right: auto !important;}body .is-layout-flex{display: flex;}.is-layout-flex{flex-wrap: wrap;align-items: center;}.is-layout-flex > :is(*, div){margin: 0;}body .is-layout-grid{display: grid;}.is-layout-grid > :is(*, div){margin: 0;}:root :where(.wp-block-group){color: r;}:root :where(.wp-block-columns){color: c;}:where(.wp-block-columns.is-layout-flex){gap: 2em;}:where(.wp-block-columns.is-layout-grid){gap: 2em;}"
+            ],
+            [
+              1,
+              {
+                "array": []
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "stylesheet_stylesheet_filter_moves_root_last_keyed": [
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              ":where(body) { margin: 0; }.wp-site-blocks > .alignleft { float: left; margin-right: 2em; }.wp-site-blocks > .alignright { float: right; margin-left: 2em; }.wp-site-blocks > .aligncenter { justify-content: center; margin-left: auto; margin-right: auto; }:root :where(.R){color: green;}body{color: black;}"
+            ],
+            [
+              1,
+              {
+                "array": []
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "stylesheet_stylesheet_filter_unsets_root_keyed": [
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              ":root :where(.wp-block-group){color: green;}"
+            ],
+            [
+              1,
+              {
+                "array": []
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "notices",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "stylesheet_stylesheet_filter_unsets_root_keyed_no_root_selector": [
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              ":root :where(.wp-block-group){color: green;}"
             ],
             [
               1,

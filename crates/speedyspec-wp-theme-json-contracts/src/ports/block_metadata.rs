@@ -26,4 +26,7 @@ pub trait BlockMetadata {
     fn registered(&self) -> Rc<Vec<RegisteredBlock>>;
     /// A value that changes whenever a block or a block style is registered or unregistered.
     fn change_marker(&self) -> u64;
+    /// The block registered under `name` right now (`WP_Block_Type_Registry::get_registered()`), which may differ
+    /// from what `registered()` remembers: WordPress's layout styles read the live registry.
+    fn current(&self, name: &str) -> Option<RegisteredBlock>;
 }

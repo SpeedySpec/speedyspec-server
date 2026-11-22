@@ -8,7 +8,7 @@ mod support;
 
 use std::rc::Rc;
 
-use speedyspec_hooks::Value;
+use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_theme_json::{
     MemoryGlobalSettings, MemoryThemeSupports, RecordedDiagnostics, ThemeJsonApi, ThemeJsonDeps,
 };
@@ -60,6 +60,39 @@ impl ThemeJsonFilters for Reverse {
             return Ok(nodes);
         };
         Ok(php_list(items.into_iter().rev().map(|(_, v)| v).collect()))
+    }
+}
+
+/// `$r = $nodes[0]; unset( $nodes[0] ); $nodes[] = $r;` (keys kept).
+struct MoveRootLast;
+
+impl ThemeJsonFilters for MoveRootLast {
+    fn style_nodes(&self, nodes: Value) -> Result<Value, ThemeJsonError> {
+        let Value::Array(mut items) = nodes else {
+            return Ok(nodes);
+        };
+        let (_, root) = items.remove(0);
+        let next = items
+            .iter()
+            .filter_map(|(k, _)| if let Key::Int(i) = k { Some(*i) } else { None })
+            .max()
+            .unwrap_or(-1)
+            + 1;
+        items.push((Key::Int(next), root));
+        Ok(Value::Array(items))
+    }
+}
+
+/// `unset( $nodes[0] );` (keys kept).
+struct UnsetRoot;
+
+impl ThemeJsonFilters for UnsetRoot {
+    fn style_nodes(&self, nodes: Value) -> Result<Value, ThemeJsonError> {
+        let Value::Array(mut items) = nodes else {
+            return Ok(nodes);
+        };
+        items.retain(|(k, _)| *k != Key::Int(0));
+        Ok(Value::Array(items))
     }
 }
 
@@ -660,6 +693,77 @@ fn stylesheet_style_nodes_filter_removes_root() {
         &json(
             r##"["a:where(:not(.wp-element-button)){color: var(--wp--preset--color--Accent-2);}:root :where(a:where(:not(.wp-element-button)):hover){color: red;text-decoration: none;}:root :where(a:where(:not(.wp-element-button)):focus){outline-color: blue;outline-style: solid;outline-width: 2px;}h1, h2, h3, h4, h5, h6{font-weight: 700;}h1{font-size: var(--wp--preset--font-size--large);}:root :where(.wp-element-button, .wp-block-button__link){background-color: var(--wp--preset--color--contrast);border-radius: 4px;color: var(--wp--preset--color--base);}:root :where(.wp-element-button:hover, .wp-block-button__link:hover){background-color: blue;}:root :where(.wp-element-caption, .wp-block-audio figcaption, .wp-block-embed figcaption, .wp-block-gallery figcaption, .wp-block-image figcaption, .wp-block-table figcaption, .wp-block-video figcaption){font-size: 12px;}cite{font-style: italic;}:root :where(.wp-block-group){background-color: #eee;}:root :where(.wp-block-group-is-layout-flow) > :first-child{margin-block-start: 0;}:root :where(.wp-block-group-is-layout-flow) > :last-child{margin-block-end: 0;}:root :where(.wp-block-group-is-layout-flow) > *{margin-block-start: 2rem;margin-block-end: 0;}:root :where(.wp-block-group-is-layout-constrained) > :first-child{margin-block-start: 0;}:root :where(.wp-block-group-is-layout-constrained) > :last-child{margin-block-end: 0;}:root :where(.wp-block-group-is-layout-constrained) > *{margin-block-start: 2rem;margin-block-end: 0;}:root :where(.wp-block-group-is-layout-flex){gap: 2rem;}:root :where(.wp-block-group-is-layout-grid){gap: 2rem;}:root :where(.wp-block-group){border: 1px solid red;}:root :where(.wp-block-group .child){color:red}:root :where(.wp-block-group) ::before{content:\"x\"}:root :where(.wp-block-group a:where(:not(.wp-element-button))){color: green;}:root :where(.wp-block-group a:where(:not(.wp-element-button)):hover){color: lime;}:root :where(.wp-block-group h1, .wp-block-group h2, .wp-block-group h3, .wp-block-group h4, .wp-block-group h5, .wp-block-group h6){color: navy;}:root :where(.wp-block-button .wp-block-button__link){border-radius: 99px;}:root :where(.wp-block-button){width: calc(25 * 1% - (var(--wp--style--block-gap, 0.5em) * (1 - 25 / 100)));}:root :where(.wp-block-button .wp-block-button__link:hover){background-color: black;}:root :where(.wp-block-button .wp-block-button__link:focus-visible){outline-color: red;outline-style: dotted;outline-width: 3px;}:root :where(p){font-size: clamp(0.875rem, 0.875rem + ((1vw - 0.2rem) * 0.375), 1.1rem);margin-top: 0;}:root :where(.wp-block-paragraph){text-indent: 2em;}:root :where(.wp-block-heading){letter-spacing: -0.02em;}:root :where(.wp-block-heading a:where(:not(.wp-element-button))){color: purple;}:root :where(.wp-block-image img, .wp-block-image .wp-block-image__crop-area, .wp-block-image .components-placeholder){border-radius: 8px;box-shadow: var(--wp--preset--shadow--soft);}:root :where(.wp-block-image img, .wp-block-image .components-placeholder){filter: var(--wp--preset--duotone--dark);}:root :where(.wp-block-separator){background-color: #ccc;color: #ccc;}:root :where(.wp-block-navigation-link:hover){color: orange;}:root :where(.wp-block-navigation .current-menu-item){color: red;}:root :where(.wp-block-navigation .current-menu-item:hover){color: darkred;}:root :where(.wp-block-quote){border-left-color: #000;border-left-width: 4px;border-left-style: solid;}:root :where(.wp-block-cover){background-image: url('http://example.org/c.png');background-position: 50% 50%;background-size: contain;}:root :where(.wp-block-columns-is-layout-flow) > :first-child{margin-block-start: 0;}:root :where(.wp-block-columns-is-layout-flow) > :last-child{margin-block-end: 0;}:root :where(.wp-block-columns-is-layout-flow) > *{margin-block-start: 1rem 2rem;margin-block-end: 0;}:root :where(.wp-block-columns-is-layout-constrained) > :first-child{margin-block-start: 0;}:root :where(.wp-block-columns-is-layout-constrained) > :last-child{margin-block-end: 0;}:root :where(.wp-block-columns-is-layout-constrained) > *{margin-block-start: 1rem 2rem;margin-block-end: 0;}:root :where(.wp-block-columns-is-layout-flex){gap: 1rem 2rem;}:root :where(.wp-block-columns-is-layout-grid){gap: 1rem 2rem;}:root :where(.wp-block-pullquote){border-width: 1px;border-style: solid;font-size: var(--wp--preset--font-size--large);}:root :where(.wp-block-site-title){font-weight: 800;}:root :where(.wp-block-site-title a:where(:not(.wp-element-button)):hover){text-decoration: underline;}:root :where(.wp-block-post-title){color: var(--wp--preset--color--contrast);}:root :where(.wp-block-search.wp-block-search__button-outside .wp-block-search__input, .wp-block-search.wp-block-search__button-outside .wp-block-search__button, .wp-block-search.wp-block-search__no-button .wp-block-search__input, .wp-block-search.wp-block-search__button-only .wp-block-search__input, .wp-block-search.wp-block-search__button-only .wp-block-search__button, .wp-block-search.wp-block-search__button-inside .wp-block-search__inside-wrapper){border-radius: 2px;}:root :where(.wp-block-table > table th){font-weight:bold}",[]]"##,
         ),
+    );
+}
+
+#[test]
+fn stylesheet_filter_moves_root_last_keyed() {
+    let actual = {
+        let h = Harness::new(Value::Array(Vec::new()));
+        let api = ThemeJsonApi::new(h.deps.clone().with_filters(Rc::new(MoveRootLast)));
+        let doc = api.construct(json(r##"{"version":3,"styles":{"color":{"text":"black"},"blocks":{"core/group":{"color":{"text":"green"}}}}}"##), b"theme");
+        h.notices.notices.borrow_mut().clear();
+        let css = api
+            .get_stylesheet(
+                &doc,
+                &json(r##"["styles"]"##),
+                &Value::Null,
+                &json(r##"{"root_selector":".R"}"##),
+            )
+            .unwrap();
+        pair(st(String::from_utf8(css).unwrap()), h.notices())
+    };
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[":where(body) { margin: 0; }.wp-site-blocks > .alignleft { float: left; margin-right: 2em; }.wp-site-blocks > .alignright { float: right; margin-left: 2em; }.wp-site-blocks > .aligncenter { justify-content: center; margin-left: auto; margin-right: auto; }:root :where(.R){color: green;}body{color: black;}",[]]"##,
+        ),
+    );
+}
+
+#[test]
+fn stylesheet_filter_unsets_root_keyed() {
+    let actual = {
+        let h = Harness::new(Value::Array(Vec::new()));
+        let api = ThemeJsonApi::new(h.deps.clone().with_filters(Rc::new(UnsetRoot)));
+        let doc = api.construct(json(r##"{"version":3,"styles":{"color":{"text":"black"},"blocks":{"core/group":{"color":{"text":"green"}}}}}"##), b"theme");
+        h.notices.notices.borrow_mut().clear();
+        let css = api
+            .get_stylesheet(
+                &doc,
+                &json(r##"["styles"]"##),
+                &Value::Null,
+                &json(r##"{"root_selector":".R"}"##),
+            )
+            .unwrap();
+        pair(st(String::from_utf8(css).unwrap()), h.notices())
+    };
+    assert_php_eq(
+        &actual,
+        &json(r##"[":root :where(.wp-block-group){color: green;}",[]]"##),
+    );
+}
+
+#[test]
+fn stylesheet_filter_unsets_root_keyed_no_root_selector() {
+    let actual = {
+        let h = Harness::new(Value::Array(Vec::new()));
+        let api = ThemeJsonApi::new(h.deps.clone().with_filters(Rc::new(UnsetRoot)));
+        let doc = api.construct(json(r##"{"version":3,"styles":{"color":{"text":"black"},"blocks":{"core/group":{"color":{"text":"green"}}}}}"##), b"theme");
+        h.notices.notices.borrow_mut().clear();
+        let css = api
+            .get_stylesheet(
+                &doc,
+                &json(r##"["styles"]"##),
+                &Value::Null,
+                &Value::Array(Vec::new()),
+            )
+            .unwrap();
+        pair(st(String::from_utf8(css).unwrap()), h.notices())
+    };
+    assert_php_eq(
+        &actual,
+        &json(r##"[":root :where(.wp-block-group){color: green;}",[]]"##),
     );
 }
 

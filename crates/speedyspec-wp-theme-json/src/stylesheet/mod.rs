@@ -12,7 +12,7 @@ use speedyspec_wp_theme_json_contracts::{Origin, ThemeJsonError};
 
 use crate::array_path;
 use crate::css::{Declaration, to_ruleset};
-use crate::nodes::{NodeOptions, setting_nodes, style_nodes};
+use crate::nodes::{NodeOptions, setting_nodes, style_nodes_keyed};
 use crate::php::to_php_string;
 use crate::php_value::{as_str, empty, entries, key_str};
 use crate::presets::vars::{
@@ -259,9 +259,13 @@ impl Sheet<'_> {
             include_node_paths_only: get_opt(options, &["include_node_paths_only"])
                 .is_some_and(|v| !empty(v)),
         };
-        let mut styles = style_nodes(self.doc, &self.meta, node_options, &*self.deps.filters)?;
+        let mut styles =
+            style_nodes_keyed(self.doc, &self.meta, node_options, &*self.deps.filters)?;
         let mut settings = setting_nodes(self.doc, &self.meta);
-        let root_style_key = root_key(&styles, ROOT_BLOCK_SELECTOR);
+        // A position in `array_column( $style_nodes, 'selector' )`, used by WordPress as a key into the (possibly
+        // filtered, keyed) node array.
+        let column: Vec<Value> = styles.iter().map(|(_, v)| v.clone()).collect();
+        let root_style_key = root_key(&column, ROOT_BLOCK_SELECTOR).map(|k| Key::Int(k as i64));
         // WordPress looks for `body` among the setting nodes too (their root is `:root`), so `root_selector` never
         // reaches the variables.
         let root_settings_key = root_key(&settings, ROOT_BLOCK_SELECTOR);
@@ -275,7 +279,7 @@ impl Sheet<'_> {
             }
             styles = styles
                 .into_iter()
-                .map(|n| scope_style_node(&scope, n))
+                .map(|(k, n)| (k, scope_style_node(&scope, n)))
                 .collect();
         }
         if let Some(root_selector) = get_opt(options, &["root_selector"])
@@ -285,8 +289,15 @@ impl Sheet<'_> {
             if let Some(k) = root_settings_key.filter(|k| *k < settings.len()) {
                 set_selector(&mut settings[k], root_selector.clone());
             }
-            if let Some(k) = root_style_key.filter(|k| *k < styles.len()) {
-                set_selector(&mut styles[k], root_selector);
+            if let Some(k) = &root_style_key {
+                match styles.iter_mut().find(|(key, _)| key == k) {
+                    Some((_, node)) => set_selector(node, root_selector),
+                    // `$style_nodes[ $key ]['selector'] = …` on a missing key makes a new node.
+                    None => styles.push((
+                        k.clone(),
+                        Value::Array(vec![(Key::Str("selector".into()), root_selector)]),
+                    )),
+                }
             }
         }
         let mut stylesheet = Vec::new();
@@ -294,14 +305,19 @@ impl Sheet<'_> {
             stylesheet.extend(self.css_variables(&settings, origins));
         }
         if types.contains(&StylesheetType::Styles) {
-            if let Some(k) = root_style_key.filter(|k| *k < styles.len())
+            if let Some(k) = &root_style_key
                 && get_opt(options, &["skip_root_layout_styles"]).is_none_or(empty)
             {
                 let base_layout_styles =
                     get_opt(options, &["base_layout_styles"]).is_some_and(|v| !empty(v));
-                stylesheet.extend(self.root_layout_rules(&styles[k], base_layout_styles));
+                let root = styles
+                    .iter()
+                    .find(|(key, _)| key == k)
+                    .map_or(Value::Null, |(_, n)| n.clone());
+                stylesheet.extend(self.root_layout_rules(&root, base_layout_styles));
             }
-            stylesheet.extend(self.block_classes(&styles));
+            let nodes: Vec<Value> = styles.into_iter().map(|(_, n)| n).collect();
+            stylesheet.extend(self.block_classes(&nodes));
         }
         if types.contains(&StylesheetType::Presets) {
             stylesheet.extend(self.preset_classes(&settings, origins));

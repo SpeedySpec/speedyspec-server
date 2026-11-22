@@ -1570,6 +1570,54 @@ fn update_button_width_5() {
 }
 
 #[test]
+fn update_button_width_6() {
+    let actual = {
+        let h = Harness::new(Value::Array(Vec::new()));
+        let r = {
+            let ctx = h.ctx();
+            fdecls(update_button_width_declarations(
+                from_fdecls(&json(
+                    r##"{".wp-block-button":[{"name":"width","value":"var(--wp--preset--dimension--\u00e9"}]}"##,
+                )),
+                &json(
+                    r##"{"dimensions":{"dimensionSizes":{"theme":[{"slug":"\u00e9","size":"50%"}]}}}"##,
+                ),
+            ))
+        };
+        pair(r, h.notices())
+    };
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[{".wp-block-button":[{"name":"width","value":"var(--wp--preset--dimension--\u00e9"}]},[]]"##,
+        ),
+    );
+}
+
+#[test]
+fn update_button_width_7() {
+    let actual = {
+        let h = Harness::new(Value::Array(Vec::new()));
+        let r = {
+            let ctx = h.ctx();
+            fdecls(update_button_width_declarations(
+                from_fdecls(&json(
+                    r##"{".wp-block-button":[{"name":"width","value":"var(--wp--preset--dimension--"}]}"##,
+                )),
+                &json(r##"{}"##),
+            ))
+        };
+        pair(r, h.notices())
+    };
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[{".wp-block-button":[{"name":"width","value":"var(--wp--preset--dimension--"}]},[]]"##,
+        ),
+    );
+}
+
+#[test]
 fn update_paragraph_text_indent_0() {
     let actual = {
         let h = Harness::new(Value::Array(Vec::new()));
