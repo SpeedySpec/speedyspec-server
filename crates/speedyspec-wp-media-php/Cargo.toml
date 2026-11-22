@@ -18,6 +18,7 @@ speedyspec-wp-media = { path = "../speedyspec-wp-media" }
 speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
 
 [dev-dependencies]
+tempfile = "3"
 speedyspec-compat = { path = "../speedyspec-compat" }
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
