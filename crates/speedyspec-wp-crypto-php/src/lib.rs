@@ -15,6 +15,7 @@
 
 mod adapters;
 mod natives;
+mod release;
 
 use std::rc::Rc;
 
@@ -26,6 +27,7 @@ use speedyspec_wp_hooks::HookApi;
 pub use adapters::{
     HookTrustedKeysFilter, PhpSiteSettings, PhpTranslator, QuietDiagnostics, SystemClock,
 };
+pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
 
 const FACADE: &str = include_str!("crypto.php");
 
