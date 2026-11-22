@@ -77,7 +77,11 @@ fn smoke_runtime_needs_the_pinned_libsodium() {
         r#"{"version":"1.0.0","contracts":[1],"php":"8.5.12"}"#,
         r#"{"version":"1.0.0","contracts":[1],"php":"8.5.12","sodium":"1.0.18"}"#,
     ] {
-        let output = smoke(&fake_runtime(dir.path(), json), "speedyspec-php-runtime", "1.0.0");
+        let output = smoke(
+            &fake_runtime(dir.path(), json),
+            "speedyspec-php-runtime",
+            "1.0.0",
+        );
         assert_eq!(output.status.code(), Some(1), "{json}");
         assert!(stderr(&output).contains("libsodium"), "{}", stderr(&output));
     }

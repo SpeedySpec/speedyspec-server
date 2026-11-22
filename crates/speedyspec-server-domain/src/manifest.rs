@@ -116,6 +116,20 @@ pub struct PhpSection {
     /// Switching to this release migrates first, under maintenance.
     #[serde(default, rename = "switch", skip_serializing_if = "Option::is_none")]
     pub switch_: Option<SwitchSection>,
+    /// The path the server's scheduler calls (internal, `GET`) when the app says it is next due.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cron: Option<CronSection>,
+    /// More paths only the server may call: visitors get 404 for them (paths of the app, starting with `/`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub internal: Vec<String>,
+}
+
+/// A php app's scheduled call: the server calls `path` internally when the app's workers report it is next due, and
+/// at least every `max_interval` the operator configures.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CronSection {
+    pub path: String,
 }
 
 /// A release that migrates when switched to: its `migrate` path (internal, `POST`) runs on the new release before it
@@ -167,6 +181,8 @@ impl Default for PhpSection {
             access: Vec::new(),
             gate: None,
             switch_: None,
+            cron: None,
+            internal: Vec::new(),
         }
     }
 }
@@ -294,6 +310,21 @@ impl ReleaseManifest {
                         "php.{field} {path:?} must be a path starting with `/`"
                     )));
                 }
+            }
+        }
+        if let Some(php) = self.php.as_ref() {
+            if let Some(cron) = &php.cron
+                && !cron.path.starts_with('/')
+            {
+                return Err(DomainError::BadManifest(format!(
+                    "php.cron.path {:?} must be a path starting with `/`",
+                    cron.path
+                )));
+            }
+            if let Some(path) = php.internal.iter().find(|path| !path.starts_with('/')) {
+                return Err(DomainError::BadManifest(format!(
+                    "php.internal {path:?} must be a path starting with `/`"
+                )));
             }
         }
         if let Some(page) = self
@@ -544,5 +575,49 @@ mod tests {
             (1, "/v1/gate/site", "/v1/gate/changes")
         );
         assert_eq!(php.access.len(), 1);
+    }
+
+    #[test]
+    fn cron_and_internal_parse() {
+        let manifest = ReleaseManifest::parse(
+            br#"{"app":"admin-api","version":"1.0.0","kind":"php","php":{"cron":{"path":"/cron.php"},"internal":["/wp-cron.php"]}}"#,
+        )
+        .unwrap();
+        let php = manifest.php_section().unwrap();
+        assert_eq!(
+            php.cron.as_ref().map(|c| c.path.as_str()),
+            Some("/cron.php")
+        );
+        assert_eq!(php.internal, vec!["/wp-cron.php".to_string()]);
+    }
+
+    #[test]
+    fn cron_path_must_be_absolute() {
+        let err = ReleaseManifest::parse(
+            br#"{"app":"a","version":"1.0.0","kind":"php","php":{"cron":{"path":"cron.php"}}}"#,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("php.cron.path"), "{err}");
+        rejects(
+            r#"{"app":"a","version":"1.0.0","kind":"php","php":{"cron":{"path":"/c","every":"1m"}}}"#,
+        );
+    }
+
+    #[test]
+    fn internal_path_must_be_absolute() {
+        let err = ReleaseManifest::parse(
+            br#"{"app":"a","version":"1.0.0","kind":"php","php":{"internal":["/ok","wp-cron.php"]}}"#,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("php.internal"), "{err}");
+    }
+
+    #[test]
+    fn manifest_without_them_round_trips_unchanged() {
+        let json = r#"{"app":"blog","version":"1.0.0","kind":"php","php":{"document_root":".","entry":"index.php","ini":{}}}"#;
+        let manifest = ReleaseManifest::parse(json.as_bytes()).unwrap();
+        let out = serde_json::to_value(&manifest).unwrap();
+        assert!(out["php"].get("cron").is_none(), "{out}");
+        assert!(out["php"].get("internal").is_none(), "{out}");
     }
 }

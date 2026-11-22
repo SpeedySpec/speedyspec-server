@@ -37,7 +37,8 @@ pub struct PhpRuntime {
     sign_out: Arc<std::sync::OnceLock<super::handler::HeadHook>>,
 }
 
-/// The paths of a php release only the server calls: its health probes, and a gate app's revocation feed.
+/// The paths of a php release only the server calls: its health probes, a gate app's revocation feed, its migration,
+/// its cron path, and the extra paths it lists as internal.
 fn internal_paths(manifest: &ReleaseManifest) -> Vec<String> {
     let section = manifest.php_section().unwrap_or_default();
     section
@@ -46,6 +47,8 @@ fn internal_paths(manifest: &ReleaseManifest) -> Vec<String> {
         .flat_map(|health| [health.live.clone(), health.ready.clone()])
         .chain(section.gate.iter().map(|gate| gate.changes.clone()))
         .chain(section.switch_.iter().map(|switch| switch.migrate.clone()))
+        .chain(section.cron.iter().map(|cron| cron.path.clone()))
+        .chain(section.internal.iter().cloned())
         .collect()
 }
 
@@ -319,5 +322,22 @@ impl AppRuntime for PhpRuntime {
         {
             pool.drain();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn internal_paths_include_cron_and_internal() {
+        let manifest = ReleaseManifest::parse(
+            br#"{"app":"admin-api","version":"1.0.0","kind":"php","php":{"health":{"live":"/live","ready":"/ready"},"cron":{"path":"/cron.php"},"internal":["/wp-cron.php","/other"]}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            internal_paths(&manifest),
+            ["/live", "/ready", "/cron.php", "/wp-cron.php", "/other"]
+        );
     }
 }
