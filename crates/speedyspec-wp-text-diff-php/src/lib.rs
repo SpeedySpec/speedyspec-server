@@ -2,9 +2,10 @@
 //!
 //! [`TextDiffArea`] declares `wp_text_diff()` at the start of every request (from `text-diff.php`), inside
 //! WordPress's own `function_exists` guard, so a plugin's replacement still wins. The PHP function parses the
-//! arguments and normalizes whitespace as WordPress does, then calls `SpeedySpec\WpTextDiff\Native\wp_text_diff`,
-//! which renders the table in Rust. Arguments the native table doesn't cover (non-string titles, renderer
-//! properties passed as arguments) go to WordPress's own classes instead, so nothing changes for them.
+//! arguments as WordPress does, then calls `SpeedySpec\WpTextDiff\Native\wp_text_diff`, which normalizes the
+//! whitespace ([`WordPressWhitespace`]) and renders the table in Rust. Calls the native table doesn't cover (texts or
+//! titles that aren't strings, renderer properties passed as arguments) go to WordPress's own classes instead, so
+//! nothing changes for them.
 //!
 //! `process_text_diff_html` runs through the Hook API ([`HookLineFilter`]): with no callback it is only counted,
 //! as WordPress counts it, and PHP is not entered.
@@ -18,7 +19,7 @@ use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_wp_hooks::{HookApi, HookValue};
 use speedyspec_wp_text_diff::contracts::{RowLabels, TableOptions, Title};
-use speedyspec_wp_text_diff::{TextDiff, TextDiffError};
+use speedyspec_wp_text_diff::{HordeSequenceDiffer, TextDiff, TextDiffError, WordPressWhitespace};
 
 pub use filter::HookLineFilter;
 
@@ -39,7 +40,7 @@ impl TextDiffArea {
 impl NativeArea for TextDiffArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
         let hooks = self.hooks.clone();
-        let diff = Rc::new(TextDiff::default());
+        let diff = Rc::new(TextDiff::new(HordeSequenceDiffer, WordPressWhitespace));
         vec![native::function(
             "SpeedySpec\\WpTextDiff\\Native\\wp_text_diff",
             move |args| native_wp_text_diff(&diff, &hooks, args),
@@ -68,9 +69,9 @@ fn bytes(args: &[HookValue], i: usize) -> Result<Vec<u8>, NativeError> {
 }
 
 /// `(left, right, title, title_left, title_right, split_view, added, deleted, unchanged)`, all strings but
-/// `split_view`; the facade has normalized the texts and translated the labels.
+/// `split_view`; the facade has translated the labels, and the texts are normalized here.
 fn native_wp_text_diff(
-    diff: &TextDiff,
+    diff: &TextDiff<HordeSequenceDiffer, WordPressWhitespace>,
     hooks: &Rc<HookApi>,
     args: &[HookValue],
 ) -> Result<HookValue, NativeError> {
