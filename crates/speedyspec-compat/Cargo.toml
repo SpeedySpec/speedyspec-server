@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-compat"
-version = "0.5.1"
+version = "0.6.0"
 description = "Recorded compatibility: run a catalogue of scenarios against WordPress's original code, record the results, and replay them against the Rust ports."
 edition.workspace = true
 rust-version.workspace = true
@@ -14,9 +14,9 @@ flate2 = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
-speedyspec-hooks = { path = "../speedyspec-hooks", version = "0.1.1" }
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory", version = "0.1.1" }
-speedyspec-php = { path = "../speedyspec-php", version = "0.4.0" }
+speedyspec-hooks = { path = "../speedyspec-hooks", version = "0.1.2" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory", version = "0.1.2" }
+speedyspec-php = { path = "../speedyspec-php", version = "0.5.0" }
 tar = "0.4"
 tempfile = "3"
 ureq = "3"

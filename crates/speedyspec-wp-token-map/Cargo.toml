@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-token-map"
-version = "0.2.0"
+version = "0.3.0"
 publish = false
 description = "WordPress's WP_Token_Map in Rust, in WordPress's own layout, and the HTML5 named character references as a compile-time table."
 edition.workspace = true

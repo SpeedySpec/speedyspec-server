@@ -92,7 +92,11 @@ impl Dispatcher {
             Ok(bypass) => return Ok(bypass.0),
             Err(output) => output,
         };
-        let extracted = spec.output.mapper.extract(output.as_ref())?;
+        let extracted = normalize(
+            &spec.output.schema,
+            &spec.output.mapper.extract(output.as_ref())?,
+            self.registries.as_ref(),
+        );
         validate(&spec.output.schema, &extracted, self.registries.as_ref()).map_err(
             |violations| {
                 OperationError::new(

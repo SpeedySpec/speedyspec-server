@@ -72,3 +72,30 @@ fn raw_rejects_keywords_it_does_not_support() {
 fn constraint_on_wrong_kind_panics() {
     let _ = S::integer().max_length(3);
 }
+
+#[test]
+fn from_value_keeps_property_order() {
+    use speedyspec_operation_contracts::Value;
+    let int = Value::map([("type", Value::from("integer"))]);
+    let schema = S::from_value(&Value::map([
+        ("type", Value::from("object")),
+        (
+            "properties",
+            Value::map([("z", int.clone()), ("a", int.clone()), ("m", int)]),
+        ),
+    ]))
+    .unwrap()
+    .build();
+    let SchemaKind::Object { properties, .. } = &schema.kind else {
+        panic!("not an object: {schema:?}");
+    };
+    assert_eq!(properties.keys().collect::<Vec<_>>(), ["z", "a", "m"]);
+}
+
+#[test]
+fn from_value_reads_an_empty_list_as_any() {
+    use speedyspec_operation_contracts::Value;
+    // PHP writes an empty schema object, `S::any()`, as `[]`.
+    let schema = S::from_value(&Value::List(vec![])).unwrap().build();
+    assert_eq!(schema.kind, SchemaKind::Any);
+}

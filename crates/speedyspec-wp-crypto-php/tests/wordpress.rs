@@ -12,6 +12,7 @@ use speedyspec_container::Container;
 use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, NativeArea, Php};
 use speedyspec_wp_crypto_php::{CryptoArea, prepare_release};
+use speedyspec_wp_crypto_sodium::Sodium;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::WpHooksArea;
 
@@ -72,7 +73,7 @@ fn main() {
     let phar = phpunit();
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container, Rc::new(MemoryHookStore::new())).with_testing();
-    let crypto = CryptoArea::new(hooks.api()).expect("libsodium initializes");
+    let crypto = CryptoArea::new(hooks.api(), Sodium::init().expect("libsodium initializes"));
     let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(crypto)];
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),

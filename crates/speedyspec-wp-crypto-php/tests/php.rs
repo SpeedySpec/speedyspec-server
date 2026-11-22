@@ -9,6 +9,7 @@ use speedyspec_container::Container;
 use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, NativeArea, Php, PhpError};
 use speedyspec_wp_crypto_php::CryptoArea;
+use speedyspec_wp_crypto_sodium::Sodium;
 use speedyspec_wp_hooks::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::WpHooksArea;
@@ -31,7 +32,7 @@ fn main() {
     let compat = format!("{}/../../compat/crypto/", env!("CARGO_MANIFEST_DIR"));
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container, Rc::new(MemoryHookStore::new()));
-    let crypto = CryptoArea::new(hooks.api()).expect("libsodium initializes");
+    let crypto = CryptoArea::new(hooks.api(), Sodium::init().expect("libsodium initializes"));
     let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(crypto)];
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),
@@ -238,6 +239,91 @@ fn main() {
     check(
         "message_hooks_fire_only_with_their_error_and_in_wordpress_order",
         matches!(&r, Ok(HookValue::Str(s)) if s == "keys|gettext,esc_html|keys,gettext,esc_html"),
+        &r,
+    );
+    let r = php.eval(
+        "speedyspec://test/nul-filename",
+        "$message = static function (callable $f) { try { $f(); return 'no error'; } catch (ValueError $e) { return $e->getMessage(); } };
+         $php = $message(static fn () => hash_file('sha384', \"a\\0b\", true));
+         $got = $message(static fn () => verify_file_signature(\"a\\0b\", 'QUJD', 'x'));
+         return str_starts_with($php, 'hash_file(): ') && $got === $php ? true : \"$got / $php\";",
+    );
+    check(
+        "a_nul_byte_in_the_filename_is_hash_files_value_error",
+        is_true(&r),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/stream-wrapper",
+        "remove_all_filters('wp_trusted_keys'); add_filter('wp_trusted_keys', static fn () => [$GLOBALS['speedyspec_key']]);
+         $got = verify_file_signature('file://' . $GLOBALS['speedyspec_file'], $GLOBALS['speedyspec_sig'], 'f'); remove_all_filters('wp_trusted_keys');
+         return $got;",
+    );
+    check("a_stream_wrapper_path_is_hashed", is_true(&r), &r);
+
+    let r = php.eval(
+        "speedyspec://test/unreadable-warning",
+        "$warnings = static function (callable $f) { $seen = []; set_error_handler(static function ($no, $str) use (&$seen) { $seen[] = $str; return true; }, E_WARNING);
+             try { $f(); } finally { restore_error_handler(); } return implode('|', $seen); };
+         $file = '/nonexistent/speedyspec/x.zip';
+         $php = $warnings(static fn () => hash_file('sha384', $file, true));
+         $got = $warnings(static fn () => verify_file_signature($file, 'QUJD', 'x'));
+         return str_ends_with($php, 'Failed to open stream: No such file or directory') && $got === $php ? true : \"$got / $php\";",
+    );
+    check(
+        "an_unreadable_file_raises_hash_files_warning",
+        is_true(&r),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/filename-type",
+        "$a = verify_file_signature('/nonexistent/x.zip', '', 5); $b = @verify_file_signature('/nonexistent/x.zip', 'QUJD', 5);
+         return $a->get_error_data()['filename'] === 5 && $b->get_error_data()['filename'] === 5
+             && str_contains($a->get_error_message(), '<span class=\"code\">5</span>');",
+    );
+    check(
+        "filename_for_errors_keeps_its_type_in_the_data",
+        is_true(&r),
+        &r,
+    );
+    let r = php.eval(
+        "speedyspec://test/native-type-errors",
+        "$message = static function (callable $f) { try { $f(); return 'no error'; } catch (TypeError $e) { return get_class($e) . ': ' . $e->getMessage(); } };
+         return implode('|', [
+             $message(static fn () => \\SpeedySpec\\WpCrypto\\Native\\wp_fast_hash([])),
+             $message(static fn () => \\SpeedySpec\\WpCrypto\\Native\\wp_verify_fast_hash('a', new stdClass())),
+             $message(static fn () => \\SpeedySpec\\WpCrypto\\Native\\wp_fast_hash()),
+         ]);",
+    );
+    check(
+        "native_type_errors_name_php_types",
+        matches!(&r, Ok(HookValue::Str(s)) if s == "TypeError: SpeedySpec\\WpCrypto\\Native\\wp_fast_hash(): Argument #1 must be of type string, array given\
+            |TypeError: SpeedySpec\\WpCrypto\\Native\\wp_verify_fast_hash(): Argument #2 must be of type string, stdClass given\
+            |ArgumentCountError: SpeedySpec\\WpCrypto\\Native\\wp_fast_hash() expects at least 1 argument, 0 given"),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/esc-html-non-string",
+        "add_filter('esc_html', static fn () => 5); $got = verify_file_signature('/nonexistent/x.zip', '', 'x'); remove_all_filters('esc_html');
+         return $got->get_error_message();",
+    );
+    check(
+        "a_non_string_esc_html_result_is_php_strval",
+        matches!(&r, Ok(HookValue::Str(s)) if s == "The authenticity of <span class=\"code\">5</span> could not be verified as no signature was found."),
+        &r,
+    );
+    let r = php.eval(
+        "speedyspec://test/gettext-throws",
+        "add_filter('gettext', static function () { throw new RuntimeException('gettext failed'); });
+         try { verify_file_signature('/nonexistent/x.zip', '', 'x'); return 'no exception'; }
+         catch (RuntimeException $e) { return $e->getMessage(); } finally { remove_all_filters('gettext'); }",
+    );
+    check(
+        "a_gettext_filters_exception_propagates",
+        matches!(&r, Ok(HookValue::Str(s)) if s == "gettext failed"),
         &r,
     );
     println!("wp-crypto php: all checks passed");

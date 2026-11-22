@@ -250,3 +250,35 @@ fn bypass_still_runs_after_the_permission_check() {
         Category::Unauthenticated
     );
 }
+
+#[test]
+fn output_is_normalized_before_validation() {
+    use speedyspec_operation::{Operation, S};
+    struct When;
+    impl Extract for When {
+        fn extract(&self) -> Value {
+            Value::map([("when", Value::from("2026-11-22T10:00:00"))])
+        }
+    }
+    let r = Registries::new();
+    r.register_operation(
+        Operation::query("a/when")
+            .input::<RawInput>(S::object([]))
+            .output::<When>(S::object([("when", S::date_time().required())]))
+            .public()
+            .build()
+            .unwrap(),
+    )
+    .unwrap();
+    r.close().unwrap();
+    let c = Rc::new(Container::new());
+    let h = handler_fn(|_: RawInput, _: &Caller| Ok(When));
+    bind_handler(&c, "a/when", move |_, _| Ok(h.clone()));
+    let out = Dispatcher::new(c, Rc::new(r))
+        .call("a/when", Value::map::<&str>([]), &caller(None))
+        .unwrap();
+    let Some(Value::DateTime(dt)) = out.get("when") else {
+        panic!("not a date time: {out:?}");
+    };
+    assert_eq!(dt.to_string(), "2026-11-22 10:00:00");
+}

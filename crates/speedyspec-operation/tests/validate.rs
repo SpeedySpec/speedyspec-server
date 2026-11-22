@@ -181,3 +181,61 @@ fn normalize_turns_integral_floats_into_integers_under_integer_schemas() {
         .is_ok()
     );
 }
+
+#[test]
+fn normalize_reads_php_shapes() {
+    use chrono::NaiveDate;
+    use speedyspec_operation::validate::normalize;
+    let schema = S::object([
+        ("when", S::date_time()),
+        ("file", S::binary_any()),
+        ("meta", S::object([])),
+    ])
+    .build();
+    let at = |h| {
+        Value::DateTime(
+            NaiveDate::from_ymd_opt(2026, 11, 22)
+                .unwrap()
+                .and_hms_opt(h, 0, 0)
+                .unwrap(),
+        )
+    };
+    let norm = |when: &str| {
+        normalize(
+            &schema,
+            &Value::map([
+                ("when", Value::from(when)),
+                ("file", Value::from("ab")),
+                ("meta", Value::List(vec![])),
+            ]),
+            &NoTypes,
+        )
+    };
+    let out = norm("2026-11-22T10:00:00");
+    assert_eq!(out.get("when"), Some(&at(10)));
+    assert_eq!(out.get("file"), Some(&Value::Binary(b"ab".to_vec())));
+    assert_eq!(out.get("meta"), Some(&Value::map::<&str>([])));
+    assert_eq!(norm("2026-11-22 10:00:00").get("when"), Some(&at(10)));
+    assert_eq!(norm("2026-11-22T10:00:00+02:00").get("when"), Some(&at(8)));
+    assert_eq!(norm("tomorrow").get("when"), Some(&Value::from("tomorrow")));
+}
+
+#[test]
+fn normalize_turns_an_empty_list_into_a_map_under_a_ref() {
+    use speedyspec_operation::Type;
+    use speedyspec_operation::validate::normalize;
+    struct OneType(Rc<TypeSpec>);
+    impl TypeCatalog for OneType {
+        fn get_type(&self, name: &str) -> Option<Rc<TypeSpec>> {
+            (name == "post").then(|| self.0.clone())
+        }
+        fn type_names(&self) -> Vec<String> {
+            vec!["post".into()]
+        }
+    }
+    let types = OneType(Rc::new(
+        Type::resource("post").field("id", S::integer()).build(),
+    ));
+    let out = normalize(&S::reference("post").build(), &Value::List(vec![]), &types);
+    assert_eq!(out, Value::map::<&str>([]));
+}

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-theme-json"
-version = "0.1.0"
+version = "0.1.1"
 publish = false
 description = "WordPress's theme.json engine in Rust: migration, sanitizing, merging, presets, style nodes and stylesheets."
 edition.workspace = true

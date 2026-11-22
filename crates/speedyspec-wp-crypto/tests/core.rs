@@ -1,6 +1,6 @@
 //! WordPress's rules for its sodium functions, through test doubles of the crypto ports.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 use speedyspec_wp_crypto::*;
 use speedyspec_wp_crypto_contracts::{
@@ -60,8 +60,10 @@ impl Clock for At {
 struct Shout;
 
 impl Translator for Shout {
-    fn translate(&self, text: &str) -> String {
-        text.to_uppercase().replace("%S", "%s")
+    type Error = &'static str;
+
+    fn translate(&self, text: &str) -> Result<String, &'static str> {
+        Ok(text.to_uppercase().replace("%S", "%s"))
     }
 }
 
@@ -300,14 +302,14 @@ fn sha384_file_missing_is_none() {
 #[test]
 fn message_translates_then_substitutes() {
     let no_signature = signature_message(&Shout, SignatureMessage::NoSignature, || {
-        Ok::<_, ()>("a&amp;b.zip".into())
+        Ok::<_, &str>("a&amp;b.zip".into())
     });
     assert_eq!(
         no_signature.unwrap(),
         "THE AUTHENTICITY OF <span class=\"code\">a&amp;b.zip</span> COULD NOT BE VERIFIED AS NO SIGNATURE WAS FOUND."
     );
     let failed = signature_message(&Shout, SignatureMessage::Failed, || {
-        Ok::<_, ()>("f.zip".into())
+        Ok::<_, &str>("f.zip".into())
     });
     assert_eq!(
         failed.unwrap(),
@@ -320,9 +322,11 @@ fn message_translates_before_escaping_and_only_once() {
     // sprintf( __( ... ), '<span class="code">' . esc_html( $name ) . '</span>' ): PHP evaluates __() first.
     struct Logging<'a>(&'a RefCell<Vec<&'static str>>);
     impl Translator for Logging<'_> {
-        fn translate(&self, text: &str) -> String {
+        type Error = ();
+
+        fn translate(&self, text: &str) -> Result<String, ()> {
             self.0.borrow_mut().push("translate");
-            text.to_string()
+            Ok(text.to_string())
         }
     }
     let log = RefCell::new(Vec::new());
@@ -332,6 +336,26 @@ fn message_translates_before_escaping_and_only_once() {
     });
     assert!(message.is_ok());
     assert_eq!(*log.borrow(), vec!["translate", "escape"]);
+}
+
+#[test]
+fn translate_failure_is_the_message_failure_and_nothing_is_escaped() {
+    // __() throws (a gettext filter) before PHP evaluates esc_html().
+    struct Throwing;
+    impl Translator for Throwing {
+        type Error = &'static str;
+
+        fn translate(&self, _text: &str) -> Result<String, &'static str> {
+            Err("gettext threw")
+        }
+    }
+    let escaped = Cell::new(false);
+    let message = signature_message(&Throwing, SignatureMessage::NoSignature, || {
+        escaped.set(true);
+        Ok("f.zip".into())
+    });
+    assert_eq!(message, Err("gettext threw"));
+    assert!(!escaped.get());
 }
 
 #[test]
@@ -346,8 +370,10 @@ fn escape_failure_is_the_message_failure() {
 fn message_takes_numbered_placeholders_and_percent() {
     struct Numbered;
     impl Translator for Numbered {
-        fn translate(&self, _text: &str) -> String {
-            "100%% sure: %1$s".to_string()
+        type Error = ();
+
+        fn translate(&self, _text: &str) -> Result<String, ()> {
+            Ok("100%% sure: %1$s".to_string())
         }
     }
     let message = signature_message(&Numbered, SignatureMessage::Failed, || {
