@@ -1,0 +1,15 @@
+[package]
+name = "speedyspec-wp-password-bcrypt"
+version = "0.1.0"
+publish = false
+description = "The password port's bcrypt, over the bcrypt crate, matching PHP's crypt() and password_verify()."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-wp-password-contracts = { path = "../speedyspec-wp-password-contracts" }
+bcrypt = "0.19"
+
+[dev-dependencies]
+serde_json = "1"

@@ -21,11 +21,19 @@ impl MigrationStep for V2ToV3 {
             return new;
         }
         if array_path::isset(&old, &["settings", "typography", "fontSizes"]) {
-            array_path::set(&mut new, &["settings", "typography", "defaultFontSizes"], Value::Bool(false));
+            array_path::set(
+                &mut new,
+                &["settings", "typography", "defaultFontSizes"],
+                Value::Bool(false),
+            );
         }
         let sizes = array_path::isset(&old, &["settings", "spacing", "spacingSizes"]);
         if sizes || array_path::isset(&old, &["settings", "spacing", "spacingScale"]) {
-            array_path::set(&mut new, &["settings", "spacing", "defaultSpacingSizes"], Value::Bool(false));
+            array_path::set(
+                &mut new,
+                &["settings", "spacing", "defaultSpacingSizes"],
+                Value::Bool(false),
+            );
         }
         if sizes {
             array_path::unset(&mut new, &["settings", "spacing", "spacingScale"]);

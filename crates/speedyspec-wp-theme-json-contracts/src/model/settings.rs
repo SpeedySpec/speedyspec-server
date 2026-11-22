@@ -246,4 +246,3 @@ schema_object! {
         blocks: Leaf<OrderedMap<String, Leaf<Settings>>> = "blocks",
     }
 }
-

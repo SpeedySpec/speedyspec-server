@@ -6,11 +6,11 @@
 
 use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_theme_json_contracts::model::{
-    BackgroundSettings, BackgroundStyles, BlockVisibilitySettings, BorderSettings, BorderStyles, ColorSettings,
-    ColorStyles, CssValue, DimensionsSettings, DimensionsStyles, FilterStyles, LayoutSettings, LightboxSettings,
-    OrderedMap, OutlineStyles, PhpString, PositionSettings, Preset, Presets, Scales, Settings, ShadowSettings,
-    SpacingSettings, SpacingStyles, StyleNode, StyleProperties, StyleValue, ThemeJson, TypographySettings,
-    TypographyStyles, ViewportSettings,
+    BackgroundSettings, BackgroundStyles, BlockVisibilitySettings, BorderSettings, BorderStyles,
+    ColorSettings, ColorStyles, CssValue, DimensionsSettings, DimensionsStyles, FilterStyles,
+    LayoutSettings, LightboxSettings, OrderedMap, OutlineStyles, PhpString, PositionSettings,
+    Preset, Presets, Scales, Settings, ShadowSettings, SpacingSettings, SpacingStyles, StyleNode,
+    StyleProperties, StyleValue, ThemeJson, TypographySettings, TypographyStyles, ViewportSettings,
 };
 use speedyspec_wp_theme_json_contracts::{ByOrigin, Leaf, Origin};
 
@@ -39,7 +39,11 @@ pub(crate) trait PhpShape: Sized {
 
 impl<T: PhpShape> PhpShape for Leaf<T> {
     fn decode(value: &Value) -> Option<Self> {
-        Some(T::decode(value).map(Leaf::Typed).unwrap_or_else(|| Leaf::Raw(value.clone())))
+        Some(
+            T::decode(value)
+                .map(Leaf::Typed)
+                .unwrap_or_else(|| Leaf::Raw(value.clone())),
+        )
     }
 
     fn encode(&self) -> Value {
@@ -116,7 +120,10 @@ fn entries(value: &Value) -> Option<&[(Key, Value)]> {
 }
 
 fn is_list(entries: &[(Key, Value)]) -> bool {
-    entries.iter().enumerate().all(|(i, (k, _))| *k == Key::Int(i as i64))
+    entries
+        .iter()
+        .enumerate()
+        .all(|(i, (k, _))| *k == Key::Int(i as i64))
 }
 
 fn str_key(key: &Key) -> Option<&str> {
@@ -182,7 +189,12 @@ impl<T: PhpShape> PhpShape for Vec<T> {
     }
 
     fn encode(&self) -> Value {
-        Value::Array(self.iter().enumerate().map(|(i, v)| (Key::Int(i as i64), v.encode())).collect())
+        Value::Array(
+            self.iter()
+                .enumerate()
+                .map(|(i, v)| (Key::Int(i as i64), v.encode()))
+                .collect(),
+        )
     }
 }
 
@@ -241,14 +253,21 @@ fn by_origin<T>(value: &Value, read: impl Fn(&Value) -> Option<T>) -> Option<ByO
         out.set(origin, read(v)?);
     }
     // Encoding writes origins in WordPress's order; only accept data already in that order.
-    let order: Vec<Origin> = e.iter().filter_map(|(k, _)| str_key(k).and_then(|s| Origin::parse(s.as_bytes()))).collect();
+    let order: Vec<Origin> = e
+        .iter()
+        .filter_map(|(k, _)| str_key(k).and_then(|s| Origin::parse(s.as_bytes())))
+        .collect();
     let mut sorted = order.clone();
     sorted.sort();
     (order == sorted).then_some(out)
 }
 
 fn encode_by_origin<T>(by: &ByOrigin<T>, write: impl Fn(&T) -> Value) -> Value {
-    Value::Array(by.iter().map(|(o, v)| (key(o.as_str()), write(v))).collect())
+    Value::Array(
+        by.iter()
+            .map(|(o, v)| (key(o.as_str()), write(v)))
+            .collect(),
+    )
 }
 
 impl PhpShape for Presets {
@@ -271,7 +290,11 @@ impl PhpShape for Presets {
 impl PhpShape for Scales {
     fn decode(value: &Value) -> Option<Self> {
         entries(value)?;
-        Some(by_origin(value, |v| Some(v.clone())).map(Scales::ByOrigin).unwrap_or_else(|| Scales::Unkeyed(value.clone())))
+        Some(
+            by_origin(value, |v| Some(v.clone()))
+                .map(Scales::ByOrigin)
+                .unwrap_or_else(|| Scales::Unkeyed(value.clone())),
+        )
     }
 
     fn encode(&self) -> Value {
@@ -323,47 +346,178 @@ macro_rules! schema_object_shape {
     };
 }
 
-schema_object_shape!(BackgroundSettings { background_image, background_size, gradient });
-schema_object_shape!(BorderSettings { color, radius, radius_sizes, style, width });
+schema_object_shape!(BackgroundSettings {
+    background_image,
+    background_size,
+    gradient
+});
+schema_object_shape!(BorderSettings {
+    color,
+    radius,
+    radius_sizes,
+    style,
+    width
+});
 schema_object_shape!(ColorSettings {
-    background, custom, custom_duotone, custom_gradient, default_duotone, default_gradients, default_palette, duotone,
-    gradients, link, heading, button, caption, palette, text
+    background,
+    custom,
+    custom_duotone,
+    custom_gradient,
+    default_duotone,
+    default_gradients,
+    default_palette,
+    duotone,
+    gradients,
+    link,
+    heading,
+    button,
+    caption,
+    palette,
+    text
 });
 schema_object_shape!(DimensionsSettings {
-    aspect_ratio, aspect_ratios, default_aspect_ratios, dimension_sizes, height, min_height, min_width, width
+    aspect_ratio,
+    aspect_ratios,
+    default_aspect_ratios,
+    dimension_sizes,
+    height,
+    min_height,
+    min_width,
+    width
 });
-schema_object_shape!(LayoutSettings { content_size, wide_size, allow_editing, allow_custom_content_and_wide_size });
-schema_object_shape!(LightboxSettings { enabled, allow_editing });
+schema_object_shape!(LayoutSettings {
+    content_size,
+    wide_size,
+    allow_editing,
+    allow_custom_content_and_wide_size
+});
+schema_object_shape!(LightboxSettings {
+    enabled,
+    allow_editing
+});
 schema_object_shape!(PositionSettings { fixed, sticky });
 schema_object_shape!(BlockVisibilitySettings { allow_editing });
 schema_object_shape!(SpacingSettings {
-    custom_spacing_size, default_spacing_sizes, spacing_sizes, spacing_scale, block_gap, margin, padding, units
+    custom_spacing_size,
+    default_spacing_sizes,
+    spacing_sizes,
+    spacing_scale,
+    block_gap,
+    margin,
+    padding,
+    units
 });
-schema_object_shape!(ShadowSettings { presets, default_presets });
+schema_object_shape!(ShadowSettings {
+    presets,
+    default_presets
+});
 schema_object_shape!(TypographySettings {
-    fluid, custom_font_size, default_font_sizes, drop_cap, font_families, font_sizes, font_style, font_weight,
-    letter_spacing, line_height, text_align, text_columns, text_decoration, text_indent, text_transform, writing_mode
+    fluid,
+    custom_font_size,
+    default_font_sizes,
+    drop_cap,
+    font_families,
+    font_sizes,
+    font_style,
+    font_weight,
+    letter_spacing,
+    line_height,
+    text_align,
+    text_columns,
+    text_decoration,
+    text_indent,
+    text_transform,
+    writing_mode
 });
 schema_object_shape!(ViewportSettings { mobile, tablet });
 schema_object_shape!(Settings {
-    appearance_tools, use_root_padding_aware_alignments, background, border, color, custom, dimensions, layout,
-    lightbox, position, block_visibility, spacing, shadow, typography, viewport, blocks
+    appearance_tools,
+    use_root_padding_aware_alignments,
+    background,
+    border,
+    color,
+    custom,
+    dimensions,
+    layout,
+    lightbox,
+    position,
+    block_visibility,
+    spacing,
+    shadow,
+    typography,
+    viewport,
+    blocks
 });
 
 schema_object_shape!(BackgroundStyles {
-    background_image, background_position, background_repeat, background_size, background_attachment, gradient
+    background_image,
+    background_position,
+    background_repeat,
+    background_size,
+    background_attachment,
+    gradient
 });
-schema_object_shape!(BorderStyles { color, radius, style, width, top, right, bottom, left });
-schema_object_shape!(ColorStyles { background, gradient, text });
-schema_object_shape!(DimensionsStyles { aspect_ratio, height, min_height, min_width, width });
+schema_object_shape!(BorderStyles {
+    color,
+    radius,
+    style,
+    width,
+    top,
+    right,
+    bottom,
+    left
+});
+schema_object_shape!(ColorStyles {
+    background,
+    gradient,
+    text
+});
+schema_object_shape!(DimensionsStyles {
+    aspect_ratio,
+    height,
+    min_height,
+    min_width,
+    width
+});
 schema_object_shape!(FilterStyles { duotone });
-schema_object_shape!(OutlineStyles { color, offset, style, width });
-schema_object_shape!(SpacingStyles { margin, padding, block_gap });
-schema_object_shape!(TypographyStyles {
-    font_family, font_size, font_style, font_weight, letter_spacing, line_height, text_align, text_columns,
-    text_decoration, text_indent, text_shadow, text_transform, writing_mode
+schema_object_shape!(OutlineStyles {
+    color,
+    offset,
+    style,
+    width
 });
-schema_object_shape!(StyleProperties { background, border, color, dimensions, filter, outline, shadow, spacing, typography, css });
+schema_object_shape!(SpacingStyles {
+    margin,
+    padding,
+    block_gap
+});
+schema_object_shape!(TypographyStyles {
+    font_family,
+    font_size,
+    font_style,
+    font_weight,
+    letter_spacing,
+    line_height,
+    text_align,
+    text_columns,
+    text_decoration,
+    text_indent,
+    text_shadow,
+    text_transform,
+    writing_mode
+});
+schema_object_shape!(StyleProperties {
+    background,
+    border,
+    color,
+    dimensions,
+    filter,
+    outline,
+    shadow,
+    spacing,
+    typography,
+    css
+});
 
 impl PhpShape for StyleNode {
     fn decode(value: &Value) -> Option<Self> {
@@ -372,7 +526,9 @@ impl PhpShape for StyleNode {
         let mut own = Vec::new();
         for (k, v) in e {
             match str_key(k) {
-                Some(name) if StyleProperties::KEYS.contains(&name) => own.push((k.clone(), v.clone())),
+                Some(name) if StyleProperties::KEYS.contains(&name) => {
+                    own.push((k.clone(), v.clone()))
+                }
                 Some("elements") => node.elements = Leaf::decode(v),
                 Some("blocks") => node.blocks = Leaf::decode(v),
                 Some("variations") => node.variations = Leaf::decode(v),
@@ -387,9 +543,15 @@ impl PhpShape for StyleNode {
     }
 
     fn encode(&self) -> Value {
-        let Value::Array(mut out) = self.properties.encode() else { unreachable!() };
+        let Value::Array(mut out) = self.properties.encode() else {
+            unreachable!()
+        };
         let extra = out.split_off(out.len() - self.properties.extra.len());
-        for (name, child) in [("elements", &self.elements), ("blocks", &self.blocks), ("variations", &self.variations)] {
+        for (name, child) in [
+            ("elements", &self.elements),
+            ("blocks", &self.blocks),
+            ("variations", &self.variations),
+        ] {
             if let Some(child) = child {
                 out.push((key(name), child.encode()));
             }
@@ -432,7 +594,10 @@ impl PhpShape for ThemeJson {
         };
         push("blockTypes", self.block_types.clone());
         push("customTemplates", self.custom_templates.clone());
-        push("description", self.description.as_ref().map(PhpShape::encode));
+        push(
+            "description",
+            self.description.as_ref().map(PhpShape::encode),
+        );
         push("patterns", self.patterns.clone());
         push("settings", self.settings.as_ref().map(PhpShape::encode));
         push("slug", self.slug.as_ref().map(PhpShape::encode));

@@ -67,6 +67,10 @@
     {
       "what": "did_filter('mime_types') while nothing is hooked to it",
       "why": "sanitize_file_name() reads wp_get_mime_types() from PHP once per request while nothing is hooked to mime_types, so did_filter('mime_types') counts fewer calls than stock. With a callback on the filter, every call goes to PHP and the count matches."
+    },
+    {
+      "what": "No PHP frame for formatting callbacks added by name",
+      "why": "add_filter() with one of formatting's functions by name ('wpautop', 'wptexturize', 'esc_url', and the rest WordPress adds in default-filters.php) stores a Rust callback in the same slot, with the same id and the same string in $wp_filter, and runs the native's body without a PHP call. So debug_backtrace() inside a filter that body fires (run_wptexturize, clean_url, ...) has no wpautop()/call_user_func frame, and a runtime override of the function (uopz, runkit) is not seen by callbacks added after the text area loads. Results, order, has_filter() and remove_filter() are unchanged."
     }
   ]
 }

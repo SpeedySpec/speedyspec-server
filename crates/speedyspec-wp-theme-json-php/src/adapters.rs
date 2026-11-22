@@ -5,7 +5,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use speedyspec_hooks::{Key, Value};
-use speedyspec_wp_theme_json_contracts::ports::{BlockMetadata, Diagnostics, Gettext, RegisteredBlock, TextFunctions};
+use speedyspec_wp_theme_json_contracts::ports::{
+    BlockMetadata, Diagnostics, Gettext, RegisteredBlock, TextFunctions,
+};
 
 fn call(function: &str, args: &[Value]) -> Option<Value> {
     speedyspec_php::call(&Value::Str(function.into()), args).ok()
@@ -31,19 +33,45 @@ fn string_value(bytes: &[u8]) -> Value {
 /// WordPress caches block metadata in a static that only ever grows during a request (`get_blocks_metadata`), so
 /// a block unregistered after its metadata was first read stays valid; this adapter keeps the same memory.
 pub struct PhpBlockRegistry {
-    seen: RefCell<(Value, Rc<Vec<RegisteredBlock>>)>,
+    seen: RefCell<Seen>,
+}
+
+/// What the adapter remembers between reads, as WordPress's `static::$blocks_metadata` does.
+struct Seen {
+    marker: Value,
+    blocks: Rc<Vec<RegisteredBlock>>,
+    /// The last read found new blocks, so (as in WordPress) it did not look at new styles of known blocks; the
+    /// next read does, even if nothing changed since.
+    styles_pending: bool,
+    /// Counts the reads that changed the blocks (and the resets), so the change marker moves with them.
+    generation: u64,
 }
 
 impl Default for PhpBlockRegistry {
     fn default() -> Self {
-        PhpBlockRegistry { seen: RefCell::new((Value::Null, Rc::new(Vec::new()))) }
+        PhpBlockRegistry {
+            seen: RefCell::new(Seen {
+                marker: Value::Null,
+                blocks: Rc::new(Vec::new()),
+                styles_pending: false,
+                generation: 0,
+            }),
+        }
     }
 }
 
 impl PhpBlockRegistry {
-    /// Forgets the blocks seen (a new request).
+    /// Forgets the blocks seen (a new request). The generation keeps counting, so metadata cached in an earlier
+    /// request is never taken for this one's.
     pub fn reset(&self) {
-        *self.seen.borrow_mut() = (Value::Null, Rc::new(Vec::new()));
+        let mut seen = self.seen.borrow_mut();
+        let generation = seen.generation + 1;
+        *seen = Seen {
+            marker: Value::Null,
+            blocks: Rc::new(Vec::new()),
+            styles_pending: false,
+            generation,
+        };
     }
 }
 
@@ -62,52 +90,106 @@ fn strings(value: Option<&Value>) -> Vec<String> {
 }
 
 impl BlockMetadata for PhpBlockRegistry {
+    /// WordPress's `get_blocks_metadata()` memory: blocks are never forgotten within a request, a block's
+    /// selectors and supports are those it had when first seen, and new block styles of known blocks are taken
+    /// only by a read that finds no new blocks.
     fn registered(&self) -> Rc<Vec<RegisteredBlock>> {
-        let marker = call("SpeedySpec\\WpThemeJson\\Support\\block_marker", &[]).unwrap_or(Value::Null);
-        if self.seen.borrow().0 == marker && !matches!(marker, Value::Null) {
-            return self.seen.borrow().1.clone();
-        }
-        let listed = call("SpeedySpec\\WpThemeJson\\Support\\registered_blocks", &[]).unwrap_or(Value::Null);
-        let mut blocks = (*self.seen.borrow().1).clone();
-        if let Value::Array(entries) = listed {
-            for (_, entry) in entries {
-                let Value::Array(fields) = entry else { continue };
-                let field = |i: i64| fields.iter().find(|(k, _)| *k == Key::Int(i)).map(|(_, v)| v);
-                let Some(Value::Str(name)) = field(0) else { continue };
-                let styles = strings(field(3));
-                match blocks.iter_mut().find(|b| b.name == *name) {
-                    Some(known) => {
-                        for style in styles {
-                            if !known.style_names.contains(&style) {
-                                known.style_names.push(style);
-                            }
-                        }
-                    }
-                    None => blocks.push(RegisteredBlock {
-                        name: name.clone(),
-                        selectors: field(1).cloned().unwrap_or(Value::Null),
-                        supports: field(2).cloned().unwrap_or(Value::Null),
-                        style_names: styles,
-                    }),
-                }
+        let marker =
+            call("SpeedySpec\\WpThemeJson\\Support\\block_marker", &[]).unwrap_or(Value::Null);
+        {
+            let seen = self.seen.borrow();
+            if seen.marker == marker && !matches!(marker, Value::Null) && !seen.styles_pending {
+                return seen.blocks.clone();
             }
         }
+        let listed =
+            call("SpeedySpec\\WpThemeJson\\Support\\registered_blocks", &[]).unwrap_or(Value::Null);
+        let mut blocks = (*self.seen.borrow().blocks).clone();
+        let mut entries: Vec<(String, Value, Value, Vec<String>)> = Vec::new();
+        if let Value::Array(items) = listed {
+            for (_, entry) in items {
+                let Value::Array(fields) = entry else {
+                    continue;
+                };
+                let field = |i: i64| {
+                    fields
+                        .iter()
+                        .find(|(k, _)| *k == Key::Int(i))
+                        .map(|(_, v)| v)
+                };
+                let Some(Value::Str(name)) = field(0) else {
+                    continue;
+                };
+                entries.push((
+                    name.clone(),
+                    field(1).cloned().unwrap_or(Value::Null),
+                    field(2).cloned().unwrap_or(Value::Null),
+                    strings(field(3)),
+                ));
+            }
+        }
+        let has_new = entries
+            .iter()
+            .any(|(name, ..)| !blocks.iter().any(|b| b.name == *name));
+        for (name, selectors, supports, styles) in entries {
+            match blocks.iter_mut().find(|b| b.name == name) {
+                Some(known) if !has_new => {
+                    for style in styles {
+                        if !known.style_names.contains(&style) {
+                            known.style_names.push(style);
+                        }
+                    }
+                }
+                Some(_) => {}
+                None => blocks.push(RegisteredBlock {
+                    name,
+                    selectors,
+                    supports,
+                    style_names: styles,
+                }),
+            }
+        }
+        let mut seen = self.seen.borrow_mut();
+        let generation = if *seen.blocks == blocks {
+            seen.generation
+        } else {
+            seen.generation + 1
+        };
         let blocks = Rc::new(blocks);
-        *self.seen.borrow_mut() = (marker, blocks.clone());
+        *seen = Seen {
+            marker,
+            blocks: blocks.clone(),
+            styles_pending: has_new,
+            generation,
+        };
         blocks
     }
 
     fn change_marker(&self) -> u64 {
         let _ = self.registered();
-        match &self.seen.borrow().0 {
-            Value::Str(s) => {
-                use std::hash::{Hash, Hasher};
-                let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                s.hash(&mut hasher);
-                hasher.finish()
-            }
-            _ => 0,
-        }
+        self.seen.borrow().generation
+    }
+
+    fn current(&self, name: &str) -> Option<RegisteredBlock> {
+        let found = call(
+            "SpeedySpec\\WpThemeJson\\Support\\registered_block",
+            &[Value::Str(name.into())],
+        )?;
+        let Value::Array(fields) = found.read().into_owned() else {
+            return None;
+        };
+        let field = |i: i64| {
+            fields
+                .iter()
+                .find(|(k, _)| *k == Key::Int(i))
+                .map(|(_, v)| v.clone())
+        };
+        Some(RegisteredBlock {
+            name: name.to_owned(),
+            selectors: field(1).unwrap_or(Value::Null),
+            supports: field(2).unwrap_or(Value::Null),
+            style_names: strings(field(3).as_ref()),
+        })
     }
 }
 
@@ -116,7 +198,10 @@ pub struct PhpTextFunctions;
 
 impl PhpTextFunctions {
     fn through(function: &str, text: &[u8]) -> Vec<u8> {
-        call(function, &[string_value(text)]).as_ref().and_then(bytes_of).unwrap_or_else(|| text.to_vec())
+        call(function, &[string_value(text)])
+            .as_ref()
+            .and_then(bytes_of)
+            .unwrap_or_else(|| text.to_vec())
     }
 }
 
@@ -155,10 +240,89 @@ pub struct PhpDiagnostics;
 
 impl Diagnostics for PhpDiagnostics {
     fn trigger_error(&self, function: &str, message: &[u8]) {
-        call("wp_trigger_error", &[Value::Str(function.into()), string_value(message), Value::Int(1024)]);
+        call(
+            "wp_trigger_error",
+            &[
+                Value::Str(function.into()),
+                string_value(message),
+                Value::Int(1024),
+            ],
+        );
     }
 
     fn deprecated_function(&self, function: &str, version: &str, replacement: &str) {
-        call("_deprecated_function", &[Value::Str(function.into()), Value::Str(version.into()), Value::Str(replacement.into())]);
+        call(
+            "_deprecated_function",
+            &[
+                Value::Str(function.into()),
+                Value::Str(version.into()),
+                Value::Str(replacement.into()),
+            ],
+        );
+    }
+
+    fn doing_it_wrong(&self, function: &str, message: &[u8], version: &str) {
+        call(
+            "_doing_it_wrong",
+            &[
+                Value::Str(function.into()),
+                string_value(message),
+                Value::Str(version.into()),
+            ],
+        );
+    }
+
+    fn deprecated_argument(&self, function: &str, version: &str, message: &[u8]) {
+        call(
+            "_deprecated_argument",
+            &[
+                Value::Str(function.into()),
+                Value::Str(version.into()),
+                string_value(message),
+            ],
+        );
+    }
+}
+
+/// kses's `safecss_filter_attr()`, as PHP defines it (WordPress's `kses.php`, or the native kses port).
+pub struct PhpSafeCss;
+
+impl speedyspec_wp_theme_json_contracts::ports::SafeCss for PhpSafeCss {
+    fn safecss_filter_attr(
+        &self,
+        css: &[u8],
+    ) -> Result<Vec<u8>, speedyspec_wp_kses_contracts::KsesError> {
+        Ok(call("safecss_filter_attr", &[string_value(css)])
+            .as_ref()
+            .and_then(bytes_of)
+            .unwrap_or_default())
+    }
+}
+
+/// `wp_get_global_settings()`, as PHP defines it. Until the resolver is ported (plan 4) this is WordPress's own,
+/// which calls back into this engine.
+pub struct PhpGlobalSettings;
+
+impl speedyspec_wp_theme_json_contracts::ports::GlobalSettings for PhpGlobalSettings {
+    fn settings(&self) -> Value {
+        match call("wp_get_global_settings", &[]) {
+            Some(v) => match v.read().into_owned() {
+                v @ Value::Array(_) => v,
+                _ => Value::Array(Vec::new()),
+            },
+            None => Value::Array(Vec::new()),
+        }
+    }
+}
+
+/// `current_theme_supports()`, as PHP defines it.
+pub struct PhpActiveTheme;
+
+impl speedyspec_wp_theme_json_contracts::ports::ActiveTheme for PhpActiveTheme {
+    fn supports(&self, feature: &str) -> bool {
+        matches!(
+            call("current_theme_supports", &[Value::Str(feature.into())]),
+            Some(Value::Bool(true))
+        )
     }
 }

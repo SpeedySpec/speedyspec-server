@@ -3,6 +3,7 @@
 //! - `worker --spec <json>` serves FastCGI on the spec's socket until the server goes away.
 //! - `manifest` prints the [`RuntimeManifest`] the server reads before using this binary.
 
+mod database;
 mod worker;
 
 use std::process::ExitCode;

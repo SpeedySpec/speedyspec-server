@@ -31,9 +31,12 @@ impl Spec {
     pub fn from_value(value: &Value) -> Spec {
         match value {
             Value::Bool(_) => Spec::Bool,
-            Value::Array(entries) => {
-                Spec::Map(Rc::new(entries.iter().map(|(k, v)| (k.clone(), Spec::from_value(v))).collect()))
-            }
+            Value::Array(entries) => Spec::Map(Rc::new(
+                entries
+                    .iter()
+                    .map(|(k, v)| (k.clone(), Spec::from_value(v)))
+                    .collect(),
+            )),
             _ => Spec::Any,
         }
     }
@@ -84,7 +87,9 @@ impl Spec {
 
 /// `WP_Theme_JSON::remove_keys_not_in_schema( $tree, $schema )`.
 pub fn remove_keys_not_in_schema(tree: Value, schema: &Spec) -> Value {
-    let Value::Array(entries) = tree else { return tree };
+    let Value::Array(entries) = tree else {
+        return tree;
+    };
     let mut out = Vec::with_capacity(entries.len());
     for (key, value) in entries {
         match schema.get(&key) {
@@ -104,7 +109,15 @@ pub fn remove_keys_not_in_schema(tree: Value, schema: &Spec) -> Value {
                     };
                     let items = items
                         .into_iter()
-                        .map(|(k, v)| (k, item_schema.map_or_else(|| v.clone(), |s| remove_keys_not_in_schema(v.clone(), s))))
+                        .map(|(k, v)| {
+                            (
+                                k,
+                                item_schema.map_or_else(
+                                    || v.clone(),
+                                    |s| remove_keys_not_in_schema(v.clone(), s),
+                                ),
+                            )
+                        })
                         .collect();
                     out.push((key, Value::Array(items)));
                 } else {

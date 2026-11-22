@@ -16,7 +16,12 @@ pub enum Origin {
 
 impl Origin {
     /// Every origin, in WordPress's order.
-    pub const ALL: [Origin; 4] = [Origin::Default, Origin::Blocks, Origin::Theme, Origin::Custom];
+    pub const ALL: [Origin; 4] = [
+        Origin::Default,
+        Origin::Blocks,
+        Origin::Theme,
+        Origin::Custom,
+    ];
 
     /// The name WordPress uses for the origin.
     pub fn as_str(self) -> &'static str {
@@ -30,7 +35,9 @@ impl Origin {
 
     /// Reads an origin name exactly as WordPress spells it.
     pub fn parse(name: &[u8]) -> Option<Origin> {
-        Origin::ALL.into_iter().find(|o| o.as_str().as_bytes() == name)
+        Origin::ALL
+            .into_iter()
+            .find(|o| o.as_str().as_bytes() == name)
     }
 
     /// Reads an origin as `WP_Theme_JSON`'s constructor does: anything unknown is the theme.
@@ -51,7 +58,10 @@ mod tests {
 
     #[test]
     fn all_is_wordpress_order() {
-        assert_eq!(Origin::ALL.map(Origin::as_str), ["default", "blocks", "theme", "custom"]);
+        assert_eq!(
+            Origin::ALL.map(Origin::as_str),
+            ["default", "blocks", "theme", "custom"]
+        );
     }
 
     #[test]

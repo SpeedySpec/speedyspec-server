@@ -12,7 +12,9 @@
 //! - [`Clock`] is `time()`, for the expiry of WordPress.org's first signing key;
 //! - [`FileHasher`] is `hash_file( 'sha384', $filename, true )`;
 //! - [`Translator`] is `__()` in the default text domain;
-//! - [`TrustedKeysFilter`] is the `wp_trusted_keys` filter.
+//! - [`TrustedKeysFilter`] is the `wp_trusted_keys` filter;
+//! - [`Argon2`] is `sodium_crypto_pwhash()` (raw argon2i/argon2id), under WordPress's password hashing;
+//! - [`RandomBytes`] is `random_bytes()`, for salts and `wp_rand()`.
 //!
 //! Messages, hashes and keys are bytes throughout, as PHP strings are.
 
@@ -92,4 +94,41 @@ pub trait TrustedKeysFilter {
 
     /// Filters WordPress's default keys (base64 text).
     fn apply(&self, defaults: Vec<Vec<u8>>) -> Result<Self::Value, Self::Error>;
+}
+
+/// Which argon2 a password hash uses.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Argon2Variant {
+    /// `$argon2i$`: data-independent memory access.
+    Argon2i,
+    /// `$argon2id$`: the hybrid, and SpeedySpec's default password hash.
+    Argon2id,
+}
+
+/// Raw argon2 (version 19, one lane), as `sodium_crypto_pwhash()`.
+///
+/// Password hashing builds its `$argon2…$` strings on top of this, so the string format is WordPress's and PHP's rule
+/// and the key derivation stays replaceable.
+pub trait Argon2 {
+    /// Derives `out_len` bytes from `password` and `salt` with `time_cost` passes over `memory_kib` KiB.
+    ///
+    /// # Errors
+    ///
+    /// When the parameters are outside what the implementation computes (libsodium refuses argon2i below three
+    /// passes, and memory below its minimum).
+    fn derive(
+        &self,
+        variant: Argon2Variant,
+        password: &[u8],
+        salt: &[u8; 16],
+        time_cost: u32,
+        memory_kib: u32,
+        out_len: usize,
+    ) -> Result<Vec<u8>, String>;
+}
+
+/// A cryptographically secure source of random bytes, as `random_bytes()`.
+pub trait RandomBytes {
+    /// Fills `out` with random bytes.
+    fn fill(&self, out: &mut [u8]);
 }

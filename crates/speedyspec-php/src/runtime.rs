@@ -227,6 +227,7 @@ impl Php {
             }
             // As the CLI does; request startup has just reset it.
             (*ext_php_rs_compiler_globals()).skip_shebang = true;
+            request_started();
         }
 
         // From here on, failing drops `php`, which shuts the engine down.
@@ -322,6 +323,7 @@ impl Php {
                 return Err(PhpError::Boot("php_request_startup failed".to_owned()));
             }
             (*ext_php_rs_compiler_globals()).skip_shebang = true;
+            request_started();
         }
         ENGINE.with(|e| e.alive.set(true));
         Ok(())
@@ -602,6 +604,18 @@ pub fn set_ini(settings: &[(String, String)]) -> Result<(), String> {
     EXTRA_INI
         .set(Box::leak(entries.into_boxed_c_str()))
         .map_err(|_| "the INI settings are already set".to_string())
+}
+
+/// Marks request startup as over, as `php_execute_script()` does before it runs a script. The runtime runs code
+/// without it, and while `PG(during_request_startup)` is set PHP names every diagnostic "PHP Request Startup" instead
+/// of the function that raised it.
+///
+/// # Safety
+///
+/// On the booting thread, right after a successful `php_request_startup()`.
+unsafe fn request_started() {
+    // SAFETY: the caller is on the booting thread; core_globals is the non-ZTS build's PG().
+    unsafe { ext_php_rs::ffi::core_globals.during_request_startup = false };
 }
 
 /// What serving one web request came to.

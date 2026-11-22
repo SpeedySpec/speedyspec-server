@@ -49,6 +49,6 @@ pub use unautop::{Unautop, shortcode_unautop};
 pub use balance::force_balance_tags;
 pub use texturize::{HandTexturizer, PcreTexturizer, TexturizeScope, TexturizeTables, Texturizer, texturize_shortcode_regex};
 pub use api::{AutopFn, TextApi, TextDeps, text_error};
-pub use register::{FilterContext, register_text_filters};
+pub use register::{FilterContext, default_callback_names, hook_error as text_hook_error, register_text_filters};
 pub use messages::register_text_handlers;
 pub use autop_fast::wpautop;

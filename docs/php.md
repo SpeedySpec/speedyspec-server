@@ -141,6 +141,32 @@ only what they need. Of the server's own environment, a worker keeps only `PATH`
 `LANG` and `LC_ALL`. Credentials are isolated between apps only as far as their workers are: pools of one OS user can
 read each other's process environment.
 
+### Native WordPress areas
+
+`DB_NAME` in a worker's environment turns on the database, object cache and options areas: native `$wpdb`,
+`wp_cache_*` and `get_option()` and the rest, over one engine kept for the worker's life. The variables are
+WordPress's `wp-config.php` names:
+
+| Variable | Default |
+|---|---|
+| `DB_NAME` | none: without it the worker serves without these areas |
+| `DB_USER` | empty |
+| `DB_PASSWORD` | empty |
+| `DB_HOST` | `localhost` (host, `host:port` or `host:/path/to/socket`, as WordPress parses it) |
+| `DB_CHARSET`, `DB_COLLATE` | none |
+| `TABLE_PREFIX` | `wp_` (letters, digits and underscores only) |
+
+The configuration is read from the environment, not from `wp-config.php`, because the areas are fixed when PHP boots.
+The app's `wp-config.php` reads the same variables. The worker logs and exits when it cannot use the database:
+`php_worker_boot_failed` for a refused configuration, `php_worker_database_unreachable` when the engine does not
+answer at start. Each request is answered 500 without running PHP while a `db.php` drop-in exists where
+`WP_CONTENT_DIR` points: `site_dir/wp-content`, or the release's `wp-content` without a `site_dir`
+(`php_worker_drop_in_refused`). A transaction a request leaves open is rolled back when it ends
+(`php_worker_open_transaction`).
+
+A release served this way must not load WordPress's own `option.php`, `cache.php` or `class-wpdb.php` functions beside
+the native ones: each port's `prepare_release` writes a copy of WordPress without them.
+
 ## `php.bindings`
 
 A port such as the hook store can be implemented in PHP: a class implementing the port's PHP interface (its twin, for

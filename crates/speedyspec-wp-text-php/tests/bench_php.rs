@@ -13,6 +13,11 @@
 //! `wp_strip_all_tags` on short inputs (0.65x: the fast path's check that its handler hasn't been rebound costs
 //! about a fifth of a call on a few bytes);
 //! and the `the_content` chain at least 3.5x. The chain's 5x target is reported.
+//!
+//! Formatting's callbacks added by name run as Rust callbacks. The chain, and a `pre_user_url`-style pair
+//! (`wp_strip_all_tags` then `sanitize_url`) on short URLs, are also timed against the same callbacks registered
+//! through `WP_Hook::add_filter()`, which keeps them PHP callables: the swap must reach 0.95x of that or better.
+//! `SPEEDYSPEC_TEXT_BENCH_ONLY=chain` times only the chains and the pair.
 
 use std::rc::Rc;
 
@@ -30,6 +35,8 @@ use speedyspec_wp_text_php::{TextArea, prepare_release};
 /// The chain's floor and its target (spec).
 const CHAIN_FLOOR: f64 = 3.5;
 const CHAIN_TARGET: f64 = 5.0;
+/// Rust callbacks against the same callbacks kept as PHP callables: never slower, less noise.
+const SWAP_FLOOR: f64 = 0.95;
 
 /// The functions timed, and the corpus function whose inputs each uses.
 const FUNCTIONS: &[&str] = &[
@@ -107,6 +114,26 @@ fn rate(call: &str, bytes: usize) -> f64 {
             other => panic!("{other:?}"),
         })
         .fold(0.0, f64::max)
+}
+
+/// `a` against `b` over the inputs in `$GLOBALS['bench_docs']`, timed in alternating 0.1-second rounds (eight of
+/// each) so both see the same machine load: the best rate of each, in bytes per second.
+fn rate_pair(a: &str, b: &str, bytes: usize) -> (f64, f64) {
+    let round = |call: &str| {
+        let code = format!(
+            "$docs = $GLOBALS['bench_docs']; $n = 0; $t = hrtime(true);
+            do {{ foreach ($docs as $d) {{ {call}; }} $n++; }} while (hrtime(true) - $t < 100000000);
+            return [$n, (hrtime(true) - $t) / 1e9];"
+        );
+        match speedyspec_php::eval("bench", &code) {
+            Ok(Value::Array(items)) => match (&items[0].1, &items[1].1) {
+                (Value::Int(n), Value::Float(s)) => bytes as f64 * *n as f64 / s,
+                other => panic!("{other:?}"),
+            },
+            other => panic!("{other:?}"),
+        }
+    };
+    (0..8).fold((0.0, 0.0), |(best_a, best_b), _| (f64::max(best_a, round(a)), f64::max(best_b, round(b))))
 }
 
 fn set_docs(docs: &[Vec<u8>]) {
@@ -200,22 +227,28 @@ fn main() {
         }
     }
 
-    if only.is_some() {
+    if only.as_deref().is_some_and(|o| o != "chain") {
         if !missed.is_empty() {
             eprintln!("FAIL: under the gate: {}", missed.join(", "));
             std::process::exit(1);
         }
         return;
     }
-    // the_content's formatting chain, as default-filters.php registers it, natives against legacy.
+    // the_content's formatting chain, as default-filters.php registers it: natives added by name (Rust callbacks),
+    // the same natives through WP_Hook::add_filter() (PHP callables), and legacy.
     speedyspec_php::eval(
         "chain",
-        r#"foreach (['' => 'bench_native', 'Legacy\\' => 'bench_legacy'] as $ns => $hook) {
-            add_filter($hook, $ns . 'wptexturize');
-            add_filter($hook, $ns . 'wpautop');
-            add_filter($hook, $ns . 'shortcode_unautop');
-            add_filter($hook, $ns . 'capital_P_dangit', 11);
-            add_filter($hook, $ns . 'convert_smilies', 20);
+        r#"$GLOBALS['wp_filter']['bench_unswapped'] = new WP_Hook();
+        $GLOBALS['wp_filter']['bench_pair_unswapped'] = new WP_Hook();
+        $chain = [['wptexturize', 10], ['wpautop', 10], ['shortcode_unautop', 10], ['capital_P_dangit', 11], ['convert_smilies', 20]];
+        foreach ($chain as [$f, $p]) {
+            add_filter('bench_native', $f, $p);
+            add_filter('bench_legacy', 'Legacy\\' . $f, $p);
+            $GLOBALS['wp_filter']['bench_unswapped']->add_filter('bench_unswapped', $f, $p, 1);
+        }
+        foreach (['wp_strip_all_tags', 'sanitize_url'] as $f) {
+            add_filter('bench_pair', $f);
+            $GLOBALS['wp_filter']['bench_pair_unswapped']->add_filter('bench_pair_unswapped', $f, 10, 1);
         }
         return true;"#,
     )
@@ -228,20 +261,54 @@ fn main() {
         if let Err(why) = agree(native, legacy) {
             panic!("the native and legacy chains differ on {group}: {why}");
         }
+        let unswapped = "apply_filters('bench_unswapped', $d)";
+        if let Err(why) = agree(native, unswapped) {
+            panic!("the swapped and unswapped chains differ on {group}: {why}");
+        }
         let bytes: usize = docs.iter().map(Vec::len).sum();
         let ratio = rate(native, bytes) / rate(legacy, bytes);
+        let (n, u) = rate_pair(native, unswapped, bytes);
+        let swap = n / u;
         if ratio < CHAIN_FLOOR {
             missed.push(format!("the_content/{group} {ratio:.2}x"));
         }
+        if swap < SWAP_FLOOR {
+            missed.push(format!("the_content/{group} swap {swap:.2}x"));
+        }
         println!(
-            "{:<28} {group:<12} {:>13} {:>13} {ratio:>6.2}x {:>6}  (target {CHAIN_TARGET}x: {})",
+            "{:<28} {group:<12} {:>13} {:>13} {ratio:>6.2}x {:>6}  (target {CHAIN_TARGET}x: {}; swapped/unswapped {swap:.2}x)",
             "the_content chain",
             "",
             "",
-            if ratio >= CHAIN_FLOOR { "yes" } else { "NO" },
+            if ratio >= CHAIN_FLOOR && swap >= SWAP_FLOOR { "yes" } else { "NO" },
             if ratio >= CHAIN_TARGET { "met" } else { "not met" }
         );
     }
+    // A pre_user_url-style pair on short URLs: where the crossing costs most against the work.
+    let urls: Vec<Vec<u8>> = inputs("esc_url")
+        .into_iter()
+        .filter(|(s, _)| !s.contains("/whole_posts/") && !s.contains("backtrack"))
+        .map(|(_, b)| b)
+        .collect();
+    set_docs(&urls);
+    let (swapped, unswapped) = ("apply_filters('bench_pair', $d)", "apply_filters('bench_pair_unswapped', $d)");
+    if let Err(why) = agree(swapped, unswapped) {
+        panic!("the swapped and unswapped URL pairs differ: {why}");
+    }
+    let bytes: usize = urls.iter().map(Vec::len).sum();
+    let (n, u) = rate_pair(swapped, unswapped, bytes);
+    let swap = n / u;
+    if swap < SWAP_FLOOR {
+        missed.push(format!("url_pair swap {swap:.2}x"));
+    }
+    println!(
+        "{:<28} {:<12} {:>13} {:>13} {swap:>6.2}x {:>6}  (swapped/unswapped)",
+        "url pair",
+        "short",
+        "",
+        "",
+        if swap >= SWAP_FLOOR { "yes" } else { "NO" }
+    );
     if !missed.is_empty() {
         eprintln!("FAIL: under the gate: {}", missed.join(", "));
         std::process::exit(1);

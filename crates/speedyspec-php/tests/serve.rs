@@ -126,11 +126,30 @@ fn case_serve_web_request(php: &Php) -> Result<(), String> {
             after.status
         ));
     }
-    // A request can be opened again afterwards.
+    // A warning in a served script names the function that raised it, as php-fpm's do.
+    let warning = fixture("web_warning.php");
+    let mut warned = web_request(&warning);
+    php.serve(&mut warned, &warning)
+        .result
+        .map_err(|e| e.to_string())?;
+    eq(&String::from_utf8_lossy(&warned.output), WARNING)?;
+    // A request can be opened again afterwards, and its warnings are named too.
     php.restart_request().map_err(|e| e.to_string())?;
     let value = php.eval("t", "return 1 + 1;").map_err(|e| e.to_string())?;
-    eq(&format!("{value:?}"), "Int(2)")
+    eq(&format!("{value:?}"), "Int(2)")?;
+    let message = php
+        .eval(
+            "t",
+            "$seen = ''; set_error_handler(static function ($no, $str) use (&$seen) { $seen = $str; return true; }, E_WARNING);
+             file_get_contents('/nonexistent/speedyspec'); restore_error_handler(); return $seen;",
+        )
+        .map_err(|e| e.to_string())?;
+    eq(&format!("{message:?}"), &format!("Str({WARNING:?})"))
 }
+
+/// `file_get_contents('/nonexistent/speedyspec')`'s warning in stock PHP.
+const WARNING: &str =
+    "file_get_contents(/nonexistent/speedyspec): Failed to open stream: No such file or directory";
 
 fn main() -> ExitCode {
     let php = Php::boot(BootOptions {
