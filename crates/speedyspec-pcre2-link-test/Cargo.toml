@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-pcre2-link-test"
-version = "0.1.2"
+version = "0.1.3"
 description = "Test only: the static PHP's PCRE2 and speedyspec-wp-text's PCRE2 linked into one binary, each keeping its own."
 edition.workspace = true
 rust-version.workspace = true

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-html-syntax"
-version = "0.3.0"
+version = "0.4.0"
 publish = false
 description = "WordPress's HTML API syntax pieces: WP_HTML_Decoder, the HTML5 named character references, start-tag attributes."
 edition.workspace = true

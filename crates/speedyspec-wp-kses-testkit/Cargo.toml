@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-kses-testkit"
-version = "0.3.0"
+version = "0.4.0"
 description = "Test support for the kses port: a PHP oracle running WordPress's own kses.php, and the test corpora."
 edition.workspace = true
 rust-version.workspace = true

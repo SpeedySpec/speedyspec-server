@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-operation-dispatch"
-version = "0.1.2"
+version = "0.1.3"
 publish = false
 description = "Dispatch for the unified operation API: handlers bound in the service container by operation name, middleware (permission first), and calls by name with neutral values."
 edition.workspace = true

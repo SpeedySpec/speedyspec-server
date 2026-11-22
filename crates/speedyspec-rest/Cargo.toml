@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-rest"
-version = "0.1.0"
+version = "0.1.1"
 publish = false
 description = "The REST transport: default routes, the route table, HTTP decoding and encoding, links and embeds, and the REST server in WordPress's hook order."
 edition.workspace = true
