@@ -64,7 +64,9 @@ pub fn algorithm_type_error(algorithm: &Value, function: &str) -> Option<Passwor
 /// The algorithm `function()` (`password_hash` or `password_needs_rehash`) runs for `value`.
 ///
 /// `null` is the default (bcrypt); booleans and floats coerce to integers, which name algorithms by their legacy
-/// numbers (0 and 1 bcrypt, 2 argon2i, 3 argon2id); strings name them by identifier.
+/// numbers (0 and 1 bcrypt, 2 argon2i, 3 argon2id); strings name them by identifier. A float that doesn't fit an
+/// integer (NaN, infinite or out of range) is read as a string by PHP's `string|int|null` parameter (`"NAN"`,
+/// `"INF"`, `"1.0E+20"`), and so names no algorithm.
 ///
 /// # Errors
 ///
@@ -83,7 +85,8 @@ pub fn resolve_algorithm(value: &Value, function: &str) -> Result<Algorithm, Pas
         Value::Null => 0,
         Value::Bool(b) => i64::from(*b),
         Value::Int(n) => *n,
-        Value::Float(f) => float_to_long(*f),
+        Value::Float(f) if float_fits_long(*f) => *f as i64,
+        Value::Float(_) => return Err(invalid()),
         Value::Str(s) => return by_name(s.as_bytes()).ok_or_else(invalid),
         Value::Bytes(b) => return by_name(b).ok_or_else(invalid),
         Value::Array(_) | Value::Opaque(_) => unreachable!("rejected above"),
@@ -161,13 +164,14 @@ pub fn php_long(value: &Value) -> i64 {
     }
 }
 
+/// Whether a float has an integer value PHP can cast it to (`ZEND_DOUBLE_FITS_LONG`): finite and in range.
+fn float_fits_long(f: f64) -> bool {
+    f.is_finite() && f >= i64::MIN as f64 && f < i64::MAX as f64
+}
+
 /// A float as PHP 8 casts it to an integer: truncated; 0 when not finite or out of range.
 fn float_to_long(f: f64) -> i64 {
-    if f.is_finite() && f >= i64::MIN as f64 && f < i64::MAX as f64 {
-        f as i64
-    } else {
-        0
-    }
+    if float_fits_long(f) { f as i64 } else { 0 }
 }
 
 /// The leading number of a string (after whitespace), as `zval_get_long()` reads it; 0 when there is none.
