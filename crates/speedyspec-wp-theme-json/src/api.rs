@@ -253,4 +253,13 @@ impl ThemeJsonApi {
     ) -> Option<String> {
         crate::selectors::block_css_selector(block, target, fallback)
     }
+
+    /// `WP_Theme_JSON::remove_insecure_properties( $theme_json, $origin )`.
+    pub fn remove_insecure_properties(
+        &self,
+        doc: Value,
+        origin: &Value,
+    ) -> Result<Value, ThemeJsonError> {
+        crate::security::remove_insecure_properties(doc, origin, &self.deps, &self.blocks_metadata)
+    }
 }
