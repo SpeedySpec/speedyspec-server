@@ -7,6 +7,7 @@ use speedyspec_wp_theme_json_contracts::{Origin, ThemeJsonError};
 use std::rc::Rc;
 
 use crate::nodes::{NodeOptions, block_nodes};
+use crate::presets::FluidFontSize;
 use crate::selectors::BlocksMetadataCache;
 use crate::sheet::Sheet;
 use crate::stylesheet::{stylesheet_origins, stylesheet_types};
@@ -274,5 +275,90 @@ impl ThemeJsonApi {
             })
             .collect();
         crate::duotone::svg_filters(&raw, &self.blocks_metadata(), &origins, &self.deps)
+    }
+
+    /// `WP_Theme_JSON::resolve_variables( $theme_json )`: the document with its styles' preset and custom variables
+    /// replaced by their values.
+    pub fn resolve_variables(&self, doc: &ThemeJson) -> ThemeJson {
+        let mut raw = ThemeJsonCodec::encode(doc);
+        let settings = data::settings(&raw);
+        let fluid = FluidFontSize {
+            global: self.deps.global_settings.clone(),
+            diagnostics: self.deps.diagnostics.clone(),
+        };
+        let values = crate::declarations::variable_values(&settings, &fluid);
+        let styles = array_path::get(&raw, &["styles"])
+            .cloned()
+            .unwrap_or(Value::Null);
+        array_path::insert(
+            &mut raw,
+            Key::Str("styles".into()),
+            crate::declarations::convert_variables_to_value(styles, &values),
+        );
+        ThemeJsonCodec::decode(&raw)
+    }
+
+    /// `get_metadata_boolean( $data, $path, $default_value )` (protected in WordPress).
+    pub fn get_metadata_boolean(&self, data: &Value, path: &Value, default_value: Value) -> Value {
+        match path {
+            Value::Bool(_) => path.clone(),
+            Value::Array(steps) => {
+                let steps: Vec<String> = steps
+                    .iter()
+                    .map(|(_, v)| {
+                        String::from_utf8_lossy(&crate::php::to_php_string(v)).into_owned()
+                    })
+                    .collect();
+                let refs: Vec<&str> = steps.iter().map(String::as_str).collect();
+                match array_path::get(data, &refs) {
+                    Some(v) if !matches!(v, Value::Null) => v.clone(),
+                    _ => default_value,
+                }
+            }
+            _ => default_value,
+        }
+    }
+
+    /// `should_override_preset( $theme_json, $path, $override )` (protected and deprecated in WordPress).
+    pub fn should_override_preset(
+        &self,
+        theme_json: &Value,
+        path: &[String],
+        override_: &Value,
+    ) -> Value {
+        self.deps.diagnostics.deprecated_function(
+            "WP_Theme_JSON::should_override_preset",
+            "6.0.0",
+            "get_metadata_boolean",
+        );
+        match override_ {
+            Value::Bool(_) => override_.clone(),
+            Value::Array(steps) => {
+                let steps: Vec<String> = steps
+                    .iter()
+                    .map(|(_, v)| {
+                        String::from_utf8_lossy(&crate::php::to_php_string(v)).into_owned()
+                    })
+                    .collect();
+                let lookup = |prefix: &[String]| {
+                    let full: Vec<&str> = prefix
+                        .iter()
+                        .chain(steps.iter())
+                        .map(String::as_str)
+                        .collect();
+                    array_path::get(theme_json, &full)
+                        .filter(|v| !matches!(v, Value::Null))
+                        .cloned()
+                };
+                if let Some(value) = lookup(path) {
+                    return Value::Bool(!crate::merge::truthy(&value));
+                }
+                if let Some(value) = lookup(&["settings".to_owned()]) {
+                    return Value::Bool(!crate::merge::truthy(&value));
+                }
+                Value::Bool(true)
+            }
+            _ => Value::Null,
+        }
     }
 }
