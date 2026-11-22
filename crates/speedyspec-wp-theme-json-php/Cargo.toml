@@ -26,3 +26,7 @@ speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
 [[test]]
 name = "php"
 harness = false
+
+[[test]]
+name = "compat"
+harness = false

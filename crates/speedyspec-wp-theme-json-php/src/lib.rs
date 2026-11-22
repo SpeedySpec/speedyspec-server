@@ -86,3 +86,17 @@ impl NativeArea for ThemeJsonArea {
         HandleArena::clear();
     }
 }
+
+/// The compat runner for the `theme-json` area on the port's side: `compat/theme-json/setup.php` with the native
+/// classes loaded and WordPress's theme.json files not.
+pub fn theme_json_scenario_runner(php: speedyspec_php::Php, release: &std::path::Path) -> speedyspec_compat::PhpRunner {
+    let code = format!(
+        "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', true); \
+         define('SPEEDYSPEC_COMPAT_MULTISITE', false); require {:?};",
+        format!("{}/", release.display()),
+        speedyspec_compat::compat_dir().join("theme-json/setup.php").display().to_string()
+    );
+    speedyspec_compat::PhpRunner::new(php, move |php| {
+        php.eval("speedyspec://compat/theme-json-setup", &code).map(|_| ()).map_err(|e| e.to_string())
+    })
+}

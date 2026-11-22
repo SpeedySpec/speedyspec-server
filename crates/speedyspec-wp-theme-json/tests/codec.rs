@@ -110,7 +110,6 @@ fn loose_eq_follows_php() {
 }
 
 #[test]
-#[ignore = "needs Task 11's recorded Twenty Twenty-Five data"]
 fn round_trips_a_full_document() {
     let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/twentytwentyfive.sanitized.json")).unwrap();
     let doc = json_to_value(&serde_json::from_str(&text).unwrap());

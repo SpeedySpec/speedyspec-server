@@ -192,3 +192,36 @@ function compat_migrate(mixed $data, string $origin = 'theme'): mixed
 {
     return compat_canon(WP_Theme_JSON_Schema::migrate($data, $origin));
 }
+
+/** Runs a PHP snippet that returns a value, canonicalised; the scenarios' cases are small snippets. */
+function compat_eval(string $code): mixed
+{
+    return compat_canon(eval($code));
+}
+
+/**
+ * Registers every block the release ships (`wp-includes/blocks/<name>/block.json`): name, styles, supports and
+ *  selectors, which is all the theme.json engine reads.
+ */
+function compat_register_core_blocks(): void
+{
+    foreach (glob(SPEEDYSPEC_COMPAT_WP_ROOT . 'wp-includes/blocks/*/block.json') as $file) {
+        $meta = json_decode(file_get_contents($file), true);
+        if (!isset($meta['name'])) {
+            continue;
+        }
+        $args = array();
+        foreach (array('styles', 'supports', 'selectors') as $key) {
+            if (isset($meta[$key])) {
+                $args[$key] = $meta[$key];
+            }
+        }
+        compat_register_block($meta['name'], $args);
+    }
+}
+
+/** A JSON file of the release, decoded. */
+function compat_release_json(string $path): mixed
+{
+    return json_decode(file_get_contents(SPEEDYSPEC_COMPAT_WP_ROOT . $path), true);
+}
