@@ -106,10 +106,17 @@ impl CronApi {
 
     /// The cron array as `_get_cron_array()` reads it, with the version a save compares.
     pub(crate) fn load_cron(&self) -> Result<(CronArray, Version), CronError> {
-        let (raw, _) = self.p.store.load()?;
+        let (raw, version) = self.p.store.load()?;
+        // A version-less array is upgraded and saved (`_upgrade_cron_array()`), so the version is read again after
+        // it. Otherwise the version is the one read with the array: a second read could see another process's write
+        // and let this one overwrite it.
+        let upgrades = matches!(&*raw.read(), HookValue::Array(items)
+            if !items.iter().any(|(k, _)| *k == version_key()));
         let cron = self.cron_from_option(raw)?;
-        // An upgrade saves, so the version is read after it.
-        let (_, version) = self.p.store.load()?;
+        if upgrades {
+            let (_, version) = self.p.store.load()?;
+            return Ok((cron, version));
+        }
         Ok((cron, version))
     }
 

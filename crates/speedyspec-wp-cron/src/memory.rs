@@ -14,6 +14,8 @@ pub struct MemoryCronStore {
     raw: RefCell<Option<HookValue>>,
     writes: Cell<u64>,
     forced_conflicts: Cell<u32>,
+    loads: Cell<u32>,
+    before_load: RefCell<Option<(u32, BeforeSave)>>,
     reload_filtered: Cell<bool>,
     unconditional: Cell<u64>,
     before_save: RefCell<Option<BeforeSave>>,
@@ -50,6 +52,12 @@ impl MemoryCronStore {
         self.forced_conflicts.set(n);
     }
 
+    /// Runs `f` once, just before load number `n` (counting from 1) reads: another process writing between two
+    /// reads.
+    pub fn before_load(&self, n: u32, f: impl FnOnce(&MemoryCronStore) + 'static) {
+        *self.before_load.borrow_mut() = Some((self.loads.get() + n, Box::new(f)));
+    }
+
     /// Runs `f` once, just before the next save compares: another process acting between a read and a write.
     pub fn before_next_save(&self, f: impl FnOnce(&MemoryCronStore) + 'static) {
         *self.before_save.borrow_mut() = Some(Box::new(f));
@@ -81,6 +89,11 @@ impl MemoryCronStore {
 
 impl CronStore for MemoryCronStore {
     fn load(&self) -> Result<(HookValue, Version), CronError> {
+        self.loads.set(self.loads.get() + 1);
+        let due = matches!(&*self.before_load.borrow(), Some((n, _)) if *n == self.loads.get());
+        if due && let Some((_, f)) = self.before_load.borrow_mut().take() {
+            f(self);
+        }
         Ok(self.current())
     }
 

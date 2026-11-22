@@ -53,8 +53,8 @@ impl CronStore for OptionCronStore {
         Ok((value, version))
     }
 
-    /// The value is reported as rewritten only when the stored bytes read before and after it agree with each other
-    /// and not with it. When another process writes between the reads, they disagree; the value is then reported as
+    /// The value is reported as rewritten when it is `false` while a row exists, or when the stored bytes read before
+    /// and after it agree with each other and not with it. When another process writes between the reads, they disagree; the value is then reported as
     /// stored, so the caller keeps to compare-and-swap (which can only conflict) rather than writing unconditionally
     /// over the other process's write.
     fn reload(&self) -> Result<(HookValue, Version, bool), CronError> {
@@ -62,7 +62,10 @@ impl CronStore for OptionCronStore {
         self.options.forget_cached(CRON).map_err(error)?;
         let (value, version) = self.load()?;
         let after = self.options.stored_bytes(CRON).map_err(error)?;
-        let rewritten = before == after && after != version.0;
+        // `false` while a row exists (a filter hid the option, or the row holds `b:0;`) makes `update_option()` add
+        // rather than update, which a compare-and-swap of the row can never match; WordPress's own write is used.
+        let hidden = matches!(&*value.read(), HookValue::Bool(false)) && after.is_some();
+        let rewritten = hidden || (before == after && after != version.0);
         Ok((value, version, !rewritten))
     }
 
