@@ -5156,7 +5156,6 @@ version = "0.1.0"
 dependencies = [
  "speedyspec-data",
  "speedyspec-data-query",
- "speedyspec-data-translate",
  "sqlparser",
 ]
 

@@ -1,12 +1,8 @@
-mod support;
-
+use super::support::*;
+use crate::testing::StaticIntrospector;
+use crate::{CatalogueIndex, DdlPass, IndexKind, MySqlType, catalogue_table, column_key};
 use speedyspec_data::{DbError, DialectKind, EmulatedOp, Statement};
 use speedyspec_data_query::{PassContext, Rewritten, parse_one};
-use speedyspec_data_translate::testing::StaticIntrospector;
-use speedyspec_data_translate::{
-    CatalogueIndex, DdlPass, IndexKind, MySqlType, catalogue_table, column_key,
-};
-use support::*;
 
 const WP_OPTIONS: &str = "CREATE TABLE wp_options ( option_id bigint(20) unsigned NOT NULL auto_increment, option_name varchar(191) NOT NULL default '', option_value longtext NOT NULL, autoload varchar(20) NOT NULL default 'yes', PRIMARY KEY  (option_id), UNIQUE KEY option_name (option_name), KEY autoload (autoload) ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci";
 
@@ -310,7 +306,7 @@ fn catalogue_tables_pass_through() {
 
 #[test]
 fn catalogue_ddl_parses_and_passes_through() {
-    let ddl = speedyspec_data_translate::catalogue_ddl();
+    let ddl = crate::catalogue_ddl();
     assert_eq!(ddl.len(), 3);
     for stmt in ddl {
         let sql = stmt.tree().to_string();
@@ -332,8 +328,8 @@ fn ddl_binary_table_collation_moves_to_columns() {
 
 #[test]
 fn catalogue_collation_from_charset() {
+    use crate::catalogue_table;
     use speedyspec_data_query::parse_one;
-    use speedyspec_data_translate::catalogue_table;
     let sql =
         "CREATE TABLE t (a varchar(1) CHARACTER SET koi8r, b text, c int) DEFAULT CHARSET=big5";
     let table = catalogue_table(parse_one(sql).unwrap().tree()).unwrap();

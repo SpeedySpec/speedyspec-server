@@ -19,7 +19,7 @@ mod names;
 mod params;
 mod row_limit;
 mod session;
-#[cfg(feature = "testing")]
+#[cfg(any(test, feature = "testing"))]
 pub mod testing;
 
 use speedyspec_data_query::PassChain;
@@ -58,3 +58,6 @@ pub fn neutral_chain() -> PassChain {
     chain.push(Box::new(InsertPass));
     chain
 }
+
+#[cfg(test)]
+mod tests;
