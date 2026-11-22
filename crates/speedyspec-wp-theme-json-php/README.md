@@ -7,7 +7,7 @@ container to `ThemeJsonApi`. `WP_Theme_JSON_Data` is WordPress's own thin class,
 onto WordPress's PHP: the block registries (read again only when they change, never forgetting a block within a
 request, and taking new styles of known blocks only on a read that finds no new blocks, exactly as WordPress's
 static cache does), `sanitize_title()` and the escapers, `__()`, the notice functions, `safecss_filter_attr()`,
-`wp_get_global_settings()` and `current_theme_supports()`. Filters go through the Rust Hook API, so
+`wp_get_global_settings()`, `current_theme_supports()` and `current_user_can()`. Filters go through the Rust Hook API, so
 `ThemeJsonArea::new` takes the `HookApi`, as the shortcode area does.
 
 The area is not yet in the runtime's default areas or `release.rs`; that comes with the resolver (plan 4), because a
