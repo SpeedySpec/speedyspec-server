@@ -70,6 +70,57 @@ namespace SpeedySpec\Operation {
     }
 
     /**
+     * The input of an operation whose contracts are not PHP classes, as a PHP handler replacing its handler sees it:
+     * read by property (`$in->name`) or key (`$in['name']`). Read-only.
+     */
+    final class Proxy implements \ArrayAccess, \JsonSerializable
+    {
+        public function __construct( private readonly array $values )
+        {
+        }
+
+        public function __get( string $name ): mixed
+        {
+            return $this->values[ $name ] ?? null;
+        }
+
+        public function __isset( string $name ): bool
+        {
+            return isset( $this->values[ $name ] );
+        }
+
+        public function offsetExists( mixed $offset ): bool
+        {
+            return isset( $this->values[ $offset ] );
+        }
+
+        public function offsetGet( mixed $offset ): mixed
+        {
+            return $this->values[ $offset ] ?? null;
+        }
+
+        public function offsetSet( mixed $offset, mixed $value ): void
+        {
+            throw new \LogicException( 'the input of an operation is read-only' );
+        }
+
+        public function offsetUnset( mixed $offset ): void
+        {
+            throw new \LogicException( 'the input of an operation is read-only' );
+        }
+
+        public function toArray(): array
+        {
+            return $this->values;
+        }
+
+        public function jsonSerialize(): mixed
+        {
+            return $this->values;
+        }
+    }
+
+    /**
      * Binds handlers to operations, by name.
      */
     final class Handler

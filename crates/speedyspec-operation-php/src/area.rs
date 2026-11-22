@@ -223,6 +223,7 @@ fn native_register_operation(args: &[PhpValue]) -> Result<PhpValue, NativeError>
     site.registries
         .register_operation(spec)
         .map_err(|err| registration_failed(&name, &[err.to_string()]))?;
+    site.mark_php_operation(&name);
     if let Some(callable) = callable {
         permission::bind(&name, callable);
     }

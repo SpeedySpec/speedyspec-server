@@ -11,7 +11,7 @@ of `speedyspec-operation` and `speedyspec-operation-dispatch`.
 | `S`, `Schema` | Schemas, compiled to the JSON Schema 2020-12 the registries read |
 | `Type::resource()`, `Type::ref()` | Named resource types with relations, and references to them |
 | `Operation::query()`, `::command()`, `::subscription()` | Operation builders; `->register()` |
-| `Handler::for( $name, $callable )` | Binds a handler for this request |
+| `Handler::for( $name, $callable )` | Binds a handler for this request, for any operation: one with Rust contracts gets its input as a read-only `Proxy` and may return an array or value object, validated like any output |
 | `Caller` | Who is calling; `->can( $capability, ...$args )` |
 | `Operations::call( $name, $input, $user )` | Calls an operation from inside the application (transport `internal`) and returns its output as an array |
 | `Operations::document()` | The specification document |
@@ -79,8 +79,5 @@ cross the `Identity` port, so it denies and logs. Pass IDs.
 
 ## Limits
 
-- A PHP handler cannot handle an operation whose contracts are Rust structs: it fails with
-  `handler_contract_mismatch`. Lifting that needs dispatch to offer handlers the neutral value, with output still
-  validated.
 - Document export lists properties alphabetically (`serde_json` objects), though the registries keep declaration order.
 - `Caller::can()` in PHP checks through the area's `Identity`.

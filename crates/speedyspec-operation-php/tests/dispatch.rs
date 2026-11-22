@@ -10,6 +10,7 @@ use speedyspec_operation::{Operation, S};
 use speedyspec_operation_contracts::{
     Caller, Category, Extract, Hydrate, INTERNAL_TRANSPORT, OperationError, Value,
 };
+use speedyspec_operation_dispatch::{bind_handler, handler_fn};
 use speedyspec_operation_php::{FixedSiteKey, SiteId};
 use speedyspec_php_ext::Value as PhpValue;
 use support::*;
@@ -56,8 +57,11 @@ final class NullableIn {
 function acme_object_permission( Caller $caller, $input ) { return new stdClass(); }
 function acme_object_can( Caller $caller, $input ): bool { return $caller->can( 'edit_report', new stdClass() ); }
 function acme_echo( NullableIn $input, Caller $caller ): array { return [ 'note' => $input->note ?? 'none' ]; }
-function test_ping( $input, Caller $caller ) {
-    return [];
+function test_ping( \SpeedySpec\Operation\Proxy $input, Caller $caller ): array {
+    if ( ! empty( $GLOBALS['bad_ping'] ) ) {
+        return [ 'greeting' => 5 ];
+    }
+    return [ 'greeting' => 'hi ' . $input->name ];
 }
 function acme_register(): void {
     Type::resource( 'report' )
@@ -84,7 +88,9 @@ function acme_register(): void {
     Operation::query( 'acme/meta' )->input( null, S::object( [] ) )
         ->output( null, S::object( [ 'meta' => S::object( [] )->required() ] ) )->public()->register();
     Handler::for( 'acme/meta', 'acme_meta' );
-    Handler::for( 'test/ping', 'test_ping' );
+    if ( empty( $GLOBALS['no_php_ping'] ) ) {
+        Handler::for( 'test/ping', 'test_ping' );
+    }
     foreach ( [ 'acme/object-permission' => 'acme_object_permission', 'acme/object-can' => 'acme_object_can' ] as $name => $check ) {
         Operation::query( $name )->input( null, S::object( [] ) )->output( null, S::object( [] ) )->permission( $check )->register();
         Handler::for( $name, 'acme_meta' );
@@ -106,17 +112,22 @@ function call_error( string $name, array|object $input = [], ?int $user = null )
 }
 "#;
 
-struct Ping;
+struct Ping(String);
 
 impl Hydrate for Ping {
-    fn hydrate(_: &Value) -> Result<Self, OperationError> {
-        Ok(Ping)
+    fn hydrate(value: &Value) -> Result<Self, OperationError> {
+        match value.get("name") {
+            Some(Value::String(name)) => Ok(Ping(name.clone())),
+            _ => Ok(Ping(String::new())),
+        }
     }
 }
 
-impl Extract for Ping {
+struct Pong(String);
+
+impl Extract for Pong {
     fn extract(&self) -> Value {
-        Value::map::<&str>([])
+        Value::map([("greeting", Value::from(self.0.as_str()))])
     }
 }
 
@@ -159,13 +170,15 @@ fn main() {
         .registries
         .register_operation(
             Operation::query("test/ping")
-                .input::<Ping>(S::object([]))
-                .output::<Ping>(S::object([]))
+                .input::<Ping>(S::object([("name", S::string().required())]))
+                .output::<Pong>(S::object([("greeting", S::string().required())]))
                 .public()
                 .build()
                 .unwrap(),
         )
         .unwrap();
+    let rust_ping = handler_fn(|ping: Ping, _: &Caller| Ok(Pong(format!("hello {}", ping.0))));
+    bind_handler(&b.container, "test/ping", move |_, _| Ok(rust_ping.clone()));
 
     let expected =
         r#"[ 'id' => 3, 'title' => 'Q3', 'due' => '2026-11-22T10:00:00', 'file' => "\xff\x00" ]"#;
@@ -280,13 +293,34 @@ fn main() {
         (&meta_php, &meta_rust),
     );
 
-    // rust_input_with_php_handler_is_refused
-    let ping = error_of(&eval(&b.php, "return call_error( 'test/ping' );"));
+    // php_handler_replaces_a_rust_contract_handler
+    let replaced = eval(
+        &b.php,
+        "return \\SpeedySpec\\Operation\\Operations::call( 'test/ping', [ 'name' => 'ada' ] );",
+    );
+    let bad = error_of(&eval(
+        &b.php,
+        "$GLOBALS['bad_ping'] = true; $r = call_error( 'test/ping', [ 'name' => 'ada' ] ); $GLOBALS['bad_ping'] = false; return $r;",
+    ));
+    b.php.restart_request().expect("the next request starts");
+    load(&b.php, HOOKS);
+    load(&b.php, FIXTURE);
+    load(&b.php, "$GLOBALS['no_php_ping'] = true;");
+    load(&b.php, READY);
+    let rust_again = eval(
+        &b.php,
+        "return \\SpeedySpec\\Operation\\Operations::call( 'test/ping', [ 'name' => 'ada' ] );",
+    );
     check(
-        "rust_input_with_php_handler_is_refused",
-        ping.as_ref()
-            .is_some_and(|e| e.0 == "handler_contract_mismatch" && e.1 == "internal"),
-        &ping,
+        "php_handler_replaces_a_rust_contract_handler",
+        replaced
+            .as_ref()
+            .is_ok_and(|v| neutral(v) == Value::map([("greeting", Value::from("hi ada"))]))
+            && bad.as_ref().is_some_and(|e| e.0 == "invalid_output")
+            && rust_again
+                .as_ref()
+                .is_ok_and(|v| neutral(v) == Value::map([("greeting", Value::from("hello ada"))])),
+        (&replaced, &bad, &rust_again),
     );
 
     // a_permission_callback_must_return_true
