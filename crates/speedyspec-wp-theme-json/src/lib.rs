@@ -2,3 +2,9 @@
 //!
 //! `ThemeJsonApi` is the Facade behind the PHP class; each piece (migration, sanitizing, merging, presets, …) is a
 //! module with one job.
+
+mod codec;
+mod php_eq;
+
+pub use codec::ThemeJsonCodec;
+pub use php_eq::php_loose_eq;
