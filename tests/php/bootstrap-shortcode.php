@@ -3,9 +3,10 @@
 declare(strict_types=1);
 
 /**
- * Loads what WordPress's shortcode tests need around the native Shortcode and Hook APIs: the stub test case,
- * WordPress's formatting and kses files from the pinned release (`SPEEDYSPEC_WP_ROOT`), and the few other WordPress
- * functions the tests call.
+ * Loads what WordPress's shortcode tests need around the native Shortcode, kses and Hook APIs: the stub test case,
+ * WordPress's formatting and kses files from the pinned release (`SPEEDYSPEC_WP_ROOT`, prepared by
+ * speedyspec-wp-kses-php, so kses.php runs only for its globals), and the few other WordPress functions the tests
+ * call.
  *
  *  Tests marked `@group needs-wordpress-core` need a booted WordPress (the `the_content` filter chain) and are
  *  excluded here.
@@ -13,8 +14,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/WP_UnitTestCase.php';
 
-if (!function_exists('do_shortcode') || !function_exists('add_filter')) {
-    throw new RuntimeException('The native Shortcode and Hook APIs are not loaded: run these tests in the embedded PHP.');
+if (!function_exists('do_shortcode') || !function_exists('wp_kses_one_attr') || !function_exists('add_filter')) {
+    throw new RuntimeException('The native Shortcode, kses and Hook APIs are not loaded: run these tests in the embedded PHP.');
 }
 
 $speedyspec_root = getenv('SPEEDYSPEC_WP_ROOT');
@@ -30,10 +31,6 @@ function __return_false() { return false; }
 function wp_json_encode($value, $flags = 0, $depth = 512) { return json_encode($value, $flags, $depth); }
 function get_option($option, $default_value = false) { return 'blog_charset' === $option ? 'UTF-8' : $default_value; }
 function is_utf8_charset($blog_charset = null) { return true; }
-function wp_allowed_protocols() {
-    return ['http', 'https', 'ftp', 'ftps', 'mailto', 'news', 'irc', 'irc6', 'ircs', 'gopher', 'nntp', 'feed', 'telnet',
-        'mms', 'rtsp', 'sms', 'svn', 'tel', 'fax', 'xmpp', 'webcal', 'urn'];
-}
 
 /**
  * Fires `doing_it_wrong_run`, as WordPress's `_doing_it_wrong()` does, so `@expectedIncorrectUsage` works.

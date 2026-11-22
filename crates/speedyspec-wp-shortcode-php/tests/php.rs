@@ -14,14 +14,13 @@ use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::WpHooksArea;
 use speedyspec_wp_shortcode::ShortcodeApi;
 use speedyspec_wp_shortcode_contracts::{AttKey, ParsedAtts, PhpValue, ShortcodeError, ShortcodeHandler};
+use speedyspec_wp_kses_contracts::{AllowedSpec, Kses, KsesError, Protocols};
 use speedyspec_wp_shortcode_php::ShortcodeArea;
 
 /// WordPress functions the adapters call, as WordPress defines them (translation is the identity here).
 const WORDPRESS: &str = r#"
 function __($text, $domain = 'default') { return $text; }
 function _doing_it_wrong($function_name, $message, $version) { $GLOBALS['notices'][] = "$function_name|$message|$version"; }
-function wp_kses_attr_parse($element) { return false; }
-function wp_kses_one_attr($attr, $element) { return $attr; }
 "#;
 
 type Case = fn(&Php) -> Result<(), String>;
@@ -41,6 +40,8 @@ const CASES: &[(&str, Case)] = &[
     ("recursive_array_result_converts_like_php", case_unconvertible_result),
     ("throwing_error_handler_escapes", case_throwing_error_handler),
     ("html_tags_with_empty_tagnames_uses_registry", case_html_tags_empty_tagnames),
+    ("kses_rewrites_quoted_attributes", case_kses_rewrites_quoted_attributes),
+    ("kses_failure_reaches_php", case_kses_failure),
     ("html_split_is_rust", case_html_split_is_rust),
 ];
 
@@ -291,10 +292,54 @@ fn case_html_tags_empty_tagnames(php: &Php) -> Result<(), String> {
     expect_php(php, "add_shortcode('q', fn() => 'Q'); return do_shortcodes_in_html_tags('<[q]>', false, []);", s("<Q>"))
 }
 
+/// `wp_kses_one_attr()` as a double: it marks the attribute it is given, and fails as a kses filter would when the
+/// attribute holds `fail`.
+struct MarkingKses;
+
+impl Kses for MarkingKses {
+    fn kses(&self, content: &[u8], _: &AllowedSpec, _: Option<&Protocols>) -> Result<Vec<u8>, KsesError> {
+        Ok(content.to_vec())
+    }
+    fn one_attr(&self, attr: &[u8], _: &[u8]) -> Result<Vec<u8>, KsesError> {
+        if attr.windows(4).any(|w| w == b"fail") {
+            return Err(KsesError::Hook("a kses filter failed".into()));
+        }
+        Ok([b"k:".as_slice(), attr].concat())
+    }
+    fn post(&self, data: &[u8]) -> Result<Vec<u8>, KsesError> {
+        Ok(data.to_vec())
+    }
+    fn data(&self, data: &[u8]) -> Result<Vec<u8>, KsesError> {
+        Ok(data.to_vec())
+    }
+}
+
+/// A shortcode inside a quoted attribute goes through `wp_kses_one_attr()`; the element is parsed in Rust.
+fn case_kses_rewrites_quoted_attributes(php: &Php) -> Result<(), String> {
+    reset(php)?;
+    expect_php(
+        php,
+        r#"add_shortcode('q', fn() => 'Q'); return do_shortcode('<a title="[q]" href=x>t</a>');"#,
+        s(r#"<a k:title="Q" href=x>t</a>"#),
+    )
+}
+
+/// A failing kses filter stops `do_shortcode()` with an exception, as it does in WordPress.
+fn case_kses_failure(php: &Php) -> Result<(), String> {
+    reset(php)?;
+    expect_php(
+        php,
+        r#"add_shortcode('f', fn() => 'fail');
+           try { do_shortcode('<a title="[f]">t</a>'); return 'no exception'; }
+           catch (Error $e) { return str_contains($e->getMessage(), 'a kses filter failed') ? 'thrown' : $e->getMessage(); }"#,
+        s("thrown"),
+    )
+}
+
 fn main() -> ExitCode {
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
-    let shortcodes = ShortcodeArea::new(container.clone(), hooks.api());
+    let shortcodes = ShortcodeArea::new(container.clone(), hooks.api(), Rc::new(MarkingKses));
     shortcodes.register_rust_handler("img_caption_shortcode", Rc::new(Caption));
     let _api: Rc<ShortcodeApi> = shortcodes.api();
     let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(shortcodes)];

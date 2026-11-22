@@ -153,11 +153,12 @@ impl KsesAttributes for ScriptedKses {
         )
     }
 
-    fn one_attr(&self, attr: &[u8], element: &[u8]) -> Vec<u8> {
-        self.one
+    fn one_attr(&self, attr: &[u8], element: &[u8]) -> Result<Vec<u8>, ShortcodeError> {
+        Ok(self
+            .one
             .get(&(attr.to_vec(), element.to_vec()))
             .unwrap_or_else(|| panic!("no recorded wp_kses_one_attr for {:?}", String::from_utf8_lossy(attr)))
-            .clone()
+            .clone())
     }
 }
 

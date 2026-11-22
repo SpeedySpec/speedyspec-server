@@ -1,6 +1,6 @@
 //! WordPress's own shortcode tests (tests/php/wordpress/shortcode, copied from wordpress-develop) pass against the
-//! native Shortcode API, run by the pinned PHPUnit inside the embedded PHP. WordPress's legacy `shortcodes.php` is
-//! never loaded. Tests marked `@group documented-break` or `@group needs-wordpress-core` are excluded.
+//! native Shortcode API, run by the pinned PHPUnit inside the embedded PHP, with the native kses functions.
+//! WordPress's legacy `shortcodes.php` is never loaded, and its `kses.php` runs only for the globals. Tests marked `@group documented-break` or `@group needs-wordpress-core` are excluded.
 
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -14,6 +14,7 @@ use speedyspec_php::{BootOptions, NativeArea, Php};
 use speedyspec_php_ext::twins_area;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::WpHooksArea;
+use speedyspec_wp_kses_php::{KsesArea, prepare_release};
 use speedyspec_wp_shortcode_php::ShortcodeArea;
 
 fn check(name: &str, ok: bool, detail: impl std::fmt::Debug) {
@@ -58,14 +59,23 @@ fn phpunit() -> PathBuf {
 
 fn main() {
     let release = wordpress_release("7.1.5").expect("the pinned WordPress release");
+    // The native kses functions replace the release's, so its kses.php runs only for the globals.
+    let prepared = prepare_release(&release, &release.with_file_name("wordpress-shortcode-port"))
+        .expect("the release prepared for kses");
     // SAFETY: set before PHP boots, while this process has one thread.
-    unsafe { std::env::set_var("SPEEDYSPEC_WP_ROOT", &release) };
+    unsafe { std::env::set_var("SPEEDYSPEC_WP_ROOT", &prepared) };
     let phar = phpunit();
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new())).with_testing();
-    let shortcodes = ShortcodeArea::new(container.clone(), hooks.api());
-    let areas: Vec<Rc<dyn NativeArea>> =
-        vec![twins_area(), Rc::new(ContainerArea::new("tests", container)), Rc::new(hooks), Rc::new(shortcodes)];
+    let kses = KsesArea::new(container.clone(), hooks.api());
+    let shortcodes = ShortcodeArea::new(container.clone(), hooks.api(), kses.api());
+    let areas: Vec<Rc<dyn NativeArea>> = vec![
+        twins_area(),
+        Rc::new(ContainerArea::new("tests", container)),
+        Rc::new(hooks),
+        Rc::new(kses),
+        Rc::new(shortcodes),
+    ];
     let php = Php::boot(BootOptions { hooks: Rc::new(MemoryHooks::new()), preload: &[], areas }).expect("PHP boots");
     let config = root().join("tests/php/phpunit-shortcode.xml");
     let junit = Path::new(env!("CARGO_TARGET_TMPDIR")).join("wordpress-shortcode.junit.xml");

@@ -13,6 +13,7 @@ use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, NativeArea, Php};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::WpHooksArea;
+use speedyspec_wp_kses_php::{KsesArea, prepare_release};
 use speedyspec_wp_shortcode::{FancyRegexScanner, HandAttsParser, HandScanner, RegexAttsParser};
 use speedyspec_wp_shortcode_contracts::{AttsParse, AttsParser, ShortcodeMatches, ShortcodeScanner, TagSet};
 use speedyspec_wp_shortcode_php::{ShortcodeArea, shortcode_scenario_runner};
@@ -55,10 +56,19 @@ fn main() -> ExitCode {
         hand_parser: HandAttsParser::new(),
         regex_parser: RegexAttsParser::new(),
     });
+    // The native kses functions replace the release's, so its kses.php runs only for the globals.
+    let prepared = match prepare_release(&release, &release.with_file_name("wordpress-shortcode-port")) {
+        Ok(root) => root,
+        Err(why) => {
+            println!("FAILED: preparing the release for kses: {why}");
+            return ExitCode::FAILURE;
+        }
+    };
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
-    let shortcodes = ShortcodeArea::with_strategies(container, hooks.api(), switch.clone(), switch.clone());
-    let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(shortcodes)];
+    let kses = KsesArea::new(container.clone(), hooks.api());
+    let shortcodes = ShortcodeArea::with_strategies(container, hooks.api(), kses.api(), switch.clone(), switch.clone());
+    let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(kses), Rc::new(shortcodes)];
     let php = match Php::boot(BootOptions { hooks: Rc::new(MemoryHooks::new()), preload: &[], areas }) {
         Ok(php) => php,
         Err(err) => {
@@ -66,7 +76,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let mut runner = shortcode_scenario_runner(php, &release);
+    let mut runner = shortcode_scenario_runner(php, &prepared);
     let mut failed = 0;
     for (hand_scanner, hand_atts) in [(true, true), (true, false), (false, true), (false, false)] {
         switch.hand_scanner.set(hand_scanner);
