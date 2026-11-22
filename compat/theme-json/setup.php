@@ -366,7 +366,11 @@ if (!function_exists('translate_with_gettext_context')) {
     function translate_with_gettext_context($text, $context, $domain = 'default') { return $text; }
 }
 if (!function_exists('get_theme_file_uri')) {
-    function get_theme_file_uri($file = '') { return 'https://example.org/wp-content/themes/' . get_stylesheet() . '/' . ltrim($file, '/'); }
+    function get_theme_file_uri($file = '')
+    {
+        $url = 'https://example.org/wp-content/themes/' . get_stylesheet() . '/' . ltrim($file, '/');
+        return apply_filters('theme_file_uri', $url, ltrim($file, '/'));
+    }
 }
 if (!function_exists('wp_check_filetype')) {
     function wp_check_filetype($filename, $mimes = null)
@@ -393,6 +397,7 @@ function compat_add_theme_support_args(string $feature, $args): void
 
 /** The user's global styles posts, by theme stylesheet. */
 if (!class_exists('WP_Post', false)) {
+    #[AllowDynamicProperties]
     class WP_Post
     {
         public $ID; public $post_content = ''; public $post_status = 'publish'; public $post_type = 'wp_global_styles';
