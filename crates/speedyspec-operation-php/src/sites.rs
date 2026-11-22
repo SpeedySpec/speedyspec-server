@@ -127,6 +127,18 @@ impl Sites {
         site
     }
 
+    /// The sites this worker holds, one per blog, ordered by blog.
+    pub fn site_ids(&self) -> Vec<SiteId> {
+        let mut ids: Vec<SiteId> = self
+            .by_blog
+            .borrow()
+            .values()
+            .map(|s| s.id.clone())
+            .collect();
+        ids.sort_by_key(|id| id.blog);
+        ids
+    }
+
     /// Marks `id` initialized for this request; true the first time.
     pub(crate) fn mark_initialized(&self, id: &SiteId) -> bool {
         self.initialized.borrow_mut().insert(id.clone())

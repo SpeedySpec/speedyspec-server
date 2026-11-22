@@ -33,3 +33,7 @@ harness = false
 [[test]]
 name = "dispatch"
 harness = false
+
+[[test]]
+name = "lifetime"
+harness = false
