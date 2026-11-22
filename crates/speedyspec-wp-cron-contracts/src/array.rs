@@ -118,7 +118,7 @@ fn find_mut<'a>(items: &'a mut [(Key, Value)], key: &Key) -> Option<&'a mut Valu
 }
 
 /// `$items[$key]` as an array to write into, created (or replacing a scalar) as PHP's nested assignment does.
-fn slot<'a>(items: &'a mut Vec<(Key, Value)>, key: Key) -> &'a mut Vec<(Key, Value)> {
+fn slot(items: &mut Vec<(Key, Value)>, key: Key) -> &mut Vec<(Key, Value)> {
     let index = match items.iter().position(|(k, _)| *k == key) {
         Some(i) => i,
         None => {
