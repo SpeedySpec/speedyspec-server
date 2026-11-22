@@ -183,11 +183,20 @@ pub fn render(response: &mut RestResponse) {
 /// Renders the links, then embeds each embeddable one under `_embedded[rel]`: `dispatch(href)`'s data, which for an
 /// error is its error body, as WordPress embeds. Embedded responses are not embedded again.
 pub fn embed(response: &mut RestResponse, dispatch: &dyn Fn(&str) -> RestResponse) {
+    embed_only(response, dispatch, None);
+}
+
+/// As [`embed`], limited to the relations in `only` when given (`?_embed=author,comments`).
+pub fn embed_only(
+    response: &mut RestResponse,
+    dispatch: &dyn Fn(&str) -> RestResponse,
+    only: Option<&[String]>,
+) {
     render(response);
     let embeddable: Vec<RestLink> = response
         .links
         .iter()
-        .filter(|l| l.embeddable)
+        .filter(|l| l.embeddable && only.is_none_or(|rels| rels.contains(&l.rel)))
         .cloned()
         .collect();
     if embeddable.is_empty() {

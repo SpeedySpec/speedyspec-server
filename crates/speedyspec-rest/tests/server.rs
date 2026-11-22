@@ -213,6 +213,10 @@ fn world(user_id: Option<u64>) -> World {
             .input::<RawInput>(S::object([("id", S::integer().required())]))
             .output::<RawOutput>(Type::reference("user"))
             .public(),
+        Operation::query("acme/closed")
+            .input::<RawInput>(S::object([("x", S::string())]).closed())
+            .output::<RawOutput>(S::any())
+            .public(),
         Operation::query("acme/get-secret")
             .resource("secret", Action::Get, &["id"])
             .input::<RawInput>(S::object([("id", S::integer().required())]))
@@ -225,7 +229,8 @@ fn world(user_id: Option<u64>) -> World {
     r.close().unwrap();
     let r = Rc::new(r);
     let container = Rc::new(Container::new());
-    let handlers: [(&str, Answer); 5] = [
+    let handlers: [(&str, Answer); 6] = [
+        ("acme/closed", |_| Value::map([("ok", Value::Bool(true))])),
         ("acme/get-report", report),
         ("acme/create-report", report),
         ("acme/list-reports", |_| {
@@ -514,4 +519,59 @@ fn middleware_passes_non_rest_requests_on() {
         .create_server_request(Method::Get, "http://x.test/wp-json/acme/v1/reports", vec![])
         .unwrap();
     assert_eq!(m.process(rest, &Next).status().as_u16(), 200);
+}
+
+#[test]
+fn reserved_params_do_not_reach_closed_inputs() {
+    let w = world(None);
+    let r = get(
+        &w,
+        Method::Get,
+        "/wp-json/acme/v1/closed?_fields=ok&_locale=user&_wpnonce=abc&_embed=1&x=a",
+    );
+    assert_eq!((status(&r), json_of(&r)), (200, json!({"ok": true})));
+    let bad = get(&w, Method::Get, "/wp-json/acme/v1/closed?y=1");
+    assert_eq!(
+        status(&bad),
+        400,
+        "undeclared, non-reserved params are still refused by a closed schema"
+    );
+}
+
+#[test]
+fn post_dispatch_runs_on_authentication_errors() {
+    let w = world(Some(7));
+    w.hooks.script(
+        "authentication_errors",
+        Script::Fail(Category::Unauthenticated),
+    );
+    let r = get(&w, Method::Get, "/wp-json/acme/v1/reports/3");
+    assert_eq!(status(&r), 401);
+    assert!(
+        w.log.borrow().contains(&"post_dispatch".to_owned()),
+        "{:?}",
+        w.log.borrow()
+    );
+}
+
+#[test]
+fn embeds_are_cached_per_request_and_follow_the_relation_list() {
+    let w = world(None);
+    let all = json_of(&get(&w, Method::Get, "/wp-json/acme/v1/reports?_embed"));
+    assert_eq!(all[0]["_embedded"]["author"][0]["id"], 9, "{all}");
+    assert_eq!(all[1]["_embedded"]["author"][0]["id"], 9);
+    // One list handler, one author (shared, cached); the secrets are refused before their handler.
+    assert_eq!(
+        w.log.borrow().iter().filter(|l| *l == "handler").count(),
+        2,
+        "{:?}",
+        w.log.borrow()
+    );
+    let only = json_of(&get(
+        &w,
+        Method::Get,
+        "/wp-json/acme/v1/reports?_embed=author",
+    ));
+    assert!(only[0]["_embedded"].get("secret").is_none(), "{only}");
+    assert_eq!(only[0]["_embedded"]["author"][0]["id"], 9, "{only}");
 }

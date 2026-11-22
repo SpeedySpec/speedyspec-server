@@ -28,7 +28,7 @@ mod server;
 mod transport;
 
 pub use hooks::NoRestHooks;
-pub use mapping::{DefaultRestMapping, plural};
+pub use mapping::{DefaultRestMapping, RestMapping, plural};
 pub use middleware::RestMiddleware;
 pub use routes::{RouteEntry, RouteMatch, RouteTable};
 pub use server::RestServer;

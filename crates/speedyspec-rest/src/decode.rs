@@ -34,7 +34,8 @@ pub fn rest_request(request: &HttpServerRequest) -> Option<RestRequest> {
     let uri = request.uri();
     let raw_query = uri.query().to_owned();
     let mut query_params = query::parse(&raw_query);
-    let path = match uri.path() {
+    let decoded = query::decode_path(uri.path());
+    let path = match decoded.as_str() {
         p if p == PREFIX => "/".to_owned(),
         p if p.starts_with("/wp-json/") => {
             let rest = &p[PREFIX.len()..];

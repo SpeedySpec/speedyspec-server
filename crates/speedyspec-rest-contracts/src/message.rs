@@ -53,15 +53,31 @@ impl RestRequest {
         }
     }
 
-    /// Every parameter, later sources winning: query, body, JSON, URL (`WP_REST_Request::get_parameter_order`).
+    /// Whether the request carries body parameters WordPress reads (`POST`, `PUT`, `PATCH`, `DELETE`).
+    fn reads_body(&self) -> bool {
+        self.method != RestMethod::Get
+    }
+
+    /// The parameter sources in priority order (`WP_REST_Request::get_parameter_order`): the JSON body when the body is
+    /// JSON, the form body for methods with a body, then the query, then URL parameters. The first source holding a
+    /// key wins, so the query beats URL parameters, as in WordPress.
+    fn order(&self) -> Vec<&IndexMap<String, Value>> {
+        let mut order = Vec::new();
+        if self.json_body || !self.json_params.is_empty() {
+            order.push(&self.json_params);
+        }
+        if self.reads_body() {
+            order.push(&self.body_params);
+        }
+        order.push(&self.query_params);
+        order.push(&self.url_params);
+        order
+    }
+
+    /// Every parameter, each from the first source holding it (`WP_REST_Request::get_params`).
     pub fn params(&self) -> IndexMap<String, Value> {
         let mut merged = IndexMap::new();
-        for source in [
-            &self.query_params,
-            &self.body_params,
-            &self.json_params,
-            &self.url_params,
-        ] {
+        for source in self.order().into_iter().rev() {
             for (k, v) in source {
                 merged.insert(k.clone(), v.clone());
             }
@@ -69,19 +85,33 @@ impl RestRequest {
         merged
     }
 
-    /// Writes `key` where it wins (`WP_REST_Request::set_param`): URL parameters when it is one; otherwise the JSON
-    /// body when the request has one; otherwise the form body for methods with a body; otherwise the query.
+    /// Writes `key` as `WP_REST_Request::set_param` does: every source that holds it is updated; when none does, the
+    /// first source in priority order gets it (the JSON body, the form body for methods with a body, else the query).
     pub fn set_param(&mut self, key: &str, value: Value) {
-        let target = if self.url_params.contains_key(key) {
-            &mut self.url_params
-        } else if self.json_body || !self.json_params.is_empty() {
-            &mut self.json_params
-        } else if self.method != RestMethod::Get {
-            &mut self.body_params
-        } else {
-            &mut self.query_params
-        };
-        target.insert(key.to_owned(), value);
+        let json = self.json_body || !self.json_params.is_empty();
+        let reads_body = self.reads_body();
+        let mut found = false;
+        let sources: [(&mut IndexMap<String, Value>, bool); 4] = [
+            (&mut self.json_params, json),
+            (&mut self.body_params, reads_body),
+            (&mut self.query_params, true),
+            (&mut self.url_params, true),
+        ];
+        let mut first: Option<&mut IndexMap<String, Value>> = None;
+        for (source, used) in sources {
+            if !used {
+                continue;
+            }
+            if let Some(slot) = source.get_mut(key) {
+                *slot = value.clone();
+                found = true;
+            } else if first.is_none() {
+                first = Some(source);
+            }
+        }
+        if !found && let Some(source) = first {
+            source.insert(key.to_owned(), value);
+        }
     }
 
     /// The first value of header `name` (any case, `-` or `_`).

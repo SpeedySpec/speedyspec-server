@@ -1,6 +1,7 @@
 //! The REST server: WordPress's serve order (Template Method) over the operation dispatcher.
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use speedyspec_container::Container;
@@ -50,6 +51,74 @@ fn item_type(kind: &SchemaKind) -> Option<(String, bool)> {
         },
         _ => None,
     }
+}
+
+/// Embedded responses by href, for one top-level request.
+type EmbedCache = RefCell<HashMap<String, RestResponse>>;
+
+/// What `?_embed` asks for (`rest_parse_embed_param`): nothing, every relation, or the named ones.
+enum Embed {
+    No,
+    All,
+    Only(Vec<String>),
+}
+
+impl Embed {
+    fn of(request: &RestRequest) -> Embed {
+        match request.query_params.get("_embed") {
+            None => Embed::No,
+            Some(Value::String(s))
+                if s.is_empty() || s == "1" || s.eq_ignore_ascii_case("true") =>
+            {
+                Embed::All
+            }
+            Some(Value::String(s)) => Embed::Only(
+                s.split(',')
+                    .map(|r| r.trim().to_owned())
+                    .filter(|r| !r.is_empty())
+                    .collect(),
+            ),
+            Some(Value::List(items)) => Embed::Only(
+                items
+                    .iter()
+                    .filter_map(|v| match v {
+                        Value::String(s) => Some(s.clone()),
+                        _ => None,
+                    })
+                    .collect(),
+            ),
+            Some(_) => Embed::All,
+        }
+    }
+}
+
+/// WordPress's own request parameters, which are never an operation's input unless it declares them.
+const RESERVED: &[&str] = &[
+    "_embed",
+    "_fields",
+    "_locale",
+    "_wpnonce",
+    "_method",
+    "_envelope",
+    "_jsonp",
+    "_pretty",
+];
+
+fn without_reserved(
+    mut params: indexmap::IndexMap<String, Value>,
+    schema: &speedyspec_operation_contracts::Schema,
+    types: &dyn speedyspec_operation_contracts::TypeCatalog,
+) -> indexmap::IndexMap<String, Value> {
+    let declared: Vec<String> = match &schema.kind {
+        SchemaKind::Object { properties, .. } => properties.keys().cloned().collect(),
+        SchemaKind::Ref { type_name } => types
+            .get_type(type_name)
+            .map(|t| t.fields.keys().cloned().collect())
+            .unwrap_or_default(),
+        _ => Vec::new(),
+    };
+    params.retain(|k, _| !RESERVED.contains(&k.as_str()) || declared.contains(k));
+    params
 }
 
 fn not_found() -> OperationError {
@@ -103,7 +172,10 @@ impl RestServer {
             .authentication_errors()
             .and_then(|()| self.authenticator.authenticate(request))
         {
-            Err(error) => errors::error_response(&error),
+            // As trunk's serve_request: the error becomes a response and still passes rest_post_dispatch.
+            Err(error) => self
+                .hooks
+                .post_dispatch(errors::error_response(&error), &shared),
             Ok(mut caller) => {
                 caller.transport = REST.to_owned();
                 let response = self.dispatch(shared.clone(), &caller);
@@ -125,8 +197,18 @@ impl RestServer {
         Some(encode::http_response(&response, head || served))
     }
 
-    /// Steps 2–11 for one request: what `rest_do_request` answers. `_embed` is read from the request's query.
+    /// Steps 2–11 for one request: what `rest_do_request` answers. `_embed` is read from the request's query; embedded
+    /// links are fetched once per href for the whole request, as WordPress's embed cache does.
     pub fn dispatch(&self, request: SharedRequest, caller: &Caller) -> RestResponse {
+        self.dispatch_in(request, caller, &RefCell::new(HashMap::new()))
+    }
+
+    fn dispatch_in(
+        &self,
+        request: SharedRequest,
+        caller: &Caller,
+        cache: &EmbedCache,
+    ) -> RestResponse {
         if let Some(outcome) = self.hooks.pre_dispatch(&request) {
             return outcome.unwrap_or_else(|e| errors::error_response(&e));
         }
@@ -148,21 +230,33 @@ impl RestServer {
             r.operation = Some(operation.clone());
             r.url_params = url_params;
         }
-        let embed = request.borrow().query_params.contains_key("_embed");
+        let embed = Embed::of(&request.borrow());
         let outcome = match self.hooks.before_callbacks(&request) {
             Err(error) => Err(error),
-            Ok(()) => self.call(&operation, &request, caller, embed),
+            Ok(()) => self.call(&operation, &request, caller, &embed, cache),
         };
         let mut response = self
             .hooks
             .after_callbacks(outcome, &request)
             .unwrap_or_else(|e| errors::error_response(&e));
-        if embed {
-            links::embed(&mut response, &|href| self.embedded(href, caller));
-        } else {
-            links::render(&mut response);
-        }
+        self.link(&mut response, &embed, caller, cache);
         response
+    }
+
+    /// Renders the links, embedding what `embed` asks for.
+    fn link(
+        &self,
+        response: &mut RestResponse,
+        embed: &Embed,
+        caller: &Caller,
+        cache: &EmbedCache,
+    ) {
+        let fetch = |href: &str| self.embedded(href, caller, cache);
+        match embed {
+            Embed::No => links::render(response),
+            Embed::All => links::embed_only(response, &fetch, None),
+            Embed::Only(rels) => links::embed_only(response, &fetch, Some(rels)),
+        }
     }
 
     fn index_or_no_route(&self, method: RestMethod, path: &str) -> RestResponse {
@@ -196,13 +290,18 @@ impl RestServer {
         operation: &str,
         request: &SharedRequest,
         caller: &Caller,
-        embed: bool,
+        embed: &Embed,
+        cache: &EmbedCache,
     ) -> RestOutcome {
         let spec = self
             .registries
             .get_operation(operation)
             .ok_or_else(not_found)?;
-        let params = Value::Map(request.borrow().params());
+        let params = Value::Map(without_reserved(
+            request.borrow().params(),
+            &spec.input.schema,
+            self.registries.as_ref(),
+        ));
         let input = coerce::coerce(&spec.input.schema, &params, self.registries.as_ref());
         let guard = Dispatching::enter(request.clone());
         let result = self.dispatcher.call(operation, input, caller);
@@ -247,11 +346,7 @@ impl RestServer {
                     .hooks
                     .prepare_item(&type_name, RestResponse::ok(item), request);
                 one.links = self.links(&type_name, &one.data);
-                if embed {
-                    links::embed(&mut one, &|href| self.embedded(href, caller));
-                } else {
-                    links::render(&mut one);
-                }
+                self.link(&mut one, embed, caller, cache);
                 one.data
             })
             .collect();
@@ -274,14 +369,19 @@ impl RestServer {
 
     /// An embedded link's response: a GET of its path through [`RestServer::dispatch`], then `rest_post_dispatch`, as
     /// WordPress embeds. Embedded responses are not embedded again.
-    fn embedded(&self, href: &str, caller: &Caller) -> RestResponse {
+    fn embedded(&self, href: &str, caller: &Caller, cache: &EmbedCache) -> RestResponse {
+        if let Some(hit) = cache.borrow().get(href) {
+            return hit.clone();
+        }
         let local = href.strip_prefix(&self.base_url).unwrap_or(href);
         let (path, raw_query) = local.split_once('?').unwrap_or((local, ""));
-        let mut sub = RestRequest::new(RestMethod::Get, path);
+        let mut sub = RestRequest::new(RestMethod::Get, &query::decode_path(path));
         sub.query_params = query::parse(raw_query);
         sub.query_params.shift_remove("_embed");
         let sub: SharedRequest = Rc::new(RefCell::new(sub));
-        let response = self.dispatch(sub.clone(), caller);
-        self.hooks.post_dispatch(response, &sub)
+        let response = self.dispatch_in(sub.clone(), caller, cache);
+        let response = self.hooks.post_dispatch(response, &sub);
+        cache.borrow_mut().insert(href.to_owned(), response.clone());
+        response
     }
 }

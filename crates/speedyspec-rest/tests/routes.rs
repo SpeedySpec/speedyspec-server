@@ -259,3 +259,38 @@ fn endpoints_hook_can_remove_a_route() {
     assert!(!ops.contains("acme/ping"));
     assert!(ops.contains("acme/list-reports"));
 }
+
+struct UnderApi;
+
+impl speedyspec_rest::RestMapping for UnderApi {
+    fn binding(
+        &self,
+        spec: &speedyspec_operation_contracts::OperationSpec,
+        _: &dyn speedyspec_operation_contracts::TypeCatalog,
+    ) -> Option<speedyspec_rest_contracts::RestBinding> {
+        Some(speedyspec_rest_contracts::RestBinding {
+            namespace: "api/v9".into(),
+            route: format!("/{}", spec.name.as_str().replace('/', "-")),
+            methods: vec![RestMethod::Get],
+        })
+    }
+}
+
+#[test]
+fn the_default_mapping_is_replaceable() {
+    let r = registries();
+    let transports =
+        speedyspec_transport::TransportRegistry::new(Rc::new(MemoryBindingStore::new()));
+    transports
+        .install(Rc::new(speedyspec_rest::RestTransport::with_mapping(
+            r.clone(),
+            Rc::new(UnderApi),
+        )))
+        .unwrap();
+    let exposure = transports.expose(&r).unwrap();
+    let (table, _) = RouteTable::build(&exposure, &speedyspec_rest::NoRestHooks);
+    assert_eq!(
+        route_of(&table, "acme/ping"),
+        ("/api/v9/acme-ping".into(), vec!["GET"])
+    );
+}

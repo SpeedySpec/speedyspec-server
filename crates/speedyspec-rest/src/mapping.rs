@@ -5,6 +5,13 @@ use speedyspec_operation_contracts::{
 };
 use speedyspec_rest_contracts::{RestBinding, RestMethod};
 
+/// How an operation is routed when it has no explicit binding (Strategy). [`DefaultRestMapping`] is the default;
+/// `RestTransport::with_mapping` takes any other.
+pub trait RestMapping {
+    /// The operation's route, or `None` when it has no default route.
+    fn binding(&self, spec: &OperationSpec, types: &dyn TypeCatalog) -> Option<RestBinding>;
+}
+
 /// Routes operations by their resource and action, under `{vendor}/v1`.
 ///
 /// | Operation | Route | Methods |
@@ -48,8 +55,8 @@ fn input_properties<'a>(
     }
 }
 
-impl DefaultRestMapping {
-    pub fn binding(&self, spec: &OperationSpec, types: &dyn TypeCatalog) -> Option<RestBinding> {
+impl RestMapping for DefaultRestMapping {
+    fn binding(&self, spec: &OperationSpec, types: &dyn TypeCatalog) -> Option<RestBinding> {
         if spec.kind == Kind::Subscription {
             return None;
         }

@@ -8,7 +8,7 @@ use speedyspec_operation_contracts::{OperationSpec, SchemaKind, TypeCatalog, Val
 use speedyspec_rest_contracts::RestBinding;
 use speedyspec_transport_contracts::{Transport, TransportName};
 
-use crate::mapping::DefaultRestMapping;
+use crate::mapping::{DefaultRestMapping, RestMapping};
 
 /// The transport's name.
 pub const REST: &str = "rest";
@@ -28,13 +28,21 @@ pub fn route_parameters(route: &str) -> Vec<String> {
 pub struct RestTransport {
     name: TransportName,
     types: Rc<dyn TypeCatalog>,
+    mapping: Rc<dyn RestMapping>,
 }
 
 impl RestTransport {
+    /// The transport with [`DefaultRestMapping`].
     pub fn new(types: Rc<dyn TypeCatalog>) -> RestTransport {
+        RestTransport::with_mapping(types, Rc::new(DefaultRestMapping))
+    }
+
+    /// The transport with another default mapping.
+    pub fn with_mapping(types: Rc<dyn TypeCatalog>, mapping: Rc<dyn RestMapping>) -> RestTransport {
         RestTransport {
             name: TransportName::parse(REST).expect("rest is a transport name"),
             types,
+            mapping,
         }
     }
 }
@@ -45,7 +53,7 @@ impl Transport for RestTransport {
     }
 
     fn default_binding(&self, spec: &OperationSpec) -> Option<Value> {
-        DefaultRestMapping
+        self.mapping
             .binding(spec, self.types.as_ref())
             .map(|b| b.to_value())
     }

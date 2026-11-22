@@ -60,38 +60,47 @@ fn request(method: RestMethod) -> RestRequest {
 }
 
 #[test]
-fn params_merge_in_wordpress_order() {
+fn params_merge_in_trunk_order() {
+    // WP_REST_Request::get_parameter_order: JSON (JSON bodies), body (POST/PUT/PATCH/DELETE), query, URL; first wins.
     let mut r = request(RestMethod::Post);
+    r.json_body = true;
     r.query_params = map(&[("k", "query"), ("q", "query")]);
     r.body_params = map(&[("k", "body"), ("b", "body")]);
     r.json_params = map(&[("k", "json"), ("j", "json")]);
-    r.url_params = map(&[("k", "url")]);
+    r.url_params = map(&[("k", "url"), ("u", "url")]);
     let p = r.params();
-    assert_eq!(p.get("k"), Some(&Value::from("url")));
+    assert_eq!(p.get("k"), Some(&Value::from("json")));
     assert_eq!(p.get("q"), Some(&Value::from("query")));
     assert_eq!(p.get("b"), Some(&Value::from("body")));
-    assert_eq!(p.get("j"), Some(&Value::from("json")));
-    r.url_params.clear();
-    assert_eq!(r.params().get("k"), Some(&Value::from("json")));
+    assert_eq!(p.get("u"), Some(&Value::from("url")));
     r.json_params.clear();
     assert_eq!(r.params().get("k"), Some(&Value::from("body")));
+    r.body_params.clear();
+    assert_eq!(r.params().get("k"), Some(&Value::from("query")), "the query beats URL parameters, as in trunk");
+    let mut g = request(RestMethod::Get);
+    g.body_params = map(&[("b", "body")]);
+    g.url_params = map(&[("id", "3")]);
+    assert_eq!(g.params().get("b"), None, "body parameters are ignored on GET");
+    assert_eq!(g.params().get("id"), Some(&Value::from("3")));
 }
 
 #[test]
-fn set_param_writes_the_winning_map() {
+fn set_param_updates_every_source_or_the_first_in_order() {
     let mut r = request(RestMethod::Post);
     r.url_params = map(&[("id", "3")]);
+    r.query_params = map(&[("id", "3")]);
     r.set_param("id", Value::from("4"));
     assert_eq!(r.url_params.get("id"), Some(&Value::from("4")));
+    assert_eq!(r.query_params.get("id"), Some(&Value::from("4")));
+    assert_eq!(r.params().get("id"), Some(&Value::from("4")));
     r.set_param("title", Value::from("t"));
     assert_eq!(r.body_params.get("title"), Some(&Value::from("t")));
-    r.json_params = map(&[("x", "1")]);
-    r.set_param("title", Value::from("j"));
-    assert_eq!(r.json_params.get("title"), Some(&Value::from("j")));
+    r.json_body = true;
+    r.set_param("other", Value::from("j"));
+    assert_eq!(r.json_params.get("other"), Some(&Value::from("j")));
     let mut g = request(RestMethod::Get);
     g.set_param("page", Value::Int(2));
     assert_eq!(g.query_params.get("page"), Some(&Value::Int(2)));
-    assert_eq!(g.params().get("page"), Some(&Value::Int(2)));
 }
 
 #[test]

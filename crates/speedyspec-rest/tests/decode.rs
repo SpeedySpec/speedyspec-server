@@ -178,3 +178,20 @@ fn coerce_query_strings() {
         Some(&Value::from("maybe"))
     );
 }
+
+#[test]
+fn paths_are_percent_decoded_but_plus_is_kept() {
+    let path = |uri: &str| decode::rest_request(&request(Method::Get, uri)).map(|r| r.path);
+    assert_eq!(
+        path("http://x.test/wp-json/x/v1/tags/caf%C3%A9").as_deref(),
+        Some("/x/v1/tags/café")
+    );
+    assert_eq!(
+        path("http://x.test/wp-json/x/v1/tags/a+b").as_deref(),
+        Some("/x/v1/tags/a+b")
+    );
+    assert_eq!(
+        path("http://x.test/wp-json/x/v1/tags/a%20b").as_deref(),
+        Some("/x/v1/tags/a b")
+    );
+}

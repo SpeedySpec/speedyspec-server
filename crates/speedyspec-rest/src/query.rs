@@ -5,12 +5,21 @@ use speedyspec_operation_contracts::Value;
 
 /// Percent-decodes `raw`, reading `+` as a space; invalid escapes are kept as they are.
 pub fn decode_component(raw: &str) -> String {
+    decode(raw, true)
+}
+
+/// Percent-decodes a URL path: `+` stays `+`.
+pub fn decode_path(raw: &str) -> String {
+    decode(raw, false)
+}
+
+fn decode(raw: &str, plus_is_space: bool) -> String {
     let bytes = raw.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
     while i < bytes.len() {
         match bytes[i] {
-            b'+' => out.push(b' '),
+            b'+' if plus_is_space => out.push(b' '),
             b'%' if i + 2 < bytes.len() => {
                 let hex = std::str::from_utf8(&bytes[i + 1..i + 3])
                     .ok()
