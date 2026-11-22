@@ -53,11 +53,15 @@ pub struct CronScheduler;
 impl CronScheduler {
     /// Starts `app`'s scheduler on the current tokio runtime. The returned sink takes each `next_cron` the app's
     /// workers report: a time earlier than the planned wake moves it forward, never back.
+    ///
+    /// While `paused` is set (the generation is draining for a server switch) it makes no call, so the old and the new
+    /// generation of one replica never both call.
     pub fn spawn(
         app: AppId,
         target: CronTarget,
         calls: Arc<dyn CronCalls>,
         maintenance: Arc<MaintenanceSet>,
+        paused: Arc<std::sync::atomic::AtomicBool>,
     ) -> (tokio::task::JoinHandle<()>, WakeSink) {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<u64>();
         let sink: WakeSink = Arc::new(move |next| {
@@ -65,14 +69,21 @@ impl CronScheduler {
         });
         let task = tokio::spawn(async move {
             let mut next_wake = Instant::now();
+            // No call before this, whatever is reported: the floor between two calls.
+            let mut not_before = Instant::now();
             let mut backoff: Option<Duration> = None;
             loop {
                 tokio::select! {
-                    _ = tokio::time::sleep_until(next_wake) => {}
+                    _ = tokio::time::sleep_until(next_wake.max(not_before)) => {}
                     Some(reported) = rx.recv() => {
                         next_wake = next_wake.min(instant_for(reported));
                         continue;
                     }
+                }
+                if paused.load(std::sync::atomic::Ordering::SeqCst) {
+                    next_wake =
+                        Instant::now() + IDLE.min(target().map_or(IDLE, |(_, c)| c.max_interval));
+                    continue;
                 }
                 let Some((path, config)) = target() else {
                     next_wake = Instant::now() + IDLE;
@@ -87,12 +98,14 @@ impl CronScheduler {
                 tokio::pin!(call);
                 let mut reported: Option<Instant> = None;
                 let result = loop {
+                    // Reports first: the call's own report is queued before the call ends.
                     tokio::select! {
-                        result = &mut call => break result,
+                        biased;
                         Some(next) = rx.recv() => {
                             let at = instant_for(next);
                             reported = Some(reported.map_or(at, |r| r.min(at)));
                         }
+                        result = &mut call => break result,
                     }
                 };
                 let now = Instant::now();
@@ -110,9 +123,8 @@ impl CronScheduler {
                         now + wait
                     }
                 };
-                next_wake = next_wake
-                    .min(now + config.max_interval)
-                    .max(started + MIN_GAP);
+                next_wake = next_wake.min(now + config.max_interval);
+                not_before = started + MIN_GAP;
             }
         });
         (task, sink)
@@ -125,6 +137,7 @@ pub fn spawn_all(
     config: &crate::config::Config,
     php: Arc<crate::php::PhpRuntime>,
     maintenance: Arc<MaintenanceSet>,
+    draining: Arc<std::sync::atomic::AtomicBool>,
 ) -> Vec<tokio::task::JoinHandle<()>> {
     let calls: Arc<dyn CronCalls> = Arc::new(crate::php::calls::FastCgiGateCalls::new(
         php.clone(),
@@ -144,8 +157,13 @@ pub fn spawn_all(
                 let path = runtime.live_manifest(&id)?.php_section()?.cron?.path;
                 Some((path, cron))
             });
-            let (task, sink) =
-                CronScheduler::spawn(app.clone(), target, calls.clone(), maintenance.clone());
+            let (task, sink) = CronScheduler::spawn(
+                app.clone(),
+                target,
+                calls.clone(),
+                maintenance.clone(),
+                draining.clone(),
+            );
             php.set_wake_sink(&app, sink);
             task
         })
@@ -264,7 +282,9 @@ mod tests {
     fn start(fake: std::sync::Arc<Fake>, target: CronTarget) -> Running {
         let maintenance = std::sync::Arc::new(MaintenanceSet::default());
         let started = Instant::now();
-        let (task, sink) = CronScheduler::spawn(app(), target, fake.clone(), maintenance.clone());
+        let paused = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let (task, sink) =
+            CronScheduler::spawn(app(), target, fake.clone(), maintenance.clone(), paused);
         Running {
             fake,
             sink,
@@ -349,8 +369,13 @@ mod tests {
         let fake = fake();
         let maintenance = std::sync::Arc::new(MaintenanceSet::default());
         maintenance.set(&app(), MaintenanceSource::Operator, true);
-        let (task, _sink) =
-            CronScheduler::spawn(app(), fixed(60), fake.clone(), maintenance.clone());
+        let (task, _sink) = CronScheduler::spawn(
+            app(),
+            fixed(60),
+            fake.clone(),
+            maintenance.clone(),
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        );
         tokio::time::sleep(Duration::from_secs(130)).await;
         assert!(fake.calls.lock().unwrap().is_empty());
         maintenance.set(&app(), MaintenanceSource::Operator, false);
@@ -389,5 +414,56 @@ mod tests {
             paths,
             vec!["/cron.php".to_string(), "/new-cron.php".to_string()]
         );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn fast_calls_reporting_now_stay_a_second_apart() {
+        let quick = fake();
+        let slot: WakeSinkSlot = std::sync::Arc::new(std::sync::OnceLock::new());
+        // Each 10 ms call reports "due now", as an app with events it cannot claim would.
+        *quick.report.lock().unwrap() = Some((slot.clone(), -100));
+        let r = start(quick, fixed(60));
+        let _ = slot.set(r.sink.clone());
+        tokio::time::sleep(Duration::from_millis(5500)).await;
+        let calls: Vec<Instant> = r
+            .fake
+            .calls
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(at, _)| *at)
+            .collect();
+        for pair in calls.windows(2) {
+            assert!(
+                pair[1] - pair[0] >= Duration::from_secs(1),
+                "{:?}",
+                r.call_seconds()
+            );
+        }
+        // A visitor's "now" does not skip the floor either.
+        let before = calls.len();
+        (r.sink)(0);
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert!(r.fake.calls.lock().unwrap().len() <= before + 1);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_draining_generation_makes_no_calls() {
+        let fake = fake();
+        let maintenance = std::sync::Arc::new(MaintenanceSet::default());
+        let paused = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+        let (task, sink) =
+            CronScheduler::spawn(app(), fixed(10), fake.clone(), maintenance, paused.clone());
+        sink(0);
+        tokio::time::sleep(Duration::from_secs(35)).await;
+        assert!(
+            fake.calls.lock().unwrap().is_empty(),
+            "the old generation stays quiet while it drains"
+        );
+        // Resumed (the switch was abandoned): calls start again within max_interval.
+        paused.store(false, std::sync::atomic::Ordering::SeqCst);
+        tokio::time::sleep(Duration::from_secs(11)).await;
+        assert_eq!(fake.calls.lock().unwrap().len(), 1);
+        task.abort();
     }
 }

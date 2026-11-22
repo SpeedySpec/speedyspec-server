@@ -88,7 +88,11 @@ fn site(files: &[(&str, &str)]) -> Site {
     std::fs::write(&config, toml).unwrap();
     let mut server = start(&config);
     let addr = server.address();
-    Site { dir, _server: server, addr }
+    Site {
+        dir,
+        _server: server,
+        addr,
+    }
 }
 
 fn get(addr: std::net::SocketAddr, path: &str) -> reqwest::blocking::Response {
@@ -115,13 +119,20 @@ fn cron_is_called_at_the_reported_time() {
 fn cron_and_internal_paths_404_for_visitors() {
     let site = site(&[]);
     site.wait_calls(1, Duration::from_secs(5));
-    for path in ["/api/cron.php", "/api/wp-cron.php", "/api/cron.php?budget=1"] {
+    for path in [
+        "/api/cron.php",
+        "/api/wp-cron.php",
+        "/api/cron.php?budget=1",
+    ] {
         assert_eq!(get(site.addr, path).status(), 404, "{path}");
     }
     assert_eq!(get(site.addr, "/api/").status(), 200);
     let calls = site.calls();
     assert!(!calls.is_empty());
-    assert!(calls.iter().all(|(_, who)| who.is_empty()), "only the server's own calls: {calls:?}");
+    assert!(
+        calls.iter().all(|(_, who)| who.is_empty()),
+        "only the server's own calls: {calls:?}"
+    );
 }
 
 #[test]
@@ -142,9 +153,15 @@ fn visitor_report_pulls_cron_forward() {
     let first = site.wait_calls(1, Duration::from_secs(5));
     assert_eq!(first.len(), 1, "{first:?}");
     std::fs::write(site.content().join("wake"), "").unwrap();
-    let asked = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
+    let asked = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs_f64();
     assert_eq!(get(site.addr, "/api/").status(), 200);
     let calls = site.wait_calls(2, Duration::from_secs(4));
     assert!(calls.len() >= 2, "{calls:?}");
-    assert!(calls[1].0 - asked < 3.0, "the visitor's report pulled the call forward: {calls:?}");
+    assert!(
+        calls[1].0 - asked < 3.0,
+        "the visitor's report pulled the call forward: {calls:?}"
+    );
 }
