@@ -149,6 +149,20 @@ pub fn presets_metadata() -> Rc<Vec<PresetMetadata>> {
     PRESETS.with(Rc::clone)
 }
 
+/// The keys of `ELEMENTS`, in order.
+pub fn element_names() -> Vec<String> {
+    match constant("ELEMENTS") {
+        Some(Value::Array(entries)) => entries
+            .iter()
+            .filter_map(|(k, _)| match k {
+                Key::Str(s) => Some(s.clone()),
+                Key::Int(_) => None,
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

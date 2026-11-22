@@ -81,3 +81,24 @@ pub fn unset(target: &mut Value, path: &[&str]) {
         entries.retain(|(k, _)| *k != key);
     }
 }
+
+/// `array_replace_recursive( $base, $replacements )`: keys of `replacements` replace those of `base` (recursing
+/// where both are arrays); new keys are appended; `base`'s order is kept.
+pub fn replace_recursive(base: Value, replacements: Value) -> Value {
+    let (Value::Array(mut base), Value::Array(replacements)) = (base, replacements) else {
+        return Value::Null;
+    };
+    for (key, value) in replacements {
+        match base.iter_mut().find(|(k, _)| *k == key) {
+            Some(slot) => {
+                let old = std::mem::replace(&mut slot.1, Value::Null);
+                slot.1 = match (old, value) {
+                    (old @ Value::Array(_), value @ Value::Array(_)) => replace_recursive(old, value),
+                    (_, value) => value,
+                };
+            }
+            None => base.push((key, value)),
+        }
+    }
+    Value::Array(base)
+}
