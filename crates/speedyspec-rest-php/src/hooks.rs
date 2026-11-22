@@ -12,7 +12,7 @@ use crate::errors::{Described, adapter, describe, to_wp_error};
 use crate::{area, handles};
 
 /// PHP's emptiness (`empty()`).
-fn empty(value: &PhpValue) -> bool {
+pub(crate) fn empty(value: &PhpValue) -> bool {
     match value.read().as_ref() {
         PhpValue::Null => true,
         PhpValue::Bool(b) => !*b,
@@ -67,7 +67,7 @@ fn apply(hook: &str, mut args: Vec<PhpValue>) -> Applied {
         })
 }
 
-fn request_proxy(request: &SharedRequest) -> PhpValue {
+pub(crate) fn request_proxy(request: &SharedRequest) -> PhpValue {
     area::ensure_proxies();
     let handle = handles::add_request(request.clone());
     adapter("request", &[PhpValue::Int(handle as i64)]).unwrap_or(PhpValue::Null)

@@ -23,10 +23,14 @@ fn binding_round_trips_and_validates() {
     assert_eq!(b.full_route(), "/acme/v2/r/(?P<id>\\d+)");
     assert_eq!(RestBinding::from_value(&b.to_value()).unwrap(), b);
     let err = |v: Value| RestBinding::from_value(&v).unwrap_err();
-    assert_eq!(
-        err(binding("acme", "/x", &["GET"])),
-        "namespace must be vendor/version"
-    );
+    let namespace = "namespace must not be empty, end in a slash or hold spaces";
+    assert_eq!(err(binding("", "/x", &["GET"])), namespace);
+    assert_eq!(err(binding("/acme/v1", "/x", &["GET"])), namespace);
+    assert_eq!(err(binding("acme v1", "/x", &["GET"])), namespace);
+    let legacy = RestBinding::from_value(&binding("oembed/1.0", "", &["GET"])).unwrap();
+    assert_eq!(legacy.full_route(), "/oembed/1.0");
+    assert!(!legacy.is_versioned());
+    assert!(b.is_versioned());
     assert_eq!(
         err(binding("acme/v1", "x", &["GET"])),
         "route must start with /"

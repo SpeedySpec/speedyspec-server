@@ -51,6 +51,16 @@ impl RestService {
         }
     }
 
+    /// The container legacy handlers are bound in.
+    pub fn container(&self) -> &Rc<Container> {
+        &self.container
+    }
+
+    /// The operation area legacy routes register into.
+    pub fn operations(&self) -> &Rc<OperationArea> {
+        &self.operations
+    }
+
     /// Where `Rest::bind` and legacy registrations write their bindings.
     pub fn bindings(&self) -> &Rc<dyn BindingStore> {
         &self.bindings
@@ -64,6 +74,7 @@ impl RestService {
 
     /// The current site's REST server, built on first use and whenever the site or the bindings changed.
     pub fn server(&self) -> Result<Rc<RestServer>, OperationError> {
+        crate::area::ensure_legacy_hook();
         let site = self.operations.site()?;
         let digest = self.digest();
         if let Some(built) = self.built.borrow().as_ref()

@@ -17,6 +17,7 @@ mod auth;
 pub mod errors;
 mod handles;
 mod hooks;
+pub mod legacy;
 mod service;
 
 pub use area::RestArea;

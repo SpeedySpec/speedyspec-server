@@ -45,17 +45,13 @@ pub struct RestBinding {
     pub methods: Vec<RestMethod>,
 }
 
+/// A namespace as WordPress accepts one: not empty, no slash at either end, no whitespace (`wp/v2`, `oembed/1.0`).
+/// `Rest::bind` asks more of new-style bindings (`vendor/vN`); see [`RestBinding::is_versioned`].
 fn valid_namespace(namespace: &str) -> bool {
-    let Some((vendor, version)) = namespace.split_once('/') else {
-        return false;
-    };
-    !vendor.is_empty()
-        && vendor
-            .bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
-        && version.len() > 1
-        && version.starts_with('v')
-        && version[1..].bytes().all(|b| b.is_ascii_digit())
+    !namespace.is_empty()
+        && !namespace.starts_with('/')
+        && !namespace.ends_with('/')
+        && !namespace.chars().any(char::is_whitespace)
 }
 
 impl RestBinding {
@@ -67,10 +63,11 @@ impl RestBinding {
         };
         let namespace = text("namespace")?;
         if !valid_namespace(&namespace) {
-            return Err("namespace must be vendor/version".into());
+            return Err("namespace must not be empty, end in a slash or hold spaces".into());
         }
         let route = text("route")?;
-        if !route.starts_with('/') {
+        // An empty route is the namespace's own root, as WordPress registers its namespace index.
+        if !route.is_empty() && !route.starts_with('/') {
             return Err("route must start with /".into());
         }
         let Some(Value::List(names)) = value.get("methods") else {
@@ -109,6 +106,20 @@ impl RestBinding {
                 ),
             ),
         ])
+    }
+
+    /// Whether the namespace is `vendor/vN`, as new-style bindings (`Rest::bind`) must be.
+    pub fn is_versioned(&self) -> bool {
+        let Some((vendor, version)) = self.namespace.split_once('/') else {
+            return false;
+        };
+        !vendor.is_empty()
+            && vendor
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+            && version.len() > 1
+            && version.starts_with('v')
+            && version[1..].bytes().all(|b| b.is_ascii_digit())
     }
 
     /// `/{namespace}{route}`, as the route table matches it.

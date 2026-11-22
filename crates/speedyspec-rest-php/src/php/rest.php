@@ -91,6 +91,14 @@ final class Adapter
         return [ 'kind' => 'value', 'data' => $extract( $value ) ];
     }
 
+    /** On wp_operations_init: builds WordPress's REST server, which fires rest_api_init, so legacy routes register. */
+    public static function rest_init(): void
+    {
+        if ( function_exists( 'rest_get_server' ) ) {
+            rest_get_server();
+        }
+    }
+
     public static function error( string $code, string $message, array $data ): mixed
     {
         return class_exists( 'WP_Error', false )

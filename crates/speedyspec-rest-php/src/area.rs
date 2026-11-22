@@ -15,13 +15,61 @@ use speedyspec_transport_contracts::BindingStore;
 use crate::handles;
 
 const FACADE: &str = include_str!("php/rest.php");
+const TRUNK_SERVER: &str = include_str!("php/trunk-rest-server.php");
+const SHIM_SERVER: &str = include_str!("php/wp-rest-server.php");
 const PROXIES: &str = include_str!("php/proxies.php");
 const NATIVE: &str = "SpeedySpec\\Rest\\Native\\";
 const REGISTRATION_EXCEPTION: &str = "SpeedySpec\\Operation\\RegistrationException";
 
 thread_local! {
+    static LEGACY_HOOKED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static SERVICE: std::cell::RefCell<Option<Rc<crate::RestService>>> = const { std::cell::RefCell::new(None) };
     static BINDINGS: std::cell::RefCell<Option<Rc<dyn BindingStore>>> = const { std::cell::RefCell::new(None) };
+}
+
+fn service() -> Result<Rc<crate::RestService>, NativeError> {
+    SERVICE.with(|s| s.borrow().clone()).ok_or_else(|| {
+        NativeError::throw(REGISTRATION_EXCEPTION, "the REST service is not available")
+    })
+}
+
+/// Hooks `rest_api_init` into `wp_operations_init` (through WordPress's `rest_get_server()`), once per request, so
+/// legacy routes register while the operation registries are open.
+pub(crate) fn ensure_legacy_hook() {
+    if LEGACY_HOOKED.with(std::cell::Cell::get) {
+        return;
+    }
+    let exists = speedyspec_php::call(
+        &PhpValue::Str("function_exists".into()),
+        &[PhpValue::Str("add_action".into())],
+    );
+    if !matches!(exists, Ok(PhpValue::Bool(true))) {
+        return;
+    }
+    let hooked = speedyspec_php::call(
+        &PhpValue::Str("add_action".into()),
+        &[
+            PhpValue::Str("wp_operations_init".into()),
+            PhpValue::Str("SpeedySpec\\Rest\\Internal\\Adapter::rest_init".into()),
+        ],
+    );
+    if hooked.is_ok() {
+        LEGACY_HOOKED.with(|h| h.set(true));
+    }
+}
+
+fn native_legacy_register(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    let service = service()?;
+    let site = service.operations().registering();
+    let namespace = arg_text(args, 0);
+    let route = arg_text(args, 1);
+    let handlers = args.get(2).cloned().unwrap_or(PhpValue::Null);
+    let replace = matches!(args.get(3), Some(PhpValue::Bool(true)));
+    for problem in crate::legacy::register(&service, &site, &namespace, &route, &handlers, replace)
+    {
+        eprintln!("speedyspec_wordpress: a legacy REST route was not registered: {problem}");
+    }
+    Ok(PhpValue::Null)
 }
 
 /// Declares the proxy classes in this request, once WordPress's `WP_REST_Request` exists to extend.
@@ -296,12 +344,21 @@ fn native_bind(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
         ("route", Value::from(arg_text(args, 2).as_str())),
         ("methods", Value::List(methods)),
     ]);
-    let binding = RestBinding::from_value(&value).map_err(|why| {
-        NativeError::throw(
-            REGISTRATION_EXCEPTION,
-            format!("{operation} cannot be bound on REST: {why}"),
-        )
-    })?;
+    // New-style bindings name a versioned namespace; WordPress's looser rule is for legacy routes only.
+    let binding = RestBinding::from_value(&value)
+        .and_then(|b| {
+            if b.is_versioned() {
+                Ok(b)
+            } else {
+                Err("namespace must be vendor/version (such as acme/v1)".to_owned())
+            }
+        })
+        .map_err(|why| {
+            NativeError::throw(
+                REGISTRATION_EXCEPTION,
+                format!("{operation} cannot be bound on REST: {why}"),
+            )
+        })?;
     store.bind(&operation, REST, binding.to_value());
     Ok(PhpValue::Null)
 }
@@ -327,7 +384,8 @@ type NativeFn = fn(&[PhpValue]) -> Result<PhpValue, NativeError>;
 
 impl NativeArea for RestArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
-        let entries: [(&str, NativeFn); 4] = [
+        let entries: [(&str, NativeFn); 5] = [
+            ("legacy_register", native_legacy_register),
             ("request_get", native_request_get),
             ("request_set", native_request_set),
             ("response_get", native_response_get),
@@ -343,9 +401,28 @@ impl NativeArea for RestArea {
         if let Err(err) = speedyspec_php::eval("speedyspec://rest", FACADE) {
             eprintln!("speedyspec_wordpress: declaring SpeedySpec\\Rest failed: {err}");
         }
+        let declared = speedyspec_php::call(
+            &PhpValue::Str("class_exists".into()),
+            &[
+                PhpValue::Str("WP_REST_Server".into()),
+                PhpValue::Bool(false),
+            ],
+        );
+        if !matches!(declared, Ok(PhpValue::Bool(true))) {
+            for (label, source) in [
+                ("speedyspec://rest/trunk-server", TRUNK_SERVER),
+                ("speedyspec://rest/server", SHIM_SERVER),
+            ] {
+                if let Err(err) = speedyspec_php::eval(label, source) {
+                    eprintln!("speedyspec_wordpress: declaring {label} failed: {err}");
+                }
+            }
+        }
     }
 
     fn request_end(&self) {
         handles::clear();
+        crate::legacy::clear();
+        LEGACY_HOOKED.with(|h| h.set(false));
     }
 }

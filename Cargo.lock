@@ -5462,6 +5462,7 @@ version = "0.1.1"
 dependencies = [
  "indexmap",
  "serde_json",
+ "speedyspec-compat",
  "speedyspec-container",
  "speedyspec-container-php",
  "speedyspec-hooks-memory",

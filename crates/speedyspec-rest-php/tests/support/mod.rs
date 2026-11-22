@@ -131,3 +131,57 @@ pub fn load(php: &Php, code: &str) {
 pub fn eval(php: &Php, code: &str) -> Result<PhpValue, PhpError> {
     php.eval("t", code)
 }
+
+/// WordPress functions the release's REST files call that need no database, as minimal stand-ins. `_doing_it_wrong`
+/// records its messages in `$GLOBALS['__doing_it_wrong']`.
+pub const RELEASE_STUBS: &str = r#"
+function __( $text, $domain = 'default' ) { return $text; }
+function _doing_it_wrong( $function_name, $message, $version ) { $GLOBALS['__doing_it_wrong'][] = $function_name . ': ' . $message; }
+function trailingslashit( $value ) { return rtrim( $value, '/\\' ) . '/'; }
+function untrailingslashit( $value ) { return rtrim( $value, '/\\' ); }
+function is_user_logged_in() { return ( $GLOBALS['uid'] ?? 0 ) > 0; }
+function get_current_user_id() { return $GLOBALS['uid'] ?? 0; }
+function __return_true() { return true; }
+function __return_false() { return false; }
+function absint( $maybeint ) { return abs( (int) $maybeint ); }
+function wp_is_json_media_type( $media_type ) { return 'application/json' === $media_type || str_ends_with( $media_type, '+json' ); }
+function wp_parse_args( $args, $defaults = array() ) { return array_merge( $defaults, is_array( $args ) ? $args : array() ); }
+function is_wp_error( $thing ) { return $thing instanceof WP_Error; }
+function esc_html( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES ); }
+function wp_json_encode( $value, $flags = 0, $depth = 512 ) { return json_encode( $value, $flags, $depth ); }
+function wp_list_filter( $input_list, $args = array(), $operator = 'AND' ) {
+    return array_filter( $input_list, static function ( $item ) use ( $args ) {
+        foreach ( $args as $key => $value ) {
+            if ( ! is_array( $item ) || ! array_key_exists( $key, $item ) || $item[ $key ] != $value ) {
+                return false;
+            }
+        }
+        return true;
+    } );
+}
+"#;
+
+/// The pinned WordPress release's root.
+pub fn release() -> std::path::PathBuf {
+    speedyspec_compat::wordpress_release("7.1.5").expect("the pinned WordPress release")
+}
+
+/// Loads the hook functions, the stubs and the release's error, response and request classes and REST functions (not
+/// `class-wp-rest-server.php`: the shim replaces it) into the current request.
+pub fn load_release(php: &Php) {
+    load(php, HOOKS.replace("function absint( $maybeint ) { return abs( (int) $maybeint ); }", "").replace("function wp_is_json_media_type( $media_type ) { return 'application/json' === $media_type || str_ends_with( $media_type, '+json' ); }", "").as_str());
+    load(php, RELEASE_STUBS);
+    let root = release().join("wp-includes");
+    for file in [
+        "class-wp-error.php",
+        "class-wp-http-response.php",
+        "rest-api/class-wp-rest-response.php",
+        "rest-api/class-wp-rest-request.php",
+        "rest-api.php",
+    ] {
+        load(
+            php,
+            &format!("require_once {:?};", root.join(file).display().to_string()),
+        );
+    }
+}
