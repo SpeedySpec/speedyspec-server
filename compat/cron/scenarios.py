@@ -80,6 +80,17 @@ scenario("non_array_option", *watched(c("update_option", "cron", "nonsense"), c(
 scenario("filter_throws", throw("pre_schedule_event"), c("speedyspec_cron_single", 60, "h"), c("speedyspec_cron_array"))
 scenario("numeric_hook_and_string_timestamp", *watched(c("speedyspec_cron_single", 600, "123"), c("speedyspec_cron_next", "123"), c("speedyspec_cron_array")))
 scenario("set_cron_array_directly", *watched(c("_set_cron_array", "not an array"), c("speedyspec_cron_array"), c("_set_cron_array", [], True)))
+RUN = ["cron_reschedule_event_error", "cron_unschedule_event_error", "past_single", "past_recurring", "r", "s"]
+def run_watched(*steps):
+    return watched(*([rec(h) for h in RUN] + list(steps)))
+scenario("run_cron_single_and_recurring", *run_watched(c("speedyspec_cron_single", -60, "past_single", ["a"]),
+    c("speedyspec_cron_event", -100, "hourly", "past_recurring"), c("speedyspec_cron_single", 900, "future"),
+    c("speedyspec_compat_run_cron"), c("speedyspec_cron_array")))
+scenario("run_cron_reschedule_error", *run_watched(answer("pre_reschedule_event", "__return_false"),
+    c("speedyspec_cron_event", -100, "hourly", "r"), c("speedyspec_compat_run_cron"), c("speedyspec_cron_array")))
+scenario("run_cron_unschedule_error", *run_watched(answer("pre_unschedule_event", "speedyspec_cron_plugin_error"),
+    c("speedyspec_cron_single", -60, "s"), c("speedyspec_compat_run_cron"), c("speedyspec_cron_array")))
+scenario("run_cron_nothing_due", *run_watched(c("speedyspec_cron_single", 900, "future"), c("speedyspec_compat_run_cron"), c("speedyspec_cron_array")))
 names = [s["name"] for s in S]
 assert len(names) == len(set(names)), "duplicate scenario names"
 json.dump({"area": "cron", "scenarios": S}, sys.stdout, indent=2)

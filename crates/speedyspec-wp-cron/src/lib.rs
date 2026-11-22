@@ -9,9 +9,12 @@ mod keyer;
 pub mod memory;
 mod php;
 mod read;
+mod run;
 mod schedules;
+mod spawn;
 mod write;
 
 pub use api::{CronApi, CronParts};
 pub use keyer::{RustArgsKeyer, md5_hex};
 pub use php::{array_key, is_numeric, truthy};
+pub use spawn::SpawnOutcome;

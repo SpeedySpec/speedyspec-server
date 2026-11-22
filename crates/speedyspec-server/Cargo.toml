@@ -65,6 +65,6 @@ h3-quinn = "0.0.10"
 http = "1"
 rcgen = "0.14"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "blocking"] }
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["full", "test-util"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 tempfile = "3"

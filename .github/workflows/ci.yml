@@ -134,7 +134,7 @@ jobs:
         run: scripts/linux-php.sh scripts/build-php.sh
       - name: Test with MySQL
         run: |
-          scripts/linux-php.sh cargo test -p speedyspec-php-runtime --test database
+          scripts/linux-php.sh cargo test -p speedyspec-php-runtime --test database --test cron_run_once --test worker
           scripts/linux-php.sh cargo test -p speedyspec-wp-options-sql --test conditional_mysql
           scripts/linux-php.sh cargo test -p speedyspec-wp-options-tests --test conditional
           scripts/linux-php.sh cargo test -p speedyspec-wp-cron -p speedyspec-wp-cron-options -p speedyspec-wp-cron-php

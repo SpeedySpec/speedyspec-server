@@ -6,7 +6,9 @@ use std::rc::Rc;
 use speedyspec_hooks::Key;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
-use speedyspec_wp_cron::{CronApi, truthy};
+use std::time::Duration;
+
+use speedyspec_wp_cron::{CronApi, SpawnOutcome, truthy};
 use speedyspec_wp_cron_contracts::{CronError, CronResult};
 use speedyspec_wp_hooks::HookValue;
 
@@ -29,7 +31,7 @@ fn native_error(err: CronError) -> NativeError {
     }
 }
 
-fn marker(result: CronResult) -> HookValue {
+pub(crate) fn marker(result: CronResult) -> HookValue {
     let s = |v: &str| HookValue::Str(v.into());
     match result {
         CronResult::Value(v) => v,
@@ -137,7 +139,7 @@ pub(crate) fn functions(api: &Rc<CronApi>) -> Vec<FunctionBuilder<'static>> {
             Box::new(|c, a| value(c.upgrade_cron_array(arg(a, 0)))),
         ),
     ];
-    natives
+    let mut functions: Vec<FunctionBuilder<'static>> = natives
         .into_iter()
         .map(|(name, run)| {
             let api = api.clone();
@@ -146,5 +148,59 @@ pub(crate) fn functions(api: &Rc<CronApi>) -> Vec<FunctionBuilder<'static>> {
                 move |args| run(&api, args),
             )
         })
-        .collect()
+        .collect();
+    let spawn = api.clone();
+    functions.push(native::function(
+        "SpeedySpec\\WpCron\\Native\\spawn_cron",
+        move |args| {
+            let gmt_time = match args.first().map(|v| v.read().into_owned()) {
+                Some(HookValue::Int(n)) => n as f64,
+                Some(HookValue::Float(f)) => f,
+                Some(HookValue::Str(s)) => s.trim().parse().unwrap_or(0.0),
+                _ => 0.0,
+            };
+            let lock_timeout = match args.get(2).map(|v| v.read().into_owned()) {
+                Some(HookValue::Int(n)) => n,
+                Some(HookValue::Float(f)) => f as i64,
+                _ => 60,
+            };
+            match spawn
+                .spawn_cron(gmt_time, flag(args, 1), lock_timeout)
+                .map_err(native_error)?
+            {
+                SpawnOutcome::No => Ok(HookValue::Bool(false)),
+                SpawnOutcome::Spawn { doing_wp_cron } => Ok(HookValue::Str(doing_wp_cron)),
+            }
+        },
+    ));
+    let runner = api.clone();
+    functions.push(native::function(
+        "SpeedySpec\\WpCron\\run_due_events",
+        move |args| {
+            let budget = match args.first().map(|v| v.read().into_owned()) {
+                Some(HookValue::Int(n)) => n as f64,
+                Some(HookValue::Float(f)) => f,
+                _ => 30.0,
+            };
+            let summary = runner
+                .run_due_events(Duration::from_secs_f64(budget.max(0.0)))
+                .map_err(native_error)?;
+            Ok(HookValue::Array(vec![
+                (Key::Str("ran".into()), HookValue::Int(summary.ran as i64)),
+                (
+                    Key::Str("claimed_by_others".into()),
+                    HookValue::Int(summary.claimed_by_others as i64),
+                ),
+                (
+                    Key::Str("unclaimed".into()),
+                    HookValue::Int(summary.unclaimed as i64),
+                ),
+                (
+                    Key::Str("next".into()),
+                    summary.next.map_or(HookValue::Null, HookValue::Int),
+                ),
+            ]))
+        },
+    ));
+    functions
 }

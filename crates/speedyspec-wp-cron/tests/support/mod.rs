@@ -4,7 +4,9 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use speedyspec_wp_cron::memory::MemoryCronStore;
+use speedyspec_wp_cron::memory::{
+    CollectingErrors, MemoryCronStore, MemoryDoingCron, RecordingWake,
+};
 use speedyspec_wp_cron::{CronApi, CronParts, RustArgsKeyer};
 use speedyspec_wp_cron_contracts::{Clock, PhpObjects, Translator};
 use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations, Key};
@@ -75,17 +77,27 @@ pub fn wp_error() -> HookValue {
 pub struct Fixture {
     pub api: CronApi,
     pub store: Rc<MemoryCronStore>,
+    pub wake: Rc<RecordingWake>,
+    pub doing: Rc<MemoryDoingCron>,
+    pub errors: Rc<CollectingErrors>,
     pub hooks: Rc<HookApi>,
     pub clock: Rc<FixedClock>,
     pub log: Log,
 }
 
 pub fn fixture() -> Fixture {
+    fixture_over(Rc::new(MemoryCronStore::new()))
+}
+
+/// A fixture over `store`: two fixtures over one store are two processes sharing one `cron` option.
+pub fn fixture_over(store: Rc<MemoryCronStore>) -> Fixture {
     let hooks = Rc::new(HookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
-    let store = Rc::new(MemoryCronStore::new());
+    let wake = Rc::new(RecordingWake::new());
+    let doing = Rc::new(MemoryDoingCron::new());
+    let errors = Rc::new(CollectingErrors::new());
     let clock = Rc::new(FixedClock(Cell::new(NOW as f64 + 0.5)));
     let api = CronApi::new(CronParts {
         hooks: hooks.clone(),
@@ -94,10 +106,16 @@ pub fn fixture() -> Fixture {
         clock: clock.clone(),
         translator: Rc::new(SameText),
         objects: Rc::new(ArrayObjects),
+        wake: wake.clone(),
+        doing_cron: doing.clone(),
+        errors: errors.clone(),
     });
     Fixture {
         api,
         store,
+        wake,
+        doing,
+        errors,
         hooks,
         clock,
         log: Rc::new(RefCell::new(Vec::new())),

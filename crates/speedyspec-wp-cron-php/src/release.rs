@@ -3,8 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-/// The `cron.php` functions the native area declares. `spawn_cron()`, `wp_cron()` and `_wp_cron()` stay
-/// WordPress's until the runner replaces loopback spawning.
+/// The `cron.php` functions the native area declares: all of them.
 pub const PORTED_FUNCTIONS: &[&str] = &[
     "wp_schedule_single_event",
     "wp_schedule_event",
@@ -20,6 +19,9 @@ pub const PORTED_FUNCTIONS: &[&str] = &[
     "_get_cron_array",
     "_set_cron_array",
     "_upgrade_cron_array",
+    "spawn_cron",
+    "wp_cron",
+    "_wp_cron",
 ];
 
 /// `cron.php`'s text without the ported functions, each with its docblock. A function is a line

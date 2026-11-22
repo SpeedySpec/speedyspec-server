@@ -58,6 +58,48 @@ namespace SpeedySpec\WpCron
     }
 
     /**
+     * Reports a failed step of a due event as `wp-cron.php` does: `error_log()` of the translated message with the
+     *  hook, the error's code and message and the event as JSON. Returns the WP_Error for the step's error action.
+     *
+     * @param string $step
+     *   `reschedule` or `unschedule`.
+     * @param mixed $hook
+     *   The event's hook.
+     * @param mixed $error
+     *   The step's answer: an error marker, or a WP_Error a filter returned.
+     * @param array $event
+     *   The event as the cron array holds it.
+     * @return mixed
+     *   The WP_Error.
+     */
+    function report_error($step, $hook, $error, $event)
+    {
+        $error = result($error);
+        if (!($error instanceof \WP_Error))
+        {
+            return $error;
+        }
+        $format = 'reschedule' === $step
+            ? 'Cron reschedule event error for hook: %1$s, Error code: %2$s, Error message: %3$s, Data: %4$s'
+            : 'Cron unschedule event error for hook: %1$s, Error code: %2$s, Error message: %3$s, Data: %4$s';
+        if (function_exists('__'))
+        {
+            /* translators: 1: Hook name, 2: Error code, 3: Error message, 4: Event data. */
+            $format = __($format);
+        }
+        error_log(
+            sprintf(
+                $format,
+                $hook,
+                $error->get_error_code(),
+                $error->get_error_message(),
+                function_exists('wp_json_encode') ? wp_json_encode($event) : json_encode($event)
+            )
+        );
+        return $error;
+    }
+
+    /**
      * Casts an array to the stdClass event WordPress hands to the cron filters.
      *
      * @param array $fields
@@ -228,6 +270,119 @@ namespace
         function _set_cron_array($cron, $wp_error = false)
         {
             return \SpeedySpec\WpCron\result(N\_set_cron_array($cron, $wp_error));
+        }
+
+        /**
+         * Asks for the cron runner when an event is due, instead of WordPress's loopback request to `wp-cron.php`.
+         *
+         *  WordPress's checks run natively (a cron request already running, the `doing_cron` lock, no ready events,
+         *  the first one ahead). When they pass, `doing_cron` is set and `cron_request` is filtered with WordPress's
+         *  array, but no request is sent: the server's scheduler is told to call the cron endpoint at once.
+         *  `ALTERNATE_WP_CRON` has no effect.
+         */
+        function spawn_cron($gmt_time = 0)
+        {
+            $doing_wp_cron = N\spawn_cron(
+                $gmt_time,
+                defined('DOING_CRON') || isset($_GET['doing_wp_cron']),
+                defined('WP_CRON_LOCK_TIMEOUT') ? WP_CRON_LOCK_TIMEOUT : 60
+            );
+            if (false === $doing_wp_cron)
+            {
+                return false;
+            }
+            $cron_url = add_query_arg('doing_wp_cron', $doing_wp_cron, site_url('wp-cron.php'));
+            /** This filter is documented in wp-includes/cron.php */
+            apply_filters(
+                'cron_request',
+                array(
+                    'url'  => $cron_url,
+                    'key'  => $doing_wp_cron,
+                    'args' => array(
+                        'timeout'   => 0.01,
+                        'blocking'  => false,
+                        /** This filter is documented in wp-includes/class-wp-http-streams.php */
+                        'sslverify' => apply_filters('https_local_ssl_verify', false, $cron_url),
+                    ),
+                ),
+                $doing_wp_cron
+            );
+            return true;
+        }
+
+        /**
+         * Registers `_wp_cron()` to run on the `shutdown` action, as WordPress does.
+         */
+        function wp_cron(): void
+        {
+            if (defined('ALTERNATE_WP_CRON') && ALTERNATE_WP_CRON)
+            {
+                if (did_action('wp_loaded'))
+                {
+                    _wp_cron();
+                }
+                else
+                {
+                    add_action('wp_loaded', '_wp_cron', 20);
+                }
+            }
+            elseif (doing_action('shutdown'))
+            {
+                _wp_cron();
+            }
+            else
+            {
+                add_action('shutdown', '_wp_cron');
+            }
+        }
+
+        /**
+         * Asks for the cron runner when an event is due, as WordPress's `_wp_cron()` (its body, over the native
+         *  `spawn_cron()`).
+         */
+        function _wp_cron()
+        {
+            // Prevent infinite loops caused by lack of wp-cron.php.
+            if (str_contains($_SERVER['REQUEST_URI'], '/wp-cron.php')
+                || (defined('DISABLE_WP_CRON') && DISABLE_WP_CRON))
+            {
+                return 0;
+            }
+            $crons = wp_get_ready_cron_jobs();
+            if (empty($crons))
+            {
+                return 0;
+            }
+            $gmt_time = microtime(true);
+            $keys     = array_keys($crons);
+            if (isset($keys[0]) && $keys[0] > $gmt_time)
+            {
+                return 0;
+            }
+            $schedules = wp_get_schedules();
+            $results   = array();
+            foreach ($crons as $timestamp => $cronhooks)
+            {
+                if ($timestamp > $gmt_time)
+                {
+                    break;
+                }
+                foreach ((array) $cronhooks as $hook => $args)
+                {
+                    if (isset($schedules[$hook]['callback'])
+                        && !call_user_func($schedules[$hook]['callback']))
+                    {
+                        continue;
+                    }
+                    $results[] = spawn_cron($gmt_time);
+                    break 2;
+                }
+            }
+            if (in_array(false, $results, true))
+            {
+                return false;
+            }
+            return count($results);
         }
 
         /**

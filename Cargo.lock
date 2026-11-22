@@ -5403,6 +5403,7 @@ dependencies = [
  "speedyspec-php",
  "speedyspec-php-ext",
  "speedyspec-runtime-contract",
+ "speedyspec-wp-cron-contracts",
  "speedyspec-wp-cron-php",
  "speedyspec-wp-crypto-contracts",
  "speedyspec-wp-crypto-php",

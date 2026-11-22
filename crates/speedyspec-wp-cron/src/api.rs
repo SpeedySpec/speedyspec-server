@@ -3,7 +3,8 @@
 use std::rc::Rc;
 
 use speedyspec_wp_cron_contracts::{
-    ArgsKeyer, Clock, CronError, CronStore, PhpObjects, Translator,
+    ArgsKeyer, Clock, CronError, CronStore, DoingCron, ErrorReporter, PhpObjects, Translator,
+    WakeReporter,
 };
 use speedyspec_wp_hooks::{HookApi, HookError, HookName, HookValue};
 
@@ -15,11 +16,17 @@ pub struct CronParts {
     pub clock: Rc<dyn Clock>,
     pub translator: Rc<dyn Translator>,
     pub objects: Rc<dyn PhpObjects>,
+    /// Where the next due time is reported after every write and run.
+    pub wake: Rc<dyn WakeReporter>,
+    pub doing_cron: Rc<dyn DoingCron>,
+    pub errors: Rc<dyn ErrorReporter>,
 }
 
 /// WordPress's cron API. Each method takes PHP's arguments as passed and answers as WordPress does.
 pub struct CronApi {
     pub(crate) p: CronParts,
+    /// A run is in progress: its writes do not report wake times (the run reports when cron is next due).
+    pub(crate) running: std::cell::Cell<bool>,
 }
 
 pub(crate) fn hook_error(e: HookError) -> CronError {
@@ -31,7 +38,10 @@ pub(crate) fn hook_error(e: HookError) -> CronError {
 
 impl CronApi {
     pub fn new(parts: CronParts) -> CronApi {
-        CronApi { p: parts }
+        CronApi {
+            p: parts,
+            running: std::cell::Cell::new(false),
+        }
     }
 
     /// `apply_filters( $hook, $value, ...$args )`.
@@ -44,6 +54,14 @@ impl CronApi {
         self.p
             .hooks
             .apply_filters(&HookName::from(hook), value, args)
+            .map_err(hook_error)
+    }
+
+    /// `do_action( $hook, ...$args )`.
+    pub(crate) fn action(&self, hook: &str, args: Vec<HookValue>) -> Result<(), CronError> {
+        self.p
+            .hooks
+            .do_action(&HookName::from(hook), args)
             .map_err(hook_error)
     }
 

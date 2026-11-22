@@ -38,6 +38,7 @@ speedyspec-data-query = { path = "../speedyspec-data-query" }
 speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
 speedyspec-wp-options-php = { path = "../speedyspec-wp-options-php" }
 speedyspec-wp-cron-php = { path = "../speedyspec-wp-cron-php" }
+speedyspec-wp-cron-contracts = { path = "../speedyspec-wp-cron-contracts" }
 speedyspec-wp-password-contracts = { path = "../speedyspec-wp-password-contracts" }
 speedyspec-wp-password-php = { path = "../speedyspec-wp-password-php" }
 speedyspec-wp-text-diff-contracts = { path = "../speedyspec-wp-text-diff-contracts" }

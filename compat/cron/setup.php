@@ -528,3 +528,101 @@ function speedyspec_cron_schedules($schedules)
     $schedules['hourly'] = array('interval' => 1, 'display' => 'Changed');
     return $schedules;
 }
+
+/**
+ * Runs the due events: on WordPress's side, `wp-cron.php`'s loop (WordPress 7.1.5, verbatim, without its lock, which
+ *  the runner replaces with its claim); on the port's side, the native runner.
+ */
+function speedyspec_compat_run_cron()
+{
+    if (SPEEDYSPEC_COMPAT_PORT)
+    {
+        SpeedySpec\WpCron\run_due_events(30.0);
+        return null;
+    }
+    $crons = wp_get_ready_cron_jobs();
+    if (empty($crons))
+    {
+        return null;
+    }
+    $gmt_time = microtime(true);
+    foreach ( $crons as $timestamp => $cronhooks ) {
+    	if ( $timestamp > $gmt_time ) {
+    		break;
+    	}
+
+    	foreach ( $cronhooks as $hook => $keys ) {
+
+    		foreach ( $keys as $k => $v ) {
+
+    			$schedule = $v['schedule'];
+
+    			if ( $schedule ) {
+    				$result = wp_reschedule_event( $timestamp, $schedule, $hook, $v['args'], true );
+
+    				if ( is_wp_error( $result ) ) {
+    					error_log(
+    						sprintf(
+    							/* translators: 1: Hook name, 2: Error code, 3: Error message, 4: Event data. */
+    							__( 'Cron reschedule event error for hook: %1$s, Error code: %2$s, Error message: %3$s, Data: %4$s' ),
+    							$hook,
+    							$result->get_error_code(),
+    							$result->get_error_message(),
+    							wp_json_encode( $v )
+    						)
+    					);
+
+    					/**
+    					 * Fires if an error happens when rescheduling a cron event.
+    					 *
+    					 * @since 6.1.0
+    					 *
+    					 * @param WP_Error $result The WP_Error object.
+    					 * @param string   $hook   Action hook to execute when the event is run.
+    					 * @param array    $v      Event data.
+    					 */
+    					do_action( 'cron_reschedule_event_error', $result, $hook, $v );
+    				}
+    			}
+
+    			$result = wp_unschedule_event( $timestamp, $hook, $v['args'], true );
+
+    			if ( is_wp_error( $result ) ) {
+    				error_log(
+    					sprintf(
+    						/* translators: 1: Hook name, 2: Error code, 3: Error message, 4: Event data. */
+    						__( 'Cron unschedule event error for hook: %1$s, Error code: %2$s, Error message: %3$s, Data: %4$s' ),
+    						$hook,
+    						$result->get_error_code(),
+    						$result->get_error_message(),
+    						wp_json_encode( $v )
+    					)
+    				);
+
+    				/**
+    				 * Fires if an error happens when unscheduling a cron event.
+    				 *
+    				 * @since 6.1.0
+    				 *
+    				 * @param WP_Error $result The WP_Error object.
+    				 * @param string   $hook   Action hook to execute when the event is run.
+    				 * @param array    $v      Event data.
+    				 */
+    				do_action( 'cron_unschedule_event_error', $result, $hook, $v );
+    			}
+
+    			/**
+    			 * Fires scheduled events.
+    			 *
+    			 * @ignore
+    			 * @since 2.1.0
+    			 *
+    			 * @param string $hook Name of the hook that was scheduled to be fired.
+    			 * @param array  $args The arguments to be passed to the hook.
+    			 */
+    			do_action_ref_array( $hook, $v['args'] );
+
+    		}
+    	}
+    }    return null;
+}
