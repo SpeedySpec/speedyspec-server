@@ -184,6 +184,13 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
+      # The commit the binaries were built from: FFmpeg's licence attachments must be the source those binaries link,
+      # whatever main pins now.
+      - uses: actions/checkout@v4
+        if: matrix.release.component == 'speedyspec-php-runtime'
+        with:
+          ref: ${{ needs.pending.outputs.ref }}
+          path: release-src
       - uses: actions/download-artifact@v4
         with:
           pattern: ${{ matrix.release.component }}-*
@@ -207,8 +214,26 @@ jobs:
           fi
       - name: Install minisign
         run: sudo apt-get update -qq && sudo apt-get install -y -qq minisign
+      # The runtime links FFmpeg statically under LGPL 2.1: every runtime release carries its source, configure line,
+      # licence and notices (docs/licensing.md). None of the names starts with the component's, so the binary globs
+      # below and release-index.sh ignore them.
+      # Runtimes built before FFmpeg was linked have no build-ffmpeg.sh at their commit, and get no attachments.
+      - name: FFmpeg licence attachments
+        if: matrix.release.component == 'speedyspec-php-runtime'
+        run: |
+          if [ -f release-src/scripts/build-ffmpeg.sh ]; then
+              release-src/scripts/ffmpeg-licence-bundle.sh dist "https://github.com/$GITHUB_REPOSITORY/tree/$TAG"
+              echo "FFMPEG_ATTACH=1" >> "$GITHUB_ENV"
+          else
+              echo "$TAG predates FFmpeg: no licence attachments"
+          fi
       - name: Checksums
-        run: (cd dist && sha256sum "$COMPONENT"-* | sort -k 2) > SHA256SUMS && mv SHA256SUMS dist/ && cat dist/SHA256SUMS
+        run: |
+          (cd dist && sha256sum "$COMPONENT"-* | sort -k 2) > SHA256SUMS
+          if [ -n "${FFMPEG_ATTACH:-}" ]; then
+              (cd dist && sha256sum ffmpeg-*.tar.xz ffmpeg-configure-line.txt COPYING.LGPLv2.1 THIRD-PARTY-NOTICES.md) >> SHA256SUMS
+          fi
+          mv SHA256SUMS dist/ && cat dist/SHA256SUMS
       - name: Sign
         env:
           MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
@@ -247,12 +272,34 @@ jobs:
                           gh release delete-asset "$TAG" "$name" --repo "$GITHUB_REPOSITORY" --yes
                       fi
                   done
-                  gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"
+                  # --clobber: licence attachments from an earlier, partial publish are replaced, not a name clash.
+                  gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
                   ;;
               empty)
-                  gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"
+                  # An earlier publish may have died after uploading only licence attachments, which the plan doesn't
+                  # count: --clobber replaces them.
+                  gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
                   ;;
           esac
+          # A complete release keeps its binaries, but its licence attachments are (re)uploaded: they are not
+          # binaries, and a release must never stay without them.
+          if [ -n "${FFMPEG_ATTACH:-}" ] && [ "$plan" = complete ]; then
+              (cd dist && gh release upload "$TAG" ffmpeg-*.tar.xz ffmpeg-configure-line.txt COPYING.LGPLv2.1 \
+                  THIRD-PARTY-NOTICES.md --repo "$GITHUB_REPOSITORY" --clobber)
+          fi
+      - name: Check the FFmpeg licence attachments
+        if: env.FFMPEG_ATTACH == '1'
+        run: |
+          version="$(sed -n 's/^ffmpeg_version="\(.*\)"$/\1/p' release-src/scripts/build-ffmpeg.sh)"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets > assets.json
+          missing=""
+          for name in "ffmpeg-$version.tar.xz" ffmpeg-configure-line.txt COPYING.LGPLv2.1 THIRD-PARTY-NOTICES.md; do
+              jq -e --arg n "$name" 'any(.assets[]; .name == $n)' assets.json >/dev/null || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+              echo "::error::$TAG lacks FFmpeg's LGPL attachments:$missing" >&2
+              exit 1
+          fi
 
   # The runtime crates other repositories build on (scripts/publish-crates.txt) go to crates.io at the release commit,
   # after its builds passed. Only versions crates.io does not have yet are published (a version is permanent), so a

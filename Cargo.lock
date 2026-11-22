@@ -5187,6 +5187,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-ffmpeg-sys"
+version = "0.1.0"
+
+[[package]]
 name = "speedyspec-firewall"
 version = "0.1.0"
 dependencies = [
@@ -5398,6 +5402,7 @@ dependencies = [
  "speedyspec-data-mysql",
  "speedyspec-data-query",
  "speedyspec-fastcgi",
+ "speedyspec-ffmpeg-sys",
  "speedyspec-hooks",
  "speedyspec-hooks-memory",
  "speedyspec-php",

@@ -122,10 +122,17 @@ check_sodium() {
         exit 1
     fi
 }
+# FFmpeg (media metadata) links this PHP's libz.a, so it is built from here, after PHP, in both the up-to-date and the
+# fresh path. It keeps its own stamp and skips work when nothing changed.
+build_ffmpeg() {
+    SPEEDYSPEC_PHP_PREFIX="$build_dir/buildroot" SPEEDYSPEC_FFMPEG_DIR="$build_dir/ffmpeg" "$repo/scripts/build-ffmpeg.sh"
+}
+
 if [ -f "$build_dir/buildroot/lib/libphp.a" ] && [ -f "$stamp" ] \
     && [ "$(cat "$stamp")" = "$stamp_content" ]; then
     check_sodium
     echo "build-php.sh: $build_dir/buildroot is up to date"
+    build_ffmpeg
     exit 0
 fi
 
@@ -200,3 +207,4 @@ check_spc_libsodium "$build_dir/downloads" "$libsodium_version" "$libsodium_sha2
 
 printf '%s\n' "$stamp_content" > "$stamp"
 echo "build-php.sh: built PHP $("$build_dir/buildroot/bin/php-config" --version) in $build_dir/buildroot"
+build_ffmpeg

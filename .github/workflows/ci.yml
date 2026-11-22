@@ -44,7 +44,7 @@ jobs:
           --exclude speedyspec-wp-kses-testkit --exclude speedyspec-wp-html-syntax
           --exclude speedyspec-wp-crypto-sodium --exclude speedyspec-wp-crypto-php --exclude speedyspec-wp-password-php
           --exclude speedyspec-operation-php --exclude speedyspec-wp-theme-json-php
-          --exclude speedyspec-pcre2-link-test
+          --exclude speedyspec-pcre2-link-test --exclude speedyspec-ffmpeg-sys
       - run: test -z "$(cargo tree -i aws-lc-sys --target all 2>/dev/null)"
 
   # The static PHP (scripts/build-php.sh) and everything that embeds it, with PHP apps on.
@@ -86,6 +86,11 @@ jobs:
             ${{ matrix.php-build }}/spc
             ${{ matrix.php-build }}/buildroot
           key: php-${{ matrix.name }}-${{ hashFiles('crates/speedyspec-php/php-version', 'scripts/build-php.sh') }}
+      - name: Cache static FFmpeg
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.php-build }}/ffmpeg/prefix
+          key: ffmpeg-${{ matrix.name }}-${{ hashFiles('scripts/build-ffmpeg.sh', 'scripts/build-php.sh', 'crates/speedyspec-php/php-version') }}
       - name: Build static PHP
         env:
           # Runners are throwaway, so spc may install missing build tools.
@@ -96,6 +101,9 @@ jobs:
       # Every extension WordPress needs: a missing one fails here, by name.
       - name: Extensions
         run: ${{ matrix.run }} cargo test -p speedyspec-php --test extensions
+      # The pinned, LGPL-only FFmpeg: licence, formats, no protocols, the pinned version.
+      - name: FFmpeg
+        run: ${{ matrix.run }} cargo test -p speedyspec-ffmpeg-sys
       - name: Test with php
         run: ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks
 
@@ -127,6 +135,11 @@ jobs:
             .php-build-linux/spc
             .php-build-linux/buildroot
           key: php-linux-x86_64-${{ hashFiles('crates/speedyspec-php/php-version', 'scripts/build-php.sh') }}
+      - name: Cache static FFmpeg
+        uses: actions/cache@v4
+        with:
+          path: .php-build-linux/ffmpeg/prefix
+          key: ffmpeg-linux-x86_64-${{ hashFiles('scripts/build-ffmpeg.sh', 'scripts/build-php.sh', 'crates/speedyspec-php/php-version') }}
       - name: Build static PHP
         env:
           SPEEDYSPEC_ALLOW_HOST_INSTALL: "1"

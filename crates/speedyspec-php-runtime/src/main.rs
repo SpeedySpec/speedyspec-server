@@ -78,7 +78,8 @@ fn main() -> ExitCode {
                 vec![CONTRACT_MAJOR],
                 speedyspec_php::PHP_VERSION,
             )
-            .with_sodium(sodium);
+            .with_sodium(sodium)
+            .with_ffmpeg(speedyspec_ffmpeg_sys::version());
             println!(
                 "{}",
                 serde_json::to_string(&manifest).expect("a manifest serializes")
