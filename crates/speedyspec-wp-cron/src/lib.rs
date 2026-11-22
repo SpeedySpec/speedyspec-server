@@ -13,5 +13,5 @@ mod schedules;
 mod write;
 
 pub use api::{CronApi, CronParts};
-pub use keyer::RustArgsKeyer;
+pub use keyer::{RustArgsKeyer, md5_hex};
 pub use php::{array_key, is_numeric, truthy};

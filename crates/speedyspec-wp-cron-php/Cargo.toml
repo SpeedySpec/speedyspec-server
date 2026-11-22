@@ -1,0 +1,37 @@
+[package]
+name = "speedyspec-wp-cron-php"
+version = "0.1.0"
+publish = false
+description = "WordPress's cron functions as native PHP functions over the Rust cron port, with a thin cron.php wrapper."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-cron = { path = "../speedyspec-wp-cron" }
+speedyspec-wp-cron-contracts = { path = "../speedyspec-wp-cron-contracts" }
+speedyspec-wp-cron-options = { path = "../speedyspec-wp-cron-options" }
+speedyspec-wp-options = { path = "../speedyspec-wp-options" }
+speedyspec-wp-options-php = { path = "../speedyspec-wp-options-php" }
+
+[dev-dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-wp-db = { path = "../speedyspec-wp-db" }
+speedyspec-wp-db-php = { path = "../speedyspec-wp-db-php" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
+
+[[test]]
+name = "php"
+harness = false

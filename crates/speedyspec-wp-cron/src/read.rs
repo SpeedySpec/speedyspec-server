@@ -39,7 +39,8 @@ impl CronApi {
         Ok(CronArray::from_value(HookValue::Array(items)))
     }
 
-    /// `_upgrade_cron_array( $cron )`: rekeys a pre-2.1 array by `md5( serialize( $args['args'] ) )` and saves it.
+    /// `_upgrade_cron_array( $cron )`: rekeys a pre-2.1 array by `md5( serialize( $args['args'] ?? array() ) )`
+    /// and saves it.
     pub fn upgrade_cron_array(&self, cron: HookValue) -> Result<HookValue, CronError> {
         let cron = cron.read().into_owned();
         if get(&cron, &version_key()) == Some(&HookValue::Int(2)) {
@@ -48,9 +49,11 @@ impl CronApi {
         let mut new: Vec<(Key, HookValue)> = Vec::new();
         for (timestamp, hooks) in array_cast(&cron) {
             for (hook, args) in array_cast(&hooks) {
+                // WordPress 7.1's `$args['args'] ?? array()`.
                 let event_args = get(&args, &Key::Str("args".into()))
+                    .filter(|v| !matches!(v, HookValue::Null))
                     .cloned()
-                    .unwrap_or(HookValue::Null);
+                    .unwrap_or(HookValue::Array(Vec::new()));
                 let key = self.p.keyer.key(&event_args)?;
                 set3(
                     &mut new,
