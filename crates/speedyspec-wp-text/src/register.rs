@@ -245,8 +245,9 @@ fn callback(api: &Rc<TextApi>, function: &'static str) -> Callback {
 /// names), hooks, priorities and accepted arguments, in its order, so `has_filter( 'the_content', 'wpautop' )`
 /// answers 10 and `remove_filter()` finds them.
 ///
-/// It is for Rust-only callers and the seam that ports `default-filters.php`; in the embedded PHP,
-/// `default-filters.php` itself still registers the native functions.
+/// It is for Rust-only callers and the seam that ports `default-filters.php`. In the embedded PHP,
+/// `default-filters.php` itself still registers them by name, and `speedyspec-wp-text-php` stores each such
+/// registration as a Rust callback in the same slot.
 ///
 /// @param api
 ///     The facade the callbacks run.

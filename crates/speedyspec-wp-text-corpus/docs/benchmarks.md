@@ -219,3 +219,21 @@ whole posts. Met, with these exceptions:
 `bench_php` gates on these numbers. Every function must reach 0.95x of PHP (a 5% margin for noise on a loaded
 machine), `wp_rel_nofollow` 0.9x, `esc_textarea` on short inputs 0.8x, `wp_strip_all_tags` on short inputs 0.65x,
 and the chain 3.5x.
+
+### Rust callbacks (2026-11-22, plan 6 branch)
+
+Formatting's functions added as callbacks by name are stored as Rust callbacks, so `apply_filters()` runs them
+without a PHP call (`speedyspec-wp-text-php`'s `swap`). `bench_php` times the same callbacks registered through
+`WP_Hook::add_filter()`, which keeps them PHP callables, in alternating 0.1-second rounds (eight of each, best of
+each), so both see the same machine load. Machine as above; load average 57 to 88 during three back-to-back runs.
+
+| Comparison | Group | Swapped / unswapped |
+|---|---|---|
+| `the_content` chain | whole_posts | 1.00 to 1.04x |
+| | page | 0.99 to 1.04x |
+| `wp_strip_all_tags` then `sanitize_url` | short URLs | 1.12 to 1.17x |
+
+The chain against legacy PHP in those runs: 5.2x to 5.5x on whole posts, 4.4x to 4.8x on the page (5x target not
+met on the page). On whole posts and the page the work dominates, so saving the call is level within noise. On short
+values the call is a larger share, and the swap saves about a seventh. `bench_php` gates each swapped/unswapped
+ratio at 0.95x.
