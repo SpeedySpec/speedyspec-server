@@ -20,8 +20,8 @@ use speedyspec_wp_theme_json::{ThemeJsonApi, ThemeJsonDeps, register_theme_json_
 use speedyspec_wp_theme_json_contracts::schema;
 
 pub use adapters::{
-    PhpActiveTheme, PhpBlockRegistry, PhpDiagnostics, PhpGettext, PhpGlobalSettings, PhpSafeCss,
-    PhpTextFunctions,
+    PhpActiveTheme, PhpBlockRegistry, PhpCapabilities, PhpDiagnostics, PhpGettext,
+    PhpGlobalSettings, PhpSafeCss, PhpTextFunctions,
 };
 pub use arena::HandleArena;
 pub use literal::php_literal;
@@ -70,7 +70,8 @@ impl ThemeJsonArea {
         )
         .with_global_settings(Rc::new(PhpGlobalSettings))
         .with_filters(Rc::new(HookApiFilters::new(hooks)))
-        .with_theme(Rc::new(PhpActiveTheme));
+        .with_theme(Rc::new(PhpActiveTheme))
+        .with_capabilities(Rc::new(PhpCapabilities));
         let api = Rc::new(ThemeJsonApi::new(deps));
         register_theme_json_handlers(&container, api.clone());
         Self {

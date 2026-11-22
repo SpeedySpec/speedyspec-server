@@ -10,8 +10,9 @@ use speedyspec_php::native::{self, NativeError};
 use speedyspec_wp_theme_json::messages::{
     ConstructThemeJson, GetCustomCss, GetCustomTemplates, GetData, GetElementClassName,
     GetFromEditorSettings, GetPatterns, GetRawData, GetRootLayoutRules, GetSettings,
-    GetStylesBlockNodes, GetStylesForBlock, GetStylesheet, GetTemplateParts,
-    GetViewportMediaQueries, MergeRawData, SchemaMigrate, SetSpacingSizes,
+    GetStylesBlockNodes, GetStylesForBlock, GetStylesheet, GetSvgFilters, GetTemplateParts,
+    GetViewportMediaQueries, MergeRawData, RemoveInsecureProperties, ResolveVariables,
+    SchemaMigrate, SetSpacingSizes,
 };
 use speedyspec_wp_theme_json_contracts::model::ThemeJson;
 use speedyspec_wp_theme_json_contracts::ports::RegisteredBlock;
@@ -40,6 +41,9 @@ pub(crate) struct Handlers {
     block_nodes: QueryRef<GetStylesBlockNodes>,
     root_layout: QueryRef<GetRootLayoutRules>,
     custom_css: QueryRef<GetCustomCss>,
+    insecure: QueryRef<RemoveInsecureProperties>,
+    svg: QueryRef<GetSvgFilters>,
+    resolve: QueryRef<ResolveVariables>,
 }
 
 impl Handlers {
@@ -63,6 +67,9 @@ impl Handlers {
             block_nodes: QueryRef::new(c.clone()),
             root_layout: QueryRef::new(c.clone()),
             custom_css: QueryRef::new(c.clone()),
+            insecure: QueryRef::new(c.clone()),
+            svg: QueryRef::new(c.clone()),
+            resolve: QueryRef::new(c.clone()),
         }
     }
 }
@@ -348,6 +355,39 @@ pub(crate) fn functions(h: Rc<Handlers>) -> Vec<FunctionBuilder<'static>> {
                     fallback,
                 )
                 .map_or(Value::Null, Value::Str))
+            }),
+        ),
+        f(
+            "remove_insecure_properties",
+            Box::new(|h, a| {
+                ask(
+                    &h.insecure,
+                    RemoveInsecureProperties {
+                        data: arg(a, 0),
+                        origin: arg(a, 1),
+                    },
+                )?
+                .map_err(|e| NativeError::throw("Error", e.to_string()))
+            }),
+        ),
+        f(
+            "get_svg_filters",
+            Box::new(|h, a| {
+                Ok(string_value(ask(
+                    &h.svg,
+                    GetSvgFilters {
+                        doc: doc(a)?,
+                        origins: arg(a, 1),
+                    },
+                )?))
+            }),
+        ),
+        f(
+            "resolve_variables",
+            Box::new(|h, a| {
+                let resolved = ask(&h.resolve, ResolveVariables { doc: doc(a)? })?;
+                HandleArena::replace(handle(a), resolved);
+                Ok(Value::Null)
             }),
         ),
     ]

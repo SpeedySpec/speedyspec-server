@@ -124,7 +124,7 @@ add_filter('sanitize_title', 'sanitize_title_with_dashes', 10, 3);
 
 compat_load_functions('wp-includes/functions.php', ['_wp_array_get', '_wp_array_set', 'wp_is_numeric_array',
     '_wp_to_kebab_case', 'wp_recursive_ksort', 'wp_parse_args', 'wp_json_file_decode', 'mbstring_binary_safe_encoding',
-    'reset_mbstring_encoding', '_canonical_charset']);
+    'reset_mbstring_encoding', '_canonical_charset', 'wp_json_encode', '_wp_json_sanity_check', '_wp_json_convert_string']);
 
 if (!SPEEDYSPEC_COMPAT_PORT) {
     foreach (['class-wp-theme-json-schema.php', 'class-wp-theme-json.php', 'class-wp-theme-json-data.php'] as $speedyspec_file) {
