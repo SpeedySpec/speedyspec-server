@@ -9,6 +9,7 @@ use speedyspec_container::Container;
 use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, NativeArea, Php, PhpError};
 use speedyspec_wp_crypto_php::CryptoArea;
+use speedyspec_wp_crypto_sodium::Sodium;
 use speedyspec_wp_hooks::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::WpHooksArea;
@@ -31,7 +32,7 @@ fn main() {
     let compat = format!("{}/../../compat/crypto/", env!("CARGO_MANIFEST_DIR"));
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container, Rc::new(MemoryHookStore::new()));
-    let crypto = CryptoArea::new(hooks.api()).expect("libsodium initializes");
+    let crypto = CryptoArea::new(hooks.api(), Sodium::init().expect("libsodium initializes"));
     let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(crypto)];
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),

@@ -37,15 +37,12 @@ pub struct CryptoArea {
 }
 
 impl CryptoArea {
-    /// The area, filtering and escaping through `hooks`.
-    ///
-    /// # Errors
-    ///
-    /// When libsodium can't initialize.
-    pub fn new(hooks: Rc<HookApi>) -> Result<CryptoArea, String> {
-        Ok(CryptoArea {
-            natives: Rc::new(natives::Natives::new(hooks, Sodium::init()?)),
-        })
+    /// The area, hashing and verifying with `sodium` and filtering and escaping through `hooks`. The caller
+    /// initializes libsodium ([`Sodium::init`]) and hands it over, so a process initializes it once.
+    pub fn new(hooks: Rc<HookApi>, sodium: Sodium) -> CryptoArea {
+        CryptoArea {
+            natives: Rc::new(natives::Natives::new(hooks, sodium)),
+        }
     }
 }
 
