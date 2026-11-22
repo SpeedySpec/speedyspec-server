@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-hooks-memory"
-version = "0.1.0"
+version = "0.1.1"
 description = "The in-memory hook store, with worker-lifetime and request-lifetime partitions."
 edition.workspace = true
 rust-version.workspace = true
@@ -11,7 +11,7 @@ exclude = ["tests/"]
 
 [dependencies]
 indexmap = "2"
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks", version = "0.1" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks", version = "0.1.1" }
 
 [dev-dependencies]
 serde_json = "1"

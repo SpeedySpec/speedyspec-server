@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-firewall-presentation"
-version = "0.1.0"
+version = "0.1.1"
 publish = false
 description = "The firewall as a native request stage, its WordPress hook callbacks, and its composition root."
 edition.workspace = true
