@@ -15,12 +15,314 @@ use speedyspec_transport_contracts::BindingStore;
 use crate::handles;
 
 const FACADE: &str = include_str!("php/rest.php");
+const TRUNK_SERVER: &str = include_str!("php/trunk-rest-server.php");
+const SHIM_SERVER: &str = include_str!("php/wp-rest-server.php");
 const PROXIES: &str = include_str!("php/proxies.php");
 const NATIVE: &str = "SpeedySpec\\Rest\\Native\\";
 const REGISTRATION_EXCEPTION: &str = "SpeedySpec\\Operation\\RegistrationException";
 
 thread_local! {
+    static LEGACY_HOOKED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static SERVICE: std::cell::RefCell<Option<Rc<crate::RestService>>> = const { std::cell::RefCell::new(None) };
     static BINDINGS: std::cell::RefCell<Option<Rc<dyn BindingStore>>> = const { std::cell::RefCell::new(None) };
+}
+
+fn service() -> Result<Rc<crate::RestService>, NativeError> {
+    SERVICE.with(|s| s.borrow().clone()).ok_or_else(|| {
+        NativeError::throw(REGISTRATION_EXCEPTION, "the REST service is not available")
+    })
+}
+
+/// Hooks `rest_api_init` into `wp_operations_init` (through WordPress's `rest_get_server()`), once per request, so
+/// legacy routes register while the operation registries are open.
+pub(crate) fn ensure_legacy_hook() {
+    if LEGACY_HOOKED.with(std::cell::Cell::get) {
+        return;
+    }
+    let exists = speedyspec_php::call(
+        &PhpValue::Str("function_exists".into()),
+        &[PhpValue::Str("add_action".into())],
+    );
+    if !matches!(exists, Ok(PhpValue::Bool(true))) {
+        return;
+    }
+    let hooked = speedyspec_php::call(
+        &PhpValue::Str("add_action".into()),
+        &[
+            PhpValue::Str("wp_operations_init".into()),
+            PhpValue::Str("SpeedySpec\\Rest\\Internal\\Adapter::rest_init".into()),
+        ],
+    );
+    if hooked.is_ok() {
+        LEGACY_HOOKED.with(|h| h.set(true));
+    }
+}
+
+fn native_legacy_register(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    let service = service()?;
+    let namespace = arg_text(args, 0);
+    let route = arg_text(args, 1);
+    let handlers = args.get(2).cloned().unwrap_or(PhpValue::Null);
+    let replace = matches!(args.get(3), Some(PhpValue::Bool(true)));
+    for problem in crate::legacy::register(&service, &namespace, &route, &handlers, replace) {
+        eprintln!("speedyspec_wordpress: a legacy REST route was not registered: {problem}");
+    }
+    Ok(PhpValue::Null)
+}
+
+fn php_field<'a>(items: &'a [(Key, PhpValue)], name: &str) -> Option<&'a PhpValue> {
+    items
+        .iter()
+        .find(|(k, _)| *k == Key::Str(name.into()))
+        .map(|(_, v)| v)
+}
+
+fn php_map(value: Option<&PhpValue>) -> indexmap::IndexMap<String, Value> {
+    match value.map(from_php) {
+        Some(Ok(Value::Map(map))) => map,
+        _ => indexmap::IndexMap::new(),
+    }
+}
+
+/// `WP_REST_Server::dispatch()`: any `WP_REST_Request`, through the Rust REST server, as a `WP_REST_Response`.
+/// A new `WP_REST_Server` starts with no legacy routes.
+fn native_legacy_reset(_args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    crate::legacy::reset();
+    Ok(PhpValue::Null)
+}
+
+fn native_dispatch(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    let service = service()?;
+    let request = args.first().cloned().unwrap_or(PhpValue::Null);
+    let Some(PhpValue::Array(parts)) = crate::errors::adapter("read_request", &[request]) else {
+        return Err(NativeError::throw(
+            "InvalidArgumentException",
+            "dispatch takes a WP_REST_Request",
+        ));
+    };
+    let method_name = match php_field(&parts, "method") {
+        Some(PhpValue::Str(m)) => m.clone(),
+        _ => "GET".into(),
+    };
+    // A method REST does not serve (an empty one included) matches no route: WordPress answers rest_no_route.
+    let known = RestMethod::parse(&method_name);
+    let (method, head) = match known {
+        Some(RestMethod::Head) => (RestMethod::Head, true),
+        Some(method) => (method, false),
+        None => (RestMethod::Get, false),
+    };
+    let route = match php_field(&parts, "route") {
+        Some(PhpValue::Str(r)) => r.clone(),
+        _ => String::new(),
+    };
+    let mut rest = speedyspec_rest_contracts::RestRequest::new(method, &route);
+    rest.head = head;
+    rest.url_params = php_map(php_field(&parts, "url"));
+    rest.query_params = php_map(php_field(&parts, "query"));
+    rest.body_params = php_map(php_field(&parts, "body"));
+    rest.json_params = php_map(php_field(&parts, "json"));
+    rest.json_body = matches!(php_field(&parts, "json_body"), Some(PhpValue::Bool(true)));
+    rest.default_params = php_map(php_field(&parts, "defaults"));
+    if let Some(PhpValue::Array(headers)) = php_field(&parts, "headers") {
+        for (key, values) in headers {
+            let Key::Str(name) = key else { continue };
+            let list = match values {
+                PhpValue::Array(items) => items
+                    .iter()
+                    .filter_map(|(_, v)| match v {
+                        PhpValue::Str(s) => Some(s.clone()),
+                        _ => None,
+                    })
+                    .collect(),
+                PhpValue::Str(s) => vec![s.clone()],
+                _ => continue,
+            };
+            rest.headers.insert(header_key(name), list);
+        }
+    }
+    if let Some(PhpValue::Str(raw)) = php_field(&parts, "raw") {
+        rest.body = raw.clone().into_bytes();
+    }
+    let shared = Rc::new(std::cell::RefCell::new(rest));
+    let response = match (known, service.server()) {
+        (None, _) => speedyspec_rest::errors::error_response(
+            &speedyspec_operation_contracts::OperationError::new(
+                "operation_not_found",
+                speedyspec_operation_contracts::Category::NotFound,
+                "no route",
+            ),
+        ),
+        (Some(_), Ok(server)) => server.dispatch_raw(shared.clone(), &service.caller()),
+        (Some(_), Err(error)) => speedyspec_rest::errors::error_response(&error),
+    };
+    let (matched, operation) = {
+        let r = shared.borrow();
+        (r.route.clone(), r.operation.clone())
+    };
+    let handler = operation
+        .as_deref()
+        .and_then(crate::legacy::handler)
+        .unwrap_or(PhpValue::Null);
+    let links = PhpValue::Array(
+        response
+            .links
+            .iter()
+            .enumerate()
+            .map(|(i, l)| {
+                (
+                    Key::Int(i as i64),
+                    PhpValue::Array(vec![
+                        (Key::Str("rel".into()), PhpValue::Str(l.rel.clone())),
+                        (Key::Str("href".into()), PhpValue::Str(l.href.clone())),
+                        (Key::Str("embeddable".into()), PhpValue::Bool(l.embeddable)),
+                    ]),
+                )
+            })
+            .collect(),
+    );
+    let headers = PhpValue::Array(
+        response
+            .headers
+            .iter()
+            .map(|(k, v)| (Key::Str(k.clone()), PhpValue::Str(v.clone())))
+            .collect(),
+    );
+    let made = crate::errors::adapter(
+        "response_from",
+        &[PhpValue::Array(vec![
+            (Key::Str("data".into()), to_php(&response.data)),
+            (
+                Key::Str("status".into()),
+                PhpValue::Int(i64::from(response.status)),
+            ),
+            (Key::Str("headers".into()), headers),
+            (Key::Str("links".into()), links),
+            (
+                Key::Str("route".into()),
+                matched.map_or(PhpValue::Null, PhpValue::Str),
+            ),
+            (Key::Str("handler".into()), handler),
+        ])],
+    );
+    let made = made.ok_or_else(|| {
+        NativeError::throw("RuntimeException", "the REST response could not be built")
+    })?;
+    // As WordPress's dispatch changes the caller's request (URL parameters, defaults, sanitized values), hand them back.
+    let r = shared.borrow();
+    Ok(PhpValue::Array(vec![
+        (Key::Str("response".into()), made),
+        (
+            Key::Str("request".into()),
+            PhpValue::Array(vec![
+                (Key::Str("url".into()), map_value(&r.url_params)),
+                (Key::Str("query".into()), map_value(&r.query_params)),
+                (Key::Str("body".into()), map_value(&r.body_params)),
+                (Key::Str("defaults".into()), map_value(&r.default_params)),
+            ]),
+        ),
+    ]))
+}
+
+/// The new-style operations' routes, for `WP_REST_Server::get_routes()`.
+fn native_routes(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    let service = service()?;
+    let namespace = arg_text(args, 0);
+    let Ok(server) = service.server() else {
+        return Ok(PhpValue::Array(vec![]));
+    };
+    let registries = server.registries().clone();
+    let list = server
+        .table()
+        .routes()
+        .into_iter()
+        .filter(|e| {
+            !e.operation.starts_with("legacy-rest/")
+                && (namespace.is_empty() || e.namespace == namespace)
+        })
+        .enumerate()
+        .map(|(i, entry)| {
+            let args = speedyspec_operation_contracts::OperationCatalog::get_operation(
+                registries.as_ref(),
+                &entry.operation,
+            )
+            .map(|spec| match &spec.input.schema.kind {
+                speedyspec_operation_contracts::SchemaKind::Object { properties, .. } => {
+                    PhpValue::Array(
+                        properties
+                            .iter()
+                            .map(|(name, p)| {
+                                let mut arg =
+                                    vec![(Key::Str("required".into()), PhpValue::Bool(p.required))];
+                                if let Some(t) = schema_type(&p.schema.kind) {
+                                    arg.insert(
+                                        0,
+                                        (Key::Str("type".into()), PhpValue::Str(t.into())),
+                                    );
+                                }
+                                (Key::Str(name.clone()), PhpValue::Array(arg))
+                            })
+                            .collect(),
+                    )
+                }
+                _ => PhpValue::Array(vec![]),
+            })
+            .unwrap_or(PhpValue::Array(vec![]));
+            let methods = PhpValue::Array(
+                entry
+                    .methods
+                    .iter()
+                    .enumerate()
+                    .map(|(j, m)| (Key::Int(j as i64), PhpValue::Str(m.as_str().into())))
+                    .collect(),
+            );
+            (
+                Key::Int(i as i64),
+                PhpValue::Array(vec![
+                    (Key::Str("route".into()), PhpValue::Str(entry.route.clone())),
+                    (
+                        Key::Str("namespace".into()),
+                        PhpValue::Str(entry.namespace.clone()),
+                    ),
+                    (Key::Str("methods".into()), methods),
+                    (Key::Str("args".into()), args),
+                ]),
+            )
+        })
+        .collect();
+    Ok(PhpValue::Array(list))
+}
+
+fn schema_type(kind: &speedyspec_operation_contracts::SchemaKind) -> Option<&'static str> {
+    use speedyspec_operation_contracts::SchemaKind;
+    Some(match kind {
+        SchemaKind::Boolean => "boolean",
+        SchemaKind::Integer { .. } => "integer",
+        SchemaKind::Number { .. } => "number",
+        SchemaKind::String { .. } | SchemaKind::DateTime | SchemaKind::Binary { .. } => "string",
+        SchemaKind::Array { .. } => "array",
+        SchemaKind::Object { .. } | SchemaKind::Ref { .. } => "object",
+        SchemaKind::Any | SchemaKind::OneOf { .. } => return None,
+    })
+}
+
+/// The new-style operations' namespaces, for `WP_REST_Server::get_namespaces()`.
+fn native_namespaces(_args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    let service = service()?;
+    let Ok(server) = service.server() else {
+        return Ok(PhpValue::Array(vec![]));
+    };
+    let mut seen: Vec<String> = Vec::new();
+    for entry in server.table().routes() {
+        if !entry.operation.starts_with("legacy-rest/") && !seen.contains(&entry.namespace) {
+            seen.push(entry.namespace);
+        }
+    }
+    Ok(PhpValue::Array(
+        seen.into_iter()
+            .enumerate()
+            .map(|(i, n)| (Key::Int(i as i64), PhpValue::Str(n)))
+            .collect(),
+    ))
 }
 
 /// Declares the proxy classes in this request, once WordPress's `WP_REST_Request` exists to extend.
@@ -123,6 +425,12 @@ fn native_request_get(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
                 })
                 .collect(),
         ),
+        "default_params" => map_value(&r.default_params),
+        "attributes" => r
+            .operation
+            .as_deref()
+            .and_then(crate::legacy::handler)
+            .unwrap_or(PhpValue::Array(vec![])),
         "body" => match String::from_utf8(r.body.clone()) {
             Ok(text) => PhpValue::Str(text),
             Err(e) => PhpValue::Bytes(e.into_bytes()),
@@ -193,7 +501,7 @@ fn native_request_set(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
                 }
             }
         }
-        "url_params" | "query_params" | "body_params" => {
+        "url_params" | "query_params" | "body_params" | "default_params" => {
             let map = match plain(args.get(2))? {
                 Value::Map(map) => map,
                 _ => indexmap::IndexMap::new(),
@@ -201,6 +509,7 @@ fn native_request_set(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
             match arg_text(args, 1).as_str() {
                 "url_params" => r.url_params = map,
                 "query_params" => r.query_params = map,
+                "default_params" => r.default_params = map,
                 _ => r.body_params = map,
             }
         }
@@ -295,12 +604,21 @@ fn native_bind(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
         ("route", Value::from(arg_text(args, 2).as_str())),
         ("methods", Value::List(methods)),
     ]);
-    let binding = RestBinding::from_value(&value).map_err(|why| {
-        NativeError::throw(
-            REGISTRATION_EXCEPTION,
-            format!("{operation} cannot be bound on REST: {why}"),
-        )
-    })?;
+    // New-style bindings name a versioned namespace; WordPress's looser rule is for legacy routes only.
+    let binding = RestBinding::from_value(&value)
+        .and_then(|b| {
+            if b.is_versioned() {
+                Ok(b)
+            } else {
+                Err("namespace must be vendor/version (such as acme/v1)".to_owned())
+            }
+        })
+        .map_err(|why| {
+            NativeError::throw(
+                REGISTRATION_EXCEPTION,
+                format!("{operation} cannot be bound on REST: {why}"),
+            )
+        })?;
     store.bind(&operation, REST, binding.to_value());
     Ok(PhpValue::Null)
 }
@@ -314,13 +632,24 @@ impl RestArea {
         BINDINGS.with(|b| *b.borrow_mut() = Some(bindings));
         RestArea
     }
+
+    /// The service the shim's natives (`rest_do_request`, legacy routes) reach the REST server through.
+    pub fn with_service(self, service: Rc<crate::RestService>) -> Self {
+        SERVICE.with(|s| *s.borrow_mut() = Some(service));
+        self
+    }
 }
 
 type NativeFn = fn(&[PhpValue]) -> Result<PhpValue, NativeError>;
 
 impl NativeArea for RestArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
-        let entries: [(&str, NativeFn); 4] = [
+        let entries: [(&str, NativeFn); 9] = [
+            ("legacy_reset", native_legacy_reset),
+            ("dispatch", native_dispatch),
+            ("routes", native_routes),
+            ("namespaces", native_namespaces),
+            ("legacy_register", native_legacy_register),
             ("request_get", native_request_get),
             ("request_set", native_request_set),
             ("response_get", native_response_get),
@@ -336,9 +665,28 @@ impl NativeArea for RestArea {
         if let Err(err) = speedyspec_php::eval("speedyspec://rest", FACADE) {
             eprintln!("speedyspec_wordpress: declaring SpeedySpec\\Rest failed: {err}");
         }
+        let declared = speedyspec_php::call(
+            &PhpValue::Str("class_exists".into()),
+            &[
+                PhpValue::Str("WP_REST_Server".into()),
+                PhpValue::Bool(false),
+            ],
+        );
+        if !matches!(declared, Ok(PhpValue::Bool(true))) {
+            for (label, source) in [
+                ("speedyspec://rest/trunk-server", TRUNK_SERVER),
+                ("speedyspec://rest/server", SHIM_SERVER),
+            ] {
+                if let Err(err) = speedyspec_php::eval(label, source) {
+                    eprintln!("speedyspec_wordpress: declaring {label} failed: {err}");
+                }
+            }
+        }
     }
 
     fn request_end(&self) {
         handles::clear();
+        crate::legacy::reset();
+        LEGACY_HOOKED.with(|h| h.set(false));
     }
 }

@@ -575,3 +575,41 @@ fn embeds_are_cached_per_request_and_follow_the_relation_list() {
     assert!(only[0]["_embedded"].get("secret").is_none(), "{only}");
     assert_eq!(only[0]["_embedded"]["author"][0]["id"], 9, "{only}");
 }
+
+/// A neutral handler that answers with a full response.
+struct Answering;
+
+impl OperationHandler for Answering {
+    fn handle(
+        &self,
+        _: Box<dyn std::any::Any>,
+        _: &Caller,
+    ) -> Result<Box<dyn std::any::Any>, OperationError> {
+        unreachable!()
+    }
+    fn neutral(&self) -> bool {
+        true
+    }
+    fn handle_neutral(&self, _: &Value, _: &Caller) -> Result<Value, OperationError> {
+        let data = Value::map([("ok", Value::Bool(true))]);
+        let mut response = RestResponse::ok(data.clone());
+        response.status = 207;
+        response.headers.insert("X-A".into(), "1".into());
+        assert!(speedyspec_rest::current_request().is_some());
+        speedyspec_rest::answer(response);
+        Ok(data)
+    }
+}
+
+#[test]
+fn a_neutral_handler_can_answer_with_a_full_response() {
+    let w = world(None);
+    let h: Rc<dyn OperationHandler> = Rc::new(Answering);
+    bind_handler(w.server.container(), "acme/closed", move |_, _| {
+        Ok(h.clone())
+    });
+    let r = get(&w, Method::Get, "/wp-json/acme/v1/closed");
+    assert_eq!(status(&r), 207);
+    assert_eq!(r.headers().get("X-A").as_deref(), Some("1"));
+    assert!(speedyspec_rest::current_request().is_none());
+}

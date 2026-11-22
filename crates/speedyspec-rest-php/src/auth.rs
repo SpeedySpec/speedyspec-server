@@ -22,6 +22,13 @@ impl PhpRestAuthenticator {
 
 impl Authenticator<HttpServerRequest> for PhpRestAuthenticator {
     fn authenticate(&self, _request: &HttpServerRequest) -> Result<Caller, OperationError> {
+        Ok(self.current())
+    }
+}
+
+impl PhpRestAuthenticator {
+    /// WordPress's current user as a REST caller.
+    pub fn current(&self) -> Caller {
         let exists = speedyspec_php::call(
             &PhpValue::Str("function_exists".into()),
             &[PhpValue::Str("get_current_user_id".into())],
@@ -34,6 +41,6 @@ impl Authenticator<HttpServerRequest> for PhpRestAuthenticator {
         } else {
             None
         };
-        Ok(Caller::new(user, REST, self.identity.clone()))
+        Caller::new(user, REST, self.identity.clone())
     }
 }

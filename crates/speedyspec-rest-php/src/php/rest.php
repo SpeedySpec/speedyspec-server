@@ -91,6 +91,62 @@ final class Adapter
         return [ 'kind' => 'value', 'data' => $extract( $value ) ];
     }
 
+    /** The REST server of this request, when one exists. */
+    public static function server(): mixed
+    {
+        return ( $GLOBALS['wp_rest_server'] ?? null ) instanceof \WP_REST_Server ? $GLOBALS['wp_rest_server'] : null;
+    }
+
+    /** The request's legacy routes after rest_endpoints, as trunk's get_routes() gives them; null before a server. */
+    public static function legacy_routes(): ?array
+    {
+        $server = self::server();
+        return $server ? $server->speedyspecLegacyRoutes() : null;
+    }
+
+    /** On wp_operations_init: builds WordPress's REST server, which fires rest_api_init, so legacy routes register. */
+    public static function rest_init(): void
+    {
+        if ( function_exists( 'rest_get_server' ) ) {
+            rest_get_server();
+        }
+    }
+
+    /** A WP_REST_Request's parts, as plain arrays, read through its public getters (so any request works). */
+    public static function read_request( \WP_REST_Request $request ): array
+    {
+        $extract = [ \SpeedySpec\Operation\Internal\Mapper::class, 'extract' ];
+        $json    = $request->is_json_content_type();
+        return [
+            'method'   => (string) $request->get_method(),
+            'route'    => (string) $request->get_route(),
+            'url'      => $extract( (array) $request->get_url_params() ),
+            'query'    => $extract( (array) $request->get_query_params() ),
+            'body'     => $extract( (array) $request->get_body_params() ),
+            'json'     => $json ? $extract( (array) ( $request->get_json_params() ?? [] ) ) : [],
+            'json_body' => $json,
+            'defaults' => $extract( (array) $request->get_default_params() ),
+            'headers'  => (array) $request->get_headers(),
+            'raw'      => (string) $request->get_body(),
+        ];
+    }
+
+    /** A WP_REST_Response from a Rust response's parts. */
+    public static function response_from( array $parts ): \WP_REST_Response
+    {
+        $response = new \WP_REST_Response( $parts['data'], $parts['status'], $parts['headers'] );
+        foreach ( $parts['links'] as $link ) {
+            $response->add_link( $link['rel'], $link['href'], $link['embeddable'] ? [ 'embeddable' => true ] : [] );
+        }
+        if ( null !== $parts['route'] ) {
+            $response->set_matched_route( $parts['route'] );
+        }
+        if ( null !== $parts['handler'] ) {
+            $response->set_matched_handler( $parts['handler'] );
+        }
+        return $response;
+    }
+
     public static function error( string $code, string $message, array $data ): mixed
     {
         return class_exists( 'WP_Error', false )

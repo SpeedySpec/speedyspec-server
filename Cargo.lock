@@ -5467,6 +5467,8 @@ version = "0.1.1"
 dependencies = [
  "indexmap",
  "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
  "speedyspec-container",
  "speedyspec-container-php",
  "speedyspec-hooks-memory",
@@ -5482,6 +5484,9 @@ dependencies = [
  "speedyspec-rest-contracts",
  "speedyspec-transport",
  "speedyspec-transport-contracts",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "ureq",
 ]
 
 [[package]]
