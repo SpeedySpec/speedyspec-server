@@ -319,8 +319,14 @@ fn format_ok(format: StringFormat, s: &str) -> bool {
     }
 }
 
-/// `value` with every integral float under an `integer` schema turned into an integer, as WordPress casts after
-/// `rest_is_integer`. Run before [`validate`] so enums and hydrators see integers. One-of branches are left alone.
+/// `value` reshaped to what its schema expects, for values whose wire or PHP form is ambiguous. Run before
+/// [`validate`] so enums and hydrators see the expected kinds. One-of branches are left alone.
+///
+/// - an integral float under `integer` becomes an integer, as WordPress casts after `rest_is_integer`;
+/// - a string under `date-time` becomes a date time (RFC 3339, converted to UTC, or `Y-m-d\TH:i:s`, or
+///   `Y-m-d H:i:s`); a string that parses as none stays a string, for the validator to report;
+/// - a string under `binary` becomes its bytes;
+/// - an empty list under an object or a type reference becomes an empty map (PHP's `[]` is both).
 pub fn normalize(schema: &Schema, value: &Value, types: &dyn TypeCatalog) -> Value {
     match (&schema.kind, value) {
         (SchemaKind::Integer { .. }, Value::Float(f))
@@ -330,6 +336,15 @@ pub fn normalize(schema: &Schema, value: &Value, types: &dyn TypeCatalog) -> Val
                 && *f < i64::MAX as f64 =>
         {
             Value::Int(*f as i64)
+        }
+        (SchemaKind::DateTime, Value::String(text)) => parse_date_time(text)
+            .map(Value::DateTime)
+            .unwrap_or_else(|| value.clone()),
+        (SchemaKind::Binary { .. }, Value::String(text)) => Value::Binary(text.as_bytes().to_vec()),
+        (SchemaKind::Object { .. } | SchemaKind::Ref { .. }, Value::List(list))
+            if list.is_empty() =>
+        {
+            normalize(schema, &Value::Map(IndexMap::new()), types)
         }
         (SchemaKind::Array { items, .. }, Value::List(list)) => Value::List(
             list.iter()
@@ -345,6 +360,15 @@ pub fn normalize(schema: &Schema, value: &Value, types: &dyn TypeCatalog) -> Val
         },
         _ => value.clone(),
     }
+}
+
+fn parse_date_time(text: &str) -> Option<chrono::NaiveDateTime> {
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(text) {
+        return Some(dt.naive_utc());
+    }
+    ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"]
+        .iter()
+        .find_map(|format| chrono::NaiveDateTime::parse_from_str(text, format).ok())
 }
 
 fn normalize_object(

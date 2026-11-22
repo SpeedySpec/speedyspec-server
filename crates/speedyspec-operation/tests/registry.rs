@@ -146,3 +146,56 @@ fn close_checks_the_resource_type_and_identity_fields() {
         field: "slug".into()
     }));
 }
+
+#[test]
+fn restrict_limits_an_open_registry() {
+    let r = Registries::new();
+    r.register_type(user_type()).unwrap();
+    r.register_operation(get_user().build().unwrap()).unwrap();
+    r.restrict("core/get-user", &["rest"]).unwrap();
+    let spec = r.get_operation("core/get-user").unwrap();
+    assert!(spec.exposed_on("rest"));
+    assert!(!spec.exposed_on("xmlrpc"));
+    assert!(matches!(
+        r.restrict("a/nope", &["rest"]),
+        Err(RegistrationError::UnknownOperation { .. })
+    ));
+}
+
+#[test]
+fn restrict_after_close_is_a_no_op_only_when_identical() {
+    let r = Registries::new();
+    r.register_type(user_type()).unwrap();
+    r.register_type(post_type()).unwrap();
+    r.register_operation(get_user().build().unwrap()).unwrap();
+    r.register_operation(get_post().build().unwrap()).unwrap();
+    r.restrict("core/get-user", &["rest"]).unwrap();
+    r.close().unwrap();
+    assert_eq!(r.restrict("core/get-user", &["rest"]), Ok(()));
+    assert!(matches!(
+        r.restrict("core/get-user", &["xmlrpc"]),
+        Err(RegistrationError::Closed { .. })
+    ));
+}
+
+#[test]
+fn close_lenient_drops_what_errors_name() {
+    let r = Registries::new();
+    r.register_type(user_type()).unwrap();
+    r.register_type(post_type()).unwrap();
+    r.register_operation(get_user().build().unwrap()).unwrap();
+    r.register_operation(get_post().build().unwrap()).unwrap();
+    let bad = speedyspec_operation::Operation::query("a/bad")
+        .input::<GetPost>(S::object([("id", S::integer().required())]))
+        .output::<Post>(Type::reference("ghost"))
+        .public()
+        .build()
+        .unwrap();
+    r.register_operation(bad).unwrap();
+    let errors = r.close_lenient();
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert!(matches!(&errors[0], RegistrationError::UnknownType { .. }));
+    assert!(r.is_closed());
+    assert!(r.get_operation("a/bad").is_none());
+    assert!(r.get_operation("core/get-user").is_some());
+}
