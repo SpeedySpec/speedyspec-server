@@ -24,6 +24,10 @@ function legacy_routes( $server ) {
     register_rest_route( 'oembed/1.0', '/over', [ 'methods' => 'GET', 'callback' => static fn () => 'core', 'permission_callback' => '__return_true' ] );
     register_rest_route( 'oembed/1.0', '/over', [ 'methods' => 'GET', 'callback' => static fn () => 'plugin', 'permission_callback' => '__return_true' ], true );
     $public = static fn ( $request ) => true;
+    if ( ! empty( $GLOBALS['only_b'] ) ) {
+        register_rest_route( 'acme/v1', '/b', [ 'methods' => 'GET', 'callback' => static fn () => 'b', 'permission_callback' => '__return_true' ] );
+        return;
+    }
     register_rest_route( 'acme/v1', '/perm-false', [ 'methods' => 'GET', 'callback' => static fn () => 'ran', 'permission_callback' => '__return_false' ] );
     register_rest_route( 'acme/v1', '/perm-error', [ 'methods' => 'GET', 'callback' => static fn () => 'ran', 'permission_callback' => static fn () => new WP_Error( 'x', 'X', [ 'status' => 418 ] ) ] );
     register_rest_route( 'acme/v1', '/no-perm', [ 'methods' => 'GET', 'callback' => static fn () => 'open' ] );
@@ -212,6 +216,24 @@ fn main() {
         "callback_wp_error_keeps_its_status",
         failed.0 == 409 && failed.1["code"] == "y",
         &failed,
+    );
+
+    // a_new_server_instance_resets_legacy_routes
+    load(
+        &b.php,
+        "$GLOBALS['only_b'] = true; $GLOBALS['wp_rest_server'] = null; rest_get_server();",
+    );
+    let gone = call(&b, "/wp-json/acme/v1/perm-false");
+    let fresh = call(&b, "/wp-json/acme/v1/b");
+    load(
+        &b.php,
+        "$GLOBALS['only_b'] = false; $GLOBALS['wp_rest_server'] = null; rest_get_server();",
+    );
+    let back = call(&b, "/wp-json/acme/v1/perm-false");
+    check(
+        "a_new_server_instance_resets_legacy_routes",
+        gone.0 == 404 && fresh == (200, Json::from("b")) && back.0 == 401,
+        (&gone, &fresh, &back),
     );
 
     // re_registration_is_a_no_op_that_rebinds

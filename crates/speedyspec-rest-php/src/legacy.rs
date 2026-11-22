@@ -1,22 +1,25 @@
 //! Legacy REST routes (`register_rest_route`) as operations: the LegacyHandlerAdapter.
 //!
 //! Each endpoint of a route becomes an operation restricted to `rest`, with an explicit binding for the exact route
-//! and an open input, so WordPress's own validation (not the Rust validator) decides what reaches the callback. The
-//! PHP callbacks live for one request: each request's registration, an identical no-op on closed registries, binds
-//! that request's callbacks again.
+//! and an open input, so WordPress's own validation (not the Rust validator) decides what reaches the callback.
+//!
+//! Legacy routes belong to the request, like WordPress's `WP_REST_Server` instance: they are kept in a request-scoped
+//! table that a new server instance resets, never in the site's closed registries. `RestService` serves the site's
+//! operations plus this table, rebuilding only when the table changes, so a site whose plugins register the same
+//! routes on every `rest_api_init` keeps one cached server.
 
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use indexmap::IndexMap;
 use speedyspec_container::Lifetime;
 use speedyspec_operation::{Operation, S};
 use speedyspec_operation_contracts::{
-    Caller, Category, OperationError, PermissionCheck, RawInput, RawOutput, Value,
+    Caller, Category, OperationError, OperationSpec, PermissionCheck, RawInput, RawOutput, Value,
 };
 use speedyspec_operation_dispatch::{OperationHandler, bind_handler};
-use speedyspec_operation_php::Site;
 use speedyspec_php_ext::{Key, Value as PhpValue};
 use speedyspec_rest::REST;
 use speedyspec_rest_contracts::{RestBinding, RestMethod};
@@ -89,11 +92,44 @@ fn methods_of(handler: &PhpValue) -> Vec<RestMethod> {
     }
 }
 
-/// Registers one route's endpoints. `route` is the full route (`/{namespace}/…`), as `WP_REST_Server::register_route`
-/// receives it. Returns the problems, for the log.
+/// One legacy endpoint registered in this request.
+#[derive(Clone)]
+pub struct Entry {
+    pub spec: OperationSpec,
+    pub binding: RestBinding,
+}
+
+thread_local! {
+    /// This request's legacy endpoints, by operation, in registration order. A new `WP_REST_Server` resets it.
+    static ENTRIES: RefCell<IndexMap<String, Entry>> = RefCell::new(IndexMap::new());
+}
+
+/// Forgets this request's legacy routes: a new `WP_REST_Server` starts with none, as WordPress's does.
+pub fn reset() {
+    ENTRIES.with(|e| e.borrow_mut().clear());
+    clear();
+}
+
+/// This request's legacy endpoints.
+pub fn entries() -> Vec<Entry> {
+    ENTRIES.with(|e| e.borrow().values().cloned().collect())
+}
+
+/// What identifies this request's legacy routes, so the REST server is rebuilt only when they change.
+pub fn digest() -> String {
+    ENTRIES.with(|e| {
+        e.borrow()
+            .iter()
+            .map(|(name, entry)| format!("{name}={:?}", entry.binding))
+            .collect::<Vec<_>>()
+            .join("\n")
+    })
+}
+
+/// Registers one route's endpoints into this request's legacy table. `route` is the full route
+/// (`/{namespace}/…`), as `WP_REST_Server::register_route` receives it. Returns the problems, for the log.
 pub fn register(
     service: &RestService,
-    site: &Site,
     namespace: &str,
     route: &str,
     handlers: &PhpValue,
@@ -112,49 +148,36 @@ pub fn register(
             continue;
         }
         let name = operation_name(namespace, route, &methods);
+        // Without $override the first registration wins, as WordPress's first matching handler does.
+        if !replace && ENTRIES.with(|e| e.borrow().contains_key(&name)) {
+            continue;
+        }
         let builder = if methods.iter().all(|m| *m == RestMethod::Get) {
             Operation::query(&name)
         } else {
             Operation::command(&name)
         };
-        let spec = builder
+        let spec = match builder
             .input::<RawInput>(S::any())
             .output::<RawOutput>(S::any())
             .transports(&[REST])
             .permission_check(Rc::new(LegacyPermission {
                 operation: name.clone(),
             }))
-            .build();
-        let spec = match spec {
+            .build()
+        {
             Ok(spec) => spec,
             Err(err) => {
                 problems.push(format!("{route}: {err}"));
                 continue;
             }
         };
-        let known = handler_known(&name);
-        let registered = if replace {
-            site.registries.replace_operation(spec)
-        } else {
-            site.registries.register_operation(spec)
-        };
-        // Without $override the first registration wins, as WordPress's first matching handler does.
-        let keep_first = !replace && (known || registered.is_err());
-        if let Err(err) = &registered
-            && replace
-        {
-            problems.push(format!("{route}: {err}"));
-            continue;
-        }
-        if keep_first && known {
-            continue;
-        }
         let binding = RestBinding {
             namespace: namespace.to_owned(),
             route: relative.clone(),
             methods,
         };
-        service.bindings().bind(&name, REST, binding.to_value());
+        ENTRIES.with(|e| e.borrow_mut().insert(name.clone(), Entry { spec, binding }));
         HANDLERS.with(|h| h.borrow_mut().insert(name.clone(), handler.clone()));
         let legacy: Rc<dyn OperationHandler> = Rc::new(LegacyHandler {
             operation: name.clone(),
@@ -164,10 +187,6 @@ pub fn register(
         bind_handler(container, &name, move |_, _| Ok(legacy.clone()));
     }
     problems
-}
-
-fn handler_known(operation: &str) -> bool {
-    HANDLERS.with(|h| h.borrow().contains_key(operation))
 }
 
 fn failed(what: &str, error: impl std::fmt::Display) -> OperationError {

@@ -8,16 +8,18 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_operation::Registries;
 use speedyspec_operation_contracts::{Category, Identity, OperationError};
+use speedyspec_operation_contracts::{OperationCatalog, TypeCatalog};
 use speedyspec_operation_php::OperationArea;
 use speedyspec_rest::{RestServer, RestTransport};
-use speedyspec_transport::TransportRegistry;
+use speedyspec_transport::{MemoryBindingStore, TransportRegistry};
 use speedyspec_transport_contracts::BindingStore;
 
 use crate::{PhpRestAuthenticator, PhpRestHooks};
 
 struct Built {
-    registries: Rc<Registries>,
+    site: Rc<Registries>,
     bindings: u64,
+    legacy: String,
     server: Rc<RestServer>,
 }
 
@@ -77,24 +79,28 @@ impl RestService {
         hasher.finish()
     }
 
-    /// The current site's REST server, built on first use and whenever the site or the bindings changed.
+    /// The current site's REST server, built on first use and whenever the site, the bindings or this request's
+    /// legacy routes changed. It serves the site's operations plus the legacy routes.
     pub fn server(&self) -> Result<Rc<RestServer>, OperationError> {
         crate::area::ensure_legacy_hook();
         let site = self.operations.site()?;
         let digest = self.digest();
+        let legacy = crate::legacy::digest();
         if let Some(built) = self.built.borrow().as_ref()
-            && Rc::ptr_eq(&built.registries, &site.registries)
+            && Rc::ptr_eq(&built.site, &site.registries)
             && built.bindings == digest
+            && built.legacy == legacy
         {
             return Ok(built.server.clone());
         }
-        let transports = TransportRegistry::new(self.bindings.clone());
+        let (registries, bindings) = self.combine(&site.registries);
+        let transports = TransportRegistry::new(bindings);
         transports
-            .install(Rc::new(RestTransport::new(site.registries.clone())))
+            .install(Rc::new(RestTransport::new(registries.clone())))
             .map_err(|e| {
                 OperationError::new("rest_unavailable", Category::Internal, e.to_string())
             })?;
-        let exposure = transports.expose(&site.registries).map_err(|e| {
+        let exposure = transports.expose(&registries).map_err(|e| {
             OperationError::new("rest_unavailable", Category::Unavailable, e.to_string())
         })?;
         for problem in exposure.problems() {
@@ -102,7 +108,7 @@ impl RestService {
         }
         let server = Rc::new(RestServer::new(
             self.container.clone(),
-            site.registries.clone(),
+            registries,
             Rc::new(exposure),
             Rc::new(PhpRestHooks::new()),
             Rc::new(PhpRestAuthenticator::new(self.identity.clone())),
@@ -112,10 +118,43 @@ impl RestService {
             eprintln!("speedyspec_wordpress: a REST route was skipped: {problem}");
         }
         *self.built.borrow_mut() = Some(Built {
-            registries: site.registries.clone(),
+            site: site.registries.clone(),
             bindings: digest,
+            legacy,
             server: server.clone(),
         });
         Ok(server)
+    }
+
+    /// The registries served (the site's types and operations, plus this request's legacy routes), closed, and the
+    /// bindings (the stored ones, plus the legacy routes').
+    fn combine(&self, site: &Registries) -> (Rc<Registries>, Rc<dyn BindingStore>) {
+        let registries = Registries::new();
+        for name in site.type_names() {
+            if let Some(spec) = site.get_type(&name) {
+                let _ = registries.register_type((*spec).clone());
+            }
+        }
+        for name in site.operation_names() {
+            if let Some(spec) = site.get_operation(&name) {
+                let _ = registries.register_operation((*spec).clone());
+            }
+        }
+        let bindings = MemoryBindingStore::new();
+        for (operation, transport, config) in self.bindings.bindings() {
+            bindings.bind(&operation, &transport, config);
+        }
+        for entry in crate::legacy::entries() {
+            let name = entry.spec.name.as_str().to_owned();
+            if let Err(err) = registries.register_operation(entry.spec) {
+                eprintln!("speedyspec_wordpress: a legacy REST route was not served: {err}");
+                continue;
+            }
+            bindings.bind(&name, speedyspec_rest::REST, entry.binding.to_value());
+        }
+        for problem in registries.close_lenient() {
+            eprintln!("speedyspec_wordpress: a REST definition was dropped: {problem}");
+        }
+        (Rc::new(registries), Rc::new(bindings))
     }
 }

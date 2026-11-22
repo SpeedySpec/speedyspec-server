@@ -7,6 +7,13 @@ declare(strict_types=1);
  */
 class WP_REST_Server extends SpeedySpec_TrunkRestServer
 {
+    /** A new server starts with no legacy routes, as WordPress's does. */
+    public function __construct()
+    {
+        parent::__construct();
+        \SpeedySpec\Rest\Native\legacy_reset();
+    }
+
     public function register_route( $route_namespace, $route, $route_args, $override = false )
     {
         parent::register_route( $route_namespace, $route, $route_args, $override );

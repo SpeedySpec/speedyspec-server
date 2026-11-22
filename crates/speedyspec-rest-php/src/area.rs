@@ -60,12 +60,11 @@ pub(crate) fn ensure_legacy_hook() {
 
 fn native_legacy_register(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     let service = service()?;
-    let site = service.operations().registering();
     let namespace = arg_text(args, 0);
     let route = arg_text(args, 1);
     let handlers = args.get(2).cloned().unwrap_or(PhpValue::Null);
     let replace = matches!(args.get(3), Some(PhpValue::Bool(true)));
-    for problem in crate::legacy::register(&service, &site, &namespace, &route, &handlers, replace)
+    for problem in crate::legacy::register(&service, &namespace, &route, &handlers, replace)
     {
         eprintln!("speedyspec_wordpress: a legacy REST route was not registered: {problem}");
     }
@@ -87,6 +86,12 @@ fn php_map(value: Option<&PhpValue>) -> indexmap::IndexMap<String, Value> {
 }
 
 /// `WP_REST_Server::dispatch()`: any `WP_REST_Request`, through the Rust REST server, as a `WP_REST_Response`.
+/// A new `WP_REST_Server` starts with no legacy routes.
+fn native_legacy_reset(_args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    crate::legacy::reset();
+    Ok(PhpValue::Null)
+}
+
 fn native_dispatch(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     let service = service()?;
     let request = args.first().cloned().unwrap_or(PhpValue::Null);
@@ -620,7 +625,8 @@ type NativeFn = fn(&[PhpValue]) -> Result<PhpValue, NativeError>;
 
 impl NativeArea for RestArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
-        let entries: [(&str, NativeFn); 8] = [
+        let entries: [(&str, NativeFn); 9] = [
+            ("legacy_reset", native_legacy_reset),
             ("dispatch", native_dispatch),
             ("routes", native_routes),
             ("namespaces", native_namespaces),
@@ -661,7 +667,7 @@ impl NativeArea for RestArea {
 
     fn request_end(&self) {
         handles::clear();
-        crate::legacy::clear();
+        crate::legacy::reset();
         LEGACY_HOOKED.with(|h| h.set(false));
     }
 }
