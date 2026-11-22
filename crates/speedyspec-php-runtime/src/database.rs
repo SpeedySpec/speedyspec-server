@@ -1,6 +1,82 @@
 //! The database the worker's native WordPress areas use, read from the worker's environment.
 
+use std::rc::Rc;
+
+use speedyspec_container::Container;
+use speedyspec_data_mysql::MySqlEngineFactory;
+use speedyspec_data_query::{EngineRegistry, Query};
+use speedyspec_php::NativeArea;
 use speedyspec_wp_db::WpDbConfig;
+use speedyspec_wp_db_php::WpDbArea;
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_object_cache_php::ObjectCacheArea;
+use speedyspec_wp_options_php::OptionsArea;
+
+/// What a worker with a database keeps for its life: the engines, reset at each request end.
+pub struct WorkerDatabase {
+    pub registry: Rc<EngineRegistry>,
+}
+
+/// Why a worker with database credentials cannot boot.
+#[derive(Debug)]
+pub enum BootFailure {
+    /// The configuration was refused (logged as `php_worker_boot_failed`).
+    Config(String),
+    /// The `default` engine does not answer (logged as `php_worker_database_unreachable`).
+    Unreachable(String),
+}
+
+impl BootFailure {
+    /// The log event and the message.
+    pub fn event(&self) -> (&'static str, &str) {
+        match self {
+            BootFailure::Config(message) => ("php_worker_boot_failed", message),
+            BootFailure::Unreachable(message) => ("php_worker_database_unreachable", message),
+        }
+    }
+}
+
+/// A trivial query on the `default` engine, before any area uses it.
+fn check(registry: &EngineRegistry) -> Result<(), String> {
+    let store = registry.sql("default").map_err(|e| e.to_string())?;
+    let statement = Query::parse("SELECT 1")
+        .and_then(|q| q.build())
+        .map_err(|e| e.to_string())?;
+    store
+        .query(&statement)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// The `default` engine from `config`, and the areas that use it, in the order they must be registered:
+/// `WpDbArea`, `ObjectCacheArea`, `OptionsArea`. The engine must answer before `WpDbArea` is built. The object cache has no persistent level yet (request lifetime, as
+/// WordPress's default).
+pub fn boot_database(
+    config: WpDbConfig,
+    container: &Rc<Container>,
+    hook_api: &Rc<HookApi>,
+) -> Result<(WorkerDatabase, Vec<Rc<dyn NativeArea>>), BootFailure> {
+    let registry = Rc::new(EngineRegistry::new());
+    registry.register_factory(Rc::new(MySqlEngineFactory));
+    let engine = config
+        .engine_config("default")
+        .map_err(|e| BootFailure::Config(e.to_string()))?;
+    registry
+        .configure(engine)
+        .map_err(|e| BootFailure::Config(e.to_string()))?;
+    check(&registry).map_err(BootFailure::Unreachable)?;
+    let wpdb = WpDbArea::new(
+        container.clone(),
+        hook_api.clone(),
+        registry.clone(),
+        config,
+    );
+    let cache = ObjectCacheArea::new(container.clone(), None);
+    let options = OptionsArea::new(container.clone(), hook_api.clone(), cache.api(), wpdb.api());
+    let database = WorkerDatabase { registry };
+    let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(wpdb), Rc::new(cache), Rc::new(options)];
+    Ok((database, areas))
+}
 
 /// The worker's database, from `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_CHARSET`, `DB_COLLATE` and
 /// `TABLE_PREFIX` (WordPress's `wp-config.php` names). The areas are fixed when PHP boots, so the configuration must
@@ -39,8 +115,10 @@ mod tests {
     use std::collections::HashMap;
 
     fn env(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
-        let map: HashMap<String, String> =
-            pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        let map: HashMap<String, String> = pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
         move |key| map.get(key).cloned()
     }
 
