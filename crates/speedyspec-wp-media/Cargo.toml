@@ -1,0 +1,15 @@
+[package]
+name = "speedyspec-wp-media"
+version = "0.1.0"
+description = "WordPress's media metadata rules over the media reader port, and the composite reader."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
+
+[dev-dependencies]
+libc = "0.2"
+speedyspec-wp-media-testkit = { path = "../speedyspec-wp-media-testkit" }
