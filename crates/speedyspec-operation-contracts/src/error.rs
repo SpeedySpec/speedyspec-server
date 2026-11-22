@@ -41,7 +41,8 @@ pub struct OperationError {
     pub code: String,
     pub category: Category,
     pub message: String,
-    pub details: Value,
+    /// Boxed so a `Result<_, OperationError>` stays small.
+    pub details: Box<Value>,
 }
 
 impl OperationError {
@@ -50,12 +51,12 @@ impl OperationError {
             code: code.into(),
             category,
             message: message.into(),
-            details: Value::Null,
+            details: Box::new(Value::Null),
         }
     }
 
     pub fn with_details(mut self, details: Value) -> Self {
-        self.details = details;
+        self.details = Box::new(details);
         self
     }
 }

@@ -6,9 +6,6 @@
 //! the generic [`RawInput`]/[`RawOutput`] contracts, and the catalogue ports. Implementations live in
 //! `speedyspec-operation` and `speedyspec-operation-dispatch`.
 
-// `OperationError` is a value object travelling the cold path; boxing it would buy nothing measurable.
-#![allow(clippy::result_large_err)]
-
 mod caller;
 mod catalog;
 mod error;

@@ -1,0 +1,12 @@
+[package]
+name = "speedyspec-operation-dispatch"
+version = "0.1.0"
+description = "Dispatch for the unified operation API: handlers bound in the service container by operation name, middleware (permission first), and calls by name with neutral values."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-operation = { path = "../speedyspec-operation" }
+speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }

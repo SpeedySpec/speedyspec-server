@@ -5,9 +5,6 @@
 //!
 //! Patterns: Builder ([`S`]/[`SchemaBuilder`]) producing Value Objects; Data Mapper for JSON (`export`).
 
-// `OperationError` is a value object travelling the cold path; boxing it would buy nothing measurable.
-#![allow(clippy::result_large_err)]
-
 mod error;
 pub mod export;
 pub mod identity;
