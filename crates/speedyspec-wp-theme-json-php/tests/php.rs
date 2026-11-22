@@ -36,6 +36,8 @@ const CASES: &[(&str, Case)] = &[
     ("schema_migrate", case_schema_migrate),
     ("set_spacing_sizes_notices", case_set_spacing_sizes),
     ("presets_keyed_by_origin", case_presets_keyed),
+    ("serialize_round_trips_the_document", case_serialize),
+    ("swapped_block_style_is_seen", case_swapped_block_style),
 ];
 
 fn run(php: &Php, code: &str) -> Result<Value, String> {
@@ -142,6 +144,43 @@ fn case_presets_keyed(php: &Php) -> Result<(), String> {
         php,
         "return (new WP_Theme_JSON(['version'=>3,'settings'=>['color'=>['palette'=>[['slug'=>'a','color'=>'#000']]]]], 'custom'))->get_settings();",
         r##"{"color":{"palette":{"custom":[{"slug":"a","color":"#000"}]}}}"##,
+    )
+}
+
+/// A serialized document carries its data, not its handle: unserializing after the slot is reused yields the
+/// original data, and destroying the copy leaves the other object alone.
+fn case_serialize(php: &Php) -> Result<(), String> {
+    expect_json(
+        php,
+        "$s = serialize(new WP_Theme_JSON(['version'=>3,'settings'=>['color'=>['custom'=>false]]]));
+         $b = new WP_Theme_JSON(['version'=>3,'settings'=>['color'=>['text'=>true]]]);
+         $x = unserialize($s); $copy = $x->get_settings(); unset($x);
+         return [$copy, $b->get_settings(), str_contains($s, 'theme_json')];",
+        r#"[{"color":{"custom":false}},{"color":{"text":true}},true]"#,
+    )
+}
+
+/// Minimal block registries, enough for the adapter to read names and styles.
+const REGISTRIES: &str = r#"
+class WP_Block_Type_Registry { public static $i; public $blocks = []; public static function get_instance() { return self::$i ??= new self(); }
+    public function get_all_registered() { return $this->blocks; } }
+class WP_Block_Styles_Registry { public static $i; public $styles = []; public static function get_instance() { return self::$i ??= new self(); }
+    public function get_all_registered() { return $this->styles; }
+    public function get_registered_styles_for_block($name) { return $this->styles[$name] ?? []; } }
+"#;
+
+/// Swapping one block style for another (same counts) is seen by the next document, as WordPress sees it.
+fn case_swapped_block_style(php: &Php) -> Result<(), String> {
+    run(php, REGISTRIES)?;
+    expect_json(
+        php,
+        "WP_Block_Type_Registry::get_instance()->blocks = ['core/button' => (object) ['styles' => [], 'selectors' => [], 'supports' => []]];
+         WP_Block_Styles_Registry::get_instance()->styles = ['core/button' => ['outline' => ['name' => 'outline']]];
+         new WP_Theme_JSON(['version'=>3]);
+         WP_Block_Styles_Registry::get_instance()->styles = ['core/button' => ['fancy' => ['name' => 'fancy']]];
+         $t = new WP_Theme_JSON(['version'=>3,'styles'=>['blocks'=>['core/button'=>['variations'=>['fancy'=>['color'=>['text'=>'red']]]]]]]);
+         return $t->get_raw_data();",
+        r#"{"version":3,"styles":{"blocks":{"core/button":{"variations":{"fancy":{"color":{"text":"red"}}}}}}}"#,
     )
 }
 

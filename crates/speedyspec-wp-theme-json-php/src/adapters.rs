@@ -100,7 +100,12 @@ impl BlockMetadata for PhpBlockRegistry {
     fn change_marker(&self) -> u64 {
         let _ = self.registered();
         match &self.seen.borrow().0 {
-            Value::Int(i) => *i as u64,
+            Value::Str(s) => {
+                use std::hash::{Hash, Hasher};
+                let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                s.hash(&mut hasher);
+                hasher.finish()
+            }
             _ => 0,
         }
     }

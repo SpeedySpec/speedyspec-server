@@ -114,6 +114,9 @@ pub(crate) fn functions(h: Rc<Handlers>) -> Vec<FunctionBuilder<'static>> {
             let doc = ask(&h.construct, ConstructThemeJson { data: arg(a, 0), origin: bytes(a, 1) })?;
             Ok(Value::Int(HandleArena::insert(doc)))
         })),
+        f("restore", Box::new(|_, a| {
+            Ok(Value::Int(HandleArena::insert(speedyspec_wp_theme_json::ThemeJsonCodec::decode(&arg(a, 0)))))
+        })),
         f("duplicate", Box::new(|_, a| Ok(Value::Int(HandleArena::duplicate(handle(a)))))),
         f("release", Box::new(|_, a| {
             HandleArena::release(handle(a));

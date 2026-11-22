@@ -32,18 +32,21 @@ namespace SpeedySpec\WpThemeJson\Support
     }
 
     /**
-     * Fingerprints what the block registries hold, so the engine re-reads them only after a registration.
+     * Fingerprints the registered block and block style names, so the engine re-reads the registries only after
+     *  something is registered or unregistered.
      */
     function block_marker()
     {
         if (!class_exists('WP_Block_Type_Registry', false)) {
-            return 0;
+            return '';
         }
-        $marker = count(\WP_Block_Type_Registry::get_instance()->get_all_registered());
+        $names = array_keys(\WP_Block_Type_Registry::get_instance()->get_all_registered());
         if (class_exists('WP_Block_Styles_Registry', false)) {
-            $marker = $marker * 1000003 + count(\WP_Block_Styles_Registry::get_instance()->get_all_registered(), COUNT_RECURSIVE);
+            foreach (\WP_Block_Styles_Registry::get_instance()->get_all_registered() as $block => $styles) {
+                $names[] = $block . '|' . implode('|', array_keys((array) $styles));
+            }
         }
-        return $marker;
+        return md5(implode("\n", $names));
     }
 }
 
@@ -74,6 +77,23 @@ namespace
         public function __destruct()
         {
             N\release( $this->speedyspec_handle );
+        }
+
+        /**
+         * Serializes the document itself, under WordPress's own property name, never the per-request handle.
+         */
+        public function __serialize(): array
+        {
+            return array( "\0*\0theme_json" => $this->get_raw_data() );
+        }
+
+        /**
+         * Restores a serialized document, whether this class or WordPress's own wrote it.
+         */
+        public function __unserialize( array $data ): void
+        {
+            $raw = $data["\0*\0theme_json"] ?? $data['theme_json'] ?? array( 'version' => self::LATEST_SCHEMA );
+            $this->speedyspec_handle = N\restore( $raw );
         }
 
         public function merge( $incoming )
