@@ -61,6 +61,7 @@ fn main() {
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
     let kses = KsesArea::new(container.clone(), hooks.api());
     let text = TextArea::new(container.clone(), hooks.api(), kses.api());
+    let api = text.api();
     let areas: Vec<Rc<dyn NativeArea>> =
         vec![twins_area(), Rc::new(ContainerArea::new("tests", container.clone())), Rc::new(hooks), Rc::new(kses), Rc::new(text)];
     let php = Php::boot(BootOptions { hooks: Rc::new(MemoryHooks::new()), preload: &[], areas }).expect("PHP boots");
@@ -106,4 +107,127 @@ fn main() {
     let error = PhpLocale.locale().unwrap_err();
     check("adapter exception keeps payload", error.payload.as_ref().is_some_and(|p| p.downcast_ref::<Value>().is_some()), &error);
     println!("all text-php adapter checks passed");
+
+    natives(&php, &api);
+    println!("all text-php native checks passed");
+}
+
+/// A fresh request with the stubs loaded.
+fn request(php: &Php) {
+    php.restart_request().expect("a request");
+    check("stubs load", matches!(eval(STUBS), Ok(Value::Bool(true))), ());
+    eval("function get_option($name, $default = false) { return ['blog_charset' => 'UTF-8', 'use_smilies' => '1'][$name] ?? $default; } return true;")
+        .ok();
+}
+
+fn yes(name: &str, code: &str) {
+    let r = eval(code);
+    check(name, matches!(r, Ok(Value::Bool(true))), r);
+}
+
+fn natives(php: &Php, api: &std::rc::Rc<speedyspec_wp_text::TextApi>) {
+    php.restart_request().expect("a request");
+    let names = speedyspec_wp_text_php::native_names();
+    check("natives listed", names.len() >= 75, names.len());
+    for name in &names {
+        let exists = eval(&format!("return function_exists('{}');", name.replace('\\', "\\\\")));
+        check(&format!("native {name} exists"), matches!(exists, Ok(Value::Bool(true))), exists);
+    }
+
+    request(php);
+    let cases: [(&str, &[u8]); 6] = [
+        ("return wptexturize(\"'a' -- b\");", "&#8216;a&#8217; &#8212; b".as_bytes()),
+        ("return wpautop(\"a\\n\\nb\");", b"<p>a</p>\n<p>b</p>\n"),
+        ("return esc_html('<a href=\"x\">');", b"&lt;a href=&quot;x&quot;&gt;"),
+        ("return esc_url('http://a.b/?c&d');", b"http://a.b/?c&#038;d"),
+        ("return sanitize_title('Hello World');", b"hello-world"),
+        ("return sanitize_file_name('a b.txt');", b"a-b.txt"),
+    ];
+    eval("add_filter('sanitize_title', 'sanitize_title_with_dashes', 10, 3); return true;").unwrap();
+    for (code, expected) in cases {
+        let got = eval(code);
+        let bytes = match &got {
+            Ok(Value::Str(s)) => s.as_bytes().to_vec(),
+            Ok(Value::Bytes(b)) => b.clone(),
+            _ => Vec::new(),
+        };
+        check(code, bytes == expected, (&got, String::from_utf8_lossy(expected)));
+    }
+    let texturized = api.wptexturize(&Value::Str("\"x\"".into()), false).unwrap();
+    check("native equals rust", eval("return wptexturize('\"x\"');").ok() == Some(texturized), ());
+
+    request(php);
+    yes(
+        "argument_count_error",
+        r#"try { esc_html(); return false; } catch (ArgumentCountError $e) {
+            return $e->getMessage() === 'Too few arguments to function esc_html(), 0 passed and exactly 1 expected'; }"#,
+    );
+    yes(
+        "reentrant_filter",
+        r#"add_filter('attribute_escape', function ($safe) {
+            static $inside = false;
+            if ($inside) { return $safe; }
+            $inside = true; $inner = esc_attr('<'); $inside = false;
+            return $inner . $safe;
+        });
+        $first = esc_attr('"');
+        add_filter('the_content', function ($t) { return wptexturize($t); });
+        add_filter('run_wptexturize', function ($run) {
+            static $inside = false;
+            if ($inside) { return $run; }
+            $inside = true; $GLOBALS['inner'] = apply_filters('the_content', "'x'"); $inside = false;
+            return $run;
+        });
+        $second = wptexturize("'y'", true);
+        return $first === '&lt;&quot;' && $second === '&#8216;y&#8217;' && $GLOBALS['inner'] === '&#8216;x&#8217;';"#,
+    );
+    request(php);
+    yes(
+        "exception_in_callback_rethrows",
+        r#"$thrown = new LogicException('no');
+        add_filter('clean_url', function () use ($thrown) { throw $thrown; });
+        try { esc_url('http://a.b'); return false; } catch (LogicException $e) { return spl_object_id($e) === spl_object_id($thrown); }"#,
+    );
+    request(php);
+    let exited = eval("add_filter('clean_url', function () { exit(); }); esc_url('http://a.b'); return 'kept going';");
+    check("exit_in_callback_unwinds", !matches!(&exited, Ok(Value::Str(s)) if s == "kept going"), &exited);
+    request(php);
+    yes("next request works after exit", "return esc_html('<') === '&lt;';");
+
+    request(php);
+    yes(
+        "run_wptexturize_false_sticks",
+        r#"add_filter('run_wptexturize', '__return_false');
+        function __return_false() { return false; }
+        $a = wptexturize("'a'");
+        remove_all_filters('run_wptexturize');
+        return $a === "'a'" && wptexturize("'b'") === "'b'";"#,
+    );
+    request(php);
+    yes("run_wptexturize_is_per_request", "return wptexturize(\"'b'\") === '&#8216;b&#8217;';");
+
+    request(php);
+    yes(
+        "wp_parse_str_by_reference",
+        r#"wp_parse_str('a=1&b[]=2', $out); return $out === ['a' => '1', 'b' => ['2']];"#,
+    );
+    yes(
+        "wp_unslash_walks_objects",
+        r#"// WordPress's own, which stay PHP.
+        function map_deep($value, $callback) {
+            if (is_array($value)) { foreach ($value as $index => $item) { $value[$index] = map_deep($item, $callback); } }
+            elseif (is_object($value)) { foreach (get_object_vars($value) as $n => $v) { $value->$n = map_deep($v, $callback); } }
+            else { $value = call_user_func($callback, $value); }
+            return $value;
+        }
+        function stripslashes_from_strings_only($value) { return is_string($value) ? stripslashes($value) : $value; }
+        function stripslashes_deep($value) { return map_deep($value, 'stripslashes_from_strings_only'); }
+        $o = new stdClass(); $o->x = "a\\'b"; $r = wp_unslash(['k' => $o]); return $r['k']->x === "a'b";"#,
+    );
+    yes("seems_utf8_is_bool", "return seems_utf8('a') === true;");
+    yes("sanitize_hex_color_null", "return sanitize_hex_color('nope') === null && sanitize_hex_color('') === '';");
+    yes("is_email_false", "return is_email('x') === false;");
+    yes("wp_html_split_array", "return wp_html_split('a<b>c') === ['a', '<b>', 'c'];");
+    yes("translate_smiley_array_arg", "return translate_smiley([':)']) !== '';");
+    yes("wp_rel_callback_array_arg", r#"return wp_rel_callback(['<a href="/x">', 'href="/x"'], 'nofollow') === '<a href="/x" rel="nofollow">';"#);
 }

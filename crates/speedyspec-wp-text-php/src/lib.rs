@@ -6,6 +6,8 @@
 //! - What WordPress keeps in function statics lasts one request: [`TextArea`] resets it at each request start.
 
 pub mod adapters;
+mod args;
+mod native;
 
 
 use std::rc::Rc;
@@ -21,6 +23,20 @@ use speedyspec_wp_text_escape::{EscapeApi, register_escape_handlers};
 pub use speedyspec_wp_text::adapters::EscapeAttributes;
 
 use crate::adapters::*;
+
+/// The PHP declaration of the one native with a by-reference parameter (`wp_parse_str`), evaluated at the start of
+/// every request.
+pub const FACADE: &str = include_str!("formatting.php");
+
+/// The WordPress functions this crate provides natively, in registration order.
+///
+/// @return
+///     Their names.
+pub fn native_names() -> Vec<&'static str> {
+    let mut names: Vec<&'static str> = native::entries().into_iter().map(|(name, ..)| name).collect();
+    names.push("wp_parse_str");
+    names
+}
 
 /// The native area of WordPress's formatting functions.
 pub struct TextArea {
@@ -60,6 +76,8 @@ impl TextArea {
         }));
         register_escape_handlers(&container, escape.clone());
         register_text_handlers(&container, api.clone());
+        let shared = Rc::new(native::Shared::new(container));
+        native::SHARED.with(|s| *s.borrow_mut() = Some(shared));
         TextArea { api, escape }
     }
 
@@ -76,12 +94,15 @@ impl TextArea {
 
 impl NativeArea for TextArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
-        Vec::new()
+        native::functions()
     }
 
     fn request_start(&self) {
         self.api.new_request();
         self.escape.new_request();
+        if let Err(err) = speedyspec_php::eval("speedyspec://wp-text", FACADE) {
+            eprintln!("speedyspec_wordpress: installing the formatting functions failed: {err}");
+        }
     }
 
     fn request_end(&self) {
