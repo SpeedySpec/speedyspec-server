@@ -4,7 +4,8 @@ name: Release
 # .release-please-manifest.json) to one with no tag yet. This workflow then builds that component's three binaries at
 # that commit first, and only when every build passes lets release-please tag and publish the release. The binaries
 # are then signed and uploaded, and both release indexes are rebuilt from the GitHub releases and deployed to Pages.
-# A failed build publishes nothing; the next push to main tries again.
+# The library crates named in scripts/publish-crates.txt are published to crates.io from the same commit, each
+# version once. A failed build publishes nothing; the next push to main tries again.
 #
 # Run it by hand with a tag to finish a release whose publishing failed part-way (a complete release is never
 # changed), or with no tag to rebuild and redeploy the indexes only.
@@ -252,6 +253,49 @@ jobs:
                   gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"
                   ;;
           esac
+
+  # The runtime crates other repositories build on (scripts/publish-crates.txt) go to crates.io at the release commit,
+  # after its builds passed. Only versions crates.io does not have yet are published (a version is permanent), so a
+  # dispatch with the release tag finishes a publish that failed part-way. No verification build: it would need the
+  # static PHP, the release builds just built and tested this commit, and every pull request dry-runs the packaging.
+  crates:
+    needs: [pending, build-server, build-runtime, release-please]
+    if: >-
+      always() && !cancelled() && needs.pending.outputs.releases != '[]' &&
+      needs.build-server.result != 'failure' && needs.build-runtime.result != 'failure' &&
+      (needs.release-please.result == 'success' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.pending.outputs.ref }}
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.99"
+      - name: Check the list
+        run: |
+          cargo metadata --format-version 1 --no-deps > "$RUNNER_TEMP/metadata.json"
+          scripts/release-crates.sh check "$RUNNER_TEMP/metadata.json"
+      - name: Publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          pending="$(scripts/release-crates.sh pending "$RUNNER_TEMP/metadata.json")"
+          if [ -z "$pending" ]; then
+              echo "every listed crate's version is already on crates.io"
+              exit 0
+          fi
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
+              echo "::error::the CARGO_REGISTRY_TOKEN secret is not set: nothing is published" >&2
+              exit 1
+          fi
+          echo "publishing:" $pending
+          args=()
+          for name in $pending; do args+=(-p "$name"); done
+          # Cargo publishes them in dependency order and waits for each to be in the index before the next.
+          cargo publish --no-verify --locked "${args[@]}"
 
   pages:
     needs: [publish]

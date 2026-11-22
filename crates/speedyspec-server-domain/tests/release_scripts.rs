@@ -1139,3 +1139,88 @@ fn crates_check_passes_for_this_workspace() {
     );
     assert!(check.status.success(), "{check:?}");
 }
+
+/// A sparse-index file for `name` (the crates.io layout) listing `versions`.
+fn index_entry(index: &Path, name: &str, versions: &[&str]) {
+    let path = match name.len() {
+        1 => index.join("1").join(name),
+        2 => index.join("2").join(name),
+        3 => index.join("3").join(&name[..1]).join(name),
+        _ => index.join(&name[..2]).join(&name[2..4]).join(name),
+    };
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let lines: Vec<String> = versions
+        .iter()
+        .map(|v| serde_json::json!({ "name": name, "vers": v }).to_string())
+        .collect();
+    std::fs::write(path, lines.join("\n") + "\n").unwrap();
+}
+
+/// Runs `release-crates.sh pending` with the index at `index` (a `file://` URL) and returns its stdout.
+fn crates_pending(dir: &Path, index: &Path) -> String {
+    let url = PathBuf::from(format!("file://{}", index.display()));
+    let output = crates_run(dir, &["pending"], &[("SPEEDYSPEC_CRATES_INDEX", &url)]);
+    assert!(output.status.success(), "{output:?}");
+    stdout(&output)
+}
+
+#[test]
+fn crates_pending_lists_versions_not_in_the_index() {
+    let dir = crates_fixture(
+        &["a", "bb", "cccc"],
+        &[
+            Crate {
+                name: "a",
+                publish: None,
+                deps: &[],
+            },
+            Crate {
+                name: "bb",
+                publish: None,
+                deps: &[],
+            },
+            Crate {
+                name: "cccc",
+                publish: None,
+                deps: &[],
+            },
+            Crate {
+                name: "s",
+                publish: PRIVATE,
+                deps: &[],
+            },
+        ],
+    );
+    let index = dir.path().join("index");
+    index_entry(&index, "a", &["0.1.0"]);
+    index_entry(&index, "cccc", &["0.1.0", "0.1.10"]);
+    assert_eq!(crates_pending(dir.path(), &index), "a\nbb\ncccc\n");
+}
+
+#[test]
+fn crates_pending_skips_published_versions() {
+    let dir = crates_fixture(
+        &["a", "bb", "ccc"],
+        &[
+            Crate {
+                name: "a",
+                publish: None,
+                deps: &[],
+            },
+            Crate {
+                name: "bb",
+                publish: None,
+                deps: &[],
+            },
+            Crate {
+                name: "ccc",
+                publish: None,
+                deps: &[],
+            },
+        ],
+    );
+    let index = dir.path().join("index");
+    index_entry(&index, "a", &["0.1.0", "0.1.1"]);
+    index_entry(&index, "ccc", &["0.1.1"]);
+    assert_eq!(crates_pending(dir.path(), &index), "bb\n");
+}

@@ -8,12 +8,17 @@
 #       Fails, with one line per problem, unless every listed name is a workspace crate that may be published, every
 #       other crate sets `publish = false`, and a listed crate's normal and build path dependencies are all listed and
 #       carry a version (a published crate can only depend on published ones).
+#   scripts/release-crates.sh pending <metadata.json>
+#       Names the listed crates, in publishing order, whose workspace version crates.io does not have yet: what a
+#       release publishes. A version already there is never published again, so a release that failed part-way can be
+#       run again. Fails if the index cannot be read (a crate the index has never heard of is simply not published).
 #
-# SPEEDYSPEC_REPO overrides the repository root (where scripts/publish-crates.txt is read from).
+# SPEEDYSPEC_REPO overrides the repository root (where scripts/publish-crates.txt is read from), and
+# SPEEDYSPEC_CRATES_INDEX the sparse index (https://index.crates.io; a file:// URL works too).
 set -euo pipefail
 
 usage() {
-    echo "usage: scripts/release-crates.sh check <metadata.json>" >&2
+    echo "usage: scripts/release-crates.sh check|pending <metadata.json>" >&2
     exit 2
 }
 
@@ -47,6 +52,38 @@ case "$command" in
             printf '%s\n' "$problems" >&2
             exit 1
         fi
+        ;;
+    pending)
+        index="${SPEEDYSPEC_CRATES_INDEX:-https://index.crates.io}"
+        body="$(mktemp)"
+        trap 'rm -f "$body"' EXIT
+        for name in $(jq -r '.[]' <<<"$listed"); do
+            version="$(jq -r --arg n "$name" '.packages[] | select(.name == $n) | .version' "$metadata")"
+            [ -n "$version" ] || { echo "$name is not a workspace crate" >&2; exit 1; }
+            # The sparse index's layout: 1/, 2/ and 3/<first letter>/ for short names, else <ab>/<cd>/<name>.
+            lower="$(tr '[:upper:]' '[:lower:]' <<<"$name")"
+            case "${#lower}" in
+                1) path="1/$lower" ;;
+                2) path="2/$lower" ;;
+                3) path="3/${lower:0:1}/$lower" ;;
+                *) path="${lower:0:2}/${lower:2:2}/$lower" ;;
+            esac
+            : > "$body"
+            status=0
+            code="$(curl -sS -o "$body" -w '%{http_code}' "$index/$path")" || status=$?
+            if [ "$status" -eq 37 ] || [ "$code" = 404 ]; then
+                # No such file (file://) or no such crate (https): nothing of it is published.
+                echo "$name"
+                continue
+            fi
+            if [ "$status" -ne 0 ] || { [ "$code" != 200 ] && [ "$code" != 000 ]; }; then
+                echo "reading $index/$path failed (curl exit $status, HTTP $code)" >&2
+                exit 1
+            fi
+            if ! jq -e -s --arg v "$version" 'any(.[]; .vers == $v)' "$body" >/dev/null; then
+                echo "$name"
+            fi
+        done
         ;;
     *)
         usage
