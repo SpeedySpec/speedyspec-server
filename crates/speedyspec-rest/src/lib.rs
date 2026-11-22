@@ -7,6 +7,7 @@
 //!   strings into the kinds their schema expects.
 //! - [`errors`] maps operation errors to WordPress's statuses and bodies; [`encode`] writes HTTP responses; [`fields`]
 //!   applies `_fields`.
+//! - [`links`] builds `_links` and `_embed` from type relations.
 //! - [`NoRestHooks`] is the hooks port's do-nothing default.
 
 pub mod coerce;
@@ -15,6 +16,7 @@ pub mod encode;
 pub mod errors;
 pub mod fields;
 mod hooks;
+pub mod links;
 mod mapping;
 pub mod query;
 mod routes;
