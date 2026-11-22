@@ -261,8 +261,9 @@ pub fn convert_smilies_core<'a>(text: &'a [u8], engine: &SmileyEngine, translate
     let mut ignore: Option<&'static [u8]> = None;
     let mut at = 0;
     let mut text_piece = |piece: &[u8], at_piece: usize, ignore: Option<&'static [u8]>, out: &mut Option<Vec<u8>>| {
+        // A piece starting with `<` is skipped, as WordPress does; only the last piece can, when its `<` never closes.
         if ignore.is_none()
-            && !piece.is_empty()
+            && piece.first().is_some_and(|&b| b != b'<')
             && let Cow::Owned(changed) = engine.replace(piece, translate)
         {
             let buf = out.get_or_insert_with(|| text[..at_piece].to_vec());
@@ -279,7 +280,8 @@ pub fn convert_smilies_core<'a>(text: &'a [u8], engine: &SmileyEngine, translate
             memchr::memchr(b'>', &text[lt..]).map(|gt| (lt, lt + gt + 1))
         });
         let Some((lt, end)) = tag else {
-            // The rest is one text piece (a `<` with no `>` after it never opens an ignored tag).
+            // The rest is one text piece (a `<` with no `>` after it never opens an ignored tag, and when the piece
+            // starts with that `<` its smileys stay as they are).
             text_piece(&text[at..], at, ignore, &mut out);
             break;
         };
