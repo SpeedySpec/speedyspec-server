@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-wp-html-split"
 version = "0.1.3"
+publish = false
 description = "WordPress's wp_html_split() in Rust: splits HTML into text and tag chunks with get_html_split_regex()'s exact semantics, without allocating."
 edition.workspace = true
 rust-version.workspace = true

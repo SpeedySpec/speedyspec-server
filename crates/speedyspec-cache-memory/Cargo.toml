@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-cache-memory"
 version = "0.1.0"
+publish = false
 description = "A Caching Store in process memory."
 edition.workspace = true
 rust-version.workspace = true

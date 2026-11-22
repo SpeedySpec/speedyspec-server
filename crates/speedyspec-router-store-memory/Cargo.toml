@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-router-store-memory"
 version = "0.1.0"
+publish = false
 description = "The default route table store: route data kept in the worker's memory."
 edition.workspace = true
 rust-version.workspace = true

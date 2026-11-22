@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-cache-kv"
 version = "0.1.0"
+publish = false
 description = "A Caching Store over any NoSQL store: group generation counters, so flush_group needs no prefix delete."
 edition.workspace = true
 rust-version.workspace = true

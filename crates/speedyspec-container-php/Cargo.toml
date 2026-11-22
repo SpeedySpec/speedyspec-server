@@ -5,11 +5,14 @@ description = "The service container from PHP: SpeedySpec\\Container\\Container,
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+# The tests read the repository's compat/ and tests/php, so they run in this repository only.
+exclude = ["tests/"]
 
 [dependencies]
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-php = { path = "../speedyspec-php" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-container = { path = "../speedyspec-container", version = "0.1" }
+speedyspec-php = { path = "../speedyspec-php", version = "0.3" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext", version = "0.1" }
 
 [dev-dependencies]
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }

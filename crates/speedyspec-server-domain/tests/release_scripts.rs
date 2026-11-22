@@ -928,12 +928,214 @@ fn test_packages_leave_out_crates_neither_component_is_built_from() {
     std::fs::write(&metadata, &output.stdout).unwrap();
 
     let server = test_packages("speedyspec-server", &metadata);
-    assert!(server.iter().any(|p| p == "speedyspec-server-domain"), "{server:?}");
+    assert!(
+        server.iter().any(|p| p == "speedyspec-server-domain"),
+        "{server:?}"
+    );
     assert!(server.iter().all(|p| p != "speedyspec-php"), "{server:?}");
-    assert!(server.iter().all(|p| p != "speedyspec-data-sqlite"), "{server:?}");
+    assert!(
+        server.iter().all(|p| p != "speedyspec-data-sqlite"),
+        "{server:?}"
+    );
 
     let runtime = test_packages("speedyspec-php-runtime", &metadata);
     assert!(runtime.iter().any(|p| p == "speedyspec-php"), "{runtime:?}");
-    assert!(runtime.iter().all(|p| p != "speedyspec-server"), "{runtime:?}");
-    assert!(runtime.iter().all(|p| p != "speedyspec-data-sqlite"), "{runtime:?}");
+    assert!(
+        runtime.iter().all(|p| p != "speedyspec-server"),
+        "{runtime:?}"
+    );
+    assert!(
+        runtime.iter().all(|p| p != "speedyspec-data-sqlite"),
+        "{runtime:?}"
+    );
+}
+
+/// A crate in `cargo metadata` output for `release-crates.sh`: its `publish` (`None` publishes anywhere, `Some([])`
+/// is `publish = false`) and its path dependencies with their version requirements.
+struct Crate<'a> {
+    name: &'a str,
+    publish: Option<&'a [&'a str]>,
+    deps: &'a [(&'a str, &'a str)],
+}
+
+/// A repository root with `scripts/publish-crates.txt` listing `listed`, and `metadata.json` holding `crates`.
+fn crates_fixture(listed: &[&str], crates: &[Crate]) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir(dir.path().join("scripts")).unwrap();
+    let mut list = String::new();
+    for name in listed {
+        list.push_str(name);
+        list.push('\n');
+    }
+    std::fs::write(dir.path().join("scripts/publish-crates.txt"), list).unwrap();
+    let packages: Vec<_> = crates
+        .iter()
+        .map(|c| {
+            serde_json::json!({
+                "name": c.name,
+                "version": "0.1.1",
+                "publish": c.publish,
+                "dependencies": c.deps.iter().map(|(dep, req)| serde_json::json!({
+                    "name": dep,
+                    "kind": null,
+                    "req": req,
+                    "path": format!("/w/crates/{dep}"),
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    std::fs::write(
+        dir.path().join("metadata.json"),
+        serde_json::json!({ "packages": packages }).to_string(),
+    )
+    .unwrap();
+    dir
+}
+
+fn crates_run(dir: &Path, args: &[&str], env: &[(&str, &Path)]) -> Output {
+    let metadata = dir.join("metadata.json");
+    let mut all: Vec<&str> = args.to_vec();
+    all.push(metadata.to_str().unwrap());
+    let mut env = env.to_vec();
+    env.push(("SPEEDYSPEC_REPO", dir));
+    run("release-crates.sh", &all, &env)
+}
+
+fn crates_check_stderr(listed: &[&str], crates: &[Crate]) -> String {
+    let dir = crates_fixture(listed, crates);
+    let output = crates_run(dir.path(), &["check"], &[]);
+    assert!(!output.status.success(), "{output:?}");
+    String::from_utf8_lossy(&output.stderr).into_owned()
+}
+
+const PRIVATE: Option<&[&str]> = Some(&[]);
+
+#[test]
+fn crates_check_passes_for_a_clean_workspace() {
+    let dir = crates_fixture(
+        &["b", "a"],
+        &[
+            Crate {
+                name: "a",
+                publish: None,
+                deps: &[("b", "^0.1")],
+            },
+            Crate {
+                name: "b",
+                publish: None,
+                deps: &[],
+            },
+            Crate {
+                name: "s",
+                publish: PRIVATE,
+                deps: &[("a", "*")],
+            },
+        ],
+    );
+    let output = crates_run(dir.path(), &["check"], &[]);
+    assert!(output.status.success(), "{output:?}");
+}
+
+#[test]
+fn crates_check_fails_for_an_unlisted_crate_without_publish_false() {
+    let stderr = crates_check_stderr(
+        &["a"],
+        &[
+            Crate {
+                name: "a",
+                publish: None,
+                deps: &[],
+            },
+            Crate {
+                name: "s",
+                publish: None,
+                deps: &[],
+            },
+        ],
+    );
+    assert!(stderr.contains("s must set publish = false"), "{stderr}");
+}
+
+#[test]
+fn crates_check_fails_for_a_dependency_on_a_private_crate() {
+    let stderr = crates_check_stderr(
+        &["a"],
+        &[
+            Crate {
+                name: "a",
+                publish: None,
+                deps: &[("s", "^0.1")],
+            },
+            Crate {
+                name: "s",
+                publish: PRIVATE,
+                deps: &[],
+            },
+        ],
+    );
+    assert!(stderr.contains("a depends on unpublished s"), "{stderr}");
+}
+
+#[test]
+fn crates_check_fails_for_a_path_dependency_without_a_version() {
+    let stderr = crates_check_stderr(
+        &["b", "a"],
+        &[
+            Crate {
+                name: "a",
+                publish: None,
+                deps: &[("b", "*")],
+            },
+            Crate {
+                name: "b",
+                publish: None,
+                deps: &[],
+            },
+        ],
+    );
+    assert!(
+        stderr.contains("a depends on b without a version"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn crates_check_fails_for_a_listed_crate_marked_private() {
+    let stderr = crates_check_stderr(
+        &["b"],
+        &[Crate {
+            name: "b",
+            publish: PRIVATE,
+            deps: &[],
+        }],
+    );
+    assert!(
+        stderr.contains("b is listed but publish = false"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn crates_check_fails_for_a_listed_name_that_is_not_a_crate() {
+    let stderr = crates_check_stderr(&["x"], &[]);
+    assert!(stderr.contains("x is not a workspace crate"), "{stderr}");
+}
+
+#[test]
+fn crates_check_passes_for_this_workspace() {
+    let output = Command::new(env!("CARGO"))
+        .args(["metadata", "--format-version", "1", "--no-deps"])
+        .current_dir(repo_root())
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let dir = tempfile::tempdir().unwrap();
+    let metadata = dir.path().join("metadata.json");
+    std::fs::write(&metadata, &output.stdout).unwrap();
+    let check = run(
+        "release-crates.sh",
+        &["check", metadata.to_str().unwrap()],
+        &[],
+    );
+    assert!(check.status.success(), "{check:?}");
 }

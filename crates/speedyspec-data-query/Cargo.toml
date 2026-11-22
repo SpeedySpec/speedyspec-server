@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-data-query"
 version = "0.1.0"
+publish = false
 description = "SQL parsing, the query builder with partials, rewrite passes and the engine registry for speedyspec's data layer."
 edition.workspace = true
 rust-version.workspace = true

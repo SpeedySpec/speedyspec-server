@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-server-presentation"
 version = "0.1.3"
+publish = false
 description = "Salvo wiring for the SpeedySpec server: request normalization, routing by mount, the access gate and handlers."
 edition.workspace = true
 rust-version.workspace = true

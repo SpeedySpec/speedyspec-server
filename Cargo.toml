@@ -6,6 +6,7 @@ members = ["crates/*", "vendor/pcre2-sys"]
 edition = "2024"
 rust-version = "1.99"
 license = "MIT"
+repository = "https://github.com/SpeedySpec/speedyspec-server"
 
 # Release binaries: no symbols, and optimized across crates.
 [profile.release]
