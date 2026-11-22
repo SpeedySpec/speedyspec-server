@@ -33,21 +33,45 @@ fn string_value(bytes: &[u8]) -> Value {
 /// WordPress caches block metadata in a static that only ever grows during a request (`get_blocks_metadata`), so
 /// a block unregistered after its metadata was first read stays valid; this adapter keeps the same memory.
 pub struct PhpBlockRegistry {
-    seen: RefCell<(Value, Rc<Vec<RegisteredBlock>>)>,
+    seen: RefCell<Seen>,
+}
+
+/// What the adapter remembers between reads, as WordPress's `static::$blocks_metadata` does.
+struct Seen {
+    marker: Value,
+    blocks: Rc<Vec<RegisteredBlock>>,
+    /// The last read found new blocks, so (as in WordPress) it did not look at new styles of known blocks; the
+    /// next read does, even if nothing changed since.
+    styles_pending: bool,
+    /// Counts the reads that changed the blocks (and the resets), so the change marker moves with them.
+    generation: u64,
 }
 
 impl Default for PhpBlockRegistry {
     fn default() -> Self {
         PhpBlockRegistry {
-            seen: RefCell::new((Value::Null, Rc::new(Vec::new()))),
+            seen: RefCell::new(Seen {
+                marker: Value::Null,
+                blocks: Rc::new(Vec::new()),
+                styles_pending: false,
+                generation: 0,
+            }),
         }
     }
 }
 
 impl PhpBlockRegistry {
-    /// Forgets the blocks seen (a new request).
+    /// Forgets the blocks seen (a new request). The generation keeps counting, so metadata cached in an earlier
+    /// request is never taken for this one's.
     pub fn reset(&self) {
-        *self.seen.borrow_mut() = (Value::Null, Rc::new(Vec::new()));
+        let mut seen = self.seen.borrow_mut();
+        let generation = seen.generation + 1;
+        *seen = Seen {
+            marker: Value::Null,
+            blocks: Rc::new(Vec::new()),
+            styles_pending: false,
+            generation,
+        };
     }
 }
 
@@ -66,17 +90,24 @@ fn strings(value: Option<&Value>) -> Vec<String> {
 }
 
 impl BlockMetadata for PhpBlockRegistry {
+    /// WordPress's `get_blocks_metadata()` memory: blocks are never forgotten within a request, a block's
+    /// selectors and supports are those it had when first seen, and new block styles of known blocks are taken
+    /// only by a read that finds no new blocks.
     fn registered(&self) -> Rc<Vec<RegisteredBlock>> {
         let marker =
             call("SpeedySpec\\WpThemeJson\\Support\\block_marker", &[]).unwrap_or(Value::Null);
-        if self.seen.borrow().0 == marker && !matches!(marker, Value::Null) {
-            return self.seen.borrow().1.clone();
+        {
+            let seen = self.seen.borrow();
+            if seen.marker == marker && !matches!(marker, Value::Null) && !seen.styles_pending {
+                return seen.blocks.clone();
+            }
         }
         let listed =
             call("SpeedySpec\\WpThemeJson\\Support\\registered_blocks", &[]).unwrap_or(Value::Null);
-        let mut blocks = (*self.seen.borrow().1).clone();
-        if let Value::Array(entries) = listed {
-            for (_, entry) in entries {
+        let mut blocks = (*self.seen.borrow().blocks).clone();
+        let mut entries: Vec<(String, Value, Value, Vec<String>)> = Vec::new();
+        if let Value::Array(items) = listed {
+            for (_, entry) in items {
                 let Value::Array(fields) = entry else {
                     continue;
                 };
@@ -89,40 +120,54 @@ impl BlockMetadata for PhpBlockRegistry {
                 let Some(Value::Str(name)) = field(0) else {
                     continue;
                 };
-                let styles = strings(field(3));
-                match blocks.iter_mut().find(|b| b.name == *name) {
-                    Some(known) => {
-                        for style in styles {
-                            if !known.style_names.contains(&style) {
-                                known.style_names.push(style);
-                            }
-                        }
-                    }
-                    None => blocks.push(RegisteredBlock {
-                        name: name.clone(),
-                        selectors: field(1).cloned().unwrap_or(Value::Null),
-                        supports: field(2).cloned().unwrap_or(Value::Null),
-                        style_names: styles,
-                    }),
-                }
+                entries.push((
+                    name.clone(),
+                    field(1).cloned().unwrap_or(Value::Null),
+                    field(2).cloned().unwrap_or(Value::Null),
+                    strings(field(3)),
+                ));
             }
         }
+        let has_new = entries
+            .iter()
+            .any(|(name, ..)| !blocks.iter().any(|b| b.name == *name));
+        for (name, selectors, supports, styles) in entries {
+            match blocks.iter_mut().find(|b| b.name == name) {
+                Some(known) if !has_new => {
+                    for style in styles {
+                        if !known.style_names.contains(&style) {
+                            known.style_names.push(style);
+                        }
+                    }
+                }
+                Some(_) => {}
+                None => blocks.push(RegisteredBlock {
+                    name,
+                    selectors,
+                    supports,
+                    style_names: styles,
+                }),
+            }
+        }
+        let mut seen = self.seen.borrow_mut();
+        let generation = if *seen.blocks == blocks {
+            seen.generation
+        } else {
+            seen.generation + 1
+        };
         let blocks = Rc::new(blocks);
-        *self.seen.borrow_mut() = (marker, blocks.clone());
+        *seen = Seen {
+            marker,
+            blocks: blocks.clone(),
+            styles_pending: has_new,
+            generation,
+        };
         blocks
     }
 
     fn change_marker(&self) -> u64 {
         let _ = self.registered();
-        match &self.seen.borrow().0 {
-            Value::Str(s) => {
-                use std::hash::{Hash, Hasher};
-                let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                s.hash(&mut hasher);
-                hasher.finish()
-            }
-            _ => 0,
-        }
+        self.seen.borrow().generation
     }
 }
 

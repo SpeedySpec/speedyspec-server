@@ -8,11 +8,13 @@ use speedyspec_hooks::{Key, Value};
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_wp_theme_json::messages::{
-    ConstructThemeJson, GetCustomTemplates, GetData, GetElementClassName, GetFromEditorSettings,
-    GetPatterns, GetRawData, GetSettings, GetTemplateParts, GetViewportMediaQueries, MergeRawData,
-    SchemaMigrate, SetSpacingSizes,
+    ConstructThemeJson, GetCustomCss, GetCustomTemplates, GetData, GetElementClassName,
+    GetFromEditorSettings, GetPatterns, GetRawData, GetRootLayoutRules, GetSettings,
+    GetStylesBlockNodes, GetStylesForBlock, GetStylesheet, GetTemplateParts,
+    GetViewportMediaQueries, MergeRawData, SchemaMigrate, SetSpacingSizes,
 };
 use speedyspec_wp_theme_json_contracts::model::ThemeJson;
+use speedyspec_wp_theme_json_contracts::ports::RegisteredBlock;
 
 use crate::arena::HandleArena;
 
@@ -33,6 +35,11 @@ pub(crate) struct Handlers {
     migrate: QueryRef<SchemaMigrate>,
     viewport: QueryRef<GetViewportMediaQueries>,
     spacing: HandlerRef<SetSpacingSizes>,
+    stylesheet: QueryRef<GetStylesheet>,
+    block_styles: QueryRef<GetStylesForBlock>,
+    block_nodes: QueryRef<GetStylesBlockNodes>,
+    root_layout: QueryRef<GetRootLayoutRules>,
+    custom_css: QueryRef<GetCustomCss>,
 }
 
 impl Handlers {
@@ -51,6 +58,11 @@ impl Handlers {
             migrate: QueryRef::new(c.clone()),
             viewport: QueryRef::new(c.clone()),
             spacing: HandlerRef::new(c.clone()),
+            stylesheet: QueryRef::new(c.clone()),
+            block_styles: QueryRef::new(c.clone()),
+            block_nodes: QueryRef::new(c.clone()),
+            root_layout: QueryRef::new(c.clone()),
+            custom_css: QueryRef::new(c.clone()),
         }
     }
 }
@@ -241,6 +253,101 @@ pub(crate) fn functions(h: Rc<Handlers>) -> Vec<FunctionBuilder<'static>> {
                         .map(|(k, v)| (Key::Str(k), Value::Str(v)))
                         .collect(),
                 ))
+            }),
+        ),
+        f(
+            "get_stylesheet",
+            Box::new(|h, a| {
+                let css = ask(
+                    &h.stylesheet,
+                    GetStylesheet {
+                        doc: doc(a)?,
+                        types: arg(a, 1),
+                        origins: arg(a, 2),
+                        options: arg(a, 3),
+                    },
+                )?
+                .map_err(|e| NativeError::throw("Error", e.to_string()))?;
+                Ok(string_value(css))
+            }),
+        ),
+        f(
+            "get_styles_for_block",
+            Box::new(|h, a| {
+                Ok(string_value(ask(
+                    &h.block_styles,
+                    GetStylesForBlock {
+                        doc: doc(a)?,
+                        metadata: arg(a, 1),
+                    },
+                )?))
+            }),
+        ),
+        f(
+            "get_styles_block_nodes",
+            Box::new(|h, a| ask(&h.block_nodes, GetStylesBlockNodes { doc: doc(a)? })),
+        ),
+        f(
+            "get_root_layout_rules",
+            Box::new(|h, a| {
+                Ok(string_value(ask(
+                    &h.root_layout,
+                    GetRootLayoutRules {
+                        doc: doc(a)?,
+                        metadata: arg(a, 1),
+                        options: arg(a, 2),
+                    },
+                )?))
+            }),
+        ),
+        f(
+            "get_custom_css",
+            Box::new(|h, a| {
+                Ok(string_value(ask(
+                    &h.custom_css,
+                    GetCustomCss { doc: doc(a)? },
+                )?))
+            }),
+        ),
+        f(
+            "scope_selector",
+            Box::new(|_, a| {
+                let scope = String::from_utf8_lossy(&bytes(a, 0)).into_owned();
+                let selector = String::from_utf8_lossy(&bytes(a, 1)).into_owned();
+                Ok(Value::Str(
+                    speedyspec_wp_theme_json::selectors::scope_selector(&scope, &selector),
+                ))
+            }),
+        ),
+        f(
+            "process_blocks_custom_css",
+            Box::new(|_, a| {
+                let css = String::from_utf8_lossy(&bytes(a, 0)).into_owned();
+                let selector = String::from_utf8_lossy(&bytes(a, 1)).into_owned();
+                Ok(Value::Str(
+                    speedyspec_wp_theme_json::stylesheet::process_blocks_custom_css(
+                        &css, &selector,
+                    ),
+                ))
+            }),
+        ),
+        f(
+            "block_css_selector",
+            Box::new(|_, a| {
+                let block = RegisteredBlock {
+                    name: String::from_utf8_lossy(&bytes(a, 0)).into_owned(),
+                    selectors: arg(a, 1),
+                    supports: arg(a, 2),
+                    style_names: Vec::new(),
+                };
+                let fallback =
+                    !matches!(arg(a, 4), Value::Null | Value::Bool(false) | Value::Int(0));
+                Ok(speedyspec_wp_theme_json::selectors::block_css_selector(
+                    &block,
+                    &arg(a, 3),
+                    fallback,
+                )
+                .map_or(Value::Null, Value::Str))
             }),
         ),
     ]

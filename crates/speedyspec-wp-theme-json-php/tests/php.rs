@@ -20,6 +20,12 @@ function __($text, $domain = 'default') { return $text; }
 function _deprecated_function($f, $v, $r = '') { $GLOBALS['notices'][] = "deprecated_function:$f|$v|$r"; }
 function wp_trigger_error($f, $m, $l = E_USER_NOTICE) { $GLOBALS['notices'][] = "trigger_error:$f|$m"; }
 function sanitize_title($t) { return strtolower($t); }
+function esc_html($t) { return htmlspecialchars((string) $t, ENT_QUOTES); }
+function safecss_filter_attr($css) { return $css; }
+class WP_Block_Type {
+    public $name; public $selectors = array(); public $supports = null;
+    public function __construct($name, $args = array()) { $this->name = $name; foreach ($args as $k => $v) { $this->$k = $v; } }
+}
 "#;
 
 type Case = fn(&Php) -> Result<(), String>;
@@ -41,7 +47,53 @@ const CASES: &[(&str, Case)] = &[
     ("presets_keyed_by_origin", case_presets_keyed),
     ("serialize_round_trips_the_document", case_serialize),
     ("swapped_block_style_is_seen", case_swapped_block_style),
+    ("get_stylesheet_from_php", case_get_stylesheet),
+    ("get_styles_for_block_from_php", case_get_styles_for_block),
+    (
+        "wp_get_block_css_selector_from_php",
+        case_block_css_selector,
+    ),
+    ("scope_selector_keeps_null", case_scope_selector_null),
 ];
+
+const SMALL_DOC: &str = "['version'=>3,'settings'=>['color'=>['palette'=>[['slug'=>'Big-1','color'=>'#123','name'=>'B']]],'custom'=>['a'=>['b'=>'c']]],'styles'=>['elements'=>['link'=>['color'=>['text'=>'red'],':hover'=>['color'=>['text'=>'blue']]]]]]";
+
+/// Expected CSS from WordPress 7.1.5 for `SMALL_DOC`.
+fn case_get_stylesheet(php: &Php) -> Result<(), String> {
+    expect_json(
+        php,
+        &format!(
+            "return (new WP_Theme_JSON({SMALL_DOC}))->get_stylesheet(['variables','presets']);"
+        ),
+        r#"":root{--wp--preset--color--big-1: #123;--wp--custom--a--b: c;}.has-big-1-color{color: var(--wp--preset--color--big-1) !important;}.has-big-1-background-color{background-color: var(--wp--preset--color--big-1) !important;}.has-big-1-border-color{border-color: var(--wp--preset--color--big-1) !important;}""#,
+    )
+}
+
+fn case_get_styles_for_block(php: &Php) -> Result<(), String> {
+    expect_json(
+        php,
+        &format!(
+            "return (new WP_Theme_JSON({SMALL_DOC}))->get_styles_for_block(['path'=>['styles','elements','link'],'selector'=>'a:where(:not(.wp-element-button)):hover']);"
+        ),
+        r#"":root :where(a:where(:not(.wp-element-button)):hover){color: blue;}""#,
+    )
+}
+
+fn case_block_css_selector(php: &Php) -> Result<(), String> {
+    expect_json(
+        php,
+        "return [wp_get_block_css_selector(new WP_Block_Type('test/x', ['supports'=>['__experimentalSelector'=>'.x','color'=>['__experimentalSelector'=>'.c']]]), 'color'), wp_get_block_css_selector(new WP_Block_Type('core/y'))];",
+        r#"[".x .c", ".wp-block-y"]"#,
+    )
+}
+
+fn case_scope_selector_null(php: &Php) -> Result<(), String> {
+    expect_json(
+        php,
+        "return [WP_Theme_JSON::scope_selector('.s', null), WP_Theme_JSON::scope_selector('.s', '.a, .b')];",
+        r#"[null, ".s .a, .s .b"]"#,
+    )
+}
 
 fn run(php: &Php, code: &str) -> Result<Value, String> {
     php.eval("case", code).map_err(|e| e.to_string())
