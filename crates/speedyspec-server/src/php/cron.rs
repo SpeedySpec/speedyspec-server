@@ -1,0 +1,393 @@
+//! The cron scheduler: calls each PHP app's declared cron path when the app last said it is next due, and at least
+//! every `max_interval`.
+//!
+//! [`CronScheduler`] is an Active Object: one task per app owns the wake time, and every input reaches it as a message
+//! (the `next_cron` of each worker report, through the [`WakeSink`] it hands out) or as the end of its own call. It
+//! never reads the app's data and knows nothing of WordPress: a path, a time, and a number in a report. Every replica
+//! runs its own; the app makes sure a due event runs once (its claims), so replicas never coordinate.
+
+use std::sync::Arc;
+use std::time::Duration;
+
+use speedyspec_server_domain::AppId;
+use speedyspec_server_gate::{BoxFuture, CallError, MaintenanceSet};
+use tokio::time::Instant;
+
+use crate::config::CronConfig;
+use crate::php::WakeSink;
+
+/// The scheduler's call to an app's cron path.
+pub trait CronCalls: Send + Sync {
+    /// `GET <path>?budget=<seconds>` on the app's cron lane, bounded by `timeout`; a 2xx answer is `Ok`.
+    fn call<'a>(
+        &'a self,
+        app: &'a AppId,
+        path: &'a str,
+        budget: Duration,
+        timeout: Duration,
+    ) -> BoxFuture<'a, Result<(), CallError>>;
+}
+
+/// The app's cron path and settings, read every round (so a switch or a new release applies at once); `None` when
+/// the live release declares no path or the operator disabled cron.
+pub type CronTarget = Arc<dyn Fn() -> Option<(String, CronConfig)> + Send + Sync>;
+
+/// The shortest time between two calls, so an app that keeps reporting "due now" is not called in a busy loop.
+const MIN_GAP: Duration = Duration::from_secs(1);
+/// How long to wait before looking again while the app has no cron path.
+const IDLE: Duration = Duration::from_secs(60);
+/// The first wait after a failed call; it doubles up to `max_interval`.
+const FIRST_BACKOFF: Duration = Duration::from_secs(5);
+
+/// When a report's Unix time falls, on the tokio clock; a time not ahead is now.
+fn instant_for(unix: u64) -> Instant {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    Instant::now() + Duration::from_secs(unix.saturating_sub(now))
+}
+
+/// Calls an app's cron path when it is due.
+pub struct CronScheduler;
+
+impl CronScheduler {
+    /// Starts `app`'s scheduler on the current tokio runtime. The returned sink takes each `next_cron` the app's
+    /// workers report: a time earlier than the planned wake moves it forward, never back.
+    pub fn spawn(
+        app: AppId,
+        target: CronTarget,
+        calls: Arc<dyn CronCalls>,
+        maintenance: Arc<MaintenanceSet>,
+    ) -> (tokio::task::JoinHandle<()>, WakeSink) {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<u64>();
+        let sink: WakeSink = Arc::new(move |next| {
+            let _ = tx.send(next);
+        });
+        let task = tokio::spawn(async move {
+            let mut next_wake = Instant::now();
+            let mut backoff: Option<Duration> = None;
+            loop {
+                tokio::select! {
+                    _ = tokio::time::sleep_until(next_wake) => {}
+                    Some(reported) = rx.recv() => {
+                        next_wake = next_wake.min(instant_for(reported));
+                        continue;
+                    }
+                }
+                let Some((path, config)) = target() else {
+                    next_wake = Instant::now() + IDLE;
+                    continue;
+                };
+                if maintenance.is_on(&app) {
+                    next_wake = Instant::now() + config.max_interval;
+                    continue;
+                }
+                let started = Instant::now();
+                let call = calls.call(&app, &path, config.budget, config.timeout);
+                tokio::pin!(call);
+                let mut reported: Option<Instant> = None;
+                let result = loop {
+                    tokio::select! {
+                        result = &mut call => break result,
+                        Some(next) = rx.recv() => {
+                            let at = instant_for(next);
+                            reported = Some(reported.map_or(at, |r| r.min(at)));
+                        }
+                    }
+                };
+                let now = Instant::now();
+                next_wake = match result {
+                    Ok(()) => {
+                        backoff = None;
+                        reported.unwrap_or(now + config.max_interval)
+                    }
+                    Err(err) => {
+                        tracing::warn!(event = "php_cron_call_failed", app = %app, error = %err);
+                        let wait = backoff
+                            .map_or(FIRST_BACKOFF, |b| b * 2)
+                            .min(config.max_interval);
+                        backoff = Some(wait);
+                        now + wait
+                    }
+                };
+                next_wake = next_wake
+                    .min(now + config.max_interval)
+                    .max(started + MIN_GAP);
+            }
+        });
+        (task, sink)
+    }
+}
+
+/// Starts a scheduler for every php app, each reporting through [`PhpRuntime::set_wake_sink`]. A scheduler whose
+/// app's live release declares no `php.cron` path, or whose `cron.enabled` is false, makes no call.
+pub fn spawn_all(
+    config: &crate::config::Config,
+    php: Arc<crate::php::PhpRuntime>,
+    maintenance: Arc<MaintenanceSet>,
+) -> Vec<tokio::task::JoinHandle<()>> {
+    let calls: Arc<dyn CronCalls> = Arc::new(crate::php::calls::FastCgiGateCalls::new(
+        php.clone(),
+        &config.mounts,
+        config.health.timeout,
+    ));
+    config
+        .apps
+        .iter()
+        .filter_map(|(app, settings)| settings.php.as_ref().map(|p| (app.clone(), p.cron)))
+        .map(|(app, cron)| {
+            let (runtime, id) = (php.clone(), app.clone());
+            let target: CronTarget = Arc::new(move || {
+                if !cron.enabled {
+                    return None;
+                }
+                let path = runtime.live_manifest(&id)?.php_section()?.cron?.path;
+                Some((path, cron))
+            });
+            let (task, sink) =
+                CronScheduler::spawn(app.clone(), target, calls.clone(), maintenance.clone());
+            php.set_wake_sink(&app, sink);
+            task
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+    use std::time::Duration;
+
+    use speedyspec_server_domain::AppId;
+    use speedyspec_server_gate::{BoxFuture, CallError, MaintenanceSet, MaintenanceSource};
+    use tokio::time::Instant;
+
+    use crate::config::CronConfig;
+
+    /// Records when each call started; answers from a script (`Ok` once the list runs out), each taking `takes`.
+    struct Fake {
+        calls: Mutex<Vec<(Instant, String)>>,
+        answers: Mutex<Vec<Result<(), CallError>>>,
+        takes: Duration,
+        /// Reported to the sink during the call, as a worker report would be: seconds from now.
+        report: Mutex<Option<(WakeSinkSlot, i64)>>,
+    }
+
+    type WakeSinkSlot = std::sync::Arc<std::sync::OnceLock<crate::php::WakeSink>>;
+
+    impl CronCalls for Fake {
+        fn call<'a>(
+            &'a self,
+            _app: &'a AppId,
+            path: &'a str,
+            _budget: Duration,
+            _timeout: Duration,
+        ) -> BoxFuture<'a, Result<(), CallError>> {
+            Box::pin(async move {
+                self.calls
+                    .lock()
+                    .unwrap()
+                    .push((Instant::now(), path.to_string()));
+                tokio::time::sleep(self.takes).await;
+                let report = self.report.lock().unwrap().clone();
+                if let Some((slot, seconds)) = report
+                    && let Some(sink) = slot.get()
+                {
+                    sink((unix_now() + seconds).max(0) as u64);
+                }
+                let mut answers = self.answers.lock().unwrap();
+                if answers.is_empty() {
+                    Ok(())
+                } else {
+                    answers.remove(0)
+                }
+            })
+        }
+    }
+
+    fn unix_now() -> i64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64
+    }
+
+    fn config(max_interval: u64) -> CronConfig {
+        CronConfig {
+            enabled: true,
+            max_interval: Duration::from_secs(max_interval),
+            timeout: Duration::from_secs(120),
+            budget: Duration::from_secs(30),
+        }
+    }
+
+    fn fake() -> std::sync::Arc<Fake> {
+        std::sync::Arc::new(Fake {
+            calls: Mutex::new(Vec::new()),
+            answers: Mutex::new(Vec::new()),
+            takes: Duration::from_millis(10),
+            report: Mutex::new(None),
+        })
+    }
+
+    fn app() -> AppId {
+        AppId::parse("admin-api").unwrap()
+    }
+
+    struct Running {
+        fake: std::sync::Arc<Fake>,
+        sink: crate::php::WakeSink,
+        task: tokio::task::JoinHandle<()>,
+        started: Instant,
+        maintenance: std::sync::Arc<MaintenanceSet>,
+    }
+
+    impl Drop for Running {
+        fn drop(&mut self) {
+            self.task.abort();
+        }
+    }
+
+    impl Running {
+        /// When each call started, in seconds from the start (rounded down).
+        fn call_seconds(&self) -> Vec<u64> {
+            self.fake
+                .calls
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|(at, _)| (*at - self.started).as_secs())
+                .collect()
+        }
+    }
+
+    fn start(fake: std::sync::Arc<Fake>, target: CronTarget) -> Running {
+        let maintenance = std::sync::Arc::new(MaintenanceSet::default());
+        let started = Instant::now();
+        let (task, sink) = CronScheduler::spawn(app(), target, fake.clone(), maintenance.clone());
+        Running {
+            fake,
+            sink,
+            task,
+            started,
+            maintenance,
+        }
+    }
+
+    fn fixed(max_interval: u64) -> CronTarget {
+        std::sync::Arc::new(move || Some(("/cron.php".to_string(), config(max_interval))))
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn calls_at_start_then_every_max_interval() {
+        let r = start(fake(), fixed(60));
+        tokio::time::sleep(Duration::from_secs(185)).await;
+        assert_eq!(r.call_seconds(), vec![0, 60, 120, 180]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn report_pulls_wake_forward() {
+        let r = start(fake(), fixed(60));
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        (r.sink)((unix_now() + 10) as u64);
+        tokio::time::sleep(Duration::from_secs(20)).await;
+        assert_eq!(r.call_seconds(), vec![0, 15]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn later_report_does_not_push_wake_back() {
+        let r = start(fake(), fixed(60));
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        (r.sink)((unix_now() + 10) as u64);
+        (r.sink)((unix_now() + 50) as u64);
+        tokio::time::sleep(Duration::from_secs(20)).await;
+        assert_eq!(r.call_seconds(), vec![0, 15]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn past_wake_calls_once_at_a_time() {
+        let mut slow = std::sync::Arc::into_inner(fake()).unwrap();
+        slow.takes = Duration::from_secs(3);
+        let slow = std::sync::Arc::new(slow);
+        let slot: WakeSinkSlot = std::sync::Arc::new(std::sync::OnceLock::new());
+        // Every call reports "due now" (a time in the past).
+        *slow.report.lock().unwrap() = Some((slot.clone(), -100));
+        let r = start(slow, fixed(60));
+        let _ = slot.set(r.sink.clone());
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        let calls = r.call_seconds();
+        // One call at a time, each after the previous ended, never closer than the floor between calls.
+        for pair in calls.windows(2) {
+            assert!(pair[1] >= pair[0] + 3, "{calls:?}");
+        }
+        assert!(calls.len() >= 2, "{calls:?}");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn report_during_call_sets_next_wake() {
+        let reporting = fake();
+        let slot: WakeSinkSlot = std::sync::Arc::new(std::sync::OnceLock::new());
+        *reporting.report.lock().unwrap() = Some((slot.clone(), 20));
+        let r = start(reporting, fixed(60));
+        let _ = slot.set(r.sink.clone());
+        tokio::time::sleep(Duration::from_secs(45)).await;
+        assert_eq!(r.call_seconds(), vec![0, 20, 40]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn failure_backs_off_5_10_20_capped() {
+        let failing = fake();
+        *failing.answers.lock().unwrap() = vec![Err(CallError::Timeout); 6];
+        let r = start(failing, fixed(30));
+        tokio::time::sleep(Duration::from_secs(100)).await;
+        // 0, +5, +10, +20, then capped at max_interval (30): 0, 5, 15, 35, 65, 95.
+        assert_eq!(r.call_seconds(), vec![0, 5, 15, 35, 65, 95]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn no_call_in_maintenance() {
+        let fake = fake();
+        let maintenance = std::sync::Arc::new(MaintenanceSet::default());
+        maintenance.set(&app(), MaintenanceSource::Operator, true);
+        let (task, _sink) =
+            CronScheduler::spawn(app(), fixed(60), fake.clone(), maintenance.clone());
+        tokio::time::sleep(Duration::from_secs(130)).await;
+        assert!(fake.calls.lock().unwrap().is_empty());
+        maintenance.set(&app(), MaintenanceSource::Operator, false);
+        tokio::time::sleep(Duration::from_secs(61)).await;
+        assert_eq!(fake.calls.lock().unwrap().len(), 1);
+        task.abort();
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn disabled_cron_makes_no_calls() {
+        let r = start(fake(), std::sync::Arc::new(|| None));
+        tokio::time::sleep(Duration::from_secs(300)).await;
+        assert!(r.call_seconds().is_empty());
+        let _ = &r.maintenance;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn switch_keeps_one_scheduler() {
+        let path = std::sync::Arc::new(Mutex::new("/cron.php".to_string()));
+        let current = path.clone();
+        let target: CronTarget =
+            std::sync::Arc::new(move || Some((current.lock().unwrap().clone(), config(60))));
+        let r = start(fake(), target);
+        tokio::time::sleep(Duration::from_secs(30)).await;
+        *path.lock().unwrap() = "/new-cron.php".to_string();
+        tokio::time::sleep(Duration::from_secs(60)).await;
+        let paths: Vec<String> = r
+            .fake
+            .calls
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(_, p)| p.clone())
+            .collect();
+        assert_eq!(
+            paths,
+            vec!["/cron.php".to_string(), "/new-cron.php".to_string()]
+        );
+    }
+}

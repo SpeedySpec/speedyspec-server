@@ -123,6 +123,8 @@ async fn serve(channel: Channel) -> Result<(), String> {
         state.maintenance.clone(),
         manager_cell.clone(),
     );
+    // Each php app's scheduled cron calls, on every replica.
+    crate::php::cron::spawn_all(&config, php.clone(), state.maintenance.clone());
     let backend: Arc<dyn ControlBackend> = if config.mode == Mode::Managed {
         let (settings, apps, php, binaries, maintenance) = (
             config.clone(),
