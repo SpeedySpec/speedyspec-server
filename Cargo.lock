@@ -6181,6 +6181,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-password"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "hmac 0.12.1",
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-hooks",
+ "speedyspec-wp-crypto",
+ "speedyspec-wp-crypto-contracts",
+ "speedyspec-wp-password-contracts",
+ "subtle",
+]
+
+[[package]]
 name = "speedyspec-wp-password-bcrypt"
 version = "0.1.0"
 dependencies = [
