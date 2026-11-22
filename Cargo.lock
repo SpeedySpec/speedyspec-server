@@ -6428,14 +6428,16 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-text-diff-php"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "speedyspec-compat",
  "speedyspec-container",
+ "speedyspec-container-php",
  "speedyspec-hooks-memory",
  "speedyspec-php",
+ "speedyspec-php-ext",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",

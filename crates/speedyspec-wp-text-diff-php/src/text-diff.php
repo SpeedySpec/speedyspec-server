@@ -3,25 +3,55 @@
 namespace SpeedySpec\WpTextDiff
 {
     /**
-     * Whether the native table renders `$args` exactly as WordPress would.
+     * Parses `wp_text_diff()`'s arguments as WordPress does.
      *
-     *  The native path covers string titles and every `show_split_view`. WordPress's renderer also looks at every
-     *  other argument: one named after its `_`-prefixed properties (`leading_context_lines`, `trailing_context_lines`,
-     *  `diff_threshold`) changes the output, and any other triggers a deprecation notice; and it prints titles of any
-     *  type by string interpolation. Those calls go to {@link legacy_wp_text_diff()}, so their behaviour, warnings
-     *  included, stays WordPress's.
-     *
-     * @param array $args
-     *   The arguments after `wp_parse_args()`.
-     * @return bool
-     *   True when the native function renders them.
+     * @param string|array|null $args
+     *   The arguments as the caller passed them.
+     * @return array
+     *   The arguments after `wp_parse_args()`, over WordPress's defaults.
      */
-    function native_args(array $args): bool
+    function parse_args($args): array
     {
-        return is_string($args['title'])
-            && is_string($args['title_left'])
-            && is_string($args['title_right'])
-            && array() === array_diff_key($args, array_flip(array('title', 'title_left', 'title_right', 'show_split_view')));
+        $defaults = array(
+            'title'           => '',
+            'title_left'      => '',
+            'title_right'     => '',
+            'show_split_view' => true,
+        );
+        return wp_parse_args($args, $defaults);
+    }
+
+    /**
+     * Loads WordPress's diff classes, as `wp_text_diff()` does on every call, for code that relies on them.
+     *
+     * @return void
+     */
+    function load_renderer(): void
+    {
+        if (!class_exists('WP_Text_Diff_Renderer_Table', false))
+        {
+            require ABSPATH . WPINC . '/wp-diff.php';
+        }
+    }
+
+    /**
+     * The hidden row labels, translated once per call rather than once per row.
+     *
+     * @return string[]
+     *   The labels of added, deleted and unchanged cells, in that order.
+     *
+     * @phpstan-return array{0: string, 1: string, 2: string}
+     */
+    function row_labels(): array
+    {
+        return array(
+            /* translators: Hidden accessibility text. */
+            __('Added:'),
+            /* translators: Hidden accessibility text. */
+            __('Deleted:'),
+            /* translators: Hidden accessibility text. */
+            __('Unchanged:'),
+        );
     }
 
     /**
@@ -107,9 +137,10 @@ namespace
         /**
          * Displays a human readable HTML representation of the difference between two strings.
          *
-         *  Native: the whitespace is normalized and the diff, the rows and the table are rendered in Rust, byte for
-         *  byte as WordPress renders them.
-         *  The row labels are translated once per call rather than once per row.
+         *  The implementation is the container's `SpeedySpec\WpTextDiff\TextDiffer`, which PHP can rebind; it is
+         *  given the arguments untouched. WordPress's implementation normalizes the whitespace and renders the diff,
+         *  the rows and the table in Rust, byte for byte as WordPress renders them, and translates the row labels once
+         *  per call rather than once per row.
          *
          * @param string       $left_string
          *   The "old" (left) version of the string.
@@ -122,45 +153,11 @@ namespace
          *
          * @since 2.6.0 WordPress
          * @since 0.1.0 speedyspec-wp-text-diff-php
+         * @since 0.2.0 speedyspec-wp-text-diff-php Resolves the container's `TextDiffer` on every call.
          */
         function wp_text_diff($left_string, $right_string, $args = null)
         {
-            $defaults = array(
-                'title'           => '',
-                'title_left'      => '',
-                'title_right'     => '',
-                'show_split_view' => true,
-            );
-            $args = wp_parse_args($args, $defaults);
-
-            // As WordPress does: the classes are defined after the first call, for code that relies on it.
-            if (!class_exists('WP_Text_Diff_Renderer_Table', false))
-            {
-                require ABSPATH . WPINC . '/wp-diff.php';
-            }
-
-            // Texts that aren't strings go through normalize_whitespace() in PHP, as WordPress does, with its
-            // coercion and notices.
-            if (!is_string($left_string) || !is_string($right_string) || !\SpeedySpec\WpTextDiff\native_args($args))
-            {
-                return \SpeedySpec\WpTextDiff\legacy_wp_text_diff($left_string, $right_string, $args);
-            }
-
-            // Whitespace is normalized natively.
-            return \SpeedySpec\WpTextDiff\Native\wp_text_diff(
-                $left_string,
-                $right_string,
-                $args['title'],
-                $args['title_left'],
-                $args['title_right'],
-                !empty($args['show_split_view']),
-                /* translators: Hidden accessibility text. */
-                __('Added:'),
-                /* translators: Hidden accessibility text. */
-                __('Deleted:'),
-                /* translators: Hidden accessibility text. */
-                __('Unchanged:')
-            );
+            return \SpeedySpec\WpTextDiff\Native\wp_text_diff($left_string, $right_string, $args);
         }
     }
 }
