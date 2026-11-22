@@ -82,6 +82,20 @@ fn link(prefix: &Path) {
         ))
     });
 
+    // WordPress needs ext-sodium and the runtime guarantees it; a PHP built without it must not link.
+    if !flags.split_whitespace().any(|token| token == "-lsodium") {
+        fail(&format!(
+            "sodium: {} has no -lsodium; ext-sodium is required, rerun scripts/build-php.sh",
+            flags_file.display()
+        ));
+    }
+    if !lib_dir.join("libsodium.a").is_file() {
+        fail(&format!(
+            "sodium: {} is missing; ext-sodium is required, rerun scripts/build-php.sh",
+            lib_dir.join("libsodium.a").display()
+        ));
+    }
+
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     let mut tokens = flags.split_whitespace();
     while let Some(token) = tokens.next() {
