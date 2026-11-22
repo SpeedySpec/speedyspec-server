@@ -5626,10 +5626,13 @@ version = "0.1.0"
 name = "speedyspec-wp-crypto-sodium"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "libsodium-sys-stable",
+ "serde_json",
  "speedyspec-hooks",
  "speedyspec-hooks-memory",
  "speedyspec-php",
+ "speedyspec-wp-crypto",
  "speedyspec-wp-crypto-contracts",
 ]
 
