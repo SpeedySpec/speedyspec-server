@@ -5,7 +5,8 @@ use std::rc::Rc;
 use speedyspec_hooks::Value;
 use speedyspec_wp_crypto_contracts::{Argon2, Argon2Variant, RandomBytes};
 use speedyspec_wp_password_contracts::{
-    Bcrypt, PasswordError, PasswordFilters, PasswordHasher, Warnings, WpHasherGlobal,
+    Bcrypt, CostLimits, PasswordCostLimits, PasswordError, PasswordFilters, PasswordHasher,
+    Warnings, WpHasherGlobal,
 };
 
 use crate::algorithm::{
@@ -40,6 +41,18 @@ pub struct PasswordPorts {
     pub argon2: Rc<dyn Argon2>,
     pub random: Rc<dyn RandomBytes>,
     pub warnings: Rc<dyn Warnings>,
+    /// The site's ceiling on costs, read on every hash and check.
+    pub limits: Rc<dyn PasswordCostLimits>,
+}
+
+/// Fixed [`CostLimits`]: [`CostLimits::DEFAULT`] unless a site chose others.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct FixedCostLimits(pub CostLimits);
+
+impl PasswordCostLimits for FixedCostLimits {
+    fn limits(&self) -> Result<CostLimits, PasswordError> {
+        Ok(self.0)
+    }
 }
 
 /// One way of hashing a password, as `password_hash()` runs it.
@@ -58,8 +71,10 @@ impl HashAlgorithm for BcryptStrategy<'_> {
                 "Bcrypt password must not contain null character",
             ));
         }
+        let limits = self.0.limits.limits()?;
         let cost = options.cost.unwrap_or(BCRYPT_DEFAULT_COST);
-        if !(4..=31).contains(&cost) {
+        // Above the site's limit is out of range too: a hash the site couldn't verify is never written.
+        if !(4..=31).contains(&cost) || cost > i64::from(limits.bcrypt_cost) {
             return Err(PasswordError::value_error(format!(
                 "Invalid bcrypt cost parameter specified: {cost}"
             )));
@@ -96,14 +111,16 @@ pub struct Argon2Strategy<'a> {
 
 impl HashAlgorithm for Argon2Strategy<'_> {
     fn hash(&self, password: &[u8], options: &HashOptions) -> Result<String, PasswordError> {
+        // Above the site's limits is out of range too: a hash the site couldn't verify is never written.
+        let limits = self.ports.limits.limits()?;
         let memory = options.memory_cost.unwrap_or(ARGON2_DEFAULT_MEMORY_KIB);
-        if !(8..=i64::from(u32::MAX)).contains(&memory) {
+        if !(8..=i64::from(limits.argon2_memory_kib)).contains(&memory) {
             return Err(PasswordError::value_error(
                 "Memory cost is outside of allowed memory range",
             ));
         }
         let time = options.time_cost.unwrap_or(ARGON2_DEFAULT_TIME_COST);
-        if !(1..=i64::from(u32::MAX)).contains(&time) {
+        if !(1..=i64::from(limits.argon2_time_cost)).contains(&time) {
             return Err(PasswordError::value_error(
                 "Time cost is outside of allowed time range",
             ));

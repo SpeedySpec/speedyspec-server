@@ -123,6 +123,7 @@ fn ports(algorithm: Option<Value>, options: Option<Value>) -> Rc<PasswordPorts> 
         argon2: sodium.clone(),
         random: sodium,
         warnings: Rc::new(Quiet),
+        limits: Rc::new(speedyspec_wp_password::FixedCostLimits::default()),
     })
 }
 

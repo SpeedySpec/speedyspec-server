@@ -372,5 +372,30 @@ fn main() {
         &r,
     );
 
+    let r = eval(
+        "cost-limits",
+        "$bind = static fn (array $limits) => \\SpeedySpec\\Container\\Container::getInstance()->bind(\\SpeedySpec\\WpPassword\\PasswordCostLimits::class, fn () => new class ($limits) implements \\SpeedySpec\\WpPassword\\PasswordCostLimits { public function __construct(private array $l) {} public function limits() { return $this->l; } });
+         $bind(['cost' => 5]);
+         add_filter('wp_hash_password_algorithm', static fn () => PASSWORD_BCRYPT);
+         add_filter('wp_hash_password_options', static fn () => ['cost' => 6]);
+         try { wp_hash_password('a'); $over = 'no exception'; } catch (ValueError $e) { $over = $e->getMessage(); }
+         remove_all_filters('wp_hash_password_options'); remove_all_filters('wp_hash_password_algorithm');
+         $checks = [wp_check_password('pw', password_hash('pw', PASSWORD_BCRYPT, ['cost' => 6])), wp_check_password('pw', password_hash('pw', PASSWORD_BCRYPT, ['cost' => 5]))];
+         $bind(['cost' => 40]);
+         try { wp_check_password('pw', password_hash('pw', PASSWORD_BCRYPT, ['cost' => 4])); $invalid = 'no exception'; } catch (ValueError $e) { $invalid = $e->getMessage(); }
+         return [$over, $checks, $invalid];",
+    );
+    check(
+        "php_bound_cost_limits_cap_hashing_and_checking",
+        r.as_ref().ok()
+            == Some(&want(vec![
+                HookValue::Str("Invalid bcrypt cost parameter specified: 6".into()),
+                want(vec![HookValue::Bool(false), HookValue::Bool(true)]),
+                HookValue::Str("SpeedySpec\\WpPassword\\PasswordCostLimits::limits(): \"cost\" must be between 4 and 31, 40 given".into()),
+            ])),
+        &r,
+    );
+    php.restart_request().expect("a new request");
+
     println!("wp-password php: all checks passed");
 }

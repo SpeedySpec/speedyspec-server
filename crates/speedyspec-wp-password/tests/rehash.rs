@@ -31,6 +31,7 @@ fn policy(
         argon2: Rc::new(FakeArgon2::new()),
         random: Rc::new(FixedBytes(1)),
         warnings: Rc::new(CollectWarnings(Default::default())),
+        limits: Rc::new(speedyspec_wp_password::FixedCostLimits::default()),
     });
     (DefaultRehashPolicy::new(ports), filters, calls)
 }

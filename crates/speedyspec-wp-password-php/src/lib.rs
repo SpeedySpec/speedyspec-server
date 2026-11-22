@@ -11,8 +11,13 @@
 //! `function_exists` guard, plus `SpeedySpec\WpPassword\application_password_hash/check()` and `chunk_password()`.
 //! Each resolves its port per call. WordPress's filters run through the Hook API and `$wp_hasher` is honoured.
 //!
+//! A sixth port, `SpeedySpec\\WpPassword\\PasswordCostLimits`, is the site's ceiling on bcrypt and argon2 costs
+//! (`CostLimits::DEFAULT` unless the site binds its own, for example in `app.<id>.php.bindings`). A stored hash above
+//! it never verifies, and hashing above it is a `ValueError`.
+//!
 //! Answers that differ from WordPress on purpose: argon2id is the default; raw MD5, phpass, `$2x$` and `crypt()`-only
-//! hashes never verify; `password_hash()`'s ignored-salt warning is an `E_USER_WARNING`.
+//! hashes never verify; `password_hash()`'s ignored-salt warning is an `E_USER_WARNING`; costs above the site's limits
+//! are refused.
 
 mod adapters;
 mod natives;
@@ -28,18 +33,21 @@ use speedyspec_wp_crypto_sodium::Sodium;
 use speedyspec_wp_hooks::HookApi;
 use speedyspec_wp_password::{
     DefaultPasswordChecker, DefaultPasswordGenerator, DefaultPasswordHasher, DefaultRandomNumber,
-    DefaultRehashPolicy, PasswordPorts,
+    DefaultRehashPolicy, FixedCostLimits, PasswordPorts,
 };
 use speedyspec_wp_password_bcrypt::BcryptCrate;
 use speedyspec_wp_password_contracts::{
-    PASSWORD_CHECKER, PASSWORD_GENERATOR, PASSWORD_HASHER, PasswordChecker, PasswordError,
-    PasswordGenerator, PasswordHasher, RANDOM_NUMBER, REHASH_POLICY, RandomNumber, RehashPolicy,
+    PASSWORD_CHECKER, PASSWORD_COST_LIMITS, PASSWORD_GENERATOR, PASSWORD_HASHER, PasswordChecker,
+    PasswordCostLimits, PasswordError, PasswordGenerator, PasswordHasher, RANDOM_NUMBER,
+    REHASH_POLICY, RandomNumber, RehashPolicy,
 };
 
-pub use adapters::{HookPasswordFilters, PhpReplacement, PhpWarnings, PhpWpHasherGlobal};
+pub use adapters::{
+    HookPasswordFilters, PhpReplacement, PhpWarnings, PhpWpHasherGlobal, ResolvedCostLimits,
+};
 pub use twins::{
-    PasswordCheckerTwin, PasswordGeneratorTwin, PasswordHasherTwin, RandomNumberTwin,
-    RehashPolicyTwin,
+    PasswordCheckerTwin, PasswordCostLimitsTwin, PasswordGeneratorTwin, PasswordHasherTwin,
+    RandomNumberTwin, RehashPolicyTwin,
 };
 
 const FACADE: &str = include_str!("password.php");
@@ -60,7 +68,10 @@ impl PasswordArea {
         }
     }
 
-    /// Binds WordPress's rules under the five ports, for the life of the worker.
+    /// Binds WordPress's rules under the five ports, and [`CostLimits::DEFAULT`] under the cost limits' port, for the
+    /// life of the worker.
+    ///
+    /// [`CostLimits::DEFAULT`]: speedyspec_wp_password_contracts::CostLimits::DEFAULT
     ///
     /// The bindings reach the Hook API weakly (see [`HookPasswordFilters`]); this area keeps it alive, so filters run
     /// while the area lives.
@@ -74,6 +85,10 @@ impl PasswordArea {
             argon2: sodium.clone(),
             random: sodium.clone(),
             warnings: Rc::new(PhpWarnings),
+            limits: Rc::new(ResolvedCostLimits::new(container)),
+        });
+        container.bind_port::<dyn PasswordCostLimits>(PASSWORD_COST_LIMITS, |_, _| {
+            Ok(Rc::new(FixedCostLimits::default()) as Rc<dyn PasswordCostLimits>)
         });
         let p = ports.clone();
         container.bind_port::<dyn PasswordHasher>(PASSWORD_HASHER, move |_, _| {
@@ -107,8 +122,8 @@ impl PasswordArea {
         });
     }
 
-    /// `area` with the five ports registered, so a PHP object bound to one reaches Rust callers as a
-    /// [`PhpReplacement`].
+    /// `area` with the five ports and the cost limits' port registered, so a PHP object bound to one reaches Rust
+    /// callers as a [`PhpReplacement`].
     pub fn ports(area: ContainerArea) -> ContainerArea {
         area.port::<dyn PasswordHasher>(PASSWORD_HASHER, |object| {
             Rc::new(PhpReplacement::new(object))
@@ -121,6 +136,9 @@ impl PasswordArea {
             Rc::new(PhpReplacement::new(object))
         })
         .port::<dyn RandomNumber>(RANDOM_NUMBER, |object| Rc::new(PhpReplacement::new(object)))
+        .port::<dyn PasswordCostLimits>(PASSWORD_COST_LIMITS, |object| {
+            Rc::new(PhpReplacement::new(object))
+        })
     }
 }
 
