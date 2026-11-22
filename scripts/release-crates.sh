@@ -28,6 +28,8 @@ repo="${SPEEDYSPEC_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 list_file="$repo/scripts/publish-crates.txt"
 [ -f "$list_file" ] || { echo "no $list_file" >&2; exit 1; }
 
+jq -e '.packages | type == "array"' "$metadata" >/dev/null 2>&1 || { echo "$metadata is not cargo metadata" >&2; exit 1; }
+
 # The listed names as a JSON array, in order, without blank lines or comments.
 listed="$(grep -v -e '^[[:space:]]*$' -e '^[[:space:]]*#' "$list_file" | jq -R . | jq -sc .)"
 

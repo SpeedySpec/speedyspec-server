@@ -1224,3 +1224,15 @@ fn crates_pending_skips_published_versions() {
     index_entry(&index, "ccc", &["0.1.1"]);
     assert_eq!(crates_pending(dir.path(), &index), "bb\n");
 }
+
+#[test]
+fn crates_check_fails_for_metadata_without_crates() {
+    let dir = crates_fixture(&["a"], &[]);
+    std::fs::write(dir.path().join("metadata.json"), "").unwrap();
+    let output = crates_run(dir.path(), &["check"], &[]);
+    assert!(!output.status.success(), "{output:?}");
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("is not cargo metadata"),
+        "{output:?}"
+    );
+}

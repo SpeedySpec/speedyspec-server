@@ -239,6 +239,10 @@ its new version (`<crate>-v<version>`, a plain tag) so release-please counts its
 pinned in `crates/speedyspec-php/php-version`, so a PHP update is a change to `speedyspec-php` (say which PHP it embeds
 in the commit message); `scripts/build-php.sh` is outside the crates and releases nothing by itself.
 
+The crates listed in `scripts/publish-crates.txt` (the PHP runtime crates other repositories build on) are also
+published to crates.io from the release commit, each version once; every other crate sets `publish = false`, and CI
+fails a pull request that adds a crate without it.
+
 Merging the release pull request builds each bumped component for every target at the merge commit and runs the
 tests of the crates it is built from there (`scripts/release-test-packages.sh`; CI tests the whole workspace, so a
 failing test in a crate neither component contains holds no release back); only when every build passes are the tags and the GitHub releases created. The binaries are then signed and
