@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use speedyspec_wp_html_syntax::start_tag_attributes;
+use speedyspec_wp_html_syntax::start_tag_attributes_into;
 use speedyspec_wp_kses_contracts::{Attr, Protocols, UriAttributes};
 
 use crate::bad_protocol;
@@ -47,19 +47,39 @@ pub fn hair_attrs<'a>(
     protocols: &Protocols,
     uris: &UriAttributes,
 ) -> Vec<HairAttr<'a>> {
-    let Some(parsed) = start_tag_attributes(attr) else {
-        return Vec::new();
-    };
-    parsed
-        .into_iter()
-        .map(|a| match a.value {
+    let mut out = Vec::new();
+    hair_attrs_into(
+        attr,
+        protocols,
+        |name| is_uri_attribute(uris, name),
+        &mut out,
+    );
+    out
+}
+
+/// [`hair_attrs`] appending to `out`, a buffer the caller reuses; nothing is appended when the tag is incomplete.
+///
+/// @param is_uri
+///     Whether an attribute name is in `wp_kses_uri_attributes()`, so a caller can answer from a faster form of the
+///     list than [`UriAttributes`].
+pub fn hair_attrs_into<'a>(
+    attr: &'a [u8],
+    protocols: &Protocols,
+    is_uri: impl Fn(&[u8]) -> bool,
+    out: &mut Vec<HairAttr<'a>>,
+) {
+    start_tag_attributes_into(
+        attr,
+        out,
+        |a: &HairAttr<'_>| &a.name,
+        |name, value| match value {
             None => HairAttr {
-                name: a.name,
+                name,
                 value: Cow::Borrowed(b""),
                 vless: true,
             },
             Some(value) => {
-                let value = if uris.0.iter().any(|u| **u == *a.name) {
+                let value = if is_uri(&name) {
                     match bad_protocol(&value, protocols) {
                         Cow::Borrowed(_) => value,
                         Cow::Owned(cleaned) => Cow::Owned(cleaned),
@@ -68,13 +88,23 @@ pub fn hair_attrs<'a>(
                     value
                 };
                 HairAttr {
-                    name: a.name,
+                    name,
                     value: recode(value),
                     vless: false,
                 }
             }
-        })
-        .collect()
+        },
+    );
+}
+
+/// `in_array( $name, $uris, true )`, checking length and first byte before the bytes.
+pub fn is_uri_attribute(uris: &UriAttributes, name: &[u8]) -> bool {
+    let Some(first) = name.first() else {
+        return uris.0.iter().any(|u| u.is_empty());
+    };
+    uris.0
+        .iter()
+        .any(|u| u.len() == name.len() && u[0] == *first && **u == *name)
 }
 
 /// An attribute's `whole` as `wp_kses_hair()` writes it: `name="value"`.
@@ -85,12 +115,24 @@ pub fn write_whole(out: &mut Vec<u8>, name: &[u8], value: &[u8]) {
     out.push(b'"');
 }
 
+/// Whether `b` is one of HTML's five syntax characters.
+#[inline]
+fn is_syntax(b: u8) -> bool {
+    (b == b'&') | (b == b'<') | (b == b'>') | (b == b'\'') | (b == b'"')
+}
+
+/// Whether `value` holds any of HTML's five syntax characters, 16 bytes at a time (a form the compiler vectorizes).
+fn has_syntax(value: &[u8]) -> bool {
+    let (chunks, rest) = value.as_chunks::<16>();
+    chunks
+        .iter()
+        .any(|chunk| chunk.iter().fold(false, |hit, b| hit | is_syntax(*b)))
+        || rest.iter().any(|b| is_syntax(*b))
+}
+
 /// `strtr()` of HTML's five syntax characters to their references; borrows when there are none.
 fn recode(value: Cow<'_, [u8]>) -> Cow<'_, [u8]> {
-    if !value
-        .iter()
-        .any(|b| matches!(b, b'&' | b'<' | b'>' | b'\'' | b'"'))
-    {
+    if !has_syntax(&value) {
         return value;
     }
     let mut out = Vec::with_capacity(value.len() + 16);

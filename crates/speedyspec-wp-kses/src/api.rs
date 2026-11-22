@@ -9,6 +9,7 @@ use speedyspec_wp_kses_contracts::{
     AllowedHtml, AttributeEscaper, Context, KsesError, Payload, Protocols, UnfilteredHtmlPolicy,
     UriAttributes, ValueCallback,
 };
+use speedyspec_wp_kses_lexical::HairAttr;
 
 use crate::{
     AllowedGlobals, UploadsLocation, ValueCallbacks, allow_pdf_objects, allowed_from_value,
@@ -34,15 +35,19 @@ pub struct KsesDeps {
 pub struct KsesApi {
     pub(crate) d: KsesDeps,
     allowed_cache: AllowedCache,
-    default_uris: Rc<UriAttributes>,
+    pub(crate) default_uris: Rc<UriAttributes>,
     protocols: RefCell<Vec<Value>>,
     /// `protocols` as kses reads it, until the list changes.
     protocols_read: RefCell<Option<Rc<Protocols>>>,
     /// The hook names kses uses, made once (each made anew would copy its name).
     hook_names: RefCell<Vec<(&'static str, Rc<HookName>)>>,
-    /// Buffers `attr_into` reuses across tags: (the attributes kept, one attribute's whole). Taken while in use, so
-    /// a filter that runs kses again gets fresh ones.
-    pub(crate) scratch: RefCell<(Vec<u8>, Vec<u8>)>,
+    /// The buffer `attr_into` writes a restyled attribute's whole to, reused across tags. Taken while in use, so a
+    /// filter that runs kses again gets a fresh one.
+    pub(crate) scratch: RefCell<Vec<u8>>,
+    /// The allowlist `attr_into` last read and, per tag in it, whether any attribute is required.
+    pub(crate) required_tags: RefCell<Option<(std::rc::Weak<AllowedHtml>, Vec<bool>)>>,
+    /// The buffer `attr_into` reads a tag's attributes into, kept empty between tags; taken while in use.
+    pub(crate) hair_scratch: RefCell<Vec<HairAttr<'static>>>,
     /// What the nested passes of the current outermost `kses()` call may still process; `None` outside a call.
     pub(crate) nested_budget: std::cell::Cell<Option<usize>>,
     /// This API's own `Rc`, for the filter callbacks `kses_init_filters()` registers; empty unless built by
@@ -80,6 +85,30 @@ const URI_ATTRIBUTES: &[&str] = &[
     "usemap",
     "xmlns",
 ];
+
+/// Whether `name` is one of [`URI_ATTRIBUTES`], answered without walking the list.
+pub(crate) fn is_default_uri_attribute(name: &[u8]) -> bool {
+    matches!(
+        name,
+        b"action"
+            | b"archive"
+            | b"background"
+            | b"cite"
+            | b"classid"
+            | b"codebase"
+            | b"data"
+            | b"formaction"
+            | b"href"
+            | b"icon"
+            | b"longdesc"
+            | b"manifest"
+            | b"poster"
+            | b"profile"
+            | b"src"
+            | b"usemap"
+            | b"xmlns"
+    )
+}
 
 /// `wp_allowed_protocols()`'s defaults.
 const PROTOCOLS: &[&str] = &[
@@ -181,7 +210,9 @@ impl KsesApi {
             protocols: RefCell::new(Vec::new()),
             protocols_read: RefCell::new(None),
             hook_names: RefCell::new(Vec::new()),
-            scratch: RefCell::new((Vec::new(), Vec::new())),
+            scratch: RefCell::new(Vec::new()),
+            hair_scratch: RefCell::new(Vec::new()),
+            required_tags: RefCell::new(None),
             nested_budget: std::cell::Cell::new(None),
             me: RefCell::new(std::rc::Weak::new()),
         }
@@ -201,9 +232,11 @@ impl KsesApi {
     /// The hook named `name`, made once per API.
     pub(crate) fn hook_name(&self, name: &'static str) -> Rc<HookName> {
         let mut names = self.hook_names.borrow_mut();
+        // The same literal is usually the same pointer: look for that first, then compare the text.
         if let Some((_, hook)) = names
             .iter()
-            .find(|(n, _)| std::ptr::eq(*n, name) || *n == name)
+            .find(|(n, _)| std::ptr::eq(*n, name))
+            .or_else(|| names.iter().find(|(n, _)| *n == name))
         {
             return hook.clone();
         }
@@ -505,5 +538,22 @@ impl KsesApi {
                 ))
             })
             .clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_uri_attribute_check_matches_the_list() {
+        for name in URI_ATTRIBUTES {
+            assert!(is_default_uri_attribute(name.as_bytes()), "{name}");
+        }
+        for name in [
+            "", "hre", "hrefs", "HREF", "class", "style", "srcset", "datas",
+        ] {
+            assert!(!is_default_uri_attribute(name.as_bytes()), "{name}");
+        }
     }
 }
