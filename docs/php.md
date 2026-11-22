@@ -94,9 +94,9 @@ Sizes (FFmpeg 9.1, `-Os` via `--enable-small`, measured 2026-11-22):
 
 Linux x86_64 is built by CI's `php (linux-x86_64)` job.
 
-After plan 4 minimized the decoders (to `mjpeg png bmp qoi pcx sgi hdr flv dca flac`: each one's removal changes a
-corpus or reader result), macOS aarch64's archives are `libavcodec.a` 2.29 MB, `libavformat.a` 2.21 MB, `libavutil.a`
-0.89 MB.
+After plan 4 minimized the decoders (to `mjpeg png gif webp bmp qoi pcx sgi hdr flv dca flac`: each one's removal
+changes a corpus or reader result, GIF and WebP cover art included), macOS aarch64's archives are `libavcodec.a`
+2.60 MB, `libavformat.a` 2.21 MB, `libavutil.a` 0.89 MB.
 
 **Fuzzing.** `fuzz-media/` holds cargo-fuzz targets for the FFmpeg shim (`ffmpeg_probe`) and the MIDI parser (`midi`).
 `.github/workflows/fuzz.yml` runs each for 30 minutes weekly (and on demand) against an FFmpeg built with
