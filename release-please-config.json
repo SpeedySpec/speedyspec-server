@@ -76,6 +76,11 @@
       "skip-github-release": true,
       "skip-changelog": true
     },
+    "crates/speedyspec-ffmpeg-sys": {
+      "component": "speedyspec-ffmpeg-sys",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
     "crates/speedyspec-hooks": {
       "component": "speedyspec-hooks",
       "skip-github-release": true,
