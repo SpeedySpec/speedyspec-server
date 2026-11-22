@@ -1,0 +1,32 @@
+[package]
+name = "speedyspec-wp-password-php"
+version = "0.1.0"
+publish = false
+description = "WordPress's password functions (wp_hash_password, wp_check_password, wp_password_needs_rehash, wp_generate_password, wp_rand) as native PHP functions over container ports, libsodium and bcrypt."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-wp-crypto = { path = "../speedyspec-wp-crypto" }
+speedyspec-wp-crypto-contracts = { path = "../speedyspec-wp-crypto-contracts" }
+speedyspec-wp-crypto-sodium = { path = "../speedyspec-wp-crypto-sodium" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-password = { path = "../speedyspec-wp-password" }
+speedyspec-wp-password-bcrypt = { path = "../speedyspec-wp-password-bcrypt" }
+speedyspec-wp-password-contracts = { path = "../speedyspec-wp-password-contracts" }
+
+[dev-dependencies]
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+serde_json = "1"
+
+[[test]]
+name = "php"
+harness = false

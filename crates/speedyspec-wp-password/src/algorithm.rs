@@ -2,7 +2,8 @@
 //!
 //! Filters return any PHP value, so these mirror PHP's own coercions and errors: the argument types are checked
 //! first (a `TypeError`), then the algorithm is looked up (a `ValueError`); option values coerce like
-//! `zval_get_long()`. Each strategy validates the options it uses.
+//! `zval_get_long()`. Each strategy validates the options it uses. Values a bridge carries unconverted are read
+//! ([`Value::read`]) here, where they are interpreted, and nowhere earlier.
 
 use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_password_contracts::PasswordError;
@@ -32,7 +33,7 @@ impl Algorithm {
 /// Whether WordPress takes its own bcrypt path: the filtered algorithm is strictly `PASSWORD_BCRYPT`
 /// (`PASSWORD_BCRYPT !== $algorithm` is false).
 pub fn is_wp_bcrypt(algorithm: &Value) -> bool {
-    matches!(algorithm, Value::Str(s) if s == "2y")
+    matches!(&*algorithm.read(), Value::Str(s) if s == "2y")
 }
 
 /// PHP's name for a value's type in its error messages.
@@ -51,6 +52,7 @@ pub fn php_type_name(value: &Value) -> &'static str {
 
 /// The `TypeError` `function()` raises for an algorithm that is not `string|int|null`, if any.
 pub fn algorithm_type_error(algorithm: &Value, function: &str) -> Option<PasswordError> {
+    let algorithm = &*algorithm.read();
     matches!(algorithm, Value::Array(_) | Value::Opaque(_)).then(|| {
         PasswordError::type_error(format!(
             "{function}(): Argument #2 ($algo) must be of type string|int|null, {} given",
@@ -68,6 +70,7 @@ pub fn algorithm_type_error(algorithm: &Value, function: &str) -> Option<Passwor
 ///
 /// A `TypeError` for an array or object, a `ValueError` for anything that names no algorithm.
 pub fn resolve_algorithm(value: &Value, function: &str) -> Result<Algorithm, PasswordError> {
+    let value = &*value.read();
     if let Some(err) = algorithm_type_error(value, function) {
         return Err(err);
     }
@@ -119,6 +122,7 @@ pub struct HashOptions {
 ///
 /// A `TypeError` when the value is not an array.
 pub fn resolve_options(value: &Value, function: &str) -> Result<HashOptions, PasswordError> {
+    let value = &*value.read();
     let Value::Array(entries) = value else {
         return Err(PasswordError::type_error(format!(
             "{function}(): Argument #3 ($options) must be of type array, {} given",
@@ -145,7 +149,7 @@ pub fn resolve_options(value: &Value, function: &str) -> Result<HashOptions, Pas
 /// PHP's `zval_get_long()`: integers as they are, floats truncated, numeric string prefixes parsed, `null` and
 /// `false` 0, `true` 1, arrays 0 when empty and 1 otherwise.
 pub fn php_long(value: &Value) -> i64 {
-    match value {
+    match &*value.read() {
         Value::Null => 0,
         Value::Bool(b) => i64::from(*b),
         Value::Int(n) => *n,

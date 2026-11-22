@@ -161,7 +161,7 @@ fn iterations(length: &Value) -> u64 {
             0
         }
     };
-    match length {
+    match &*length.read() {
         Value::Int(n) => (*n).max(0) as u64,
         Value::Float(f) => from_float(*f),
         Value::Bool(b) => u64::from(*b),
@@ -178,7 +178,7 @@ fn numeric(text: &[u8]) -> Option<f64> {
 
 /// PHP's truth: `null`, `false`, `0`, `0.0`, `""`, `"0"` and `[]` are false.
 pub fn php_truthy(value: &Value) -> bool {
-    match value {
+    match &*value.read() {
         Value::Null => false,
         Value::Bool(b) => *b,
         Value::Int(n) => *n != 0,

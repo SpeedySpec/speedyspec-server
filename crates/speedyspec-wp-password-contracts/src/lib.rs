@@ -32,10 +32,14 @@ pub const PASSWORD_GENERATOR: &str = "SpeedySpec\\WpPassword\\PasswordGenerator"
 pub const RANDOM_NUMBER: &str = "SpeedySpec\\WpPassword\\RandomNumber";
 
 /// Why a password function didn't return.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum PasswordError {
     /// What PHP throws: `ValueError` and `TypeError` from `password_hash()`'s rules, or a filter callback's exception.
     Throw { class: String, message: String },
+    /// A PHP exception object (a `Value::Opaque`) a filter callback or a replacement threw, to rethrow unchanged.
+    Rethrow(Value),
+    /// PHP is unwinding (`exit()` or a fatal error in a callback): nothing more runs, nothing is thrown.
+    Unwinding,
     /// A replacement bound in the container failed in a way that isn't a PHP exception.
     Port(String),
 }
@@ -62,6 +66,8 @@ impl std::fmt::Display for PasswordError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PasswordError::Throw { class, message } => write!(f, "{class}: {message}"),
+            PasswordError::Rethrow(_) => f.write_str("a PHP exception"),
+            PasswordError::Unwinding => f.write_str("PHP is unwinding"),
             PasswordError::Port(why) => f.write_str(why),
         }
     }

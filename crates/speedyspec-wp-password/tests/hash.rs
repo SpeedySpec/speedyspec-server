@@ -273,3 +273,23 @@ fn filters_in_order_once() {
         Some(Value::Str("argon2id".into()))
     );
 }
+
+#[test]
+fn filter_values_are_read_before_use() {
+    // A bridge carries PHP values unconverted (Opaque) until Rust reads them.
+    speedyspec_hooks::set_opaque_reader(speedyspec_hooks::OpaqueReader {
+        readable: |any| any.is::<Value>(),
+        read: |any| any.downcast_ref::<Value>().cloned(),
+    });
+    let carried = |v: Value| Value::Opaque(Rc::new(v));
+    let rig = rig(
+        Some(carried(Value::Str("2y".into()))),
+        Some(carried(Value::Array(vec![(
+            Key::Str("cost".into()),
+            Value::Int(5),
+        )]))),
+        false,
+    );
+    let hash = text(rig.hasher.hash(b"pw").unwrap());
+    assert!(hash.starts_with("$wp$2y$05$"), "{hash}");
+}
