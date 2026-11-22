@@ -195,6 +195,7 @@ impl PhpRuntime {
             bindings: Vec::new(),
             env: Vec::new(),
             env_file: None,
+            cron: crate::config::CronConfig::default(),
         })
     }
 
