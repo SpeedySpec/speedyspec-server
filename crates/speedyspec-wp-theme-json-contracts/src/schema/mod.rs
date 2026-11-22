@@ -17,6 +17,10 @@ pub const ROOT_CSS_PROPERTIES_SELECTOR: &str = ":root";
 
 const SERIALIZED: &[u8] = include_bytes!("wordpress-7.1.5.constants");
 
+/// WordPress 7.1.5's `wp-includes/theme-i18n.json`: which settings and titles are translated, and with which
+/// context.
+pub const THEME_I18N: &str = include_str!("wordpress-7.1.5.theme-i18n.json");
+
 const LAYOUT: &[u8] = include_bytes!("wordpress-7.1.5.layout");
 
 thread_local! {

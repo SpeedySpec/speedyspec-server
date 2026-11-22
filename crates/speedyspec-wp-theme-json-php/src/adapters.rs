@@ -170,6 +170,44 @@ impl BlockMetadata for PhpBlockRegistry {
         self.seen.borrow().generation
     }
 
+    fn registered_now(&self) -> Vec<RegisteredBlock> {
+        let listed =
+            call("SpeedySpec\\WpThemeJson\\Support\\registered_blocks", &[]).unwrap_or(Value::Null);
+        let mut out = Vec::new();
+        if let Value::Array(entries) = listed.read().into_owned() {
+            for (_, entry) in entries {
+                let Value::Array(fields) = entry else {
+                    continue;
+                };
+                let field = |i: i64| {
+                    fields
+                        .iter()
+                        .find(|(k, _)| *k == Key::Int(i))
+                        .map(|(_, v)| v.clone())
+                };
+                let Some(Value::Str(name)) = field(0) else {
+                    continue;
+                };
+                out.push(RegisteredBlock {
+                    name,
+                    selectors: field(1).unwrap_or(Value::Null),
+                    supports: field(2).unwrap_or(Value::Null),
+                    style_names: strings(field(3).as_ref()),
+                });
+            }
+        }
+        out
+    }
+
+    fn registered_styles(&self) -> Value {
+        match call("SpeedySpec\\WpThemeJson\\Support\\registered_styles", &[])
+            .map(|v| v.read().into_owned())
+        {
+            Some(v @ Value::Array(_)) => v,
+            _ => Value::Array(Vec::new()),
+        }
+    }
+
     fn current(&self, name: &str) -> Option<RegisteredBlock> {
         let found = call(
             "SpeedySpec\\WpThemeJson\\Support\\registered_block",
@@ -232,6 +270,20 @@ impl Gettext for PhpGettext {
             .as_ref()
             .and_then(bytes_of)
             .unwrap_or_else(|| text.as_bytes().to_vec())
+    }
+
+    fn translate_with_context(&self, text: &[u8], context: &[u8], domain: &[u8]) -> Vec<u8> {
+        call(
+            "translate_with_gettext_context",
+            &[
+                string_value(text),
+                string_value(context),
+                string_value(domain),
+            ],
+        )
+        .as_ref()
+        .and_then(bytes_of)
+        .unwrap_or_else(|| text.to_vec())
     }
 }
 
@@ -315,7 +367,19 @@ impl speedyspec_wp_theme_json_contracts::ports::GlobalSettings for PhpGlobalSett
     }
 }
 
-/// `current_theme_supports()`, as PHP defines it.
+fn text_of(value: Option<Value>) -> String {
+    value
+        .as_ref()
+        .and_then(bytes_of)
+        .map(|b| String::from_utf8_lossy(&b).into_owned())
+        .unwrap_or_default()
+}
+
+fn support(name: &str, args: &[Value]) -> Option<Value> {
+    call(&format!("SpeedySpec\\WpThemeJson\\Support\\{name}"), args).map(|v| v.read().into_owned())
+}
+
+/// The active theme and site facts, as PHP answers them (`wp_get_theme()`, `current_theme_supports()`, …).
 pub struct PhpActiveTheme;
 
 impl speedyspec_wp_theme_json_contracts::ports::ActiveTheme for PhpActiveTheme {
@@ -324,6 +388,166 @@ impl speedyspec_wp_theme_json_contracts::ports::ActiveTheme for PhpActiveTheme {
             call("current_theme_supports", &[Value::Str(feature.into())]),
             Some(Value::Bool(true))
         )
+    }
+    fn stylesheet(&self) -> String {
+        text_of(call("get_stylesheet", &[]))
+    }
+    fn stylesheet_directory(&self) -> String {
+        text_of(call("get_stylesheet_directory", &[]))
+    }
+    fn template_directory(&self) -> String {
+        text_of(call("get_template_directory", &[]))
+    }
+    fn theme_json_path(&self) -> String {
+        text_of(support("theme_json_path", &[]))
+    }
+    fn parent_theme_json_path(&self) -> Option<String> {
+        match support("parent_theme_json_path", &[]) {
+            Some(Value::Null) | None => None,
+            other => Some(text_of(other)),
+        }
+    }
+    fn text_domain(&self) -> Value {
+        support("text_domain", &[Value::Bool(false)]).unwrap_or(Value::Bool(false))
+    }
+    fn parent_text_domain(&self) -> Value {
+        support("text_domain", &[Value::Bool(true)]).unwrap_or(Value::Bool(false))
+    }
+    fn has_theme_json(&self) -> bool {
+        call("wp_theme_has_theme_json", &[]).is_some_and(|v| truthy(&v.read()))
+    }
+    fn is_block_theme(&self) -> bool {
+        call("wp_is_block_theme", &[]).is_some_and(|v| truthy(&v.read()))
+    }
+    fn is_development_mode(&self) -> bool {
+        call("wp_is_development_mode", &[Value::Str("theme".into())])
+            .is_some_and(|v| truthy(&v.read()))
+    }
+    fn classic_editor_settings(&self) -> Value {
+        match call("get_classic_theme_supports_block_editor_settings", &[])
+            .map(|v| v.read().into_owned())
+        {
+            Some(v @ Value::Array(_)) => v,
+            _ => Value::Array(Vec::new()),
+        }
+    }
+    fn theme_file_uri(&self, file: &str) -> String {
+        let uri = call("get_theme_file_uri", &[Value::Str(file.into())]).unwrap_or(Value::Null);
+        text_of(call("sanitize_url", &[uri.read().into_owned()]))
+    }
+    fn file_type(&self, file: &str) -> Value {
+        match call("wp_check_filetype", &[Value::Str(file.into())]).map(|v| v.read().into_owned()) {
+            Some(Value::Array(fields)) => fields
+                .into_iter()
+                .find(|(k, _)| *k == Key::Str("type".into()))
+                .map_or(Value::Null, |(_, v)| v),
+            _ => Value::Null,
+        }
+    }
+    fn core_directory(&self) -> String {
+        text_of(support("core_directory", &[]))
+    }
+}
+
+/// The `wp_theme_json_data_*` filters through PHP's `apply_filters`, with the layer wrapped in a
+/// `WP_Theme_JSON_Data` as WordPress hands it to callbacks.
+pub struct PhpLayerFilters;
+
+impl speedyspec_wp_theme_json_contracts::ports::LayerFilters for PhpLayerFilters {
+    fn apply(
+        &self,
+        hook: &str,
+        origin: speedyspec_wp_theme_json_contracts::Origin,
+        config: Value,
+    ) -> Result<
+        speedyspec_wp_theme_json_contracts::ports::FilteredLayer,
+        speedyspec_wp_theme_json_contracts::ThemeJsonError,
+    > {
+        use speedyspec_wp_theme_json_contracts::ports::FilteredLayer;
+        let result = speedyspec_php::call(
+            &Value::Str("SpeedySpec\\WpThemeJson\\Support\\apply_data_filter".into()),
+            &[
+                Value::Str(hook.into()),
+                config,
+                Value::Str(origin.as_str().into()),
+            ],
+        )
+        .map_err(|e| speedyspec_wp_theme_json_contracts::ThemeJsonError::Callback(e.to_string()))?;
+        let Value::Array(fields) = result.read().into_owned() else {
+            return Ok(FilteredLayer::Config(Value::Array(Vec::new())));
+        };
+        let field = |i: i64| {
+            fields
+                .iter()
+                .find(|(k, _)| *k == Key::Int(i))
+                .map(|(_, v)| v.clone())
+                .unwrap_or(Value::Null)
+        };
+        Ok(match field(0) {
+            Value::Str(kind) if kind == "built" => FilteredLayer::Built(field(1)),
+            _ => FilteredLayer::Config(field(1)),
+        })
+    }
+}
+
+/// The user's global styles post, found or created with the `WP_Query`, `wp_insert_post` and `get_post` calls
+/// WordPress's resolver makes.
+pub struct PhpGlobalStylesPost;
+
+impl speedyspec_wp_theme_json_contracts::ports::GlobalStylesPost for PhpGlobalStylesPost {
+    fn find(&self, stylesheet: &str, create: bool, statuses: &Value) -> Value {
+        support(
+            "global_styles_post",
+            &[
+                Value::Str(stylesheet.into()),
+                Value::Bool(create),
+                statuses.clone(),
+            ],
+        )
+        .unwrap_or(Value::Array(Vec::new()))
+    }
+}
+
+/// `wp_register_block_style_variations_from_theme_json_partials()`, as PHP defines it.
+pub struct PhpVariationRegistrar;
+
+impl speedyspec_wp_theme_json_contracts::ports::BlockStyleVariationRegistrar
+    for PhpVariationRegistrar
+{
+    fn register(&self, variations: &Value) {
+        call(
+            "wp_register_block_style_variations_from_theme_json_partials",
+            std::slice::from_ref(variations),
+        );
+    }
+}
+
+/// WordPress's object cache functions, as PHP defines them (the object cache area's when loaded).
+pub struct PhpWpCache;
+
+impl speedyspec_wp_theme_json_contracts::ports::WpCache for PhpWpCache {
+    fn get(&self, key: &str, group: &str) -> Option<Value> {
+        match call(
+            "wp_cache_get",
+            &[Value::Str(key.into()), Value::Str(group.into())],
+        )
+        .map(|v| v.read().into_owned())
+        {
+            None | Some(Value::Bool(false)) => None,
+            Some(v) => Some(v),
+        }
+    }
+    fn set(&self, key: &str, value: Value, group: &str) {
+        call(
+            "wp_cache_set",
+            &[Value::Str(key.into()), value, Value::Str(group.into())],
+        );
+    }
+    fn delete(&self, key: &str, group: &str) {
+        call(
+            "wp_cache_delete",
+            &[Value::Str(key.into()), Value::Str(group.into())],
+        );
     }
 }
 

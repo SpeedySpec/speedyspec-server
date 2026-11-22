@@ -22,6 +22,7 @@ function wp_trigger_error($f, $m, $l = E_USER_NOTICE) { $GLOBALS['notices'][] = 
 function sanitize_title($t) { return strtolower($t); }
 function esc_html($t) { return htmlspecialchars((string) $t, ENT_QUOTES); }
 function safecss_filter_attr($css) { return $css; }
+function wp_parse_args($args, $defaults = array()) { return array_merge($defaults, (array) $args); }
 class WP_Block_Type {
     public $name; public $selectors = array(); public $supports = null;
     public function __construct($name, $args = array()) { $this->name = $name; foreach ($args as $k => $v) { $this->$k = $v; } }
@@ -60,7 +61,38 @@ const CASES: &[(&str, Case)] = &[
         case_resolve_variables,
     ),
     ("get_svg_filters_from_php", case_svg_filters),
+    ("data_filter_receives_wp_theme_json_data", case_data_filter),
+    ("resolver_merged_data_from_php", case_merged_data),
+    ("global_stylesheet_from_php", case_global_stylesheet),
 ];
+
+const THEME_FILTER: &str = "add_filter('wp_theme_json_data_theme', function ($data) { if (!$data instanceof WP_Theme_JSON_Data) { throw new Exception('not WP_Theme_JSON_Data'); } return $data->update_with(['version'=>3,'settings'=>['color'=>['custom'=>false,'palette'=>[['slug'=>'x','color'=>'#123','name'=>'X']]]]]); });";
+
+fn case_data_filter(php: &Php) -> Result<(), String> {
+    expect_json(
+        php,
+        &format!(
+            "{THEME_FILTER} WP_Theme_JSON_Resolver::clean_cached_data(); return WP_Theme_JSON_Resolver::get_theme_data([], ['with_supports'=>false])->get_settings()['color']['custom'];"
+        ),
+        "false",
+    )
+}
+
+fn case_merged_data(php: &Php) -> Result<(), String> {
+    expect_json(
+        php,
+        "WP_Theme_JSON_Resolver::clean_cached_data(); $m = WP_Theme_JSON_Resolver::get_merged_data('theme'); return [$m instanceof WP_Theme_JSON, $m->get_settings()['color']['palette']['theme'][0]['slug']];",
+        r#"[true, "x"]"#,
+    )
+}
+
+fn case_global_stylesheet(php: &Php) -> Result<(), String> {
+    expect_json(
+        php,
+        "wp_clean_theme_json_cache(); return str_contains(wp_get_global_stylesheet(['variables']), '--wp--preset--color--x: #123;');",
+        "true",
+    )
+}
 
 fn case_remove_insecure(php: &Php) -> Result<(), String> {
     expect_json(
