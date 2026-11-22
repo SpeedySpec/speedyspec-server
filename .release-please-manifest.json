@@ -49,5 +49,18 @@
   "crates/speedyspec-wp-utf8-php": "0.1.2",
   "crates/speedyspec-wp-kses-php": "0.1.1",
   "crates/speedyspec-wp-text": "0.1.1",
-  "crates/speedyspec-wp-token-map-php": "0.1.1"
+  "crates/speedyspec-wp-token-map-php": "0.1.1",
+  "crates/speedyspec-wp-crypto": "0.1.0",
+  "crates/speedyspec-wp-crypto-contracts": "0.1.0",
+  "crates/speedyspec-wp-crypto-php": "0.1.0",
+  "crates/speedyspec-wp-crypto-sodium": "0.1.0",
+  "crates/speedyspec-wp-html-syntax": "0.1.0",
+  "crates/speedyspec-wp-kses-contracts": "0.1.0",
+  "crates/speedyspec-wp-kses-lexical": "0.1.0",
+  "crates/speedyspec-wp-kses-testkit": "0.1.0",
+  "crates/speedyspec-wp-shortcode-contracts": "0.1.0",
+  "crates/speedyspec-wp-text-contracts": "0.1.0",
+  "crates/speedyspec-wp-text-memory": "0.1.0",
+  "crates/speedyspec-wp-token-map": "0.1.0",
+  "crates/speedyspec-wp-utf8": "0.1.0"
 }
