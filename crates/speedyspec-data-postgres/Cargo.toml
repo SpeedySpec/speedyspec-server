@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-data-postgres"
-version = "0.1.4"
+version = "0.1.5"
 publish = false
 description = "The PostgreSQL engine: MySQL statements translated for PostgreSQL, answered with MySQL's results."
 edition.workspace = true
