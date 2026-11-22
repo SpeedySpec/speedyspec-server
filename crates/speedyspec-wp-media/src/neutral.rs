@@ -166,3 +166,291 @@ pub fn neutral(info: &MediaInfo) -> Tree {
     }
     Tree::Map(m)
 }
+
+const CONTAINERS: &[(&str, ContainerKind)] = &[
+    ("mp4", ContainerKind::Mp4),
+    ("quicktime", ContainerKind::QuickTime),
+    ("threegp", ContainerKind::ThreeGp),
+    ("matroska", ContainerKind::Matroska),
+    ("webm", ContainerKind::WebM),
+    ("ogg", ContainerKind::Ogg),
+    ("asf", ContainerKind::Asf),
+    ("wav", ContainerKind::Wav),
+    ("avi", ContainerKind::Avi),
+    ("aiff", ContainerKind::Aiff),
+    ("flv", ContainerKind::Flv),
+    ("mpegps", ContainerKind::MpegPs),
+    ("mpegts", ContainerKind::MpegTs),
+    ("mp3", ContainerKind::Mp3),
+    ("aac", ContainerKind::Aac),
+    ("flac", ContainerKind::Flac),
+    ("ac3", ContainerKind::Ac3),
+    ("dts", ContainerKind::Dts),
+    ("realmedia", ContainerKind::RealMedia),
+    ("midi", ContainerKind::Midi),
+];
+
+const IMAGES: &[(&str, ImageKind)] = &[
+    ("jpeg", ImageKind::Jpeg),
+    ("png", ImageKind::Png),
+    ("gif", ImageKind::Gif),
+    ("webp", ImageKind::Webp),
+    ("bmp", ImageKind::Bmp),
+    ("tiff", ImageKind::Tiff),
+    ("avif", ImageKind::Avif),
+    ("heif", ImageKind::Heif),
+    ("jpegxl", ImageKind::JpegXl),
+    ("ico", ImageKind::Ico),
+];
+
+const CODECS: &[(&str, Codec)] = &[
+    ("mp3", Codec::Mp3),
+    ("mp2", Codec::Mp2),
+    ("aac", Codec::Aac),
+    ("flac", Codec::Flac),
+    ("vorbis", Codec::Vorbis),
+    ("opus", Codec::Opus),
+    ("alac", Codec::Alac),
+    ("wmav1", Codec::WmaV1),
+    ("wmav2", Codec::WmaV2),
+    ("wmapro", Codec::WmaPro),
+    ("wmalossless", Codec::WmaLossless),
+    ("ac3", Codec::Ac3),
+    ("eac3", Codec::Eac3),
+    ("dts", Codec::Dts),
+    ("truehd", Codec::TrueHd),
+    ("wavpack", Codec::WavPack),
+    ("ape", Codec::Ape),
+    ("h264", Codec::H264),
+    ("hevc", Codec::Hevc),
+    ("av1", Codec::Av1),
+    ("vp8", Codec::Vp8),
+    ("vp9", Codec::Vp9),
+    ("mpeg1video", Codec::Mpeg1Video),
+    ("mpeg2video", Codec::Mpeg2Video),
+    ("mpeg4part2", Codec::Mpeg4Part2),
+    ("theora", Codec::Theora),
+    ("jpeg", Codec::Jpeg),
+    ("png", Codec::Png),
+    ("gif", Codec::Gif),
+    ("webp", Codec::Webp),
+    ("bmp", Codec::Bmp),
+    ("tiff", Codec::Tiff),
+];
+
+const KEYS: &[(&str, TagKey)] = &[
+    ("title", TagKey::Title),
+    ("artist", TagKey::Artist),
+    ("album", TagKey::Album),
+    ("albumartist", TagKey::AlbumArtist),
+    ("year", TagKey::Year),
+    ("genre", TagKey::Genre),
+    ("track", TagKey::Track),
+    ("disc", TagKey::Disc),
+    ("comment", TagKey::Comment),
+    ("composer", TagKey::Composer),
+    ("copyright", TagKey::Copyright),
+    ("encoder", TagKey::Encoder),
+    ("lyrics", TagKey::Lyrics),
+];
+
+const SYSTEMS: &[(&str, TagSystem)] = &[
+    ("id3v2", TagSystem::Id3v2),
+    ("id3v1", TagSystem::Id3v1),
+    ("vorbis", TagSystem::Vorbis),
+    ("mp4", TagSystem::Mp4),
+    ("asf", TagSystem::Asf),
+    ("matroska", TagSystem::Matroska),
+    ("riff", TagSystem::Riff),
+    ("ape", TagSystem::Ape),
+    ("midi", TagSystem::Midi),
+    ("unknown", TagSystem::Unknown),
+];
+
+fn lookup<T: Clone>(table: &[(&str, T)], name: &str) -> Option<T> {
+    table
+        .iter()
+        .find(|(n, _)| *n == name)
+        .map(|(_, v)| v.clone())
+}
+
+fn malformed(why: impl std::fmt::Display) -> speedyspec_wp_media_contracts::ReadError {
+    speedyspec_wp_media_contracts::ReadError::Crashed(format!("malformed reader array: {why}"))
+}
+
+fn text(tree: Option<&Tree>) -> Option<String> {
+    tree.and_then(Tree::bytes)
+        .map(|b| String::from_utf8_lossy(b).into_owned())
+}
+
+fn number(tree: Option<&Tree>) -> Option<i64> {
+    match tree? {
+        Tree::Int(i) => Some(*i),
+        Tree::Float(f) => Some(*f as i64),
+        _ => None,
+    }
+}
+
+fn unsigned<T: TryFrom<i64>>(tree: Option<&Tree>) -> Option<T> {
+    number(tree).and_then(|n| T::try_from(n).ok())
+}
+
+fn flag(tree: Option<&Tree>) -> Option<bool> {
+    match tree? {
+        Tree::Bool(b) => Some(*b),
+        _ => None,
+    }
+}
+
+fn list(tree: Option<&Tree>) -> Vec<&Tree> {
+    match tree {
+        Some(Tree::List(l)) => l.iter().collect(),
+        Some(Tree::Map(m)) => m.iter().map(|(_, v)| v).collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn container_from(name: &str) -> ContainerKind {
+    if let Some(kind) = name.strip_prefix("image/") {
+        return ContainerKind::Image(
+            lookup(IMAGES, kind).unwrap_or_else(|| ImageKind::Other(kind.into())),
+        );
+    }
+    if let Some(other) = name.strip_prefix("other/") {
+        return ContainerKind::Other(other.into());
+    }
+    lookup(CONTAINERS, name).unwrap_or_else(|| ContainerKind::Other(name.into()))
+}
+
+fn codec_from(name: &str) -> Codec {
+    if let Some(rest) = name.strip_prefix("pcm_")
+        && let (Some(kind), Ok(bits)) = (rest.chars().next(), rest[1..].parse::<u16>())
+    {
+        return Codec::Pcm {
+            bits,
+            float: kind == 'f',
+        };
+    }
+    lookup(CODECS, name).unwrap_or_else(|| Codec::Other(name.into()))
+}
+
+/// The neutral array back as a `MediaInfo` (what a PHP replacement reader returns). `Crashed` when it isn't the
+/// schema-1 shape.
+pub fn from_neutral(tree: &Tree) -> Result<MediaInfo, speedyspec_wp_media_contracts::ReadError> {
+    use speedyspec_wp_media_contracts::{
+        AudioStream, ImageStream, Picture, RawViews, Tag, VideoStream,
+    };
+    use std::time::Duration;
+
+    if number(tree.get("schema")) != Some(SCHEMA) {
+        return Err(malformed("schema must be 1"));
+    }
+    let container =
+        container_from(&text(tree.get("container")).ok_or_else(|| malformed("no container"))?);
+    let mut streams = Vec::new();
+    for s in list(tree.get("streams")) {
+        let codec = || codec_from(&text(s.get("codec")).unwrap_or_default());
+        streams.push(match text(s.get("type")).as_deref() {
+            Some("audio") => Stream::Audio(AudioStream {
+                codec: codec(),
+                sample_rate: unsigned(s.get("sample_rate")),
+                channels: unsigned(s.get("channels")),
+                channel_layout: text(s.get("channel_layout")),
+                bits_per_sample: unsigned(s.get("bits_per_sample")),
+                lossless: flag(s.get("lossless")),
+                bitrate: unsigned(s.get("bitrate")),
+                bitrate_mode: text(s.get("bitrate_mode")).map(|m| {
+                    if m == "vbr" {
+                        BitrateMode::Variable
+                    } else {
+                        BitrateMode::Constant
+                    }
+                }),
+                encoder: text(s.get("encoder")),
+            }),
+            Some("video") => Stream::Video(VideoStream {
+                codec: codec(),
+                width: unsigned(s.get("width")),
+                height: unsigned(s.get("height")),
+                frame_rate: match list(s.get("frame_rate")).as_slice() {
+                    [n, d] => unsigned(Some(n)).zip(unsigned(Some(d))),
+                    _ => None,
+                },
+                bitrate: unsigned(s.get("bitrate")),
+                lossless: flag(s.get("lossless")),
+                encoder: text(s.get("encoder")),
+            }),
+            Some("image") => {
+                let kind = text(s.get("kind")).unwrap_or_default();
+                Stream::Image(ImageStream {
+                    kind: lookup(IMAGES, &kind).unwrap_or(ImageKind::Other(kind)),
+                    width: unsigned(s.get("width")),
+                    height: unsigned(s.get("height")),
+                    bit_depth: unsigned(s.get("bit_depth")),
+                    channels: unsigned(s.get("channels")),
+                    animated: flag(s.get("animated")).unwrap_or(false),
+                    lossless: flag(s.get("lossless")),
+                })
+            }
+            Some("data") => Stream::Data { codec: codec() },
+            other => return Err(malformed(format!("stream type {other:?}"))),
+        });
+    }
+    let tags = list(tree.get("tags"))
+        .into_iter()
+        .map(|t| {
+            let key = text(t.get("key")).ok_or_else(|| malformed("a tag without a key"))?;
+            Ok(Tag {
+                key: lookup(KEYS, &key).unwrap_or(TagKey::Other(key)),
+                system: lookup(SYSTEMS, &text(t.get("system")).unwrap_or_default())
+                    .unwrap_or(TagSystem::Unknown),
+                values: list(t.get("values"))
+                    .into_iter()
+                    .filter_map(|v| text(Some(v)))
+                    .collect(),
+            })
+        })
+        .collect::<Result<_, _>>()?;
+    let pictures = list(tree.get("pictures"))
+        .into_iter()
+        .map(|p| {
+            Ok(Picture {
+                data: p
+                    .get("data")
+                    .and_then(Tree::bytes)
+                    .ok_or_else(|| malformed("a picture without data"))?
+                    .to_vec(),
+                mime: text(p.get("mime")).unwrap_or_default(),
+                width: unsigned(p.get("width")),
+                height: unsigned(p.get("height")),
+                kind: text(p.get("kind")),
+                system: lookup(SYSTEMS, &text(p.get("system")).unwrap_or_default())
+                    .unwrap_or(TagSystem::Unknown),
+            })
+        })
+        .collect::<Result<_, _>>()?;
+    let duration = match tree.get("duration") {
+        Some(Tree::Float(f)) if *f >= 0.0 && f.is_finite() => Some(Duration::from_secs_f64(*f)),
+        Some(Tree::Int(i)) if *i >= 0 => Some(Duration::from_secs(*i as u64)),
+        _ => None,
+    };
+    let reader = ["ffmpeg", "midi"]
+        .iter()
+        .find_map(|name| tree.get(name).map(|t| (name.to_string(), t.clone())));
+    Ok(MediaInfo {
+        container,
+        mime_type: text(tree.get("mime_type")),
+        duration,
+        bitrate: unsigned(tree.get("bitrate")),
+        file_size: unsigned(tree.get("file_size")),
+        created_at: unsigned::<u64>(tree.get("created_at"))
+            .map(|s| UNIX_EPOCH + Duration::from_secs(s)),
+        streams,
+        tags,
+        pictures,
+        raw: RawViews {
+            getid3: None,
+            reader,
+        },
+    })
+}

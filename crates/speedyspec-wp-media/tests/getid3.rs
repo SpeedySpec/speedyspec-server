@@ -246,3 +246,31 @@ fn audio_streams_listed() {
     );
     assert_eq!(path(&v, &["playtime_string"]), Some(&bytes("0:02")));
 }
+
+#[test]
+fn neutral_round_trips() {
+    use speedyspec_wp_media::neutral::{from_neutral, neutral};
+    let mut i = info(
+        ContainerKind::Mp4,
+        vec![audio(
+            Codec::Pcm {
+                bits: 24,
+                float: false,
+            },
+            48000,
+            2,
+        )],
+    );
+    i.tags = vec![Tag {
+        key: TagKey::Other("mood".into()),
+        system: TagSystem::Mp4,
+        values: vec!["calm".into()],
+    }];
+    i.created_at = Some(UNIX_EPOCH + Duration::from_secs(1_700_000_000));
+    let back = from_neutral(&neutral(&i)).unwrap();
+    assert_eq!(back.container, i.container);
+    assert_eq!(back.streams, i.streams);
+    assert_eq!(back.tags, i.tags);
+    assert_eq!(back.created_at, i.created_at);
+    assert!(from_neutral(&Tree::Map(vec![("schema".into(), Tree::Int(2))])).is_err());
+}

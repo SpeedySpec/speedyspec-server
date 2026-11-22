@@ -6270,6 +6270,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-media-php"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-media",
+ "speedyspec-wp-media-contracts",
+ "speedyspec-wp-media-ffmpeg",
+ "speedyspec-wp-media-midi",
+ "speedyspec-wp-media-testkit",
+ "ureq",
+]
+
+[[package]]
 name = "speedyspec-wp-media-testkit"
 version = "0.1.0"
 dependencies = [
