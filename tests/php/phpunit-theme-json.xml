@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    bootstrap="bootstrap-theme-json.php"
+    colors="false"
+    cacheResult="false"
+    failOnWarning="false"
+    failOnDeprecation="false"
+    displayDetailsOnTestsThatTriggerDeprecations="true"
+    displayDetailsOnPhpunitDeprecations="false"
+>
+    <testsuites>
+        <testsuite name="wordpress-theme-json">
+            <file>wordpress/theme-json/wpThemeJson.php</file>
+            <file>wordpress/theme-json/wpThemeJsonSchema.php</file>
+            <file>wordpress/theme-json/wpThemeJsonResolver.php</file>
+            <file>wordpress/theme-json/wpGetGlobalStylesheet.php</file>
+            <file>wordpress/theme-json/wpAddGlobalStylesForBlocks.php</file>
+            <file>wordpress/theme-json/wpGetBlockCssSelector.php</file>
+            <file>wordpress/theme-json/wpThemeHasThemeJson.php</file>
+        </testsuite>
+    </testsuites>
+    <groups>
+        <exclude>
+            <group>documented-break</group>
+            <group>needs-wordpress-core</group>
+        </exclude>
+    </groups>
+</phpunit>
