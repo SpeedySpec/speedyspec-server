@@ -16,4 +16,4 @@ mod middleware;
 
 pub use dispatcher::Dispatcher;
 pub use handler::{OperationHandler, bind_handler, handler_fn, handler_key};
-pub use middleware::{Call, OperationMiddleware, PermissionMiddleware};
+pub use middleware::{Bypass, Call, OperationMiddleware, PermissionMiddleware};
