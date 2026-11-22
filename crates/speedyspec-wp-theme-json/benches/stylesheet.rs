@@ -2,7 +2,7 @@
 //! themes, over every core block. Run: `cargo bench -p speedyspec-wp-theme-json --bench stylesheet`.
 
 #[path = "../tests/support/mod.rs"]
-#[allow(dead_code, unused_imports)]
+#[allow(unused_imports)]
 mod support;
 
 use std::rc::Rc;
