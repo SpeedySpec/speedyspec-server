@@ -8,7 +8,9 @@ use std::os::unix::fs::FileExt;
 use std::path::Path;
 use std::sync::Once;
 
-use speedyspec_wp_media_contracts::{Limit, MediaInfo, MediaReader, MediaSource, ProbeLimits, ReadError};
+use speedyspec_wp_media_contracts::{
+    Limit, MediaInfo, MediaReader, MediaSource, ProbeLimits, ReadError,
+};
 
 use crate::ffi;
 use crate::probe;
@@ -31,10 +33,14 @@ impl FfmpegReader {
 
 /// Opens `path` for reading without following a final symlink or blocking on a FIFO.
 pub(crate) fn open_untrusted(path: &Path) -> Result<OwnedFd, ReadError> {
-    let c = CString::new(path.as_os_str().as_bytes()).map_err(|_| ReadError::Io("the path contains NUL".into()))?;
+    let c = CString::new(path.as_os_str().as_bytes())
+        .map_err(|_| ReadError::Io("the path contains NUL".into()))?;
     // SAFETY: a valid C string; the flags only restrict what open does.
     let fd = unsafe {
-        libc::open(c.as_ptr(), libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK)
+        libc::open(
+            c.as_ptr(),
+            libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK,
+        )
     };
     if fd < 0 {
         let err = std::io::Error::last_os_error();
@@ -114,6 +120,11 @@ impl MediaReader for FfmpegReader {
         };
         drop(guard);
         let (id3v2, id3v1) = id3_presence(&fd, size);
-        Ok(crate::mapper::map(probe::RawProbe { file_size: size, id3v2, id3v1, ..result }))
+        Ok(crate::mapper::map(probe::RawProbe {
+            file_size: size,
+            id3v2,
+            id3v1,
+            ..result
+        }))
     }
 }

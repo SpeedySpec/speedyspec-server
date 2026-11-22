@@ -29,13 +29,17 @@ fn no_zombies_or_fd_leaks() {
             let path = path.clone();
             scope.spawn(move || {
                 for _ in 0..7 {
-                    reader().read(MediaSource::Path(path.clone()), &ProbeLimits::default()).unwrap();
+                    reader()
+                        .read(MediaSource::Path(path.clone()), &ProbeLimits::default())
+                        .unwrap();
                 }
             });
         }
     });
     assert_eq!(fds(), before);
     let mut status = 0;
-    assert!(unsafe { libc::waitpid(-1, &mut status, libc::WNOHANG) } <= 0, "a child was left unreaped");
+    assert!(
+        unsafe { libc::waitpid(-1, &mut status, libc::WNOHANG) } <= 0,
+        "a child was left unreaped"
+    );
 }
-

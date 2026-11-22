@@ -29,6 +29,10 @@ fn media_reader_key_is_the_php_interface() {
 
 #[test]
 fn read_error_displays_the_limit() {
-    assert!(ReadError::LimitExceeded(Limit::Bytes).to_string().contains("bytes"));
+    assert!(
+        ReadError::LimitExceeded(Limit::Bytes)
+            .to_string()
+            .contains("bytes")
+    );
     assert!(ReadError::TimedOut.to_string().contains("time"));
 }

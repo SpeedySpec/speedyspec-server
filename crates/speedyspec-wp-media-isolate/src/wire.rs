@@ -31,7 +31,7 @@ impl std::error::Error for WireError {}
 
 #[derive(Serialize, Deserialize)]
 enum ResultDto {
-    Ok(InfoDto),
+    Ok(Box<InfoDto>),
     Err(ErrorDto),
 }
 
@@ -165,19 +165,88 @@ macro_rules! named {
     };
 }
 
-named!(container_name, container_from, c::ContainerKind, [
-    Mp4, QuickTime, ThreeGp, Matroska, WebM, Ogg, Asf, Wav, Avi, Aiff, Flv, MpegPs, MpegTs, Mp3, Aac, Flac, Ac3, Dts,
-    RealMedia, Midi,
-]);
-named!(image_name, image_from, c::ImageKind, [Jpeg, Png, Gif, Webp, Bmp, Tiff, Avif, Heif, JpegXl, Ico]);
-named!(codec_name, codec_from, c::Codec, [
-    Mp3, Mp2, Aac, Flac, Vorbis, Opus, Alac, WmaV1, WmaV2, WmaPro, WmaLossless, Ac3, Eac3, Dts, TrueHd, WavPack, Ape,
-    H264, Hevc, Av1, Vp8, Vp9, Mpeg1Video, Mpeg2Video, Mpeg4Part2, Theora, Jpeg, Png, Gif, Webp, Bmp, Tiff,
-]);
-named!(key_name, key_from, c::TagKey, [
-    Title, Artist, Album, AlbumArtist, Year, Genre, Track, Disc, Comment, Composer, Copyright, Encoder, Lyrics,
-]);
-named!(system_name, system_from, c::TagSystem, [Id3v2, Id3v1, Vorbis, Mp4, Asf, Matroska, Riff, Ape, Midi, Unknown]);
+named!(
+    container_name,
+    container_from,
+    c::ContainerKind,
+    [
+        Mp4, QuickTime, ThreeGp, Matroska, WebM, Ogg, Asf, Wav, Avi, Aiff, Flv, MpegPs, MpegTs,
+        Mp3, Aac, Flac, Ac3, Dts, RealMedia, Midi,
+    ]
+);
+named!(
+    image_name,
+    image_from,
+    c::ImageKind,
+    [Jpeg, Png, Gif, Webp, Bmp, Tiff, Avif, Heif, JpegXl, Ico]
+);
+named!(
+    codec_name,
+    codec_from,
+    c::Codec,
+    [
+        Mp3,
+        Mp2,
+        Aac,
+        Flac,
+        Vorbis,
+        Opus,
+        Alac,
+        WmaV1,
+        WmaV2,
+        WmaPro,
+        WmaLossless,
+        Ac3,
+        Eac3,
+        Dts,
+        TrueHd,
+        WavPack,
+        Ape,
+        H264,
+        Hevc,
+        Av1,
+        Vp8,
+        Vp9,
+        Mpeg1Video,
+        Mpeg2Video,
+        Mpeg4Part2,
+        Theora,
+        Jpeg,
+        Png,
+        Gif,
+        Webp,
+        Bmp,
+        Tiff,
+    ]
+);
+named!(
+    key_name,
+    key_from,
+    c::TagKey,
+    [
+        Title,
+        Artist,
+        Album,
+        AlbumArtist,
+        Year,
+        Genre,
+        Track,
+        Disc,
+        Comment,
+        Composer,
+        Copyright,
+        Encoder,
+        Lyrics,
+    ]
+);
+named!(
+    system_name,
+    system_from,
+    c::TagSystem,
+    [
+        Id3v2, Id3v1, Vorbis, Mp4, Asf, Matroska, Riff, Ape, Midi, Unknown
+    ]
+);
 
 fn bad(what: &str) -> WireError {
     WireError::Malformed(format!("unknown {what}"))
@@ -203,7 +272,10 @@ fn codec_dto(codec: &c::Codec) -> CodecDto {
         return CodecDto::Named(name.into());
     }
     match codec {
-        c::Codec::Pcm { bits, float } => CodecDto::Pcm { bits: *bits, float: *float },
+        c::Codec::Pcm { bits, float } => CodecDto::Pcm {
+            bits: *bits,
+            float: *float,
+        },
         c::Codec::RealAudio(n) => CodecDto::WithName("RealAudio".into(), n.clone()),
         c::Codec::Wmv(n) => CodecDto::WithName("Wmv".into(), n.clone()),
         c::Codec::RealVideo(n) => CodecDto::WithName("RealVideo".into(), n.clone()),
@@ -308,8 +380,12 @@ fn info_dto(info: &c::MediaInfo) -> InfoDto {
                 animated: i.animated,
                 lossless: i.lossless,
             },
-            c::Stream::Data { codec } => StreamDto::Data { codec: codec_dto(codec) },
-            other => StreamDto::Data { codec: CodecDto::Other(format!("{other:?}")) },
+            c::Stream::Data { codec } => StreamDto::Data {
+                codec: codec_dto(codec),
+            },
+            other => StreamDto::Data {
+                codec: CodecDto::Other(format!("{other:?}")),
+            },
         })
         .collect();
     InfoDto {
@@ -346,7 +422,11 @@ fn info_dto(info: &c::MediaInfo) -> InfoDto {
             })
             .collect(),
         getid3: info.raw.getid3.as_ref().map(tree_dto),
-        reader: info.raw.reader.as_ref().map(|(n, t)| (n.clone(), tree_dto(t))),
+        reader: info
+            .raw
+            .reader
+            .as_ref()
+            .map(|(n, t)| (n.clone(), tree_dto(t))),
     }
 }
 
@@ -379,33 +459,52 @@ fn info_back(dto: InfoDto) -> Result<c::MediaInfo, WireError> {
                     bits_per_sample,
                     lossless,
                     bitrate,
-                    bitrate_mode: variable_bitrate
-                        .map(|v| if v { c::BitrateMode::Variable } else { c::BitrateMode::Constant }),
+                    bitrate_mode: variable_bitrate.map(|v| {
+                        if v {
+                            c::BitrateMode::Variable
+                        } else {
+                            c::BitrateMode::Constant
+                        }
+                    }),
                     encoder,
                 }),
-                StreamDto::Video { codec, width, height, frame_rate, bitrate, lossless, encoder } => {
-                    c::Stream::Video(c::VideoStream {
-                        codec: codec_back(codec)?,
-                        width,
-                        height,
-                        frame_rate,
-                        bitrate,
-                        lossless,
-                        encoder,
-                    })
-                }
-                StreamDto::Image { kind, width, height, bit_depth, channels, animated, lossless } => {
-                    c::Stream::Image(c::ImageStream {
-                        kind: image_back(kind)?,
-                        width,
-                        height,
-                        bit_depth,
-                        channels,
-                        animated,
-                        lossless,
-                    })
-                }
-                StreamDto::Data { codec } => c::Stream::Data { codec: codec_back(codec)? },
+                StreamDto::Video {
+                    codec,
+                    width,
+                    height,
+                    frame_rate,
+                    bitrate,
+                    lossless,
+                    encoder,
+                } => c::Stream::Video(c::VideoStream {
+                    codec: codec_back(codec)?,
+                    width,
+                    height,
+                    frame_rate,
+                    bitrate,
+                    lossless,
+                    encoder,
+                }),
+                StreamDto::Image {
+                    kind,
+                    width,
+                    height,
+                    bit_depth,
+                    channels,
+                    animated,
+                    lossless,
+                } => c::Stream::Image(c::ImageStream {
+                    kind: image_back(kind)?,
+                    width,
+                    height,
+                    bit_depth,
+                    channels,
+                    animated,
+                    lossless,
+                }),
+                StreamDto::Data { codec } => c::Stream::Data {
+                    codec: codec_back(codec)?,
+                },
             })
         })
         .collect::<Result<_, WireError>>()?;
@@ -417,7 +516,11 @@ fn info_back(dto: InfoDto) -> Result<c::MediaInfo, WireError> {
                 (name, None) => key_from(&name).ok_or_else(|| bad("tag key"))?,
                 (_, Some(other)) => c::TagKey::Other(other),
             };
-            Ok(c::Tag { key, system: system_back(&t.system)?, values: t.values })
+            Ok(c::Tag {
+                key,
+                system: system_back(&t.system)?,
+                values: t.values,
+            })
         })
         .collect::<Result<_, WireError>>()?;
     let pictures = dto
@@ -440,11 +543,16 @@ fn info_back(dto: InfoDto) -> Result<c::MediaInfo, WireError> {
         duration: dto.duration.map(|(s, n)| Duration::new(s, n)),
         bitrate: dto.bitrate,
         file_size: dto.file_size,
-        created_at: dto.created_at.map(|(s, n)| UNIX_EPOCH + Duration::new(s, n)),
+        created_at: dto
+            .created_at
+            .map(|(s, n)| UNIX_EPOCH + Duration::new(s, n)),
         streams,
         tags,
         pictures,
-        raw: c::RawViews { getid3: dto.getid3.map(tree_back), reader: dto.reader.map(|(n, t)| (n, tree_back(t))) },
+        raw: c::RawViews {
+            getid3: dto.getid3.map(tree_back),
+            reader: dto.reader.map(|(n, t)| (n, tree_back(t))),
+        },
     })
 }
 
@@ -472,7 +580,7 @@ fn limit_back(code: u8) -> Result<c::Limit, WireError> {
 /// The bytes of a read's outcome.
 pub fn encode(result: &Result<c::MediaInfo, c::ReadError>) -> Vec<u8> {
     let dto = match result {
-        Ok(info) => ResultDto::Ok(info_dto(info)),
+        Ok(info) => ResultDto::Ok(Box::new(info_dto(info))),
         Err(err) => ResultDto::Err(match err {
             c::ReadError::NotFound => ErrorDto::NotFound,
             c::ReadError::Unrecognized => ErrorDto::Unrecognized,
@@ -498,9 +606,10 @@ pub fn decode(bytes: &[u8]) -> Result<Result<c::MediaInfo, c::ReadError>, WireEr
     if version != VERSION {
         return Err(WireError::Version(version));
     }
-    let dto: ResultDto = postcard::from_bytes(&bytes[2..]).map_err(|e| WireError::Malformed(e.to_string()))?;
+    let dto: ResultDto =
+        postcard::from_bytes(&bytes[2..]).map_err(|e| WireError::Malformed(e.to_string()))?;
     Ok(match dto {
-        ResultDto::Ok(info) => Ok(info_back(info)?),
+        ResultDto::Ok(info) => Ok(info_back(*info)?),
         ResultDto::Err(err) => Err(match err {
             ErrorDto::NotFound => c::ReadError::NotFound,
             ErrorDto::Unrecognized => c::ReadError::Unrecognized,

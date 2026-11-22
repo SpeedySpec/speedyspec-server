@@ -18,7 +18,12 @@ fn smf(format: u16, division: [u8; 2], tracks: &[Vec<u8>]) -> Vec<u8> {
 }
 
 fn tempo(delta: u32, us: u32) -> Vec<u8> {
-    [vlq(delta), vec![0xFF, 0x51, 0x03], us.to_be_bytes()[1..].to_vec()].concat()
+    [
+        vlq(delta),
+        vec![0xFF, 0x51, 0x03],
+        us.to_be_bytes()[1..].to_vec(),
+    ]
+    .concat()
 }
 
 fn end(delta: u32) -> Vec<u8> {
@@ -36,8 +41,14 @@ fn format0_duration() {
     assert_eq!(info.mime_type.as_deref(), Some("audio/midi"));
     assert!((secs(info.duration) - 2.0).abs() < 1e-9);
     let title = info.tags.iter().find(|t| t.key == TagKey::Title).unwrap();
-    assert_eq!((title.values[0].as_str(), title.system), ("Song", TagSystem::Midi));
-    assert_eq!(info.raw.reader.as_ref().map(|(name, _)| name.as_str()), Some("midi"));
+    assert_eq!(
+        (title.values[0].as_str(), title.system),
+        ("Song", TagSystem::Midi)
+    );
+    assert_eq!(
+        info.raw.reader.as_ref().map(|(name, _)| name.as_str()),
+        Some("midi")
+    );
 }
 
 #[test]
@@ -50,8 +61,19 @@ fn tempo_change_mid_track() {
 #[test]
 fn format1_merges_tempo_track() {
     let tempo_track = [tempo(0, 500_000), tempo(480, 250_000), end(0)].concat();
-    let notes = [vlq(0), vec![0x90, 0x3C, 0x40], vlq(960), vec![0x80, 0x3C, 0x40], end(0)].concat();
-    let info = parse(&smf(1, [0x01, 0xE0], &[tempo_track, notes]), &ProbeLimits::default()).unwrap();
+    let notes = [
+        vlq(0),
+        vec![0x90, 0x3C, 0x40],
+        vlq(960),
+        vec![0x80, 0x3C, 0x40],
+        end(0),
+    ]
+    .concat();
+    let info = parse(
+        &smf(1, [0x01, 0xE0], &[tempo_track, notes]),
+        &ProbeLimits::default(),
+    )
+    .unwrap();
     assert!((secs(info.duration) - 0.75).abs() < 1e-9);
 }
 
@@ -85,16 +107,25 @@ fn smpte_division() {
 fn truncated_chunk() {
     let mut bytes = midi(500_000, 480, 1920, "Song");
     bytes.truncate(bytes.len() - 5);
-    assert_eq!(parse(&bytes, &ProbeLimits::default()).unwrap_err(), ReadError::Truncated);
+    assert_eq!(
+        parse(&bytes, &ProbeLimits::default()).unwrap_err(),
+        ReadError::Truncated
+    );
 }
 
 #[test]
 fn vlq_too_long() {
     let track = [vec![0xFF, 0xFF, 0xFF, 0xFF, 0x7F], vec![0xFF, 0x2F, 0x00]].concat();
-    assert_eq!(parse(&smf(0, [0x01, 0xE0], &[track]), &ProbeLimits::default()).unwrap_err(), ReadError::Truncated);
+    assert_eq!(
+        parse(&smf(0, [0x01, 0xE0], &[track]), &ProbeLimits::default()).unwrap_err(),
+        ReadError::Truncated
+    );
 }
 
 #[test]
 fn not_midi_is_unrecognized() {
-    assert_eq!(parse(b"RIFF....WAVE", &ProbeLimits::default()).unwrap_err(), ReadError::Unrecognized);
+    assert_eq!(
+        parse(b"RIFF....WAVE", &ProbeLimits::default()).unwrap_err(),
+        ReadError::Unrecognized
+    );
 }

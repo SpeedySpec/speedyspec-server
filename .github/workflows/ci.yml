@@ -105,6 +105,11 @@ jobs:
       # The pinned, LGPL-only FFmpeg: licence, formats, no protocols, the pinned version.
       - name: FFmpeg
         run: ${{ matrix.run }} cargo test -p speedyspec-ffmpeg-sys
+      # The media readers over FFmpeg, the probe child (with its test-only simulations) and the cache.
+      - name: Media
+        run: >-
+          ${{ matrix.run }} cargo test -p speedyspec-wp-media-ffmpeg -p speedyspec-wp-media-isolate
+          --features speedyspec-wp-media-isolate/test-modes
       - name: Test with php
         run: ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks
 

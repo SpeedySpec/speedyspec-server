@@ -24,48 +24,74 @@ fn wav() -> tempfile::NamedTempFile {
 fn reads_through_the_child() {
     let file = wav();
     let limits = ProbeLimits::default();
-    let isolated = reader(&[]).read(MediaSource::Path(file.path().to_path_buf()), &limits).unwrap();
-    let local = FfmpegReader::new(&limits).read(MediaSource::Path(file.path().to_path_buf()), &limits).unwrap();
+    let isolated = reader(&[])
+        .read(MediaSource::Path(file.path().to_path_buf()), &limits)
+        .unwrap();
+    let local = FfmpegReader::new(&limits)
+        .read(MediaSource::Path(file.path().to_path_buf()), &limits)
+        .unwrap();
     assert_eq!(isolated, local);
 }
 
 #[test]
 fn reads_midi_through_the_child() {
     let file = kit::write_temp(&kit::midi(500_000, 480, 960, "x"), "mid");
-    let info = reader(&[]).read(MediaSource::Path(file.path().to_path_buf()), &ProbeLimits::default()).unwrap();
+    let info = reader(&[])
+        .read(
+            MediaSource::Path(file.path().to_path_buf()),
+            &ProbeLimits::default(),
+        )
+        .unwrap();
     assert_eq!(info.duration, Some(Duration::from_secs(1)));
 }
 
 #[test]
 fn deadline_kills_a_loop() {
     let file = wav();
-    let limits = ProbeLimits { deadline: Duration::from_millis(300), ..ProbeLimits::default() };
+    let limits = ProbeLimits {
+        deadline: Duration::from_millis(300),
+        ..ProbeLimits::default()
+    };
     let started = Instant::now();
-    let result = reader(&["--simulate", "loop"]).read(MediaSource::Path(file.path().to_path_buf()), &limits);
+    let result =
+        reader(&["--simulate", "loop"]).read(MediaSource::Path(file.path().to_path_buf()), &limits);
     assert_eq!(result, Err(ReadError::TimedOut));
-    assert!(started.elapsed() < Duration::from_millis(800), "{:?}", started.elapsed());
+    assert!(
+        started.elapsed() < Duration::from_millis(800),
+        "{:?}",
+        started.elapsed()
+    );
 }
 
 #[test]
 fn memory_limit_stops_runaway_allocation() {
     let file = wav();
-    let limits = ProbeLimits { max_memory: 256 << 20, ..ProbeLimits::default() };
-    let result = reader(&["--simulate", "alloc"]).read(MediaSource::Path(file.path().to_path_buf()), &limits);
+    let limits = ProbeLimits {
+        max_memory: 256 << 20,
+        ..ProbeLimits::default()
+    };
+    let result = reader(&["--simulate", "alloc"])
+        .read(MediaSource::Path(file.path().to_path_buf()), &limits);
     assert_eq!(result, Err(ReadError::LimitExceeded(Limit::Memory)));
 }
 
 #[test]
 fn crash_is_reported() {
     let file = wav();
-    let result = reader(&["--simulate", "crash"]).read(MediaSource::Path(file.path().to_path_buf()), &ProbeLimits::default());
+    let result = reader(&["--simulate", "crash"]).read(
+        MediaSource::Path(file.path().to_path_buf()),
+        &ProbeLimits::default(),
+    );
     assert!(matches!(result, Err(ReadError::Crashed(_))), "{result:?}");
 }
 
 #[test]
 fn garbage_output_is_crashed() {
     let file = wav();
-    let result =
-        reader(&["--simulate", "garbage"]).read(MediaSource::Path(file.path().to_path_buf()), &ProbeLimits::default());
+    let result = reader(&["--simulate", "garbage"]).read(
+        MediaSource::Path(file.path().to_path_buf()),
+        &ProbeLimits::default(),
+    );
     assert!(matches!(result, Err(ReadError::Crashed(_))), "{result:?}");
 }
 
@@ -89,7 +115,10 @@ fn symlink_and_fifo_are_io() {
 fn seccomp_allows_the_fixtures() {
     for (name, bytes) in kit::all() {
         let file = kit::write_temp(&bytes, name.rsplit('.').next().unwrap());
-        let result = reader(&[]).read(MediaSource::Path(file.path().to_path_buf()), &ProbeLimits::default());
+        let result = reader(&[]).read(
+            MediaSource::Path(file.path().to_path_buf()),
+            &ProbeLimits::default(),
+        );
         assert!(result.is_ok(), "{name}: {result:?}");
     }
 }

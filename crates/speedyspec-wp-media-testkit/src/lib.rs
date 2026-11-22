@@ -133,7 +133,11 @@ fn crc32(bytes: &[u8]) -> u32 {
     for &byte in bytes {
         crc ^= u32::from(byte);
         for _ in 0..8 {
-            crc = if crc & 1 == 1 { (crc >> 1) ^ 0xEDB8_8320 } else { crc >> 1 };
+            crc = if crc & 1 == 1 {
+                (crc >> 1) ^ 0xEDB8_8320
+            } else {
+                crc >> 1
+            };
         }
     }
     !crc
@@ -159,9 +163,15 @@ fn png_chunk(out: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) {
 
 /// An 8-bit RGB PNG of black pixels, its image data in zlib stored (uncompressed) blocks.
 pub fn png(width: u32, height: u32) -> Vec<u8> {
-    let raw: Vec<u8> = (0..height).flat_map(|_| std::iter::once(0u8).chain(vec![0u8; width as usize * 3])).collect();
+    let raw: Vec<u8> = (0..height)
+        .flat_map(|_| std::iter::once(0u8).chain(vec![0u8; width as usize * 3]))
+        .collect();
     let mut zlib = vec![0x78, 0x01];
-    let blocks: Vec<&[u8]> = if raw.is_empty() { vec![&[][..]] } else { raw.chunks(65535).collect() };
+    let blocks: Vec<&[u8]> = if raw.is_empty() {
+        vec![&[][..]]
+    } else {
+        raw.chunks(65535).collect()
+    };
     for (i, block) in blocks.iter().enumerate() {
         zlib.push(u8::from(i + 1 == blocks.len()));
         le16(&mut zlib, block.len() as u16);
@@ -280,7 +290,10 @@ pub fn midi(tempo_us: u32, ticks: u16, length_ticks: u32, track_name: &str) -> V
 
 /// `bytes` in a temporary file ending in `.ext`, removed when dropped.
 pub fn write_temp(bytes: &[u8], ext: &str) -> tempfile::NamedTempFile {
-    let mut file = tempfile::Builder::new().suffix(&format!(".{ext}")).tempfile().expect("a temporary file");
+    let mut file = tempfile::Builder::new()
+        .suffix(&format!(".{ext}"))
+        .tempfile()
+        .expect("a temporary file");
     file.write_all(bytes).expect("writing a fixture");
     file.flush().expect("flushing a fixture");
     file
@@ -293,7 +306,10 @@ pub fn all() -> Vec<(&'static str, Vec<u8>)> {
         ("silence.wav", wav_pcm16(1.0, 8000, 1)),
         ("silence.aiff", aiff_pcm16(1.0, 8000, 1)),
         ("silence.mp3", mp3_cbr(40)),
-        ("tagged.mp3", mp3_with_id3v2(40, "Title", "Artist", Some(&png))),
+        (
+            "tagged.mp3",
+            mp3_with_id3v2(40, "Title", "Artist", Some(&png)),
+        ),
         ("v1.mp3", mp3_with_id3v1(40, "Old")),
         ("black.png", png),
         ("black.gif", gif(4, 3)),

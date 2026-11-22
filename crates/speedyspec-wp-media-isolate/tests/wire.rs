@@ -1,8 +1,8 @@
 use std::time::{Duration, UNIX_EPOCH};
 
 use speedyspec_wp_media_contracts::{
-    AudioStream, BitrateMode, Codec, ContainerKind, ImageKind, ImageStream, Limit, MediaInfo, Picture, RawViews,
-    ReadError, Stream, Tag, TagKey, TagSystem, Tree, VideoStream,
+    AudioStream, BitrateMode, Codec, ContainerKind, ImageKind, ImageStream, Limit, MediaInfo,
+    Picture, RawViews, ReadError, Stream, Tag, TagKey, TagSystem, Tree, VideoStream,
 };
 use speedyspec_wp_media_isolate::wire::{self, WireError};
 
@@ -16,7 +16,10 @@ fn everything() -> MediaInfo {
         created_at: Some(UNIX_EPOCH + Duration::new(1_714_979_289, 500)),
         streams: vec![
             Stream::Audio(AudioStream {
-                codec: Codec::Pcm { bits: 24, float: false },
+                codec: Codec::Pcm {
+                    bits: 24,
+                    float: false,
+                },
                 sample_rate: Some(48000),
                 channels: Some(6),
                 channel_layout: Some("5.1".into()),
@@ -44,11 +47,21 @@ fn everything() -> MediaInfo {
                 animated: true,
                 lossless: None,
             }),
-            Stream::Data { codec: Codec::Other("midi".into()) },
+            Stream::Data {
+                codec: Codec::Other("midi".into()),
+            },
         ],
         tags: vec![
-            Tag { key: TagKey::Title, system: TagSystem::Id3v2, values: vec!["T".into(), "U".into()] },
-            Tag { key: TagKey::Other("TXXX:mood".into()), system: TagSystem::Unknown, values: vec![String::new()] },
+            Tag {
+                key: TagKey::Title,
+                system: TagSystem::Id3v2,
+                values: vec!["T".into(), "U".into()],
+            },
+            Tag {
+                key: TagKey::Other("TXXX:mood".into()),
+                system: TagSystem::Unknown,
+                values: vec![String::new()],
+            },
         ],
         pictures: vec![Picture {
             data: vec![0, 1, 2, 255],
@@ -59,7 +72,10 @@ fn everything() -> MediaInfo {
             system: TagSystem::Vorbis,
         }],
         raw: RawViews {
-            getid3: Some(Tree::Map(vec![("a".into(), Tree::List(vec![Tree::Null, Tree::Bool(true)]))])),
+            getid3: Some(Tree::Map(vec![(
+                "a".into(),
+                Tree::List(vec![Tree::Null, Tree::Bool(true)]),
+            )])),
             reader: Some((
                 "ffmpeg".into(),
                 Tree::Map(vec![

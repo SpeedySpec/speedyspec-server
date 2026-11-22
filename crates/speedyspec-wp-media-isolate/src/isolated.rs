@@ -11,7 +11,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use speedyspec_wp_media_contracts::{Limit, MediaInfo, MediaReader, MediaSource, ProbeLimits, ReadError};
+use speedyspec_wp_media_contracts::{
+    Limit, MediaInfo, MediaReader, MediaSource, ProbeLimits, ReadError,
+};
 
 use crate::{child, log, wire};
 
@@ -40,12 +42,19 @@ impl IsolatedReader {
 }
 
 fn rlimit(resource: i32, value: u64) {
-    let limit = libc::rlimit { rlim_cur: value as libc::rlim_t, rlim_max: value as libc::rlim_t };
+    let limit = libc::rlimit {
+        rlim_cur: value as libc::rlim_t,
+        rlim_max: value as libc::rlim_t,
+    };
     // SAFETY: async-signal-safe; a failure leaves the inherited limit, which the parent's watch backs up.
     unsafe { libc::setrlimit(resource as _, &limit) };
 }
 
-fn drain(mut pipe: impl Read + Send + 'static, cap: usize, over: Option<Arc<AtomicBool>>) -> JoinHandle<Vec<u8>> {
+fn drain(
+    mut pipe: impl Read + Send + 'static,
+    cap: usize,
+    over: Option<Arc<AtomicBool>>,
+) -> JoinHandle<Vec<u8>> {
     std::thread::spawn(move || {
         let mut kept = Vec::new();
         let mut chunk = [0u8; 65536];
@@ -59,7 +68,9 @@ fn drain(mut pipe: impl Read + Send + 'static, cap: usize, over: Option<Arc<Atom
                                 flag.store(true, Ordering::SeqCst);
                                 break;
                             }
-                            None => kept.extend_from_slice(&chunk[..cap.saturating_sub(kept.len())]),
+                            None => {
+                                kept.extend_from_slice(&chunk[..cap.saturating_sub(kept.len())])
+                            }
                         }
                     } else {
                         kept.extend_from_slice(&chunk[..n]);
@@ -86,7 +97,11 @@ enum Stop {
 }
 
 fn first_line(stderr: &[u8]) -> String {
-    String::from_utf8_lossy(stderr).lines().next().unwrap_or("").to_owned()
+    String::from_utf8_lossy(stderr)
+        .lines()
+        .next()
+        .unwrap_or("")
+        .to_owned()
 }
 
 impl IsolatedReader {
@@ -102,6 +117,8 @@ impl IsolatedReader {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         // SAFETY: only async-signal-safe calls between fork and exec.
+        // The RLIMIT_* constants are c_int on some targets and u32 on others (glibc); the casts make one signature.
+        #[allow(clippy::unnecessary_cast)]
         unsafe {
             command.pre_exec(move || {
                 libc::setpgid(0, 0);
@@ -117,10 +134,16 @@ impl IsolatedReader {
             });
         }
         let started = Instant::now();
-        let mut child = command.spawn().map_err(|e| ReadError::Crashed(format!("spawning the probe: {e}")))?;
+        let mut child = command
+            .spawn()
+            .map_err(|e| ReadError::Crashed(format!("spawning the probe: {e}")))?;
         let over = Arc::new(AtomicBool::new(false));
         let out_cap = usize::try_from(limits.max_picture_bytes + (8 << 20)).unwrap_or(usize::MAX);
-        let stdout = drain(child.stdout.take().expect("piped"), out_cap, Some(over.clone()));
+        let stdout = drain(
+            child.stdout.take().expect("piped"),
+            out_cap,
+            Some(over.clone()),
+        );
         let stderr = drain(child.stderr.take().expect("piped"), STDERR_KEPT, None);
 
         let give_up = limits.deadline + GRACE;
@@ -130,7 +153,9 @@ impl IsolatedReader {
                 Ok(None) => {}
                 Err(_) => {
                     kill_group(&child);
-                    break Stop::Exited(child.wait().unwrap_or(ExitStatus::from_raw(libc::SIGKILL)));
+                    break Stop::Exited(
+                        child.wait().unwrap_or(ExitStatus::from_raw(libc::SIGKILL)),
+                    );
                 }
             }
             if over.load(Ordering::SeqCst) {
@@ -156,15 +181,30 @@ impl IsolatedReader {
         let elapsed = started.elapsed().as_millis().to_string();
 
         let fail = |event: &str, detail: &str, error: ReadError| {
-            log::event(event, &[("path", path), ("detail", detail), ("elapsed_ms", &elapsed)]);
+            log::event(
+                event,
+                &[("path", path), ("detail", detail), ("elapsed_ms", &elapsed)],
+            );
             Err(error)
         };
         let status = match stop {
-            Stop::TimedOut => return fail("media_probe_timed_out", "deadline", ReadError::TimedOut),
-            Stop::Memory => {
-                return fail("media_probe_memory", "resident memory", ReadError::LimitExceeded(Limit::Memory));
+            Stop::TimedOut => {
+                return fail("media_probe_timed_out", "deadline", ReadError::TimedOut);
             }
-            Stop::Output => return fail("media_probe_output", "output too large", ReadError::LimitExceeded(Limit::Output)),
+            Stop::Memory => {
+                return fail(
+                    "media_probe_memory",
+                    "resident memory",
+                    ReadError::LimitExceeded(Limit::Memory),
+                );
+            }
+            Stop::Output => {
+                return fail(
+                    "media_probe_output",
+                    "output too large",
+                    ReadError::LimitExceeded(Limit::Output),
+                );
+            }
             Stop::Exited(status) => status,
         };
         if let Some(signal) = status.signal() {
@@ -182,15 +222,32 @@ impl IsolatedReader {
         }
         if status.code() != Some(0) {
             let detail = format!("exit {:?}: {}", status.code(), first_line(&err));
-            return fail("media_probe_crashed", &detail, ReadError::Crashed(detail.clone()));
+            return fail(
+                "media_probe_crashed",
+                &detail,
+                ReadError::Crashed(detail.clone()),
+            );
         }
-        let payload = match out.get(..4).map(|n| u32::from_le_bytes([n[0], n[1], n[2], n[3]]) as usize) {
+        let payload = match out
+            .get(..4)
+            .map(|n| u32::from_le_bytes([n[0], n[1], n[2], n[3]]) as usize)
+        {
             Some(len) if out.len() == 4 + len => &out[4..],
-            _ => return fail("media_probe_crashed", "malformed output", ReadError::Crashed("malformed output".into())),
+            _ => {
+                return fail(
+                    "media_probe_crashed",
+                    "malformed output",
+                    ReadError::Crashed("malformed output".into()),
+                );
+            }
         };
         match wire::decode(payload) {
             Ok(result) => result,
-            Err(e) => fail("media_probe_crashed", &e.to_string(), ReadError::Crashed(e.to_string())),
+            Err(e) => fail(
+                "media_probe_crashed",
+                &e.to_string(),
+                ReadError::Crashed(e.to_string()),
+            ),
         }
     }
 }

@@ -9,7 +9,10 @@ use speedyspec_wp_media_ffmpeg::FfmpegReader;
 #[test]
 fn every_regression_reads_to_a_result() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/regressions");
-    let limits = ProbeLimits { deadline: Duration::from_secs(1), ..ProbeLimits::default() };
+    let limits = ProbeLimits {
+        deadline: Duration::from_secs(1),
+        ..ProbeLimits::default()
+    };
     let reader = FfmpegReader::new(&limits);
     for entry in std::fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();
@@ -18,6 +21,11 @@ fn every_regression_reads_to_a_result() {
         }
         let started = Instant::now();
         let _ = reader.read(MediaSource::Path(path.clone()), &limits);
-        assert!(started.elapsed() < Duration::from_secs(2), "{} took {:?}", path.display(), started.elapsed());
+        assert!(
+            started.elapsed() < Duration::from_secs(2),
+            "{} took {:?}",
+            path.display(),
+            started.elapsed()
+        );
     }
 }

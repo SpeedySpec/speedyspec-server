@@ -4,7 +4,8 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use speedyspec_wp_media_contracts::{
-    AudioStream, Codec, ContainerKind, ImageStream, MediaInfo, Picture, RawViews, Stream, Tag, Tree, VideoStream,
+    AudioStream, Codec, ContainerKind, ImageStream, MediaInfo, Picture, RawViews, Stream, Tag,
+    Tree, VideoStream,
 };
 
 use crate::names;
@@ -15,9 +16,17 @@ const AUDIO: i32 = 1;
 
 /// `probe` as a library-neutral `MediaInfo`.
 pub fn map(probe: RawProbe) -> MediaInfo {
-    let brand = probe.tags.iter().find(|(k, _)| k == "major_brand").map(|(_, v)| v.as_str());
-    let codecs: Vec<Codec> =
-        probe.streams.iter().filter(|s| !s.attached_pic).map(|s| names::codec(&s.codec_name)).collect();
+    let brand = probe
+        .tags
+        .iter()
+        .find(|(k, _)| k == "major_brand")
+        .map(|(_, v)| v.as_str());
+    let codecs: Vec<Codec> = probe
+        .streams
+        .iter()
+        .filter(|s| !s.attached_pic)
+        .map(|s| names::codec(&s.codec_name))
+        .collect();
     let container = names::container(&probe.format_name, brand, &codecs);
     let is_image = matches!(container, ContainerKind::Image(_));
     let system = names::tag_system(&container, probe.id3v2, probe.id3v1);
@@ -33,7 +42,11 @@ pub fn map(probe: RawProbe) -> MediaInfo {
                     mime: names::picture_mime(&s.codec_name),
                     width: nonzero(s.width),
                     height: nonzero(s.height),
-                    kind: s.tags.iter().find(|(k, _)| k == "comment").map(|(_, v)| v.clone()),
+                    kind: s
+                        .tags
+                        .iter()
+                        .find(|(k, _)| k == "comment")
+                        .map(|(_, v)| v.clone()),
                     system,
                 });
             }
@@ -52,8 +65,14 @@ pub fn map(probe: RawProbe) -> MediaInfo {
                 encoder: None,
             }),
             VIDEO if is_image => {
-                let ContainerKind::Image(kind) = &container else { unreachable!() };
-                let (bit_depth, channels) = s.pix_fmt.as_deref().map(names::pixel_format).unwrap_or((None, None));
+                let ContainerKind::Image(kind) = &container else {
+                    unreachable!()
+                };
+                let (bit_depth, channels) = s
+                    .pix_fmt
+                    .as_deref()
+                    .map(names::pixel_format)
+                    .unwrap_or((None, None));
                 Stream::Image(ImageStream {
                     kind: kind.clone(),
                     width: nonzero(s.width),
@@ -80,9 +99,15 @@ pub fn map(probe: RawProbe) -> MediaInfo {
     }
 
     let has_video = streams.iter().any(|s| matches!(s, Stream::Video(_)));
-    let has_theora = streams.iter().any(|s| matches!(s, Stream::Video(v) if v.codec == Codec::Theora));
+    let has_theora = streams
+        .iter()
+        .any(|s| matches!(s, Stream::Video(v) if v.codec == Codec::Theora));
     let tags = tags(&probe.tags, system);
-    let created_at = probe.tags.iter().find(|(k, _)| k == "creation_time").and_then(|(_, v)| parse_time(v));
+    let created_at = probe
+        .tags
+        .iter()
+        .find(|(k, _)| k == "creation_time")
+        .and_then(|(_, v)| parse_time(v));
     let tree = raw_tree(&probe);
 
     MediaInfo {
@@ -95,7 +120,10 @@ pub fn map(probe: RawProbe) -> MediaInfo {
         streams,
         tags,
         pictures,
-        raw: RawViews { getid3: None, reader: Some(("ffmpeg".to_owned(), tree)) },
+        raw: RawViews {
+            getid3: None,
+            reader: Some(("ffmpeg".to_owned(), tree)),
+        },
     }
 }
 
@@ -104,17 +132,25 @@ fn nonzero(v: u32) -> Option<u32> {
 }
 
 fn bits(s: &RawStream) -> Option<u16> {
-    [s.bits_per_raw_sample, s.bits_per_coded_sample].into_iter().find(|b| *b > 0)
+    [s.bits_per_raw_sample, s.bits_per_coded_sample]
+        .into_iter()
+        .find(|b| *b > 0)
 }
 
 /// Tags in file order, one per key, each keeping every value FFmpeg gave (a `;`-joined value stays one value).
 fn tags(raw: &[(String, String)], system: speedyspec_wp_media_contracts::TagSystem) -> Vec<Tag> {
     let mut out: Vec<Tag> = Vec::new();
     for (key, value) in raw {
-        let Some(key) = names::tag_key(key) else { continue };
+        let Some(key) = names::tag_key(key) else {
+            continue;
+        };
         match out.iter_mut().find(|t| t.key == key) {
             Some(tag) => tag.values.push(value.clone()),
-            None => out.push(Tag { key, system, values: vec![value.clone()] }),
+            None => out.push(Tag {
+                key,
+                system,
+                values: vec![value.clone()],
+            }),
         }
     }
     out
@@ -125,14 +161,24 @@ fn tags(raw: &[(String, String)], system: speedyspec_wp_media_contracts::TagSyst
 pub(crate) fn parse_time(text: &str) -> Option<SystemTime> {
     let text = text.trim();
     let b = text.as_bytes();
-    if b.len() < 19 || b[4] != b'-' || b[7] != b'-' || !(b[10] == b'T' || b[10] == b' ') || b[13] != b':' || b[16] != b':'
+    if b.len() < 19
+        || b[4] != b'-'
+        || b[7] != b'-'
+        || !(b[10] == b'T' || b[10] == b' ')
+        || b[13] != b':'
+        || b[16] != b':'
     {
         return None;
     }
     let num = |range: std::ops::Range<usize>| text.get(range)?.parse::<i64>().ok();
     let (year, month, day) = (num(0..4)?, num(5..7)?, num(8..10)?);
     let (hour, minute, second) = (num(11..13)?, num(14..16)?, num(17..19)?);
-    if !(1..=12).contains(&month) || !(1..=31).contains(&day) || hour > 23 || minute > 59 || second > 60 {
+    if !(1..=12).contains(&month)
+        || !(1..=31).contains(&day)
+        || hour > 23
+        || minute > 59
+        || second > 60
+    {
         return None;
     }
     let mut rest = &text[19..];
@@ -142,7 +188,11 @@ pub(crate) fn parse_time(text: &str) -> Option<SystemTime> {
         if digits.is_empty() {
             return None;
         }
-        let padded: String = digits.chars().chain(std::iter::repeat('0')).take(9).collect();
+        let padded: String = digits
+            .chars()
+            .chain(std::iter::repeat('0'))
+            .take(9)
+            .collect();
         nanos = padded.parse().ok()?;
         rest = &frac[digits.len()..];
     }
@@ -154,7 +204,8 @@ pub(crate) fn parse_time(text: &str) -> Option<SystemTime> {
         }
         _ => return None,
     };
-    let secs = days_from_civil(year, month, day) * 86_400 + hour * 3600 + minute * 60 + second - offset;
+    let secs =
+        days_from_civil(year, month, day) * 86_400 + hour * 3600 + minute * 60 + second - offset;
     if secs <= 0 {
         return None;
     }
@@ -172,11 +223,18 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
 }
 
 fn tag_tree(tags: &[(String, String)]) -> Tree {
-    Tree::Map(tags.iter().map(|(k, v)| (k.clone(), Tree::Str(v.clone()))).collect())
+    Tree::Map(
+        tags.iter()
+            .map(|(k, v)| (k.clone(), Tree::Str(v.clone())))
+            .collect(),
+    )
 }
 
 fn raw_tree(probe: &RawProbe) -> Tree {
-    let mut format = vec![("format_name".to_owned(), Tree::Str(probe.format_name.clone()))];
+    let mut format = vec![(
+        "format_name".to_owned(),
+        Tree::Str(probe.format_name.clone()),
+    )];
     if let Some(us) = probe.duration_us {
         format.push(("duration".to_owned(), Tree::Float(us as f64 / 1_000_000.0)));
     }
@@ -230,12 +288,18 @@ fn raw_tree(probe: &RawProbe) -> Tree {
             }
             m.push((
                 "disposition".to_owned(),
-                Tree::Map(vec![("attached_pic".to_owned(), Tree::Int(i64::from(s.attached_pic)))]),
+                Tree::Map(vec![(
+                    "attached_pic".to_owned(),
+                    Tree::Int(i64::from(s.attached_pic)),
+                )]),
             ));
             m.push(("tags".to_owned(), tag_tree(&s.tags)));
             Tree::Map(m)
         })
         .collect();
 
-    Tree::Map(vec![("format".to_owned(), Tree::Map(format)), ("streams".to_owned(), Tree::List(streams))])
+    Tree::Map(vec![
+        ("format".to_owned(), Tree::Map(format)),
+        ("streams".to_owned(), Tree::List(streams)),
+    ])
 }

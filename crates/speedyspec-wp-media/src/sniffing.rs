@@ -23,7 +23,9 @@ impl SniffingReader {
 fn magic(source: &MediaSource) -> Vec<u8> {
     let mut head = [0u8; 4];
     let n = match source {
-        MediaSource::Path(path) => File::open(path).and_then(|mut f| f.read(&mut head)).unwrap_or(0),
+        MediaSource::Path(path) => File::open(path)
+            .and_then(|mut f| f.read(&mut head))
+            .unwrap_or(0),
         MediaSource::Fd(fd) => match fd.try_clone() {
             Ok(dup) => File::from(dup).read_at(&mut head, 0).unwrap_or(0),
             Err(_) => 0,

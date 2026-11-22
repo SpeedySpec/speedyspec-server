@@ -35,8 +35,14 @@ impl MediaReader for Recording {
 fn reader() -> (SniffingReader, Rc<RefCell<Vec<&'static str>>>) {
     let calls = Rc::new(RefCell::new(Vec::new()));
     let reader = SniffingReader::new(
-        Box::new(Recording { name: "midi", calls: calls.clone() }),
-        Box::new(Recording { name: "general", calls: calls.clone() }),
+        Box::new(Recording {
+            name: "midi",
+            calls: calls.clone(),
+        }),
+        Box::new(Recording {
+            name: "general",
+            calls: calls.clone(),
+        }),
     );
     (reader, calls)
 }
@@ -44,7 +50,12 @@ fn reader() -> (SniffingReader, Rc<RefCell<Vec<&'static str>>>) {
 fn read_path(bytes: &[u8]) -> Vec<&'static str> {
     let (reader, calls) = reader();
     let file = kit::write_temp(bytes, "bin");
-    reader.read(MediaSource::Path(file.path().to_path_buf()), &ProbeLimits::default()).unwrap();
+    reader
+        .read(
+            MediaSource::Path(file.path().to_path_buf()),
+            &ProbeLimits::default(),
+        )
+        .unwrap();
     calls.borrow().clone()
 }
 
@@ -70,8 +81,13 @@ fn fd_offset_is_untouched() {
     let raw = fd.as_raw_fd();
     let dup = fd.try_clone().unwrap();
     let (reader, calls) = reader();
-    reader.read(MediaSource::Fd(fd), &ProbeLimits::default()).unwrap();
+    reader
+        .read(MediaSource::Fd(fd), &ProbeLimits::default())
+        .unwrap();
     assert_eq!(*calls.borrow(), vec!["midi"]);
     let _ = raw;
-    assert_eq!(unsafe { libc::lseek(dup.as_raw_fd(), 0, libc::SEEK_CUR) }, 0);
+    assert_eq!(
+        unsafe { libc::lseek(dup.as_raw_fd(), 0, libc::SEEK_CUR) },
+        0
+    );
 }

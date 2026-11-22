@@ -37,7 +37,13 @@ pub struct CachedReader<R: MediaReader> {
 impl<R: MediaReader> CachedReader<R> {
     /// The cache over `inner`, keying paths relative to `root` (the app's directory), keeping entries for `ttl` and
     /// `local_entries` decoded results per worker. Spec defaults: 30 days, 256 entries.
-    pub fn new(inner: R, store: Rc<dyn CachingStore>, root: PathBuf, ttl: Duration, local_entries: NonZeroUsize) -> Self {
+    pub fn new(
+        inner: R,
+        store: Rc<dyn CachingStore>,
+        root: PathBuf,
+        ttl: Duration,
+        local_entries: NonZeroUsize,
+    ) -> Self {
         CachedReader {
             inner,
             store,
@@ -55,7 +61,10 @@ impl<R: MediaReader> CachedReader<R> {
 
     fn store_failed(&self, err: &dyn std::fmt::Display) {
         if self.failures_logged.get() == 0 {
-            log::event("media_cache_unavailable", &[("store", self.store.name()), ("error", &err.to_string())]);
+            log::event(
+                "media_cache_unavailable",
+                &[("store", self.store.name()), ("error", &err.to_string())],
+            );
             self.failures_logged.set(1);
         }
     }
@@ -63,7 +72,9 @@ impl<R: MediaReader> CachedReader<R> {
     /// The content key of `path`: its path relative to the root, size, modification time and the hash of its first
     /// 64 KiB. `None` when the path isn't a readable regular file (the inner reader then reports why).
     fn key(&self, path: &Path) -> Option<String> {
-        let meta = std::fs::symlink_metadata(path).ok().filter(|m| m.file_type().is_file())?;
+        let meta = std::fs::symlink_metadata(path)
+            .ok()
+            .filter(|m| m.file_type().is_file())?;
         let mut head = Vec::new();
         File::options()
             .read(true)
@@ -83,7 +94,13 @@ impl<R: MediaReader> CachedReader<R> {
         hasher.update(mtime_ns.to_le_bytes());
         hasher.update(b"\0");
         hasher.update(Sha256::digest(&head));
-        Some(hasher.finalize().iter().map(|b| format!("{b:02x}")).collect())
+        Some(
+            hasher
+                .finalize()
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect(),
+        )
     }
 }
 
@@ -102,7 +119,12 @@ impl<R: MediaReader> MediaReader for CachedReader<R> {
         let Some(key) = self.key(&path) else {
             return self.inner.read(MediaSource::Path(path), limits);
         };
-        if let Some(info) = self.local.borrow_mut().get(&key).and_then(|bytes| decoded(bytes)) {
+        if let Some(info) = self
+            .local
+            .borrow_mut()
+            .get(&key)
+            .and_then(|bytes| decoded(bytes))
+        {
             return Ok(info);
         }
         match self.store.get(GROUP, &key) {

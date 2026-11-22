@@ -47,7 +47,11 @@ fn string(ptr: *const c_char) -> Option<String> {
         return None;
     }
     // SAFETY: the shim stores NUL-terminated strings it allocated, alive until ss_free.
-    Some(unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned())
+    Some(
+        unsafe { CStr::from_ptr(ptr) }
+            .to_string_lossy()
+            .into_owned(),
+    )
 }
 
 fn slice<'a, T>(ptr: *const T, len: i32) -> &'a [T] {
@@ -82,7 +86,7 @@ fn stream(s: &SsStream) -> RawStream {
         bits_per_raw_sample: u16::try_from(s.bits_per_raw_sample).unwrap_or(0),
         bits_per_coded_sample: u16::try_from(s.bits_per_coded_sample).unwrap_or(0),
         bit_rate: u64::try_from(s.bit_rate).unwrap_or(0),
-        frame_rate: (s.fr_num > 0 && s.fr_den > 0).then(|| (s.fr_num as u32, s.fr_den as u32)),
+        frame_rate: (s.fr_num > 0 && s.fr_den > 0).then_some((s.fr_num as u32, s.fr_den as u32)),
         pix_fmt: string(s.pix_fmt),
         sample_fmt: string(s.sample_fmt),
         attached_pic: s.attached_pic != 0,
@@ -96,11 +100,15 @@ fn stream(s: &SsStream) -> RawStream {
 pub(crate) fn copy(result: &SsResult) -> RawProbe {
     RawProbe {
         format_name: string(result.format_name).unwrap_or_default(),
-        duration_us: (result.duration_us != i64::MIN && result.duration_us >= 0).then_some(result.duration_us),
+        duration_us: (result.duration_us != i64::MIN && result.duration_us >= 0)
+            .then_some(result.duration_us),
         bit_rate: (result.bit_rate > 0).then_some(result.bit_rate),
         file_size: 0,
         tags: tags(result.tags, result.tag_count),
-        streams: slice(result.streams, result.stream_count).iter().map(stream).collect(),
+        streams: slice(result.streams, result.stream_count)
+            .iter()
+            .map(stream)
+            .collect(),
         id3v2: false,
         id3v1: false,
     }

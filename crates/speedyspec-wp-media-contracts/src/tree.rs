@@ -17,7 +17,10 @@ impl Tree {
     /// The first value under `key` when this is a map.
     pub fn get(&self, key: &str) -> Option<&Tree> {
         match self {
-            Tree::Map(entries) => entries.iter().find(|(name, _)| name == key).map(|(_, value)| value),
+            Tree::Map(entries) => entries
+                .iter()
+                .find(|(name, _)| name == key)
+                .map(|(_, value)| value),
             _ => None,
         }
     }

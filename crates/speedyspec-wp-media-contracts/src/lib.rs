@@ -13,8 +13,8 @@ mod reader;
 mod tree;
 
 pub use info::{
-    AudioStream, BitrateMode, Codec, ContainerKind, ImageKind, ImageStream, MediaInfo, Picture, RawViews, Stream, Tag,
-    TagKey, TagSystem, VideoStream,
+    AudioStream, BitrateMode, Codec, ContainerKind, ImageKind, ImageStream, MediaInfo, Picture,
+    RawViews, Stream, Tag, TagKey, TagSystem, VideoStream,
 };
 pub use reader::{Limit, MEDIA_READER, MediaReader, MediaSource, ProbeLimits, ReadError};
 pub use tree::Tree;

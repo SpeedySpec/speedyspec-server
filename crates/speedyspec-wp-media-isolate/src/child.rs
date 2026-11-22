@@ -38,9 +38,13 @@ fn parse(args: &[OsString]) -> Option<(ProbeLimits, Option<String>)> {
         let number = || value.parse::<u64>().ok();
         match name.to_str()? {
             "--max-bytes" => (limits.max_bytes, seen) = (number()?, seen | 1),
-            "--deadline-ms" => (limits.deadline, seen) = (Duration::from_millis(number()?), seen | 2),
+            "--deadline-ms" => {
+                (limits.deadline, seen) = (Duration::from_millis(number()?), seen | 2)
+            }
             "--max-alloc" => (limits.max_alloc, seen) = (number()?, seen | 4),
-            "--max-streams" => (limits.max_streams, seen) = (u32::try_from(number()?).ok()?, seen | 8),
+            "--max-streams" => {
+                (limits.max_streams, seen) = (u32::try_from(number()?).ok()?, seen | 8)
+            }
             "--max-picture-bytes" => (limits.max_picture_bytes, seen) = (number()?, seen | 16),
             "--max-tag-bytes" => (limits.max_tag_bytes, seen) = (number()?, seen | 32),
             "--simulate" if cfg!(feature = "test-modes") => simulate = Some(value.to_owned()),

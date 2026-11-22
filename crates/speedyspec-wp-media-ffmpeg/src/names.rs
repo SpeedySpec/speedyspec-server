@@ -20,8 +20,17 @@ pub fn container(format: &str, brand: Option<&str>, codecs: &[Codec]) -> Contain
         }
         "matroska,webm" => {
             let webm = !codecs.is_empty()
-                && codecs.iter().all(|c| matches!(c, Codec::Vp8 | Codec::Vp9 | Codec::Av1 | Codec::Vorbis | Codec::Opus));
-            if webm { ContainerKind::WebM } else { ContainerKind::Matroska }
+                && codecs.iter().all(|c| {
+                    matches!(
+                        c,
+                        Codec::Vp8 | Codec::Vp9 | Codec::Av1 | Codec::Vorbis | Codec::Opus
+                    )
+                });
+            if webm {
+                ContainerKind::WebM
+            } else {
+                ContainerKind::Matroska
+            }
         }
         "mp3" => ContainerKind::Mp3,
         "aac" => ContainerKind::Aac,
@@ -64,13 +73,43 @@ fn image_kind(pipe: &str) -> ImageKind {
 /// The IANA (or customary) MIME type of a container, by whether it has video.
 pub fn mime(container: &ContainerKind, has_video: bool, has_theora: bool) -> Option<String> {
     let m = match container {
-        ContainerKind::Mp4 => if has_video { "video/mp4" } else { "audio/mp4" },
+        ContainerKind::Mp4 => {
+            if has_video {
+                "video/mp4"
+            } else {
+                "audio/mp4"
+            }
+        }
         ContainerKind::QuickTime => "video/quicktime",
         ContainerKind::ThreeGp => "video/3gpp",
-        ContainerKind::Matroska => if has_video { "video/x-matroska" } else { "audio/x-matroska" },
-        ContainerKind::WebM => if has_video { "video/webm" } else { "audio/webm" },
-        ContainerKind::Ogg => if has_theora { "video/ogg" } else { "audio/ogg" },
-        ContainerKind::Asf => if has_video { "video/x-ms-asf" } else { "audio/x-ms-wma" },
+        ContainerKind::Matroska => {
+            if has_video {
+                "video/x-matroska"
+            } else {
+                "audio/x-matroska"
+            }
+        }
+        ContainerKind::WebM => {
+            if has_video {
+                "video/webm"
+            } else {
+                "audio/webm"
+            }
+        }
+        ContainerKind::Ogg => {
+            if has_theora {
+                "video/ogg"
+            } else {
+                "audio/ogg"
+            }
+        }
+        ContainerKind::Asf => {
+            if has_video {
+                "video/x-ms-asf"
+            } else {
+                "audio/x-ms-wma"
+            }
+        }
         ContainerKind::Wav => "audio/wav",
         ContainerKind::Avi => "video/x-msvideo",
         ContainerKind::Aiff => "audio/aiff",
@@ -83,7 +122,11 @@ pub fn mime(container: &ContainerKind, has_video: bool, has_theora: bool) -> Opt
         ContainerKind::Ac3 => "audio/ac3",
         ContainerKind::Dts => "audio/vnd.dts",
         ContainerKind::RealMedia => {
-            if has_video { "application/vnd.rn-realmedia" } else { "audio/x-pn-realaudio" }
+            if has_video {
+                "application/vnd.rn-realmedia"
+            } else {
+                "audio/x-pn-realaudio"
+            }
         }
         ContainerKind::Midi => "audio/midi",
         ContainerKind::Image(kind) => match kind {
@@ -108,7 +151,11 @@ pub fn mime(container: &ContainerKind, has_video: bool, has_theora: bool) -> Opt
 pub fn codec(name: &str) -> Codec {
     if let Some(pcm) = name.strip_prefix("pcm_") {
         let float = pcm.starts_with('f');
-        let digits: String = pcm.chars().skip(1).take_while(char::is_ascii_digit).collect();
+        let digits: String = pcm
+            .chars()
+            .skip(1)
+            .take_while(char::is_ascii_digit)
+            .collect();
         if let Ok(bits) = digits.parse() {
             return Codec::Pcm { bits, float };
         }
@@ -190,8 +237,8 @@ pub fn picture_mime(codec: &str) -> String {
 pub fn tag_key(key: &str) -> Option<TagKey> {
     let lower = key.to_ascii_lowercase();
     Some(match lower.as_str() {
-        "creation_time" | "major_brand" | "minor_version" | "compatible_brands" | "handler_name" | "vendor_id"
-        | "encoder_options" => return None,
+        "creation_time" | "major_brand" | "minor_version" | "compatible_brands"
+        | "handler_name" | "vendor_id" | "encoder_options" => return None,
         "title" => TagKey::Title,
         "artist" => TagKey::Artist,
         "album" => TagKey::Album,
@@ -221,7 +268,13 @@ pub fn tag_system(container: &ContainerKind, id3v2: bool, id3v1: bool) -> TagSys
                 TagSystem::Unknown
             }
         }
-        ContainerKind::Aiff => if id3v2 { TagSystem::Id3v2 } else { TagSystem::Unknown },
+        ContainerKind::Aiff => {
+            if id3v2 {
+                TagSystem::Id3v2
+            } else {
+                TagSystem::Unknown
+            }
+        }
         ContainerKind::Flac | ContainerKind::Ogg => TagSystem::Vorbis,
         ContainerKind::Mp4 | ContainerKind::QuickTime | ContainerKind::ThreeGp => TagSystem::Mp4,
         ContainerKind::Asf => TagSystem::Asf,
@@ -234,9 +287,8 @@ pub fn tag_system(container: &ContainerKind, id3v2: bool, id3v1: bool) -> TagSys
 /// Bit depth per channel and channel count of an image pixel format.
 pub fn pixel_format(name: &str) -> (Option<u8>, Option<u8>) {
     match name {
-        "rgb24" | "bgr24" | "pal8" | "yuv420p" | "yuvj420p" | "yuv422p" | "yuvj422p" | "yuv444p" | "yuvj444p" => {
-            (Some(8), Some(3))
-        }
+        "rgb24" | "bgr24" | "pal8" | "yuv420p" | "yuvj420p" | "yuv422p" | "yuvj422p"
+        | "yuv444p" | "yuvj444p" => (Some(8), Some(3)),
         "rgba" | "bgra" | "argb" | "abgr" | "yuva420p" | "yuva444p" => (Some(8), Some(4)),
         "gray" | "monob" | "monow" => (Some(8), Some(1)),
         "ya8" => (Some(8), Some(2)),

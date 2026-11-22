@@ -6,12 +6,11 @@
 
 use std::fs::File;
 use std::io::Read;
-use std::os::fd::OwnedFd;
 use std::time::Duration;
 
 use speedyspec_wp_media_contracts::{
-    Codec, ContainerKind, Limit, MediaInfo, MediaReader, MediaSource, ProbeLimits, RawViews, ReadError, Stream, Tag,
-    TagKey, TagSystem, Tree,
+    Codec, ContainerKind, Limit, MediaInfo, MediaReader, MediaSource, ProbeLimits, RawViews,
+    ReadError, Stream, Tag, TagKey, TagSystem, Tree,
 };
 
 /// The default tempo when a file sets none: 120 quarter notes per minute.
@@ -27,13 +26,19 @@ impl MediaReader for MidiReader {
                 std::io::ErrorKind::NotFound => ReadError::NotFound,
                 _ => ReadError::Io(e.to_string()),
             })?,
-            MediaSource::Fd(fd) => File::from(OwnedFd::from(fd)),
+            MediaSource::Fd(fd) => File::from(fd),
         };
-        if !file.metadata().map_err(|e| ReadError::Io(e.to_string()))?.is_file() {
+        if !file
+            .metadata()
+            .map_err(|e| ReadError::Io(e.to_string()))?
+            .is_file()
+        {
             return Err(ReadError::Io("not a regular file".into()));
         }
         let mut bytes = Vec::new();
-        file.take(limits.max_bytes.saturating_add(1)).read_to_end(&mut bytes).map_err(|e| ReadError::Io(e.to_string()))?;
+        file.take(limits.max_bytes.saturating_add(1))
+            .read_to_end(&mut bytes)
+            .map_err(|e| ReadError::Io(e.to_string()))?;
         if bytes.len() as u64 > limits.max_bytes {
             return Err(ReadError::LimitExceeded(Limit::Bytes));
         }
@@ -50,7 +55,11 @@ struct Cursor<'a> {
 
 impl<'a> Cursor<'a> {
     fn take(&mut self, n: usize) -> Result<&'a [u8], ReadError> {
-        let end = self.pos.checked_add(n).filter(|&e| e <= self.bytes.len()).ok_or(ReadError::Truncated)?;
+        let end = self
+            .pos
+            .checked_add(n)
+            .filter(|&e| e <= self.bytes.len())
+            .ok_or(ReadError::Truncated)?;
         let out = &self.bytes[self.pos..end];
         self.pos = end;
         Ok(out)
@@ -87,7 +96,10 @@ struct Track {
 }
 
 fn parse_track(data: &[u8]) -> Result<Track, ReadError> {
-    let mut c = Cursor { bytes: data, pos: 0 };
+    let mut c = Cursor {
+        bytes: data,
+        pos: 0,
+    };
     let mut track = Track::default();
     let mut tick = 0u64;
     let mut running: Option<u8> = None;
@@ -107,10 +119,13 @@ fn parse_track(data: &[u8]) -> Result<Track, ReadError> {
                 let body = c.take(len)?;
                 match kind {
                     0x51 if len == 3 => {
-                        let us = u64::from(body[0]) << 16 | u64::from(body[1]) << 8 | u64::from(body[2]);
+                        let us =
+                            u64::from(body[0]) << 16 | u64::from(body[1]) << 8 | u64::from(body[2]);
                         track.tempos.push((tick, us));
                     }
-                    0x01..=0x03 => track.texts.push((kind, String::from_utf8_lossy(body).into_owned())),
+                    0x01..=0x03 => track
+                        .texts
+                        .push((kind, String::from_utf8_lossy(body).into_owned())),
                     0x2F => {
                         track.end_tick = tick;
                         return Ok(track);
@@ -125,7 +140,11 @@ fn parse_track(data: &[u8]) -> Result<Track, ReadError> {
                 running = None;
             }
             0x80..=0xEF => {
-                let data_bytes = if matches!(status & 0xF0, 0xC0 | 0xD0) { 1 } else { 2 };
+                let data_bytes = if matches!(status & 0xF0, 0xC0 | 0xD0) {
+                    1
+                } else {
+                    2
+                };
                 c.take(data_bytes)?;
                 running = Some(status);
             }
@@ -208,7 +227,10 @@ pub fn parse(bytes: &[u8], limits: &ProbeLimits) -> Result<MediaInfo, ReadError>
                 })
                 .fold(0.0, f64::max)
         } else {
-            let mut tempos: Vec<(u64, u64)> = tracks.iter().flat_map(|t| t.tempos.iter().copied()).collect();
+            let mut tempos: Vec<(u64, u64)> = tracks
+                .iter()
+                .flat_map(|t| t.tempos.iter().copied())
+                .collect();
             tempos.sort_by_key(|&(at, _)| at);
             let end = tracks.iter().map(|t| t.end_tick).max().unwrap_or(0);
             seconds_at(end, &tempos, per_quarter)
@@ -217,9 +239,17 @@ pub fn parse(bytes: &[u8], limits: &ProbeLimits) -> Result<MediaInfo, ReadError>
 
     let mut tags = Vec::new();
     if let Some(first) = tracks.first() {
-        for (kind, key) in [(0x03u8, TagKey::Title), (0x02, TagKey::Copyright), (0x01, TagKey::Comment)] {
+        for (kind, key) in [
+            (0x03u8, TagKey::Title),
+            (0x02, TagKey::Copyright),
+            (0x01, TagKey::Comment),
+        ] {
             if let Some((_, text)) = first.texts.iter().find(|(k, _)| *k == kind) {
-                tags.push(Tag { key, system: TagSystem::Midi, values: vec![text.clone()] });
+                tags.push(Tag {
+                    key,
+                    system: TagSystem::Midi,
+                    values: vec![text.clone()],
+                });
             }
         }
     }
@@ -238,9 +268,14 @@ pub fn parse(bytes: &[u8], limits: &ProbeLimits) -> Result<MediaInfo, ReadError>
         bitrate: None,
         file_size: Some(bytes.len() as u64),
         created_at: None,
-        streams: vec![Stream::Data { codec: Codec::Other("midi".into()) }],
+        streams: vec![Stream::Data {
+            codec: Codec::Other("midi".into()),
+        }],
         tags,
         pictures: Vec::new(),
-        raw: RawViews { getid3: None, reader: Some(("midi".into(), raw)) },
+        raw: RawViews {
+            getid3: None,
+            reader: Some(("midi".into(), raw)),
+        },
     })
 }

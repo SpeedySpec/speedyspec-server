@@ -8,8 +8,8 @@ pub fn enter() {
     use std::collections::BTreeMap;
 
     use seccompiler::{
-        BpfProgram, SeccompAction, SeccompCmpArgLen, SeccompCmpOp, SeccompCondition, SeccompFilter, SeccompRule,
-        TargetArch,
+        BpfProgram, SeccompAction, SeccompCmpArgLen, SeccompCmpOp, SeccompCondition, SeccompFilter,
+        SeccompRule, TargetArch,
     };
 
     let calls: Vec<i64> = vec![
@@ -43,7 +43,8 @@ pub fn enter() {
         libc::SYS_exit,
         libc::SYS_exit_group,
     ];
-    let mut rules: BTreeMap<i64, Vec<SeccompRule>> = calls.into_iter().map(|n| (n, vec![])).collect();
+    let mut rules: BTreeMap<i64, Vec<SeccompRule>> =
+        calls.into_iter().map(|n| (n, vec![])).collect();
     // abort() (a failed allocation under RLIMIT_AS ends there) signals the process itself; signalling any other
     // process stays forbidden. The child is single-threaded, so its one thread id is its process id.
     // SAFETY: getpid has no preconditions.
@@ -65,10 +66,15 @@ pub fn enter() {
     let arch = TargetArch::x86_64;
     #[cfg(target_arch = "aarch64")]
     let arch = TargetArch::aarch64;
-    let installed = SeccompFilter::new(rules, SeccompAction::KillProcess, SeccompAction::Allow, arch)
-        .map_err(|e| e.to_string())
-        .and_then(|filter| BpfProgram::try_from(filter).map_err(|e| e.to_string()))
-        .and_then(|program| seccompiler::apply_filter(&program).map_err(|e| e.to_string()));
+    let installed = SeccompFilter::new(
+        rules,
+        SeccompAction::KillProcess,
+        SeccompAction::Allow,
+        arch,
+    )
+    .map_err(|e| e.to_string())
+    .and_then(|filter| BpfProgram::try_from(filter).map_err(|e| e.to_string()))
+    .and_then(|program| seccompiler::apply_filter(&program).map_err(|e| e.to_string()));
     if let Err(err) = installed {
         eprintln!("speedyspec media-probe: seccomp: {err}");
         std::process::exit(4);

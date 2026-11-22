@@ -11,7 +11,10 @@ fn wav_header_is_riff_wave() {
     assert_eq!(&wav[8..12], b"WAVE");
     let data = (0.5 * 8000.0) as usize * 2 * 2;
     assert_eq!(wav.len(), 44 + data);
-    assert_eq!(u32::from_le_bytes(wav[40..44].try_into().unwrap()) as usize, data);
+    assert_eq!(
+        u32::from_le_bytes(wav[40..44].try_into().unwrap()) as usize,
+        data
+    );
 }
 
 #[test]
