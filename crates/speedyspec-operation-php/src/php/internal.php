@@ -150,6 +150,43 @@ final class Callers
     {
         return new \SpeedySpec\Operation\Caller( $user, $transport, $requestedFields );
     }
+
+    public static function exception( string $code, string $category, string $message, mixed $details ): \SpeedySpec\Operation\OperationException
+    {
+        return new \SpeedySpec\Operation\OperationException(
+            $code,
+            \SpeedySpec\Operation\Category::tryFrom( $category ) ?? \SpeedySpec\Operation\Category::Internal,
+            $message,
+            is_array( $details ) ? $details : ( null === $details ? [] : [ $details ] ),
+        );
+    }
+}
+
+/**
+ * Runs the callbacks that answer for an operation, turning what they throw into error arrays.
+ *
+ * @internal
+ */
+final class Invoker
+{
+    public static function run( callable $callback, array $args ): array
+    {
+        try {
+            return [ 'ok' => $callback( ...$args ) ];
+        } catch ( \SpeedySpec\Operation\OperationException $e ) {
+            return [
+                'error' => [
+                    'code'     => $e->getErrorCode(),
+                    'category' => $e->getCategory()->value,
+                    'message'  => $e->getMessage(),
+                    'details'  => $e->getDetails(),
+                ],
+            ];
+        } catch ( \Throwable $e ) {
+            error_log( sprintf( 'speedyspec_wordpress: an operation callback threw %s: %s in %s:%d', get_class( $e ), $e->getMessage(), $e->getFile(), $e->getLine() ) );
+            return [ 'error' => [ 'code' => 'handler_failed', 'category' => 'internal', 'message' => 'The operation failed.', 'details' => [] ] ];
+        }
+    }
 }
 
 /**

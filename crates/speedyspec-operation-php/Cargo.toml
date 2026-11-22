@@ -29,3 +29,7 @@ harness = false
 [[test]]
 name = "identity"
 harness = false
+
+[[test]]
+name = "dispatch"
+harness = false

@@ -39,6 +39,52 @@ namespace SpeedySpec\Operation {
     }
 
     /**
+     * An operation failed: a stable code, its category, a message for the client and structured details. Throw it
+     * from a handler or permission callback to fail with that error; `Operations::call` throws it for every error.
+     */
+    class OperationException extends \RuntimeException
+    {
+        public function __construct(
+            private readonly string $errorCode,
+            private readonly Category $category,
+            string $message,
+            private readonly array $details = [],
+        ) {
+            parent::__construct( $message );
+        }
+
+        public function getErrorCode(): string
+        {
+            return $this->errorCode;
+        }
+
+        public function getCategory(): Category
+        {
+            return $this->category;
+        }
+
+        public function getDetails(): array
+        {
+            return $this->details;
+        }
+    }
+
+    /**
+     * Binds handlers to operations, by name.
+     */
+    final class Handler
+    {
+        /**
+         * `$handler( $input, Caller $caller )` handles the operation `$operation` for this request, replacing any
+         * other handler until the request ends. Bind it on `wp_operations_init`, beside the registration.
+         */
+        public static function for( string $operation, callable $handler ): void
+        {
+            Native\bind_handler( $operation, $handler );
+        }
+    }
+
+    /**
      * A type or operation could not be registered: the message lists every reason.
      */
     class RegistrationException extends \RuntimeException
@@ -205,6 +251,26 @@ namespace SpeedySpec\Operation {
         public static function document(): array
         {
             return Native\document();
+        }
+
+        /**
+         * Calls the operation `$name` from inside the application and returns its output as a plain array.
+         *
+         * @param array|object $input A plain array, or the operation's input value object.
+         * @param int|null     $user  Who calls: `null` for the current user, `0` for nobody.
+         *
+         * @throws OperationException When the operation fails, for any reason.
+         */
+        public static function call( string $name, array|object $input = [], ?int $user = null ): mixed
+        {
+            if ( is_object( $input ) ) {
+                // An unset optional property of a value object is absent, not an explicit null.
+                $input = array_filter( Internal\Mapper::extract( $input ), static fn ( mixed $value ): bool => null !== $value );
+            }
+            if ( null === $user ) {
+                $user = function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0;
+            }
+            return Native\call( $name, $input, $user );
         }
     }
 }

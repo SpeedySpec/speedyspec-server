@@ -5,14 +5,19 @@ use std::rc::Rc;
 
 use serde_json::Value as Json;
 use speedyspec_container::Container;
-use speedyspec_operation_contracts::{Caller, Category, Identity, OperationError};
+use speedyspec_container::Lifetime;
+use speedyspec_operation_contracts::{
+    Caller, Category, INTERNAL_TRANSPORT, Identity, OperationError,
+};
+use speedyspec_operation_dispatch::{OperationHandler, bind_handler};
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_php_ext::{Key, Value as PhpValue};
 
-use crate::convert::from_php;
+use crate::convert::{from_php, to_php};
 use crate::descriptor;
+use crate::handler::PhpOperationHandler;
 use crate::permission;
 use crate::sites::{Site, SiteId, SiteKey, Sites};
 
@@ -46,10 +51,6 @@ pub(crate) struct InitFailure {
     pub exception: Option<PhpValue>,
 }
 
-#[expect(
-    dead_code,
-    reason = "the Caller and handler natives read these (plan Tasks 4 and 5)"
-)]
 pub(crate) struct State {
     pub container: Rc<Container>,
     pub identity: Rc<dyn Identity>,
@@ -313,11 +314,72 @@ pub fn php_caller(caller: &Caller) -> Result<PhpValue, OperationError> {
     .map_err(|err| OperationError::new("caller_failed", Category::Internal, err.to_string()))
 }
 
+fn native_bind_handler(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    let state = state()?;
+    let (Some(PhpValue::Str(name)), Some(callable)) = (args.first(), args.get(1)) else {
+        return Err(NativeError::throw(
+            REGISTRATION_EXCEPTION,
+            "Handler::for takes an operation name and a callable",
+        ));
+    };
+    let handler: Rc<dyn OperationHandler> = Rc::new(PhpOperationHandler {
+        operation: name.clone(),
+        callable: callable.clone(),
+    });
+    // PHP's bindings last for the request, so a PHP handler replaces a Rust one only until the request ends.
+    let _request = state.container.registering(Lifetime::Request);
+    bind_handler(&state.container, name, move |_, _| Ok(handler.clone()));
+    Ok(PhpValue::Null)
+}
+
+fn native_call(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    let state = state()?;
+    let Some(PhpValue::Str(name)) = args.first() else {
+        return Err(NativeError::throw(
+            OPERATION_EXCEPTION,
+            "the operation name must be a string",
+        ));
+    };
+    let user = match args.get(2) {
+        Some(PhpValue::Int(u)) if *u > 0 => Some(*u as u64),
+        _ => None,
+    };
+    let site = state.site().map_err(init_error)?;
+    let input = from_php(args.get(1).unwrap_or(&PhpValue::Null)).map_err(operation_error)?;
+    let caller = Caller::new(user, INTERNAL_TRANSPORT, state.identity.clone());
+    site.dispatcher
+        .call(name, input, &caller)
+        .map(|output| to_php(&output))
+        .map_err(operation_error)
+}
+
+/// `error` thrown in PHP as an `OperationException`.
+fn operation_error(error: OperationError) -> NativeError {
+    let made = speedyspec_php::call(
+        &PhpValue::Str("SpeedySpec\\Operation\\Internal\\Callers::exception".into()),
+        &[
+            PhpValue::Str(error.code.clone()),
+            PhpValue::Str(error.category.as_str().to_owned()),
+            PhpValue::Str(error.message.clone()),
+            to_php(&error.details),
+        ],
+    );
+    match made {
+        Ok(exception @ PhpValue::Opaque(_)) => NativeError::Rethrow(exception),
+        _ => NativeError::throw(
+            OPERATION_EXCEPTION,
+            format!("{}: {}", error.code, error.message),
+        ),
+    }
+}
+
 type NativeFn = fn(&[PhpValue]) -> Result<PhpValue, NativeError>;
 
 impl NativeArea for OperationArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
-        let entries: [(&str, NativeFn); 5] = [
+        let entries: [(&str, NativeFn); 7] = [
+            ("bind_handler", native_bind_handler),
+            ("call", native_call),
             ("can", native_can),
             ("register_operation", native_register_operation),
             ("register_type", native_register_type),

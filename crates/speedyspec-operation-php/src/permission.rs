@@ -11,6 +11,8 @@ use std::collections::HashMap;
 use speedyspec_operation_contracts::{Caller, Category, OperationError, PermissionCheck};
 use speedyspec_php_ext::Value as PhpValue;
 
+use crate::identity::truthy;
+
 thread_local! {
     static CALLBACKS: RefCell<HashMap<String, PhpValue>> = RefCell::new(HashMap::new());
 }
@@ -36,22 +38,26 @@ pub struct PhpPermission {
 }
 
 impl PermissionCheck for PhpPermission {
-    fn check(&self, _caller: &Caller, input: &dyn Any) -> Result<(), OperationError> {
+    fn check(&self, caller: &Caller, input: &dyn Any) -> Result<(), OperationError> {
         let callable = callback(&self.operation).ok_or_else(|| missing(&self.operation))?;
         let input = input
             .downcast_ref::<PhpValue>()
             .cloned()
             .unwrap_or(PhpValue::Null);
-        let allowed = speedyspec_php::call(&callable, &[PhpValue::Null, input]).map_err(|err| {
-            OperationError::new("permission_failed", Category::Internal, err.to_string())
-        })?;
-        if matches!(allowed, PhpValue::Bool(true)) {
+        let allowed = crate::invoke::run(&callable, vec![crate::area::php_caller(caller)?, input])?;
+        if truthy(&allowed) {
             Ok(())
+        } else if caller.user.is_none() {
+            Err(OperationError::new(
+                "operation_unauthenticated",
+                Category::Unauthenticated,
+                "You must be signed in to do that.",
+            ))
         } else {
             Err(OperationError::new(
-                "permission_denied",
+                "operation_forbidden",
                 Category::PermissionDenied,
-                "you may not call this operation",
+                "You are not allowed to do that.",
             ))
         }
     }
