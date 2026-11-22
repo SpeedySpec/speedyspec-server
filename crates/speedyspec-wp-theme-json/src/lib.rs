@@ -20,13 +20,26 @@ pub fn codec_string(bytes: &[u8]) -> speedyspec_hooks::Value {
     codec::string_value(bytes)
 }
 mod construct;
+pub mod css;
+pub mod declarations;
 mod deps;
+pub mod filters;
+pub mod layout;
 mod memory;
+pub mod nodes;
+#[allow(dead_code)] // Used by the stylesheet pieces as they land.
+pub(crate) mod php_value;
 pub mod presets;
+pub mod selectors;
+pub mod sheet;
+pub mod stylesheet;
 
 pub use construct::{construct, construct_value, valid_names};
 pub use deps::ThemeJsonDeps;
-pub use memory::{MemoryBlockMetadata, NoTranslation, RecordedDiagnostics};
+pub use memory::{
+    MemoryBlockMetadata, MemoryGlobalSettings, MemoryThemeSupports, NoThemeSupports, NoTranslation,
+    RecordedDiagnostics,
+};
 pub mod merge;
 
 pub use merge::merge;

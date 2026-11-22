@@ -87,5 +87,9 @@
   "crates/speedyspec-wp-rewrite": "0.1.2",
   "crates/speedyspec-wp-theme-json": "0.1.1",
   "crates/speedyspec-wp-theme-json-contracts": "0.1.1",
-  "crates/speedyspec-wp-theme-json-php": "0.1.1"
+  "crates/speedyspec-wp-theme-json-php": "0.1.1",
+  "crates/speedyspec-wp-password": "0.1.0",
+  "crates/speedyspec-wp-password-bcrypt": "0.1.0",
+  "crates/speedyspec-wp-password-contracts": "0.1.0",
+  "crates/speedyspec-wp-password-php": "0.1.0"
 }

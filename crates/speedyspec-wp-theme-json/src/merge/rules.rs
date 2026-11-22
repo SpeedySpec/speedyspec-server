@@ -1,8 +1,8 @@
 //! The rules applied to a layer's presets as they replace the merged ones (Strategy, one per rule).
 
 use speedyspec_hooks::{Key, Value};
-use speedyspec_wp_theme_json_contracts::schema::{PresetMetadata, presets_metadata};
 use speedyspec_wp_theme_json_contracts::Origin;
+use speedyspec_wp_theme_json_contracts::schema::{PresetMetadata, presets_metadata};
 
 use crate::array_path;
 
@@ -45,10 +45,17 @@ impl PresetRule for UseDefaultNames {
     }
 
     fn apply(&self, context: &PresetContext<'_>, content: Value) -> Value {
-        let Value::Array(items) = content else { return content };
-        let defaults_path: Vec<&str> =
-            context.base_path.iter().map(String::as_str).chain(std::iter::once("default")).collect();
-        let defaults = array_path::get(context.merged, &defaults_path).filter(|d| crate::merge::truthy(d));
+        let Value::Array(items) = content else {
+            return content;
+        };
+        let defaults_path: Vec<&str> = context
+            .base_path
+            .iter()
+            .map(String::as_str)
+            .chain(std::iter::once("default"))
+            .collect();
+        let defaults =
+            array_path::get(context.merged, &defaults_path).filter(|d| crate::merge::truthy(d));
         Value::Array(
             items
                 .into_iter()
@@ -60,10 +67,13 @@ impl PresetRule for UseDefaultNames {
                     {
                         let wanted = slug(&item).cloned().unwrap_or(Value::Null);
                         let found = defaults.iter().find(|(_, d)| {
-                            array_path::child(d, &Key::Str("slug".into())).is_some_and(|s| *s == wanted)
+                            array_path::child(d, &Key::Str("slug".into()))
+                                .is_some_and(|s| *s == wanted)
                         });
                         if let Some((_, default)) = found {
-                            let name = array_path::child(default, &Key::Str("name".into())).cloned().unwrap_or(Value::Null);
+                            let name = array_path::child(default, &Key::Str("name".into()))
+                                .cloned()
+                                .unwrap_or(Value::Null);
                             array_path::insert(&mut item, Key::Str("name".into()), name);
                         }
                     }
@@ -90,7 +100,9 @@ impl PresetRule for RemoveDefaultSlugs {
         if slugs.is_empty() {
             return content;
         }
-        let Value::Array(items) = content else { return Value::Array(Vec::new()) };
+        let Value::Array(items) = content else {
+            return Value::Array(Vec::new());
+        };
         Value::Array(
             items
                 .into_iter()
@@ -119,12 +131,24 @@ pub fn default_slugs(data: &Value, node: &[String]) -> Value {
             .chain(metadata.path.iter().map(String::as_str))
             .chain(std::iter::once("default"))
             .collect();
-        let Some(preset) = array_path::get(data, &path).filter(|p| !matches!(p, Value::Null)) else { continue };
+        let Some(preset) = array_path::get(data, &path).filter(|p| !matches!(p, Value::Null))
+        else {
+            continue;
+        };
         let found: Vec<Value> = match preset {
-            Value::Array(items) => items.iter().filter_map(|(_, item)| slug(item).cloned()).collect(),
+            Value::Array(items) => items
+                .iter()
+                .filter_map(|(_, item)| slug(item).cloned())
+                .collect(),
             _ => Vec::new(),
         };
-        let found = Value::Array(found.into_iter().enumerate().map(|(i, v)| (Key::Int(i as i64), v)).collect());
+        let found = Value::Array(
+            found
+                .into_iter()
+                .enumerate()
+                .map(|(i, v)| (Key::Int(i as i64), v))
+                .collect(),
+        );
         let target: Vec<&str> = metadata.path.iter().map(String::as_str).collect();
         array_path::set(&mut slugs, &target, found);
     }

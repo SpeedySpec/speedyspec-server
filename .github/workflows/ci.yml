@@ -41,7 +41,7 @@ jobs:
           --exclude speedyspec-router-php --exclude speedyspec-wp-rewrite-php
           --exclude speedyspec-wp-kses-php --exclude speedyspec-wp-text-php --exclude speedyspec-wp-kses --exclude speedyspec-wp-kses-lexical
           --exclude speedyspec-wp-kses-testkit --exclude speedyspec-wp-html-syntax
-          --exclude speedyspec-wp-crypto-sodium --exclude speedyspec-wp-crypto-php
+          --exclude speedyspec-wp-crypto-sodium --exclude speedyspec-wp-crypto-php --exclude speedyspec-wp-password-php
           --exclude speedyspec-pcre2-link-test
       - run: test -z "$(cargo tree -i aws-lc-sys --target all 2>/dev/null)"
 
@@ -96,6 +96,44 @@ jobs:
         run: ${{ matrix.run }} cargo test -p speedyspec-php --test extensions
       - name: Test with php
         run: ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks
+
+  # The tests that need MySQL (they print "skip" elsewhere). Linux x86_64 only: GitHub's service containers run
+  # there, and scripts/linux-php.sh joins the host network when SPEEDYSPEC_TEST_MYSQL_URL is set.
+  mysql:
+    name: mysql (linux-x86_64)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: speedyspec_test
+        ports:
+          - 33306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -ppassword"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      SPEEDYSPEC_LINUX_PLATFORM: linux/amd64
+      SPEEDYSPEC_TEST_MYSQL_URL: mysql://root:password@127.0.0.1:33306/speedyspec_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache static PHP
+        uses: actions/cache@v4
+        with:
+          path: |
+            .php-build-linux/spc
+            .php-build-linux/buildroot
+          key: php-linux-x86_64-${{ hashFiles('crates/speedyspec-php/php-version', 'scripts/build-php.sh') }}
+      - name: Build static PHP
+        env:
+          SPEEDYSPEC_ALLOW_HOST_INSTALL: "1"
+          GITHUB_TOKEN: ${{ github.token }}
+        run: scripts/linux-php.sh scripts/build-php.sh
+      - name: Test with MySQL
+        run: >-
+          scripts/linux-php.sh cargo test
+          -p speedyspec-php-runtime --test database
 
   # The crates published to crates.io (scripts/publish-crates.txt): the list is consistent with the workspace, and
   # every one of them packages. No static PHP: packaging does not build them (the php job does).

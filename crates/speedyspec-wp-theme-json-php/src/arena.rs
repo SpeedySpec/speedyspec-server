@@ -35,13 +35,20 @@ impl HandleArena {
 
     /// The document behind a handle.
     pub fn get(handle: i64) -> Option<Rc<ThemeJson>> {
-        SLOTS.with(|s| usize::try_from(handle).ok().and_then(|i| s.borrow().get(i).cloned().flatten()))
+        SLOTS.with(|s| {
+            usize::try_from(handle)
+                .ok()
+                .and_then(|i| s.borrow().get(i).cloned().flatten())
+        })
     }
 
     /// Replaces the document behind a handle.
     pub fn replace(handle: i64, doc: ThemeJson) {
         SLOTS.with(|s| {
-            if let Some(slot) = usize::try_from(handle).ok().and_then(|i| s.borrow_mut().get_mut(i).map(|_| i)) {
+            if let Some(slot) = usize::try_from(handle)
+                .ok()
+                .and_then(|i| s.borrow_mut().get_mut(i).map(|_| i))
+            {
                 s.borrow_mut()[slot] = Some(Rc::new(doc));
             }
         });
@@ -57,7 +64,9 @@ impl HandleArena {
 
     /// Frees a handle.
     pub fn release(handle: i64) {
-        let Ok(i) = usize::try_from(handle) else { return };
+        let Ok(i) = usize::try_from(handle) else {
+            return;
+        };
         let freed = SLOTS.with(|s| s.borrow_mut().get_mut(i).and_then(Option::take).is_some());
         if freed {
             FREE.with(|f| f.borrow_mut().push(i));
