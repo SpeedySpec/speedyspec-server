@@ -11,3 +11,6 @@ MACOSX_DEPLOYMENT_TARGET = "12.0"
 # pcre2-sys (speedyspec-wp-text) builds its bundled PCRE2 instead of linking a system libpcre2, so every machine
 # runs the same PCRE2. The static PHP's own copy has php_-prefixed symbols, so the two never clash.
 PCRE2_SYS_STATIC = "1"
+# libsodium-sys-stable (speedyspec-wp-crypto-sodium) links the static PHP's own libsodium.a, so Rust and ext-sodium
+# share one libsodium at the version scripts/build-php.sh pins, and the crate never builds or downloads a copy.
+SODIUM_LIB_DIR = { value = ".php-build/buildroot/lib", relative = true }
