@@ -3,10 +3,15 @@
 //! - [`DefaultRestMapping`] routes operations by resource and action (Strategy); [`RestTransport`] is the `rest`
 //!   transport over it.
 //! - [`RouteTable`] holds every REST route and matches requests as WordPress does.
+//! - [`decode`] reads HTTP requests as REST requests ([`query`] with PHP's `parse_str` rules); [`coerce`] turns wire
+//!   strings into the kinds their schema expects.
 //! - [`NoRestHooks`] is the hooks port's do-nothing default.
 
+pub mod coerce;
+pub mod decode;
 mod hooks;
 mod mapping;
+pub mod query;
 mod routes;
 mod transport;
 
