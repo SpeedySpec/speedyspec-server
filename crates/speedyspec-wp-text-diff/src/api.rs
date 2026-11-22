@@ -9,7 +9,7 @@ use speedyspec_wp_text_diff_contracts::{
 use crate::horde::HordeSequenceDiffer;
 use crate::table::{RenderError, TableRenderer};
 
-/// A [`WhitespaceNormalizer`] for text that is normalized already (the PHP facade normalizes it in PHP).
+/// A [`WhitespaceNormalizer`] for text that is normalized already.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct AlreadyNormalized;
 
@@ -86,6 +86,10 @@ impl<D: SequenceDiffer, N: WhitespaceNormalizer> TextDiff<D, N> {
     ) -> Result<Option<Vec<u8>>, TextDiffError> {
         let left = self.normalizer.normalize(left);
         let right = self.normalizer.normalize(right);
+        // WordPress's renderer prints nothing for equal texts; this skips diffing them.
+        if left == right {
+            return Ok(None);
+        }
         let left_lines: Vec<&[u8]> = split_lines(&left);
         let right_lines: Vec<&[u8]> = split_lines(&right);
         let ops = self.differ.diff(&left_lines, &right_lines);
