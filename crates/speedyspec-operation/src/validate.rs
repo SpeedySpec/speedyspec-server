@@ -325,7 +325,9 @@ fn format_ok(format: StringFormat, s: &str) -> bool {
 /// - an integral float under `integer` becomes an integer, as WordPress casts after `rest_is_integer`;
 /// - a string under `date-time` becomes a date time (RFC 3339, converted to UTC, or `Y-m-d\TH:i:s`, or
 ///   `Y-m-d H:i:s`); a string that parses as none stays a string, for the validator to report;
-/// - a string under `binary` becomes its bytes;
+/// - a string under `binary` becomes its bytes. This is PHP's model (a PHP string is bytes). A transport whose wire
+///   form of binary is text (JSON's base64, XML-RPC's `base64`) must decode it to `Value::Binary` itself, before
+///   dispatch: an undecoded base64 string would otherwise be taken as the payload;
 /// - an empty list under an object or a type reference becomes an empty map (PHP's `[]` is both).
 pub fn normalize(schema: &Schema, value: &Value, types: &dyn TypeCatalog) -> Value {
     match (&schema.kind, value) {

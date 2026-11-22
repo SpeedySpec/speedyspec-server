@@ -68,6 +68,7 @@ pub struct Site {
     pub registries: Rc<Registries>,
     pub dispatcher: Rc<Dispatcher>,
     problems: RefCell<Vec<RegistrationError>>,
+    php_operations: RefCell<HashSet<String>>,
 }
 
 impl Site {
@@ -78,7 +79,17 @@ impl Site {
             dispatcher: Rc::new(Dispatcher::new(container, registries.clone())),
             registries,
             problems: RefCell::new(Vec::new()),
+            php_operations: RefCell::new(HashSet::new()),
         }
+    }
+
+    /// Whether `name` was registered from PHP (its contracts are PHP value objects or arrays).
+    pub fn is_php_operation(&self, name: &str) -> bool {
+        self.php_operations.borrow().contains(name)
+    }
+
+    pub(crate) fn mark_php_operation(&self, name: &str) {
+        self.php_operations.borrow_mut().insert(name.to_owned());
     }
 
     /// What closing the registries dropped, and why.

@@ -8,11 +8,13 @@ use std::ffi::CStr;
 
 use libsodium_sys as ffi;
 use speedyspec_wp_crypto_contracts::{
-    Base64UrlNoPad, CryptoLibrary, DetachedVerifier, GenericHash, SIGN_BYTES, SIGN_PUBLICKEY_BYTES,
+    Argon2, Argon2Variant, Base64UrlNoPad, CryptoLibrary, DetachedVerifier, GenericHash,
+    RandomBytes, SIGN_BYTES, SIGN_PUBLICKEY_BYTES,
 };
 
-/// libsodium, initialized. Only [`Sodium::init`] makes one, so every call runs after `sodium_init()`.
-#[derive(Debug)]
+/// libsodium, initialized. Only [`Sodium::init`] makes one, so every call runs after `sodium_init()`. A copy is the
+/// same proof, so one initialization serves every area of a worker.
+#[derive(Clone, Copy, Debug)]
 pub struct Sodium(());
 
 impl Sodium {
@@ -114,5 +116,51 @@ impl CryptoLibrary for Sodium {
         unsafe { CStr::from_ptr(ffi::sodium_version_string()) }
             .to_string_lossy()
             .into_owned()
+    }
+}
+
+impl Argon2 for Sodium {
+    fn derive(
+        &self,
+        variant: Argon2Variant,
+        password: &[u8],
+        salt: &[u8; 16],
+        time_cost: u32,
+        memory_kib: u32,
+        out_len: usize,
+    ) -> Result<Vec<u8>, String> {
+        let alg = match variant {
+            Argon2Variant::Argon2i => ffi::crypto_pwhash_ALG_ARGON2I13,
+            Argon2Variant::Argon2id => ffi::crypto_pwhash_ALG_ARGON2ID13,
+        };
+        let mut out = vec![0u8; out_len];
+        // SAFETY: `out` is valid for `out_len` bytes, the password pointer for its length, and the salt is the
+        // 16 bytes (crypto_pwhash_SALTBYTES) libsodium reads.
+        let status = unsafe {
+            ffi::crypto_pwhash(
+                out.as_mut_ptr(),
+                out_len as u64,
+                password.as_ptr().cast(),
+                password.len() as u64,
+                salt.as_ptr(),
+                u64::from(time_cost),
+                memory_kib as usize * 1024,
+                alg as i32,
+            )
+        };
+        if status == 0 {
+            Ok(out)
+        } else {
+            Err(format!(
+                "argon2 can't run with time cost {time_cost} and memory {memory_kib} KiB"
+            ))
+        }
+    }
+}
+
+impl RandomBytes for Sodium {
+    fn fill(&self, out: &mut [u8]) {
+        // SAFETY: `out` is valid for its length.
+        unsafe { ffi::randombytes_buf(out.as_mut_ptr().cast(), out.len()) }
     }
 }

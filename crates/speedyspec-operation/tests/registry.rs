@@ -156,10 +156,6 @@ fn restrict_limits_an_open_registry() {
     let spec = r.get_operation("core/get-user").unwrap();
     assert!(spec.exposed_on("rest"));
     assert!(!spec.exposed_on("xmlrpc"));
-    assert!(matches!(
-        r.restrict("a/nope", &["rest"]),
-        Err(RegistrationError::UnknownOperation { .. })
-    ));
 }
 
 #[test]
@@ -217,4 +213,79 @@ fn a_restriction_survives_identical_re_registration_after_close() {
             .unwrap()
             .exposed_on("xmlrpc")
     );
+}
+
+fn ghost_op() -> speedyspec_operation_contracts::OperationSpec {
+    speedyspec_operation::Operation::query("a/bad")
+        .input::<GetPost>(S::object([("id", S::integer().required())]))
+        .output::<Post>(Type::reference("ghost"))
+        .public()
+        .build()
+        .unwrap()
+}
+
+#[test]
+fn re_registering_a_dropped_definition_after_close_is_a_no_op() {
+    let r = Registries::new();
+    r.register_operation(ghost_op()).unwrap();
+    assert_eq!(r.close_lenient().len(), 1);
+    // The same plugin registers it again on every later request.
+    assert_eq!(r.register_operation(ghost_op()), Ok(()));
+    assert!(r.get_operation("a/bad").is_none());
+    let broken = Type::resource("broken")
+        .relation("x", "a/ghost", [("id", "id")])
+        .build();
+    let r = Registries::new();
+    r.register_type(broken.clone()).unwrap();
+    assert!(!r.close_lenient().is_empty());
+    assert_eq!(r.register_type(broken), Ok(()));
+}
+
+#[test]
+fn a_restriction_over_explicit_transports_survives_re_registration() {
+    let r = Registries::new();
+    r.register_type(user_type()).unwrap();
+    r.register_type(post_type()).unwrap();
+    r.register_operation(get_user().transports(&["rest", "xmlrpc"]).build().unwrap())
+        .unwrap();
+    r.register_operation(get_post().build().unwrap()).unwrap();
+    r.restrict("core/get-user", &["rest"]).unwrap();
+    r.close().unwrap();
+    assert_eq!(
+        r.register_operation(get_user().transports(&["rest", "xmlrpc"]).build().unwrap()),
+        Ok(())
+    );
+    assert!(
+        !r.get_operation("core/get-user")
+            .unwrap()
+            .exposed_on("xmlrpc")
+    );
+}
+
+#[test]
+fn a_restriction_before_its_operation_applies_when_it_registers() {
+    let r = Registries::new();
+    r.register_type(user_type()).unwrap();
+    r.register_type(post_type()).unwrap();
+    r.restrict("core/get-user", &["rest"]).unwrap();
+    r.register_operation(get_user().build().unwrap()).unwrap();
+    r.register_operation(get_post().build().unwrap()).unwrap();
+    r.close().unwrap();
+    assert!(
+        !r.get_operation("core/get-user")
+            .unwrap()
+            .exposed_on("xmlrpc")
+    );
+}
+
+#[test]
+fn a_restriction_whose_operation_never_registers_is_reported_at_close() {
+    let r = Registries::new();
+    r.restrict("a/nope", &["rest"]).unwrap();
+    let errors = r.close_lenient();
+    assert!(
+        matches!(&errors[..], [RegistrationError::UnknownOperation { operation, .. }] if operation == "a/nope"),
+        "{errors:?}"
+    );
+    assert!(r.is_closed());
 }

@@ -263,6 +263,26 @@
       "component": "speedyspec-wp-utf8",
       "skip-github-release": true,
       "skip-changelog": true
+    },
+    "crates/speedyspec-wp-password": {
+      "component": "speedyspec-wp-password",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-password-bcrypt": {
+      "component": "speedyspec-wp-password-bcrypt",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-password-contracts": {
+      "component": "speedyspec-wp-password-contracts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-password-php": {
+      "component": "speedyspec-wp-password-php",
+      "skip-github-release": true,
+      "skip-changelog": true
     }
   }
 }

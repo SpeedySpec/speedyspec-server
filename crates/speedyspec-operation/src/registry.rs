@@ -22,6 +22,8 @@ pub struct Registries {
     operations: RefCell<BTreeMap<String, Rc<OperationSpec>>>,
     /// Restrictions applied with [`Registries::restrict`], applied again to identical re-registrations.
     restrictions: RefCell<BTreeMap<String, BTreeSet<String>>>,
+    /// What [`Registries::close_lenient`] dropped: re-registering it after close is a no-op, already reported.
+    dropped: RefCell<BTreeSet<String>>,
     closed: Cell<bool>,
 }
 
@@ -32,6 +34,9 @@ impl Registries {
 
     pub fn register_type(&self, spec: TypeSpec) -> Result<(), RegistrationError> {
         if self.closed.get() {
+            if self.dropped.borrow().contains(&spec.name) {
+                return Ok(());
+            }
             let same = self
                 .types
                 .borrow()
@@ -57,12 +62,13 @@ impl Registries {
 
     pub fn register_operation(&self, mut spec: OperationSpec) -> Result<(), RegistrationError> {
         let name = spec.name.as_str().to_owned();
-        if spec.transports.is_none()
-            && let Some(restriction) = self.restrictions.borrow().get(&name)
-        {
+        if let Some(restriction) = self.restrictions.borrow().get(&name) {
             spec.transports = Some(restriction.clone());
         }
         if self.closed.get() {
+            if self.dropped.borrow().contains(&name) {
+                return Ok(());
+            }
             let same =
                 self.operations.borrow().get(&name).is_some_and(|existing| {
                     operation_document(existing) == operation_document(&spec)
@@ -82,33 +88,37 @@ impl Registries {
         Ok(())
     }
 
-    /// Limits the operation `name` to the named transports. After closing, the same restriction is a no-op and any
-    /// other is refused.
+    /// Limits the operation `name` to the named transports, replacing any restriction it declared itself. Order does
+    /// not matter: a restriction of an operation not registered yet applies when it registers, and closing reports one
+    /// whose operation never does. After closing, the same restriction is a no-op and any other is refused.
     pub fn restrict(&self, name: &str, transports: &[&str]) -> Result<(), RegistrationError> {
-        let Some(existing) = self.operations.borrow().get(name).cloned() else {
-            return Err(RegistrationError::UnknownOperation {
-                at: format!("{name}.transports"),
-                operation: name.to_owned(),
-            });
-        };
         let wanted: BTreeSet<String> = transports.iter().map(|t| (*t).to_owned()).collect();
+        let existing = self.operations.borrow().get(name).cloned();
         if self.closed.get() {
-            return if existing.transports.as_ref() == Some(&wanted) {
-                Ok(())
-            } else {
-                Err(RegistrationError::Closed {
+            if self.dropped.borrow().contains(name) {
+                return Ok(());
+            }
+            return match existing {
+                None => Err(RegistrationError::UnknownOperation {
+                    at: format!("{name}.transports"),
+                    operation: name.to_owned(),
+                }),
+                Some(spec) if spec.transports.as_ref() == Some(&wanted) => Ok(()),
+                Some(_) => Err(RegistrationError::Closed {
                     name: name.to_owned(),
-                })
+                }),
             };
         }
-        let mut restricted = (*existing).clone();
-        restricted.transports = Some(wanted.clone());
+        if let Some(existing) = existing {
+            let mut restricted = (*existing).clone();
+            restricted.transports = Some(wanted.clone());
+            self.operations
+                .borrow_mut()
+                .insert(name.to_owned(), Rc::new(restricted));
+        }
         self.restrictions
             .borrow_mut()
             .insert(name.to_owned(), wanted);
-        self.operations
-            .borrow_mut()
-            .insert(name.to_owned(), Rc::new(restricted));
         Ok(())
     }
 
@@ -135,8 +145,13 @@ impl Registries {
             }
             let mut dropped = false;
             for owner in errors.iter().filter_map(owner_of) {
-                dropped |= self.operations.borrow_mut().remove(&owner).is_some();
-                dropped |= self.types.borrow_mut().remove(&owner).is_some();
+                let mut removed = self.operations.borrow_mut().remove(&owner).is_some();
+                removed |= self.types.borrow_mut().remove(&owner).is_some();
+                removed |= self.restrictions.borrow_mut().remove(&owner).is_some();
+                if removed {
+                    self.dropped.borrow_mut().insert(owner);
+                    dropped = true;
+                }
             }
             seen.extend(errors);
             if !dropped {
@@ -151,6 +166,14 @@ impl Registries {
         let mut errors = Vec::new();
         let types = self.types.borrow();
         let operations = self.operations.borrow();
+        for name in self.restrictions.borrow().keys() {
+            if !operations.contains_key(name) {
+                errors.push(RegistrationError::UnknownOperation {
+                    at: format!("{name}.transports"),
+                    operation: name.clone(),
+                });
+            }
+        }
         for spec in types.values() {
             for (field, property) in &spec.fields {
                 check_refs(

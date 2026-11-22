@@ -282,3 +282,76 @@ fn output_is_normalized_before_validation() {
     };
     assert_eq!(dt.to_string(), "2026-11-22 10:00:00");
 }
+
+struct Neutral {
+    ran: Rc<RefCell<bool>>,
+    output: Value,
+}
+
+impl OperationHandler for Neutral {
+    fn handle(
+        &self,
+        _: Box<dyn std::any::Any>,
+        _: &Caller,
+    ) -> Result<Box<dyn std::any::Any>, OperationError> {
+        panic!("a neutral handler is called through handle_neutral");
+    }
+
+    fn neutral(&self) -> bool {
+        true
+    }
+
+    fn handle_neutral(&self, input: &Value, _: &Caller) -> Result<Value, OperationError> {
+        *self.ran.borrow_mut() = true;
+        match (&self.output, input.get("id")) {
+            (Value::Null, Some(Value::Int(id))) => Ok(Value::map([(
+                "title",
+                Value::from(format!("n {id}").as_str()),
+            )])),
+            (output, _) => Ok(output.clone()),
+        }
+    }
+}
+
+fn neutral(output: Value) -> (Rc<dyn OperationHandler>, Rc<RefCell<bool>>) {
+    let ran = Rc::new(RefCell::new(false));
+    (
+        Rc::new(Neutral {
+            ran: ran.clone(),
+            output,
+        }),
+        ran,
+    )
+}
+
+#[test]
+fn neutral_handler_takes_and_returns_values() {
+    let (h, ran) = neutral(Value::Null);
+    let out = dispatcher(h)
+        .call("core/get-post", input(7), &caller(Some(1)))
+        .unwrap();
+    assert_eq!(out, Value::map([("title", Value::from("n 7"))]));
+    assert!(*ran.borrow());
+}
+
+#[test]
+fn neutral_output_is_still_validated() {
+    let (h, _) = neutral(Value::map([("title", Value::Int(5))]));
+    let e = dispatcher(h)
+        .call("core/get-post", input(7), &caller(Some(1)))
+        .unwrap_err();
+    assert_eq!(
+        (e.code.as_str(), e.category),
+        ("invalid_output", Category::Internal)
+    );
+}
+
+#[test]
+fn neutral_handler_still_passes_permission() {
+    let (h, ran) = neutral(Value::Null);
+    let e = dispatcher(h)
+        .call("core/get-post", input(7), &caller(Some(2)))
+        .unwrap_err();
+    assert_eq!(e.category, Category::PermissionDenied);
+    assert!(!*ran.borrow());
+}

@@ -4,11 +4,28 @@ use std::any::Any;
 use std::rc::Rc;
 
 use speedyspec_container::{Container, ContainerError, Params};
-use speedyspec_operation_contracts::{Caller, Category, OperationError};
+use speedyspec_operation_contracts::{Caller, Category, OperationError, Value};
 
 /// Runs one operation: takes its input value object, returns its output value object.
 pub trait OperationHandler {
     fn handle(&self, input: Box<dyn Any>, caller: &Caller) -> Result<Box<dyn Any>, OperationError>;
+
+    /// Whether this handler takes and returns neutral values ([`OperationHandler::handle_neutral`]) instead of value
+    /// objects. A handler that answers for contracts it does not know, such as a PHP handler replacing a Rust one, is
+    /// neutral. Its input is still validated, its permission still checked and its output still validated.
+    fn neutral(&self) -> bool {
+        false
+    }
+
+    /// Runs the operation over the (normalized, validated) neutral input. Called only when [`neutral`](Self::neutral)
+    /// is true.
+    fn handle_neutral(&self, _input: &Value, _caller: &Caller) -> Result<Value, OperationError> {
+        Err(OperationError::new(
+            "handler_not_neutral",
+            Category::Internal,
+            "this handler takes value objects, not neutral values",
+        ))
+    }
 }
 
 /// The container key of an operation's handler.

@@ -73,6 +73,7 @@ fn next_request(b: &Booted, globals: &str) {
     load(&b.php, HOOKS);
     load(&b.php, FIXTURE);
     load(&b.php, globals);
+    load(&b.php, READY);
 }
 
 fn title(b: &Booted, name: &str) -> String {
@@ -97,8 +98,21 @@ fn main() {
         Ok(to_php(&Value::map([("title", Value::from("rust"))])))
     });
     bind_handler(&b.container, "acme/b", move |_, _| Ok(rust_b.clone()));
+
+    // not_ready_before_the_plugin_api_or_init
+    let no_api = b.area.site().err().map(|e| e.code);
     load(&b.php, HOOKS);
     load(&b.php, FIXTURE);
+    let before_init = title(&b, "acme/a");
+    check(
+        "not_ready_before_the_plugin_api_or_init",
+        no_api.as_deref() == Some("registry_not_ready")
+            && before_init == "error:registry_not_ready"
+            && inits(&b) == 0
+            && b.area.sites().site_ids().is_empty(),
+        (&no_api, &before_init, inits(&b), b.area.sites().site_ids()),
+    );
+    load(&b.php, READY);
 
     // init_is_lazy
     let before = inits(&b);
@@ -164,6 +178,14 @@ fn main() {
             && inits(&b) == 1,
         (&a_after, &c, &problems),
     );
+    next_request(&b, "$GLOBALS['broken'] = true;");
+    let a_again = title(&b, "acme/a");
+    let c_again = title(&b, "acme/c");
+    check(
+        "a_dropped_definition_does_not_break_later_requests",
+        a_again == "one" && c_again == "error:operation_not_found",
+        (&a_again, &c_again),
+    );
     check(
         "fingerprint_change_rebuilds",
         !Rc::ptr_eq(&registries, &rebuilt.registries)
@@ -180,10 +202,19 @@ fn main() {
     let healthy = b.area.site().unwrap();
     check(
         "fatal_mid_registration_rebuilds",
-        thrown == "threw:init broke"
+        thrown == "error:operations_init_failed"
             && recovered == "one"
             && healthy.registries.is_closed()
             && healthy.problems().is_empty(),
         (&thrown, &recovered, healthy.problems()),
+    );
+
+    // init_failure_on_closed_registries_still_serves
+    next_request(&b, "$GLOBALS['throw'] = true;");
+    let served = title(&b, "acme/a");
+    check(
+        "init_failure_on_closed_registries_still_serves",
+        served == "one",
+        &served,
     );
 }

@@ -7,7 +7,7 @@ use serde_json::Value as Json;
 use speedyspec_container::Container;
 use speedyspec_container::Lifetime;
 use speedyspec_operation_contracts::{
-    Caller, Category, INTERNAL_TRANSPORT, Identity, OperationError,
+    Caller, Category, INTERNAL_TRANSPORT, Identity, OperationCatalog, OperationError,
 };
 use speedyspec_operation_dispatch::{OperationHandler, bind_handler};
 use speedyspec_php::NativeArea;
@@ -41,14 +41,15 @@ const FACADE: [(&str, &str); 4] = [
 ];
 const NATIVE: &str = "SpeedySpec\\Operation\\Native\\";
 pub(crate) const REGISTRATION_EXCEPTION: &str = "SpeedySpec\\Operation\\RegistrationException";
-pub(crate) const OPERATION_EXCEPTION: &str = "SpeedySpec\\Operation\\OperationException";
 /// The action fired, once per request, the first time the request needs operations.
 pub const INIT_HOOK: &str = "wp_operations_init";
 
-/// Why a site could not be made ready: the error, and the PHP exception `wp_operations_init` threw, if any.
+/// Why a site could not be made ready.
 pub(crate) struct InitFailure {
+    /// What callers see: generic, safe to pass to a client.
     pub error: OperationError,
-    pub exception: Option<PhpValue>,
+    /// What went wrong, for logs only.
+    pub detail: String,
 }
 
 pub(crate) struct State {
@@ -86,37 +87,73 @@ impl State {
 
     /// The site this request serves, ready: the first time in a request, `wp_operations_init` runs (filling and
     /// closing the registries the first time, re-binding this request's callables after that).
+    ///
+    /// Nothing initializes before WordPress has loaded its plugins (`do_action` exists and `init` has fired), so a
+    /// call made too early cannot close a registry that later plugins never got to fill. Once a site's registries are
+    /// closed, a failing re-run is logged and the site keeps serving with the callables bound so far.
     pub fn site(&self) -> Result<Rc<Site>, InitFailure> {
+        if !ready() {
+            return Err(InitFailure {
+                error: OperationError::new(
+                    "registry_not_ready",
+                    Category::Unavailable,
+                    format!("operations are not available before WordPress's {READY_HOOK} action"),
+                ),
+                detail: String::new(),
+            });
+        }
         let id = self.current_id();
         let site = self.sites.registering(&id);
         if self.sites.mark_initialized(&id) {
-            fire_init()?;
+            let was_closed = site.registries.is_closed();
+            if let Err(failure) = fire_init() {
+                if !was_closed {
+                    return Err(failure);
+                }
+                eprintln!(
+                    "speedyspec_wordpress: {INIT_HOOK} failed again; serving with what it registered: {}",
+                    failure.detail
+                );
+            }
             site.close();
         }
         Ok(site)
     }
 }
 
+/// The action after which WordPress has loaded its plugins.
+pub const READY_HOOK: &str = "init";
+
+fn php_bool(function: &str, args: &[PhpValue]) -> bool {
+    speedyspec_php::call(&PhpValue::Str(function.into()), args)
+        .is_ok_and(|v| crate::identity::truthy(&v))
+}
+
+/// Whether WordPress's plugin API is loaded and its plugins are: `do_action` exists, and `init` has fired (when
+/// `did_action` exists to say so).
+fn ready() -> bool {
+    let exists = |name: &str| php_bool("function_exists", &[PhpValue::Str(name.into())]);
+    exists("do_action")
+        && (!exists("did_action") || php_bool("did_action", &[PhpValue::Str(READY_HOOK.into())]))
+}
+
 fn fire_init() -> Result<(), InitFailure> {
-    let exists = speedyspec_php::call(
-        &PhpValue::Str("function_exists".into()),
-        &[PhpValue::Str("do_action".into())],
-    );
-    if !matches!(exists, Ok(PhpValue::Bool(true))) {
-        return Ok(());
-    }
     speedyspec_php::call_catching(
         &PhpValue::Str("do_action".into()),
         &[PhpValue::Str(INIT_HOOK.into())],
     )
     .map(drop)
-    .map_err(|failure| InitFailure {
-        error: OperationError::new(
-            "operations_init_failed",
-            Category::Internal,
-            format!("{INIT_HOOK} failed: {}", failure.error),
-        ),
-        exception: failure.exception,
+    .map_err(|failure| {
+        let detail = failure.error.to_string();
+        eprintln!("speedyspec_wordpress: {INIT_HOOK} failed: {detail}");
+        InitFailure {
+            error: OperationError::new(
+                "operations_init_failed",
+                Category::Internal,
+                "The operations could not be initialized.",
+            ),
+            detail,
+        }
     })
 }
 
@@ -144,7 +181,8 @@ impl OperationArea {
         OperationArea { state }
     }
 
-    /// The site this request serves, with its registries filled and closed (see [`State::site`]).
+    /// The site this request serves, with its registries filled and closed (see [`State::site`]). The error is generic
+    /// (`registry_not_ready` or `operations_init_failed`) and safe to pass to a client; details go to the log.
     pub fn site(&self) -> Result<Rc<Site>, OperationError> {
         self.state.site().map_err(|failure| failure.error)
     }
@@ -185,6 +223,7 @@ fn native_register_operation(args: &[PhpValue]) -> Result<PhpValue, NativeError>
     site.registries
         .register_operation(spec)
         .map_err(|err| registration_failed(&name, &[err.to_string()]))?;
+    site.mark_php_operation(&name);
     if let Some(callable) = callable {
         permission::bind(&name, callable);
     }
@@ -237,12 +276,9 @@ fn native_document(_args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     Ok(json_to_php(&site.registries.document()))
 }
 
-/// A failed `wp_operations_init`, for PHP: its own exception rethrown, or a registration exception.
+/// A failed `wp_operations_init`, for PHP: an `OperationException` with the generic error (the details are logged).
 pub(crate) fn init_error(failure: InitFailure) -> NativeError {
-    match failure.exception {
-        Some(exception) => NativeError::Rethrow(exception),
-        None => NativeError::throw(REGISTRATION_EXCEPTION, failure.error.message),
-    }
+    operation_error(failure.error)
 }
 
 fn json_to_php(json: &Json) -> PhpValue {
@@ -279,11 +315,20 @@ fn native_can(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
         return Ok(PhpValue::Bool(false));
     };
     let extra = match args.get(2) {
-        Some(PhpValue::Array(items)) => items
+        Some(PhpValue::Array(items)) => match items
             .iter()
             .map(|(_, v)| from_php(v))
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| NativeError::throw(OPERATION_EXCEPTION, e.message))?,
+        {
+            Ok(extra) => extra,
+            Err(_) => {
+                // The Identity port takes plain values; an object (a WP_Post, say) cannot cross it. Deny, loudly.
+                eprintln!(
+                    "speedyspec_wordpress: Caller::can('{capability}') was given an object; pass IDs instead. Denied."
+                );
+                return Ok(PhpValue::Bool(false));
+            }
+        },
         _ => Vec::new(),
     };
     Ok(PhpValue::Bool(state.identity.can(user, capability, &extra)))
@@ -335,10 +380,11 @@ fn native_bind_handler(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
 fn native_call(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     let state = state()?;
     let Some(PhpValue::Str(name)) = args.first() else {
-        return Err(NativeError::throw(
-            OPERATION_EXCEPTION,
+        return Err(operation_error(OperationError::new(
+            "invalid_operation_name",
+            Category::InvalidArgument,
             "the operation name must be a string",
-        ));
+        )));
     };
     let user = match args.get(2) {
         Some(PhpValue::Int(u)) if *u > 0 => Some(*u as u64),
@@ -346,6 +392,12 @@ fn native_call(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     };
     let site = state.site().map_err(init_error)?;
     let input = from_php(args.get(1).unwrap_or(&PhpValue::Null)).map_err(operation_error)?;
+    let input = match site.registries.get_operation(name) {
+        Some(spec) => {
+            crate::prune::absent_nulls(&spec.input.schema, &input, site.registries.as_ref())
+        }
+        None => input,
+    };
     let caller = Caller::new(user, INTERNAL_TRANSPORT, state.identity.clone());
     site.dispatcher
         .call(name, input, &caller)
@@ -366,8 +418,10 @@ fn operation_error(error: OperationError) -> NativeError {
     );
     match made {
         Ok(exception @ PhpValue::Opaque(_)) => NativeError::Rethrow(exception),
+        // The factory itself failed (the facade is missing?): a plain exception, never a half-built
+        // OperationException, whose readonly fields would be unset.
         _ => NativeError::throw(
-            OPERATION_EXCEPTION,
+            "RuntimeException",
             format!("{}: {}", error.code, error.message),
         ),
     }

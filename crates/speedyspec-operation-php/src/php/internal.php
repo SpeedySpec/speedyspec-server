@@ -105,6 +105,9 @@ final class Mapper
         if ( is_array( $value ) ) {
             return array_map( [ self::class, 'extract' ], $value );
         }
+        if ( $value instanceof \SpeedySpec\Operation\Proxy ) {
+            return self::extract( $value->toArray() );
+        }
         if ( $value instanceof \DateTimeInterface ) {
             return \DateTimeImmutable::createFromInterface( $value )
                 ->setTimezone( new \DateTimeZone( 'UTC' ) )
@@ -149,6 +152,11 @@ final class Callers
     public static function make( ?int $user, string $transport, ?array $requestedFields ): \SpeedySpec\Operation\Caller
     {
         return new \SpeedySpec\Operation\Caller( $user, $transport, $requestedFields );
+    }
+
+    public static function proxy( array $values ): \SpeedySpec\Operation\Proxy
+    {
+        return new \SpeedySpec\Operation\Proxy( $values );
     }
 
     public static function exception( string $code, string $category, string $message, mixed $details ): \SpeedySpec\Operation\OperationException
