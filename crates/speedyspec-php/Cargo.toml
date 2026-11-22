@@ -19,6 +19,7 @@ speedyspec-hooks = { path = "../speedyspec-hooks", version = "0.1.1" }
 speedyspec-hooks = { path = "../speedyspec-hooks" }
 libc = "0.2"
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+tempfile = "3"
 
 [[test]]
 name = "php"
