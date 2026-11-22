@@ -30,3 +30,9 @@ pub use memory::{MemoryBlockMetadata, NoTranslation, RecordedDiagnostics};
 pub mod merge;
 
 pub use merge::merge;
+mod api;
+mod data;
+pub mod messages;
+
+pub use api::ThemeJsonApi;
+pub use messages::register_theme_json_handlers;
