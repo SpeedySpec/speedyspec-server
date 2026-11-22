@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc d4376d6e2c10f3f1d33c246ee13d849a8c453cc8e50eef32c446d5d3199c0452 # shrinks to doc = Array([(Str("version"), Int(3)), (Str("settings"), Array([(Str("appearanceTools"), Array([(Str("@"), Int(-1)), (Str("@"), Null)]))]))])
