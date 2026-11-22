@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-transport-hooks-wp"
-version = "0.1.0"
+version = "0.1.1"
 publish = false
 description = "Transport hooks over WordPress's Hook API: neutral values to and from hook values, filters and actions through speedyspec-wp-hooks."
 edition.workspace = true

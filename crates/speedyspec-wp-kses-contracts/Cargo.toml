@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-kses-contracts"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "WordPress's kses sanitizer as contracts: the allowlist types and the ports any kses implementation fills."
 edition.workspace = true
