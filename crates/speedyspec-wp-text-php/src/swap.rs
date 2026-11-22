@@ -6,8 +6,9 @@
 //! formatting callbacks runs in Rust from `apply_filters` to its result. Every other callback passes through
 //! unchanged.
 //!
-//! A value that isn't a string, or arguments the body rejects, go to the PHP function instead: that gives PHP's own
-//! coercion, notice or exception, and the body has done no work yet. A failure inside the work comes back with its
+//! A value that isn't a string, or arguments the native itself rejects before any PHP runs, go to the PHP function
+//! instead: that gives PHP's own coercion, notice or exception, and nothing has run yet. An exception PHP threw while
+//! the arguments were read (a `__toString`) is passed on as it is. A failure inside the work comes back with its
 //! payload, so the hooks bridge rethrows the same exception object, or stays silent while PHP unwinds.
 
 use std::collections::HashMap;
@@ -16,6 +17,7 @@ use std::rc::Rc;
 use speedyspec_container::{Container, Resolved};
 use speedyspec_cqrs::{Command, CommandHandler};
 use speedyspec_php::Callable;
+use speedyspec_php::native::NativeError;
 use speedyspec_php_ext::Value;
 use speedyspec_wp_hooks::{AddFilter, Callback, HookCallback, HookError};
 use speedyspec_wp_hooks_php::PhpCallable;
@@ -97,7 +99,15 @@ impl NativeCallbacks for NativeTable {
         let run = move |args: &[Value]| -> Result<Value, CallbackFailure> {
             required(name, args, req, max).map_err(|_| CallbackFailure::Arguments)?;
             f(args).map_err(|e| match e {
-                Fail::Native(_) => CallbackFailure::Arguments,
+                // Raised by the native itself (arity, coercion) before any PHP ran: PHP's own call repeats nothing.
+                Fail::Native(NativeError::Throw { .. }) => CallbackFailure::Arguments,
+                // PHP ran (a `__toString`, an adapter) and threw: that object, not a second run's.
+                Fail::Native(NativeError::Rethrow(exception)) => CallbackFailure::Work(HookError {
+                    message: "an exception was thrown".into(),
+                    payload: Some(Rc::new(exception)),
+                }),
+                // PHP is unwinding (a fatal error, `exit()`); speedyspec-php raises nothing while an exit is pending.
+                Fail::Native(NativeError::Silent) => CallbackFailure::Work(HookError::message("PHP is unwinding")),
                 Fail::Text(e) => CallbackFailure::Work(hook_error(e)),
             })
         };

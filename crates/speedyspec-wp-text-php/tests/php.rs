@@ -196,7 +196,7 @@ fn natives(php: &Php, api: &std::rc::Rc<speedyspec_wp_text::TextApi>) {
     );
     request(php);
     let exited = eval("add_filter('clean_url', function () { exit(); }); esc_url('http://a.b'); return 'kept going';");
-    check("exit_in_callback_unwinds", !matches!(&exited, Ok(Value::Str(s)) if s == "kept going"), &exited);
+    check("exit_in_callback_unwinds", matches!(&exited, Err(PhpError::Exit(_))), &exited);
     request(php);
     yes("next request works after exit", "return esc_html('<') === '&lt;';");
 
@@ -404,9 +404,17 @@ fn swap(php: &Php, hooks: &Rc<speedyspec_wp_hooks::HookApi>) {
         try { apply_filters('swap_n', 'http://a.b'); return false; } catch (RuntimeException $caught) { return $caught === $e; }"#,
     );
     check("inner_exception_is_the_same_object is Rust", is_rust(hooks, "swap_n", "esc_url", 10), ());
+    yes(
+        "a_throwing_to_string_runs_once",
+        r#"$GLOBALS['to_string'] = 0;
+        $o = new class { public function __toString(): string { $GLOBALS['to_string']++; throw $GLOBALS['thrown'][] = new RuntimeException('s'); } };
+        add_filter('swap_r', 'esc_url', 10, 3);
+        try { apply_filters('swap_r', 'http://a.b', null, $o); return 'no throw'; }
+        catch (RuntimeException $e) { return $GLOBALS['to_string'] === 1 && $e === $GLOBALS['thrown'][0]; }"#,
+    );
     request(php);
     let exited = eval("add_filter('clean_url', function () { exit(); }); add_filter('swap_o', 'esc_url'); apply_filters('swap_o', 'http://a.b'); return 'kept going';");
-    check("exit_in_inner_filter_unwinds", !matches!(&exited, Ok(Value::Str(s)) if s == "kept going"), &exited);
+    check("exit_in_inner_filter_unwinds", matches!(&exited, Err(PhpError::Exit(_))), &exited);
     request(php);
     yes("next request works after an exit", "add_filter('swap_p', 'esc_html'); return apply_filters('swap_p', '<') === '&lt;';");
     // review_fixes() bound a fixed ConvertChars handler.
