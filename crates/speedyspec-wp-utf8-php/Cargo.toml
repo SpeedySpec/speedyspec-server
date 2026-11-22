@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-utf8-php"
-version = "0.1.4"
+version = "0.1.5"
 publish = false
 description = "WordPress's UTF-8 functions (utf8.php, compat-utf8.php and compat.php's UTF-8 helpers) as native PHP functions over speedyspec-wp-utf8."
 edition.workspace = true

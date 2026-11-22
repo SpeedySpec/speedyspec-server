@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-password-php"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "WordPress's password functions (wp_hash_password, wp_check_password, wp_password_needs_rehash, wp_generate_password, wp_rand) as native PHP functions over container ports, libsodium and bcrypt."
 edition.workspace = true
