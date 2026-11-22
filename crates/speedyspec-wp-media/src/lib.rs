@@ -6,6 +6,7 @@
 
 pub mod functions;
 pub mod getid3;
+pub mod images;
 pub mod neutral;
 pub mod php;
 mod sniffing;
