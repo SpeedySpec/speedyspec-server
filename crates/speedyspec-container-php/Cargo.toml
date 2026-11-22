@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-container-php"
-version = "0.1.3"
+version = "0.1.2"
 description = "The service container from PHP: SpeedySpec\\Container\\Container, PHP bindings as request-long overrides of Rust ports, and PHP autowiring."
 edition.workspace = true
 rust-version.workspace = true
@@ -10,9 +10,9 @@ repository.workspace = true
 exclude = ["tests/"]
 
 [dependencies]
-speedyspec-container = { path = "../speedyspec-container", version = "0.1.1" }
-speedyspec-php = { path = "../speedyspec-php", version = "0.4.0" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext", version = "0.1.3" }
+speedyspec-container = { path = "../speedyspec-container", version = "0.1" }
+speedyspec-php = { path = "../speedyspec-php", version = "0.3" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext", version = "0.1" }
 
 [dev-dependencies]
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }

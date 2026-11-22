@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-php-ext"
-version = "0.1.3"
+version = "0.1.2"
 description = "The speedyspec_wordpress PHP extension's shared parts: PHP twins of Rust ports, their PHP adapters, value conversion and the boundary counter."
 edition.workspace = true
 rust-version.workspace = true
@@ -10,9 +10,9 @@ repository.workspace = true
 exclude = ["tests/"]
 
 [dependencies]
-speedyspec-hooks = { path = "../speedyspec-hooks", version = "0.1.1" }
-speedyspec-php = { path = "../speedyspec-php", version = "0.4.0" }
-speedyspec-php-port-macros = { path = "../speedyspec-php-port-macros", version = "0.1.1" }
+speedyspec-hooks = { path = "../speedyspec-hooks", version = "0.1" }
+speedyspec-php = { path = "../speedyspec-php", version = "0.3" }
+speedyspec-php-port-macros = { path = "../speedyspec-php-port-macros", version = "0.1" }
 inventory = "0.3"
 
 [dev-dependencies]
