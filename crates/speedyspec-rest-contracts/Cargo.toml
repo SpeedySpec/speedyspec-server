@@ -1,0 +1,12 @@
+[package]
+name = "speedyspec-rest-contracts"
+version = "0.1.0"
+publish = false
+description = "The REST transport's contracts: bindings, the REST request and response, links, and the RestHooks port."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+indexmap = "2"
+speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }

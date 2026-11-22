@@ -37,3 +37,9 @@ handler, then the after-handler hooks (in the transport, on the neutral output).
 
 Ports and Adapters, Strategy (default mapping), Registry (transports), Template Method (the pipeline), Chain of
 Responsibility (stage middleware), Adapter (WordPress hooks).
+
+## Binary values
+
+A codec must hand the dispatcher binary values as `Value::Binary`, decoding its own text form first (base64 in JSON,
+XML-RPC's `base64`). The dispatcher's `normalize` turns any remaining string under a `binary` schema into that
+string's bytes, which is right for PHP strings and wrong for undecoded base64.

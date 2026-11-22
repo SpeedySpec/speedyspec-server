@@ -13,13 +13,18 @@ use speedyspec_operation_php::{OperationArea, SiteKey};
 use speedyspec_php::{BootOptions, NativeArea, Php, PhpError};
 use speedyspec_php_ext::Value as PhpValue;
 
-/// A minimal `add_action`/`do_action`, as WordPress provides them.
+/// A minimal `add_action`/`do_action`/`did_action`, as WordPress provides them.
 pub const HOOKS: &str = r#"
 function add_action( string $hook, callable $callback ): void { $GLOBALS['__actions'][ $hook ][] = $callback; }
 function do_action( string $hook, mixed ...$args ): void {
+    $GLOBALS['__did'][ $hook ] = ( $GLOBALS['__did'][ $hook ] ?? 0 ) + 1;
     foreach ( $GLOBALS['__actions'][ $hook ] ?? [] as $callback ) { $callback( ...$args ); }
 }
+function did_action( string $hook ): int { return $GLOBALS['__did'][ $hook ] ?? 0; }
 "#;
+
+/// WordPress has loaded its plugins: operations may initialize from here on.
+pub const READY: &str = "do_action( 'init' );";
 
 pub fn check(name: &str, ok: bool, detail: impl std::fmt::Debug) {
     if ok {
