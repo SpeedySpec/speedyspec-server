@@ -1,7 +1,15 @@
 //! `ThemeJsonApi`: the one entry point behind `WP_Theme_JSON`, one method per public method (Facade).
 
 use speedyspec_hooks::{Key, Value};
-use speedyspec_wp_theme_json_contracts::Origin;
+use speedyspec_wp_theme_json_contracts::ports::RegisteredBlock;
+use speedyspec_wp_theme_json_contracts::{Origin, ThemeJsonError};
+
+use std::rc::Rc;
+
+use crate::nodes::{NodeOptions, block_nodes};
+use crate::selectors::BlocksMetadataCache;
+use crate::sheet::Sheet;
+use crate::stylesheet::{stylesheet_origins, stylesheet_types};
 use speedyspec_wp_theme_json_contracts::model::ThemeJson;
 
 use crate::array_path::{self, child};
@@ -12,12 +20,16 @@ use crate::{ThemeJsonCodec, ThemeJsonDeps, data, schema_migrate};
 /// `WP_Theme_JSON`'s public methods over the typed model.
 pub struct ThemeJsonApi {
     deps: ThemeJsonDeps,
+    blocks_metadata: BlocksMetadataCache,
 }
 
 impl ThemeJsonApi {
     /// The API over these ports.
     pub fn new(deps: ThemeJsonDeps) -> ThemeJsonApi {
-        ThemeJsonApi { deps }
+        ThemeJsonApi {
+            deps,
+            blocks_metadata: BlocksMetadataCache::default(),
+        }
     }
 
     /// The ports.
@@ -158,5 +170,87 @@ impl ThemeJsonApi {
             sizes,
         );
         *doc = ThemeJsonCodec::decode(&raw);
+    }
+
+    /// The registered blocks' computed metadata (`get_blocks_metadata()`), recomputed when the registries change.
+    pub fn blocks_metadata(&self) -> Rc<Value> {
+        self.blocks_metadata.get(&*self.deps.blocks)
+    }
+
+    fn with_sheet<T>(&self, doc: &ThemeJson, f: impl FnOnce(&Sheet<'_>) -> T) -> T {
+        let raw = ThemeJsonCodec::encode(doc);
+        let sheet = Sheet::new(&raw, &self.deps, self.blocks_metadata());
+        f(&sheet)
+    }
+
+    /// `get_stylesheet( $types, $origins, $options )`.
+    pub fn get_stylesheet(
+        &self,
+        doc: &ThemeJson,
+        types: &Value,
+        origins: &Value,
+        options: &Value,
+    ) -> Result<Vec<u8>, ThemeJsonError> {
+        self.with_sheet(doc, |sheet| {
+            let types = stylesheet_types(types, sheet);
+            sheet.stylesheet(&types, &stylesheet_origins(origins), options)
+        })
+    }
+
+    /// `get_styles_for_block( $block_metadata )`.
+    pub fn get_styles_for_block(&self, doc: &ThemeJson, metadata: &Value) -> Vec<u8> {
+        self.with_sheet(doc, |sheet| sheet.styles_for_block(metadata))
+    }
+
+    /// `get_styles_block_nodes()`.
+    pub fn get_styles_block_nodes(&self, doc: &ThemeJson) -> Value {
+        let raw = ThemeJsonCodec::encode(doc);
+        let nodes = block_nodes(&raw, &self.blocks_metadata(), NodeOptions::default());
+        Value::Array(
+            nodes
+                .into_iter()
+                .enumerate()
+                .map(|(i, n)| (Key::Int(i as i64), n))
+                .collect(),
+        )
+    }
+
+    /// `get_root_layout_rules( $selector, $block_metadata, $options )`.
+    pub fn get_root_layout_rules(
+        &self,
+        doc: &ThemeJson,
+        metadata: &Value,
+        options: &Value,
+    ) -> Vec<u8> {
+        let base_layout_styles =
+            array_path::get(options, &["base_layout_styles"]).is_some_and(crate::merge::truthy);
+        self.with_sheet(doc, |sheet| {
+            sheet.root_layout_rules(metadata, base_layout_styles)
+        })
+    }
+
+    /// `get_custom_css()` (deprecated in 6.7).
+    pub fn get_custom_css(&self, doc: &ThemeJson) -> Vec<u8> {
+        self.with_sheet(doc, |sheet| sheet.custom_css())
+    }
+
+    /// `WP_Theme_JSON::scope_selector( $scope, $selector )`: `None` for WordPress's `null` selector.
+    pub fn scope_selector(&self, scope: &str, selector: Option<&str>) -> Option<String> {
+        selector.map(|s| crate::selectors::scope_selector(scope, s))
+    }
+
+    /// `WP_Theme_JSON::process_blocks_custom_css( $css, $selector )`.
+    pub fn process_blocks_custom_css(&self, css: &str, selector: &str) -> String {
+        crate::stylesheet::process_blocks_custom_css(css, selector)
+    }
+
+    /// `wp_get_block_css_selector( $block_type, $target, $fallback )`.
+    pub fn block_css_selector(
+        &self,
+        block: &RegisteredBlock,
+        target: &Value,
+        fallback: bool,
+    ) -> Option<String> {
+        crate::selectors::block_css_selector(block, target, fallback)
     }
 }

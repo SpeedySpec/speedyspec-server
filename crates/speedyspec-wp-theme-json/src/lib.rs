@@ -32,6 +32,7 @@ pub(crate) mod php_value;
 pub mod presets;
 pub mod selectors;
 pub mod sheet;
+pub mod stylesheet;
 
 pub use construct::{construct, construct_value, valid_names};
 pub use deps::ThemeJsonDeps;

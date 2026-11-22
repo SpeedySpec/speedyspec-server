@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+pub mod core_blocks;
+
 use speedyspec_hooks::{Key, Value};
 
 /// A PHP value from JSON: objects become string-keyed arrays in the text's key order (stylesheets follow data
