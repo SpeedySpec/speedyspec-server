@@ -5520,6 +5520,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-crypto"
+version = "0.1.0"
+dependencies = [
+ "sha2 0.10.9",
+ "speedyspec-wp-crypto-contracts",
+]
+
+[[package]]
 name = "speedyspec-wp-crypto-contracts"
 version = "0.1.0"
 

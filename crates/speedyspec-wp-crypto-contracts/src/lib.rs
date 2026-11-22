@@ -30,7 +30,12 @@ pub trait GenericHash {
 /// Ed25519 detached signature verification, as `sodium_crypto_sign_verify_detached()`.
 pub trait DetachedVerifier {
     /// Whether `signature` is `public_key`'s signature of `message`.
-    fn verify(&self, signature: &[u8; SIGN_BYTES], message: &[u8], public_key: &[u8; SIGN_PUBLICKEY_BYTES]) -> bool;
+    fn verify(
+        &self,
+        signature: &[u8; SIGN_BYTES],
+        message: &[u8],
+        public_key: &[u8; SIGN_PUBLICKEY_BYTES],
+    ) -> bool;
 }
 
 /// URL-safe base64 without padding, as `sodium_bin2base64()` with `SODIUM_BASE64_VARIANT_URLSAFE_NO_PADDING`.
