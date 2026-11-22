@@ -90,8 +90,14 @@ pub trait RehashPolicy {
 
 /// `wp_generate_password()`.
 pub trait PasswordGenerator {
-    /// A random password of `length` characters, special characters included when asked.
-    fn generate(&self, length: i64, special: bool, extra: bool) -> Result<Value, PasswordError>;
+    /// A random password of `length` characters, special characters included when asked. The arguments are PHP
+    /// values: WordPress loops while `$i < $length`, tests the flags for truth, and passes all three to its filter.
+    fn generate(
+        &self,
+        length: &Value,
+        special: &Value,
+        extra: &Value,
+    ) -> Result<Value, PasswordError>;
 }
 
 /// `wp_rand()`, after its `null` defaults and `(int)` casts.
@@ -126,9 +132,9 @@ pub trait PasswordFilters {
     fn random_password(
         &self,
         password: Vec<u8>,
-        length: i64,
-        special: bool,
-        extra: bool,
+        length: &Value,
+        special: &Value,
+        extra: &Value,
     ) -> Result<Value, PasswordError>;
 }
 

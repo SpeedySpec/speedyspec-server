@@ -72,7 +72,7 @@ pub struct FakeFilters {
     pub seen_algorithm_for_options: RefCell<Option<Value>>,
     pub check_args: RefCell<Option<(Value, Vec<u8>, Vec<u8>, Value)>>,
     pub rehash_args: RefCell<Option<(bool, Vec<u8>, Value)>>,
-    pub random_args: RefCell<Option<(Vec<u8>, i64, bool, bool)>>,
+    pub random_args: RefCell<Option<(Vec<u8>, Value, Value, Value)>>,
 }
 
 impl FakeFilters {
@@ -139,12 +139,17 @@ impl PasswordFilters for FakeFilters {
     fn random_password(
         &self,
         password: Vec<u8>,
-        length: i64,
-        special: bool,
-        extra: bool,
+        length: &Value,
+        special: &Value,
+        extra: &Value,
     ) -> Result<Value, PasswordError> {
         self.calls.borrow_mut().push("random_password".into());
-        *self.random_args.borrow_mut() = Some((password.clone(), length, special, extra));
+        *self.random_args.borrow_mut() = Some((
+            password.clone(),
+            length.clone(),
+            special.clone(),
+            extra.clone(),
+        ));
         Ok(Value::Str(String::from_utf8(password).unwrap()))
     }
 }
