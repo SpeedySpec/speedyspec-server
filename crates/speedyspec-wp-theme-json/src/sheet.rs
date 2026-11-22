@@ -8,7 +8,6 @@ use speedyspec_wp_theme_json_contracts::ports::RegisteredBlock;
 
 use crate::ThemeJsonDeps;
 use crate::declarations::DeclarationContext;
-use crate::php::to_php_string;
 use crate::presets::FluidFontSize;
 
 /// One document, ready for stylesheet generation.
@@ -67,28 +66,12 @@ impl<'a> Sheet<'a> {
 
     /// `is_safe_css_declaration( $property_name, $property_value )`: kses keeps `name: value`.
     pub fn is_safe_css_declaration(&self, name: &str, value: &Value) -> bool {
-        let mut style = name.as_bytes().to_vec();
-        style.extend_from_slice(b": ");
-        style.extend_from_slice(&to_php_string(value));
-        let filtered = self
-            .deps
-            .safe_css
-            .safecss_filter_attr(&style)
-            .unwrap_or_default();
-        let escaped = self.deps.text.esc_html(&filtered);
-        let trimmed = escaped.trim_ascii_start();
-        let trimmed: &[u8] = {
-            let mut end = trimmed.len();
-            while end > 0 && b" \t\n\r\0\x0b".contains(&trimmed[end - 1]) {
-                end -= 1;
-            }
-            let mut start = 0;
-            while start < end && b" \t\n\r\0\x0b".contains(&trimmed[start]) {
-                start += 1;
-            }
-            &trimmed[start..end]
-        };
-        !(trimmed.is_empty() || trimmed == b"0")
+        crate::security::is_safe_css_declaration(
+            name,
+            value,
+            &*self.deps.safe_css,
+            &*self.deps.text,
+        )
     }
 
     /// The registered block of this name.

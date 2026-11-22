@@ -326,3 +326,25 @@ impl speedyspec_wp_theme_json_contracts::ports::ActiveTheme for PhpActiveTheme {
         )
     }
 }
+
+/// `current_user_can()`, as PHP defines it.
+pub struct PhpCapabilities;
+
+impl speedyspec_wp_theme_json_contracts::ports::Capabilities for PhpCapabilities {
+    fn current_user_can(&self, capability: &str) -> bool {
+        call("current_user_can", &[Value::Str(capability.into())])
+            .is_some_and(|v| crate::adapters::truthy(&v.read()))
+    }
+}
+
+/// PHP's truthiness for a returned value.
+fn truthy(value: &Value) -> bool {
+    match value {
+        Value::Null | Value::Bool(false) | Value::Int(0) => false,
+        Value::Float(f) => *f != 0.0,
+        Value::Str(s) => !(s.is_empty() || s == "0"),
+        Value::Bytes(b) => !(b.is_empty() || b == b"0"),
+        Value::Array(a) => !a.is_empty(),
+        _ => true,
+    }
+}

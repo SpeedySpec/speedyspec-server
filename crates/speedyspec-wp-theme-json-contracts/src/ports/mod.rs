@@ -2,6 +2,7 @@
 
 mod active_theme;
 mod block_metadata;
+mod capabilities;
 mod diagnostics;
 mod filters;
 mod gettext;
@@ -10,6 +11,7 @@ mod text;
 
 pub use active_theme::ActiveTheme;
 pub use block_metadata::{BlockMetadata, RegisteredBlock};
+pub use capabilities::Capabilities;
 pub use diagnostics::Diagnostics;
 pub use filters::ThemeJsonFilters;
 pub use gettext::Gettext;

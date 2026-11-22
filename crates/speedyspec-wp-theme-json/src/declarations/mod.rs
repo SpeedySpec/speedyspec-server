@@ -5,6 +5,7 @@
 mod background;
 mod features;
 mod properties;
+mod resolve;
 
 pub use background::background_image_value;
 pub use features::{
@@ -12,6 +13,7 @@ pub use features::{
     update_paragraph_text_indent_selector, update_separator_declarations,
 };
 pub use properties::{compute_style_properties, property_value};
+pub use resolve::{convert_variables_to_value, variable_values};
 
 use speedyspec_wp_theme_json_contracts::ports::{Diagnostics, Gettext};
 

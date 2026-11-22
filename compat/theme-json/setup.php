@@ -124,7 +124,7 @@ add_filter('sanitize_title', 'sanitize_title_with_dashes', 10, 3);
 
 compat_load_functions('wp-includes/functions.php', ['_wp_array_get', '_wp_array_set', 'wp_is_numeric_array',
     '_wp_to_kebab_case', 'wp_recursive_ksort', 'wp_parse_args', 'wp_json_file_decode', 'mbstring_binary_safe_encoding',
-    'reset_mbstring_encoding']);
+    'reset_mbstring_encoding', '_canonical_charset', 'wp_json_encode', '_wp_json_sanity_check', '_wp_json_convert_string']);
 
 if (!SPEEDYSPEC_COMPAT_PORT) {
     foreach (['class-wp-theme-json-schema.php', 'class-wp-theme-json.php', 'class-wp-theme-json-data.php'] as $speedyspec_file) {
@@ -138,6 +138,8 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
         'wp_get_computed_fluid_typography_value', 'wp_get_typography_font_size_value']);
     compat_load_functions('wp-includes/block-supports/layout.php', ['wp_get_layout_definitions']);
     compat_load_functions('wp-includes/blocks.php', ['block_has_support']);
+    // get_svg_filters() calls WP_Duotone, which the block supports area owns.
+    require_once SPEEDYSPEC_COMPAT_WP_ROOT . 'wp-includes/class-wp-duotone.php';
     foreach (['style-engine.php', 'style-engine/class-wp-style-engine.php',
         'style-engine/class-wp-style-engine-css-declarations.php', 'style-engine/class-wp-style-engine-css-rule.php',
         'style-engine/class-wp-style-engine-css-rules-store.php', 'style-engine/class-wp-style-engine-processor.php'] as $speedyspec_file) {
@@ -155,6 +157,22 @@ if (!function_exists('wp_get_global_settings')) {
 function compat_set_global_settings(array $settings): void
 {
     $GLOBALS['compat_global_settings'] = $settings;
+}
+
+/** `current_user_can()`, answering from compat_set_caps(): a request without a user can do nothing. */
+if (!function_exists('current_user_can')) {
+    function current_user_can($capability, ...$args) {
+        return in_array($capability, $GLOBALS['compat_caps'] ?? array(), true);
+    }
+}
+
+function compat_set_caps(array $caps): void
+{
+    $GLOBALS['compat_caps'] = $caps;
+}
+
+if (!defined('SCRIPT_DEBUG')) {
+    define('SCRIPT_DEBUG', false);
 }
 
 /** `current_theme_supports()`, answering from compat_add_theme_support(). */

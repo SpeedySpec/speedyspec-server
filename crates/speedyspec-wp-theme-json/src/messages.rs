@@ -77,6 +77,10 @@ message!(query GetStylesBlockNodes { doc: Rc<ThemeJson> } -> Value, |a, m| a.get
 message!(query GetRootLayoutRules { doc: Rc<ThemeJson>, metadata: Value, options: Value } -> Vec<u8>,
     |a, m| a.get_root_layout_rules(&m.doc, &m.metadata, &m.options));
 message!(query GetCustomCss { doc: Rc<ThemeJson> } -> Vec<u8>, |a, m| a.get_custom_css(&m.doc));
+message!(query RemoveInsecureProperties { data: Value, origin: Value } -> Result<Value, ThemeJsonError>,
+    |a, m| a.remove_insecure_properties(m.data, &m.origin));
+message!(query GetSvgFilters { doc: Rc<ThemeJson>, origins: Value } -> Vec<u8>, |a, m| a.get_svg_filters(&m.doc, &m.origins));
+message!(query ResolveVariables { doc: Rc<ThemeJson> } -> ThemeJson, |a, m| a.resolve_variables(&m.doc));
 message!(command SetSpacingSizes { doc: Rc<ThemeJson> } -> ThemeJson, |a, m| {
     let mut doc = (*m.doc).clone();
     a.set_spacing_sizes(&mut doc);
@@ -96,5 +100,6 @@ pub fn register_theme_json_handlers(container: &Container, api: Rc<ThemeJsonApi>
         commands: SetSpacingSizes;
         queries: ConstructThemeJson, MergeThemeJson, MergeRawData, GetViewportMediaQueries, GetRawData, GetSettings, GetData, GetCustomTemplates,
             GetTemplateParts, GetPatterns, GetFromEditorSettings, GetElementClassName, SchemaMigrate, GetStylesheet,
-            GetStylesForBlock, GetStylesBlockNodes, GetRootLayoutRules, GetCustomCss);
+            GetStylesForBlock, GetStylesBlockNodes, GetRootLayoutRules, GetCustomCss, RemoveInsecureProperties,
+            GetSvgFilters, ResolveVariables);
 }
