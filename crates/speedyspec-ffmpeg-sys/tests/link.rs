@@ -2,7 +2,10 @@
 
 #[test]
 fn licence_is_lgpl_2_1_or_later() {
-    assert_eq!(speedyspec_ffmpeg_sys::licence(), "LGPL version 2.1 or later");
+    assert_eq!(
+        speedyspec_ffmpeg_sys::licence(),
+        "LGPL version 2.1 or later"
+    );
     let conf = speedyspec_ffmpeg_sys::configuration();
     for forbidden in ["--enable-gpl", "--enable-version3", "--enable-nonfree"] {
         assert!(!conf.contains(forbidden), "{forbidden} in {conf}");
@@ -14,10 +17,33 @@ fn licence_is_lgpl_2_1_or_later() {
 #[test]
 fn reads_the_formats_wordpress_accepts() {
     for name in [
-        "mp3", "aac", "mov", "matroska", "ogg", "flac", "wav", "aiff", "asf", "rm", "flv", "avi", "mpeg", "mpegts",
-        "ac3", "dts", "png_pipe", "jpeg_pipe", "webp_pipe", "gif_pipe", "bmp_pipe", "tiff_pipe",
+        "mp3",
+        "aac",
+        "mov",
+        "matroska",
+        "ogg",
+        "flac",
+        "wav",
+        "aiff",
+        "asf",
+        "rm",
+        "flv",
+        "avi",
+        "mpeg",
+        "mpegts",
+        "ac3",
+        "dts",
+        "png_pipe",
+        "jpeg_pipe",
+        "webp_pipe",
+        "gif_pipe",
+        "bmp_pipe",
+        "tiff_pipe",
     ] {
-        assert!(speedyspec_ffmpeg_sys::has_demuxer(name), "missing demuxer {name}");
+        assert!(
+            speedyspec_ffmpeg_sys::has_demuxer(name),
+            "missing demuxer {name}"
+        );
     }
 }
 
@@ -25,10 +51,25 @@ fn reads_the_formats_wordpress_accepts() {
 fn nothing_reaches_the_network_or_other_files() {
     assert!(speedyspec_ffmpeg_sys::input_protocols().is_empty());
     for name in [
-        "hls", "dash", "rtsp", "rtp", "sdp", "concat", "image2", "image2pipe", "alias_pix", "brender_pix", "ffmetadata",
-        "imf", "tty", "rawvideo",
+        "hls",
+        "dash",
+        "rtsp",
+        "rtp",
+        "sdp",
+        "concat",
+        "image2",
+        "image2pipe",
+        "alias_pix",
+        "brender_pix",
+        "ffmetadata",
+        "imf",
+        "tty",
+        "rawvideo",
     ] {
-        assert!(!speedyspec_ffmpeg_sys::has_demuxer(name), "denied demuxer {name} is built");
+        assert!(
+            !speedyspec_ffmpeg_sys::has_demuxer(name),
+            "denied demuxer {name} is built"
+        );
     }
 }
 

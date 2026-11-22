@@ -27,36 +27,58 @@ fn main() {
         return;
     }
 
-    let prefix = env::var_os("FFMPEG_PREFIX").map(PathBuf::from).unwrap_or_else(|| {
-        fail("FFMPEG_PREFIX is not set; point it at the prefix scripts/build-ffmpeg.sh builds".into())
-    });
-    let php = env::var_os("SPEEDYSPEC_PHP_PREFIX").map(PathBuf::from).unwrap_or_else(|| {
-        fail("SPEEDYSPEC_PHP_PREFIX is not set; FFmpeg links the static PHP's libz.a".into())
-    });
+    let prefix = env::var_os("FFMPEG_PREFIX")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            fail(
+                "FFMPEG_PREFIX is not set; point it at the prefix scripts/build-ffmpeg.sh builds"
+                    .into(),
+            )
+        });
+    let php = env::var_os("SPEEDYSPEC_PHP_PREFIX")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            fail("SPEEDYSPEC_PHP_PREFIX is not set; FFmpeg links the static PHP's libz.a".into())
+        });
     let lib_dir = prefix.join("lib");
     let php_lib = php.join("lib");
     for name in LIBS {
         let archive = lib_dir.join(format!("lib{name}.a"));
         if !archive.is_file() {
-            fail(format!("{} is missing; run scripts/build-ffmpeg.sh", archive.display()));
+            fail(format!(
+                "{} is missing; run scripts/build-ffmpeg.sh",
+                archive.display()
+            ));
         }
         println!("cargo:rerun-if-changed={}", archive.display());
     }
     println!("cargo:rerun-if-changed={}", prefix.join(".stamp").display());
     if !php_lib.join("libz.a").is_file() {
-        fail(format!("{} is missing; FFmpeg links the static PHP's zlib", php_lib.join("libz.a").display()));
+        fail(format!(
+            "{} is missing; FFmpeg links the static PHP's zlib",
+            php_lib.join("libz.a").display()
+        ));
     }
 
     let allowed = [canonical(&lib_dir), canonical(&php_lib)];
     let mut system = Vec::new();
     for name in LIBS {
         let pc = lib_dir.join("pkgconfig").join(format!("lib{name}.pc"));
-        let text = fs::read_to_string(&pc)
-            .unwrap_or_else(|err| fail(format!("reading {}: {err}; run scripts/build-ffmpeg.sh", pc.display())));
+        let text = fs::read_to_string(&pc).unwrap_or_else(|err| {
+            fail(format!(
+                "reading {}: {err}; run scripts/build-ffmpeg.sh",
+                pc.display()
+            ))
+        });
         let mut tokens = text
             .lines()
             .filter(|line| line.starts_with("Libs:") || line.starts_with("Libs.private:"))
-            .flat_map(|line| line.split_once(':').map(|(_, rest)| rest).unwrap_or("").split_whitespace())
+            .flat_map(|line| {
+                line.split_once(':')
+                    .map(|(_, rest)| rest)
+                    .unwrap_or("")
+                    .split_whitespace()
+            })
             .map(str::to_owned)
             .collect::<Vec<_>>()
             .into_iter();
@@ -64,7 +86,10 @@ fn main() {
             if let Some(dir) = token.strip_prefix("-L") {
                 let dir = dir.replace("${libdir}", &lib_dir.to_string_lossy());
                 if !allowed.contains(&canonical(Path::new(&dir))) {
-                    fail(format!("{} links from {dir}, outside the FFmpeg and PHP prefixes", pc.display()));
+                    fail(format!(
+                        "{} links from {dir}, outside the FFmpeg and PHP prefixes",
+                        pc.display()
+                    ));
                 }
             } else if let Some(lib) = token.strip_prefix("-l") {
                 if !LIBS.contains(&lib) && lib != "z" && !system.contains(&lib.to_owned()) {
@@ -77,7 +102,10 @@ fn main() {
             } else if token == "-pthread" {
                 system.push("pthread".to_owned());
             } else {
-                fail(format!("unexpected link flag {token:?} in {}", pc.display()));
+                fail(format!(
+                    "unexpected link flag {token:?} in {}",
+                    pc.display()
+                ));
             }
         }
     }

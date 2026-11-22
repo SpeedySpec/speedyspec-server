@@ -99,10 +99,14 @@ mod tests {
 
     #[test]
     fn manifest_round_trips_ffmpeg() {
-        let manifest = RuntimeManifest::new("1.2.3".parse().unwrap(), vec![1], "8.5.12").with_ffmpeg("9.1");
+        let manifest =
+            RuntimeManifest::new("1.2.3".parse().unwrap(), vec![1], "8.5.12").with_ffmpeg("9.1");
         let json = serde_json::to_string(&manifest).unwrap();
         assert!(json.contains(r#""ffmpeg":"9.1""#), "{json}");
-        assert_eq!(serde_json::from_str::<RuntimeManifest>(&json).unwrap(), manifest);
+        assert_eq!(
+            serde_json::from_str::<RuntimeManifest>(&json).unwrap(),
+            manifest
+        );
     }
 
     #[test]
