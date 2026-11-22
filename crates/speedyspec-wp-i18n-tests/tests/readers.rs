@@ -10,7 +10,7 @@ use speedyspec_wp_i18n_files::{ByExtension, L10nPhpReader, MoReader};
 
 fn data(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/data")
+        .join("../speedyspec-wp-i18n-files/tests/data")
         .join(name)
 }
 

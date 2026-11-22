@@ -9,8 +9,3 @@ license.workspace = true
 
 [dependencies]
 speedyspec-wp-i18n-contracts = { path = "../speedyspec-wp-i18n-contracts" }
-
-[dev-dependencies]
-speedyspec-wp-i18n = { path = "../speedyspec-wp-i18n" }
-speedyspec-wp-i18n-files = { path = "../speedyspec-wp-i18n-files" }
-tempfile = "3"

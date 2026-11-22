@@ -5847,10 +5847,7 @@ dependencies = [
  "serde_json",
  "speedyspec-hooks",
  "speedyspec-wp-hooks",
- "speedyspec-wp-hooks-memory",
  "speedyspec-wp-i18n-contracts",
- "speedyspec-wp-i18n-files",
- "speedyspec-wp-i18n-memory",
 ]
 
 [[package]]
@@ -5864,11 +5861,9 @@ dependencies = [
 name = "speedyspec-wp-i18n-files"
 version = "0.1.0"
 dependencies = [
- "base64 0.22.1",
  "foldhash",
  "md-5",
  "serde_json",
- "speedyspec-wp-i18n",
  "speedyspec-wp-i18n-contracts",
  "speedyspec-wp-utf8",
 ]
@@ -5877,10 +5872,7 @@ dependencies = [
 name = "speedyspec-wp-i18n-memory"
 version = "0.1.0"
 dependencies = [
- "speedyspec-wp-i18n",
  "speedyspec-wp-i18n-contracts",
- "speedyspec-wp-i18n-files",
- "tempfile",
 ]
 
 [[package]]
@@ -5905,6 +5897,22 @@ dependencies = [
  "speedyspec-wp-i18n-memory",
  "speedyspec-wp-utf8-php",
  "ureq",
+]
+
+[[package]]
+name = "speedyspec-wp-i18n-tests"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "serde_json",
+ "speedyspec-hooks",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-i18n",
+ "speedyspec-wp-i18n-contracts",
+ "speedyspec-wp-i18n-files",
+ "speedyspec-wp-i18n-memory",
+ "tempfile",
 ]
 
 [[package]]
@@ -6047,8 +6055,6 @@ name = "speedyspec-wp-options"
 version = "0.1.0"
 dependencies = [
  "indexmap",
- "speedyspec-cache",
- "speedyspec-cache-memory",
  "speedyspec-container",
  "speedyspec-cqrs",
  "speedyspec-data",
@@ -6057,7 +6063,6 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-object-cache",
- "speedyspec-wp-options-memory",
  "tracing",
 ]
 
@@ -6133,6 +6138,23 @@ dependencies = [
  "speedyspec-wp-options",
  "speedyspec-wp-options-memory",
  "tempfile",
+]
+
+[[package]]
+name = "speedyspec-wp-options-tests"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-cache",
+ "speedyspec-cache-memory",
+ "speedyspec-container",
+ "speedyspec-cqrs",
+ "speedyspec-data",
+ "speedyspec-data-uow",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-object-cache",
+ "speedyspec-wp-options",
+ "speedyspec-wp-options-memory",
 ]
 
 [[package]]
