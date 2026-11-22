@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-object-cache"
-version = "0.1.2"
+version = "0.1.3"
 publish = false
 description = "WordPress's object cache (WP_Object_Cache and wp_cache_*) in Rust, with an optional persistent second level."
 edition.workspace = true

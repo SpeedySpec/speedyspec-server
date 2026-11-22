@@ -4944,7 +4944,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-cache-routing"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "speedyspec-cache",
  "speedyspec-cache-file",
@@ -4959,7 +4959,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-cache-sql"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "postgres",
  "sha2 0.10.9",
@@ -4974,7 +4974,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-compat"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "flate2",
  "serde",
@@ -4990,14 +4990,14 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-container"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "speedyspec-container-php"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "speedyspec-container",
  "speedyspec-hooks-memory",
@@ -5007,7 +5007,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-cqrs"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "speedyspec-container",
  "thiserror 2.0.21",
@@ -5016,7 +5016,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-cqrs-php"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "speedyspec-container",
  "speedyspec-container-php",
@@ -5043,7 +5043,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-data-corpus"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "serde",
  "serde_json",
@@ -5093,7 +5093,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-data-postgres"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "bytes",
  "indexmap",
@@ -5133,7 +5133,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-data-sqlite"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "chrono",
  "md-5",
@@ -5179,7 +5179,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-fastcgi"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "bytes",
  "futures-util",
@@ -5219,7 +5219,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-firewall-infra-options"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "speedyspec-firewall",
  "speedyspec-wp-hooks",
@@ -5231,7 +5231,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-firewall-presentation"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "speedyspec-cache",
  "speedyspec-cache-memory",
@@ -5249,7 +5249,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-hooks"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -5257,7 +5257,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-hooks-memory"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "speedyspec-hooks",
 ]
@@ -5317,7 +5317,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-operation-dispatch"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "speedyspec-container",
  "speedyspec-operation",
@@ -5326,7 +5326,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-operation-php"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "indexmap",
@@ -5343,7 +5343,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-pcre2-link-test"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "speedyspec-hooks",
  "speedyspec-hooks-memory",
@@ -5353,7 +5353,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-php"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "ext-php-rs",
  "libc",
@@ -5364,7 +5364,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-php-ext"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "inventory",
  "speedyspec-hooks",
@@ -5375,7 +5375,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-php-port-macros"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5384,7 +5384,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-php-runtime"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "bytes",
  "clap",
@@ -5416,20 +5416,22 @@ dependencies = [
  "speedyspec-wp-options-php",
  "speedyspec-wp-password-contracts",
  "speedyspec-wp-password-php",
+ "speedyspec-wp-text-diff-contracts",
+ "speedyspec-wp-text-diff-php",
  "tempfile",
  "tokio",
 ]
 
 [[package]]
 name = "speedyspec-php-serialize"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "speedyspec-hooks",
 ]
 
 [[package]]
 name = "speedyspec-rest"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "indexmap",
  "regex",
@@ -5455,7 +5457,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-rest-php"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "indexmap",
  "serde_json",
@@ -5493,7 +5495,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-router-php"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "speedyspec-container",
  "speedyspec-container-php",
@@ -5507,7 +5509,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-router-presentation"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "regex",
  "speedyspec-http",
@@ -5537,7 +5539,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-runtime-contract"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "semver",
  "serde",
@@ -5546,7 +5548,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "bytes",
@@ -5595,7 +5597,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-app"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "semver",
  "sha2 0.10.9",
@@ -5610,7 +5612,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-domain"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "http",
  "semver",
@@ -5622,7 +5624,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-gate"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "http",
  "httpdate",
@@ -5637,7 +5639,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-handoff"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "rustix",
  "semver",
@@ -5649,7 +5651,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-access-dev"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "http",
  "speedyspec-server-domain",
@@ -5658,7 +5660,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-fs"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "ruzstd",
  "semver",
@@ -5674,7 +5676,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-http"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "speedyspec-server-domain",
  "tempfile",
@@ -5684,7 +5686,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-kubernetes"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "http",
  "k8s-openapi",
@@ -5697,7 +5699,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-memory"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "ruzstd",
  "semver",
@@ -5708,7 +5710,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-infra-minisign"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "minisign",
  "minisign-verify 0.2.5",
@@ -5718,7 +5720,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-presentation"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "arc-swap",
  "bytes",
@@ -5737,7 +5739,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-server-static"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "blake3",
  "brotli 8.0.4",
@@ -5754,7 +5756,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-transport"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "speedyspec-container",
  "speedyspec-operation",
@@ -5773,7 +5775,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-transport-hooks-wp"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "chrono",
  "speedyspec-operation-contracts",
@@ -5850,7 +5852,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-crypto"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "sha2 0.10.9",
  "speedyspec-wp-crypto-contracts",
@@ -5858,11 +5860,11 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-crypto-contracts"
-version = "0.3.0"
+version = "0.4.0"
 
 [[package]]
 name = "speedyspec-wp-crypto-php"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.22.1",
  "serde_json",
@@ -5885,7 +5887,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-crypto-sodium"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.22.1",
  "libsodium-sys-stable",
@@ -5899,7 +5901,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-db"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "hmac 0.12.1",
  "indexmap",
@@ -5918,7 +5920,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-db-php"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "indexmap",
  "postgres",
@@ -5945,7 +5947,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-hooks"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "indexmap",
  "speedyspec-container",
@@ -5955,7 +5957,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-hooks-memory"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "indexmap",
  "serde_json",
@@ -5966,7 +5968,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-hooks-php"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
@@ -5984,7 +5986,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-html-split"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "criterion 0.5.1",
  "memchr",
@@ -5993,7 +5995,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-html-syntax"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "memchr",
  "serde_json",
@@ -6003,7 +6005,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-i18n"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "foldhash",
  "hashbrown 0.17.1",
@@ -6017,14 +6019,14 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-i18n-contracts"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "speedyspec-hooks",
 ]
 
 [[package]]
 name = "speedyspec-wp-i18n-files"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "foldhash",
  "md-5",
@@ -6035,14 +6037,14 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-i18n-memory"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "speedyspec-wp-i18n-contracts",
 ]
 
 [[package]]
 name = "speedyspec-wp-i18n-php"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "foldhash",
  "serde_json",
@@ -6066,7 +6068,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-i18n-tests"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "base64 0.22.1",
  "serde_json",
@@ -6082,7 +6084,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-kses"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "indexmap",
  "libc",
@@ -6105,14 +6107,14 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-kses-contracts"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "indexmap",
 ]
 
 [[package]]
 name = "speedyspec-wp-kses-lexical"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "indexmap",
  "memchr",
@@ -6125,7 +6127,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-kses-php"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "indexmap",
  "serde_json",
@@ -6150,7 +6152,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-kses-security"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "html5ever",
  "indexmap",
@@ -6163,7 +6165,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-kses-testkit"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.22.1",
  "flate2",
@@ -6180,7 +6182,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-object-cache"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "indexmap",
  "speedyspec-cache",
@@ -6193,7 +6195,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-object-cache-php"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
@@ -6217,7 +6219,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-options"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "indexmap",
  "speedyspec-container",
@@ -6233,7 +6235,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-options-memory"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "indexmap",
  "speedyspec-cache",
@@ -6247,7 +6249,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-options-php"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "indexmap",
  "serde_json",
@@ -6281,7 +6283,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-options-sql"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "md-5",
  "postgres",
@@ -6308,7 +6310,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-options-tests"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "speedyspec-cache",
  "speedyspec-cache-memory",
@@ -6325,7 +6327,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-password"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
  "hmac 0.12.1",
@@ -6341,7 +6343,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-password-bcrypt"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bcrypt",
  "serde_json",
@@ -6350,14 +6352,14 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-password-contracts"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "speedyspec-hooks",
 ]
 
 [[package]]
 name = "speedyspec-wp-password-php"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
@@ -6382,7 +6384,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-rewrite"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "regex",
  "serde_json",
@@ -6399,7 +6401,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-rewrite-php"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
@@ -6423,7 +6425,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-shortcode"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "aho-corasick",
  "criterion 0.5.1",
@@ -6442,14 +6444,14 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-shortcode-contracts"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "speedyspec-hooks",
 ]
 
 [[package]]
 name = "speedyspec-wp-shortcode-php"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
@@ -6475,7 +6477,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-text"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "aho-corasick",
  "criterion 0.5.1",
@@ -6503,11 +6505,11 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-text-contracts"
-version = "0.3.0"
+version = "0.4.0"
 
 [[package]]
 name = "speedyspec-wp-text-corpus"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.22.1",
  "serde",
@@ -6532,23 +6534,29 @@ dependencies = [
  "proptest",
  "serde_json",
  "simdutf8",
+ "speedyspec-hooks",
  "speedyspec-wp-text-diff-contracts",
 ]
 
 [[package]]
 name = "speedyspec-wp-text-diff-contracts"
 version = "0.1.0"
+dependencies = [
+ "speedyspec-hooks",
+]
 
 [[package]]
 name = "speedyspec-wp-text-diff-php"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "speedyspec-compat",
  "speedyspec-container",
+ "speedyspec-container-php",
  "speedyspec-hooks-memory",
  "speedyspec-php",
+ "speedyspec-php-ext",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
@@ -6559,7 +6567,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-text-escape"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "aho-corasick",
  "criterion 0.5.1",
@@ -6581,7 +6589,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-text-memory"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "speedyspec-wp-shortcode-contracts",
  "speedyspec-wp-text-contracts",
@@ -6589,7 +6597,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-text-php"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "memchr",
  "serde_json",
@@ -6619,7 +6627,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-theme-json"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "criterion 0.5.1",
  "fancy-regex",
@@ -6638,7 +6646,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-theme-json-contracts"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "indexmap",
  "speedyspec-hooks",
@@ -6648,7 +6656,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-theme-json-php"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "serde_json",
  "speedyspec-compat",
@@ -6667,7 +6675,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-token-map"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "memchr",
  "serde_json",
@@ -6675,7 +6683,7 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-token-map-php"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",
@@ -6694,14 +6702,14 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-utf8"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "simdutf8",
 ]
 
 [[package]]
 name = "speedyspec-wp-utf8-php"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",

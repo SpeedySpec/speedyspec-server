@@ -7,11 +7,13 @@ use std::path::Path;
 use std::rc::Rc;
 
 use speedyspec_container::Container;
+use speedyspec_container_php::ContainerArea;
 use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, NativeArea, Php, PhpError};
 use speedyspec_wp_hooks::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::WpHooksArea;
+use speedyspec_wp_text_diff::contracts::{TEXT_DIFFER, TextDiffer};
 use speedyspec_wp_text_diff_php::TextDiffArea;
 
 fn check(name: &str, ok: bool, detail: impl std::fmt::Debug) {
@@ -33,9 +35,16 @@ fn text(result: &Result<HookValue, PhpError>) -> String {
 fn main() {
     let release = speedyspec_compat::wordpress_release("7.1.5").expect("WordPress 7.1.5");
     let container = Rc::new(Container::new());
-    let hooks = WpHooksArea::new(container, Rc::new(MemoryHookStore::new()));
-    let text_diff = TextDiffArea::new(hooks.api());
-    let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(text_diff)];
+    let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
+    let text_diff = TextDiffArea::new(hooks.api(), container.clone());
+    text_diff.bind_defaults();
+    let container_area = TextDiffArea::ports(ContainerArea::new("test", container.clone()));
+    let areas: Vec<Rc<dyn NativeArea>> = vec![
+        speedyspec_php_ext::twins_area(),
+        Rc::new(container_area),
+        Rc::new(hooks),
+        Rc::new(text_diff),
+    ];
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),
         preload: &[],
@@ -150,6 +159,105 @@ fn main() {
     check(
         "float_filter_results_convert_as_php",
         text(&r).contains("</span>0.1</td>"),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/query-string",
+        "return wp_text_diff('a', 'b', 'title=A&show_split_view=0');",
+    );
+    check(
+        "query_string_args_parse_as_wordpress",
+        text(&r).starts_with("<table class='diff'>\n<caption class='diff-title'>A</caption>"),
+        &r,
+    );
+
+    // Values Rust cannot read go to WordPress's classes, as they did before the port.
+    let r = php.eval(
+        "speedyspec://test/unreadable-arg-key",
+        "$seen = array(); set_error_handler(function ($no, $msg) use (&$seen) { $seen[] = $msg; return true; }, E_USER_DEPRECATED);
+         $r = wp_text_diff('a', 'b', array(\"caf\\xE9\" => 1)); restore_error_handler();
+         return str_starts_with($r, \"<table class='diff is-split-view'>\") && count($seen) === 1;",
+    );
+    check(
+        "unreadable_argument_keys_use_wordpress_classes",
+        matches!(r, Ok(HookValue::Bool(true))),
+        &r,
+    );
+    let r = php.eval(
+        "speedyspec://test/unreadable-query-string",
+        "$seen = array(); set_error_handler(function ($no, $msg) use (&$seen) { $seen[] = $msg; return true; }, E_USER_DEPRECATED);
+         $r = wp_text_diff('a', 'b', 'caf%E9=1'); restore_error_handler();
+         return str_starts_with($r, \"<table class='diff is-split-view'>\") && count($seen) === 1;",
+    );
+    check(
+        "unreadable_parsed_arguments_use_wordpress_classes",
+        matches!(r, Ok(HookValue::Bool(true))),
+        &r,
+    );
+    let r = php.eval(
+        "speedyspec://test/recursive-text",
+        "$a = array(); $a[] = &$a;
+         try { wp_text_diff($a, 'b'); return 'no error'; } catch (TypeError $e) { return $e->getMessage(); }",
+    );
+    check(
+        "unreadable_texts_fail_as_in_wordpress",
+        text(&r).starts_with("trim(): Argument #1"),
+        &r,
+    );
+
+    // A PHP object bound to the twin replaces wp_text_diff() for the request, with WordPress's raw arguments.
+    let r = php.eval(
+        "speedyspec://test/bound-twin",
+        "\\SpeedySpec\\Container\\Container::getInstance()->bind(\\SpeedySpec\\WpTextDiff\\TextDiffer::class, fn () => new class implements \\SpeedySpec\\WpTextDiff\\TextDiffer { public function diff($left_string, $right_string, $args) { return \"R:$left_string|$right_string|\" . var_export($args, true); } });
+         return implode(' # ', [wp_text_diff('a', 'b'), wp_text_diff('a', 'b', 'title=A&show_split_view=0'), wp_text_diff(1, 'b', array('x' => 1))]);",
+    );
+    check(
+        "bound_twin_answers_wp_text_diff",
+        text(&r)
+            == "R:a|b|NULL # R:a|b|'title=A&show_split_view=0' # R:1|b|array (\n  'x' => 1,\n)",
+        &r,
+    );
+    let from_rust = container
+        .make_port::<dyn TextDiffer>(TEXT_DIFFER)
+        .map(|differ| {
+            differ.diff(
+                &HookValue::Str("x".into()),
+                &HookValue::Str("y".into()),
+                &HookValue::Null,
+            )
+        });
+    check(
+        "rust_callers_get_the_php_binding",
+        matches!(&from_rust, Ok(Ok(HookValue::Str(s))) if s == "R:x|y|NULL"),
+        from_rust
+            .as_ref()
+            .map(|r| r.as_ref().map(|_| ()).map_err(|e| e.to_string()))
+            .map_err(|e| e.to_string()),
+    );
+    php.restart_request().expect("a fresh request");
+    php.eval("speedyspec://test/load", &load)
+        .expect("WordPress's functions load");
+
+    let r = php.eval(
+        "speedyspec://test/binding-ends",
+        "return wp_text_diff('Hello world', 'Hello there world');",
+    );
+    check(
+        "binding_ends_with_the_request",
+        text(&r).contains("Hello<ins> there</ins> world"),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/throwing-twin",
+        "$GLOBALS['thrown'] = new RuntimeException('boom');
+         \\SpeedySpec\\Container\\Container::getInstance()->bind(\\SpeedySpec\\WpTextDiff\\TextDiffer::class, fn () => new class implements \\SpeedySpec\\WpTextDiff\\TextDiffer { public function diff($left_string, $right_string, $args) { throw $GLOBALS['thrown']; } });
+         try { wp_text_diff('a', 'b'); return 'no exception'; } catch (RuntimeException $e) { return $e === $GLOBALS['thrown'] ? 'same' : 'different'; }",
+    );
+    check(
+        "twin_exception_is_rethrown_unchanged",
+        text(&r) == "same",
         &r,
     );
 

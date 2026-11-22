@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-server-static"
-version = "0.1.5"
+version = "0.1.6"
 publish = false
 description = "Builds and serves an in-memory, pre-compressed static file set from a release."
 edition.workspace = true

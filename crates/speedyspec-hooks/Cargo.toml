@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-hooks"
-version = "0.1.2"
+version = "0.1.3"
 description = "Hook contract for speedyspec: the Hooks trait, the Value type and a backend conformance suite. No storage."
 edition.workspace = true
 rust-version.workspace = true

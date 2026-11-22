@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-php-serialize"
-version = "0.1.2"
+version = "0.1.3"
 publish = false
 description = "PHP's serialize format in Rust: serialize, unserialize, maybe_serialize, and conversions to hook values."
 edition.workspace = true

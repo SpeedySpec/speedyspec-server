@@ -12,6 +12,7 @@ foldhash = "0.2"
 hashbrown = { version = "0.17", default-features = false, features = ["default-hasher", "inline-more"] }
 memchr = "2.8"
 simdutf8 = "0.1.5"
+speedyspec-hooks = { path = "../speedyspec-hooks" }
 speedyspec-wp-text-diff-contracts = { path = "../speedyspec-wp-text-diff-contracts" }
 
 [dev-dependencies]
