@@ -1,5 +1,12 @@
 //! In-memory adapters for tests and Rust-only use.
 
+mod resolver;
+
+pub use resolver::{
+    MemoryActiveTheme, MemoryGlobalStylesPosts, MemoryVariationRegistrar, MemoryWpCache,
+    NoLayerFilters,
+};
+
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -14,6 +21,8 @@ use speedyspec_wp_theme_json_contracts::ports::{
 pub struct MemoryBlockMetadata {
     blocks: RefCell<Rc<Vec<RegisteredBlock>>>,
     marker: Cell<u64>,
+    /// The block styles registry: block, style name, style (`name`, `label`, `style_data`, …).
+    styles: RefCell<Vec<(String, String, Value)>>,
 }
 
 impl MemoryBlockMetadata {
@@ -31,6 +40,39 @@ impl MemoryBlockMetadata {
         }
         *self.blocks.borrow_mut() = Rc::new(blocks);
         self.marker.set(self.marker.get() + 1);
+    }
+
+    /// `register_block_style( $block, $style )`: the style joins the registry, and the block's style names when the
+    /// block is registered.
+    pub fn register_style(&self, block: &str, style: Value) {
+        let name = match crate::array_path::get(&style, &["name"]) {
+            Some(Value::Str(s)) => s.clone(),
+            _ => return,
+        };
+        let mut styles = self.styles.borrow_mut();
+        match styles.iter_mut().find(|(b, n, _)| b == block && *n == name) {
+            Some(slot) => slot.2 = style,
+            None => styles.push((block.to_owned(), name.clone(), style)),
+        }
+        drop(styles);
+        let mut blocks = (**self.blocks.borrow()).clone();
+        if let Some(found) = blocks.iter_mut().find(|b| b.name == block)
+            && !found.style_names.contains(&name)
+        {
+            found.style_names.push(name);
+        }
+        *self.blocks.borrow_mut() = Rc::new(blocks);
+        self.marker.set(self.marker.get() + 1);
+    }
+
+    /// The style names registered for a block (`get_registered_styles_for_block`).
+    pub fn styles_for(&self, block: &str) -> Vec<String> {
+        self.styles
+            .borrow()
+            .iter()
+            .filter(|(b, _, _)| b == block)
+            .map(|(_, n, _)| n.clone())
+            .collect()
     }
 }
 

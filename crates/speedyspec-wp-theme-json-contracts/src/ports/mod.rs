@@ -7,6 +7,7 @@ mod diagnostics;
 mod filters;
 mod gettext;
 mod global_settings;
+mod resolver;
 mod text;
 
 pub use active_theme::ActiveTheme;
@@ -16,6 +17,9 @@ pub use diagnostics::Diagnostics;
 pub use filters::ThemeJsonFilters;
 pub use gettext::Gettext;
 pub use global_settings::GlobalSettings;
+pub use resolver::{
+    BlockStyleVariationRegistrar, FilteredLayer, GlobalStylesPost, LayerFilters, WpCache,
+};
 pub use text::TextFunctions;
 
 /// kses's `safecss_filter_attr()`, which `is_safe_css_declaration` asks.

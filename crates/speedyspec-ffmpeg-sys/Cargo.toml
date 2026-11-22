@@ -1,0 +1,9 @@
+[package]
+name = "speedyspec-ffmpeg-sys"
+version = "0.1.0"
+description = "Links the pinned, LGPL-only static FFmpeg built by scripts/build-ffmpeg.sh, with the static PHP's zlib."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+links = "avformat"
