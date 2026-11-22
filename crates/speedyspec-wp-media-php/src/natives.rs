@@ -115,12 +115,10 @@ impl Natives {
             .map_err(hook_error)
     }
 
-    fn add_id3_tag_data(&self, args: &[Value]) -> Result<Value, NativeError> {
-        let mut metadata = args.first().map(from_php).unwrap_or(Tree::Map(Vec::new()));
-        if !matches!(metadata, Tree::Map(_)) {
-            metadata = Tree::Map(Vec::new());
-        }
-        let data = args.get(1).map(from_php).unwrap_or(Tree::Null);
+    /// The keys `wp_add_id3_tag_data()` sets from `$data`, in order (the facade assigns them into `$metadata`).
+    fn id3_tag_changes(&self, args: &[Value]) -> Result<Value, NativeError> {
+        let mut metadata = Tree::Map(Vec::new());
+        let data = args.first().map(from_php).unwrap_or(Tree::Null);
         add_id3_tag_data(
             &mut metadata,
             &data,
@@ -161,8 +159,8 @@ pub(crate) fn functions(natives: &Rc<Natives>) -> Vec<FunctionBuilder<'static>> 
         n.read_metadata(args)
     });
     let n = natives.clone();
-    let id3 = native::function(&format!("{ns}wp_add_id3_tag_data"), move |args| {
-        n.add_id3_tag_data(args)
+    let id3 = native::function(&format!("{ns}id3_tag_changes"), move |args| {
+        n.id3_tag_changes(args)
     });
     let n = natives.clone();
     let ts = native::function(

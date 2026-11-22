@@ -274,3 +274,32 @@ fn neutral_round_trips() {
     assert_eq!(back.created_at, i.created_at);
     assert!(from_neutral(&Tree::Map(vec![("schema".into(), Tree::Int(2))])).is_err());
 }
+
+#[test]
+fn malformed_neutral_values_are_errors_not_panics() {
+    use speedyspec_wp_media::neutral::from_neutral;
+    let base = |stream: Tree, duration: Tree| {
+        Tree::Map(vec![
+            ("schema".into(), Tree::Int(1)),
+            ("container".into(), Tree::Bytes(b"mp3".to_vec())),
+            ("duration".into(), duration),
+            ("streams".into(), Tree::List(vec![stream])),
+        ])
+    };
+    let audio = |codec: &[u8]| {
+        Tree::Map(vec![
+            ("type".into(), Tree::Bytes(b"audio".to_vec())),
+            ("codec".into(), Tree::Bytes(codec.to_vec())),
+        ])
+    };
+    for codec in [&b"pcm_"[..], "pcm_é16".as_bytes(), b"pcm_\xff16"] {
+        let result =
+            std::panic::catch_unwind(|| from_neutral(&base(audio(codec), Tree::Float(1.0))));
+        assert!(result.is_ok(), "codec {codec:?} panicked");
+    }
+    let result = std::panic::catch_unwind(|| from_neutral(&base(audio(b"mp3"), Tree::Float(1e20))));
+    assert!(
+        matches!(result, Ok(Ok(ref info)) if info.duration.is_none()),
+        "{result:?}"
+    );
+}

@@ -324,7 +324,9 @@ fn container_from(name: &str) -> ContainerKind {
 
 fn codec_from(name: &str) -> Codec {
     if let Some(rest) = name.strip_prefix("pcm_")
-        && let (Some(kind), Ok(bits)) = (rest.chars().next(), rest[1..].parse::<u16>())
+        && let Some(kind) = rest.chars().next()
+        && let Some(Ok(bits)) = rest.get(kind.len_utf8()..).map(str::parse::<u16>)
+        && (kind == 's' || kind == 'f')
     {
         return Codec::Pcm {
             bits,
@@ -430,7 +432,7 @@ pub fn from_neutral(tree: &Tree) -> Result<MediaInfo, speedyspec_wp_media_contra
         })
         .collect::<Result<_, _>>()?;
     let duration = match tree.get("duration") {
-        Some(Tree::Float(f)) if *f >= 0.0 && f.is_finite() => Some(Duration::from_secs_f64(*f)),
+        Some(Tree::Float(f)) => Duration::try_from_secs_f64(*f).ok(),
         Some(Tree::Int(i)) if *i >= 0 => Some(Duration::from_secs(*i as u64)),
         _ => None,
     };

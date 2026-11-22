@@ -23,7 +23,11 @@ namespace SpeedySpec\WpMedia
         }
         $file = (string) $file;
         if (!preg_match('#^[a-z][a-z0-9+.-]*://#i', $file) || stripos($file, 'file://') === 0) {
-            return Native\read_metadata($kind, $file, $file, false);
+            // The native reader resolves paths against the process, not PHP's working directory: hand it the
+            // canonical local path, as PHP resolved it.
+            $local = stripos($file, 'file://') === 0 ? substr($file, 7) : $file;
+            $real = realpath($local);
+            return Native\read_metadata($kind, $real === false ? $local : $real, $file, false);
         }
         $max = Native\max_bytes();
         $temp = tempnam(sys_get_temp_dir(), 'speedyspec-media-');
@@ -66,7 +70,11 @@ namespace
     if (!function_exists('wp_add_id3_tag_data')) {
         function wp_add_id3_tag_data(&$metadata, $data)
         {
-            $metadata = \SpeedySpec\WpMedia\Native\wp_add_id3_tag_data($metadata, $data);
+            // Only the keys WordPress's function sets are assigned, in its order, so the rest of $metadata (objects
+            // included) is untouched, and a $metadata nothing is copied into stays as it was.
+            foreach (\SpeedySpec\WpMedia\Native\id3_tag_changes($data) as $key => $value) {
+                $metadata[$key] = $value;
+            }
         }
     }
 

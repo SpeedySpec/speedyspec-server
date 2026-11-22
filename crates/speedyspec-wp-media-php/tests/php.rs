@@ -182,6 +182,38 @@ fn main() {
     check("non_utf8_title_survives", text(&r) == "436166c3a9", &r);
 
     let r = php.eval(
+        "speedyspec://test/file-url",
+        &format!("return json_encode(wp_read_audio_metadata('file://' . {wav_path:?}));"),
+    );
+    check(
+        "file_url_paths_are_read",
+        json(&r)["fileformat"] == "wav",
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/relative",
+        &format!("$cwd = getcwd(); chdir(dirname({wav_path:?})); $m = wp_read_audio_metadata(basename({wav_path:?})); chdir($cwd); return json_encode($m);"),
+    );
+    check(
+        "relative_paths_are_read",
+        json(&r)["fileformat"] == "wav",
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/id3-untouched",
+        "$o = new ArrayObject(); $m = array('x' => $o); wp_add_id3_tag_data($m, array('id3v1' => array('comments' => array('title' => array('T')))));
+         $n = null; wp_add_id3_tag_data($n, array());
+         return json_encode([$m['x'] === $o, $m['title'], $n === null]);",
+    );
+    check(
+        "add_id3_tag_data_leaves_other_values_alone",
+        text(&r) == r#"[true,"T",true]"#,
+        &r,
+    );
+
+    let r = php.eval(
         "speedyspec://test/php-reader",
         &format!(
             "\\SpeedySpec\\Container\\Container::getInstance()->bind(\\SpeedySpec\\WpMedia\\MediaReader::class, fn () => new class implements \\SpeedySpec\\WpMedia\\MediaReader {{

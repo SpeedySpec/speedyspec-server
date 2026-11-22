@@ -278,3 +278,47 @@ fn store_errors_do_not_fail_reads() {
     );
     assert_eq!(reader.store_failures_logged(), 1);
 }
+
+/// Only files under the app's root are cached: a stream wrapper's temporary copy (a new path every time) would only
+/// leave entries nothing can hit.
+#[test]
+fn paths_outside_the_root_are_not_cached() {
+    let file = kit::write_temp(&kit::wav_pcm16(0.1, 8000, 1), "wav");
+    let root = tempfile::tempdir().unwrap();
+    let (inner, calls) = counting(false);
+    let store: Rc<dyn CachingStore> = Rc::new(MemoryCache::new());
+    let reader = cached(inner, store, root.path());
+    reader
+        .read(path_of(&file), &ProbeLimits::default())
+        .unwrap();
+    reader
+        .read(path_of(&file), &ProbeLimits::default())
+        .unwrap();
+    assert_eq!(calls.get(), 2);
+}
+
+/// A root reached through a symlink still caches the files under it, whichever path form the caller uses.
+#[test]
+fn symlinked_root_still_caches() {
+    let real = tempfile::tempdir().unwrap();
+    let links = tempfile::tempdir().unwrap();
+    let linked_root = links.path().join("site");
+    std::os::unix::fs::symlink(real.path(), &linked_root).unwrap();
+    let file = real.path().join("a.wav");
+    std::fs::write(&file, kit::wav_pcm16(0.1, 8000, 1)).unwrap();
+    let (inner, calls) = counting(false);
+    let reader = cached(inner, Rc::new(MemoryCache::new()), &linked_root);
+    reader
+        .read(
+            MediaSource::Path(linked_root.join("a.wav")),
+            &ProbeLimits::default(),
+        )
+        .unwrap();
+    reader
+        .read(
+            MediaSource::Path(std::fs::canonicalize(&file).unwrap()),
+            &ProbeLimits::default(),
+        )
+        .unwrap();
+    assert_eq!(calls.get(), 1);
+}
