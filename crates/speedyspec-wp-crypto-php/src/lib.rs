@@ -7,7 +7,7 @@
 //! (`speedyspec-wp-crypto-sodium`). Nothing goes through PHP's `sodium_*` functions.
 //!
 //! What WordPress does through other WordPress code still happens: the `wp_trusted_keys` filter runs through the Hook
-//! API ([`HookTrustedKeysFilter`]), error messages through `__()` ([`PhpTranslator`]) and the `esc_html` port, and the
+//! API ([`HookTrustedKeysFilter`]), the file is hashed by PHP's own `hash_file()` ([`PhpFileHasher`]), error messages through `__()` ([`PhpTranslator`]) and the `esc_html` port, and the
 //! facade returns a real `WP_Error`, so `wp_error_added` fires.
 //!
 //! Two answers differ from WordPress on purpose: a phpass hash never verifies (SpeedySpec carries no phpass), and
@@ -25,7 +25,8 @@ use speedyspec_wp_crypto_sodium::Sodium;
 use speedyspec_wp_hooks::HookApi;
 
 pub use adapters::{
-    HookTrustedKeysFilter, PhpSiteSettings, PhpTranslator, QuietDiagnostics, SystemClock,
+    HookTrustedKeysFilter, PhpFileHasher, PhpSiteSettings, PhpTranslator, QuietDiagnostics,
+    SystemClock,
 };
 pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
 

@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use base64::Engine as _;
 use speedyspec_php::native::NativeError;
-use speedyspec_wp_crypto_contracts::{Clock, Translator, TrustedKeysFilter};
+use speedyspec_wp_crypto_contracts::{Clock, FileHasher, Translator, TrustedKeysFilter};
 use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName, HookValue};
 use speedyspec_wp_text_contracts::{
     Diagnostics, ErrorLevel, SiteSettings, TextError, WordCountType,
@@ -45,6 +45,34 @@ impl TrustedKeysFilter for HookTrustedKeysFilter {
         self.hooks
             .apply_filters(&self.name, value, Vec::new())
             .map_err(native_error)
+    }
+}
+
+/// `hash_file( 'sha384', $filename, true )`, called in PHP: stream wrappers, `hash_file()`'s warning for an unreadable
+/// file and its `ValueError` for a NUL byte are PHP's own.
+pub struct PhpFileHasher;
+
+impl FileHasher for PhpFileHasher {
+    type Error = NativeError;
+
+    fn sha384(&self, filename: &[u8]) -> Result<Option<[u8; 48]>, NativeError> {
+        let digest = speedyspec_php::call_catching(
+            &HookValue::Str("hash_file".into()),
+            &[
+                HookValue::Str("sha384".into()),
+                php_string(filename),
+                HookValue::Bool(true),
+            ],
+        )
+        .map_err(|failure| match failure.exception {
+            Some(exception) => NativeError::Rethrow(exception),
+            None => NativeError::Silent,
+        })?;
+        Ok(match digest {
+            HookValue::Str(s) => s.as_bytes().try_into().ok(),
+            HookValue::Bytes(b) => b.as_slice().try_into().ok(),
+            _ => None,
+        })
     }
 }
 
