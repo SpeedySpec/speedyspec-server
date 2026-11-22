@@ -1,0 +1,225 @@
+//! The password ports over PHP and the Hook API (Adapters).
+
+use std::rc::Rc;
+
+use speedyspec_hooks::{Key, Value};
+use speedyspec_php::PhpError;
+use speedyspec_php_ext::PhpObject;
+use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
+use speedyspec_wp_password::php_truthy;
+use speedyspec_wp_password_contracts::{
+    PasswordChecker, PasswordError, PasswordFilters, PasswordGenerator, PasswordHasher,
+    RandomNumber, RehashPolicy, Warnings, WpHasherGlobal,
+};
+
+/// Bytes as a PHP string value.
+pub(crate) fn php_string(bytes: &[u8]) -> Value {
+    match std::str::from_utf8(bytes) {
+        Ok(s) => Value::Str(s.to_owned()),
+        Err(_) => Value::Bytes(bytes.to_vec()),
+    }
+}
+
+/// A Hook API failure as a password error: a callback's exception is rethrown unchanged, and PHP unwinding stays
+/// silent.
+pub(crate) fn hook_error(err: HookError) -> PasswordError {
+    match &err.payload {
+        Some(payload) => match payload.downcast_ref::<Value>() {
+            Some(exception) => PasswordError::Rethrow(exception.clone()),
+            None => PasswordError::Unwinding,
+        },
+        None => PasswordError::Throw {
+            class: "Error".into(),
+            message: err.message,
+        },
+    }
+}
+
+/// Calls `$target->$method(...$args)`, keeping the exception PHP throws.
+fn call_method(target: &Value, method: &str, args: &[Value]) -> Result<Value, PasswordError> {
+    let callable = Value::Array(vec![
+        (Key::Int(0), target.clone()),
+        (Key::Int(1), Value::Str(method.to_owned())),
+    ]);
+    speedyspec_php::call_catching(&callable, args).map_err(|failure| match failure.exception {
+        Some(exception) => PasswordError::Rethrow(exception),
+        None => match failure.error {
+            PhpError::Exit(_) | PhpError::Fatal { .. } => PasswordError::Unwinding,
+            other => PasswordError::Port(other.to_string()),
+        },
+    })
+}
+
+/// WordPress's five password filters over the Hook API. With no callback a run is only counted and PHP is not
+/// entered.
+pub struct HookPasswordFilters {
+    hooks: Rc<HookApi>,
+}
+
+impl HookPasswordFilters {
+    pub fn new(hooks: Rc<HookApi>) -> HookPasswordFilters {
+        HookPasswordFilters { hooks }
+    }
+
+    fn apply(&self, name: &str, value: Value, args: Vec<Value>) -> Result<Value, PasswordError> {
+        let name = HookName::from(name);
+        if self
+            .hooks
+            .skip_if_empty(&name, Count::Filters)
+            .map_err(hook_error)?
+        {
+            return Ok(value);
+        }
+        self.hooks
+            .apply_filters(&name, value, args)
+            .map_err(hook_error)
+    }
+}
+
+impl PasswordFilters for HookPasswordFilters {
+    fn algorithm(&self, default: Value) -> Result<Value, PasswordError> {
+        self.apply("wp_hash_password_algorithm", default, Vec::new())
+    }
+
+    fn options(&self, options: Value, algorithm: &Value) -> Result<Value, PasswordError> {
+        self.apply("wp_hash_password_options", options, vec![algorithm.clone()])
+    }
+
+    fn check_password(
+        &self,
+        check: Value,
+        password: &[u8],
+        hash: &[u8],
+        user_id: &Value,
+    ) -> Result<Value, PasswordError> {
+        self.apply(
+            "check_password",
+            check,
+            vec![php_string(password), php_string(hash), user_id.clone()],
+        )
+    }
+
+    fn needs_rehash(
+        &self,
+        needs: bool,
+        hash: &[u8],
+        user_id: &Value,
+    ) -> Result<Value, PasswordError> {
+        self.apply(
+            "password_needs_rehash",
+            Value::Bool(needs),
+            vec![php_string(hash), user_id.clone()],
+        )
+    }
+
+    fn random_password(
+        &self,
+        password: Vec<u8>,
+        length: &Value,
+        special: &Value,
+        extra: &Value,
+    ) -> Result<Value, PasswordError> {
+        self.apply(
+            "random_password",
+            php_string(&password),
+            vec![length.clone(), special.clone(), extra.clone()],
+        )
+    }
+}
+
+/// `$wp_hasher`, read from PHP's globals when WordPress would read it.
+pub struct PhpWpHasherGlobal;
+
+impl PhpWpHasherGlobal {
+    /// The hasher, when `! empty( $wp_hasher )`.
+    fn hasher() -> Option<Value> {
+        speedyspec_php::global("wp_hasher").filter(php_truthy)
+    }
+}
+
+impl WpHasherGlobal for PhpWpHasherGlobal {
+    fn is_set(&self) -> bool {
+        Self::hasher().is_some()
+    }
+
+    fn hash(&self, trimmed: &[u8]) -> Option<Result<Value, PasswordError>> {
+        Self::hasher().map(|hasher| call_method(&hasher, "HashPassword", &[php_string(trimmed)]))
+    }
+
+    fn check(&self, password: &[u8], hash: &[u8]) -> Option<Result<Value, PasswordError>> {
+        Self::hasher().map(|hasher| {
+            call_method(
+                &hasher,
+                "CheckPassword",
+                &[php_string(password), php_string(hash)],
+            )
+        })
+    }
+}
+
+/// PHP warnings from `password_hash()`'s rules, raised with PHP's text through `trigger_error()`.
+pub struct PhpWarnings;
+
+impl Warnings for PhpWarnings {
+    fn warn(&self, message: &str) {
+        // E_USER_WARNING: a native function has no way to raise E_WARNING itself.
+        let _ = speedyspec_php::call(
+            &Value::Str("trigger_error".into()),
+            &[Value::Str(message.to_owned()), Value::Int(512)],
+        );
+    }
+}
+
+/// A PHP object implementing one of the twin interfaces.
+pub struct PhpReplacement(PhpObject);
+
+impl PhpReplacement {
+    pub fn new(object: PhpObject) -> PhpReplacement {
+        PhpReplacement(object)
+    }
+
+    fn call(&self, method: &str, args: &[Value]) -> Result<Value, PasswordError> {
+        call_method(self.0.value(), method, args)
+    }
+}
+
+impl PasswordHasher for PhpReplacement {
+    fn hash(&self, password: &[u8]) -> Result<Value, PasswordError> {
+        self.call("hash", &[php_string(password)])
+    }
+}
+
+impl PasswordChecker for PhpReplacement {
+    fn check(&self, password: &[u8], hash: &[u8], user_id: &Value) -> Result<Value, PasswordError> {
+        self.call(
+            "check",
+            &[php_string(password), php_string(hash), user_id.clone()],
+        )
+    }
+}
+
+impl RehashPolicy for PhpReplacement {
+    fn needs_rehash(&self, hash: &[u8], user_id: &Value) -> Result<Value, PasswordError> {
+        self.call("needs_rehash", &[php_string(hash), user_id.clone()])
+    }
+}
+
+impl PasswordGenerator for PhpReplacement {
+    fn generate(
+        &self,
+        length: &Value,
+        special: &Value,
+        extra: &Value,
+    ) -> Result<Value, PasswordError> {
+        self.call(
+            "generate",
+            &[length.clone(), special.clone(), extra.clone()],
+        )
+    }
+}
+
+impl RandomNumber for PhpReplacement {
+    fn rand(&self, min: i64, max: i64) -> Result<Value, PasswordError> {
+        self.call("rand", &[Value::Int(min), Value::Int(max)])
+    }
+}
