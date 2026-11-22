@@ -34,13 +34,24 @@ pub struct ValidNames {
 
 impl ValidNames {
     /// Collects the names.
-    pub fn new(blocks: Vec<String>, elements: Vec<String>, variations: Vec<(String, Vec<String>)>) -> ValidNames {
-        ValidNames { blocks, elements, variations }
+    pub fn new(
+        blocks: Vec<String>,
+        elements: Vec<String>,
+        variations: Vec<(String, Vec<String>)>,
+    ) -> ValidNames {
+        ValidNames {
+            blocks,
+            elements,
+            variations,
+        }
     }
 
     /// The registered variation names of `block`, if it has any.
     pub fn variations_of(&self, block: &str) -> Option<&[String]> {
-        self.variations.iter().find(|(b, _)| b == block).map(|(_, v)| v.as_slice())
+        self.variations
+            .iter()
+            .find(|(b, _)| b == block)
+            .map(|(_, v)| v.as_slice())
     }
 }
 
@@ -55,20 +66,31 @@ thread_local! {
 
 /// A constant of the shape `name => [strings]`.
 fn string_lists(name: &str) -> Vec<(String, Vec<String>)> {
-    let Some(Value::Array(entries)) = schema::constant(name) else { return Vec::new() };
+    let Some(Value::Array(entries)) = schema::constant(name) else {
+        return Vec::new();
+    };
     entries
         .iter()
         .filter_map(|(k, v)| {
             let Key::Str(k) = k else { return None };
             let Value::Array(items) = v else { return None };
-            let items = items.iter().filter_map(|(_, s)| if let Value::Str(s) = s { Some(s.clone()) } else { None });
+            let items = items.iter().filter_map(|(_, s)| {
+                if let Value::Str(s) = s {
+                    Some(s.clone())
+                } else {
+                    None
+                }
+            });
             Some((k.clone(), items.collect()))
         })
         .collect()
 }
 
 fn lookup<'a>(lists: &'a [(String, Vec<String>)], name: &str) -> Option<&'a [String]> {
-    lists.iter().find(|(k, _)| k == name).map(|(_, v)| v.as_slice())
+    lists
+        .iter()
+        .find(|(k, _)| k == name)
+        .map(|(_, v)| v.as_slice())
 }
 
 fn key(name: &str) -> Key {
@@ -77,13 +99,21 @@ fn key(name: &str) -> Key {
 
 /// `VALID_STYLES` without the properties marked `'top'` (allowed at the top level only).
 fn styles_non_top_level() -> Spec {
-    let Some(Value::Array(sections)) = schema::constant("VALID_STYLES") else { return Spec::empty() };
+    let Some(Value::Array(sections)) = schema::constant("VALID_STYLES") else {
+        return Spec::empty();
+    };
     let filtered = sections
         .into_iter()
         .map(|(k, v)| match v {
-            Value::Array(props) => {
-                (k, Value::Array(props.into_iter().filter(|(_, p)| !matches!(p, Value::Str(s) if s == "top")).collect()))
-            }
+            Value::Array(props) => (
+                k,
+                Value::Array(
+                    props
+                        .into_iter()
+                        .filter(|(_, p)| !matches!(p, Value::Str(s) if s == "top"))
+                        .collect(),
+                ),
+            ),
             other => (k, other),
         })
         .collect();
@@ -99,7 +129,10 @@ struct Schemas {
 fn build_schemas(input: &Value, valid: &ValidNames) -> Schemas {
     let non_top = styles_non_top_level();
     let breakpoints: Vec<String> =
-        viewport::media_queries(array_path::get(input, &["settings", "viewport"]), false).into_iter().map(|(k, _)| k).collect();
+        viewport::media_queries(array_path::get(input, &["settings", "viewport"]), false)
+            .into_iter()
+            .map(|(k, _)| k)
+            .collect();
 
     let mut elements = Spec::empty();
     PSEUDO_ELEMENTS.with(|pseudo| {
@@ -160,9 +193,10 @@ fn build_schemas(input: &Value, valid: &ValidNames) -> Schemas {
         for block in &valid.blocks {
             let pseudos = lookup(pseudo, block).unwrap_or_default();
             let mut names: Vec<String> = Vec::new();
-            if let (Some(Value::Array(given)), Some(registered)) =
-                (array_path::get(input, &["styles", "blocks", block, "variations"]), valid.variations_of(block))
-                && !given.is_empty()
+            if let (Some(Value::Array(given)), Some(registered)) = (
+                array_path::get(input, &["styles", "blocks", block, "variations"]),
+                valid.variations_of(block),
+            ) && !given.is_empty()
             {
                 names = given
                     .iter()
@@ -193,7 +227,9 @@ fn build_schemas(input: &Value, valid: &ValidNames) -> Schemas {
                 }
                 variations.set(key(name), schema);
             }
-            blocks_styles.entry(key(block)).set(key("variations"), variations);
+            blocks_styles
+                .entry(key(block))
+                .set(key("variations"), variations);
         }
     });
 
@@ -207,33 +243,48 @@ fn build_schemas(input: &Value, valid: &ValidNames) -> Schemas {
     for origin in speedyspec_wp_theme_json_contracts::Origin::ALL {
         per_origin.set(key(origin.as_str()), font_families.clone());
     }
-    settings.entry(key("typography")).set(key("fontFamilies"), per_origin);
+    settings
+        .entry(key("typography"))
+        .set(key("fontFamilies"), per_origin);
     Schemas { styles, settings }
 }
 
 /// `WP_Theme_JSON::sanitize( $input, $valid_block_names, $valid_element_names, $valid_variations )`.
 pub fn sanitize(input: &Value, valid: &ValidNames) -> Value {
-    let Value::Array(entries) = input else { return Value::Array(Vec::new()) };
+    let Value::Array(entries) = input else {
+        return Value::Array(Vec::new());
+    };
     let top_level = schema::constant("VALID_TOP_LEVEL_KEYS").unwrap_or(Value::Null);
     let allowed = |k: &Key| match (&top_level, k) {
-        (Value::Array(keys), Key::Str(name)) => keys.iter().any(|(_, v)| matches!(v, Value::Str(s) if s == name)),
+        (Value::Array(keys), Key::Str(name)) => keys
+            .iter()
+            .any(|(_, v)| matches!(v, Value::Str(s) if s == name)),
         _ => false,
     };
-    let mut output = Value::Array(entries.iter().filter(|(k, _)| allowed(k)).cloned().collect());
+    let mut output = Value::Array(
+        entries
+            .iter()
+            .filter(|(k, _)| allowed(k))
+            .cloned()
+            .collect(),
+    );
     let schemas = build_schemas(input, valid);
 
     for (subtree, schema) in [("styles", &schemas.styles), ("settings", &schemas.settings)] {
         if !array_path::isset(input, &[subtree]) {
             continue;
         }
-        let given = array_path::get(input, &[subtree]).cloned().unwrap_or(Value::Null);
+        let given = array_path::get(input, &[subtree])
+            .cloned()
+            .unwrap_or(Value::Null);
         if !matches!(given, Value::Array(_)) {
             array_path::unset(&mut output, &[subtree]);
             continue;
         }
         let mut result = remove_keys_not_in_schema(given.clone(), schema);
         if subtree == "settings" && array_path::child(&given, &key("viewport")).is_some() {
-            let sanitized = viewport::sanitize_viewport_settings(array_path::child(&given, &key("viewport")));
+            let sanitized =
+                viewport::sanitize_viewport_settings(array_path::child(&given, &key("viewport")));
             array_path::insert(&mut result, key("viewport"), sanitized);
         }
         if matches!(&result, Value::Array(e) if e.is_empty()) {

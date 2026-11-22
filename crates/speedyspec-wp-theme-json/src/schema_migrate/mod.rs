@@ -34,12 +34,22 @@ fn chain() -> [&'static dyn MigrationStep; 2] {
 /// knows passes through untouched.
 pub fn migrate(doc: Value, origin: Origin) -> Value {
     if !array_path::isset(&doc, &["version"]) {
-        return Value::Array(vec![(Key::Str("version".into()), Value::Int(LATEST_SCHEMA))]);
+        return Value::Array(vec![(
+            Key::Str("version".into()),
+            Value::Int(LATEST_SCHEMA),
+        )]);
     }
-    let version = array_path::get(&doc, &["version"]).cloned().unwrap_or(Value::Null);
+    let version = array_path::get(&doc, &["version"])
+        .cloned()
+        .unwrap_or(Value::Null);
     let steps = chain();
-    let Some(start) = steps.iter().position(|s| php_loose_eq(&version, &Value::Int(s.from()))) else {
+    let Some(start) = steps
+        .iter()
+        .position(|s| php_loose_eq(&version, &Value::Int(s.from())))
+    else {
         return doc;
     };
-    steps[start..].iter().fold(doc, |doc, step| step.migrate(doc, origin))
+    steps[start..]
+        .iter()
+        .fold(doc, |doc, step| step.migrate(doc, origin))
 }

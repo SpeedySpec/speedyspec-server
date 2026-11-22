@@ -15,7 +15,13 @@ fn key(name: &str) -> Key {
 }
 
 fn list(items: Vec<Value>) -> Value {
-    Value::Array(items.into_iter().enumerate().map(|(i, v)| (Key::Int(i as i64), v)).collect())
+    Value::Array(
+        items
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (Key::Int(i as i64), v))
+            .collect(),
+    )
 }
 
 /// `$array[ $value ]`'s key for a slug value.
@@ -24,7 +30,9 @@ fn value_key(value: Option<&Value>) -> Key {
         Some(Value::Int(i)) => Key::Int(*i),
         Some(Value::Float(f)) => Key::Int(*f as i64),
         Some(Value::Bool(b)) => Key::Int(i64::from(*b)),
-        Some(v @ (Value::Str(_) | Value::Bytes(_))) => php_key(&String::from_utf8_lossy(&to_php_string(v))),
+        Some(v @ (Value::Str(_) | Value::Bytes(_))) => {
+            php_key(&String::from_utf8_lossy(&to_php_string(v)))
+        }
         _ => Key::Str(String::new()),
     }
 }
@@ -41,13 +49,19 @@ fn key_string(key: &Key) -> String {
 fn flatten_preset(preset: &Value) -> Value {
     let mut items: Vec<(Key, Vec<(Key, Value)>)> = Vec::new();
     for origin in ["theme", "custom"] {
-        let Some(Value::Array(entries)) = child(preset, &key(origin)).filter(|v| !matches!(v, Value::Null)) else {
+        let Some(Value::Array(entries)) =
+            child(preset, &key(origin)).filter(|v| !matches!(v, Value::Null))
+        else {
             continue;
         };
         for (_, item) in entries {
             let slug = value_key(child(item, &key("slug")));
             let rest = match item {
-                Value::Array(fields) => fields.iter().filter(|(k, _)| *k != key("slug")).cloned().collect(),
+                Value::Array(fields) => fields
+                    .iter()
+                    .filter(|(k, _)| *k != key("slug"))
+                    .cloned()
+                    .collect(),
                 _ => Vec::new(),
             };
             match items.iter_mut().find(|(k, _)| *k == slug) {
@@ -78,11 +92,24 @@ fn flatten_preset(preset: &Value) -> Value {
 }
 
 fn opt_in_paths() -> Vec<Vec<String>> {
-    let Some(Value::Array(paths)) = schema::constant("APPEARANCE_TOOLS_OPT_INS") else { return Vec::new() };
+    let Some(Value::Array(paths)) = schema::constant("APPEARANCE_TOOLS_OPT_INS") else {
+        return Vec::new();
+    };
     paths
         .iter()
         .filter_map(|(_, p)| match p {
-            Value::Array(parts) => Some(parts.iter().filter_map(|(_, s)| if let Value::Str(s) = s { Some(s.clone()) } else { None }).collect()),
+            Value::Array(parts) => Some(
+                parts
+                    .iter()
+                    .filter_map(|(_, s)| {
+                        if let Value::Str(s) = s {
+                            Some(s.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
+            ),
             _ => None,
         })
         .collect()
@@ -94,24 +121,41 @@ pub fn get_data(raw: &Value) -> Value {
     let nodes = setting_paths(&output);
     for node in &nodes {
         for metadata in presets_metadata().iter() {
-            let path: Vec<&str> = node.iter().map(String::as_str).chain(metadata.path.iter().map(String::as_str)).collect();
-            let Some(preset) = array_path::get(&output, &path).filter(|p| !matches!(p, Value::Null)) else { continue };
+            let path: Vec<&str> = node
+                .iter()
+                .map(String::as_str)
+                .chain(metadata.path.iter().map(String::as_str))
+                .collect();
+            let Some(preset) =
+                array_path::get(&output, &path).filter(|p| !matches!(p, Value::Null))
+            else {
+                continue;
+            };
             let flattened = flatten_preset(preset);
             array_path::set(&mut output, &path, flattened);
         }
     }
     let opt_ins = opt_in_paths();
     for node in &nodes {
-        let full = |opt: &[String]| -> Vec<String> { node.iter().chain(opt.iter()).cloned().collect() };
+        let full =
+            |opt: &[String]| -> Vec<String> { node.iter().chain(opt.iter()).cloned().collect() };
         let all_set = opt_ins.iter().all(|opt| {
             let path = full(opt);
-            array_path::get(&output, &path.iter().map(String::as_str).collect::<Vec<_>>()).is_some()
+            array_path::get(
+                &output,
+                &path.iter().map(String::as_str).collect::<Vec<_>>(),
+            )
+            .is_some()
         });
         if !all_set {
             continue;
         }
         let at: Vec<String> = full(&["appearanceTools".to_owned()]);
-        array_path::set(&mut output, &at.iter().map(String::as_str).collect::<Vec<_>>(), Value::Bool(true));
+        array_path::set(
+            &mut output,
+            &at.iter().map(String::as_str).collect::<Vec<_>>(),
+            Value::Bool(true),
+        );
         for opt in &opt_ins {
             let path = full(opt);
             let path: Vec<&str> = path.iter().map(String::as_str).collect();
@@ -136,12 +180,19 @@ pub fn get_data(raw: &Value) -> Value {
 fn compare_keys(a: &Key, b: &Key) -> Ordering {
     match (a, b) {
         (Key::Int(x), Key::Int(y)) => x.cmp(y),
-        (Key::Str(x), Key::Str(y)) => match (numeric_string(x.as_bytes()), numeric_string(y.as_bytes())) {
-            (Some(n), Some(m)) => n.as_f64().partial_cmp(&m.as_f64()).unwrap_or(Ordering::Equal),
-            _ => x.as_bytes().cmp(y.as_bytes()),
-        },
+        (Key::Str(x), Key::Str(y)) => {
+            match (numeric_string(x.as_bytes()), numeric_string(y.as_bytes())) {
+                (Some(n), Some(m)) => n
+                    .as_f64()
+                    .partial_cmp(&m.as_f64())
+                    .unwrap_or(Ordering::Equal),
+                _ => x.as_bytes().cmp(y.as_bytes()),
+            }
+        }
         (Key::Int(x), Key::Str(y)) => match numeric_string(y.as_bytes()) {
-            Some(m) => (*x as f64).partial_cmp(&m.as_f64()).unwrap_or(Ordering::Equal),
+            Some(m) => (*x as f64)
+                .partial_cmp(&m.as_f64())
+                .unwrap_or(Ordering::Equal),
             None => x.to_string().as_bytes().cmp(y.as_bytes()),
         },
         (Key::Str(_), Key::Int(_)) => compare_keys(b, a).reverse(),
@@ -152,7 +203,10 @@ fn compare_keys(a: &Key, b: &Key) -> Ordering {
 pub fn recursive_ksort(value: Value) -> Value {
     match value {
         Value::Array(entries) => {
-            let mut entries: Vec<(Key, Value)> = entries.into_iter().map(|(k, v)| (k, recursive_ksort(v))).collect();
+            let mut entries: Vec<(Key, Value)> = entries
+                .into_iter()
+                .map(|(k, v)| (k, recursive_ksort(v)))
+                .collect();
             entries.sort_by(|(a, _), (b, _)| compare_keys(a, b));
             Value::Array(entries)
         }
@@ -164,15 +218,21 @@ fn named_items(raw: &Value, top: &str, fields: &[(&str, Value)]) -> Value {
     if !array_path::isset(raw, &[top]) {
         return Value::Array(Vec::new());
     }
-    let Some(Value::Array(items)) = array_path::get(raw, &[top]) else { return Value::Array(Vec::new()) };
+    let Some(Value::Array(items)) = array_path::get(raw, &[top]) else {
+        return Value::Array(Vec::new());
+    };
     let mut out: Vec<(Key, Value)> = Vec::new();
     for (_, item) in items {
-        let Some(name) = child(item, &key("name")).filter(|n| !matches!(n, Value::Null)) else { continue };
+        let Some(name) = child(item, &key("name")).filter(|n| !matches!(n, Value::Null)) else {
+            continue;
+        };
         let entry = Value::Array(
             fields
                 .iter()
                 .map(|(field, default)| {
-                    let value = child(item, &key(field)).filter(|v| !matches!(v, Value::Null)).cloned();
+                    let value = child(item, &key(field))
+                        .filter(|v| !matches!(v, Value::Null))
+                        .cloned();
                     (key(field), value.unwrap_or_else(|| default.clone()))
                 })
                 .collect(),
@@ -188,12 +248,26 @@ fn named_items(raw: &Value, top: &str, fields: &[(&str, Value)]) -> Value {
 
 /// `get_custom_templates()`: each template by name, with its title and post types (`['page']` by default).
 pub fn custom_templates(raw: &Value) -> Value {
-    named_items(raw, "customTemplates", &[("title", Value::Str(String::new())), ("postTypes", list(vec![Value::Str("page".into())]))])
+    named_items(
+        raw,
+        "customTemplates",
+        &[
+            ("title", Value::Str(String::new())),
+            ("postTypes", list(vec![Value::Str("page".into())])),
+        ],
+    )
 }
 
 /// `get_template_parts()`: each template part by name, with its title and area.
 pub fn template_parts(raw: &Value) -> Value {
-    named_items(raw, "templateParts", &[("title", Value::Str(String::new())), ("area", Value::Str(String::new()))])
+    named_items(
+        raw,
+        "templateParts",
+        &[
+            ("title", Value::Str(String::new())),
+            ("area", Value::Str(String::new())),
+        ],
+    )
 }
 
 /// `get_patterns()`.
@@ -223,24 +297,44 @@ pub fn element_class_name(element: &[u8]) -> Vec<u8> {
 
 /// `WP_Theme_JSON::get_from_editor_settings( $settings )`: a theme.json document from the block editor's settings.
 pub fn from_editor_settings(settings: &Value) -> Value {
-    let mut out = Value::Array(vec![(key("version"), Value::Int(schema::LATEST_SCHEMA)), (key("settings"), Value::Array(Vec::new()))]);
+    let mut out = Value::Array(vec![
+        (key("version"), Value::Int(schema::LATEST_SCHEMA)),
+        (key("settings"), Value::Array(Vec::new())),
+    ]);
     let given = |name: &str| child(settings, &key(name)).filter(|v| !matches!(v, Value::Null));
     let negated = |v: &Value| Value::Bool(!crate::merge::truthy(v));
     if let Some(v) = given("disableCustomColors") {
         array_path::set(&mut out, &["settings", "color", "custom"], negated(v));
     }
     if let Some(v) = given("disableCustomGradients") {
-        array_path::set(&mut out, &["settings", "color", "customGradient"], negated(v));
+        array_path::set(
+            &mut out,
+            &["settings", "color", "customGradient"],
+            negated(v),
+        );
     }
     if let Some(v) = given("disableCustomFontSizes") {
-        array_path::set(&mut out, &["settings", "typography", "customFontSize"], negated(v));
+        array_path::set(
+            &mut out,
+            &["settings", "typography", "customFontSize"],
+            negated(v),
+        );
     }
     if let Some(v) = given("enableCustomLineHeight") {
-        array_path::set(&mut out, &["settings", "typography", "lineHeight"], v.clone());
+        array_path::set(
+            &mut out,
+            &["settings", "typography", "lineHeight"],
+            v.clone(),
+        );
     }
     if let Some(v) = given("enableCustomUnits") {
         let units = if matches!(v, Value::Bool(true)) {
-            list(["px", "em", "rem", "vh", "vw", "%"].iter().map(|u| Value::Str((*u).into())).collect())
+            list(
+                ["px", "em", "rem", "vh", "vw", "%"]
+                    .iter()
+                    .map(|u| Value::Str((*u).into()))
+                    .collect(),
+            )
         } else {
             v.clone()
         };
@@ -259,10 +353,16 @@ pub fn from_editor_settings(settings: &Value) -> Value {
                     .iter()
                     .map(|(k, item)| {
                         let mut item = item.clone();
-                        if let Some(size) = child(&item, &key("size")).filter(|s| to_number(s).is_some()) {
+                        if let Some(size) =
+                            child(&item, &key("size")).filter(|s| to_number(s).is_some())
+                        {
                             let mut text = to_php_string(size);
                             text.extend_from_slice(b"px");
-                            array_path::insert(&mut item, key("size"), crate::codec::string_value(&text));
+                            array_path::insert(
+                                &mut item,
+                                key("size"),
+                                crate::codec::string_value(&text),
+                            );
                         }
                         (k.clone(), item)
                     })
@@ -276,7 +376,11 @@ pub fn from_editor_settings(settings: &Value) -> Value {
         array_path::set(&mut out, &["settings", "spacing", "padding"], v.clone());
     }
     if let Some(v) = given("spacingSizes") {
-        array_path::set(&mut out, &["settings", "spacing", "spacingSizes"], v.clone());
+        array_path::set(
+            &mut out,
+            &["settings", "spacing", "spacingSizes"],
+            v.clone(),
+        );
     }
     out
 }

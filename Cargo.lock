@@ -312,6 +312,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
+name = "bcrypt"
+version = "0.19.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0cd0bd35a28836d528d2b58ad499bc3c5641d59379421b1be9eeb0c2f2b912a"
+dependencies = [
+ "base64 0.23.1",
+ "blowfish",
+ "getrandom 0.4.3",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
 name = "bindgen"
 version = "0.73.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -408,6 +421,16 @@ checksum = "d2f6c7dbe95a6ed67ad9f18e57daf93a2f034c524b99fd2b76d18fdfeb6660aa"
 dependencies = [
  "hybrid-array",
  "zeroize",
+]
+
+[[package]]
+name = "blowfish"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62ce3946557b35e71d1bbe07ec385073ce9eda05043f95de134eb578fcf1a298"
+dependencies = [
+ "byteorder",
+ "cipher 0.5.2",
 ]
 
 [[package]]
@@ -5390,6 +5413,8 @@ dependencies = [
  "speedyspec-wp-hooks-php",
  "speedyspec-wp-object-cache-php",
  "speedyspec-wp-options-php",
+ "speedyspec-wp-password-contracts",
+ "speedyspec-wp-password-php",
  "tempfile",
  "tokio",
 ]
@@ -6182,6 +6207,63 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-password"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "hmac 0.12.1",
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-hooks",
+ "speedyspec-wp-crypto",
+ "speedyspec-wp-crypto-contracts",
+ "speedyspec-wp-password-bcrypt",
+ "speedyspec-wp-password-contracts",
+ "subtle",
+]
+
+[[package]]
+name = "speedyspec-wp-password-bcrypt"
+version = "0.1.0"
+dependencies = [
+ "bcrypt",
+ "serde_json",
+ "speedyspec-wp-password-contracts",
+]
+
+[[package]]
+name = "speedyspec-wp-password-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-hooks",
+]
+
+[[package]]
+name = "speedyspec-wp-password-php"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-wp-crypto",
+ "speedyspec-wp-crypto-contracts",
+ "speedyspec-wp-crypto-sodium",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-password",
+ "speedyspec-wp-password-bcrypt",
+ "speedyspec-wp-password-contracts",
+ "ureq",
+]
+
+[[package]]
 name = "speedyspec-wp-rewrite"
 version = "0.1.2"
 dependencies = [
@@ -6422,6 +6504,8 @@ dependencies = [
 name = "speedyspec-wp-theme-json"
 version = "0.1.1"
 dependencies = [
+ "criterion 0.5.1",
+ "fancy-regex",
  "indexmap",
  "proptest",
  "serde_json",
@@ -6429,6 +6513,9 @@ dependencies = [
  "speedyspec-cqrs",
  "speedyspec-hooks",
  "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-kses",
+ "speedyspec-wp-kses-contracts",
  "speedyspec-wp-theme-json-contracts",
 ]
 
@@ -6456,6 +6543,7 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
+ "speedyspec-wp-kses-contracts",
  "speedyspec-wp-theme-json",
  "speedyspec-wp-theme-json-contracts",
 ]

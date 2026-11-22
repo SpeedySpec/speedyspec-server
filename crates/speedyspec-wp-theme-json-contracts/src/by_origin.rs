@@ -10,7 +10,9 @@ pub struct ByOrigin<T> {
 
 impl<T> Default for ByOrigin<T> {
     fn default() -> Self {
-        Self { slots: [None, None, None, None] }
+        Self {
+            slots: [None, None, None, None],
+        }
     }
 }
 
@@ -46,7 +48,10 @@ impl<T> ByOrigin<T> {
 
     /// The values that are present, in origin order.
     pub fn iter(&self) -> impl Iterator<Item = (Origin, &T)> {
-        Origin::ALL.into_iter().zip(self.slots.iter()).filter_map(|(o, v)| v.as_ref().map(|v| (o, v)))
+        Origin::ALL
+            .into_iter()
+            .zip(self.slots.iter())
+            .filter_map(|(o, v)| v.as_ref().map(|v| (o, v)))
     }
 }
 

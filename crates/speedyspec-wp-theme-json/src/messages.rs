@@ -5,8 +5,11 @@
 use std::rc::Rc;
 
 use speedyspec_container::Container;
-use speedyspec_cqrs::{Command, CommandHandler, Query, QueryHandler, bind_command_handler, bind_query_handler};
+use speedyspec_cqrs::{
+    Command, CommandHandler, Query, QueryHandler, bind_command_handler, bind_query_handler,
+};
 use speedyspec_hooks::Value;
+use speedyspec_wp_theme_json_contracts::ThemeJsonError;
 use speedyspec_wp_theme_json_contracts::model::ThemeJson;
 
 use crate::ThemeJsonApi;
@@ -66,6 +69,14 @@ message!(query GetPatterns { doc: Rc<ThemeJson> } -> Value, |a, m| a.get_pattern
 message!(query GetFromEditorSettings { settings: Value } -> Value, |a, m| a.get_from_editor_settings(&m.settings));
 message!(query GetElementClassName { element: Vec<u8> } -> Vec<u8>, |a, m| a.get_element_class_name(&m.element));
 message!(query SchemaMigrate { data: Value, origin: Vec<u8> } -> Value, |a, m| a.schema_migrate(m.data, &m.origin));
+message!(query GetStylesheet { doc: Rc<ThemeJson>, types: Value, origins: Value, options: Value } -> Result<Vec<u8>, ThemeJsonError>,
+    |a, m| a.get_stylesheet(&m.doc, &m.types, &m.origins, &m.options));
+message!(query GetStylesForBlock { doc: Rc<ThemeJson>, metadata: Value } -> Vec<u8>,
+    |a, m| a.get_styles_for_block(&m.doc, &m.metadata));
+message!(query GetStylesBlockNodes { doc: Rc<ThemeJson> } -> Value, |a, m| a.get_styles_block_nodes(&m.doc));
+message!(query GetRootLayoutRules { doc: Rc<ThemeJson>, metadata: Value, options: Value } -> Vec<u8>,
+    |a, m| a.get_root_layout_rules(&m.doc, &m.metadata, &m.options));
+message!(query GetCustomCss { doc: Rc<ThemeJson> } -> Vec<u8>, |a, m| a.get_custom_css(&m.doc));
 message!(command SetSpacingSizes { doc: Rc<ThemeJson> } -> ThemeJson, |a, m| {
     let mut doc = (*m.doc).clone();
     a.set_spacing_sizes(&mut doc);
@@ -84,5 +95,6 @@ pub fn register_theme_json_handlers(container: &Container, api: Rc<ThemeJsonApi>
     bind_all!(container, api;
         commands: SetSpacingSizes;
         queries: ConstructThemeJson, MergeThemeJson, MergeRawData, GetViewportMediaQueries, GetRawData, GetSettings, GetData, GetCustomTemplates,
-            GetTemplateParts, GetPatterns, GetFromEditorSettings, GetElementClassName, SchemaMigrate);
+            GetTemplateParts, GetPatterns, GetFromEditorSettings, GetElementClassName, SchemaMigrate, GetStylesheet,
+            GetStylesForBlock, GetStylesBlockNodes, GetRootLayoutRules, GetCustomCss);
 }

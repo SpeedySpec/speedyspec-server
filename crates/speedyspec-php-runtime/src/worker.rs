@@ -12,9 +12,17 @@ use speedyspec_php::{BootOptions, NativeArea, Php, WebRequest};
 use speedyspec_runtime_contract::{WorkerReport, WorkerSpec};
 use speedyspec_wp_crypto_php::CryptoArea;
 use speedyspec_wp_crypto_sodium::Sodium;
-use speedyspec_wp_hooks::HookStore;
+use speedyspec_wp_hooks::{HookApi, HookStore};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::{HOOK_STORE, PhpHookStore, WpHooksArea};
+use speedyspec_wp_password_php::PasswordArea;
+
+/// WordPress's password functions, with WordPress's rules bound in `container` under their pluggable ports.
+fn password_area(hooks: Rc<HookApi>, container: &Rc<Container>, sodium: Sodium) -> PasswordArea {
+    let area = PasswordArea::new(hooks, container.clone(), Rc::new(sodium));
+    area.bind_defaults();
+    area
+}
 
 /// A PHP string literal.
 fn quote(value: &str) -> String {
@@ -221,8 +229,10 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         .port::<dyn HookStore>(HOOK_STORE, |object| Rc::new(PhpHookStore::new(object)))
         .stateful(HOOK_STORE)
         .bindings(spec.bindings.clone());
+    let container_area = PasswordArea::ports(container_area);
     let hook_api = hooks.api();
     let crypto = CryptoArea::new(hook_api.clone(), sodium);
+    let password = password_area(hook_api.clone(), &container, sodium);
     let mut areas: Vec<Rc<dyn NativeArea>> = vec![
         speedyspec_php_ext::twins_area(),
         Rc::new(container_area),
@@ -245,6 +255,7 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         None => None,
     };
     areas.push(Rc::new(crypto));
+    areas.push(Rc::new(password));
     let preload = preload(&spec);
     let php = match Php::boot(BootOptions {
         hooks: legacy,
@@ -394,7 +405,50 @@ fn log(event: &str, spec: &WorkerSpec, message: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::sodium_problem;
+    use std::rc::Rc;
+
+    use speedyspec_container::Container;
+    use speedyspec_hooks::Value;
+    use speedyspec_wp_crypto_sodium::Sodium;
+    use speedyspec_wp_hooks_memory::MemoryHookStore;
+    use speedyspec_wp_hooks_php::WpHooksArea;
+    use speedyspec_wp_password_contracts::{
+        PASSWORD_CHECKER, PASSWORD_GENERATOR, PASSWORD_HASHER, PasswordChecker, PasswordGenerator,
+        PasswordHasher, RANDOM_NUMBER, REHASH_POLICY, RandomNumber, RehashPolicy,
+    };
+
+    use super::{password_area, sodium_problem};
+
+    #[test]
+    fn password_ports_are_bound() {
+        let container = Rc::new(Container::new());
+        let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
+        let _area = password_area(hooks.api(), &container, Sodium::init().unwrap());
+        assert!(
+            container
+                .make_port::<dyn PasswordHasher>(PASSWORD_HASHER)
+                .is_ok()
+        );
+        assert!(
+            container
+                .make_port::<dyn PasswordChecker>(PASSWORD_CHECKER)
+                .is_ok()
+        );
+        assert!(
+            container
+                .make_port::<dyn RehashPolicy>(REHASH_POLICY)
+                .is_ok()
+        );
+        assert!(
+            container
+                .make_port::<dyn PasswordGenerator>(PASSWORD_GENERATOR)
+                .is_ok()
+        );
+        let numbers = container
+            .make_port::<dyn RandomNumber>(RANDOM_NUMBER)
+            .unwrap();
+        assert!(matches!(numbers.rand(3, 3), Ok(Value::Int(3))));
+    }
 
     #[test]
     fn sodium_must_be_loaded() {

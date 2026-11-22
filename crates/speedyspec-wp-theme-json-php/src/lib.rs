@@ -14,10 +14,15 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_theme_json::filters::HookApiFilters;
 use speedyspec_wp_theme_json::{ThemeJsonApi, ThemeJsonDeps, register_theme_json_handlers};
 use speedyspec_wp_theme_json_contracts::schema;
 
-pub use adapters::{PhpBlockRegistry, PhpDiagnostics, PhpGettext, PhpTextFunctions};
+pub use adapters::{
+    PhpActiveTheme, PhpBlockRegistry, PhpDiagnostics, PhpGettext, PhpGlobalSettings, PhpSafeCss,
+    PhpTextFunctions,
+};
 pub use arena::HandleArena;
 pub use literal::php_literal;
 
@@ -39,7 +44,9 @@ pub fn facade_source() -> String {
             }
         }
     }
-    FACADE.replace("/*CONSTANTS*/", &lines.join("\n        ")).replace("/*SCHEMA_CONSTANTS*/", SCHEMA_CONSTANTS)
+    FACADE
+        .replace("/*CONSTANTS*/", &lines.join("\n        "))
+        .replace("/*SCHEMA_CONSTANTS*/", SCHEMA_CONSTANTS)
 }
 
 /// The theme.json area: the native functions and the classes over them.
@@ -52,16 +59,26 @@ pub struct ThemeJsonArea {
 
 impl ThemeJsonArea {
     /// The area, with every port adapted onto WordPress's PHP.
-    pub fn new(container: Rc<Container>) -> Self {
+    pub fn new(container: Rc<Container>, hooks: Rc<HookApi>) -> Self {
         let blocks = Rc::new(PhpBlockRegistry::default());
-        let api = Rc::new(ThemeJsonApi::new(ThemeJsonDeps {
-            blocks: blocks.clone(),
-            text: Rc::new(PhpTextFunctions),
-            gettext: Rc::new(PhpGettext),
-            diagnostics: Rc::new(PhpDiagnostics),
-        }));
+        let deps = ThemeJsonDeps::new(
+            blocks.clone(),
+            Rc::new(PhpTextFunctions),
+            Rc::new(PhpGettext),
+            Rc::new(PhpDiagnostics),
+            Rc::new(PhpSafeCss),
+        )
+        .with_global_settings(Rc::new(PhpGlobalSettings))
+        .with_filters(Rc::new(HookApiFilters::new(hooks)))
+        .with_theme(Rc::new(PhpActiveTheme));
+        let api = Rc::new(ThemeJsonApi::new(deps));
         register_theme_json_handlers(&container, api.clone());
-        Self { api, handlers: Rc::new(native::Handlers::new(&container)), blocks, source: facade_source() }
+        Self {
+            api,
+            handlers: Rc::new(native::Handlers::new(&container)),
+            blocks,
+            source: facade_source(),
+        }
     }
 
     /// The engine behind the classes.
@@ -89,14 +106,22 @@ impl NativeArea for ThemeJsonArea {
 
 /// The compat runner for the `theme-json` area on the port's side: `compat/theme-json/setup.php` with the native
 /// classes loaded and WordPress's theme.json files not.
-pub fn theme_json_scenario_runner(php: speedyspec_php::Php, release: &std::path::Path) -> speedyspec_compat::PhpRunner {
+pub fn theme_json_scenario_runner(
+    php: speedyspec_php::Php,
+    release: &std::path::Path,
+) -> speedyspec_compat::PhpRunner {
     let code = format!(
         "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', true); \
          define('SPEEDYSPEC_COMPAT_MULTISITE', false); require {:?};",
         format!("{}/", release.display()),
-        speedyspec_compat::compat_dir().join("theme-json/setup.php").display().to_string()
+        speedyspec_compat::compat_dir()
+            .join("theme-json/setup.php")
+            .display()
+            .to_string()
     );
     speedyspec_compat::PhpRunner::new(php, move |php| {
-        php.eval("speedyspec://compat/theme-json-setup", &code).map(|_| ()).map_err(|e| e.to_string())
+        php.eval("speedyspec://compat/theme-json-setup", &code)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
     })
 }

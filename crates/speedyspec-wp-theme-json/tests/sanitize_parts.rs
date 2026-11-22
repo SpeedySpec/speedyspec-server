@@ -7,7 +7,8 @@ mod support;
 
 use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_theme_json::sanitize::{
-    ValidNames, convert_custom_properties, opt_in_into_settings, unwrap_shared_block_style_variations, viewport,
+    ValidNames, convert_custom_properties, opt_in_into_settings,
+    unwrap_shared_block_style_variations, viewport,
 };
 use support::{assert_php_eq, json};
 
@@ -16,85 +17,189 @@ fn media_pairs(pairs: Vec<(String, String)>) -> Value {
         pairs
             .into_iter()
             .enumerate()
-            .map(|(i, (k, v))| (Key::Int(i as i64), Value::Array(vec![(Key::Int(0), Value::Str(k)), (Key::Int(1), Value::Str(v))])))
+            .map(|(i, (k, v))| {
+                (
+                    Key::Int(i as i64),
+                    Value::Array(vec![
+                        (Key::Int(0), Value::Str(k)),
+                        (Key::Int(1), Value::Str(v)),
+                    ]),
+                )
+            })
             .collect(),
     )
 }
 
 #[test]
 fn unwrap_merges_block_level_over_shared() {
-    let actual = unwrap_shared_block_style_variations(json(r##"{"styles":{"variations":{"a":{"color":{"text":"red","background":"x"}},"b":{"color":{"text":"b"}}},"blocks":{"core/group":{"variations":{"a":{"color":{"text":"blue"}}}}}}}"##), &ValidNames::new(vec![], vec![], vec![("core/group", vec!["a", "c"]), ("core/quote", vec!["b"])].into_iter().map(|(b, n): (&str, Vec<&str>)| (b.to_owned(), n.into_iter().map(str::to_owned).collect())).collect()));
-    assert_php_eq(&actual, &json(r##"{"styles":{"blocks":{"core/group":{"variations":{"a":{"color":{"background":"x","text":"blue"}}}},"core/quote":{"variations":{"b":{"color":{"text":"b"}}}}}}}"##));
+    let actual = unwrap_shared_block_style_variations(
+        json(
+            r##"{"styles":{"variations":{"a":{"color":{"text":"red","background":"x"}},"b":{"color":{"text":"b"}}},"blocks":{"core/group":{"variations":{"a":{"color":{"text":"blue"}}}}}}}"##,
+        ),
+        &ValidNames::new(
+            vec![],
+            vec![],
+            vec![("core/group", vec!["a", "c"]), ("core/quote", vec!["b"])]
+                .into_iter()
+                .map(|(b, n): (&str, Vec<&str>)| {
+                    (b.to_owned(), n.into_iter().map(str::to_owned).collect())
+                })
+                .collect(),
+        ),
+    );
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"styles":{"blocks":{"core/group":{"variations":{"a":{"color":{"background":"x","text":"blue"}}}},"core/quote":{"variations":{"b":{"color":{"text":"b"}}}}}}}"##,
+        ),
+    );
 }
 
 #[test]
 fn unwrap_without_registered_variations_keeps_doc() {
-    let actual = unwrap_shared_block_style_variations(json(r##"{"styles":{"variations":{"a":{"color":{"text":"red"}}}}}"##), &ValidNames::new(vec![], vec![], vec![].into_iter().map(|(b, n): (&str, Vec<&str>)| (b.to_owned(), n.into_iter().map(str::to_owned).collect())).collect()));
-    assert_php_eq(&actual, &json(r##"{"styles":{"variations":{"a":{"color":{"text":"red"}}}}}"##));
+    let actual = unwrap_shared_block_style_variations(
+        json(r##"{"styles":{"variations":{"a":{"color":{"text":"red"}}}}}"##),
+        &ValidNames::new(
+            vec![],
+            vec![],
+            vec![]
+                .into_iter()
+                .map(|(b, n): (&str, Vec<&str>)| {
+                    (b.to_owned(), n.into_iter().map(str::to_owned).collect())
+                })
+                .collect(),
+        ),
+    );
+    assert_php_eq(
+        &actual,
+        &json(r##"{"styles":{"variations":{"a":{"color":{"text":"red"}}}}}"##),
+    );
 }
 
 #[test]
 fn unwrap_removes_shared_even_when_unused() {
-    let actual = unwrap_shared_block_style_variations(json(r##"{"styles":{"variations":{"z":{"color":{"text":"red"}}}}}"##), &ValidNames::new(vec![], vec![], vec![("core/group", vec!["a"])].into_iter().map(|(b, n): (&str, Vec<&str>)| (b.to_owned(), n.into_iter().map(str::to_owned).collect())).collect()));
+    let actual = unwrap_shared_block_style_variations(
+        json(r##"{"styles":{"variations":{"z":{"color":{"text":"red"}}}}}"##),
+        &ValidNames::new(
+            vec![],
+            vec![],
+            vec![("core/group", vec!["a"])]
+                .into_iter()
+                .map(|(b, n): (&str, Vec<&str>)| {
+                    (b.to_owned(), n.into_iter().map(str::to_owned).collect())
+                })
+                .collect(),
+        ),
+    );
     assert_php_eq(&actual, &json(r##"{"styles":[]}"##));
 }
 
 #[test]
 fn opt_in_root_and_blocks() {
-    let actual = opt_in_into_settings(json(r##"{"settings":{"appearanceTools":true,"border":{"color":false},"spacing":"x","blocks":{"core/group":{"appearanceTools":true,"color":{"link":false}},"core/quote":{"appearanceTools":"true"}}}}"##));
-    assert_php_eq(&actual, &json(r##"{"settings":{"background":{"backgroundImage":true,"backgroundSize":true,"gradient":true},"blocks":{"core/group":{"background":{"backgroundImage":true,"backgroundSize":true,"gradient":true},"border":{"color":true,"radius":true,"style":true,"width":true},"color":{"button":true,"caption":true,"heading":true,"link":false},"dimensions":{"aspectRatio":true,"height":true,"minHeight":true,"minWidth":true,"width":true},"position":{"sticky":true},"spacing":{"blockGap":true,"margin":true,"padding":true},"typography":{"lineHeight":true,"textColumns":true}},"core/quote":{"appearanceTools":"true"}},"border":{"color":false,"radius":true,"style":true,"width":true},"color":{"button":true,"caption":true,"heading":true,"link":true},"dimensions":{"aspectRatio":true,"height":true,"minHeight":true,"minWidth":true,"width":true},"position":{"sticky":true},"spacing":{"blockGap":true,"margin":true,"padding":true},"typography":{"lineHeight":true,"textColumns":true}}}"##));
+    let actual = opt_in_into_settings(json(
+        r##"{"settings":{"appearanceTools":true,"border":{"color":false},"spacing":"x","blocks":{"core/group":{"appearanceTools":true,"color":{"link":false}},"core/quote":{"appearanceTools":"true"}}}}"##,
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"settings":{"background":{"backgroundImage":true,"backgroundSize":true,"gradient":true},"blocks":{"core/group":{"background":{"backgroundImage":true,"backgroundSize":true,"gradient":true},"border":{"color":true,"radius":true,"style":true,"width":true},"color":{"button":true,"caption":true,"heading":true,"link":false},"dimensions":{"aspectRatio":true,"height":true,"minHeight":true,"minWidth":true,"width":true},"position":{"sticky":true},"spacing":{"blockGap":true,"margin":true,"padding":true},"typography":{"lineHeight":true,"textColumns":true}},"core/quote":{"appearanceTools":"true"}},"border":{"color":false,"radius":true,"style":true,"width":true},"color":{"button":true,"caption":true,"heading":true,"link":true},"dimensions":{"aspectRatio":true,"height":true,"minHeight":true,"minWidth":true,"width":true},"position":{"sticky":true},"spacing":{"blockGap":true,"margin":true,"padding":true},"typography":{"lineHeight":true,"textColumns":true}}}"##,
+        ),
+    );
 }
 
 #[test]
 fn opt_in_false_only_removes_nothing() {
     let actual = opt_in_into_settings(json(r##"{"settings":{"appearanceTools":false}}"##));
-    assert_php_eq(&actual, &json(r##"{"settings":{"appearanceTools":false}}"##));
+    assert_php_eq(
+        &actual,
+        &json(r##"{"settings":{"appearanceTools":false}}"##),
+    );
 }
 
 #[test]
 fn opt_in_null_values_are_not_overwritten() {
-    let actual = opt_in_into_settings(json(r##"{"settings":{"appearanceTools":true,"border":{"color":null}}}"##));
-    assert_php_eq(&actual, &json(r##"{"settings":{"background":{"backgroundImage":true,"backgroundSize":true,"gradient":true},"border":{"color":null,"radius":true,"style":true,"width":true},"color":{"button":true,"caption":true,"heading":true,"link":true},"dimensions":{"aspectRatio":true,"height":true,"minHeight":true,"minWidth":true,"width":true},"position":{"sticky":true},"spacing":{"blockGap":true,"margin":true,"padding":true},"typography":{"lineHeight":true,"textColumns":true}}}"##));
+    let actual = opt_in_into_settings(json(
+        r##"{"settings":{"appearanceTools":true,"border":{"color":null}}}"##,
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"{"settings":{"background":{"backgroundImage":true,"backgroundSize":true,"gradient":true},"border":{"color":null,"radius":true,"style":true,"width":true},"color":{"button":true,"caption":true,"heading":true,"link":true},"dimensions":{"aspectRatio":true,"height":true,"minHeight":true,"minWidth":true,"width":true},"position":{"sticky":true},"spacing":{"blockGap":true,"margin":true,"padding":true},"typography":{"lineHeight":true,"textColumns":true}}}"##,
+        ),
+    );
 }
 
 #[test]
 fn media_queries_default() {
     let actual = media_pairs(viewport::media_queries(None, false));
-    assert_php_eq(&actual, &json(r##"[["@mobile","@media (width <= 480px)"],["@tablet","@media (480px < width <= 782px)"]]"##));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[["@mobile","@media (width <= 480px)"],["@tablet","@media (480px < width <= 782px)"]]"##,
+        ),
+    );
 }
 
 #[test]
 fn media_queries_default_desktop() {
     let actual = media_pairs(viewport::media_queries(None, true));
-    assert_php_eq(&actual, &json(r##"[["@mobile","@media (width <= 480px)"],["@tablet","@media (480px < width <= 782px)"],["@desktop","@media (width > 782px)"]]"##));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[["@mobile","@media (width <= 480px)"],["@tablet","@media (480px < width <= 782px)"],["@desktop","@media (width > 782px)"]]"##,
+        ),
+    );
 }
 
 #[test]
 fn media_queries_mobile_only_desktop() {
-    let actual = media_pairs(viewport::media_queries(Some(&json(r##"{"mobile":"40em"}"##)), true));
-    assert_php_eq(&actual, &json(r##"[["@mobile","@media (width <= 40em)"],["@desktop","@media (width > 40em)"]]"##));
+    let actual = media_pairs(viewport::media_queries(
+        Some(&json(r##"{"mobile":"40em"}"##)),
+        true,
+    ));
+    assert_php_eq(
+        &actual,
+        &json(r##"[["@mobile","@media (width <= 40em)"],["@desktop","@media (width > 40em)"]]"##),
+    );
 }
 
 #[test]
 fn media_queries_tablet_only() {
-    let actual = media_pairs(viewport::media_queries(Some(&json(r##"{"tablet":"900px"}"##)), false));
-    assert_php_eq(&actual, &json(r##"[["@tablet","@media (width <= 900px)"]]"##));
+    let actual = media_pairs(viewport::media_queries(
+        Some(&json(r##"{"tablet":"900px"}"##)),
+        false,
+    ));
+    assert_php_eq(
+        &actual,
+        &json(r##"[["@tablet","@media (width <= 900px)"]]"##),
+    );
 }
 
 #[test]
 fn media_queries_rem_and_trim() {
-    let actual = media_pairs(viewport::media_queries(Some(&json(r##"{"mobile":" 30rem","tablet":"1000px "}"##)), true));
-    assert_php_eq(&actual, &json(r##"[["@mobile","@media (width <= 30rem)"],["@tablet","@media (30rem < width <= 1000px)"],["@desktop","@media (width > 1000px)"]]"##));
+    let actual = media_pairs(viewport::media_queries(
+        Some(&json(r##"{"mobile":" 30rem","tablet":"1000px "}"##)),
+        true,
+    ));
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"[["@mobile","@media (width <= 30rem)"],["@tablet","@media (30rem < width <= 1000px)"],["@desktop","@media (width > 1000px)"]]"##,
+        ),
+    );
 }
 
 #[test]
 fn convert_custom_properties_preset() {
-    let actual = speedyspec_wp_theme_json::codec_string(&convert_custom_properties(r##"var:preset|color|vivid-red"##.as_bytes()));
+    let actual = speedyspec_wp_theme_json::codec_string(&convert_custom_properties(
+        r##"var:preset|color|vivid-red"##.as_bytes(),
+    ));
     assert_php_eq(&actual, &json(r##""var(--wp--preset--color--vivid-red)""##));
 }
 
 #[test]
 fn convert_custom_properties_plain() {
-    let actual = speedyspec_wp_theme_json::codec_string(&convert_custom_properties(r##"red"##.as_bytes()));
+    let actual =
+        speedyspec_wp_theme_json::codec_string(&convert_custom_properties(r##"red"##.as_bytes()));
     assert_php_eq(&actual, &json(r##""red""##));
 }

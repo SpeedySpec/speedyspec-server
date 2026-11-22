@@ -2,10 +2,10 @@
 
 use speedyspec_hooks::{Key, Value};
 
+use crate::ThemeJsonDeps;
 use crate::array_path::{child, php_key};
 use crate::codec::string_value;
 use crate::php::{Num, float_to_string, round, to_number, to_php_string};
-use crate::ThemeJsonDeps;
 
 fn field<'a>(scale: &'a Value, name: &str) -> Option<&'a Value> {
     child(scale, &Key::Str(name.into())).filter(|v| !matches!(v, Value::Null))
@@ -105,7 +105,11 @@ pub fn compute_spacing_sizes(scale: &Value, deps: &ThemeJsonDeps) -> Value {
     below.reverse();
     let mut medium_size = to_php_string(medium_value);
     medium_size.extend_from_slice(&unit);
-    below.push(size(deps.gettext.translate("Medium", "default"), "50".into(), medium_size));
+    below.push(size(
+        deps.gettext.translate("Medium", "default"),
+        "50".into(),
+        medium_size,
+    ));
 
     let mut current = medium;
     let mut x_large: Option<i64> = None;
@@ -120,8 +124,11 @@ pub fn compute_spacing_sizes(scale: &Value, deps: &ThemeJsonDeps) -> Value {
         } else {
             current / increment
         };
-        let name =
-            if index == 0 { deps.gettext.translate("Large", "default") } else { counted(deps, "%sX-Large", x_large) };
+        let name = if index == 0 {
+            deps.gettext.translate("Large", "default")
+        } else {
+            counted(deps, "%sX-Large", x_large)
+        };
         below.push(size(name, slug.to_string(), with_unit(current)));
         if index == 1 {
             x_large = Some(2);
@@ -132,7 +139,13 @@ pub fn compute_spacing_sizes(scale: &Value, deps: &ThemeJsonDeps) -> Value {
         slug += 10;
         index += 1;
     }
-    Value::Array(below.into_iter().enumerate().map(|(i, v)| (Key::Int(i as i64), v)).collect())
+    Value::Array(
+        below
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (Key::Int(i as i64), v))
+            .collect(),
+    )
 }
 
 /// The array key `$merged[ $item['slug'] ]` uses.
@@ -141,7 +154,9 @@ fn slug_key(item: &Value) -> Key {
         Some(Value::Int(i)) => Key::Int(*i),
         Some(Value::Float(f)) => Key::Int(*f as i64),
         Some(Value::Bool(b)) => Key::Int(i64::from(*b)),
-        Some(v @ (Value::Str(_) | Value::Bytes(_))) => php_key(&String::from_utf8_lossy(&to_php_string(v))),
+        Some(v @ (Value::Str(_) | Value::Bytes(_))) => {
+            php_key(&String::from_utf8_lossy(&to_php_string(v)))
+        }
         _ => Key::Str(String::new()),
     }
 }
@@ -151,8 +166,15 @@ fn numeric_key(key: &Key) -> f64 {
     match key {
         Key::Int(i) => *i as f64,
         Key::Str(s) => {
-            let lead: String = s.trim_start().chars().take_while(|c| c.is_ascii_digit() || matches!(c, '.' | '-' | '+' | 'e' | 'E')).collect();
-            (1..=lead.len()).rev().find_map(|n| lead[..n].parse::<f64>().ok()).unwrap_or(0.0)
+            let lead: String = s
+                .trim_start()
+                .chars()
+                .take_while(|c| c.is_ascii_digit() || matches!(c, '.' | '-' | '+' | 'e' | 'E'))
+                .collect();
+            (1..=lead.len())
+                .rev()
+                .find_map(|n| lead[..n].parse::<f64>().ok())
+                .unwrap_or(0.0)
         }
     }
 }
@@ -176,6 +198,16 @@ pub fn merge_spacing_sizes(base: &Value, incoming: &Value) -> Value {
             None => merged.push((key, item.clone())),
         }
     }
-    merged.sort_by(|(a, _), (b, _)| numeric_key(a).partial_cmp(&numeric_key(b)).unwrap_or(std::cmp::Ordering::Equal));
-    Value::Array(merged.into_iter().enumerate().map(|(i, (_, v))| (Key::Int(i as i64), v)).collect())
+    merged.sort_by(|(a, _), (b, _)| {
+        numeric_key(a)
+            .partial_cmp(&numeric_key(b))
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    Value::Array(
+        merged
+            .into_iter()
+            .enumerate()
+            .map(|(i, (_, v))| (Key::Int(i as i64), v))
+            .collect(),
+    )
 }

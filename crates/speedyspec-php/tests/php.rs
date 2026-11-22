@@ -38,6 +38,10 @@ const CASES: &[(&str, Case)] = &[
     ("rust_only_hook_skips_php", case_rust_only_hook_skips_php),
     ("version", case_version),
     ("ini_not_read", case_ini_not_read),
+    (
+        "warning_names_the_function",
+        case_warning_names_the_function,
+    ),
     ("hook_add_and_run", case_hook_add_and_run),
     ("filter_from_php", case_filter_from_php),
     ("priority_order", case_priority_order),
@@ -236,6 +240,21 @@ fn case_version(ctx: &Ctx) -> Result<(), String> {
 fn case_ini_not_read(ctx: &Ctx) -> Result<(), String> {
     let out = stdout_of(|| ctx.php.eval("t", "var_export(php_ini_loaded_file());"))?;
     eq(&out, "false")
+}
+
+/// A warning names the function that raised it, as stock PHP does once a script runs (not "PHP Request Startup").
+fn case_warning_names_the_function(ctx: &Ctx) -> Result<(), String> {
+    let out = stdout_of(|| {
+        ctx.php.eval(
+            "t",
+            "set_error_handler(static function ($no, $str) { echo $str; return true; }, E_WARNING);
+             file_get_contents('/nonexistent/speedyspec'); restore_error_handler();",
+        )
+    })?;
+    eq(
+        &out,
+        "file_get_contents(/nonexistent/speedyspec): Failed to open stream: No such file or directory",
+    )
 }
 
 // ---------------------------------------------------------------------------
