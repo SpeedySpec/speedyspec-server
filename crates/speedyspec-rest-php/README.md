@@ -4,17 +4,27 @@ The REST transport's PHP adapter: WordPress's REST hooks, in PHP, over the Rust 
 
 ## Proxies
 
-Hooks receive WordPress's own types, standing for the Rust objects:
+Hooks receive WordPress's own types:
 
-- `SpeedySpec\Rest\RequestProxy extends WP_REST_Request`. `get_param()`, `set_param()`, `get_params()`, the
-  per-source getters, headers, method, route and array access read and write the Rust `RestRequest` live. A
-  `set_param()` in `rest_request_before_callbacks` changes what the handler receives, and the new input is validated
-  before the handler runs.
-- `SpeedySpec\Rest\ResponseProxy extends WP_REST_Response`. `get_data()`, `set_data()`, `get_status()`,
-  `set_status()`, `header()` and `get_headers()` read and write the Rust `RestResponse`.
+- `SpeedySpec\Rest\RequestProxy extends WP_REST_Request` stands for the Rust `RestRequest` live. Every reader and
+  setter of `WP_REST_Request` (parameters by source, `set_param()`, headers, body, method, route, array access) reads
+  and writes the Rust request. A `set_param()` in `rest_request_before_callbacks` changes what the handler receives,
+  and the new input is validated before the handler runs. File parameters, default parameters and attributes are
+  empty, and setting them does nothing.
+- `SpeedySpec\Rest\ResponseProxy extends WP_REST_Response` is a real `WP_REST_Response` holding the Rust response's
+  data, status, headers and links. Every WordPress method and property works on it (`$response->data['x'] = …`,
+  `add_link()`, `header()`), and the server reads it back after each hook.
 
-The proxies are declared in a request once `WP_REST_Request` exists to extend. Each stands for its Rust object only
-for its request: used later, it throws `LogicException`. Objects set through a proxy cross as their public properties.
+The proxies are declared in a request once `WP_REST_Request` exists to extend. A request proxy stands for its Rust
+request only for its request: used later, it throws `LogicException`. Objects set through a proxy cross as their public
+properties.
+
+## A filter that throws
+
+As in WordPress, where an uncaught exception ends the request, a throwing `rest_authentication_errors`,
+`rest_pre_dispatch`, `rest_request_before_callbacks`, `rest_dispatch_request`, `rest_request_after_callbacks` or
+`rest_post_dispatch` callback fails the request with a generic `rest_hook_failed` error (500). It never lets the
+request through. The exception goes to the log, not the client.
 
 ## What hooks return
 

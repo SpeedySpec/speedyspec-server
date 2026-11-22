@@ -43,7 +43,20 @@ class RequestProxy extends \WP_REST_Request
     public function get_headers() { return $this->get( 'headers' ); }
     public function set_header( $key, $value ) { $this->put( 'header', (string) $key, $value ); }
     public function get_body() { return $this->get( 'body' ); }
+    public function get_header_as_array( $key ) { return $this->get( 'header_list', (string) $key ); }
+    public function add_header( $key, $value ) { $this->put( 'add_header', (string) $key, $value ); }
+    public function remove_header( $key ) { $this->put( 'remove_header', (string) $key ); }
+    public function set_headers( $headers, $override = true ) { $this->put( 'headers', self::plain( (array) $headers ), (bool) $override ); }
+    public function set_url_params( $params ) { $this->put( 'url_params', self::plain( (array) $params ) ); }
+    public function set_query_params( $params ) { $this->put( 'query_params', self::plain( (array) $params ) ); }
+    public function set_body_params( $params ) { $this->put( 'body_params', self::plain( (array) $params ) ); }
+    public function set_body( $data ) { $this->put( 'body', (string) $data ); }
+    public function get_file_params() { return []; }
+    public function set_file_params( $params ) { }
+    public function get_default_params() { return []; }
+    public function set_default_params( $params ) { }
     public function get_attributes() { return []; }
+    public function set_attributes( $attributes ) { }
 
     #[\ReturnTypeWillChange]
     public function offsetExists( $offset ) { return $this->has_param( $offset ); }
@@ -53,26 +66,22 @@ class RequestProxy extends \WP_REST_Request
 }
 
 /**
- * A `WP_REST_Response` whose data, status and headers are the Rust REST response's, read and written live.
+ * A `WP_REST_Response` holding the Rust REST response's data, status, headers and links. Hooks change it with any of
+ * WordPress's methods or properties (`$response->data['x'] = …`, `add_link()`); the server reads it back afterwards.
  */
 class ResponseProxy extends \WP_REST_Response
 {
-    public function __construct( private readonly int $speedyspecHandle )
+    public function __construct( int $handle )
     {
+        parent::__construct(
+            Native\response_get( $handle, 'data' ),
+            Native\response_get( $handle, 'status' ),
+            Native\response_get( $handle, 'headers' )
+        );
+        foreach ( Native\response_get( $handle, 'links' ) as $rel => $links ) {
+            foreach ( $links as $link ) {
+                $this->add_link( $rel, $link['href'], $link['attributes'] );
+            }
+        }
     }
-
-    /** @internal */
-    public function speedyspecHandle(): int
-    {
-        return $this->speedyspecHandle;
-    }
-
-    public function get_data() { return Native\response_get( $this->speedyspecHandle, 'data' ); }
-    public function set_data( $data ) { Native\response_set( $this->speedyspecHandle, 'data', \SpeedySpec\Operation\Internal\Mapper::extract( $data ) ); }
-    public function get_status() { return Native\response_get( $this->speedyspecHandle, 'status' ); }
-    public function set_status( $code ) { Native\response_set( $this->speedyspecHandle, 'status', (int) $code ); }
-    public function get_headers() { return Native\response_get( $this->speedyspecHandle, 'headers' ); }
-    public function set_headers( $headers ) { Native\response_set( $this->speedyspecHandle, 'headers', (array) $headers ); }
-    public function header( $key, $value, $replace = true ) { Native\response_set( $this->speedyspecHandle, 'header', (string) $key, (string) $value, (bool) $replace ); }
-    public function get_links() { return Native\response_get( $this->speedyspecHandle, 'links' ); }
 }

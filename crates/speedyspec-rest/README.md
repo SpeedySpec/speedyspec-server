@@ -10,7 +10,7 @@ WordPress's shape and hook order. Contracts live in `speedyspec-rest-contracts`;
 
 | # | Step | Hook (`RestHooks`) |
 |---|---|---|
-| 1 | Authentication | `authentication_errors` (`rest_authentication_errors`), then the `Authenticator` resolves the caller |
+| 1 | Authentication | `authentication_errors` (`rest_authentication_errors`), then the `Authenticator` resolves the caller; an error still passes `rest_post_dispatch` |
 | 2 | May answer before matching | `pre_dispatch` (`rest_pre_dispatch`) |
 | 3 | Route matching, index routes | `rest_no_route` (404) when nothing matches the path and method |
 | 4 | Before the permission check | `before_callbacks` (`rest_request_before_callbacks`); writes to the request reach the handler and are validated again |
@@ -20,7 +20,7 @@ WordPress's shape and hook order. Contracts live in `speedyspec-rest-contracts`;
 | 8 | Each item of a resource type | `prepare_item` (`rest_prepare_{type}`) |
 | 9 | Sees the outcome, data or error | `after_callbacks` (`rest_request_after_callbacks`) |
 | 10 | Errors become responses | — |
-| 11 | Links and embeds | `_links` from relations, `_embed` through dispatch |
+| 11 | Links and embeds | `_links` from relations; `_embed` (every relation, or `?_embed=author,comments`) through dispatch, each href fetched once per request |
 | 12 | The response | `post_dispatch` (`rest_post_dispatch`), then `_fields` |
 | 13 | Serving | `pre_serve` (`rest_pre_serve_request`) |
 
@@ -45,8 +45,12 @@ fields and `[^/]+` otherwise. `HEAD` is served as `GET` without a body.
 
 ## Requests and responses
 
-- **Parameters** merge as WordPress merges them (query, then form body, then JSON body, then URL), read with PHP's
-  `parse_str` rules (`a[]=1`, `a[b]=1`). Strings are coerced to their schema's kind: `"5"` becomes an integer, `"false"`
+- **Parameters** follow `WP_REST_Request`: each is read from the first source holding it, in the order JSON body
+  (JSON requests), form body (methods with a body), query, URL parameters. So the query beats a URL parameter, and
+  body parameters are ignored on `GET`. `set_param()` updates every source holding the key. Queries and form bodies
+  are read with PHP's `parse_str` rules (`a[]=1`, `a[b]=1`). Paths are percent-decoded, with `+` kept. WordPress's
+  own parameters (`_embed`, `_fields`, `_locale`, `_wpnonce`, `_method`, `_envelope`, `_jsonp`, `_pretty`) never reach
+  an operation's input unless it declares them, so closed schemas accept them. Strings are coerced to their schema's kind: `"5"` becomes an integer, `"false"`
   a boolean, `"a,b"` a list.
 - **Errors** answer `{code, message, data: {status, …}}`. The status comes from the category (`not_found` 404,
   `permission_denied` 403, `unauthenticated` 401, `invalid_argument` 400, `already_exists`/`conflict` 409,
@@ -61,8 +65,11 @@ fields and `[^/]+` otherwise. `HEAD` is served as `GET` without a body.
 |---|---|---|
 | `RestHooks` | `NoRestHooks` | `speedyspec_rest_php::PhpRestHooks`, or any implementation |
 | `Authenticator<HttpServerRequest>` | — | `speedyspec_rest_php::PhpRestAuthenticator` |
-| Default mapping | `DefaultRestMapping` | explicit bindings in the `BindingStore` |
+| `RestMapping` | `DefaultRestMapping` | `RestTransport::with_mapping`, or explicit bindings in the `BindingStore` |
 | Handlers | the operation's | any handler bound in the container, PHP included |
+
+The route table and the HTTP codec (`decode`, `encode`) are not ports yet: `RestServer` builds its table from the
+exposure and uses the free functions. They become ports when a second implementation needs them.
 
 ## Not yet
 

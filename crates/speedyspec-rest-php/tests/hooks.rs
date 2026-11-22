@@ -43,6 +43,34 @@ function t_auth( $result ) {
 }
 add_filter( 'rest_authentication_errors', 't_auth' );
 function get_current_user_id() { return $GLOBALS['uid'] ?? 0; }
+function t_explode( $value ) {
+    if ( ! empty( $GLOBALS['explode'] ) ) {
+        throw new RuntimeException( 'a security plugin broke' );
+    }
+    return $value;
+}
+add_filter( 'rest_authentication_errors', 't_explode' );
+add_filter( 'rest_pre_dispatch', 't_explode' );
+add_filter( 'rest_request_before_callbacks', 't_explode' );
+function t_prepare( $response, $item, $request ) {
+    $response->data['extra'] = 1;
+    $response->add_link( 'about', 'http://x.test/about', [ 'embeddable' => true ] );
+    return $response;
+}
+add_filter( 'rest_prepare_report', 't_prepare', 10, 3 );
+function t_setters( $result, $server, $request ) {
+    if ( empty( $GLOBALS['setters'] ) ) {
+        return $result;
+    }
+    $request->set_query_params( [ 'q' => '1' ] );
+    $request->add_header( 'X-B', '2' );
+    $request->set_body( 'raw' );
+    $GLOBALS['ctype'] = $request->get_content_type();
+    $GLOBALS['is_json'] = $request->is_json_content_type();
+    $GLOBALS['defaults'] = $request->get_default_params();
+    return $result;
+}
+add_filter( 'rest_pre_dispatch', 't_setters', 5, 3 );
 "#;
 
 fn shared() -> SharedRequest {
@@ -185,6 +213,62 @@ fn main() {
             && matches!(&bad, Ok(PhpValue::Str(m)) if m.contains("vendor/version")),
         (&bound, &stored, &bad),
     );
+
+    // a_throwing_filter_fails_closed
+    load(&b.php, "$GLOBALS['explode'] = true;");
+    let auth = hooks.authentication_errors();
+    let pre = hooks.pre_dispatch(&shared());
+    let before = hooks.before_callbacks(&shared());
+    load(&b.php, "$GLOBALS['explode'] = false;");
+    let internal = |e: &speedyspec_operation_contracts::OperationError| {
+        e.category == Category::Internal && !e.message.contains("security plugin")
+    };
+    check(
+        "a_throwing_filter_fails_closed",
+        matches!(&auth, Err(e) if internal(e))
+            && matches!(&pre, Some(Err(e)) if internal(e))
+            && matches!(&before, Err(e) if internal(e)),
+        (&auth, &pre, &before),
+    );
+
+    // response_property_writes_and_links_survive
+    let prepared = hooks.prepare_item(
+        "report",
+        RestResponse::ok(Value::map([("id", Value::Int(3))])),
+        &shared(),
+    );
+    check(
+        "response_property_writes_and_links_survive",
+        prepared.data == Value::map([("id", Value::Int(3)), ("extra", Value::Int(1))])
+            && prepared
+                .links
+                .iter()
+                .any(|l| l.rel == "about" && l.href == "http://x.test/about" && l.embeddable),
+        &prepared,
+    );
+
+    // request_setters_and_readers_reach_rust
+    load(&b.php, "$GLOBALS['setters'] = true;");
+    let request = shared();
+    request.borrow_mut().headers.insert(
+        "content_type".into(),
+        vec!["application/json; charset=utf-8".into()],
+    );
+    let _ = hooks.pre_dispatch(&request);
+    load(&b.php, "$GLOBALS['setters'] = false;");
+    let r = request.borrow();
+    let ctype = eval(&b.php, "return $GLOBALS['ctype']['value'] ?? null;");
+    check(
+        "request_setters_and_readers_reach_rust",
+        r.query_params.get("q") == Some(&Value::from("1"))
+            && r.headers.get("x_b") == Some(&vec!["2".to_owned()])
+            && r.body == b"raw"
+            && matches!(&ctype, Ok(PhpValue::Str(s)) if s == "application/json")
+            && global(&b, "is_json") == PhpValue::Bool(true)
+            && global(&b, "defaults") == PhpValue::Array(vec![]),
+        (&r.query_params, &r.headers, &ctype, global(&b, "is_json")),
+    );
+    drop(r);
 
     // a_stale_handle_throws
     let stale = eval(

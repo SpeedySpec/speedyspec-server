@@ -93,6 +93,19 @@ fn native_request_get(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
         "query_params" => map_value(&r.query_params),
         "body_params" => map_value(&r.body_params),
         "json_params" => map_value(&r.json_params),
+        "header_list" => {
+            r.headers
+                .get(&header_key(&arg_text(args, 2)))
+                .map_or(PhpValue::Null, |values| {
+                    PhpValue::Array(
+                        values
+                            .iter()
+                            .enumerate()
+                            .map(|(i, v)| (Key::Int(i as i64), PhpValue::Str(v.clone())))
+                            .collect(),
+                    )
+                })
+        }
         "header" => r
             .headers
             .get(&header_key(&arg_text(args, 2)))
@@ -149,6 +162,49 @@ fn native_request_set(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
                 map.shift_remove(&key);
             }
         }
+        "add_header" => {
+            let value = arg_text(args, 3);
+            r.headers
+                .entry(header_key(&arg_text(args, 2)))
+                .or_default()
+                .push(value);
+        }
+        "remove_header" => {
+            r.headers.shift_remove(&header_key(&arg_text(args, 2)));
+        }
+        "headers" => {
+            if !matches!(args.get(3), Some(PhpValue::Bool(false))) {
+                r.headers.clear();
+            }
+            if let Value::Map(map) = plain(args.get(2))? {
+                for (k, v) in map {
+                    let values = match v {
+                        Value::List(items) => items
+                            .iter()
+                            .filter_map(|i| match i {
+                                Value::String(s) => Some(s.clone()),
+                                _ => None,
+                            })
+                            .collect(),
+                        Value::String(s) => vec![s],
+                        _ => continue,
+                    };
+                    r.headers.insert(header_key(&k), values);
+                }
+            }
+        }
+        "url_params" | "query_params" | "body_params" => {
+            let map = match plain(args.get(2))? {
+                Value::Map(map) => map,
+                _ => indexmap::IndexMap::new(),
+            };
+            match arg_text(args, 1).as_str() {
+                "url_params" => r.url_params = map,
+                "query_params" => r.query_params = map,
+                _ => r.body_params = map,
+            }
+        }
+        "body" => r.body = arg_text(args, 2).into_bytes(),
         "header" => {
             let values = match args.get(3) {
                 Some(PhpValue::Array(items)) => items
@@ -222,53 +278,6 @@ fn native_response_get(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     })
 }
 
-fn native_response_set(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
-    let response = handles::response(handle_of(args)?).ok_or_else(stale)?;
-    let mut r = response.borrow_mut();
-    match arg_text(args, 1).as_str() {
-        "data" => r.data = plain(args.get(2))?,
-        "status" => {
-            if let Some(PhpValue::Int(code)) = args.get(2)
-                && let Ok(code) = u16::try_from(*code)
-            {
-                r.status = code;
-            }
-        }
-        "headers" => {
-            r.headers = match args.get(2) {
-                Some(PhpValue::Array(items)) => items
-                    .iter()
-                    .filter_map(|(k, v)| match (k, v) {
-                        (Key::Str(k), PhpValue::Str(v)) => Some((k.clone(), v.clone())),
-                        _ => None,
-                    })
-                    .collect(),
-                _ => indexmap::IndexMap::new(),
-            }
-        }
-        "header" => {
-            let (key, value) = (arg_text(args, 2), arg_text(args, 3));
-            let replace = !matches!(args.get(4), Some(PhpValue::Bool(false)));
-            match r.headers.get_mut(&key) {
-                Some(existing) if !replace => {
-                    existing.push_str(", ");
-                    existing.push_str(&value);
-                }
-                _ => {
-                    r.headers.insert(key, value);
-                }
-            }
-        }
-        other => {
-            return Err(NativeError::throw(
-                "LogicException",
-                format!("unknown response field {other}"),
-            ));
-        }
-    }
-    Ok(PhpValue::Null)
-}
-
 fn native_bind(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     let store = BINDINGS.with(|b| b.borrow().clone()).ok_or_else(|| {
         NativeError::throw(REGISTRATION_EXCEPTION, "REST bindings are not available")
@@ -311,11 +320,10 @@ type NativeFn = fn(&[PhpValue]) -> Result<PhpValue, NativeError>;
 
 impl NativeArea for RestArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
-        let entries: [(&str, NativeFn); 5] = [
+        let entries: [(&str, NativeFn); 4] = [
             ("request_get", native_request_get),
             ("request_set", native_request_set),
             ("response_get", native_response_get),
-            ("response_set", native_response_set),
             ("bind", native_bind),
         ];
         entries

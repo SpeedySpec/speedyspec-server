@@ -5,7 +5,7 @@ use speedyspec_operation_contracts::{OperationError, Value};
 use speedyspec_operation_php::convert::{from_php as plain, to_php};
 use speedyspec_php_ext::{Key, Value as PhpValue};
 use speedyspec_rest::errors::{category_of, status_of};
-use speedyspec_rest_contracts::{RestOutcome, RestResponse};
+use speedyspec_rest_contracts::{RestLink, RestOutcome, RestResponse};
 
 use crate::handles;
 
@@ -93,9 +93,27 @@ pub(crate) fn describe(value: &PhpValue) -> Described {
                     .collect(),
                 _ => IndexMap::new(),
             };
+            let links = match field(&items, "links") {
+                Some(PhpValue::Array(list)) => list
+                    .iter()
+                    .filter_map(|(_, link)| match link {
+                        PhpValue::Array(l) => Some(RestLink {
+                            rel: text(field(l, "rel")),
+                            href: text(field(l, "href")),
+                            embeddable: matches!(
+                                field(l, "embeddable"),
+                                Some(PhpValue::Bool(true))
+                            ),
+                        }),
+                        _ => None,
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
             Described::Response(RestResponse {
                 status,
                 headers,
+                links,
                 ..RestResponse::ok(data())
             })
         }

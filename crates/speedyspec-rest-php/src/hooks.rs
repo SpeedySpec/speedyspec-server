@@ -3,11 +3,12 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use speedyspec_operation_contracts::OperationError;
+use speedyspec_operation_contracts::{Category, OperationError};
 use speedyspec_php_ext::{Key, Value as PhpValue};
 use speedyspec_rest_contracts::{RestHooks, RestOutcome, RestResponse, SharedRequest};
 
 use crate::errors::{Described, adapter, describe, to_wp_error};
+
 use crate::{area, handles};
 
 /// PHP's emptiness (`empty()`).
@@ -37,23 +38,33 @@ impl PhpRestHooks {
     }
 }
 
-fn apply(hook: &str, mut args: Vec<PhpValue>) -> Option<PhpValue> {
+/// What a filter call gave: `Ok(None)` when WordPress's hooks are not loaded, `Err` when a callback threw.
+type Applied = Result<Option<PhpValue>, OperationError>;
+
+fn apply(hook: &str, mut args: Vec<PhpValue>) -> Applied {
     let exists = speedyspec_php::call(
         &PhpValue::Str("function_exists".into()),
         &[PhpValue::Str("apply_filters".into())],
     );
     if !matches!(exists, Ok(PhpValue::Bool(true))) {
-        return None;
+        return Ok(None);
     }
     args.insert(0, PhpValue::Str(hook.to_owned()));
     speedyspec_php::call_catching(&PhpValue::Str("apply_filters".into()), &args)
+        .map(Some)
         .map_err(|failure| {
+            // As in WordPress, where an uncaught exception ends the request: never let it through. The details go to
+            // the log, not the client.
             eprintln!(
                 "speedyspec_wordpress: the filter {hook} failed: {}",
                 failure.error
+            );
+            OperationError::new(
+                "rest_hook_failed",
+                Category::Internal,
+                "The request could not be processed.",
             )
         })
-        .ok()
 }
 
 fn request_proxy(request: &SharedRequest) -> PhpValue {
@@ -62,30 +73,40 @@ fn request_proxy(request: &SharedRequest) -> PhpValue {
     adapter("request", &[PhpValue::Int(handle as i64)]).unwrap_or(PhpValue::Null)
 }
 
-fn response_proxy(response: &RestResponse) -> (PhpValue, handles::SharedResponse) {
+/// A `WP_REST_Response` (a `SpeedySpec\Rest\ResponseProxy`) holding `response`'s data, status, headers and links.
+/// Hooks change it with any of WordPress's methods or properties; [`response_back`] reads it afterwards.
+fn response_proxy(response: &RestResponse) -> PhpValue {
     area::ensure_proxies();
-    let shared = Rc::new(RefCell::new(response.clone()));
-    let handle = handles::add_response(shared.clone());
-    let proxy = adapter("response", &[PhpValue::Int(handle as i64)]).unwrap_or(PhpValue::Null);
-    (proxy, shared)
+    let handle = handles::add_response(Rc::new(RefCell::new(response.clone())));
+    adapter("response", &[PhpValue::Int(handle as i64)]).unwrap_or(PhpValue::Null)
 }
 
-/// The response a hook left: what it returned, or (for data alone) the proxied response with that data.
-fn response_back(returned: Option<PhpValue>, shared: &handles::SharedResponse) -> RestResponse {
+/// The response a hook left: what it returned (the proxy it was given, read back, or another response), or, for data
+/// alone, `original` with that data.
+fn response_back(returned: Option<PhpValue>, original: &RestResponse) -> RestResponse {
     match returned.as_ref().map(describe) {
-        None | Some(Described::Nothing) => shared.borrow().clone(),
+        None | Some(Described::Nothing) => original.clone(),
         Some(Described::Response(r)) => r,
         Some(Described::Data(d)) => RestResponse {
             data: d,
-            ..shared.borrow().clone()
+            ..original.clone()
         },
         Some(Described::Error(e)) => speedyspec_rest::errors::error_response(&e),
     }
 }
 
+fn outcome_of(described: Described) -> Option<RestOutcome> {
+    match described {
+        Described::Nothing => None,
+        Described::Error(e) => Some(Err(e)),
+        Described::Response(r) => Some(Ok(r)),
+        Described::Data(d) => Some(Ok(RestResponse::ok(d))),
+    }
+}
+
 impl RestHooks for PhpRestHooks {
     fn authentication_errors(&self) -> Result<(), OperationError> {
-        match apply("rest_authentication_errors", vec![PhpValue::Null])
+        match apply("rest_authentication_errors", vec![PhpValue::Null])?
             .as_ref()
             .map(describe)
         {
@@ -102,7 +123,7 @@ impl RestHooks for PhpRestHooks {
                 .collect(),
         );
         match apply("rest_endpoints", vec![table]) {
-            Some(PhpValue::Array(items)) => items
+            Ok(Some(PhpValue::Array(items))) => items
                 .into_iter()
                 .filter_map(|(k, _)| match k {
                     Key::Str(route) => Some(route),
@@ -114,14 +135,17 @@ impl RestHooks for PhpRestHooks {
     }
 
     fn pre_dispatch(&self, request: &SharedRequest) -> Option<RestOutcome> {
-        let result = apply(
+        let result = match apply(
             "rest_pre_dispatch",
             vec![PhpValue::Null, PhpValue::Null, request_proxy(request)],
-        )?;
+        ) {
+            Err(error) => return Some(Err(error)),
+            Ok(result) => result?,
+        };
         if empty(&result) {
             return None;
         }
-        crate::errors::from_php(&result)
+        outcome_of(describe(&result))
     }
 
     fn before_callbacks(&self, request: &SharedRequest) -> Result<(), OperationError> {
@@ -130,7 +154,7 @@ impl RestHooks for PhpRestHooks {
             PhpValue::Array(vec![]),
             request_proxy(request),
         ];
-        match apply("rest_request_before_callbacks", args)
+        match apply("rest_request_before_callbacks", args)?
             .as_ref()
             .map(describe)
         {
@@ -145,20 +169,16 @@ impl RestHooks for PhpRestHooks {
             .route
             .clone()
             .map_or(PhpValue::Null, PhpValue::Str);
-        let result = apply(
-            "rest_dispatch_request",
-            vec![
-                PhpValue::Null,
-                request_proxy(request),
-                route,
-                PhpValue::Array(vec![]),
-            ],
-        )?;
-        match describe(&result) {
-            Described::Nothing => None,
-            Described::Error(e) => Some(Err(e)),
-            Described::Response(r) => Some(Ok(r)),
-            Described::Data(d) => Some(Ok(RestResponse::ok(d))),
+        let args = vec![
+            PhpValue::Null,
+            request_proxy(request),
+            route,
+            PhpValue::Array(vec![]),
+        ];
+        match apply("rest_dispatch_request", args) {
+            Err(error) => Some(Err(error)),
+            Ok(None) => None,
+            Ok(Some(result)) => outcome_of(describe(&result)),
         }
     }
 
@@ -168,40 +188,41 @@ impl RestHooks for PhpRestHooks {
         response: RestResponse,
         request: &SharedRequest,
     ) -> RestResponse {
-        let (proxy, shared) = response_proxy(&response);
-        let returned = apply(
+        let proxy = response_proxy(&response);
+        match apply(
             &format!("rest_prepare_{type_name}"),
             vec![proxy, PhpValue::Null, request_proxy(request)],
-        );
-        match returned.as_ref().map(describe) {
-            Some(Described::Error(_)) => response,
-            _ => response_back(returned, &shared),
+        ) {
+            Err(_) => response,
+            Ok(returned) => match returned.as_ref().map(describe) {
+                Some(Described::Error(_)) => response,
+                _ => response_back(returned, &response),
+            },
         }
     }
 
     fn after_callbacks(&self, outcome: RestOutcome, request: &SharedRequest) -> RestOutcome {
-        let (value, shared) = match &outcome {
-            Ok(response) => {
-                let (proxy, shared) = response_proxy(response);
-                (proxy, Some(shared))
-            }
-            Err(error) => (to_wp_error(error), None),
+        let value = match &outcome {
+            Ok(response) => response_proxy(response),
+            Err(error) => to_wp_error(error),
         };
-        let Some(returned) = apply(
+        let returned = match apply(
             "rest_request_after_callbacks",
             vec![value, PhpValue::Array(vec![]), request_proxy(request)],
-        ) else {
-            return outcome;
+        ) {
+            Err(error) => return Err(error),
+            Ok(None) => return outcome,
+            Ok(Some(returned)) => returned,
         };
         match describe(&returned) {
             Described::Error(e) => Err(e),
             Described::Response(r) => Ok(r),
-            Described::Data(d) => Ok(match &shared {
-                Some(shared) => RestResponse {
+            Described::Data(d) => Ok(match &outcome {
+                Ok(original) => RestResponse {
                     data: d,
-                    ..shared.borrow().clone()
+                    ..original.clone()
                 },
-                None => RestResponse::ok(d),
+                Err(_) => RestResponse::ok(d),
             }),
             // `rest_ensure_response( null )`.
             Described::Nothing => Ok(RestResponse::ok(
@@ -211,25 +232,21 @@ impl RestHooks for PhpRestHooks {
     }
 
     fn post_dispatch(&self, response: RestResponse, request: &SharedRequest) -> RestResponse {
-        let (proxy, shared) = response_proxy(&response);
-        let returned = apply(
+        let proxy = response_proxy(&response);
+        match apply(
             "rest_post_dispatch",
             vec![proxy, PhpValue::Null, request_proxy(request)],
-        );
-        response_back(returned, &shared)
+        ) {
+            Err(error) => speedyspec_rest::errors::error_response(&error),
+            Ok(returned) => response_back(returned, &response),
+        }
     }
 
     fn pre_serve(&self, response: &RestResponse, request: &SharedRequest) -> bool {
-        let (proxy, _) = response_proxy(response);
-        apply(
-            "rest_pre_serve_request",
-            vec![
-                PhpValue::Bool(false),
-                proxy,
-                request_proxy(request),
-                PhpValue::Null,
-            ],
+        let proxy = response_proxy(response);
+        matches!(
+            apply("rest_pre_serve_request", vec![PhpValue::Bool(false), proxy, request_proxy(request), PhpValue::Null]),
+            Ok(Some(v)) if !empty(&v)
         )
-        .is_some_and(|v| !empty(&v))
     }
 }

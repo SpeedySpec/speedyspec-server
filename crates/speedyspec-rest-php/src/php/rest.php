@@ -62,13 +62,22 @@ final class Adapter
                 'data'    => $extract( $value->get_error_data() ),
             ];
         }
-        if ( $value instanceof \SpeedySpec\Rest\ResponseProxy ) {
-            return [ 'kind' => 'response', 'handle' => $value->speedyspecHandle() ];
-        }
         if ( class_exists( 'WP_HTTP_Response', false ) && $value instanceof \WP_HTTP_Response ) {
             $headers = [];
             foreach ( (array) $value->get_headers() as $name => $header ) {
                 $headers[ (string) $name ] = is_array( $header ) ? implode( ', ', $header ) : (string) $header;
+            }
+            $links = [];
+            if ( method_exists( $value, 'get_links' ) ) {
+                foreach ( (array) $value->get_links() as $rel => $entries ) {
+                    foreach ( (array) $entries as $entry ) {
+                        $links[] = [
+                            'rel'        => (string) $rel,
+                            'href'       => (string) ( $entry['href'] ?? '' ),
+                            'embeddable' => ! empty( $entry['attributes']['embeddable'] ),
+                        ];
+                    }
+                }
             }
             return [
                 'kind'    => 'response',
@@ -76,6 +85,7 @@ final class Adapter
                 'data'    => $extract( $value->get_data() ),
                 'status'  => (int) $value->get_status(),
                 'headers' => $headers,
+                'links'   => $links,
             ];
         }
         return [ 'kind' => 'value', 'data' => $extract( $value ) ];

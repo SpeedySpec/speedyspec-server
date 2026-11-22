@@ -15,8 +15,9 @@ use speedyspec_php_ext::Value as PhpValue;
 use speedyspec_rest_php::RestArea;
 use speedyspec_transport::MemoryBindingStore;
 
-/// WordPress's hook functions, minimal (filters with accepted-args counts, actions, `did_action`), and `absint`, which
-/// `WP_HTTP_Response::set_status` calls.
+/// WordPress's hook functions, minimal (filters with accepted-args counts, actions, `did_action`), and the helpers
+/// WordPress's classes call: `absint` (`WP_HTTP_Response::set_status`), `wp_is_json_media_type`
+/// (`WP_REST_Request::is_json_content_type`).
 pub const HOOKS: &str = r#"
 function add_filter( string $hook, callable $callback, int $priority = 10, int $accepted_args = 1 ): bool {
     $GLOBALS['__filters'][ $hook ][] = [ $callback, $accepted_args ];
@@ -39,6 +40,7 @@ function do_action( string $hook, mixed ...$args ): void {
 }
 function did_action( string $hook ): int { return $GLOBALS['__did'][ $hook ] ?? 0; }
 function absint( $maybeint ) { return abs( (int) $maybeint ); }
+function wp_is_json_media_type( $media_type ) { return 'application/json' === $media_type || str_ends_with( $media_type, '+json' ); }
 "#;
 
 pub fn check(name: &str, ok: bool, detail: impl std::fmt::Debug) {
