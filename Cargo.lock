@@ -5407,6 +5407,8 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
+ "speedyspec-wp-password-contracts",
+ "speedyspec-wp-password-php",
  "tempfile",
  "tokio",
 ]

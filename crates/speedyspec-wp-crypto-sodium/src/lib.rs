@@ -12,8 +12,9 @@ use speedyspec_wp_crypto_contracts::{
     RandomBytes, SIGN_BYTES, SIGN_PUBLICKEY_BYTES,
 };
 
-/// libsodium, initialized. Only [`Sodium::init`] makes one, so every call runs after `sodium_init()`.
-#[derive(Debug)]
+/// libsodium, initialized. Only [`Sodium::init`] makes one, so every call runs after `sodium_init()`. A copy is the
+/// same proof, so one initialization serves every area of a worker.
+#[derive(Clone, Copy, Debug)]
 pub struct Sodium(());
 
 impl Sodium {
