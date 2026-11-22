@@ -56,6 +56,7 @@ pub fn boot_database(
     config: WpDbConfig,
     container: &Rc<Container>,
     hook_api: &Rc<HookApi>,
+    wake: Rc<crate::wake::NextWake>,
 ) -> Result<(WorkerDatabase, Vec<Rc<dyn NativeArea>>), BootFailure> {
     let registry = Rc::new(EngineRegistry::new());
     registry.register_factory(Rc::new(MySqlEngineFactory));
@@ -74,7 +75,7 @@ pub fn boot_database(
     );
     let cache = ObjectCacheArea::new(container.clone(), None);
     let options = OptionsArea::new(container.clone(), hook_api.clone(), cache.api(), wpdb.api());
-    let cron = CronArea::new(hook_api.clone(), options.api());
+    let cron = CronArea::new(hook_api.clone(), options.api()).with_wake(wake);
     let database = WorkerDatabase { registry };
     let areas: Vec<Rc<dyn NativeArea>> = vec![
         Rc::new(wpdb),
