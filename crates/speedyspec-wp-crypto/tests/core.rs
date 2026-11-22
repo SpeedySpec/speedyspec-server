@@ -33,6 +33,7 @@ struct AcceptOne {
     signature: [u8; SIGN_BYTES],
     key: [u8; SIGN_PUBLICKEY_BYTES],
     calls: RefCell<u32>,
+    messages: RefCell<Vec<Vec<u8>>>,
 }
 
 impl DetachedVerifier for AcceptOne {
@@ -43,6 +44,7 @@ impl DetachedVerifier for AcceptOne {
         key: &[u8; SIGN_PUBLICKEY_BYTES],
     ) -> bool {
         *self.calls.borrow_mut() += 1;
+        self.messages.borrow_mut().push(_message.to_vec());
         *signature == self.signature && *key == self.key
     }
 }
@@ -87,6 +89,7 @@ fn verifier() -> AcceptOne {
         signature: [7; SIGN_BYTES],
         key: [9; SIGN_PUBLICKEY_BYTES],
         calls: RefCell::new(0),
+        messages: RefCell::default(),
     }
 }
 
@@ -194,7 +197,7 @@ fn basename_matches_wordpress() {
 fn falsy_signatures_are_no_signature() {
     let v = verifier();
     assert_eq!(
-        check_signatures(&v, &[0; 48], None, &[b64(&[9; 32])]),
+        check_signatures(&v, Some(&[0; 48]), None, &[b64(&[9; 32])]),
         SignatureOutcome::NoSignature
     );
     assert_eq!(*v.calls.borrow(), 0);
@@ -205,7 +208,7 @@ fn loop_counts_skips() {
     let v = verifier();
     let signatures = [b64(&[1; 63]), b64(&[2; 64])];
     let keys = [b64(&[3; 31]), b64(&[4; 32])];
-    match check_signatures(&v, &[0; 48], Some(&signatures), &keys) {
+    match check_signatures(&v, Some(&[0; 48]), Some(&signatures), &keys) {
         SignatureOutcome::Failed {
             skipped_key,
             skipped_sig,
@@ -222,7 +225,7 @@ fn short_key_counts_once_per_signature_tried() {
     let v = verifier();
     let signatures = [b64(&[2; 64]), b64(&[5; 64])];
     let keys = [b64(&[3; 31])];
-    match check_signatures(&v, &[0; 48], Some(&signatures), &keys) {
+    match check_signatures(&v, Some(&[0; 48]), Some(&signatures), &keys) {
         SignatureOutcome::Failed {
             skipped_key,
             skipped_sig,
@@ -238,7 +241,7 @@ fn loop_first_match_wins() {
     let signatures = [b64(&[1; 64]), b64(&[7; 64]), b64(&[7; 64])];
     let keys = [b64(&[8; 32]), b64(&[9; 32])];
     assert_eq!(
-        check_signatures(&v, &[0; 48], Some(&signatures), &keys),
+        check_signatures(&v, Some(&[0; 48]), Some(&signatures), &keys),
         SignatureOutcome::Verified
     );
     assert_eq!(
@@ -251,7 +254,7 @@ fn loop_first_match_wins() {
 #[test]
 fn empty_keys_fail() {
     let v = verifier();
-    let outcome = check_signatures(&v, &[0xab; 48], Some(&[b64(&[7; 64])]), &[]);
+    let outcome = check_signatures(&v, Some(&[0xab; 48]), Some(&[b64(&[7; 64])]), &[]);
     assert_eq!(
         outcome,
         SignatureOutcome::Failed {
@@ -267,7 +270,7 @@ fn empty_signature_list_is_attempted_and_fails() {
     // A non-empty PHP array holding nothing usable still enters the loop; only a falsy value is "no signature".
     let v = verifier();
     assert!(matches!(
-        check_signatures(&v, &[0; 48], Some(&[]), &[]),
+        check_signatures(&v, Some(&[0; 48]), Some(&[]), &[]),
         SignatureOutcome::Failed { .. }
     ));
 }
@@ -319,4 +322,20 @@ fn messages_take_numbered_placeholders_and_percent() {
         messages(&Numbered, "f.zip").failed,
         "100% sure: <span class=\"code\">f.zip</span>"
     );
+}
+
+#[test]
+fn unreadable_file_verifies_against_the_empty_message() {
+    // hash_file() returns false, which WordPress passes on as the message ("") and as bin2hex()'s input.
+    let v = verifier();
+    let outcome = check_signatures(&v, None, Some(&[b64(&[1; 64])]), &[b64(&[2; 32])]);
+    assert_eq!(
+        outcome,
+        SignatureOutcome::Failed {
+            hash_hex: String::new(),
+            skipped_key: 0,
+            skipped_sig: 0
+        }
+    );
+    assert_eq!(*v.messages.borrow(), vec![Vec::<u8>::new()]);
 }

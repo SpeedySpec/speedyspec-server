@@ -30,18 +30,20 @@ pub enum SignatureOutcome {
 
 /// Checks signatures against keys as WordPress does.
 ///
-/// `signatures` is `None` when WordPress's `! $signatures` holds (a falsy value), which ends the check before any key
-/// is looked at. Signatures and keys are base64 text, decoded leniently as PHP does; wrong-length ones are skipped and
+/// `file_sha384` is `None` when the file can't be hashed: WordPress then carries `hash_file()`'s `false` on, so every
+/// signature is checked against the empty message and the reported hash is empty. `signatures` is `None` when
+/// WordPress's `! $signatures` holds (a falsy value), which ends the check before any key is looked at. Signatures and keys are base64 text, decoded leniently as PHP does; wrong-length ones are skipped and
 /// counted, and the first signature and key that verify end the check.
 pub fn check_signatures(
     verifier: &dyn DetachedVerifier,
-    file_sha384: &[u8; 48],
+    file_sha384: Option<&[u8; 48]>,
     signatures: Option<&[Vec<u8>]>,
     keys: &[Vec<u8>],
 ) -> SignatureOutcome {
     let Some(signatures) = signatures else {
         return SignatureOutcome::NoSignature;
     };
+    let message: &[u8] = file_sha384.map_or(&[], |hash| hash);
     let mut skipped_key = 0;
     let mut skipped_sig = 0;
     for signature in signatures {
@@ -54,13 +56,13 @@ pub fn check_signatures(
                 skipped_key += 1;
                 continue;
             };
-            if verifier.verify(&signature, file_sha384, &key) {
+            if verifier.verify(&signature, message, &key) {
                 return SignatureOutcome::Verified;
             }
         }
     }
     SignatureOutcome::Failed {
-        hash_hex: hex(file_sha384),
+        hash_hex: hex(message),
         skipped_key,
         skipped_sig,
     }
