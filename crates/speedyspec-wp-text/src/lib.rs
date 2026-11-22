@@ -3,6 +3,9 @@
 //! The content filters (`wptexturize`, `wpautop` and the rest) as pure functions over bytes, matching stock
 //! WordPress byte for byte, and a `TextApi` facade that fires WordPress's filters around them.
 
+pub mod deep;
+pub mod email;
+pub mod esc_url;
 pub mod file_name;
 pub mod helpers;
 pub mod parse_str;

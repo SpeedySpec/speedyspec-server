@@ -120,3 +120,64 @@ fn sanitize_key_non_scalar_is_empty() {
     assert_eq!(seen.borrow().clone(), Some(array));
     assert_eq!(bytes_of(&h.api.sanitize_key(&HookValue::Null).unwrap()), b"");
 }
+
+/// A recorded argument as PHP's `(string)` would make it.
+fn string_of(value: &Php) -> Vec<u8> {
+    speedyspec_wp_text::strings::to_php_string(&to_value(value)).unwrap_or_default()
+}
+
+#[test]
+fn email_and_field_corpora_through_text_api() {
+    let h = api::harness();
+    let api = &h.api;
+    speedyspec_wp_text_corpus::assert_corpus_reporting("is_email", |args| {
+        h.diagnostics.taken();
+        let deprecated = args.get(1).map_or(HookValue::Bool(false), to_value);
+        let out = from_value(&api.is_email(&to_value(&args[0]), &deprecated).unwrap());
+        (out, speedyspec_wp_text_corpus::diagnostics(&h.diagnostics.taken()))
+    });
+    assert_corpus("sanitize_email", |args| from_value(&api.sanitize_email(&string_of(&args[0])).unwrap()));
+    assert_corpus("sanitize_text_field", |args| from_value(&api.sanitize_text_field(&to_value(&args[0])).unwrap()));
+    assert_corpus("sanitize_textarea_field", |args| from_value(&api.sanitize_textarea_field(&to_value(&args[0])).unwrap()));
+    assert_corpus("format_to_edit", |args| {
+        from_value(&api.format_to_edit(text(&args[0]), matches!(args.get(1), Some(Php::Bool(true)))).unwrap())
+    });
+    assert_corpus("wp_pre_kses_less_than", |args| Php::Str(api.wp_pre_kses_less_than(text(&args[0])).unwrap()));
+    assert_corpus("speedyspec_wp_parse_str", |args| from_value(&api.wp_parse_str(&to_value(&args[0])).unwrap()));
+    assert_corpus("sanitize_trackback_urls", |args| from_value(&api.sanitize_trackback_urls(text(&args[0])).unwrap()));
+}
+
+#[test]
+fn deep_corpora() {
+    use speedyspec_wp_text::deep;
+    assert_corpus("stripslashes_deep", |args| from_value(&deep::stripslashes_deep(&to_value(&args[0]))));
+    assert_corpus("stripslashes_from_strings_only", |args| {
+        from_value(&deep::stripslashes_from_strings_only(&to_value(&args[0])))
+    });
+    assert_corpus("urlencode_deep", |args| from_value(&deep::urlencode_deep(&to_value(&args[0]))));
+    assert_corpus("rawurlencode_deep", |args| from_value(&deep::rawurlencode_deep(&to_value(&args[0]))));
+    assert_corpus("urldecode_deep", |args| from_value(&deep::urldecode_deep(&to_value(&args[0]))));
+}
+
+#[test]
+fn is_email_context_reaches_filter() {
+    let h = api::harness();
+    let seen = Rc::new(RefCell::new(Vec::new()));
+    let log = seen.clone();
+    add(&h, "is_email", move |args| {
+        log.borrow_mut().push(args.to_vec());
+        args[0].clone()
+    });
+    assert_eq!(h.api.is_email(&HookValue::Str("ab@cdef".into()), &HookValue::Bool(false)).unwrap(), HookValue::Bool(false));
+    assert_eq!(seen.borrow()[0][2], HookValue::Str("domain_no_periods".into()));
+    h.api.is_email(&HookValue::Str("ab@c.de".into()), &HookValue::Bool(false)).unwrap();
+    assert_eq!(seen.borrow()[1][2], HookValue::Null);
+}
+
+#[test]
+fn map_deep_leaves_objects_alone() {
+    use speedyspec_wp_text::deep::map_deep;
+    let object = HookValue::Opaque(Rc::new(5u8));
+    let mapped = map_deep(&object, &mut |_| HookValue::Int(0));
+    assert!(matches!(mapped, HookValue::Opaque(_)));
+}
