@@ -5,10 +5,15 @@
 //! - [`RouteTable`] holds every REST route and matches requests as WordPress does.
 //! - [`decode`] reads HTTP requests as REST requests ([`query`] with PHP's `parse_str` rules); [`coerce`] turns wire
 //!   strings into the kinds their schema expects.
+//! - [`errors`] maps operation errors to WordPress's statuses and bodies; [`encode`] writes HTTP responses; [`fields`]
+//!   applies `_fields`.
 //! - [`NoRestHooks`] is the hooks port's do-nothing default.
 
 pub mod coerce;
 pub mod decode;
+pub mod encode;
+pub mod errors;
+pub mod fields;
 mod hooks;
 mod mapping;
 pub mod query;
