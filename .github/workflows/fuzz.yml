@@ -1,0 +1,52 @@
+name: fuzz
+
+# Fuzzes the media readers weekly and on demand: the FFmpeg shim (against an FFmpeg built with AddressSanitizer and
+# libFuzzer coverage) and the MIDI parser, each for 30 minutes, seeded with the test kit's files. Findings are
+# uploaded; minimize each into crates/speedyspec-wp-media-ffmpeg/tests/regressions, which every PR replays.
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ffmpeg_probe, midi]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: Tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq clang zlib1g-dev
+          cargo install cargo-fuzz --locked
+      # FFmpeg links zlib from a prefix with include/zlib.h and lib/libz.a; here that is the system's.
+      - name: Stage zlib
+        run: |
+          mkdir -p "$RUNNER_TEMP/zlib/include" "$RUNNER_TEMP/zlib/lib"
+          cp /usr/include/zlib.h /usr/include/zconf.h "$RUNNER_TEMP/zlib/include/"
+          cp "/usr/lib/$(uname -m)-linux-gnu/libz.a" "$RUNNER_TEMP/zlib/lib/"
+      - name: Build FFmpeg with sanitizers
+        env:
+          SPEEDYSPEC_FFMPEG_CC: clang
+          SPEEDYSPEC_FFMPEG_CFLAGS: -fsanitize=address,fuzzer-no-link -g
+        run: SPEEDYSPEC_PHP_PREFIX="$RUNNER_TEMP/zlib" SPEEDYSPEC_FFMPEG_DIR="$RUNNER_TEMP/ffmpeg-fuzz" scripts/build-ffmpeg.sh
+      - name: Seed
+        run: cargo run -q -p speedyspec-wp-media-testkit --example write_fixtures "fuzz-media/corpus/${{ matrix.target }}"
+      - name: Fuzz
+        env:
+          FFMPEG_PREFIX: ${{ runner.temp }}/ffmpeg-fuzz/prefix
+          SPEEDYSPEC_PHP_PREFIX: ${{ runner.temp }}/zlib
+          CC: clang
+        working-directory: fuzz-media
+        run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=1800 -timeout=10 -rss_limit_mb=2048
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: fuzz-media/artifacts

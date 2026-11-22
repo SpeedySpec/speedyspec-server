@@ -1,0 +1,49 @@
+[package]
+name = "speedyspec-wp-media-isolate"
+version = "0.1.0"
+description = "Reads untrusted media in a short-lived, resource-limited child killed at its deadline, with a shared result cache."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# Test only: the probe child can simulate a hang, runaway allocation, a crash or garbage output.
+test-modes = []
+
+[dependencies]
+libc = "0.2"
+lru = "0.18"
+postcard = { version = "1", default-features = false, features = ["use-std"] }
+serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
+speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-wp-media = { path = "../speedyspec-wp-media" }
+speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
+speedyspec-wp-media-ffmpeg = { path = "../speedyspec-wp-media-ffmpeg" }
+speedyspec-wp-media-midi = { path = "../speedyspec-wp-media-midi" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+seccompiler = "0.5"
+
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false }
+speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
+speedyspec-wp-media-testkit = { path = "../speedyspec-wp-media-testkit" }
+tempfile = "3"
+
+[[bin]]
+name = "speedyspec-media-probe"
+path = "src/bin/speedyspec-media-probe.rs"
+
+[[test]]
+name = "isolated"
+required-features = ["test-modes"]
+
+[[test]]
+name = "isolated_fds"
+required-features = ["test-modes"]
+
+[[bench]]
+name = "read"
+harness = false

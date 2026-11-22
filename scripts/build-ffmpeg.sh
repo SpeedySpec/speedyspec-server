@@ -30,6 +30,10 @@ macos_deployment_target="12.0"
 source "$repo/scripts/lib/pinned-downloads.sh"
 
 php_prefix="${SPEEDYSPEC_PHP_PREFIX:-$repo/.php-build/buildroot}"
+# For the fuzzing workflow only: another compiler and extra flags (sanitizers, coverage). Unset for every build that
+# ships; both are part of the stamp when set.
+extra_cc="${SPEEDYSPEC_FFMPEG_CC:-}"
+extra_cflags="${SPEEDYSPEC_FFMPEG_CFLAGS:-}"
 ffmpeg_dir="${SPEEDYSPEC_FFMPEG_DIR:-$repo/.php-build/ffmpeg}"
 tarball="$ffmpeg_dir/downloads/ffmpeg-$ffmpeg_version.tar.xz"
 src="$ffmpeg_dir/src"
@@ -121,12 +125,14 @@ fetch_and_extract() {
 configure_args() {
     local name all parsers kept=() skipped=() known
     printf '%s\n' "${fixed_flags[@]}"
+    if [ -n "$extra_cc" ]; then printf '%s\n' "--cc=$extra_cc"; fi
+    local extra="${extra_cflags:+ $extra_cflags}"
     if [ "$(uname -s)" = "Darwin" ]; then
-        printf '%s\n' "--extra-cflags=-I$php_prefix/include -mmacosx-version-min=$macos_deployment_target"
-        printf '%s\n' "--extra-ldflags=-L$php_prefix/lib -mmacosx-version-min=$macos_deployment_target"
+        printf '%s\n' "--extra-cflags=-I$php_prefix/include -mmacosx-version-min=$macos_deployment_target$extra"
+        printf '%s\n' "--extra-ldflags=-L$php_prefix/lib -mmacosx-version-min=$macos_deployment_target$extra"
     else
-        printf '%s\n' "--extra-cflags=-I$php_prefix/include"
-        printf '%s\n' "--extra-ldflags=-L$php_prefix/lib"
+        printf '%s\n' "--extra-cflags=-I$php_prefix/include$extra"
+        printf '%s\n' "--extra-ldflags=-L$php_prefix/lib$extra"
     fi
     all="$(list_components demuxers)" || exit 1
     [ -n "$all" ] || { echo "build-ffmpeg.sh: configure listed no demuxers" >&2; exit 1; }
@@ -161,6 +167,8 @@ stamp_content() {
     printf 'decoders: %s\n' "${decoders[*]}"
     printf 'php: %s\n' "$php_prefix"
     if [ "$(uname -s)" = "Darwin" ]; then printf 'macos: %s\n' "$macos_deployment_target"; fi
+    if [ -n "$extra_cc" ]; then printf 'cc: %s\n' "$extra_cc"; fi
+    if [ -n "$extra_cflags" ]; then printf 'cflags: %s\n' "$extra_cflags"; fi
 }
 
 fail() {
