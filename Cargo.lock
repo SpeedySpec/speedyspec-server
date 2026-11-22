@@ -6398,6 +6398,7 @@ dependencies = [
 name = "speedyspec-wp-theme-json"
 version = "0.1.0"
 dependencies = [
+ "fancy-regex",
  "indexmap",
  "proptest",
  "serde_json",
