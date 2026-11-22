@@ -14,6 +14,14 @@ unsafe extern "C" {
     pub fn av_version_info() -> *const c_char;
     pub fn av_find_input_format(short_name: *const c_char) -> *const c_void;
     pub fn avio_enum_protocols(opaque: *mut *mut c_void, output: c_int) -> *const c_char;
+    pub fn av_demuxer_iterate(opaque: *mut *mut c_void) -> *const AVInputFormatHead;
+}
+
+/// The leading field of FFmpeg's public `AVInputFormat`: its comma-separated short names. Only this field is read;
+/// `name` has been the struct's first member in every FFmpeg release, and the rest of the layout is never touched.
+#[repr(C)]
+pub struct AVInputFormatHead {
+    pub name: *const c_char,
 }
 
 fn static_str(ptr: *const c_char) -> &'static str {
@@ -62,5 +70,22 @@ pub fn input_protocols() -> Vec<&'static str> {
             return names;
         }
         names.push(static_str(name));
+    }
+}
+
+/// Every demuxer built in, by FFmpeg's run-time name (for example `mov,mp4,m4a,3gp,3g2,mj2` or `png_pipe`), sorted.
+pub fn demuxers() -> Vec<&'static str> {
+    let mut opaque: *mut c_void = std::ptr::null_mut();
+    let mut names = Vec::new();
+    loop {
+        // SAFETY: `opaque` starts null and is only advanced by FFmpeg, as av_demuxer_iterate documents; the returned
+        // pointer is a static AVInputFormat whose first field is its name.
+        let format = unsafe { av_demuxer_iterate(&mut opaque) };
+        if format.is_null() {
+            names.sort_unstable();
+            return names;
+        }
+        // SAFETY: non-null pointers from av_demuxer_iterate point at static AVInputFormat values.
+        names.push(static_str(unsafe { (*format).name }));
     }
 }

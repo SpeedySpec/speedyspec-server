@@ -59,20 +59,22 @@ fixed_flags=(
 # Demuxers that must never be reachable from an upload. Names the pinned version doesn't have are skipped.
 deny_demuxers=(
     # Network, streaming and manifest formats: they open URLs.
-    hls dash rtsp rtp sdp sap srtp webm_dash_manifest
+    hls dash rtsp rtp sdp sap webm_dash_manifest
     # Formats that open other files: playlists, file sequences, metadata sidecars, packaging lists.
     concat image2 ffmetadata imf
     # image2 variants that read file sequences by pattern (and pull image2 itself in).
     image2_alias_pix image2_brender_pix
-    # A generic image pipe needs a codec hint; the per-format *_pipe demuxers cover images.
-    image2pipe
-    # Accept any bytes: no header to recognize, so anything "probes" as them.
-    data bin tty rawvideo
+    # A generic image pipe needs a codec hint; the per-format *_pipe demuxers cover images. VobSub opens a companion file.
+    image2pipe vobsub
+    # Accept any bytes, or need a frame size given from outside: no header to recognize.
+    data tty rawvideo v210 v210x codec2raw bitpacked
+    # Text art and synthesis scripts: text files that "decode" to pictures or sound.
+    bintext xbin adf idf sbg
     # External libraries and scripting hosts (off with --disable-autodetect anyway).
-    lavfi libgme libopenmpt libmodplug avisynth vapoursynth
+    libgme libopenmpt libmodplug avisynth vapoursynth
     # Subtitles and captions: not media WordPress stores.
     srt ass webvtt microdvd subviewer subviewer1 sami realtext jacosub mpl2 mpsub pjs stl vplayer aqtitle lrc scc
-    mcc dvbsub dvbtxt pgssub
+    mcc dvbsub dvbtxt sup tedcaptions rcwt
 )
 # Header-less PCM: every pcm_* demuxer, matched by prefix.
 deny_demuxer_prefixes=(pcm_)
@@ -104,16 +106,20 @@ fetch_and_extract() {
     if [ ! -f "$tarball" ] || [ "$(sha256_of "$tarball")" != "$ffmpeg_sha256" ]; then
         fetch_pinned "$ffmpeg_url" "$ffmpeg_sha256" "$tarball" "ffmpeg-$ffmpeg_version.tar.xz"
     fi
-    if [ ! -x "$src/configure" ]; then
-        rm -rf "$src"
-        mkdir -p "$src"
-        tar -xJf "$tarball" -C "$src" --strip-components=1
+    # The source tree is reused only if it was extracted whole from this exact tarball: extraction goes to a
+    # temporary directory renamed into place, with the tarball's SHA-256 written inside as a marker.
+    if [ ! -f "$src/.source-sha256" ] || [ "$(cat "$src/.source-sha256")" != "$ffmpeg_sha256" ]; then
+        rm -rf "$src" "$src.partial"
+        mkdir -p "$src.partial"
+        tar -xJf "$tarball" -C "$src.partial" --strip-components=1
+        printf '%s\n' "$ffmpeg_sha256" > "$src.partial/.source-sha256"
+        mv "$src.partial" "$src"
     fi
 }
 
 # Prints the configure arguments, one per line (needs the extracted source for the component lists).
 configure_args() {
-    local name all kept=() skipped=() known
+    local name all parsers kept=() skipped=() known
     printf '%s\n' "${fixed_flags[@]}"
     if [ "$(uname -s)" = "Darwin" ]; then
         printf '%s\n' "--extra-cflags=-I$php_prefix/include -mmacosx-version-min=$macos_deployment_target"
@@ -122,18 +128,22 @@ configure_args() {
         printf '%s\n' "--extra-cflags=-I$php_prefix/include"
         printf '%s\n' "--extra-ldflags=-L$php_prefix/lib"
     fi
-    all="$(list_components demuxers)"
+    all="$(list_components demuxers)" || exit 1
+    [ -n "$all" ] || { echo "build-ffmpeg.sh: configure listed no demuxers" >&2; exit 1; }
     while IFS= read -r name; do
         if denied "$name"; then skipped+=("$name"); else kept+=("$name"); fi
     done <<<"$all"
+    # A deny entry the source doesn't have means a rename: the renamed demuxer would be built. Review the list.
     for name in "${deny_demuxers[@]}"; do
         if ! grep -qx "$name" <<<"$all"; then
-            echo "build-ffmpeg.sh: deny-list entry $name is not a demuxer in FFmpeg $ffmpeg_version; skipped" >&2
+            echo "build-ffmpeg.sh: deny-list entry $name is not a demuxer in FFmpeg $ffmpeg_version; review the list" >&2
+            exit 1
         fi
     done
     printf '%s\n' "--enable-demuxer=$(IFS=,; echo "${kept[*]}")"
-    printf '%s\n' "--enable-parser=$(list_components parsers | paste -sd, -)"
-    known="$(list_components decoders)"
+    parsers="$(list_components parsers)" || exit 1
+    printf '%s\n' "--enable-parser=$(paste -sd, - <<<"$parsers")"
+    known="$(list_components decoders)" || exit 1
     for name in "${decoders[@]}"; do
         if ! grep -qx "$name" <<<"$known"; then
             echo "build-ffmpeg.sh: decoder $name is not in FFmpeg $ffmpeg_version" >&2
@@ -170,11 +180,15 @@ check_build() {
     for lib in avformat avcodec avutil; do
         [ -f "$prefix/lib/lib$lib.a" ] || fail "$prefix/lib/lib$lib.a was not produced"
     done
+    # nm's output goes to a file first: `nm | grep -q` under pipefail fails when grep exits early, hiding a match.
+    command -v nm >/dev/null || fail "nm is needed to check that zlib isn't bundled"
     for lib in avformat avcodec avutil; do
-        if nm -g "$prefix/lib/lib$lib.a" 2>/dev/null | grep -Eq ' T _?(inflate|deflate)$'; then
+        nm -g "$prefix/lib/lib$lib.a" > "$ffmpeg_dir/nm.txt" 2>/dev/null || fail "nm could not read lib$lib.a"
+        if grep -Eq ' T _?(inflate|deflate)$' "$ffmpeg_dir/nm.txt"; then
             fail "lib$lib.a defines zlib's functions; zlib must come from $php_prefix/lib/libz.a"
         fi
     done
+    rm -f "$ffmpeg_dir/nm.txt"
 }
 
 if [ "${1:-}" = "--print-configure" ]; then
@@ -194,8 +208,10 @@ if [ -f "$prefix/.stamp" ] && [ "$(cat "$prefix/.stamp")" = "$stamp" ]; then
 fi
 
 fetch_and_extract
+# A command substitution, not a process substitution, so a failing configure_args stops the build.
+args_text="$(configure_args)" || fail "working out the configure arguments failed"
 args=()
-while IFS= read -r line; do args+=("$line"); done < <(configure_args)
+while IFS= read -r line; do args+=("$line"); done <<<"$args_text"
 
 rm -rf "$prefix"
 jobs="$(nproc 2>/dev/null || sysctl -n hw.ncpu)"

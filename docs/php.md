@@ -74,13 +74,16 @@ arguments.
   stays LGPL 2.1 or later.
 - **What it reads.** Every demuxer that reads one byte stream, except a deny list in the script: network and manifest
   formats (HLS, DASH, RTSP, …), formats that open other files (`concat`, `image2` and its variants, `ffmetadata`,
-  IMF), formats that accept any bytes (raw video, header-less PCM, `tty`, `data`) and subtitles. All parsers, and the
-  image header decoders width and height need.
+  IMF, VobSub), formats that accept any bytes or need a frame size from outside (raw video, header-less PCM, `tty`,
+  `data`, `v210`), text art and synthesis scripts, and subtitles and captions. All parsers, and the image header
+  decoders width and height need. A deny entry the pinned source lacks stops the build (a rename would let the
+  renamed demuxer in), and `crates/speedyspec-ffmpeg-sys/demuxers.txt` lists every demuxer reviewed for the build:
+  the link test fails on any demuxer not in it, so an FFmpeg upgrade's new demuxers are reviewed one by one.
 - **One zlib.** FFmpeg links the PHP buildroot's `libz.a`; `speedyspec-ffmpeg-sys`'s build script links nothing from
   outside the FFmpeg and PHP prefixes (`FFMPEG_PREFIX` in `.cargo/config.toml`; move it with the PHP variables).
 - **Checked.** The script fails on a GPL, version 3 or nonfree flag, an enabled protocol, or zlib bundled into FFmpeg;
   `cargo test -p speedyspec-ffmpeg-sys` checks the built library: its licence, the formats WordPress accepts, no
-  protocols, none of the denied demuxers, and the pinned version.
+  protocols, none of the denied demuxers, exactly the reviewed demuxers, and the pinned version.
 
 Sizes (FFmpeg 9.1, `-Os` via `--enable-small`, measured 2026-11-22):
 

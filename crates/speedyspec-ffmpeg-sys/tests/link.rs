@@ -83,3 +83,31 @@ fn version_matches_the_pin() {
         .trim_end_matches('"');
     assert_eq!(speedyspec_ffmpeg_sys::version(), pinned);
 }
+
+/// Every demuxer the build has is one a person reviewed: an FFmpeg upgrade that adds or renames a demuxer (a new
+/// network or file-referencing format among them) fails here until `demuxers.txt` is updated on purpose.
+#[test]
+fn every_demuxer_is_reviewed() {
+    let reviewed: Vec<&str> = include_str!("../demuxers.txt")
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .collect();
+    let built = speedyspec_ffmpeg_sys::demuxers();
+    let unreviewed: Vec<_> = built
+        .iter()
+        .filter(|name| !reviewed.contains(name))
+        .collect();
+    let gone: Vec<_> = reviewed
+        .iter()
+        .filter(|name| !built.contains(name))
+        .collect();
+    assert!(
+        unreviewed.is_empty(),
+        "demuxers not in demuxers.txt: {unreviewed:?}"
+    );
+    assert!(
+        gone.is_empty(),
+        "demuxers.txt lists demuxers the build lacks: {gone:?}"
+    );
+}
