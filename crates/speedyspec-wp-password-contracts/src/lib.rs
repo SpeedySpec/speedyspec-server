@@ -171,5 +171,10 @@ pub trait Bcrypt {
 /// Warnings PHP raises from `password_hash()`, such as its ignored `salt` option.
 pub trait Warnings {
     /// Raises an `E_WARNING` with `message`.
-    fn warn(&self, message: &str);
+    ///
+    /// # Errors
+    ///
+    /// What an error handler did instead of returning: threw ([`PasswordError::Rethrow`]) or ended the request
+    /// ([`PasswordError::Unwinding`]). The caller stops and passes it on, as PHP would.
+    fn warn(&self, message: &str) -> Result<(), PasswordError>;
 }

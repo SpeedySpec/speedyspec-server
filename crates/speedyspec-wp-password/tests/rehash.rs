@@ -115,3 +115,42 @@ fn filter_receives_hash_and_user_id() {
         (true, b"$2y$05$abc".to_vec(), Value::Int(9))
     );
 }
+
+#[test]
+fn bcrypt_with_an_unreadable_cost_compares_against_twelve() {
+    // PHP's sscanf leaves old_cost at PHP_PASSWORD_BCRYPT_COST (12) when it can't read one.
+    let hash = format!("$2y$xx${}", "a".repeat(53));
+    assert_eq!(hash.len(), 60);
+    let bcrypt = Value::Str("2y".into());
+    let cost = |n: i64| {
+        Value::Array(vec![(
+            speedyspec_hooks::Key::Str("cost".into()),
+            Value::Int(n),
+        )])
+    };
+    assert_eq!(
+        password_needs_rehash(hash.as_bytes(), &bcrypt, &Value::Array(Vec::new())),
+        Ok(false)
+    );
+    assert_eq!(
+        password_needs_rehash(hash.as_bytes(), &bcrypt, &cost(12)),
+        Ok(false)
+    );
+    assert_eq!(
+        password_needs_rehash(hash.as_bytes(), &bcrypt, &cost(10)),
+        Ok(true)
+    );
+}
+
+#[test]
+fn non_finite_float_algorithm_never_asks_for_a_rehash() {
+    // An algorithm PHP can't name (NAN reads as the string "NAN") never prompts a rehash.
+    let hash = format!("$2y$10${}", "a".repeat(53));
+    for f in [f64::NAN, f64::INFINITY, 1e20] {
+        assert_eq!(
+            password_needs_rehash(hash.as_bytes(), &Value::Float(f), &Value::Array(Vec::new())),
+            Ok(false),
+            "{f}"
+        );
+    }
+}

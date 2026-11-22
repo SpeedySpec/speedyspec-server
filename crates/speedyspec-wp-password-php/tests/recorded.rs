@@ -109,7 +109,9 @@ impl WpHasherGlobal for NoHasher {
 struct Quiet;
 
 impl Warnings for Quiet {
-    fn warn(&self, _: &str) {}
+    fn warn(&self, _: &str) -> Result<(), PasswordError> {
+        Ok(())
+    }
 }
 
 fn ports(algorithm: Option<Value>, options: Option<Value>) -> Rc<PasswordPorts> {

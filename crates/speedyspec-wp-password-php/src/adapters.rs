@@ -1,6 +1,6 @@
 //! The password ports over PHP and the Hook API (Adapters).
 
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use speedyspec_hooks::{Key, Value};
 use speedyspec_php::PhpError;
@@ -35,13 +35,9 @@ pub(crate) fn hook_error(err: HookError) -> PasswordError {
     }
 }
 
-/// Calls `$target->$method(...$args)`, keeping the exception PHP throws.
-fn call_method(target: &Value, method: &str, args: &[Value]) -> Result<Value, PasswordError> {
-    let callable = Value::Array(vec![
-        (Key::Int(0), target.clone()),
-        (Key::Int(1), Value::Str(method.to_owned())),
-    ]);
-    speedyspec_php::call_catching(&callable, args).map_err(|failure| match failure.exception {
+/// Calls `callable(...$args)`, keeping the exception PHP throws; `exit()` and fatal errors stay silent.
+fn call(callable: &Value, args: &[Value]) -> Result<Value, PasswordError> {
+    speedyspec_php::call_catching(callable, args).map_err(|failure| match failure.exception {
         Some(exception) => PasswordError::Rethrow(exception),
         None => match failure.error {
             PhpError::Exit(_) | PhpError::Fatal { .. } => PasswordError::Unwinding,
@@ -50,29 +46,47 @@ fn call_method(target: &Value, method: &str, args: &[Value]) -> Result<Value, Pa
     })
 }
 
+/// Calls `$target->$method(...$args)`, keeping the exception PHP throws.
+fn call_method(target: &Value, method: &str, args: &[Value]) -> Result<Value, PasswordError> {
+    let callable = Value::Array(vec![
+        (Key::Int(0), target.clone()),
+        (Key::Int(1), Value::Str(method.to_owned())),
+    ]);
+    call(&callable, args)
+}
+
 /// WordPress's five password filters over the Hook API. With no callback a run is only counted and PHP is not
 /// entered.
+///
+/// The Hook API is held weakly. These filters live in container bindings, and the Hook API reaches the container
+/// through its hook store, so a strong reference would make a cycle (Container → binding → filters → Hook API →
+/// store → Container). Whoever built the filters keeps the Hook API alive ([`crate::PasswordArea`] does, for the
+/// worker).
 pub struct HookPasswordFilters {
-    hooks: Rc<HookApi>,
+    hooks: Weak<HookApi>,
 }
 
 impl HookPasswordFilters {
-    pub fn new(hooks: Rc<HookApi>) -> HookPasswordFilters {
-        HookPasswordFilters { hooks }
+    /// Filters through `hooks`, without keeping it alive.
+    pub fn new(hooks: &Rc<HookApi>) -> HookPasswordFilters {
+        HookPasswordFilters {
+            hooks: Rc::downgrade(hooks),
+        }
     }
 
     fn apply(&self, name: &str, value: Value, args: Vec<Value>) -> Result<Value, PasswordError> {
-        let name = HookName::from(name);
-        if self
+        let hooks = self
             .hooks
+            .upgrade()
+            .ok_or_else(|| PasswordError::Port("the Hook API is gone".into()))?;
+        let name = HookName::from(name);
+        if hooks
             .skip_if_empty(&name, Count::Filters)
             .map_err(hook_error)?
         {
             return Ok(value);
         }
-        self.hooks
-            .apply_filters(&name, value, args)
-            .map_err(hook_error)
+        hooks.apply_filters(&name, value, args).map_err(hook_error)
     }
 }
 
@@ -161,12 +175,14 @@ impl WpHasherGlobal for PhpWpHasherGlobal {
 pub struct PhpWarnings;
 
 impl Warnings for PhpWarnings {
-    fn warn(&self, message: &str) {
-        // E_USER_WARNING: a native function has no way to raise E_WARNING itself.
-        let _ = speedyspec_php::call(
+    fn warn(&self, message: &str) -> Result<(), PasswordError> {
+        // E_USER_WARNING: a native function has no way to raise E_WARNING itself. An error handler may throw or
+        // exit(); either is passed on.
+        call(
             &Value::Str("trigger_error".into()),
             &[Value::Str(message.to_owned()), Value::Int(512)],
-        );
+        )
+        .map(drop)
     }
 }
 

@@ -40,10 +40,11 @@ pub fn password_needs_rehash(
         return Ok(true);
     }
     Ok(match wanted {
-        Algorithm::Bcrypt => match leading_number(&hash[4..]) {
-            Some((cost, _)) => cost != options.cost.unwrap_or(BCRYPT_DEFAULT_COST),
-            None => true,
-        },
+        Algorithm::Bcrypt => {
+            // PHP's sscanf leaves the old cost at PHP_PASSWORD_BCRYPT_COST when it can't read one.
+            let cost = leading_number(&hash[4..]).map_or(BCRYPT_DEFAULT_COST, |(cost, _)| cost);
+            cost != options.cost.unwrap_or(BCRYPT_DEFAULT_COST)
+        }
         Algorithm::Argon2i | Algorithm::Argon2id => {
             let (memory, time, threads) = argon2_params(hash);
             memory != options.memory_cost.unwrap_or(ARGON2_DEFAULT_MEMORY_KIB)

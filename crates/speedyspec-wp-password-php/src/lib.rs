@@ -61,11 +61,14 @@ impl PasswordArea {
     }
 
     /// Binds WordPress's rules under the five ports, for the life of the worker.
+    ///
+    /// The bindings reach the Hook API weakly (see [`HookPasswordFilters`]); this area keeps it alive, so filters run
+    /// while the area lives.
     pub fn bind_defaults(&self) {
         let container = &self.natives.container;
         let sodium = self.natives.sodium.clone();
         let ports = Rc::new(PasswordPorts {
-            filters: Rc::new(HookPasswordFilters::new(self.hooks.clone())),
+            filters: Rc::new(HookPasswordFilters::new(&self.hooks)),
             hasher_global: Rc::new(PhpWpHasherGlobal),
             bcrypt: Rc::new(BcryptCrate),
             argon2: sodium.clone(),

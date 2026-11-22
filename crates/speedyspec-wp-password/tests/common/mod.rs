@@ -250,7 +250,8 @@ impl RandomBytes for FixedBytes {
 pub struct CollectWarnings(pub RefCell<Vec<String>>);
 
 impl Warnings for CollectWarnings {
-    fn warn(&self, message: &str) {
+    fn warn(&self, message: &str) -> Result<(), PasswordError> {
         self.0.borrow_mut().push(message.to_string());
+        Ok(())
     }
 }

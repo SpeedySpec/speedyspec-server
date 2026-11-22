@@ -293,3 +293,53 @@ fn filter_values_are_read_before_use() {
     let hash = text(rig.hasher.hash(b"pw").unwrap());
     assert!(hash.starts_with("$wp$2y$05$"), "{hash}");
 }
+
+#[test]
+fn non_finite_or_out_of_range_float_algorithm_is_a_value_error() {
+    // PHP's `string|int|null` parameter can't take these floats as integers, so it reads them as strings
+    // ("NAN", "INF", "1.0E+20"), which name no algorithm.
+    for f in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 1e20, -1e20] {
+        let rig = rig(Some(Value::Float(f)), None, false);
+        assert_eq!(
+            rig.hasher.hash(b"pw"),
+            Err(PasswordError::value_error(
+                "password_hash(): Argument #2 ($algo) must be a valid password hashing algorithm"
+            )),
+            "{f}"
+        );
+    }
+}
+
+/// Warnings that fail as a throwing PHP error handler does.
+struct ThrowingWarnings;
+
+impl speedyspec_wp_password_contracts::Warnings for ThrowingWarnings {
+    fn warn(&self, _message: &str) -> Result<(), PasswordError> {
+        Err(PasswordError::Unwinding)
+    }
+}
+
+#[test]
+fn a_failing_warning_stops_the_hash() {
+    let filters = Rc::new(FakeFilters::with(
+        Some(Value::Str("2y".into())),
+        Some(Value::Array(vec![(
+            Key::Str("salt".into()),
+            Value::Str("x".into()),
+        )])),
+        calls(),
+    ));
+    let bcrypt = Rc::new(FakeBcrypt::new());
+    let hasher = DefaultPasswordHasher::new(Rc::new(PasswordPorts {
+        filters,
+        hasher_global: Rc::new(FakeHasher {
+            set: false,
+            calls: calls(),
+        }),
+        bcrypt: bcrypt.clone(),
+        argon2: Rc::new(FakeArgon2::new()),
+        random: Rc::new(FixedBytes(1)),
+        warnings: Rc::new(ThrowingWarnings),
+    }));
+    assert_eq!(hasher.hash(b"pw"), Err(PasswordError::Unwinding));
+}
