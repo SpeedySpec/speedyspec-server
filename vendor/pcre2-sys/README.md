@@ -27,7 +27,7 @@ fails with "Internal error". `crates/speedyspec-wp-text/tests/php_pcre2.rs` repr
 
 ## Updating
 
-When PHP's bundled PCRE2 changes (a new `php-version`), copy `ext/pcre/pcre2lib/*.c`, `*.h` and `sljit/`
+When PHP's bundled PCRE2 changes (a new `crates/speedyspec-php/php-version`), copy `ext/pcre/pcre2lib/*.c`, `*.h` and `sljit/`
 over `upstream/src` (`pcre2.h` into `upstream/include`; not PHP's `config.h`), compare `config.h`'s values
 with PHP's, update `PCRE2_MINOR` in `src/bindings.rs`, then regenerate the prefix list from the workspace root:
 

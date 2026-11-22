@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-wp-shortcode-contracts"
 version = "0.1.0"
+publish = false
 description = "WordPress's Shortcode API contracts: the plain types, the ports and strategies, and WordPress's pattern strings."
 edition.workspace = true
 rust-version.workspace = true

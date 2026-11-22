@@ -5,6 +5,9 @@ description = "#[php_port]: generates a Rust port trait's PHP twin interface and
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+# The tests read the repository's compat/ and tests/php, so they run in this repository only.
+exclude = ["tests/"]
 
 [lib]
 proc-macro = true

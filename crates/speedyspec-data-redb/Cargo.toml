@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-data-redb"
 version = "0.1.0"
+publish = false
 description = "ReDB as a NoSQL Store: one owner process per site serves the file to every worker over a private socket."
 edition.workspace = true
 rust-version.workspace = true

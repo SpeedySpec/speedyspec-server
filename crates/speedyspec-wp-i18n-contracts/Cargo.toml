@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-wp-i18n-contracts"
 version = "0.1.0"
+publish = false
 description = "Ports and plain values of the WordPress translations port: file readers, the file probe and the file cache."
 edition.workspace = true
 rust-version.workspace = true

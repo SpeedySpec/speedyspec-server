@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-server-infra-minisign"
 version = "0.1.3"
+publish = false
 description = "Minisign signature checks for SpeedySpec server releases."
 edition.workspace = true
 rust-version.workspace = true

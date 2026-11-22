@@ -83,7 +83,7 @@ jobs:
           path: |
             ${{ matrix.php-build }}/spc
             ${{ matrix.php-build }}/buildroot
-          key: php-${{ matrix.name }}-${{ hashFiles('php-version', 'scripts/build-php.sh') }}
+          key: php-${{ matrix.name }}-${{ hashFiles('crates/speedyspec-php/php-version', 'scripts/build-php.sh') }}
       - name: Build static PHP
         env:
           # Runners are throwaway, so spc may install missing build tools.
@@ -96,6 +96,25 @@ jobs:
         run: ${{ matrix.run }} cargo test -p speedyspec-php --test extensions
       - name: Test with php
         run: ${{ matrix.run }} cargo test --workspace --features speedyspec-server/test-hooks
+
+  # The crates published to crates.io (scripts/publish-crates.txt): the list is consistent with the workspace, and
+  # every one of them packages. No static PHP: packaging does not build them (the php job does).
+  crates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.99"
+      - name: Check the list
+        run: |
+          cargo metadata --format-version 1 --no-deps > "$RUNNER_TEMP/metadata.json"
+          scripts/release-crates.sh check "$RUNNER_TEMP/metadata.json"
+      - name: Package them
+        run: |
+          args=()
+          for name in $(grep -v -e '^[[:space:]]*$' -e '^[[:space:]]*#' scripts/publish-crates.txt); do args+=(-p "$name"); done
+          cargo publish --dry-run --no-verify --locked "${args[@]}"
 
   kubernetes:
     runs-on: ubuntu-latest

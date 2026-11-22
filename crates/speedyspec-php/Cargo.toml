@@ -4,12 +4,16 @@ version = "0.3.0"
 description = "Embedded, statically linked PHP interpreter for speedyspec."
 edition.workspace = true
 rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+# The tests read the repository's compat/ and tests/php, so they run in this repository only.
+exclude = ["tests/"]
 
 [dependencies]
 # The `embed` feature links libphp and exposes the SAPI and engine entry points.
 ext-php-rs = { version = "=0.16.5", features = ["embed"] }
 # The hook contract only; the backend is chosen by whoever boots PHP.
-speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-hooks = { path = "../speedyspec-hooks", version = "0.1" }
 
 [dev-dependencies]
 speedyspec-hooks = { path = "../speedyspec-hooks" }
@@ -31,3 +35,7 @@ harness = false
 [[test]]
 name = "global_array"
 harness = false
+
+# docs.rs has no static PHP: build.rs links nothing when DOCS_RS is set, and ext-php-rs uses its bundled bindings.
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]

@@ -29,7 +29,7 @@ its `source` is `https://releases.speedyspec.com/php-runtime/index.json`, for an
 
 ## The PHP build
 
-`scripts/build-php.sh` builds a static, non-thread-safe PHP (the version in `php-version`) with static-php-cli, into
+`scripts/build-php.sh` builds a static, non-thread-safe PHP (the version in `crates/speedyspec-php/php-version`) with static-php-cli, into
 `.php-build/` (`scripts/linux-php.sh scripts/build-php.sh` for Linux musl, into `.php-build-linux*/`). The extension
 list is every extension WordPress's Site Health checks for, plus what WordPress otherwise relies on:
 

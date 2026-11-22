@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-wp-text-diff"
 version = "0.1.0"
+publish = false
 description = "WordPress's wp_text_diff(): a port of Horde's native diff engine and WordPress's table renderer, with SIMD string work."
 edition.workspace = true
 rust-version.workspace = true

@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-server-domain"
 version = "0.1.3"
+publish = false
 description = "Value types and contracts for the SpeedySpec server. No I/O."
 edition.workspace = true
 rust-version.workspace = true

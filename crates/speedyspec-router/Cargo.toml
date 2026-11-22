@@ -1,6 +1,7 @@
 [package]
 name = "speedyspec-router"
 version = "0.1.0"
+publish = false
 description = "A Laravel-style router with FastRoute's matching ideas, and WordPress's rule sets, query templates and permastructs."
 edition.workspace = true
 rust-version.workspace = true
