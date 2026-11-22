@@ -5,8 +5,9 @@
 
 use std::rc::Rc;
 
+use md5::Digest;
 use speedyspec_data::{DbValue, Statement};
-use speedyspec_data_query::Query;
+use speedyspec_data_query::{Partial, Query};
 use speedyspec_wp_db::{QueryOutcome, WpDb, WpDbError, WpRow, WpValue};
 use speedyspec_wp_options::Option as OptionEntity;
 use speedyspec_wp_options::{
@@ -315,6 +316,56 @@ impl OptionRepository for SqlOptionRepository {
         }
         query.where_eq("option_name", name.as_str());
         self.affected(query.build())
+    }
+
+    /// The compare is `MD5(option_value) = '<md5 of the expected bytes>'`: `option_value`'s case- and
+    /// accent-insensitive collation would let a plain `=` match different bytes, and the builder cannot bind a
+    /// parameter inside a raw fragment. MD5 compares the bytes themselves.
+    fn update_if(
+        &self,
+        name: &OptionName,
+        expected: &SerializedValue,
+        value: Option<&SerializedValue>,
+        autoload: Option<&Autoload>,
+    ) -> Result<u64, OptionsError> {
+        let table = self.table();
+        let mut data = vec![("option_value".to_string(), value.map_or(WpValue::Null, wp))];
+        if let Some(a) = autoload {
+            data.push(("autoload".to_string(), WpValue::Str(a.as_str().to_string())));
+        }
+        let condition = vec![(
+            "option_name".to_string(),
+            WpValue::Str(name.as_str().to_string()),
+        )];
+        if !self.fields_pass(&table, &data)? || !self.fields_pass(&table, &condition)? {
+            return Ok(0);
+        }
+        let digest = md5::Md5::digest(expected.as_bytes());
+        let hex: String = digest.iter().map(|b| format!("{b:02x}")).collect();
+        let compare = Partial::expr(&format!("MD5(option_value) = '{hex}'"))
+            .map_err(|e| OptionsError::Db(e.to_string()))?;
+        let mut query = Query::update(&table);
+        query.set("option_value", value.map_or(DbValue::Null, self::value_of));
+        if let Some(a) = autoload {
+            query.set("autoload", a.as_str());
+        }
+        query.where_eq("option_name", name.as_str());
+        query.and_where(compare);
+        self.affected(query.build())
+    }
+
+    /// A plain `INSERT`: a duplicate name is 0 rows (MySQL's `INSERT IGNORE`), never an update.
+    fn add_if_absent(&self, option: &OptionEntity) -> Result<u64, OptionsError> {
+        if self.value(&option.name, true)?.is_some() {
+            return Ok(0);
+        }
+        // A concurrent insert of the same name loses on the unique key: wpdb reports the failure as 0 rows.
+        let columns = ["option_name", "option_value", "autoload"];
+        self.affected(
+            Query::insert_into(&self.table(), &columns)
+                .values(crate::OptionMapper::to_values(option))
+                .build(),
+        )
     }
 
     fn remove(&self, name: &OptionName) -> Result<u64, OptionsError> {

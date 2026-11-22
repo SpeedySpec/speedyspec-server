@@ -9,6 +9,7 @@ mod autoload;
 mod autoload_policy;
 mod autoload_set;
 mod clock;
+mod conditional;
 #[cfg(feature = "conformance")]
 pub mod conformance;
 mod entity;
@@ -43,6 +44,7 @@ pub use autoload_policy::{
     filter_default_autoload_value_via_option_size, register_default_filters,
 };
 pub use clock::{Clock, SystemClock};
+pub use conditional::ConditionalWrite;
 pub use entity::Option;
 pub use error::OptionsError;
 pub use external_cache::{ExternalObjectCache, ObjectCachePersistence};
