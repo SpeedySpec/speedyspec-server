@@ -20,6 +20,7 @@ pub fn codec_string(bytes: &[u8]) -> speedyspec_hooks::Value {
     codec::string_value(bytes)
 }
 mod construct;
+pub mod css;
 mod deps;
 pub mod filters;
 mod memory;
@@ -31,7 +32,7 @@ pub mod selectors;
 
 pub use construct::{construct, construct_value, valid_names};
 pub use deps::ThemeJsonDeps;
-pub use memory::{MemoryBlockMetadata, NoTranslation, RecordedDiagnostics};
+pub use memory::{MemoryBlockMetadata, MemoryGlobalSettings, NoTranslation, RecordedDiagnostics};
 pub mod merge;
 
 pub use merge::merge;

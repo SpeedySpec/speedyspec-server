@@ -131,6 +131,42 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
         require_once SPEEDYSPEC_COMPAT_WP_ROOT . 'wp-includes/' . $speedyspec_file;
     }
     compat_load_functions('wp-includes/global-styles-and-settings.php', ['wp_get_block_css_selector']);
+    // What the stylesheet code reaches outside the class: fluid typography, the layout definitions, block
+    // supports, PHP 8.6's clamp() polyfill and the style engine (background images).
+    compat_load_functions('wp-includes/compat.php', ['clamp']);
+    compat_load_functions('wp-includes/block-supports/typography.php', ['wp_get_typography_value_and_unit',
+        'wp_get_computed_fluid_typography_value', 'wp_get_typography_font_size_value']);
+    compat_load_functions('wp-includes/block-supports/layout.php', ['wp_get_layout_definitions']);
+    compat_load_functions('wp-includes/blocks.php', ['block_has_support']);
+    foreach (['style-engine.php', 'style-engine/class-wp-style-engine.php',
+        'style-engine/class-wp-style-engine-css-declarations.php', 'style-engine/class-wp-style-engine-css-rule.php',
+        'style-engine/class-wp-style-engine-css-rules-store.php', 'style-engine/class-wp-style-engine-processor.php'] as $speedyspec_file) {
+        require_once SPEEDYSPEC_COMPAT_WP_ROOT . 'wp-includes/' . $speedyspec_file;
+    }
+}
+
+/** The site's merged settings fluid typography reads; a scenario sets them with compat_set_global_settings(). */
+if (!function_exists('wp_get_global_settings')) {
+    function wp_get_global_settings($path = array(), $context = array()) {
+        return $GLOBALS['compat_global_settings'] ?? array();
+    }
+}
+
+function compat_set_global_settings(array $settings): void
+{
+    $GLOBALS['compat_global_settings'] = $settings;
+}
+
+/** `current_theme_supports()`, answering from compat_add_theme_support(). */
+if (!function_exists('current_theme_supports')) {
+    function current_theme_supports($feature, ...$args) {
+        return in_array($feature, $GLOBALS['compat_theme_supports'] ?? array(), true);
+    }
+}
+
+function compat_add_theme_support(string $feature): void
+{
+    $GLOBALS['compat_theme_supports'][] = $feature;
 }
 
 /**

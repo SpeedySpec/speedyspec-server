@@ -193,4 +193,26 @@ impl Diagnostics for PhpDiagnostics {
             ],
         );
     }
+
+    fn doing_it_wrong(&self, function: &str, message: &[u8], version: &str) {
+        call(
+            "_doing_it_wrong",
+            &[
+                Value::Str(function.into()),
+                string_value(message),
+                Value::Str(version.into()),
+            ],
+        );
+    }
+
+    fn deprecated_argument(&self, function: &str, version: &str, message: &[u8]) {
+        call(
+            "_deprecated_argument",
+            &[
+                Value::Str(function.into()),
+                Value::Str(version.into()),
+                string_value(message),
+            ],
+        );
+    }
 }
