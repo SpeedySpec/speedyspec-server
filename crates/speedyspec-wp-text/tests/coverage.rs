@@ -65,6 +65,13 @@ const CONTENT_FILTERS: &[&str] = &[
     "urlencode_deep",
     "rawurlencode_deep",
     "urldecode_deep",
+    "make_clickable",
+    "wp_rel_nofollow",
+    "wp_rel_ugc",
+    "links_add_base_url",
+    "links_add_target",
+    "wp_targeted_link_rel",
+    "speedyspec_make_clickable_in_comment_text",
 ];
 
 /// What plans 1 and 2 port (html-split and text-escape), which their own crates check.
@@ -92,13 +99,6 @@ const EARLIER: &[&str] = &[
 /// and the last one removes it.
 const PENDING: &[&str] = &[
     "convert_smilies",
-    "links_add_base_url",
-    "links_add_target",
-    "make_clickable",
-    "speedyspec_make_clickable_in_comment_text",
-    "wp_rel_nofollow",
-    "wp_rel_ugc",
-    "wp_targeted_link_rel",
 ];
 
 #[test]
