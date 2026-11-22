@@ -8,6 +8,8 @@
 //! - [`PhpRestAuthenticator`] makes WordPress's current user the caller.
 //! - [`RestArea`] gives PHP `SpeedySpec\Rest\Rest::bind( $operation )->route( $namespace, $route )->methods( … )`.
 //!
+//! - [`RestService`] keeps one REST server per site, for PHP's `rest_do_request` and the server's HTTP wiring.
+//!
 //! Handles to Rust objects live for one request; a proxy used after its request throws `LogicException`.
 
 mod area;
@@ -15,7 +17,9 @@ mod auth;
 pub mod errors;
 mod handles;
 mod hooks;
+mod service;
 
 pub use area::RestArea;
 pub use auth::PhpRestAuthenticator;
 pub use hooks::PhpRestHooks;
+pub use service::RestService;

@@ -20,6 +20,7 @@ const NATIVE: &str = "SpeedySpec\\Rest\\Native\\";
 const REGISTRATION_EXCEPTION: &str = "SpeedySpec\\Operation\\RegistrationException";
 
 thread_local! {
+    static SERVICE: std::cell::RefCell<Option<Rc<crate::RestService>>> = const { std::cell::RefCell::new(None) };
     static BINDINGS: std::cell::RefCell<Option<Rc<dyn BindingStore>>> = const { std::cell::RefCell::new(None) };
 }
 
@@ -313,6 +314,12 @@ impl RestArea {
     pub fn new(bindings: Rc<dyn BindingStore>) -> RestArea {
         BINDINGS.with(|b| *b.borrow_mut() = Some(bindings));
         RestArea
+    }
+
+    /// The service the shim's natives (`rest_do_request`, legacy routes) reach the REST server through.
+    pub fn with_service(self, service: Rc<crate::RestService>) -> Self {
+        SERVICE.with(|s| *s.borrow_mut() = Some(service));
+        self
     }
 }
 

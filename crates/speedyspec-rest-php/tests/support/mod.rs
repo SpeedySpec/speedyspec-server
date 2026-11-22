@@ -9,10 +9,10 @@ use speedyspec_container_php::ContainerArea;
 use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_operation::identity::MemoryIdentity;
 use speedyspec_operation_contracts::Identity;
-use speedyspec_operation_php::{FixedSiteKey, OperationArea, SiteId};
+use speedyspec_operation_php::{FixedSiteKey, OperationArea, SiteId, SiteKey};
 use speedyspec_php::{BootOptions, NativeArea, Php, PhpError};
 use speedyspec_php_ext::Value as PhpValue;
-use speedyspec_rest_php::RestArea;
+use speedyspec_rest_php::{RestArea, RestService};
 use speedyspec_transport::MemoryBindingStore;
 
 /// WordPress's hook functions, minimal (filters with accepted-args counts, actions, `did_action`), and the helpers
@@ -53,6 +53,7 @@ pub fn check(name: &str, ok: bool, detail: impl std::fmt::Debug) {
 }
 
 pub struct Booted {
+    pub service: Rc<RestService>,
     pub php: Php,
     pub container: Rc<Container>,
     pub operations: Rc<OperationArea>,
@@ -61,21 +62,32 @@ pub struct Booted {
 }
 
 pub fn boot() -> Booted {
+    boot_with_key(Rc::new(FixedSiteKey(SiteId {
+        blog: 1,
+        fingerprint: String::new(),
+    })))
+}
+
+pub fn boot_with_key(site_key: Rc<dyn SiteKey>) -> Booted {
     let container = Rc::new(Container::new());
     let identity: Rc<dyn Identity> = Rc::new(MemoryIdentity::new().grant(7, "edit_report"));
     let bindings = Rc::new(MemoryBindingStore::new());
     let operations = Rc::new(OperationArea::new(
         container.clone(),
         identity.clone(),
-        Rc::new(FixedSiteKey(SiteId {
-            blog: 1,
-            fingerprint: String::new(),
-        })),
+        site_key,
+    ));
+    let service = Rc::new(RestService::new(
+        container.clone(),
+        operations.clone(),
+        bindings.clone(),
+        identity.clone(),
+        Rc::new(|| "http://x.test/wp-json".to_owned()),
     ));
     let areas: Vec<Rc<dyn NativeArea>> = vec![
         Rc::new(ContainerArea::new("test", container.clone())),
         operations.clone(),
-        Rc::new(RestArea::new(bindings.clone())),
+        Rc::new(RestArea::new(bindings.clone()).with_service(service.clone())),
     ];
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),
@@ -84,6 +96,7 @@ pub fn boot() -> Booted {
     })
     .expect("PHP boots");
     Booted {
+        service,
         php,
         container,
         operations,
