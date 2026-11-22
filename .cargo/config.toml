@@ -8,3 +8,6 @@ PHP_CONFIG = { value = ".php-build/buildroot/bin/php-config", relative = true }
 # The oldest macOS the binary runs on: what the static PHP is built for too
 # (scripts/build-php.sh), so nothing linked in demands a newer one. Ignored off macOS.
 MACOSX_DEPLOYMENT_TARGET = "12.0"
+# libsodium-sys-stable (speedyspec-wp-crypto-sodium) links the static PHP's own libsodium.a, so Rust and ext-sodium
+# share one libsodium at the version scripts/build-php.sh pins, and the crate never builds or downloads a copy.
+SODIUM_LIB_DIR = { value = ".php-build/buildroot/lib", relative = true }

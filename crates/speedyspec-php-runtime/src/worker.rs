@@ -7,8 +7,12 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_container_php::ContainerArea;
 use speedyspec_fastcgi::Responder;
+use speedyspec_hooks::Value;
 use speedyspec_php::{BootOptions, NativeArea, Php, WebRequest};
 use speedyspec_runtime_contract::{WorkerReport, WorkerSpec};
+use speedyspec_wp_crypto_contracts::CryptoLibrary;
+use speedyspec_wp_crypto_php::CryptoArea;
+use speedyspec_wp_crypto_sodium::Sodium;
 use speedyspec_wp_hooks::HookStore;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::{HOOK_STORE, PhpHookStore, WpHooksArea};
@@ -193,6 +197,14 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         log("php_worker_boot_failed", &spec, &err);
         return 1;
     }
+    // WordPress needs libsodium: the runtime ships it, and refuses to serve without it.
+    let sodium = match Sodium::init() {
+        Ok(sodium) => sodium,
+        Err(err) => {
+            log("php_worker_sodium_missing", &spec, &err);
+            return 1;
+        }
+    };
     let legacy = Rc::new(RequestHooks(std::cell::RefCell::new(Rc::new(
         speedyspec_hooks_memory::MemoryHooks::new(),
     ))));
@@ -203,11 +215,19 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         .port::<dyn HookStore>(HOOK_STORE, |object| Rc::new(PhpHookStore::new(object)))
         .stateful(HOOK_STORE)
         .bindings(spec.bindings.clone());
+    let crypto = match CryptoArea::new(hooks.api()) {
+        Ok(crypto) => crypto,
+        Err(err) => {
+            log("php_worker_sodium_missing", &spec, &err);
+            return 1;
+        }
+    };
     let areas: Vec<Rc<dyn NativeArea>> = vec![
         speedyspec_php_ext::twins_area(),
         Rc::new(container_area),
         Rc::new(hooks),
         Rc::new(RequestHooksArea(legacy.clone())),
+        Rc::new(crypto),
     ];
     let preload = preload(&spec);
     let php = match Php::boot(BootOptions {
@@ -221,6 +241,17 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
             return 1;
         }
     };
+    let php_sodium = match php.eval(
+        "speedyspec://worker/sodium",
+        "return extension_loaded('sodium') ? SODIUM_LIBRARY_VERSION : null;",
+    ) {
+        Ok(Value::Str(version)) => Some(version),
+        _ => None,
+    };
+    if let Some(problem) = sodium_problem(php_sodium.as_deref(), &sodium.version()) {
+        log("php_worker_sodium_missing", &spec, &problem);
+        return 1;
+    }
     let _ = std::fs::remove_file(&spec.socket);
     let listener = match UnixListener::bind(&spec.socket) {
         Ok(listener) => listener,
@@ -310,7 +341,38 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
     0
 }
 
+/// Why this worker must not serve, if PHP's ext-sodium is missing or runs another libsodium than the Rust port.
+fn sodium_problem(php: Option<&str>, rust: &str) -> Option<String> {
+    match php {
+        None => Some(
+            "PHP has no ext-sodium; WordPress needs it and this runtime must ship it".to_string(),
+        ),
+        Some(version) if version != rust => Some(format!(
+            "PHP's ext-sodium reports libsodium {version}, the runtime links {rust}"
+        )),
+        Some(_) => None,
+    }
+}
+
 fn log(event: &str, spec: &WorkerSpec, message: &str) {
     let line = serde_json::json!({ "event": event, "app": spec.app, "socket": spec.socket, "message": message });
     eprintln!("{line}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sodium_problem;
+
+    #[test]
+    fn sodium_must_be_loaded_and_match() {
+        assert_eq!(sodium_problem(Some("1.0.22"), "1.0.22"), None);
+        assert_eq!(
+            sodium_problem(None, "1.0.22").as_deref(),
+            Some("PHP has no ext-sodium; WordPress needs it and this runtime must ship it")
+        );
+        assert_eq!(
+            sodium_problem(Some("1.0.18"), "1.0.22").as_deref(),
+            Some("PHP's ext-sodium reports libsodium 1.0.18, the runtime links 1.0.22")
+        );
+    }
 }

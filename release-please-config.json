@@ -188,6 +188,81 @@
       "component": "speedyspec-wp-hooks-php",
       "skip-github-release": true,
       "skip-changelog": true
+    },
+    "crates/speedyspec-wp-crypto": {
+      "component": "speedyspec-wp-crypto",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-crypto-contracts": {
+      "component": "speedyspec-wp-crypto-contracts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-crypto-php": {
+      "component": "speedyspec-wp-crypto-php",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-crypto-sodium": {
+      "component": "speedyspec-wp-crypto-sodium",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-html-syntax": {
+      "component": "speedyspec-wp-html-syntax",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-kses-contracts": {
+      "component": "speedyspec-wp-kses-contracts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-kses-lexical": {
+      "component": "speedyspec-wp-kses-lexical",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-kses-testkit": {
+      "component": "speedyspec-wp-kses-testkit",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-shortcode-contracts": {
+      "component": "speedyspec-wp-shortcode-contracts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text-contracts": {
+      "component": "speedyspec-wp-text-contracts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text-corpus": {
+      "component": "speedyspec-wp-text-corpus",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text-escape": {
+      "component": "speedyspec-wp-text-escape",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text-memory": {
+      "component": "speedyspec-wp-text-memory",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-token-map": {
+      "component": "speedyspec-wp-token-map",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-utf8": {
+      "component": "speedyspec-wp-utf8",
+      "skip-github-release": true,
+      "skip-changelog": true
     }
   }
 }
