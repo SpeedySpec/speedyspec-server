@@ -258,11 +258,15 @@ jobs:
   # after its builds passed. Only versions crates.io does not have yet are published (a version is permanent), so a
   # dispatch with the release tag finishes a publish that failed part-way. No verification build: it would need the
   # static PHP, the release builds just built and tested this commit, and every pull request dry-runs the packaging.
+  #
+  # Only with a runtime release: every listed crate is part of the runtime, so a bump to one releases the runtime too.
+  # Never when pending failed (its outputs are empty then, and the checkout would fall back to main's head).
   crates:
     needs: [pending, build-server, build-runtime, release-please]
     if: >-
-      always() && !cancelled() && needs.pending.outputs.releases != '[]' &&
-      needs.build-server.result != 'failure' && needs.build-runtime.result != 'failure' &&
+      always() && !cancelled() && needs.pending.result == 'success' &&
+      needs.pending.outputs.runtime == 'true' && needs.pending.outputs.ref != '' &&
+      needs.build-runtime.result == 'success' && needs.build-server.result != 'failure' &&
       (needs.release-please.result == 'success' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
@@ -294,8 +298,9 @@ jobs:
           echo "publishing:" $pending
           args=()
           for name in $pending; do args+=(-p "$name"); done
-          # Cargo publishes them in dependency order and waits for each to be in the index before the next.
-          cargo publish --no-verify --locked "${args[@]}"
+          # Cargo publishes them in dependency order and waits for each to be in the index before the next. Not
+          # --locked: a lock file release-please left behind must not stop a release part-way (CI checks it on PRs).
+          cargo publish --no-verify "${args[@]}"
 
   pages:
     needs: [publish]

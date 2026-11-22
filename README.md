@@ -241,7 +241,11 @@ in the commit message); `scripts/build-php.sh` is outside the crates and release
 
 The crates listed in `scripts/publish-crates.txt` (the PHP runtime crates other repositories build on) are also
 published to crates.io from the release commit, each version once; every other crate sets `publish = false`, and CI
-fails a pull request that adds a crate without it.
+fails a pull request that adds a crate without it. A crate re-exports types of some it depends on (`speedyspec-php-ext`
+re-exports `speedyspec-php`'s, `speedyspec-wp-hooks-php` exposes `speedyspec-php`'s and `speedyspec-compat`'s), so a
+breaking change to one of them is breaking for those too: mark it (`feat!`/`fix!`) in a commit that touches each crate
+that re-exports the type as well, or release-please gives them only a patch release and consumers end up with two
+incompatible copies.
 
 Merging the release pull request builds each bumped component for every target at the merge commit and runs the
 tests of the crates it is built from there (`scripts/release-test-packages.sh`; CI tests the whole workspace, so a
