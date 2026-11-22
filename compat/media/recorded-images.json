@@ -1,0 +1,1401 @@
+{
+    "wordpress": "7.1.5",
+    "php": "8.5.12",
+    "imagick": "ImageMagick 7.1.2-36 Q16-HDRI aarch64 983df25e4:20261116 https://imagemagick.org",
+    "files": {
+        "alpha.avif": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 19,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 4,
+                "mime": "image/avif",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 19,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 19,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 4,
+                "mime": "image/avif",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/avif",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": 64,
+                "height": 48,
+                "bit_depth": 8,
+                "num_channels": 4
+            },
+            "us": 24
+        },
+        "alpha.webp": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 18,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/webp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 18,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 18,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/webp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/webp",
+            "wp_get_webp_info": {
+                "width": 64,
+                "height": 48,
+                "type": "animated-alpha"
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "animated.avif": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 19,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/avif",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 19,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 19,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/avif",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/avif",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": 64,
+                "height": 48,
+                "bit_depth": 8,
+                "num_channels": 3
+            },
+            "us": 27
+        },
+        "animated.gif": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 1,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/gif",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 1,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 1,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/gif",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/gif",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "animated.png": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 3,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/png",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 3,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 3,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/png",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/png",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 19
+        },
+        "animated.webp": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 18,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/webp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 18,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 18,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/webp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/webp",
+            "wp_get_webp_info": {
+                "width": 64,
+                "height": 48,
+                "type": "animated-alpha"
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 19
+        },
+        "baseline.jpg": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 2,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/jpeg",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": {
+                "APP0": "JFIF\u0000\u0001\u0002\u0000\u0000\u0001\u0000\u0001\u0000\u0000"
+            },
+            "exif_imagetype": 2,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 2,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/jpeg",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": {
+                "APP0": "JFIF\u0000\u0001\u0002\u0000\u0000\u0001\u0000\u0001\u0000\u0000"
+            },
+            "wp_get_image_mime": "image/jpeg",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "cmyk.jpg": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 2,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 4,
+                "mime": "image/jpeg",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": {
+                "APP0": "JFIF\u0000\u0001\u0001\u0000\u0000\u0001\u0000\u0001\u0000\u0000",
+                "APP14": "Adobe\u0000d\u0000\u0000\u0000\u0000\u0002"
+            },
+            "exif_imagetype": 2,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 2,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 4,
+                "mime": "image/jpeg",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": {
+                "APP0": "JFIF\u0000\u0001\u0001\u0000\u0000\u0001\u0000\u0001\u0000\u0000",
+                "APP14": "Adobe\u0000d\u0000\u0000\u0000\u0000\u0002"
+            },
+            "wp_get_image_mime": "image/jpeg",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "cmyk.tif": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 7,
+                "3": "width=\"64\" height=\"48\"",
+                "mime": "image/tiff",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 7,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 7,
+                "3": "width=\"64\" height=\"48\"",
+                "mime": "image/tiff",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/tiff",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "empty.png": {
+            "getimagesize": false,
+            "image_info": [],
+            "exif_imagetype": false,
+            "wp_getimagesize": false,
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": false,
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 61
+        },
+        "exif-rotated.jpg": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 2,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/jpeg",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": {
+                "APP0": "JFIF\u0000\u0001\u0002\u0000\u0000\u0001\u0000\u0001\u0000\u0000",
+                "APP1": "Exif\u0000\u0000MM\u0000*\u0000\u0000\u0000\b\u0000\u0005\u0001\u0012\u0000\u0003\u0000\u0000\u0000\u0001\u0000\u0006\u0000\u0000\u0001\u001a\u0000\u0005\u0000\u0000\u0000\u0001\u0000\u0000\u0000J\u0001\u001b\u0000\u0005\u0000\u0000\u0000\u0001\u0000\u0000\u0000R\u0001(\u0000\u0003\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0013\u0000\u0003\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001"
+            },
+            "exif_imagetype": 2,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 2,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/jpeg",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": {
+                "APP0": "JFIF\u0000\u0001\u0002\u0000\u0000\u0001\u0000\u0001\u0000\u0000",
+                "APP1": "Exif\u0000\u0000MM\u0000*\u0000\u0000\u0000\b\u0000\u0005\u0001\u0012\u0000\u0003\u0000\u0000\u0000\u0001\u0000\u0006\u0000\u0000\u0001\u001a\u0000\u0005\u0000\u0000\u0000\u0001\u0000\u0000\u0000J\u0001\u001b\u0000\u0005\u0000\u0000\u0000\u0001\u0000\u0000\u0000R\u0001(\u0000\u0003\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0013\u0000\u0003\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001"
+            },
+            "wp_get_image_mime": "image/jpeg",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "gray.jpg": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 2,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 1,
+                "mime": "image/jpeg",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": {
+                "APP0": "JFIF\u0000\u0001\u0001\u0000\u0000\u0001\u0000\u0001\u0000\u0000"
+            },
+            "exif_imagetype": 2,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 2,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 1,
+                "mime": "image/jpeg",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": {
+                "APP0": "JFIF\u0000\u0001\u0001\u0000\u0000\u0001\u0000\u0001\u0000\u0000"
+            },
+            "wp_get_image_mime": "image/jpeg",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 19
+        },
+        "gray16.png": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 3,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 16,
+                "mime": "image/png",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 3,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 3,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 16,
+                "mime": "image/png",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/png",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 19
+        },
+        "icon.ico": {
+            "getimagesize": {
+                "0": 16,
+                "1": 16,
+                "2": 17,
+                "3": "width=\"16\" height=\"16\"",
+                "bits": 32,
+                "mime": "image/vnd.microsoft.icon",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 17,
+            "wp_getimagesize": {
+                "0": 16,
+                "1": 16,
+                "2": 17,
+                "3": "width=\"16\" height=\"16\"",
+                "bits": 32,
+                "mime": "image/vnd.microsoft.icon",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/vnd.microsoft.icon",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 19
+        },
+        "iptc.jpg": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 2,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/jpeg",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": {
+                "APP0": "JFIF\u0000\u0001\u0002\u0000\u0000\u0001\u0000\u0001\u0000\u0000",
+                "APP13": "Photoshop 3.0\u00008BIM\u0004\u0004\u0000\u0000\u0000\u0000\u0000\u001e\u001c\u0002\u0019\u0000\u0006corpus\u001c\u0002x\u0000\u0007caption\u001c\u0002\u0000\u0000\u0002\u0000\u0004"
+            },
+            "exif_imagetype": 2,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 2,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/jpeg",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": {
+                "APP0": "JFIF\u0000\u0001\u0002\u0000\u0000\u0001\u0000\u0001\u0000\u0000",
+                "APP13": "Photoshop 3.0\u00008BIM\u0004\u0004\u0000\u0000\u0000\u0000\u0000\u001e\u001c\u0002\u0019\u0000\u0006corpus\u001c\u0002x\u0000\u0007caption\u001c\u0002\u0000\u0000\u0002\u0000\u0004"
+            },
+            "wp_get_image_mime": "image/jpeg",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 19
+        },
+        "lossless.webp": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 18,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/webp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 18,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 18,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/webp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/webp",
+            "wp_get_webp_info": {
+                "width": 64,
+                "height": 48,
+                "type": "lossless"
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 19
+        },
+        "lossy.avif": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 19,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/avif",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 19,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 19,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/avif",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/avif",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": 64,
+                "height": 48,
+                "bit_depth": 8,
+                "num_channels": 3
+            },
+            "us": 20
+        },
+        "lossy.webp": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 18,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/webp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 18,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 18,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/webp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/webp",
+            "wp_get_webp_info": {
+                "width": 64,
+                "height": 48,
+                "type": "lossy"
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 19
+        },
+        "mislabelled.jpg": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 3,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/png",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 3,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 3,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/png",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/png",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 31
+        },
+        "pal8.bmp": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 6,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/bmp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 6,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 6,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/bmp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/bmp",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "palette.png": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 3,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/png",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 3,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 3,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/png",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/png",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 19
+        },
+        "photo.hdr": {
+            "getimagesize": false,
+            "image_info": [],
+            "exif_imagetype": false,
+            "wp_getimagesize": false,
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": false,
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 68
+        },
+        "photo.heic": {
+            "getimagesize": {
+                "0": 64,
+                "1": 64,
+                "2": 20,
+                "3": "width=\"64\" height=\"64\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/heif",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 20,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 64,
+                "2": 20,
+                "3": "width=\"64\" height=\"64\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/heif",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/heif",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 21
+        },
+        "photo.jp2": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 10,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/jp2",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 10,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 10,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/jp2",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/jp2",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "photo.jxl": {
+            "getimagesize": false,
+            "image_info": [],
+            "exif_imagetype": false,
+            "wp_getimagesize": false,
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": false,
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 64
+        },
+        "photo.pcx": {
+            "getimagesize": false,
+            "image_info": [],
+            "exif_imagetype": false,
+            "wp_getimagesize": false,
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": false,
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 63
+        },
+        "photo.pgm": {
+            "getimagesize": false,
+            "image_info": [],
+            "exif_imagetype": false,
+            "wp_getimagesize": false,
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": false,
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 63
+        },
+        "photo.ppm": {
+            "getimagesize": false,
+            "image_info": [],
+            "exif_imagetype": false,
+            "wp_getimagesize": false,
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": false,
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 65
+        },
+        "photo.psd": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 5,
+                "3": "width=\"64\" height=\"48\"",
+                "mime": "image/psd",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 5,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 5,
+                "3": "width=\"64\" height=\"48\"",
+                "mime": "image/psd",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/psd",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "photo.qoi": {
+            "getimagesize": false,
+            "image_info": [],
+            "exif_imagetype": false,
+            "wp_getimagesize": false,
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": false,
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 63
+        },
+        "photo.sgi": {
+            "getimagesize": false,
+            "image_info": [],
+            "exif_imagetype": false,
+            "wp_getimagesize": false,
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": false,
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 91
+        },
+        "photo.tga": {
+            "getimagesize": false,
+            "image_info": [],
+            "exif_imagetype": false,
+            "wp_getimagesize": false,
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": false,
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 63
+        },
+        "progressive.jpg": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 2,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/jpeg",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": {
+                "APP0": "JFIF\u0000\u0001\u0001\u0000\u0000\u0001\u0000\u0001\u0000\u0000"
+            },
+            "exif_imagetype": 2,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 2,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/jpeg",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": {
+                "APP0": "JFIF\u0000\u0001\u0001\u0000\u0000\u0001\u0000\u0001\u0000\u0000"
+            },
+            "wp_get_image_mime": "image/jpeg",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 21
+        },
+        "rgb.png": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 3,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/png",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 3,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 3,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/png",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/png",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "rgb.tif": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 7,
+                "3": "width=\"64\" height=\"48\"",
+                "mime": "image/tiff",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 7,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 7,
+                "3": "width=\"64\" height=\"48\"",
+                "mime": "image/tiff",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/tiff",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "rgb24.bmp": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 6,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 24,
+                "mime": "image/bmp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 6,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 6,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 24,
+                "mime": "image/bmp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/bmp",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "rgba.png": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 3,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/png",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 3,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 3,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "mime": "image/png",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/png",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 19
+        },
+        "rgba32.bmp": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 6,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 32,
+                "mime": "image/bmp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 6,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 6,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 32,
+                "mime": "image/bmp",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/bmp",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "static.gif": {
+            "getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 1,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/gif",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "image_info": [],
+            "exif_imagetype": 1,
+            "wp_getimagesize": {
+                "0": 64,
+                "1": 48,
+                "2": 1,
+                "3": "width=\"64\" height=\"48\"",
+                "bits": 8,
+                "channels": 3,
+                "mime": "image/gif",
+                "width_unit": "px",
+                "height_unit": "px"
+            },
+            "wp_getimagesize_info": [],
+            "wp_get_image_mime": "image/gif",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 20
+        },
+        "truncated.jpg": {
+            "getimagesize": false,
+            "image_info": {
+                "APP0": "JFIF\u0000\u0001\u0002\u0000\u0000\u0001\u0000\u0001\u0000\u0000"
+            },
+            "exif_imagetype": 2,
+            "wp_getimagesize": false,
+            "wp_getimagesize_info": {
+                "APP0": "JFIF\u0000\u0001\u0002\u0000\u0000\u0001\u0000\u0001\u0000\u0000"
+            },
+            "wp_get_image_mime": "image/jpeg",
+            "wp_get_webp_info": {
+                "width": false,
+                "height": false,
+                "type": false
+            },
+            "wp_get_avif_info": {
+                "width": false,
+                "height": false,
+                "bit_depth": false,
+                "num_channels": false
+            },
+            "us": 39
+        }
+    }
+}

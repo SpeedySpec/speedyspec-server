@@ -94,6 +94,10 @@ Sizes (FFmpeg 9.1, `-Os` via `--enable-small`, measured 2026-11-22):
 
 Linux x86_64 is built by CI's `php (linux-x86_64)` job.
 
+After plan 4 minimized the decoders (to `mjpeg png gif webp bmp qoi pcx sgi hdr flv dca flac`: each one's removal
+changes a corpus or reader result, GIF and WebP cover art included), macOS aarch64's archives are `libavcodec.a`
+2.60 MB, `libavformat.a` 2.21 MB, `libavutil.a` 0.89 MB.
+
 **Fuzzing.** `fuzz-media/` holds cargo-fuzz targets for the FFmpeg shim (`ffmpeg_probe`) and the MIDI parser (`midi`).
 `.github/workflows/fuzz.yml` runs each for 30 minutes weekly (and on demand) against an FFmpeg built with
 AddressSanitizer and libFuzzer coverage (`SPEEDYSPEC_FFMPEG_CC` and `SPEEDYSPEC_FFMPEG_CFLAGS`, which no shipped
@@ -126,6 +130,13 @@ WordPress's `wp_read_audio_metadata()`, `wp_read_video_metadata()`, `wp_add_id3_
 - **Replacing the reader.** Bind a class implementing `SpeedySpec\WpMedia\MediaReader` (`read(string $path):
   array|false`, returning the neutral array) in the container; `SpeedySpec\WpMedia\Native\read_media($path)` is
   the default reader, for a replacement that wraps it.
+- **Images.** `wp_getimagesize()`, `wp_get_image_mime()`, `wp_get_webp_info()` and `wp_get_avif_info()` are native
+  too. Files are typed by content (the first 32 bytes, read through PHP so stream wrappers work). For every type PHP
+  8.5's `getimagesize()` reads (JPEG, PNG, GIF, BMP, TIFF, WebP, AVIF, HEIF, JPEG 2000, PSD, ICO), and for anything not
+  recognized, `wp_getimagesize()` is PHP's own call (about 20 µs), so its array and `$image_info` are WordPress's;
+  `wp_get_avif_info()` takes its figures from the same call. Types only FFmpeg reads (JPEG XL, QOI, PCX, PPM/PGM, SGI,
+  Radiance HDR) go through the isolated, cached reader and come back in `getimagesize()`'s shape with
+  `IMAGETYPE_UNKNOWN`. `wp_get_webp_info()` parses the WebP header as WordPress does.
 - **Differences from WordPress** are listed, with reasons, in `compat/media/DIFFERENCES.md`; the corpus test
   (`speedyspec-wp-media-corpus`) fails when one appears or disappears. The deliberate one: files without ID3 tags get
   their title, artist and album from their own tag format.

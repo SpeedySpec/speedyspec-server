@@ -43,3 +43,26 @@ sources only, so nothing here carries anyone else's rights:
 | `truncated.mp4` | the first 2 KiB of `bars.mp4` |
 | `garbage.mp3` | 4096 bytes of a fixed printable pattern |
 | `empty.wav` | 0 bytes |
+
+## Images (`images/`)
+
+Made by `make-image-corpus.sh` (Alpine 3.22: FFmpeg, ImageMagick with HEIC/JXL/TIFF, libheif, libjxl, ExifTool)
+from FFmpeg `lavfi` `testsrc2` frames, 64×48 (RGBA variants with alpha 128; animations 3 frames):
+
+| Files | How |
+|---|---|
+| `baseline.jpg`, `progressive.jpg`, `gray.jpg`, `cmyk.jpg` | FFmpeg mjpeg; ImageMagick `-interlace JPEG`, `-colorspace Gray`, `-colorspace CMYK` |
+| `iptc.jpg`, `exif-rotated.jpg` | `baseline.jpg` with ExifTool IPTC keywords and caption / `Orientation=6` |
+| `rgb.png`, `rgba.png`, `palette.png`, `gray16.png`, `animated.png` | FFmpeg png (rgb24, rgba, pal8, gray16be), APNG |
+| `static.gif`, `animated.gif` | FFmpeg gif |
+| `rgb24.bmp`, `rgba32.bmp`, `pal8.bmp` | FFmpeg bmp |
+| `rgb.tif`, `cmyk.tif` | FFmpeg tiff; ImageMagick CMYK |
+| `lossy.webp`, `lossless.webp`, `alpha.webp`, `animated.webp` | FFmpeg libwebp |
+| `lossy.avif`, `alpha.avif` | ImageMagick (libheif/AV1) |
+| `animated.avif` | FFmpeg libaom-av1 (libsvtav1 fallback). No grid AVIF: none of the tools in the image makes one |
+| `photo.heic` | `heif-enc` |
+| `photo.jxl` | `cjxl -q 80` |
+| `icon.ico` | ImageMagick, 32×32 and 16×16 entries |
+| `photo.qoi`, `.pcx`, `.tga`, `.ppm`, `.pgm`, `.sgi`, `.hdr`, `.jp2` | FFmpeg's native encoders |
+| `photo.psd` | ImageMagick |
+| `truncated.jpg`, `empty.png`, `mislabelled.jpg` | the first 200 bytes of `baseline.jpg`; 0 bytes; a copy of `rgb.png` |

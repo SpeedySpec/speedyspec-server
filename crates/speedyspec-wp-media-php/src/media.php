@@ -51,8 +51,119 @@ namespace SpeedySpec\WpMedia
     }
 }
 
+namespace SpeedySpec\WpMedia
+{
+    /**
+     * Reads a file's first bytes the way PHP would open it, stream wrappers included; an empty string when it can't.
+     *
+     * @param string $file
+     *   The path WordPress was given.
+     * @param int $length
+     *   How many bytes.
+     * @return string
+     *   The bytes read.
+     */
+    function head($file, $length)
+    {
+        $bytes = @file_get_contents((string) $file, false, null, 0, $length);
+        return $bytes === false ? '' : $bytes;
+    }
+
+    /**
+     * Gives the canonical local path the native reader can open, or null for a stream-wrapper path.
+     *
+     * @param string $file
+     *   The path WordPress was given.
+     * @return string|null
+     *   The local path.
+     */
+    function local($file)
+    {
+        $file = (string) $file;
+        if (preg_match('#^[a-z][a-z0-9+.-]*://#i', $file) && stripos($file, 'file://') !== 0) {
+            return null;
+        }
+        $local = stripos($file, 'file://') === 0 ? substr($file, 7) : $file;
+        $real = realpath($local);
+        return $real === false ? null : $real;
+    }
+}
+
 namespace
 {
+    if (!function_exists('wp_get_image_mime')) {
+        function wp_get_image_mime($file)
+        {
+            $type = \SpeedySpec\WpMedia\Native\image_type(\SpeedySpec\WpMedia\head($file, 64));
+            return $type ? $type['mime'] : false;
+        }
+    }
+
+    if (!function_exists('wp_getimagesize')) {
+        function wp_getimagesize($filename, ?array &$image_info = null)
+        {
+            $type = \SpeedySpec\WpMedia\Native\image_type(\SpeedySpec\WpMedia\head($filename, 64));
+            // PHP's own getimagesize() for every type it reads correctly, and for anything not sniffed: its answer
+            // (and $image_info) are then exactly WordPress's.
+            if (!$type || $type['fast']) {
+                $debug = defined('WP_DEBUG') && WP_DEBUG && !defined('WP_RUN_CORE_TESTS');
+                if (2 === func_num_args()) {
+                    $info = $debug ? getimagesize($filename, $image_info) : @getimagesize($filename, $image_info);
+                } else {
+                    $info = $debug ? getimagesize($filename) : @getimagesize($filename);
+                }
+                if (!empty($info) && !(empty($info[0]) && empty($info[1]))) {
+                    return $info;
+                }
+                // WordPress falls back only for WebP, AVIF and HEIC (its own parsers or Imagick); every other type
+                // PHP couldn't size is false, without a probe child.
+                if (!$type || !in_array($type['mime'], array('image/webp', 'image/avif', 'image/heif'), true)) {
+                    return false;
+                }
+            } elseif (2 === func_num_args()) {
+                // WordPress's getimagesize() call always resets $image_info; a reader-path type has no segments.
+                $image_info = array();
+            }
+            $local = \SpeedySpec\WpMedia\local($filename);
+            if ($local === null) {
+                return false;
+            }
+            return \SpeedySpec\WpMedia\Native\read_image_size($local, $type['imagetype'], $type['mime']);
+        }
+    }
+
+    if (!function_exists('wp_get_webp_info')) {
+        function wp_get_webp_info($filename)
+        {
+            if ('image/webp' !== wp_get_image_mime($filename)) {
+                return array('width' => false, 'height' => false, 'type' => false);
+            }
+            return \SpeedySpec\WpMedia\Native\webp_info(\SpeedySpec\WpMedia\head($filename, 40));
+        }
+    }
+
+    if (!function_exists('wp_get_avif_info')) {
+        function wp_get_avif_info($filename)
+        {
+            $none = array('width' => false, 'height' => false, 'bit_depth' => false, 'num_channels' => false);
+            if ('image/avif' !== wp_get_image_mime($filename)) {
+                return $none;
+            }
+            // PHP 8.5's getimagesize() reads AVIF, bit depth and channel count included: WordPress's numbers exactly.
+            $size = @getimagesize($filename);
+            if (!empty($size[0]) && !empty($size[1])) {
+                return array(
+                    'width'        => $size[0],
+                    'height'       => $size[1],
+                    'bit_depth'    => $size['bits'] ?? false,
+                    'num_channels' => $size['channels'] ?? false,
+                );
+            }
+            $local = \SpeedySpec\WpMedia\local($filename);
+            return $local === null ? $none : \SpeedySpec\WpMedia\Native\avif_info($local);
+        }
+    }
+
     if (!function_exists('wp_read_audio_metadata')) {
         function wp_read_audio_metadata($file)
         {

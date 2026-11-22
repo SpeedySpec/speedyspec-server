@@ -56,6 +56,36 @@ async fn wp_read_audio_metadata_in_a_worker() {
     );
 }
 
+/// An image type PHP can't size (JPEG XL) goes through the worker's own probe child; a PNG through PHP's getimagesize().
+#[tokio::test(flavor = "current_thread")]
+async fn wp_getimagesize_in_a_worker() {
+    let dir = tempfile::tempdir().unwrap();
+    let images = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat/media/images");
+    let site = dir.path().join("site");
+    std::fs::create_dir_all(&site).unwrap();
+    for name in ["photo.jxl", "rgb.png"] {
+        std::fs::copy(images.join(name), site.join(name)).unwrap();
+    }
+    let app = support::release(
+        dir.path(),
+        "app",
+        &format!(
+            "<?php $j = wp_getimagesize({:?}); $p = wp_getimagesize({:?}); echo json_encode([$j[0] ?? null, $j['mime'] ?? null, $p[0] ?? null, $p['mime'] ?? null]);",
+            site.join("photo.jxl").display().to_string(),
+            site.join("rgb.png").display().to_string()
+        ),
+    );
+    let mut worker = support::spawn(dir.path(), &app, Some(&site), &[]);
+    worker.ready().await;
+    let answer = worker.get(&app.join("index.php"), "/").await;
+    assert_eq!(
+        answer.body(),
+        r#"[64,"image\/jxl",64,"image\/png"]"#,
+        "{}",
+        answer.stdout
+    );
+}
+
 #[test]
 fn media_probe_subcommand_reads_stdin() {
     let dir = tempfile::tempdir().unwrap();

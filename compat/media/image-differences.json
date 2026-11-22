@@ -1,0 +1,72 @@
+[
+  {
+    "file": "photo.hdr",
+    "field": "wp_get_image_mime",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.hdr",
+    "field": "wp_getimagesize",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.jxl",
+    "field": "wp_get_image_mime",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.jxl",
+    "field": "wp_getimagesize",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.pcx",
+    "field": "wp_get_image_mime",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.pcx",
+    "field": "wp_getimagesize",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.pgm",
+    "field": "wp_get_image_mime",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.pgm",
+    "field": "wp_getimagesize",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.ppm",
+    "field": "wp_get_image_mime",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.ppm",
+    "field": "wp_getimagesize",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.qoi",
+    "field": "wp_get_image_mime",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.qoi",
+    "field": "wp_getimagesize",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.sgi",
+    "field": "wp_get_image_mime",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  },
+  {
+    "file": "photo.sgi",
+    "field": "wp_getimagesize",
+    "reason": "WordPress returns false for this type (PHP's getimagesize() doesn't read it); FFmpeg reads it, so the native functions type and size it"
+  }
+]

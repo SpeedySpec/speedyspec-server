@@ -205,3 +205,49 @@ fn gif_bmp_and_aiff() {
     assert_eq!(aiff.container, ContainerKind::Aiff);
     close(aiff.duration, 1.0, 0.001);
 }
+
+/// GIF and WebP covers keep their dimensions (getID3 reports them via getimagesize()).
+#[test]
+fn gif_and_webp_covers_have_dimensions() {
+    let webp = std::fs::read(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../compat/media/images/lossy.webp"),
+    )
+    .unwrap();
+    for (cover, mime) in [(kit::gif(4, 3), "image/gif"), (webp, "image/webp")] {
+        let mut mp3 = kit::mp3_with_id3v2(40, "T", "A", Some(&cover));
+        // The test kit writes image/png as the APIC MIME type; name the real one.
+        let at = mp3.windows(9).position(|w| w == b"image/png").unwrap();
+        let mut fixed = mp3[..at].to_vec();
+        fixed.extend_from_slice(mime.as_bytes());
+        fixed.extend_from_slice(&mp3[at + 9..]);
+        // The frame and tag sizes grew by the MIME's extra bytes.
+        let grow = (mime.len() as i64 - 9) as u32;
+        let frame = mp3.windows(4).position(|w| w == b"APIC").unwrap();
+        let size = u32::from_be_bytes(fixed[frame + 4..frame + 8].try_into().unwrap()) + grow;
+        fixed[frame + 4..frame + 8].copy_from_slice(&size.to_be_bytes());
+        let tag = (u32::from(mp3[6]) << 21
+            | u32::from(mp3[7]) << 14
+            | u32::from(mp3[8]) << 7
+            | u32::from(mp3[9]))
+            + grow;
+        fixed[6..10].copy_from_slice(&[
+            (tag >> 21 & 0x7F) as u8,
+            (tag >> 14 & 0x7F) as u8,
+            (tag >> 7 & 0x7F) as u8,
+            (tag & 0x7F) as u8,
+        ]);
+        mp3 = fixed;
+        let info = read(&mp3, "mp3").unwrap();
+        let picture = info
+            .pictures
+            .first()
+            .unwrap_or_else(|| panic!("{mime}: no picture"));
+        assert!(
+            picture.width.is_some() && picture.height.is_some(),
+            "{mime}: {:?}x{:?}",
+            picture.width,
+            picture.height
+        );
+    }
+}

@@ -117,7 +117,7 @@ fn main() {
         .collect();
     check(
         "wordpress_media_tests_pass",
-        tests >= 10 && failures == 0 && errors == 0,
+        tests >= 30 && failures == 0 && errors == 0,
         (&status, tests, failures, errors, &failed),
     );
 }

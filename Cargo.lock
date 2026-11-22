@@ -6298,6 +6298,7 @@ dependencies = [
  "speedyspec-wp-media-ffmpeg",
  "speedyspec-wp-media-midi",
  "speedyspec-wp-media-testkit",
+ "tempfile",
  "ureq",
 ]
 
