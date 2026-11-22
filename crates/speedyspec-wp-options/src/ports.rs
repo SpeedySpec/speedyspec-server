@@ -53,6 +53,20 @@ pub trait OptionRepository {
         autoload: Option<&Autoload>,
     ) -> Result<u64, OptionsError>;
 
+    /// `UPDATE ... SET option_value = %s[, autoload = %s] WHERE option_name = %s AND option_value = <expected>`,
+    /// comparing the stored bytes exactly (not through the column's case-insensitive collation); the affected-row
+    /// count, 0 when the stored bytes differ.
+    fn update_if(
+        &self,
+        name: &OptionName,
+        expected: &SerializedValue,
+        value: Option<&SerializedValue>,
+        autoload: Option<&Autoload>,
+    ) -> Result<u64, OptionsError>;
+
+    /// `INSERT` without `ON DUPLICATE KEY UPDATE`: 1 when inserted, 0 when the name exists.
+    fn add_if_absent(&self, option: &OptionEntity) -> Result<u64, OptionsError>;
+
     /// `wpdb::delete` by name.
     fn remove(&self, name: &OptionName) -> Result<u64, OptionsError>;
 }

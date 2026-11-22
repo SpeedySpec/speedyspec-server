@@ -71,7 +71,12 @@ pub struct PhpRequestHandler {
     site_dir: Option<PathBuf>,
     /// Told every response's `Set-Cookie` values, with its request's headers, before the head goes to the client.
     on_head: Option<HeadHook>,
+    /// Told each worker report's `next_cron`: when the app next wants its scheduled call.
+    wake: Option<WakeSink>,
 }
+
+/// Where a worker report's `next_cron` goes: the app's cron scheduler.
+pub type WakeSink = std::sync::Arc<dyn Fn(u64) + Send + Sync>;
 
 impl std::fmt::Debug for PhpRequestHandler {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -121,6 +126,7 @@ impl PhpRequestHandler {
             entry,
             site_dir,
             on_head: None,
+            wake: None,
         })
     }
 
@@ -128,6 +134,13 @@ impl PhpRequestHandler {
     /// (the gate app's handler: a sign-out forgets its remembered answer before the client hears of it).
     pub fn with_on_head(mut self, hook: HeadHook) -> PhpRequestHandler {
         self.on_head = Some(hook);
+        self
+    }
+
+    /// Calls `sink` with each worker report's `next_cron`, for visitor and internal requests alike, before the worker
+    /// is given back.
+    pub fn with_wake_sink(mut self, sink: WakeSink) -> PhpRequestHandler {
+        self.wake = Some(sink);
         self
     }
 
@@ -203,6 +216,7 @@ impl PhpRequestHandler {
             deadline,
             head_tx,
             tx,
+            self.wake.clone(),
         ));
         let (status, headers) = match head_rx.await {
             Ok(Ok((status, headers, _))) => (status, headers),
@@ -548,9 +562,9 @@ fn head_end(buf: &[u8]) -> Option<usize> {
 }
 
 /// Logs a worker's stderr, or reads its after-request report.
-fn stderr(bytes: &[u8], report: &mut Option<(u64, u64, bool)>) {
+fn stderr(bytes: &[u8], report: &mut Option<WorkerReport>) {
     if let Some(decoded) = WorkerReport::decode(bytes) {
-        *report = Some((decoded.memory, decoded.requests, decoded.poisoned));
+        *report = Some(decoded);
         return;
     }
     tracing::warn!(event = "php_stderr", message = %String::from_utf8_lossy(bytes).trim_end());
@@ -577,6 +591,7 @@ async fn exchange(
     deadline: tokio::time::Instant,
     head: tokio::sync::oneshot::Sender<Result<Head, NoHead>>,
     tx: tokio::sync::mpsc::Sender<Result<Bytes, io::Error>>,
+    wake: Option<WakeSink>,
 ) {
     let socket = lease.socket().to_path_buf();
     let mut response =
@@ -614,7 +629,13 @@ async fn exchange(
                 return;
             }
             Ok(None) => {
-                let (memory, requests, poisoned) = report.unwrap_or((0, 0, false));
+                if let (Some(sink), Some(next)) =
+                    (&wake, report.and_then(|r: WorkerReport| r.next_cron))
+                {
+                    sink(next);
+                }
+                let (memory, requests, poisoned) =
+                    report.map_or((0, 0, false), |r| (r.memory, r.requests, r.poisoned));
                 pool.release(
                     lease,
                     Fate::Answered {
@@ -740,6 +761,7 @@ impl PhpEndpoint for PhpRequestHandler {
             deadline,
             head_tx,
             tx,
+            self.wake.clone(),
         ));
         match head_rx.await {
             Ok(Ok((status, headers, _))) => {

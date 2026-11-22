@@ -1,0 +1,24 @@
+[package]
+name = "speedyspec-wp-cron-options"
+version = "0.1.0"
+publish = false
+description = "The cron store over the options port: the `cron` option, written with compare-and-swap."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-wp-cron-contracts = { path = "../speedyspec-wp-cron-contracts" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-options = { path = "../speedyspec-wp-options" }
+
+[dev-dependencies]
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+speedyspec-wp-cron = { path = "../speedyspec-wp-cron" }
+speedyspec-wp-db = { path = "../speedyspec-wp-db" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
+speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }
+speedyspec-wp-options-sql = { path = "../speedyspec-wp-options-sql" }

@@ -448,6 +448,26 @@
       "component": "speedyspec-wp-text-diff-php",
       "skip-github-release": true,
       "skip-changelog": true
+    },
+    "crates/speedyspec-wp-cron": {
+      "component": "speedyspec-wp-cron",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-cron-contracts": {
+      "component": "speedyspec-wp-cron-contracts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-cron-options": {
+      "component": "speedyspec-wp-cron-options",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-cron-php": {
+      "component": "speedyspec-wp-cron-php",
+      "skip-github-release": true,
+      "skip-changelog": true
     }
   }
 }

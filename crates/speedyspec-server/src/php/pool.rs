@@ -119,11 +119,11 @@ struct State {
     /// When draining began.
     drain_started: Option<Instant>,
     /// The worker kept for the server's own calls, when idle. Never counted in `total`.
-    internal: [Option<Worker>; 2],
+    internal: [Option<Worker>; LANES],
     /// Each lane's internal worker is leased.
-    internal_busy: [bool; 2],
+    internal_busy: [bool; LANES],
     /// A replacement for each lane's internal worker is starting.
-    internal_starting: [bool; 2],
+    internal_starting: [bool; LANES],
     /// Worker starts that failed in a row, and when the next may be tried: a worker that fails at once is started
     /// again after a growing delay, never in a tight loop.
     start_failures: u32,
@@ -174,14 +174,22 @@ impl std::fmt::Debug for EmbeddedPhpPool {
     }
 }
 
-/// Which of a pool's two internal workers a server's own call uses.
+/// Which of a pool's internal workers a server's own call uses.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InternalLane {
     /// Health probes.
     Probe = 0,
     /// The gate's questions, its revocation feed, and migrations.
     Calls = 1,
+    /// The app's scheduled cron calls, which may run long: started on first use.
+    Cron = 2,
 }
+
+/// How many internal lanes a pool has.
+const LANES: usize = 3;
+
+/// The internal lanes a pool starts with; the others start on first use.
+const LANES_STARTED_WITH_THE_POOL: [InternalLane; 2] = [InternalLane::Probe, InternalLane::Calls];
 
 /// A worker leased for one request. Dropped without [`EmbeddedPhpPool::release`], the worker is killed.
 pub struct Lease {
@@ -291,9 +299,9 @@ impl EmbeddedPhpPool {
                 busy: 0,
                 draining: false,
                 drain_started: None,
-                internal: [None, None],
-                internal_busy: [false; 2],
-                internal_starting: [false; 2],
+                internal: [None, None, None],
+                internal_busy: [false; LANES],
+                internal_starting: [false; LANES],
                 start_failures: 0,
                 retry_at: None,
             }),
@@ -309,7 +317,7 @@ impl EmbeddedPhpPool {
             state.total += 1;
             state.idle.push(worker);
         }
-        for lane in [InternalLane::Probe, InternalLane::Calls] {
+        for lane in LANES_STARTED_WITH_THE_POOL {
             let internal = pool.spawn_worker()?;
             pool.inner.state.lock().unwrap().internal[lane as usize] = Some(internal);
         }
@@ -352,9 +360,9 @@ impl EmbeddedPhpPool {
                     busy: 0,
                     draining: false,
                     drain_started: None,
-                    internal: [None, None],
-                    internal_busy: [false; 2],
-                    internal_starting: [false; 2],
+                    internal: [None, None, None],
+                    internal_busy: [false; LANES],
+                    internal_starting: [false; LANES],
                     start_failures: 0,
                     retry_at: None,
                 }),
@@ -491,9 +499,9 @@ impl EmbeddedPhpPool {
     }
 
     /// Leases one of the workers kept for the server's own calls: [`InternalLane::Probe`] for health probes,
-    /// [`InternalLane::Calls`] for the gate's questions and migrations. Neither is ever a visitor's, so a pool full
-    /// of visitors cannot starve these calls, and gate calls cannot starve probes. A missing or dead internal worker
-    /// is started again.
+    /// [`InternalLane::Calls`] for the gate's questions and migrations, [`InternalLane::Cron`] for scheduled cron calls.
+    /// None is ever a visitor's, so a pool full of visitors cannot starve these calls, and no lane starves another (a
+    /// long cron run holds only its own). A missing or dead internal worker is started, the cron one on first use.
     pub async fn acquire_internal(&self, lane: InternalLane) -> Result<Lease, String> {
         let i = lane as usize;
         loop {
@@ -1161,5 +1169,35 @@ mod tests {
         .await;
         assert!(second_call.is_err(), "gate calls wait for their own worker");
         drop(call);
+    }
+
+    #[test]
+    fn cron_lane_is_lazy() {
+        // A pool starts the probe and gate workers; the cron worker only when an app's scheduler first calls.
+        assert_eq!(
+            LANES_STARTED_WITH_THE_POOL,
+            [InternalLane::Probe, InternalLane::Calls]
+        );
+    }
+
+    #[tokio::test]
+    async fn cron_lane_does_not_block_calls_or_probes() {
+        let pool = fake_pool(1, Duration::from_millis(0));
+        let cron = pool.acquire_internal(InternalLane::Cron).await.unwrap();
+        for lane in [InternalLane::Calls, InternalLane::Probe] {
+            let other =
+                tokio::time::timeout(Duration::from_secs(2), pool.acquire_internal(lane)).await;
+            assert!(
+                matches!(other, Ok(Ok(_))),
+                "{lane:?} gets its worker while a cron call runs"
+            );
+        }
+        let second = tokio::time::timeout(
+            Duration::from_millis(200),
+            pool.acquire_internal(InternalLane::Cron),
+        )
+        .await;
+        assert!(second.is_err(), "cron calls wait for their own worker");
+        drop(cron);
     }
 }

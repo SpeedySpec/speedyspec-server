@@ -112,3 +112,49 @@ async fn release_drop_in_is_refused_without_a_site_dir() {
         assert!(answer.body().contains("db.php"), "{}", answer.stdout);
     }
 }
+
+#[tokio::test(flavor = "current_thread")]
+async fn worker_serves_native_cron() {
+    let Some(env) = mysql_env("cronworker_") else {
+        println!("skip: SPEEDYSPEC_TEST_MYSQL_URL is not set");
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let app = fixture("cron-app");
+    let mut worker = spawn(dir.path(), &app, None, &env);
+    worker.ready().await;
+    let answer = worker.get(&app.join("index.php"), "/").await;
+    assert_eq!(
+        answer.body(),
+        "speedyspec://wp-cron|scheduled",
+        "{}",
+        answer.stdout
+    );
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn scheduling_reports_next_cron() {
+    let Some(env) = mysql_env("cronwake_") else {
+        println!("skip: SPEEDYSPEC_TEST_MYSQL_URL is not set");
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let app = fixture("cron-app");
+    let mut worker = spawn(dir.path(), &app, None, &env);
+    worker.ready().await;
+    let answer = worker.get(&app.join("index.php"), "/").await;
+    let report = answer
+        .stderr
+        .iter()
+        .find_map(|record| speedyspec_runtime_contract::WorkerReport::decode(record))
+        .expect("a worker report");
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    // The fixture schedules an event a minute ahead, in this test's own table.
+    assert!(
+        report.next_cron.is_some_and(|t| t <= now + 61),
+        "{report:?}"
+    );
+}

@@ -1,0 +1,17 @@
+[package]
+name = "speedyspec-wp-cron"
+version = "0.1.0"
+publish = false
+description = "WordPress's cron scheduling API in Rust: the commands and queries of cron.php over a CronStore, each write a compare-and-swap."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-wp-cron-contracts = { path = "../speedyspec-wp-cron-contracts" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+md5 = { package = "md-5", version = "0.11.0" }
+
+[dev-dependencies]
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }

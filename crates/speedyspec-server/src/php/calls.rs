@@ -95,6 +95,39 @@ impl FastCgiGateCalls {
     }
 }
 
+impl super::cron::CronCalls for FastCgiGateCalls {
+    fn call<'a>(
+        &'a self,
+        app: &'a AppId,
+        path: &'a str,
+        budget: Duration,
+        timeout: Duration,
+    ) -> BoxFuture<'a, Result<(), CallError>> {
+        Box::pin(async move {
+            let path = format!("{path}?budget={}", budget.as_secs_f64());
+            let response = FastCgiGateCalls::call(
+                self,
+                app,
+                Method::GET,
+                &path,
+                HeaderMap::new(),
+                Bytes::new(),
+                timeout,
+                InternalLane::Cron,
+            )
+            .await?;
+            if response.status().is_success() {
+                Ok(())
+            } else {
+                Err(CallError::Unavailable(format!(
+                    "the cron path answered {}",
+                    response.status()
+                )))
+            }
+        })
+    }
+}
+
 /// The most a session answer may be.
 const SESSION_MAX_BYTES: usize = 256 * 1024;
 /// More pages than this in one answer is not trusted: the user gets none.
