@@ -133,11 +133,25 @@ impl fmt::Display for Mismatch {
     }
 }
 
-/// Where the catalogues and fixtures live: `$SPEEDYSPEC_COMPAT_DIR`, or the repository's `compat/`.
+/// Where the catalogues and fixtures live: `$SPEEDYSPEC_COMPAT_DIR`, or the repository's `compat/` when this crate
+/// is built inside the speedyspec-server repository. Without either (a crate built from crates.io), an error saying
+/// to set `SPEEDYSPEC_COMPAT_DIR`.
+pub fn try_compat_dir() -> Result<PathBuf, String> {
+    if let Some(dir) = std::env::var_os("SPEEDYSPEC_COMPAT_DIR") {
+        return Ok(PathBuf::from(dir));
+    }
+    let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat");
+    if repository.is_dir() {
+        Ok(repository)
+    } else {
+        Err("no compat catalogue: set SPEEDYSPEC_COMPAT_DIR".to_owned())
+    }
+}
+
+/// [`try_compat_dir`] for the recording and replaying tools, which cannot go on without the catalogue: panics with
+/// its error when there is none.
 pub fn compat_dir() -> PathBuf {
-    std::env::var_os("SPEEDYSPEC_COMPAT_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat"))
+    try_compat_dir().unwrap_or_else(|e| panic!("{e}"))
 }
 
 fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {

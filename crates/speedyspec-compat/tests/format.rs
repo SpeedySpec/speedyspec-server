@@ -148,3 +148,21 @@ fn state_round_trips() {
     let old: StepResult = serde_json::from_str(&without).unwrap();
     assert_eq!(old.state, serde_json::Value::Null);
 }
+
+#[test]
+fn the_compat_dir_is_the_environment_s_or_the_repository_s() {
+    // One test, so nothing else reads the variable while it changes.
+    let dir = tempfile::tempdir().unwrap();
+    // SAFETY: no other test in this binary reads or writes the environment.
+    unsafe { std::env::set_var("SPEEDYSPEC_COMPAT_DIR", dir.path()) };
+    assert_eq!(speedyspec_compat::try_compat_dir().unwrap(), dir.path());
+    assert_eq!(speedyspec_compat::compat_dir(), dir.path());
+    // SAFETY: as above.
+    unsafe { std::env::remove_var("SPEEDYSPEC_COMPAT_DIR") };
+    let repository = speedyspec_compat::try_compat_dir().unwrap();
+    assert!(
+        repository.join("hooks/scenarios.json").is_file(),
+        "{}",
+        repository.display()
+    );
+}
