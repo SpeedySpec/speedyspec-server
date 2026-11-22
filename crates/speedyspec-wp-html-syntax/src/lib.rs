@@ -12,7 +12,7 @@
 mod attributes;
 mod decoder;
 
-pub use attributes::{TagAttribute, start_tag_attributes};
+pub use attributes::{TagAttribute, start_tag_attributes, start_tag_attributes_into};
 pub use decoder::{
     DecodeContext, code_point_to_utf8, decode, decode_attribute, decode_text_node,
     read_character_reference,

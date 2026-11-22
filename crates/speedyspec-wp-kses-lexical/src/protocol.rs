@@ -17,6 +17,10 @@ pub fn bad_protocol<'a>(content: &'a [u8], protocols: &Protocols) -> Cow<'a, [u8
     {
         return content;
     }
+    // A scheme needs a separator (`:` or a reference to one), so content with neither `:` nor `&` stays as it is.
+    if memchr::memchr2(b':', b'&', &content).is_none() {
+        return content;
+    }
     let mut content = content.into_owned();
     let mut iterations = 0;
     loop {

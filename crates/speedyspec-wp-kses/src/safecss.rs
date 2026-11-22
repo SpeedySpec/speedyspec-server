@@ -1,7 +1,11 @@
 //! `safecss_filter_attr()`.
 
+use std::borrow::Cow;
+use std::collections::HashSet;
+use std::hash::BuildHasherDefault;
+
 use speedyspec_hooks::{Key, Value};
-use speedyspec_wp_kses_contracts::KsesError;
+use speedyspec_wp_kses_contracts::{KsesError, NameHasher};
 use speedyspec_wp_kses_lexical::{bad_protocol, no_null};
 
 use crate::KsesApi;
@@ -432,8 +436,12 @@ fn balanced_end(s: &[u8], at: usize) -> Option<usize> {
     None
 }
 
-/// Removes every `\b(?:var|calc|...)(\((?:[^()]|(?1))*\))` match, left to right.
-fn remove_functions(s: &[u8]) -> Vec<u8> {
+/// Removes every `\b(?:var|calc|...)(\((?:[^()]|(?1))*\))` match, left to right; borrows when there is no `(`,
+/// which every match needs.
+fn remove_functions(s: &[u8]) -> Cow<'_, [u8]> {
+    if memchr::memchr(b'(', s).is_none() {
+        return Cow::Borrowed(s);
+    }
     let mut out = Vec::with_capacity(s.len());
     let mut at = 0;
     let mut copied = 0;
@@ -455,7 +463,7 @@ fn remove_functions(s: &[u8]) -> Vec<u8> {
         at += 1;
     }
     out.extend_from_slice(&s[copied..]);
-    out
+    Cow::Owned(out)
 }
 
 /// `/^--[a-zA-Z0-9-_]+$/`.
@@ -511,7 +519,7 @@ impl KsesApi {
                 continue;
             }
             let item = trim(raw);
-            let mut test = item.to_vec();
+            let mut test = Cow::Borrowed(item);
             let (mut found, mut url_attr, mut gradient_attr) = (false, false, false);
             let mut value: &[u8] = b"";
             match memchr::memchr(b':', item) {
@@ -550,14 +558,16 @@ impl KsesApi {
                     }
                 }
                 if found {
-                    test = remove_url_matches(item, &matches);
+                    test = Cow::Owned(remove_url_matches(item, &matches));
                 }
             }
             if found && gradient_attr {
-                test = remove_gradients(&test);
+                test = Cow::Owned(remove_gradients(&test));
             }
             if found {
-                test = remove_functions(&test);
+                if let Cow::Owned(removed) = remove_functions(&test) {
+                    test = Cow::Owned(removed);
+                }
                 let forbidden = test
                     .iter()
                     .any(|b| matches!(b, b'\\' | b'(' | b'&' | b'=' | b'}'))
@@ -614,8 +624,8 @@ impl AllowedStyles {
 
     /// `in_array( $name, $allowed, true )`: only a string entry matches.
     fn contains(&self, name: &[u8]) -> bool {
-        static DEFAULTS: std::sync::OnceLock<std::collections::HashSet<&'static [u8]>> =
-            std::sync::OnceLock::new();
+        type NameSet = HashSet<&'static [u8], BuildHasherDefault<NameHasher>>;
+        static DEFAULTS: std::sync::OnceLock<NameSet> = std::sync::OnceLock::new();
         let in_base = match &self.base {
             Styles::Default => DEFAULTS
                 .get_or_init(|| SAFE_STYLE_CSS.iter().map(|s| s.as_bytes()).collect())

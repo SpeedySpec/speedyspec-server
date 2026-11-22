@@ -7,18 +7,19 @@ use std::rc::Rc;
 use speedyspec_hooks::Value;
 use speedyspec_wp_html_syntax::decode_attribute;
 use speedyspec_wp_kses_contracts::{
-    AllowedAttrs, AllowedHtml, AllowedSpec, AttrRule, AttrRules, EntityContext, KsesError,
+    AllowedAttrs, AllowedHtml, AllowedSpec, AttrRule, AttrRules, ByteMap, EntityContext, KsesError,
     Protocols,
 };
 use speedyspec_wp_kses_lexical::scan::{
     TokenKind, invalid_wrapper, next_token, tag_head, xhtml_slash,
 };
 use speedyspec_wp_kses_lexical::{
-    HairAttr, check_attr_val, hair_attrs, no_null, normalize_entities, stripslashes, write_whole,
+    HairAttr, check_attr_val, hair_attrs_into, is_uri_attribute, no_null, normalize_entities,
+    stripslashes, write_whole,
 };
 
 use crate::KsesApi;
-use crate::api::{bytes_value, php_string};
+use crate::api::{bytes_value, is_default_uri_attribute, php_string};
 use crate::convert::allowed_to_value;
 
 /// The most `wp_kses()` passes a comment or invalid-markup token gets to settle. Every corpus input settles within
@@ -39,8 +40,22 @@ pub struct CheckedAttr {
     pub whole: Vec<u8>,
 }
 
-/// An attribute that passed the check: its value and whole, borrowed where the check left them as they were.
-type Checked<'v> = (Cow<'v, [u8]>, Cow<'v, [u8]>);
+/// What `wp_kses_attr_check()` makes of an attribute.
+enum Verdict {
+    /// PHP returns false.
+    Rejected,
+    /// Kept as it was written.
+    AsWritten,
+    /// Kept with its `style` value filtered and re-encoded to this; its whole has the old value replaced by it.
+    Restyled(Vec<u8>),
+}
+
+/// Moves a buffer of attributes to another lifetime, emptied: its allocation is kept (an in-place collect), so
+/// `attr_into` can reuse it across tags whose attributes borrow different tokens.
+fn recycle<'b>(mut v: Vec<HairAttr<'_>>) -> Vec<HairAttr<'b>> {
+    v.clear();
+    v.into_iter().map(|_| unreachable!("emptied")).collect()
+}
 
 /// `strtolower()`, borrowing a name that is lowercase already (most are).
 fn lower(name: &[u8]) -> Cow<'_, [u8]> {
@@ -63,6 +78,52 @@ fn replace_all(s: &[u8], from: &[u8], to: &[u8]) -> Vec<u8> {
         at += i + from.len();
     }
     out.extend_from_slice(&s[at..]);
+    out
+}
+
+/// Whether `str_replace( $value, ..., $whole )` on `whole` = `name="value"` would replace only the value in its
+/// place: the value is not empty, holds no `"` (so it cannot match again past its place), and starts no match
+/// earlier, inside `name="`. Then the replaced whole is `name="replacement"`, written without a search.
+fn value_only_in_place(whole: &[u8], name: &[u8], value: &[u8]) -> bool {
+    let in_place = name.len() + 2;
+    !value.is_empty()
+        && memchr::memchr(b'"', value).is_none()
+        && !(0..in_place).any(|p| whole.get(p..p + value.len()) == Some(value))
+}
+
+/// Drops every `<` and `>` from `buf` past `from`, in place, a run at a time.
+fn drop_angle_brackets(buf: &mut Vec<u8>, from: usize) {
+    let Some(first) = memchr::memchr2(b'<', b'>', &buf[from..]) else {
+        return;
+    };
+    let mut write = from + first;
+    let mut read = write + 1;
+    while read < buf.len() {
+        let run = memchr::memchr2(b'<', b'>', &buf[read..]).unwrap_or(buf.len() - read);
+        buf.copy_within(read..read + run, write);
+        write += run;
+        read += run + 1;
+    }
+    buf.truncate(write);
+}
+
+/// `str_replace( $needle, '', $s )` for a needle of a few bytes: found by its first byte, without building a
+/// substring searcher.
+fn remove_short(s: &[u8], needle: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(s.len());
+    let mut at = 0;
+    let mut copied = 0;
+    while let Some(i) = memchr::memchr(needle[0], &s[at..]) {
+        let start = at + i;
+        if s[start..].starts_with(needle) {
+            out.extend_from_slice(&s[copied..start]);
+            at = start + needle.len();
+            copied = at;
+        } else {
+            at = start + 1;
+        }
+    }
+    out.extend_from_slice(&s[copied..]);
     out
 }
 
@@ -338,7 +399,7 @@ impl KsesApi {
             return Ok(());
         }
         if token.starts_with(b"<!--") {
-            let inner = replace_all(&replace_all(&token, b"<!--", b""), b"-->", b"");
+            let inner = remove_short(&remove_short(&token, b"<!--"), b"-->");
             let Some(inner) = self.kses_until_stable(inner, allowed, protocols)? else {
                 return Ok(());
             };
@@ -368,16 +429,16 @@ impl KsesApi {
         let elem = &token[head.name.clone()];
         let attrlist = &token[head.attrs.clone()];
         let allowed_html = self.resolve_allowed(allowed)?;
-        if allowed_html.get(&lower(elem)).is_none() {
+        let Some(tag) = allowed_html.get(&lower(elem)) else {
             return Ok(());
-        }
+        };
         if head.slash {
             out.extend_from_slice(b"</");
             out.extend_from_slice(elem);
             out.push(b'>');
             return Ok(());
         }
-        self.attr_into(elem, attrlist, &allowed_html, protocols, out)
+        self.attr_into(elem, Some(tag), attrlist, protocols, out)
     }
 
     fn resolve_allowed(&self, allowed: &AllowedSpec) -> Result<Rc<AllowedHtml>, KsesError> {
@@ -397,21 +458,27 @@ impl KsesApi {
     ) -> Result<Vec<u8>, KsesError> {
         let allowed_html = self.resolve_allowed(allowed)?;
         let mut out = Vec::new();
-        self.attr_into(element, attr, &allowed_html, protocols, &mut out)?;
+        self.attr_into(
+            element,
+            allowed_html.get(&lower(element)),
+            attr,
+            protocols,
+            &mut out,
+        )?;
         Ok(out)
     }
 
+    /// `wp_kses_attr()` for an element whose allowlist entry is `tag`, written to `out`.
     fn attr_into(
         &self,
         element: &[u8],
+        tag: Option<&AllowedAttrs>,
         attr: &[u8],
-        allowed: &AllowedHtml,
         protocols: &Protocols,
         out: &mut Vec<u8>,
     ) -> Result<(), KsesError> {
         let slash: &[u8] = if xhtml_slash(attr) { b" /" } else { b"" };
-        let element_low = lower(element);
-        let attrs = match allowed.get(&element_low) {
+        let attrs = match tag {
             Some(AllowedAttrs::Attrs(a)) if !a.is_empty() => a,
             _ => {
                 out.push(b'<');
@@ -422,48 +489,48 @@ impl KsesApi {
             }
         };
         let uris = self.uri_attributes()?;
-        let parsed = hair_attrs(attr, protocols, &uris);
+        let mut parsed = recycle(self.hair_scratch.take());
+        let defaults = Rc::ptr_eq(&uris, &self.default_uris);
+        let is_uri = |name: &[u8]| {
+            if defaults {
+                is_default_uri_attribute(name)
+            } else {
+                is_uri_attribute(&uris, name)
+            }
+        };
+        hair_attrs_into(attr, protocols, is_uri, &mut parsed);
         let mut required: Vec<&[u8]> = attrs
             .iter()
             .filter(|(_, r)| r.is_required())
             .map(|(n, _)| &**n)
             .collect();
-        let (mut kept, mut whole) = self.scratch.take();
-        kept.clear();
-        let result = self.attrs_kept(
-            element,
-            allowed,
-            &parsed,
-            &mut required,
-            &mut kept,
-            &mut whole,
-        );
+        let mut whole = self.scratch.take();
+        // The kept attributes go straight to `out`, after the tag's name; they are taken back when the tag loses them.
+        let tag_start = out.len();
+        out.push(b'<');
+        out.extend_from_slice(element);
+        let attrs_start = out.len();
+        let result = self.attrs_kept(attrs, &parsed, &mut required, out, &mut whole);
         let done = match result {
             Ok(true) => {
-                out.push(b'<');
-                out.extend_from_slice(element);
-                // `<` and `>` are dropped from the attributes, a run at a time.
-                let mut rest = &kept[..];
-                while let Some(i) = memchr::memchr2(b'<', b'>', rest) {
-                    out.extend_from_slice(&rest[..i]);
-                    rest = &rest[i + 1..];
-                }
-                out.extend_from_slice(rest);
+                drop_angle_brackets(out, attrs_start);
                 out.extend_from_slice(slash);
                 out.push(b'>');
                 Ok(())
             }
             Ok(false) => {
                 if slash.is_empty() {
-                    out.push(b'<');
-                    out.extend_from_slice(element);
+                    out.truncate(attrs_start);
                     out.push(b'>');
+                } else {
+                    out.truncate(tag_start);
                 }
                 Ok(())
             }
             Err(e) => Err(e),
         };
-        self.scratch.replace((kept, whole));
+        self.scratch.replace(whole);
+        self.hair_scratch.replace(recycle(parsed));
         done
     }
 
@@ -471,8 +538,7 @@ impl KsesApi {
     /// (the tag is then stripped of every attribute).
     fn attrs_kept(
         &self,
-        element: &[u8],
-        allowed: &AllowedHtml,
+        attrs: &ByteMap<AttrRules>,
         parsed: &[HairAttr<'_>],
         required: &mut Vec<&[u8]>,
         kept: &mut Vec<u8>,
@@ -481,22 +547,34 @@ impl KsesApi {
         for a in parsed {
             let name_low = lower(&a.name);
             let is_required = required.iter().any(|r| **r == *name_low);
-            whole.clear();
-            if a.vless {
-                whole.extend_from_slice(&a.name);
-            } else {
-                write_whole(whole, &a.name, &a.value);
-            }
-            match self.checked(&a.name, &a.value, whole, a.vless, element, allowed)? {
-                Some((_, checked)) => {
+            match self.verdict(attrs, &name_low, &a.value, a.vless)? {
+                Verdict::AsWritten => {
                     kept.push(b' ');
-                    kept.extend_from_slice(&checked);
-                    if is_required {
-                        required.retain(|r| **r != *name_low);
+                    if a.vless {
+                        kept.extend_from_slice(&a.name);
+                    } else {
+                        write_whole(kept, &a.name, &a.value);
                     }
                 }
-                None if is_required => return Ok(false),
-                None => {}
+                Verdict::Restyled(encoded) => {
+                    whole.clear();
+                    if a.vless {
+                        whole.extend_from_slice(&a.name);
+                    } else {
+                        write_whole(whole, &a.name, &a.value);
+                    }
+                    kept.push(b' ');
+                    if !a.vless && value_only_in_place(whole, &a.name, &a.value) {
+                        write_whole(kept, &a.name, &encoded);
+                    } else {
+                        kept.extend_from_slice(&replace_all(whole, &a.value, &encoded));
+                    }
+                }
+                Verdict::Rejected if is_required => return Ok(false),
+                Verdict::Rejected => continue,
+            }
+            if is_required {
+                required.retain(|r| **r != *name_low);
             }
         }
         Ok(required.is_empty())
@@ -512,71 +590,137 @@ impl KsesApi {
         element: &[u8],
         allowed: &AllowedHtml,
     ) -> Result<Option<CheckedAttr>, KsesError> {
-        Ok(self
-            .checked(name, value, whole, vless, element, allowed)?
-            .map(|(value, whole)| CheckedAttr {
-                value: value.into_owned(),
-                whole: whole.into_owned(),
-            }))
-    }
-
-    /// [`KsesApi::attr_check`] borrowing the value and whole where the check leaves them as they were.
-    fn checked<'v>(
-        &self,
-        name: &[u8],
-        value: &'v [u8],
-        whole: &'v [u8],
-        vless: bool,
-        element: &[u8],
-        allowed: &AllowedHtml,
-    ) -> Result<Option<Checked<'v>>, KsesError> {
-        let name_low = lower(name);
         let Some(tag) = allowed.get(&lower(element)) else {
             return Ok(None);
         };
-        // WordPress copies the `data-*` rules under the attribute's own name before the directive check; the copy
-        // cannot change that check (the rules are already in the map, under `data-*`), so nothing is copied here.
         let none;
         let attrs = match tag {
             AllowedAttrs::Attrs(a) => a,
             AllowedAttrs::Empty => {
-                none = speedyspec_wp_kses_contracts::ByteMap::default();
+                none = ByteMap::default();
                 &none
             }
         };
-        let rules = match attrs.get(&name_low[..]) {
+        Ok(match self.verdict(attrs, &lower(name), value, vless)? {
+            Verdict::Rejected => None,
+            Verdict::AsWritten => Some(CheckedAttr {
+                value: value.to_vec(),
+                whole: whole.to_vec(),
+            }),
+            Verdict::Restyled(encoded) => Some(CheckedAttr {
+                whole: replace_all(whole, value, &encoded),
+                value: encoded,
+            }),
+        })
+    }
+
+    /// The check [`KsesApi::attr_check`] makes, given the element's attribute rules and the attribute's lowercase
+    /// name.
+    fn verdict(
+        &self,
+        attrs: &ByteMap<AttrRules>,
+        name_low: &[u8],
+        value: &[u8],
+        vless: bool,
+    ) -> Result<Verdict, KsesError> {
+        // WordPress copies the `data-*` rules under the attribute's own name before the directive check; the copy
+        // cannot change that check (the rules are already in the map, under `data-*`), so nothing is copied here.
+        let rules = match attrs.get(name_low) {
             Some(r) if *r != AttrRules::Denied => r,
             _ => match attrs.get(&b"data-*"[..]).filter(|r| !rules_empty(r)) {
-                Some(r) if is_data_name(&name_low) => r,
-                _ => return Ok(None),
+                Some(r) if is_data_name(name_low) => r,
+                _ => return Ok(Verdict::Rejected),
             },
         };
         if name_low.starts_with(b"data-wp-bind--")
-            && directive_binds_value_restricted_attribute(&name_low, attrs)
+            && directive_binds_value_restricted_attribute(name_low, attrs)
         {
-            return Ok(None);
+            return Ok(Verdict::Rejected);
         }
-        let mut value = Cow::Borrowed(value);
-        let mut whole = Cow::Borrowed(whole);
-        if *name_low == *b"style" {
-            let decoded = decode_attribute(&value).into_owned();
+        let mut verdict = Verdict::AsWritten;
+        if name_low == b"style" {
+            let decoded = decode_attribute(value);
             let filtered = self.safecss_filter_attr(&decoded)?;
             if filtered.is_empty() || filtered == b"0" {
-                return Ok(None);
+                return Ok(Verdict::Rejected);
             }
-            if filtered != decoded {
-                let encoded = self.d.escaper.esc_attr(&filtered)?;
-                whole = Cow::Owned(replace_all(&whole, &value, &encoded));
-                value = Cow::Owned(encoded);
+            if filtered != *decoded {
+                verdict = Verdict::Restyled(self.d.escaper.esc_attr(&filtered)?);
             }
         }
         if let AttrRules::Rules(list) = rules {
+            let value = match &verdict {
+                Verdict::Restyled(encoded) => encoded,
+                _ => value,
+            };
             for rule in list {
-                if !check_attr_val(&value, vless, rule)? {
-                    return Ok(None);
+                if !check_attr_val(value, vless, rule)? {
+                    return Ok(Verdict::Rejected);
                 }
             }
         }
-        Ok(Some((value, whole)))
+        Ok(verdict)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn in_place_value_replacement_agrees_with_str_replace() {
+        let cases: &[(&[u8], &[u8])] = &[
+            (b"style", b"color:red;"),
+            (b"style", b"s"),
+            (b"style", b"le=\"x"),
+            (b"style", b"="),
+            (b"style", b"st"),
+            (b"style", b"e=\"e"),
+            (b"style", b""),
+            (b"style", b"a\"b"),
+        ];
+        for (name, value) in cases {
+            let mut whole = Vec::new();
+            write_whole(&mut whole, name, value);
+            let expected = replace_all(&whole, value, b"NEW");
+            if value_only_in_place(&whole, name, value) {
+                let mut fast = Vec::new();
+                write_whole(&mut fast, name, b"NEW");
+                assert_eq!(fast, expected, "{:?}", String::from_utf8_lossy(value));
+            }
+        }
+        assert!(value_only_in_place(
+            b"style=\"color:red;\"",
+            b"style",
+            b"color:red;"
+        ));
+        assert!(!value_only_in_place(b"style=\"s\"", b"style", b"s"));
+    }
+
+    #[test]
+    fn angle_brackets_are_dropped_after_the_mark() {
+        let mut buf = b"<a href=\"<x>\" title=\"a>b<\">".to_vec();
+        drop_angle_brackets(&mut buf, 2);
+        assert_eq!(buf, b"<a href=\"x\" title=\"ab\"");
+        let mut none = b"<a b".to_vec();
+        drop_angle_brackets(&mut none, 2);
+        assert_eq!(none, b"<a b");
+    }
+
+    #[test]
+    fn short_needles_are_removed_like_str_replace() {
+        for s in [
+            &b"<!--x-->"[..],
+            b"<!--<!---->-->",
+            b"<<!--!--",
+            b"---->",
+            b"",
+            b"<!-",
+            b"a<!--b<!--c",
+        ] {
+            for needle in [&b"<!--"[..], b"-->"] {
+                assert_eq!(remove_short(s, needle), replace_all(s, needle, b""));
+            }
+        }
     }
 }
