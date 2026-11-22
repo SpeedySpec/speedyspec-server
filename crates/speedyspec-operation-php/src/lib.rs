@@ -24,6 +24,7 @@ pub mod identity;
 pub mod invoke;
 pub mod mapper;
 pub mod permission;
+pub mod prune;
 pub mod shape;
 pub mod sites;
 

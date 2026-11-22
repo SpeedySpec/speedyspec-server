@@ -50,6 +50,12 @@ function acme_crash( array $input, Caller $caller ): array {
 function acme_meta( array $input, Caller $caller ): array {
     return [ 'meta' => [] ];
 }
+final class NullableIn {
+    public function __construct( public readonly int $id, public readonly ?string $note ) {}
+}
+function acme_object_permission( Caller $caller, $input ) { return new stdClass(); }
+function acme_object_can( Caller $caller, $input ): bool { return $caller->can( 'edit_report', new stdClass() ); }
+function acme_echo( NullableIn $input, Caller $caller ): array { return [ 'note' => $input->note ?? 'none' ]; }
 function test_ping( $input, Caller $caller ) {
     return [];
 }
@@ -79,6 +85,14 @@ function acme_register(): void {
         ->output( null, S::object( [ 'meta' => S::object( [] )->required() ] ) )->public()->register();
     Handler::for( 'acme/meta', 'acme_meta' );
     Handler::for( 'test/ping', 'test_ping' );
+    foreach ( [ 'acme/object-permission' => 'acme_object_permission', 'acme/object-can' => 'acme_object_can' ] as $name => $check ) {
+        Operation::query( $name )->input( null, S::object( [] ) )->output( null, S::object( [] ) )->permission( $check )->register();
+        Handler::for( $name, 'acme_meta' );
+    }
+    Operation::query( 'acme/nullable' )
+        ->input( NullableIn::class, S::object( [ 'id' => S::integer()->required(), 'note' => S::string()->nullable()->required() ] ) )
+        ->output( null, S::object( [ 'note' => S::string()->required() ] ) )->public()->register();
+    Handler::for( 'acme/nullable', 'acme_echo' );
 }
 add_action( 'wp_operations_init', 'acme_register' );
 
@@ -137,6 +151,7 @@ fn main() {
     let b = boot(identity(), Rc::new(FixedSiteKey(site.clone())));
     load(&b.php, HOOKS);
     load(&b.php, FIXTURE);
+    load(&b.php, READY);
     // A Rust-contract operation, registered before the first request needs operations.
     b.area
         .sites()
@@ -272,6 +287,50 @@ fn main() {
         ping.as_ref()
             .is_some_and(|e| e.0 == "handler_contract_mismatch" && e.1 == "internal"),
         &ping,
+    );
+
+    // a_permission_callback_must_return_true
+    let object_permission = error_of(&eval(
+        &b.php,
+        "return call_error( 'acme/object-permission', [], 7 );",
+    ));
+    check(
+        "a_permission_callback_must_return_true",
+        object_permission
+            .as_ref()
+            .is_some_and(|e| e.1 == "permission_denied"),
+        &object_permission,
+    );
+
+    // an_object_in_can_denies_without_failing
+    let object_can = error_of(&eval(
+        &b.php,
+        "return call_error( 'acme/object-can', [], 7 );",
+    ));
+    check(
+        "an_object_in_can_denies_without_failing",
+        object_can
+            .as_ref()
+            .is_some_and(|e| e.1 == "permission_denied"),
+        &object_can,
+    );
+
+    // required_nullable_null_is_kept
+    let nullable = eval(
+        &b.php,
+        "return \\SpeedySpec\\Operation\\Operations::call( 'acme/nullable', new NullableIn( 3, null ) );",
+    );
+    let optional_null = eval(
+        &b.php,
+        "return call_error( 'acme/update-report', [ 'id' => 3, 'title' => null, 'due' => '2026-11-22T10:00:00' ], 7 );",
+    );
+    check(
+        "required_nullable_null_is_kept",
+        nullable
+            .as_ref()
+            .is_ok_and(|v| neutral(v) == Value::map([("note", Value::from("none"))]))
+            && matches!(&optional_null, Ok(v) if neutral(v) == Value::List(vec![Value::from("ran")])),
+        (&nullable, &optional_null),
     );
 
     let _ = Category::Internal;

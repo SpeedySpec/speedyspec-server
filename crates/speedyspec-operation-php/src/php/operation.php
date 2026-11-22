@@ -259,13 +259,13 @@ namespace SpeedySpec\Operation {
          * @param array|object $input A plain array, or the operation's input value object.
          * @param int|null     $user  Who calls: `null` for the current user, `0` for nobody.
          *
-         * @throws OperationException When the operation fails, for any reason.
+         * @throws OperationException When the operation fails, for any reason (`registry_not_ready` before WordPress's
+         *                            `init`, `operations_init_failed` when `wp_operations_init` failed).
          */
         public static function call( string $name, array|object $input = [], ?int $user = null ): mixed
         {
             if ( is_object( $input ) ) {
-                // An unset optional property of a value object is absent, not an explicit null.
-                $input = array_filter( Internal\Mapper::extract( $input ), static fn ( mixed $value ): bool => null !== $value );
+                $input = Internal\Mapper::extract( $input );
             }
             if ( null === $user ) {
                 $user = function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0;
