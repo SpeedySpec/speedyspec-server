@@ -304,5 +304,28 @@ fn main() {
         &r,
     );
 
+    let r = eval(
+        "null-coercion",
+        "$deprecations = [];
+         set_error_handler(static function ($no, $message) use (&$deprecations) { if (E_DEPRECATED === $no) { $deprecations[] = $message; } return true; });
+         $r = [wp_check_password('pw', null), wp_password_needs_rehash(null), is_string(wp_hash_password(null))];
+         restore_error_handler();
+         return [$r, count($deprecations) >= 3, str_contains($deprecations[0] ?? '', 'strlen()')];",
+    );
+    check(
+        "null_arguments_deprecate_as_in_wordpress",
+        r.as_ref().ok()
+            == Some(&want(vec![
+                want(vec![
+                    HookValue::Bool(false),
+                    HookValue::Bool(true),
+                    HookValue::Bool(true),
+                ]),
+                HookValue::Bool(true),
+                HookValue::Bool(true),
+            ])),
+        &r,
+    );
+
     println!("wp-password php: all checks passed");
 }

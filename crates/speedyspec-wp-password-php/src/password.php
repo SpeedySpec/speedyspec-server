@@ -3,19 +3,21 @@
 namespace SpeedySpec\WpPassword
 {
     /**
-     * Coerces a password or hash the way PHP's string functions coerce their arguments.
+     * Coerces a password or hash the way WordPress's own string functions coerce it.
      *
-     *  WordPress hands its arguments to `strlen()`, `trim()` and `hash_hmac()`, so a scalar becomes a string, `null`
-     *  raises PHP's deprecation and an array a `TypeError`. The natives read only strings.
+     *  WordPress hands its arguments to `strlen()` first, so this does too: PHP itself raises the deprecation for
+     *  `null` (and carries on with `""`) and the `TypeError` for an array, both naming `strlen()` as WordPress's do.
+     *  The natives read only strings.
      *
-     * @param string $value
+     * @param mixed $value
      *   The argument as the caller passed it.
      * @return string
      *   The string WordPress's functions would have seen.
      */
-    function password_string(string $value): string
+    function password_string($value): string
     {
-        return $value;
+        \strlen($value);
+        return (string) $value;
     }
 
     /**
