@@ -5187,6 +5187,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-ffmpeg-sys"
+version = "0.1.0"
+
+[[package]]
 name = "speedyspec-firewall"
 version = "0.1.0"
 dependencies = [

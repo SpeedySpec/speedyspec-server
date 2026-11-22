@@ -62,6 +62,8 @@ deny_demuxers=(
     hls dash rtsp rtp sdp sap srtp webm_dash_manifest
     # Formats that open other files: playlists, file sequences, metadata sidecars, packaging lists.
     concat image2 ffmetadata imf
+    # image2 variants that read file sequences by pattern (and pull image2 itself in).
+    image2_alias_pix image2_brender_pix
     # A generic image pipe needs a codec hint; the per-format *_pipe demuxers cover images.
     image2pipe
     # Accept any bytes: no header to recognize, so anything "probes" as them.
