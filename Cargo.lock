@@ -5620,6 +5620,7 @@ dependencies = [
  "memchr",
  "serde_json",
  "speedyspec-wp-kses-testkit",
+ "speedyspec-wp-token-map",
 ]
 
 [[package]]

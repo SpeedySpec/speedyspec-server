@@ -8,6 +8,7 @@ license.workspace = true
 
 [dependencies]
 memchr = "2"
+speedyspec-wp-token-map = { path = "../speedyspec-wp-token-map" }
 
 [dev-dependencies]
 serde_json = "1"
