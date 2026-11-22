@@ -211,7 +211,7 @@ fn case_swapped_block_style(php: &Php) -> Result<(), String> {
 fn main() -> ExitCode {
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
-    let theme_json = ThemeJsonArea::new(container.clone());
+    let theme_json = ThemeJsonArea::new(container.clone(), hooks.api());
     let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(theme_json)];
     let php = match Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),

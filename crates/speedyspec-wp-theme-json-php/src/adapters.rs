@@ -216,3 +216,46 @@ impl Diagnostics for PhpDiagnostics {
         );
     }
 }
+
+/// kses's `safecss_filter_attr()`, as PHP defines it (WordPress's `kses.php`, or the native kses port).
+pub struct PhpSafeCss;
+
+impl speedyspec_wp_theme_json_contracts::ports::SafeCss for PhpSafeCss {
+    fn safecss_filter_attr(
+        &self,
+        css: &[u8],
+    ) -> Result<Vec<u8>, speedyspec_wp_kses_contracts::KsesError> {
+        Ok(call("safecss_filter_attr", &[string_value(css)])
+            .as_ref()
+            .and_then(bytes_of)
+            .unwrap_or_default())
+    }
+}
+
+/// `wp_get_global_settings()`, as PHP defines it. Until the resolver is ported (plan 4) this is WordPress's own,
+/// which calls back into this engine.
+pub struct PhpGlobalSettings;
+
+impl speedyspec_wp_theme_json_contracts::ports::GlobalSettings for PhpGlobalSettings {
+    fn settings(&self) -> Value {
+        match call("wp_get_global_settings", &[]) {
+            Some(v) => match v.read().into_owned() {
+                v @ Value::Array(_) => v,
+                _ => Value::Array(Vec::new()),
+            },
+            None => Value::Array(Vec::new()),
+        }
+    }
+}
+
+/// `current_theme_supports()`, as PHP defines it.
+pub struct PhpActiveTheme;
+
+impl speedyspec_wp_theme_json_contracts::ports::ActiveTheme for PhpActiveTheme {
+    fn supports(&self, feature: &str) -> bool {
+        matches!(
+            call("current_theme_supports", &[Value::Str(feature.into())]),
+            Some(Value::Bool(true))
+        )
+    }
+}

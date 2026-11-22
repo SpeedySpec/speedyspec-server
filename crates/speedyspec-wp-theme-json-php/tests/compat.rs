@@ -24,7 +24,7 @@ fn main() -> ExitCode {
     };
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
-    let theme_json = ThemeJsonArea::new(container);
+    let theme_json = ThemeJsonArea::new(container, hooks.api());
     let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(theme_json)];
     let php = match Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),

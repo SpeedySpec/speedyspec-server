@@ -120,3 +120,25 @@ impl speedyspec_wp_theme_json_contracts::ports::GlobalSettings for MemoryGlobalS
         }
     }
 }
+
+/// A theme that supports no optional features.
+pub struct NoThemeSupports;
+
+impl speedyspec_wp_theme_json_contracts::ports::ActiveTheme for NoThemeSupports {
+    fn supports(&self, _feature: &str) -> bool {
+        false
+    }
+}
+
+/// A theme that supports the features listed.
+#[derive(Default)]
+pub struct MemoryThemeSupports {
+    /// The supported features.
+    pub features: RefCell<Vec<String>>,
+}
+
+impl speedyspec_wp_theme_json_contracts::ports::ActiveTheme for MemoryThemeSupports {
+    fn supports(&self, feature: &str) -> bool {
+        self.features.borrow().iter().any(|f| f == feature)
+    }
+}

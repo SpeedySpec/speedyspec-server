@@ -45,12 +45,13 @@ fn deps() -> ThemeJsonDeps {
             style_names: styles,
         });
     }
-    ThemeJsonDeps {
-        blocks: Rc::new(blocks),
-        text: Rc::new(LowerText),
-        gettext: Rc::new(NoTranslation),
-        diagnostics: Rc::new(RecordedDiagnostics::default()),
-    }
+    ThemeJsonDeps::new(
+        Rc::new(blocks),
+        Rc::new(LowerText),
+        Rc::new(NoTranslation),
+        Rc::new(RecordedDiagnostics::default()),
+        support::safe_css(),
+    )
 }
 
 /// Constructs each layer and merges it into the first, as the resolver does.

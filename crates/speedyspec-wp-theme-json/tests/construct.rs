@@ -49,12 +49,13 @@ fn blocks(list: &[(&str, &[&str])]) -> MemoryBlockMetadata {
 }
 
 fn deps(blocks: MemoryBlockMetadata) -> ThemeJsonDeps {
-    ThemeJsonDeps {
-        blocks: Rc::new(blocks),
-        text: Rc::new(LowerText),
-        gettext: Rc::new(NoTranslation),
-        diagnostics: Rc::new(RecordedDiagnostics::default()),
-    }
+    ThemeJsonDeps::new(
+        Rc::new(blocks),
+        Rc::new(LowerText),
+        Rc::new(NoTranslation),
+        Rc::new(RecordedDiagnostics::default()),
+        support::safe_css(),
+    )
 }
 
 fn raw(doc: ThemeJson) -> Value {

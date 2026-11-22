@@ -16,6 +16,7 @@ speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-theme-json = { path = "../speedyspec-wp-theme-json" }
 speedyspec-wp-theme-json-contracts = { path = "../speedyspec-wp-theme-json-contracts" }
 speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
 
 [dev-dependencies]
 serde_json = "1"

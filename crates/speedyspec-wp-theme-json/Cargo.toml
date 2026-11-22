@@ -17,5 +17,8 @@ indexmap = "2"
 fancy-regex = "0.20"
 
 [dev-dependencies]
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-kses = { path = "../speedyspec-wp-kses" }
+speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
 proptest = "1"
 serde_json = "1"

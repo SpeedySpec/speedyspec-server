@@ -40,12 +40,13 @@ fn api_with_notices() -> (ThemeJsonApi, Rc<RecordedDiagnostics>) {
         style_names: vec![],
     });
     let notices = Rc::new(RecordedDiagnostics::default());
-    let api = ThemeJsonApi::new(ThemeJsonDeps {
-        blocks: Rc::new(blocks),
-        text: Rc::new(LowerText),
-        gettext: Rc::new(NoTranslation),
-        diagnostics: notices.clone(),
-    });
+    let api = ThemeJsonApi::new(ThemeJsonDeps::new(
+        Rc::new(blocks),
+        Rc::new(LowerText),
+        Rc::new(NoTranslation),
+        notices.clone(),
+        support::safe_css(),
+    ));
     (api, notices)
 }
 

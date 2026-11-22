@@ -17,7 +17,10 @@ pub const ROOT_CSS_PROPERTIES_SELECTOR: &str = ":root";
 
 const SERIALIZED: &[u8] = include_bytes!("wordpress-7.1.5.constants");
 
+const LAYOUT: &[u8] = include_bytes!("wordpress-7.1.5.layout");
+
 thread_local! {
+    static LAYOUT_DEFINITIONS: Rc<Value> = Rc::new(unserialize(LAYOUT));
     static CONSTANTS: Rc<Value> = Rc::new(load());
     static PRESETS: Rc<Vec<PresetMetadata>> = Rc::new(build_presets());
 }
@@ -26,6 +29,18 @@ fn load() -> Value {
     let php = speedyspec_php_serialize::unserialize(SERIALIZED)
         .expect("the embedded constants unserialize");
     speedyspec_php_serialize::to_hook_value(&php)
+}
+
+fn unserialize(bytes: &[u8]) -> Value {
+    let php =
+        speedyspec_php_serialize::unserialize(bytes).expect("the embedded table unserializes");
+    speedyspec_php_serialize::to_hook_value(&php)
+}
+
+/// `wp_get_layout_definitions()`: each layout type's class name, display mode and base and spacing rules
+/// (exported from the release by `tools/export-layout-definitions.php`).
+pub fn layout_definitions() -> Rc<Value> {
+    LAYOUT_DEFINITIONS.with(Rc::clone)
 }
 
 /// Every class constant, as one PHP array in declaration order.

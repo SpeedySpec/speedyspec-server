@@ -220,12 +220,13 @@ pub fn deps(
         registry.register(b);
     }
     let notices = Rc::new(speedyspec_wp_theme_json::RecordedDiagnostics::default());
-    let deps = speedyspec_wp_theme_json::ThemeJsonDeps {
-        blocks: Rc::new(registry),
-        text: Rc::new(AsciiText),
-        gettext: Rc::new(speedyspec_wp_theme_json::NoTranslation),
-        diagnostics: notices.clone(),
-    };
+    let deps = speedyspec_wp_theme_json::ThemeJsonDeps::new(
+        Rc::new(registry),
+        Rc::new(AsciiText),
+        Rc::new(speedyspec_wp_theme_json::NoTranslation),
+        notices.clone(),
+        safe_css(),
+    );
     (deps, notices)
 }
 
@@ -238,4 +239,40 @@ pub fn php_list(items: Vec<Value>) -> Value {
             .map(|(i, v)| (Key::Int(i as i64), v))
             .collect(),
     )
+}
+
+struct NoEscape;
+impl speedyspec_wp_kses_contracts::AttributeEscaper for NoEscape {
+    fn esc_attr(&self, v: &[u8]) -> Result<Vec<u8>, speedyspec_wp_kses_contracts::KsesError> {
+        Ok(v.to_vec())
+    }
+}
+struct NoUnfiltered;
+impl speedyspec_wp_kses_contracts::UnfilteredHtmlPolicy for NoUnfiltered {
+    fn can_unfiltered_html(&self) -> Result<bool, speedyspec_wp_kses_contracts::KsesError> {
+        Ok(false)
+    }
+}
+struct Uploads;
+impl speedyspec_wp_kses::UploadsLocation for Uploads {
+    fn upload_url(&self) -> Result<Vec<u8>, speedyspec_wp_kses_contracts::KsesError> {
+        Ok(b"http://example.org/wp-content/uploads".to_vec())
+    }
+}
+
+/// kses's `safecss_filter_attr()`, the Rust port, over an empty Hook API (no `safe_style_css` filters).
+pub fn safe_css() -> std::rc::Rc<dyn speedyspec_wp_kses_contracts::SafeCss> {
+    use std::rc::Rc;
+    let hooks = Rc::new(speedyspec_wp_hooks::HookApi::new(
+        Rc::new(speedyspec_wp_hooks_memory::MemoryHookStore::new()),
+        Rc::new(speedyspec_wp_hooks::IgnoreDeprecations),
+    ));
+    speedyspec_wp_kses::KsesApi::shared(speedyspec_wp_kses::KsesDeps {
+        hooks,
+        escaper: Rc::new(NoEscape),
+        policy: Rc::new(NoUnfiltered),
+        globals: Rc::new(speedyspec_wp_kses::DefaultGlobals::default()),
+        uploads: Rc::new(Uploads),
+        callbacks: Rc::new(speedyspec_wp_kses::NoValueCallbacks),
+    })
 }
