@@ -10,6 +10,7 @@
 //! - [`Base64UrlNoPad`] is `sodium_bin2base64()` with `SODIUM_BASE64_VARIANT_URLSAFE_NO_PADDING`;
 //! - [`CryptoLibrary`] is `SODIUM_LIBRARY_VERSION`, which WordPress puts in its error data;
 //! - [`Clock`] is `time()`, for the expiry of WordPress.org's first signing key;
+//! - [`FileHasher`] is `hash_file( 'sha384', $filename, true )`;
 //! - [`Translator`] is `__()` in the default text domain;
 //! - [`TrustedKeysFilter`] is the `wp_trusted_keys` filter.
 //!
@@ -56,10 +57,27 @@ pub trait Clock {
     fn now(&self) -> i64;
 }
 
+/// A file's sha384, as `hash_file( 'sha384', $filename, true )`.
+///
+/// The filename is PHP's: an adapter over PHP opens it as `hash_file()` does (stream wrappers included) and raises what
+/// `hash_file()` raises (its warning for an unreadable file, its `ValueError` for a NUL byte).
+pub trait FileHasher {
+    /// Why hashing failed where `hash_file()` throws.
+    type Error;
+
+    /// The raw digest, `None` where `hash_file()` returns `false`.
+    fn sha384(&self, filename: &[u8]) -> Result<Option<[u8; 48]>, Self::Error>;
+}
+
 /// WordPress's translation of its own strings, as `__()` in the `default` domain.
+///
+/// Translating runs the `gettext` filters, whose callbacks may throw; WordPress lets that exception propagate.
 pub trait Translator {
+    /// Why translating failed (a filter callback's exception).
+    type Error;
+
     /// The translation of `text`, or `text` itself.
-    fn translate(&self, text: &str) -> String;
+    fn translate(&self, text: &str) -> Result<String, Self::Error>;
 }
 
 /// The `wp_trusted_keys` filter.

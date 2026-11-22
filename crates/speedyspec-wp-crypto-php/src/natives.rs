@@ -1,28 +1,28 @@
 //! The native functions behind the facade.
 
-use std::os::unix::ffi::OsStrExt;
 use std::rc::Rc;
 
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_wp_crypto::{
-    SignatureMessage, SignatureOutcome, check_signatures_with, default_trusted_keys, sha384_file,
+    SignatureMessage, SignatureOutcome, check_signatures_with, default_trusted_keys,
     signature_message, wp_basename, wp_fast_hash, wp_verify_fast_hash,
 };
-use speedyspec_wp_crypto_contracts::{CryptoLibrary, TrustedKeysFilter};
+use speedyspec_wp_crypto_contracts::{CryptoLibrary, FileHasher, TrustedKeysFilter};
 use speedyspec_wp_crypto_sodium::Sodium;
 use speedyspec_wp_hooks::{HookApi, HookValue};
 use speedyspec_wp_text_escape::EscapeApi;
 
 use crate::adapters::{
-    HookTrustedKeysFilter, PhpSiteSettings, PhpTranslator, QuietDiagnostics, SystemClock,
-    base64_text, elements, php_string,
+    HookTrustedKeysFilter, PhpFileHasher, PhpSiteSettings, PhpTranslator, QuietDiagnostics,
+    SystemClock, base64_text, elements, php_string, rethrow,
 };
 
-/// What the native functions share: libsodium, the filter and the escaping facade.
+/// What the native functions share: libsodium, the filter, the file hasher and the escaping facade.
 pub(crate) struct Natives {
     sodium: Sodium,
     keys: HookTrustedKeysFilter,
+    files: PhpFileHasher,
     escape: EscapeApi,
 }
 
@@ -31,6 +31,7 @@ impl Natives {
         Natives {
             sodium,
             keys: HookTrustedKeysFilter::new(hooks.clone()),
+            files: PhpFileHasher,
             escape: EscapeApi::new(hooks, Rc::new(PhpSiteSettings), Rc::new(QuietDiagnostics)),
         }
     }
@@ -72,13 +73,43 @@ fn bytes(args: &[HookValue], i: usize, function: &str) -> Result<Vec<u8>, Native
     match args.get(i) {
         Some(HookValue::Str(s)) => Ok(s.as_bytes().to_vec()),
         Some(HookValue::Bytes(b)) => Ok(b.clone()),
-        other => Err(NativeError::throw(
+        Some(other) => Err(NativeError::throw(
             "TypeError",
             format!(
-                "SpeedySpec\\WpCrypto\\Native\\{function}(): Argument #{} must be of type string, {other:?} given",
-                i + 1
+                "SpeedySpec\\WpCrypto\\Native\\{function}(): Argument #{} must be of type string, {} given",
+                i + 1,
+                debug_type(other)
             ),
         )),
+        None => Err(NativeError::throw(
+            "ArgumentCountError",
+            format!(
+                "SpeedySpec\\WpCrypto\\Native\\{function}() expects at least {} argument{}, {} given",
+                i + 1,
+                if i == 0 { "" } else { "s" },
+                args.len()
+            ),
+        )),
+    }
+}
+
+/// PHP's `get_debug_type( $value )`, as PHP names a type in a `TypeError`.
+fn debug_type(value: &HookValue) -> String {
+    speedyspec_php::call_catching(
+        &HookValue::Str("get_debug_type".into()),
+        std::slice::from_ref(value),
+    )
+    .ok()
+    .and_then(|name| text(&name))
+    .unwrap_or_else(|| "mixed".to_string())
+}
+
+/// A PHP string's text; `None` for any other value.
+fn text(value: &HookValue) -> Option<String> {
+    match value {
+        HookValue::Str(s) => Some(s.clone()),
+        HookValue::Bytes(b) => Some(String::from_utf8_lossy(b).into_owned()),
+        _ => None,
     }
 }
 
@@ -124,8 +155,7 @@ fn verify(natives: &Natives, args: &[HookValue]) -> Result<HookValue, NativeErro
     };
     let raw = natives.keys.apply(default_trusted_keys(&SystemClock))?;
     let keys = elements(&raw.read());
-    let path = std::path::Path::new(std::ffi::OsStr::from_bytes(&filename));
-    let hash = sha384_file(path);
+    let hash = natives.files.sha384(&filename)?;
     match check_signatures_with(
         &natives.sodium,
         hash.as_ref(),
@@ -156,14 +186,13 @@ fn verify(natives: &Natives, args: &[HookValue]) -> Result<HookValue, NativeErro
 
 /// `esc_html( $name )` as the string `sprintf()` receives.
 fn escape(natives: &Natives, name: &[u8]) -> Result<String, NativeError> {
-    match natives
+    let escaped = natives
         .escape
         .esc_html(name)
-        .map_err(|e| NativeError::throw("Error", e.message))?
-    {
-        HookValue::Str(s) => Ok(s),
-        HookValue::Bytes(b) => Ok(String::from_utf8_lossy(&b).into_owned()),
-        other => strval(&other),
+        .map_err(|e| NativeError::throw("Error", e.message))?;
+    match text(&escaped) {
+        Some(s) => Ok(s),
+        None => strval(&escaped),
     }
 }
 
@@ -177,11 +206,8 @@ fn strval(value: &HookValue) -> Result<String, NativeError> {
         &HookValue::Str("strval".into()),
         std::slice::from_ref(value),
     ) {
-        Ok(HookValue::Str(s)) => Ok(s),
-        Ok(other) => Ok(format!("{other:?}")),
-        Err(failure) => Err(match failure.exception {
-            Some(exception) => NativeError::Rethrow(exception),
-            None => NativeError::Silent,
-        }),
+        // strval() returns a string or throws.
+        Ok(converted) => Ok(text(&converted).unwrap_or_default()),
+        Err(failure) => Err(rethrow(failure)),
     }
 }

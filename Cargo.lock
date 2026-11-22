@@ -5336,6 +5336,7 @@ dependencies = [
  "libc",
  "speedyspec-hooks",
  "speedyspec-hooks-memory",
+ "tempfile",
 ]
 
 [[package]]

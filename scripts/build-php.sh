@@ -38,13 +38,9 @@ libsodium_version="1.0.22"
 libsodium_url="https://download.libsodium.org/libsodium/releases/libsodium-$libsodium_version.tar.gz"
 libsodium_sha256="adbdd8f16149e81ac6078a03aca6fc03b592b89ef7b5ed83841c086191be3349"
 
-sha256_of() {
-    if command -v sha256sum >/dev/null 2>&1; then
-        sha256sum "$1" | cut -d' ' -f1
-    else
-        shasum -a 256 "$1" | cut -d' ' -f1
-    fi
-}
+# sha256_of, fetch_pinned and check_spc_libsodium.
+# shellcheck source=lib/pinned-downloads.sh
+source "$repo/scripts/lib/pinned-downloads.sh"
 
 php_version="$(tr -d '[:space:]' < "$repo/crates/speedyspec-php/php-version")"
 
@@ -172,33 +168,12 @@ fi
 spc="$build_dir/spc"
 
 if [ ! -x "$spc" ] || [ "$(sha256_of "$spc")" != "$spc_sha256" ]; then
-    echo "build-php.sh: downloading $spc_name"
-    curl -fsSL -o "$spc.download" "$spc_base_url/$spc_name"
-    actual="$(sha256_of "$spc.download")"
-    if [ "$actual" != "$spc_sha256" ]; then
-        rm -f "$spc.download"
-        echo "build-php.sh: checksum mismatch for $spc_name" >&2
-        echo "  expected $spc_sha256" >&2
-        echo "  actual   $actual" >&2
-        exit 1
-    fi
-    chmod +x "$spc.download"
-    mv "$spc.download" "$spc"
+    fetch_pinned "$spc_base_url/$spc_name" "$spc_sha256" "$spc" "$spc_name"
+    chmod +x "$spc"
 fi
 
 if [ ! -f "$libsodium_tarball" ] || [ "$(sha256_of "$libsodium_tarball")" != "$libsodium_sha256" ]; then
-    echo "build-php.sh: downloading libsodium $libsodium_version"
-    mkdir -p "$(dirname "$libsodium_tarball")"
-    curl -fsSL -o "$libsodium_tarball.download" "$libsodium_url"
-    actual="$(sha256_of "$libsodium_tarball.download")"
-    if [ "$actual" != "$libsodium_sha256" ]; then
-        rm -f "$libsodium_tarball.download"
-        echo "build-php.sh: checksum mismatch for libsodium-$libsodium_version.tar.gz" >&2
-        echo "  expected $libsodium_sha256" >&2
-        echo "  actual   $actual" >&2
-        exit 1
-    fi
-    mv "$libsodium_tarball.download" "$libsodium_tarball"
+    fetch_pinned "$libsodium_url" "$libsodium_sha256" "$libsodium_tarball" "libsodium-$libsodium_version.tar.gz"
 fi
 
 cd "$build_dir"
@@ -221,13 +196,7 @@ fi
 "$spc" spc-config "$extensions" --with-libs="$libs" --libs --no-motd > "$build_dir/buildroot/link-flags.txt"
 
 check_sodium
-# spc must have built from the pinned tarball, not one it fetched itself.
-for tarball in "$build_dir"/downloads/libsodium-*.tar.gz; do
-    if [ "$(sha256_of "$tarball")" != "$libsodium_sha256" ]; then
-        echo "build-php.sh: sodium: spc used $tarball, not the pinned libsodium $libsodium_version" >&2
-        exit 1
-    fi
-done
+check_spc_libsodium "$build_dir/downloads" "$libsodium_version" "$libsodium_sha256"
 
 printf '%s\n' "$stamp_content" > "$stamp"
 echo "build-php.sh: built PHP $("$build_dir/buildroot/bin/php-config" --version) in $build_dir/buildroot"

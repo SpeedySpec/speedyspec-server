@@ -7,7 +7,7 @@
 //! (`speedyspec-wp-crypto-sodium`). Nothing goes through PHP's `sodium_*` functions.
 //!
 //! What WordPress does through other WordPress code still happens: the `wp_trusted_keys` filter runs through the Hook
-//! API ([`HookTrustedKeysFilter`]), error messages through `__()` ([`PhpTranslator`]) and the `esc_html` port, and the
+//! API ([`HookTrustedKeysFilter`]), the file is hashed by PHP's own `hash_file()` ([`PhpFileHasher`]), error messages through `__()` ([`PhpTranslator`]) and the `esc_html` port, and the
 //! facade returns a real `WP_Error`, so `wp_error_added` fires.
 //!
 //! Two answers differ from WordPress on purpose: a phpass hash never verifies (SpeedySpec carries no phpass), and
@@ -25,7 +25,8 @@ use speedyspec_wp_crypto_sodium::Sodium;
 use speedyspec_wp_hooks::HookApi;
 
 pub use adapters::{
-    HookTrustedKeysFilter, PhpSiteSettings, PhpTranslator, QuietDiagnostics, SystemClock,
+    HookTrustedKeysFilter, PhpFileHasher, PhpSiteSettings, PhpTranslator, QuietDiagnostics,
+    SystemClock,
 };
 pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
 
@@ -37,15 +38,12 @@ pub struct CryptoArea {
 }
 
 impl CryptoArea {
-    /// The area, filtering and escaping through `hooks`.
-    ///
-    /// # Errors
-    ///
-    /// When libsodium can't initialize.
-    pub fn new(hooks: Rc<HookApi>) -> Result<CryptoArea, String> {
-        Ok(CryptoArea {
-            natives: Rc::new(natives::Natives::new(hooks, Sodium::init()?)),
-        })
+    /// The area, hashing and verifying with `sodium` and filtering and escaping through `hooks`. The caller
+    /// initializes libsodium ([`Sodium::init`]) and hands it over, so a process initializes it once.
+    pub fn new(hooks: Rc<HookApi>, sodium: Sodium) -> CryptoArea {
+        CryptoArea {
+            natives: Rc::new(natives::Natives::new(hooks, sodium)),
+        }
     }
 }
 

@@ -3,8 +3,23 @@
 use serde::{Deserialize, Serialize};
 
 /// A runtime binary's description of itself.
+///
+/// Fields are added within contract 1 (old readers ignore them), so the struct is `#[non_exhaustive]`: outside this
+/// crate a manifest is made with [`RuntimeManifest::new`] and the `with_` methods, or deserialized, never written as
+/// a struct literal.
+///
+/// ```compile_fail
+/// let manifest = speedyspec_runtime_contract::RuntimeManifest {
+///     version: "1.2.3".parse().unwrap(),
+///     contracts: vec![1],
+///     php: "8.5.12".into(),
+///     sodium: None,
+/// };
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct RuntimeManifest {
+    /// The runtime's own version.
     pub version: semver::Version,
     /// The contract majors it speaks.
     pub contracts: Vec<u32>,
@@ -14,6 +29,24 @@ pub struct RuntimeManifest {
     /// added, so it stays optional within contract 1; the release smoke check requires it of new releases.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sodium: Option<String>,
+}
+
+impl RuntimeManifest {
+    /// A manifest with the fields every runtime reports; the optional ones are absent until given.
+    pub fn new(version: semver::Version, contracts: Vec<u32>, php: impl Into<String>) -> Self {
+        RuntimeManifest {
+            version,
+            contracts,
+            php: php.into(),
+            sodium: None,
+        }
+    }
+
+    /// The manifest, reporting libsodium `version`.
+    pub fn with_sodium(mut self, version: impl Into<String>) -> Self {
+        self.sodium = Some(version.into());
+        self
+    }
 }
 #[cfg(test)]
 mod tests {
