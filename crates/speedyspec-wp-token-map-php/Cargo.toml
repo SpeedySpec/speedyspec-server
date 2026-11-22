@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-token-map-php"
-version = "0.1.2"
+version = "0.1.1"
 publish = false
 description = "WordPress's WP_Token_Map in PHP, with WordPress's HTML5 named character reference table answered natively by speedyspec-wp-token-map."
 edition.workspace = true

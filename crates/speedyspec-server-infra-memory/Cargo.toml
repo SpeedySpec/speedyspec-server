@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-server-infra-memory"
-version = "0.1.4"
+version = "0.1.3"
 publish = false
 description = "In-memory release doubles for SpeedySpec server tests, and a tar.zst archive builder."
 edition.workspace = true

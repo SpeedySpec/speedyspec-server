@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-hooks"
-version = "0.1.1"
+version = "0.1.0"
 description = "WordPress's Hook API (plugin.php and WP_Hook) as commands and queries over a hook store port."
 edition.workspace = true
 rust-version.workspace = true
@@ -11,6 +11,6 @@ exclude = ["tests/"]
 
 [dependencies]
 indexmap = "2"
-speedyspec-container = { path = "../speedyspec-container", version = "0.1.1" }
-speedyspec-cqrs = { path = "../speedyspec-cqrs", version = "0.1.1" }
-speedyspec-hooks = { path = "../speedyspec-hooks", version = "0.1.1" }
+speedyspec-container = { path = "../speedyspec-container", version = "0.1" }
+speedyspec-cqrs = { path = "../speedyspec-cqrs", version = "0.1" }
+speedyspec-hooks = { path = "../speedyspec-hooks", version = "0.1" }

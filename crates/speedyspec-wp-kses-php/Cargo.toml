@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-kses-php"
-version = "0.1.2"
+version = "0.1.1"
 publish = false
 description = "WordPress's kses functions (wp_kses and the rest) as native PHP functions over the Rust kses API."
 edition.workspace = true

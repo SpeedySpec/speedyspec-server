@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-options-sql"
-version = "0.1.4"
+version = "0.1.3"
 publish = false
 description = "The option repository over wp_options, through the wpdb port (so the query filter fires and counts)."
 edition.workspace = true
