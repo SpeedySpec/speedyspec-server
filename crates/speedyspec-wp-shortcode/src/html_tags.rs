@@ -114,7 +114,7 @@ impl ShortcodeApi {
                 } else {
                     let (new_attr, count) = self.replace(attr, tags, Callback::Do)?;
                     if count > 0 {
-                        let new_attr = self.deps().kses.one_attr(&new_attr, elname);
+                        let new_attr = self.deps().kses.one_attr(&new_attr, elname)?;
                         if !php_trim(&new_attr).is_empty() {
                             rebuilt.extend(new_attr);
                             continue;

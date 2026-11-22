@@ -107,7 +107,8 @@ namespace
         /**
          * Displays a human readable HTML representation of the difference between two strings.
          *
-         *  Native: the diff, the rows and the table are rendered in Rust, byte for byte as WordPress renders them.
+         *  Native: the whitespace is normalized and the diff, the rows and the table are rendered in Rust, byte for
+         *  byte as WordPress renders them.
          *  The row labels are translated once per call rather than once per row.
          *
          * @param string       $left_string
@@ -138,18 +139,14 @@ namespace
                 require ABSPATH . WPINC . '/wp-diff.php';
             }
 
-            if (!\SpeedySpec\WpTextDiff\native_args($args))
+            // Texts that aren't strings go through normalize_whitespace() in PHP, as WordPress does, with its
+            // coercion and notices.
+            if (!is_string($left_string) || !is_string($right_string) || !\SpeedySpec\WpTextDiff\native_args($args))
             {
                 return \SpeedySpec\WpTextDiff\legacy_wp_text_diff($left_string, $right_string, $args);
             }
 
-            $left_string  = normalize_whitespace($left_string);
-            $right_string = normalize_whitespace($right_string);
-            if ($left_string === $right_string)
-            {
-                return '';
-            }
-
+            // Whitespace is normalized natively.
             return \SpeedySpec\WpTextDiff\Native\wp_text_diff(
                 $left_string,
                 $right_string,

@@ -107,8 +107,8 @@ real `wp_html_split` port (`speedyspec-wp-html-split`), the one `ShortcodeArea` 
 | 07-in-attributes | 54.4 µs | 540 µs | 264 µs | 4.9× |
 | 08-page-builder | 2.45 ms | 9.31 ms | 2.43 ms | about the same |
 
-kses parsing is stubbed out on both sides. The PHP column is context only: PHP pays its own interpreter costs, so it
-is not a like-for-like engine comparison.
+kses is stubbed out on both sides, to keep the PHP column comparable; the bridge itself binds the Rust kses port.
+The PHP column is context only: PHP pays its own interpreter costs, so it is not a like-for-like engine comparison.
 
 **Where the time goes next.** File 08 is level with PHP. The scan itself is 8.2 µs of its 2.45 ms; the rest is
 per-match work across about 400 nested `do_shortcode()` calls:

@@ -4,20 +4,29 @@
 mod common;
 
 use std::alloc::{GlobalAlloc, Layout, System};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::cell::Cell;
 use std::time::Instant;
 
 use speedyspec_wp_kses_contracts::{AllowedSpec, Context};
 use speedyspec_wp_kses_testkit::{BombGenerator, bomb_generators};
 
-/// Counts the bytes allocated, so allocation growth can be compared across sizes.
+/// Counts the bytes each thread allocates, so allocation growth can be compared across sizes. Per thread, so tests
+/// running in parallel do not count each other's allocations.
 struct Counting;
 
-static ALLOCATED: AtomicUsize = AtomicUsize::new(0);
+thread_local! {
+    static ALLOCATED: Cell<usize> = const { Cell::new(0) };
+}
+
+/// The bytes this thread has allocated so far.
+fn allocated() -> usize {
+    ALLOCATED.with(Cell::get)
+}
 
 unsafe impl GlobalAlloc for Counting {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        ALLOCATED.fetch_add(layout.size(), Ordering::Relaxed);
+        // `try_with`: a thread's own allocations while it tears down its locals go uncounted.
+        let _ = ALLOCATED.try_with(|a| a.set(a.get() + layout.size()));
         unsafe { System.alloc(layout) }
     }
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
@@ -38,20 +47,20 @@ fn measure(input: &[u8]) -> (f64, usize, usize) {
         .spawn(move || {
             let (_, api) = common::setup();
             let mut times = Vec::new();
-            let mut allocated = 0;
+            let mut bytes = 0;
             let mut out_len = 0;
             for _ in 0..5 {
-                let before = ALLOCATED.load(Ordering::Relaxed);
+                let before = allocated();
                 let start = Instant::now();
                 let out = api
                     .kses(&input, &AllowedSpec::Context(Context::Post), None)
                     .unwrap();
                 times.push(start.elapsed().as_secs_f64());
-                allocated = ALLOCATED.load(Ordering::Relaxed) - before;
+                bytes = allocated() - before;
                 out_len = out.len();
             }
             times.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            (times[2], allocated, out_len)
+            (times[2], bytes, out_len)
         })
         .unwrap()
         .join()

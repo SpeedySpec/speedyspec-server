@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-php"
-version = "0.2.0"
+version = "0.3.0"
 description = "Embedded, statically linked PHP interpreter for speedyspec."
 edition.workspace = true
 rust-version.workspace = true

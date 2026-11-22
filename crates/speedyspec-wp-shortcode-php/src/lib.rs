@@ -8,11 +8,13 @@
 //! - The registry is the `$shortcode_tags` global itself ([`PhpGlobalRegistry`]).
 //! - PHP callables run as handlers through [`PhpShortcodeHandler`]; Rust handlers are declared as native functions
 //!   with [`ShortcodeArea::register_rust_handler`], and the global holds their names.
-//! - `wp_html_split()` is the Rust port ([`RustHtmlSplitter`]).
-//! - Notices and kses go to WordPress's own PHP until their ports land ([`legacy`]).
+//! - `wp_html_split()` and kses are the Rust ports ([`RustHtmlSplitter`], [`RustKsesAttributes`]); the kses API is
+//!   given, so it is the kses area's own.
+//! - Notices go to WordPress's own PHP until their port lands ([`legacy`]).
 
 mod handler;
 mod html_split;
+mod kses;
 pub mod legacy;
 mod native;
 mod registry;
@@ -23,6 +25,7 @@ use speedyspec_container::Container;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_kses_contracts::Kses;
 use speedyspec_wp_shortcode::{
     HandAttsParser, HandScanner, HookApiFilters, ShortcodeApi, ShortcodeDeps, register_shortcode_handlers,
 };
@@ -30,15 +33,17 @@ use speedyspec_wp_shortcode_contracts::{AttsParser, ShortcodeHandler, ShortcodeS
 
 pub use handler::PhpShortcodeHandler;
 pub use html_split::RustHtmlSplitter;
+pub use kses::RustKsesAttributes;
 pub use registry::PhpGlobalRegistry;
 
 use handler::{NamedRustHandler, RustHandlers};
-use legacy::{PhpDiagnostics, PhpKsesAttributes, PhpStringConversion};
+use legacy::{PhpDiagnostics, PhpStringConversion};
 
 const FACADE: &str = include_str!("shortcodes.php");
 
 /// Runs the shortcode scenarios through the native functions (the port side of `compat/shortcode`), loading
-/// WordPress's formatting and kses files from `release`.
+/// WordPress's formatting and kses files from `release`, which must be prepared for the native kses functions
+/// (`speedyspec_wp_kses_php::prepare_release`) when the kses area is loaded.
 pub fn shortcode_scenario_runner(php: speedyspec_php::Php, release: &std::path::Path) -> speedyspec_compat::PhpRunner {
     let code = format!(
         "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', true); require {:?};",
@@ -58,16 +63,17 @@ pub struct ShortcodeArea {
 }
 
 impl ShortcodeArea {
-    /// The Shortcode API over `$shortcode_tags`, with the Hook API's filters, the Rust `wp_html_split()` and the PHP
-    /// adapters, and its handlers registered in `container`.
-    pub fn new(container: Rc<Container>, hooks: Rc<HookApi>) -> Self {
-        Self::with_strategies(container, hooks, Rc::new(HandScanner::new()), Rc::new(HandAttsParser::new()))
+    /// The Shortcode API over `$shortcode_tags`, with the Hook API's filters, the Rust `wp_html_split()`, kses
+    /// through `kses` (the kses area's API) and the PHP adapters, and its handlers registered in `container`.
+    pub fn new(container: Rc<Container>, hooks: Rc<HookApi>, kses: Rc<dyn Kses>) -> Self {
+        Self::with_strategies(container, hooks, kses, Rc::new(HandScanner::new()), Rc::new(HandAttsParser::new()))
     }
 
     /// As [`ShortcodeArea::new`], with the scanner and attribute parser given.
     pub fn with_strategies(
         container: Rc<Container>,
         hooks: Rc<HookApi>,
+        kses: Rc<dyn Kses>,
         scanner: Rc<dyn ShortcodeScanner>,
         atts: Rc<dyn AttsParser>,
     ) -> Self {
@@ -79,7 +85,7 @@ impl ShortcodeArea {
             filters: Rc::new(HookApiFilters::new(hooks)),
             diagnostics: Rc::new(PhpDiagnostics),
             html: Rc::new(RustHtmlSplitter),
-            kses: Rc::new(PhpKsesAttributes),
+            kses: Rc::new(RustKsesAttributes::new(kses)),
             strings: Rc::new(PhpStringConversion),
         }));
         register_shortcode_handlers(&container, api.clone());

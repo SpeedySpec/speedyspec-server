@@ -8,7 +8,9 @@ declare(strict_types=1);
  *
  *  `SPEEDYSPEC_COMPAT_WP_ROOT` is the release to load from and `SPEEDYSPEC_COMPAT_PORT` whether the native port is
  *  loaded. The recorder loads WordPress's `plugin.php` and `shortcodes.php`; the port's side loads neither (they are
- *  native). Both load `formatting.php` and `kses.php`, which `do_shortcodes_in_html_tags()` calls on both sides.
+ *  native). Both load `formatting.php` and `kses.php`, which `do_shortcodes_in_html_tags()` calls on both sides; the
+ *  port's release is prepared by speedyspec-wp-kses-php, so its `kses.php` runs only for the globals and the kses
+ *  functions are native.
  */
 
 $GLOBALS['speedyspec_notices'] = [];

@@ -148,8 +148,9 @@ pub trait HtmlSplitter {
 pub trait KsesAttributes {
     /// `wp_kses_attr_parse( $element )`: the element's front, attributes and back, or `None` for `false`.
     fn attr_parse<'a>(&self, element: &'a [u8]) -> Option<Vec<&'a [u8]>>;
-    /// `wp_kses_one_attr( $attr, $element )`.
-    fn one_attr(&self, attr: &[u8], element: &[u8]) -> Vec<u8>;
+    /// `wp_kses_one_attr( $attr, $element )`; an error when a kses filter fails, so a thrown exception reaches the
+    /// caller as in WordPress.
+    fn one_attr(&self, attr: &[u8], element: &[u8]) -> Result<Vec<u8>, ShortcodeError>;
 }
 
 /// PHP's string conversion of a value, as concatenation does it.
