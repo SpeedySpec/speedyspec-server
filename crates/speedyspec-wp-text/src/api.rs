@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use speedyspec_hooks::{Key, Value as HookValue};
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
+use speedyspec_wp_hooks::{Count, HookApi, HookName};
 use speedyspec_wp_shortcode_contracts::ShortcodeTagNames;
 use speedyspec_wp_kses::KsesApi;
 use speedyspec_wp_text_contracts::{
@@ -24,15 +24,7 @@ use crate::texturize::{HandTexturizer, TexturizeScope, TexturizeTables, Texturiz
 use crate::trim::{wp_html_excerpt, wp_trim_words_core};
 use crate::unautop::Unautop;
 
-/// A `HookError` as the text port's error.
-///
-/// @param e
-///     The hook error.
-/// @return
-///     The same message, as a `TextError`.
-pub fn text_error(e: HookError) -> TextError {
-    TextError::message(e.to_string())
-}
+pub use speedyspec_wp_text_escape::text_error;
 
 /// Everything `TextApi` reads from outside: the hooks and the ports.
 pub struct TextDeps {
@@ -182,6 +174,14 @@ impl TextApi {
     pub fn with_autop(mut self, autop: AutopFn) -> TextApi {
         self.autop = autop;
         self
+    }
+
+    /// Forgets what WordPress keeps for one request in function statics: `wptexturize()`'s tables and
+    /// `$run_texturize`, `wp_spaces_regexp()`'s `$spaces`, `capital_P_dangit()`'s `$dblq`, and the smiley matcher
+    /// built for the last search.
+    pub fn new_request(&self) {
+        *self.statics.borrow_mut() = Statics { spaces: None, opening_double_quote: None, tables: None, run_texturize: true };
+        *self.smiley_engine.borrow_mut() = None;
     }
 
     /// The hooks and ports.
