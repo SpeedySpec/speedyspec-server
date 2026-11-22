@@ -462,3 +462,17 @@ function compat_load_resolver(): void
     }
 }
 compat_load_resolver();
+
+/** A test theme shipped with the engine's tests (`tests/data/themedir1/<name>`). */
+function compat_theme_dir(string $name): string
+{
+    return dirname(__DIR__, 2) . '/crates/speedyspec-wp-theme-json/tests/data/themedir1/' . $name;
+}
+
+/** An array's keys, sorted (the port promises equal arrays by `==`, not the same key order). */
+function compat_sorted_keys($array): array
+{
+    $keys = array_keys((array) $array);
+    sort($keys, SORT_STRING);
+    return $keys;
+}

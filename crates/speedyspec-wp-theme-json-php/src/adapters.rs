@@ -517,7 +517,7 @@ impl speedyspec_wp_theme_json_contracts::ports::BlockStyleVariationRegistrar
     fn register(&self, variations: &Value) {
         call(
             "wp_register_block_style_variations_from_theme_json_partials",
-            &[variations.clone()],
+            std::slice::from_ref(variations),
         );
     }
 }
