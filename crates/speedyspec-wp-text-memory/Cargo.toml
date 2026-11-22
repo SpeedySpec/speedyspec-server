@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-text-memory"
-version = "0.3.0"
+version = "0.4.0"
 publish = false
 description = "Fixed and in-memory adapters for the text ports, for tests and for Rust callers with no PHP."
 edition.workspace = true

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-cqrs"
-version = "0.1.2"
+version = "0.1.3"
 description = "Command and query buses: handlers resolved from the service container by key, middleware, and direct dispatch."
 edition.workspace = true
 rust-version.workspace = true
@@ -10,7 +10,7 @@ repository.workspace = true
 exclude = ["tests/"]
 
 [dependencies]
-speedyspec-container = { path = "../speedyspec-container", version = "0.1.2" }
+speedyspec-container = { path = "../speedyspec-container", version = "0.1.3" }
 thiserror = "2"
 
 [dev-dependencies]

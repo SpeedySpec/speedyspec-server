@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-php-runtime"
-version = "1.1.1"
+version = "1.2.0"
 publish = false
 description = "The SpeedySpec PHP runtime: embedded PHP serving FastCGI, with the Rust WordPress API."
 edition.workspace = true
@@ -39,6 +39,8 @@ speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
 speedyspec-wp-options-php = { path = "../speedyspec-wp-options-php" }
 speedyspec-wp-password-contracts = { path = "../speedyspec-wp-password-contracts" }
 speedyspec-wp-password-php = { path = "../speedyspec-wp-password-php" }
+speedyspec-wp-text-diff-contracts = { path = "../speedyspec-wp-text-diff-contracts" }
+speedyspec-wp-text-diff-php = { path = "../speedyspec-wp-text-diff-php" }
 
 [dev-dependencies]
 tempfile = "3"

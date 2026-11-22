@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-password"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "WordPress's password rules: hashing (argon2id by default), the hash-format chain, needs-rehash, wp_rand and wp_generate_password."
 edition.workspace = true

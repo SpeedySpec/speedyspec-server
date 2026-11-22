@@ -433,6 +433,21 @@
       "component": "speedyspec-wp-options-memory",
       "skip-github-release": true,
       "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text-diff": {
+      "component": "speedyspec-wp-text-diff",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text-diff-contracts": {
+      "component": "speedyspec-wp-text-diff-contracts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text-diff-php": {
+      "component": "speedyspec-wp-text-diff-php",
+      "skip-github-release": true,
+      "skip-changelog": true
     }
   }
 }
