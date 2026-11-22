@@ -5733,6 +5733,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-cron-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-hooks",
+]
+
+[[package]]
 name = "speedyspec-wp-crypto"
 version = "0.3.0"
 dependencies = [
