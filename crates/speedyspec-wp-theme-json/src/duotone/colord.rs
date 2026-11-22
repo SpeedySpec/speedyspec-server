@@ -80,7 +80,7 @@ fn clamp(number: f64, min: f64, max: f64) -> f64 {
 /// `colord_clamp_hue( $degrees )`: PHP's `%` truncates to an integer first.
 fn clamp_hue(degrees: f64) -> f64 {
     let degrees = if degrees.is_finite() {
-        (degrees.trunc() as i64 % 360) as f64
+        (php_float_to_int(degrees) % 360) as f64
     } else {
         0.0
     };
@@ -89,6 +89,22 @@ fn clamp_hue(degrees: f64) -> f64 {
     } else {
         degrees + 360.0
     }
+}
+
+/// PHP 8's float to integer conversion for `%`: out-of-range values wrap modulo 2^64 instead of saturating.
+fn php_float_to_int(value: f64) -> i64 {
+    let truncated = value.trunc();
+    if (-9_223_372_036_854_775_808.0..9_223_372_036_854_775_808.0).contains(&truncated) {
+        return truncated as i64;
+    }
+    let two64 = 18_446_744_073_709_551_616.0_f64;
+    let mut m = truncated % two64;
+    if m >= 9_223_372_036_854_775_808.0 {
+        m -= two64;
+    } else if m < -9_223_372_036_854_775_808.0 {
+        m += two64;
+    }
+    m as i64
 }
 
 /// `colord_parse_hue( $value, $unit )`.
@@ -164,7 +180,8 @@ fn parse_rgba(input: &str) -> Option<Rgba> {
 
 /// `colord_hsva_to_rgba( colord_hsla_to_hsva( $hsla ) )`.
 fn hsla_to_rgba(h: f64, s: f64, l: f64, a: f64) -> Rgba {
-    let s = s * (if l < 50.0 { l } else { 100.0 - l }) / 100.0;
+    // `$s *= ( … ) / 100;`: the division first, as PHP evaluates it.
+    let s = s * ((if l < 50.0 { l } else { 100.0 - l }) / 100.0);
     let (h, s, v) = (
         h,
         if s > 0.0 {

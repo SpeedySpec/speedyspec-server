@@ -625,6 +625,101 @@ fn parses_notation_31() {
 }
 
 #[test]
+fn parses_notation_32() {
+    let actual = {
+        let (deps, notices) = deps(vec![]);
+        let r = st(String::from_utf8(filter_svg_from_preset(
+            &json(r##"{"slug":"s","colors":["hsl(120, 94.6%, 18.3%)","#fff"]}"##),
+            &deps,
+        ))
+        .unwrap());
+        pair(r, notices.notices.borrow().clone())
+    };
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"["<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 0 0\" width=\"0\" height=\"0\" focusable=\"false\" role=\"none\" style=\"visibility: hidden; position: absolute; left: -9999px; overflow: hidden;\" ><defs><filter id=\"wp-duotone-s\"><feColorMatrix color-interpolation-filters=\"sRGB\" type=\"matrix\" values=\" .299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 \" /><feComponentTransfer color-interpolation-filters=\"sRGB\" ><feFuncR type=\"table\" tableValues=\"0.0098820000000001 1\" /><feFuncG type=\"table\" tableValues=\"0.356118 1\" /><feFuncB type=\"table\" tableValues=\"0.0098820000000001 1\" /><feFuncA type=\"table\" tableValues=\"1 1\" /></feComponentTransfer><feComposite in2=\"SourceGraphic\" operator=\"in\" /></filter></defs></svg>",["deprecated_function:get_filter_svg_from_preset|6.3.0|","deprecated_function:get_filter_id_from_preset|6.3.0|"]]"##,
+        ),
+    );
+}
+
+#[test]
+fn parses_notation_33() {
+    let actual = {
+        let (deps, notices) = deps(vec![]);
+        let r = st(String::from_utf8(filter_svg_from_preset(
+            &json(r##"{"slug":"s","colors":["hsl(100000000000000000000, 50%, 50%)","#fff"]}"##),
+            &deps,
+        ))
+        .unwrap());
+        pair(r, notices.notices.borrow().clone())
+    };
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"["<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 0 0\" width=\"0\" height=\"0\" focusable=\"false\" role=\"none\" style=\"visibility: hidden; position: absolute; left: -9999px; overflow: hidden;\" ><defs><filter id=\"wp-duotone-s\"><feColorMatrix color-interpolation-filters=\"sRGB\" type=\"matrix\" values=\" .299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 \" /><feComponentTransfer color-interpolation-filters=\"sRGB\" ><feFuncR type=\"table\" tableValues=\"0.25 1\" /><feFuncG type=\"table\" tableValues=\"0.58333333333333 1\" /><feFuncB type=\"table\" tableValues=\"0.75 1\" /><feFuncA type=\"table\" tableValues=\"1 1\" /></feComponentTransfer><feComposite in2=\"SourceGraphic\" operator=\"in\" /></filter></defs></svg>",["deprecated_function:get_filter_svg_from_preset|6.3.0|","deprecated_function:get_filter_id_from_preset|6.3.0|"]]"##,
+        ),
+    );
+}
+
+#[test]
+fn parses_notation_34() {
+    let actual = {
+        let (deps, notices) = deps(vec![]);
+        let r = st(String::from_utf8(filter_svg_from_preset(
+            &json(r##"{"slug":"s","colors":["hsl(10000000000000000000, 50%, 50%)","#fff"]}"##),
+            &deps,
+        ))
+        .unwrap());
+        pair(r, notices.notices.borrow().clone())
+    };
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"["<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 0 0\" width=\"0\" height=\"0\" focusable=\"false\" role=\"none\" style=\"visibility: hidden; position: absolute; left: -9999px; overflow: hidden;\" ><defs><filter id=\"wp-duotone-s\"><feColorMatrix color-interpolation-filters=\"sRGB\" type=\"matrix\" values=\" .299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 \" /><feComponentTransfer color-interpolation-filters=\"sRGB\" ><feFuncR type=\"table\" tableValues=\"0.45 1\" /><feFuncG type=\"table\" tableValues=\"0.25 1\" /><feFuncB type=\"table\" tableValues=\"0.75 1\" /><feFuncA type=\"table\" tableValues=\"1 1\" /></feComponentTransfer><feComposite in2=\"SourceGraphic\" operator=\"in\" /></filter></defs></svg>",["deprecated_function:get_filter_svg_from_preset|6.3.0|","deprecated_function:get_filter_id_from_preset|6.3.0|"]]"##,
+        ),
+    );
+}
+
+#[test]
+fn parses_notation_35() {
+    let actual = {
+        let (deps, notices) = deps(vec![]);
+        let r = st(String::from_utf8(filter_svg_from_preset(
+            &json(r##"{"slug":"s","colors":["hsl(9223372036854775807, 50%, 50%)","#fff"]}"##),
+            &deps,
+        ))
+        .unwrap());
+        pair(r, notices.notices.borrow().clone())
+    };
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"["<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 0 0\" width=\"0\" height=\"0\" focusable=\"false\" role=\"none\" style=\"visibility: hidden; position: absolute; left: -9999px; overflow: hidden;\" ><defs><filter id=\"wp-duotone-s\"><feColorMatrix color-interpolation-filters=\"sRGB\" type=\"matrix\" values=\" .299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 \" /><feComponentTransfer color-interpolation-filters=\"sRGB\" ><feFuncR type=\"table\" tableValues=\"0.75 1\" /><feFuncG type=\"table\" tableValues=\"0.25 1\" /><feFuncB type=\"table\" tableValues=\"0.31666666666667 1\" /><feFuncA type=\"table\" tableValues=\"1 1\" /></feComponentTransfer><feComposite in2=\"SourceGraphic\" operator=\"in\" /></filter></defs></svg>",["deprecated_function:get_filter_svg_from_preset|6.3.0|","deprecated_function:get_filter_id_from_preset|6.3.0|"]]"##,
+        ),
+    );
+}
+
+#[test]
+fn parses_notation_36() {
+    let actual = {
+        let (deps, notices) = deps(vec![]);
+        let r = st(String::from_utf8(filter_svg_from_preset(
+            &json(r##"{"slug":"s","colors":["hsl(-100000000000000000000, 50%, 50%)","#fff"]}"##),
+            &deps,
+        ))
+        .unwrap());
+        pair(r, notices.notices.borrow().clone())
+    };
+    assert_php_eq(
+        &actual,
+        &json(
+            r##"["<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 0 0\" width=\"0\" height=\"0\" focusable=\"false\" role=\"none\" style=\"visibility: hidden; position: absolute; left: -9999px; overflow: hidden;\" ><defs><filter id=\"wp-duotone-s\"><feColorMatrix color-interpolation-filters=\"sRGB\" type=\"matrix\" values=\" .299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 \" /><feComponentTransfer color-interpolation-filters=\"sRGB\" ><feFuncR type=\"table\" tableValues=\"0.25 1\" /><feFuncG type=\"table\" tableValues=\"0.75 1\" /><feFuncB type=\"table\" tableValues=\"0.58333333333333 1\" /><feFuncA type=\"table\" tableValues=\"1 1\" /></feComponentTransfer><feComposite in2=\"SourceGraphic\" operator=\"in\" /></filter></defs></svg>",["deprecated_function:get_filter_svg_from_preset|6.3.0|","deprecated_function:get_filter_id_from_preset|6.3.0|"]]"##,
+        ),
+    );
+}
+
+#[test]
 fn preset_without_slug() {
     let actual = {
         let (deps, notices) = deps(vec![]);
