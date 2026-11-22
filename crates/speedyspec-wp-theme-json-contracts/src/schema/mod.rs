@@ -17,14 +17,30 @@ pub const ROOT_CSS_PROPERTIES_SELECTOR: &str = ":root";
 
 const SERIALIZED: &[u8] = include_bytes!("wordpress-7.1.5.constants");
 
+const LAYOUT: &[u8] = include_bytes!("wordpress-7.1.5.layout");
+
 thread_local! {
+    static LAYOUT_DEFINITIONS: Rc<Value> = Rc::new(unserialize(LAYOUT));
     static CONSTANTS: Rc<Value> = Rc::new(load());
     static PRESETS: Rc<Vec<PresetMetadata>> = Rc::new(build_presets());
 }
 
 fn load() -> Value {
-    let php = speedyspec_php_serialize::unserialize(SERIALIZED).expect("the embedded constants unserialize");
+    let php = speedyspec_php_serialize::unserialize(SERIALIZED)
+        .expect("the embedded constants unserialize");
     speedyspec_php_serialize::to_hook_value(&php)
+}
+
+fn unserialize(bytes: &[u8]) -> Value {
+    let php =
+        speedyspec_php_serialize::unserialize(bytes).expect("the embedded table unserializes");
+    speedyspec_php_serialize::to_hook_value(&php)
+}
+
+/// `wp_get_layout_definitions()`: each layout type's class name, display mode and base and spacing rules
+/// (exported from the release by `tools/export-layout-definitions.php`).
+pub fn layout_definitions() -> Rc<Value> {
+    LAYOUT_DEFINITIONS.with(Rc::clone)
 }
 
 /// Every class constant, as one PHP array in declaration order.
@@ -44,6 +60,22 @@ pub fn constant_names() -> Vec<String> {
             .collect(),
         _ => Vec::new(),
     }
+}
+
+thread_local! {
+    static TABLES: std::cell::RefCell<std::collections::HashMap<String, Rc<Value>>> = Default::default();
+}
+
+/// One class constant's value, shared (no copy): for readers that only look.
+pub fn table(name: &str) -> Rc<Value> {
+    TABLES.with(|tables| {
+        if let Some(found) = tables.borrow().get(name) {
+            return found.clone();
+        }
+        let value = Rc::new(constant(name).unwrap_or(Value::Null));
+        tables.borrow_mut().insert(name.to_owned(), value.clone());
+        value
+    })
 }
 
 /// One class constant's value.
@@ -125,7 +157,9 @@ fn build_presets() -> Vec<PresetMetadata> {
             use_default_names: matches!(get(m, "use_default_names"), Some(Value::Bool(true))),
             value_key: string(get(m, "value_key")),
             value_func: match get(m, "value_func") {
-                Some(Value::Str(s)) if s == "wp_get_typography_font_size_value" => Some(ValueFunc::FontSize),
+                Some(Value::Str(s)) if s == "wp_get_typography_font_size_value" => {
+                    Some(ValueFunc::FontSize)
+                }
                 _ => None,
             },
             css_vars: string(get(m, "css_vars")).unwrap_or_default(),
@@ -133,7 +167,9 @@ fn build_presets() -> Vec<PresetMetadata> {
                 Some(Value::Array(c)) => c
                     .iter()
                     .filter_map(|(k, v)| match (k, v) {
-                        (Key::Str(class), Value::Str(property)) => Some((class.clone(), property.clone())),
+                        (Key::Str(class), Value::Str(property)) => {
+                            Some((class.clone(), property.clone()))
+                        }
                         _ => None,
                     })
                     .collect(),
@@ -169,7 +205,10 @@ mod tests {
 
     #[test]
     fn presets_metadata_order() {
-        let paths: Vec<String> = presets_metadata().iter().map(|m| m.path.join(".")).collect();
+        let paths: Vec<String> = presets_metadata()
+            .iter()
+            .map(|m| m.path.join("."))
+            .collect();
         assert_eq!(
             paths,
             [
@@ -191,7 +230,10 @@ mod tests {
     fn preset_metadata_fields() {
         let all = presets_metadata();
         let palette = &all[1];
-        assert_eq!(palette.prevent_override.as_deref(), Some(&["color".to_owned(), "defaultPalette".to_owned()][..]));
+        assert_eq!(
+            palette.prevent_override.as_deref(),
+            Some(&["color".to_owned(), "defaultPalette".to_owned()][..])
+        );
         assert_eq!(palette.value_key.as_deref(), Some("color"));
         assert_eq!(palette.css_vars, "--wp--preset--color--$slug");
         let font_sizes = &all[4];
@@ -218,7 +260,10 @@ mod tests {
     #[test]
     fn constant_names_in_declaration_order() {
         let names = constant_names();
-        assert_eq!(names.first().map(String::as_str), Some("ROOT_CSS_PROPERTIES_SELECTOR"));
+        assert_eq!(
+            names.first().map(String::as_str),
+            Some("ROOT_CSS_PROPERTIES_SELECTOR")
+        );
         assert_eq!(names.last().map(String::as_str), Some("LATEST_SCHEMA"));
         assert_eq!(names.len(), 20);
     }

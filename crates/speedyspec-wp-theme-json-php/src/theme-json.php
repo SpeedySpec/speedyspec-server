@@ -32,6 +32,21 @@ namespace SpeedySpec\WpThemeJson\Support
     }
 
     /**
+     * The block registered under this name right now, as `registered_blocks()` lists one, or null.
+     */
+    function registered_block($name)
+    {
+        if (!class_exists('WP_Block_Type_Registry', false)) {
+            return null;
+        }
+        $type = \WP_Block_Type_Registry::get_instance()->get_registered($name);
+        if (null === $type) {
+            return null;
+        }
+        return array($name, $type->selectors ?? array(), $type->supports ?? array(), array());
+    }
+
+    /**
      * Fingerprints the registered block and block style names, so the engine re-reads the registries only after
      *  something is registered or unregistered.
      */
@@ -136,6 +151,44 @@ namespace
             N\set_spacing_sizes( $this->speedyspec_handle );
         }
 
+        public function get_stylesheet( $types = array( 'variables', 'styles', 'presets' ), $origins = null, $options = array() )
+        {
+            return N\get_stylesheet( $this->speedyspec_handle, $types, $origins, $options );
+        }
+
+        public function get_styles_for_block( $block_metadata )
+        {
+            return N\get_styles_for_block( $this->speedyspec_handle, $block_metadata );
+        }
+
+        public function get_styles_block_nodes()
+        {
+            return N\get_styles_block_nodes( $this->speedyspec_handle );
+        }
+
+        public function get_root_layout_rules( $selector, $block_metadata, $options = array() )
+        {
+            return N\get_root_layout_rules( $this->speedyspec_handle, $block_metadata, $options );
+        }
+
+        public function get_custom_css()
+        {
+            return N\get_custom_css( $this->speedyspec_handle );
+        }
+
+        public static function scope_selector( $scope, $selector )
+        {
+            if ( ! $scope || ! $selector ) {
+                return $selector;
+            }
+            return N\scope_selector( $scope, $selector );
+        }
+
+        public static function process_blocks_custom_css( $css, $selector )
+        {
+            return N\process_blocks_custom_css( $css, $selector );
+        }
+
         public static function get_element_class_name( $element )
         {
             return N\get_element_class_name( $element );
@@ -195,6 +248,22 @@ namespace
         public function get_theme_json()
         {
             return $this->theme_json;
+        }
+    }
+
+    if ( ! function_exists( 'wp_get_block_css_selector' ) ) {
+        /**
+         * Returns a block's CSS selector for a feature or subfeature, answered by the Rust engine.
+         */
+        function wp_get_block_css_selector( $block_type, $target = 'root', $fallback = false )
+        {
+            return N\block_css_selector(
+                $block_type->name ?? '',
+                $block_type->selectors ?? array(),
+                $block_type->supports ?? null,
+                $target,
+                $fallback
+            );
         }
     }
 }

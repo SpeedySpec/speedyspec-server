@@ -6416,6 +6416,8 @@ dependencies = [
 name = "speedyspec-wp-theme-json"
 version = "0.1.1"
 dependencies = [
+ "criterion 0.5.1",
+ "fancy-regex",
  "indexmap",
  "proptest",
  "serde_json",
@@ -6423,6 +6425,9 @@ dependencies = [
  "speedyspec-cqrs",
  "speedyspec-hooks",
  "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-kses",
+ "speedyspec-wp-kses-contracts",
  "speedyspec-wp-theme-json-contracts",
 ]
 
@@ -6450,6 +6455,7 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
+ "speedyspec-wp-kses-contracts",
  "speedyspec-wp-theme-json",
  "speedyspec-wp-theme-json-contracts",
 ]

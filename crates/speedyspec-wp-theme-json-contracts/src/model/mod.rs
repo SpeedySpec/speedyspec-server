@@ -13,13 +13,13 @@ mod values;
 pub use crate::Leaf;
 pub use preset::{Preset, Presets, Scales};
 pub use settings::{
-    BackgroundSettings, BlockVisibilitySettings, BorderSettings, ColorSettings, DimensionsSettings, LayoutSettings,
-    LightboxSettings, PositionSettings, Settings, ShadowSettings, SpacingSettings, TypographySettings,
-    ViewportSettings,
+    BackgroundSettings, BlockVisibilitySettings, BorderSettings, ColorSettings, DimensionsSettings,
+    LayoutSettings, LightboxSettings, PositionSettings, Settings, ShadowSettings, SpacingSettings,
+    TypographySettings, ViewportSettings,
 };
 pub use styles::{
-    BackgroundStyles, BorderStyles, ColorStyles, DimensionsStyles, FilterStyles, OutlineStyles, SpacingStyles,
-    StyleNode, StyleProperties, TypographyStyles,
+    BackgroundStyles, BorderStyles, ColorStyles, DimensionsStyles, FilterStyles, OutlineStyles,
+    SpacingStyles, StyleNode, StyleProperties, TypographyStyles,
 };
 pub use theme_json::ThemeJson;
 pub use values::{CssValue, OrderedMap, PhpString, StyleValue};
@@ -56,8 +56,17 @@ mod tests {
         assert_eq!(doc.version, Some(Leaf::Typed(3)));
         assert!(doc.settings.is_none());
         assert!(doc.styles.is_none());
-        assert!(doc.custom_templates.is_none() && doc.template_parts.is_none() && doc.patterns.is_none());
-        assert!(doc.title.is_none() && doc.slug.is_none() && doc.description.is_none() && doc.block_types.is_none());
+        assert!(
+            doc.custom_templates.is_none()
+                && doc.template_parts.is_none()
+                && doc.patterns.is_none()
+        );
+        assert!(
+            doc.title.is_none()
+                && doc.slug.is_none()
+                && doc.description.is_none()
+                && doc.block_types.is_none()
+        );
         assert!(doc.extra.is_empty());
     }
 
@@ -66,6 +75,20 @@ mod tests {
         assert_eq!(ColorSettings::KEYS.len(), 15);
         assert_eq!(ColorSettings::KEYS[0], "background");
         assert_eq!(TypographySettings::KEYS.len(), 16);
-        assert_eq!(StyleProperties::KEYS, ["background", "border", "color", "dimensions", "filter", "outline", "shadow", "spacing", "typography", "css"]);
+        assert_eq!(
+            StyleProperties::KEYS,
+            [
+                "background",
+                "border",
+                "color",
+                "dimensions",
+                "filter",
+                "outline",
+                "shadow",
+                "spacing",
+                "typography",
+                "css"
+            ]
+        );
     }
 }

@@ -48,6 +48,9 @@ impl ThemeJson {
 
     /// `array( 'version' => WP_Theme_JSON::LATEST_SCHEMA )`, WordPress's default document.
     pub fn latest() -> ThemeJson {
-        ThemeJson { version: Some(Leaf::Typed(crate::schema::LATEST_SCHEMA)), ..ThemeJson::default() }
+        ThemeJson {
+            version: Some(Leaf::Typed(crate::schema::LATEST_SCHEMA)),
+            ..ThemeJson::default()
+        }
     }
 }

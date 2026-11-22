@@ -16,8 +16,13 @@ fn php_trim(s: &[u8]) -> &[u8] {
 
 /// `is_valid_viewport_breakpoint_size`: `/^(?:\d+|\d*\.\d+)(?:px|em|rem)$/` on the trimmed string.
 fn valid_size(value: &[u8]) -> bool {
-    let unit_len = [&b"rem"[..], b"px", b"em"].iter().find(|u| value.ends_with(u)).map(|u| u.len());
-    let Some(unit_len) = unit_len else { return false };
+    let unit_len = [&b"rem"[..], b"px", b"em"]
+        .iter()
+        .find(|u| value.ends_with(u))
+        .map(|u| u.len());
+    let Some(unit_len) = unit_len else {
+        return false;
+    };
     let number = &value[..value.len() - unit_len];
     let digits = |s: &[u8]| s.iter().all(u8::is_ascii_digit);
     match number.iter().position(|c| *c == b'.') {
@@ -53,10 +58,14 @@ fn defaults() -> Value {
 /// `sanitize_viewport_settings`: valid breakpoints, trimmed; the tablet breakpoint only when wider than mobile; the
 /// defaults when none is valid.
 pub fn sanitize_viewport_settings(viewport: Option<&Value>) -> Value {
-    let Some(viewport @ Value::Array(_)) = viewport else { return defaults() };
+    let Some(viewport @ Value::Array(_)) = viewport else {
+        return defaults();
+    };
     let mut found: Vec<(&str, Vec<u8>, f64)> = Vec::new();
     for name in ["mobile", "tablet"] {
-        let value = array_path::child(viewport, &Key::Str(name.into())).cloned().unwrap_or(Value::Null);
+        let value = array_path::child(viewport, &Key::Str(name.into()))
+            .cloned()
+            .unwrap_or(Value::Null);
         if let Some(px) = in_pixels(&value) {
             let bytes = match &value {
                 Value::Str(s) => s.as_bytes().to_vec(),

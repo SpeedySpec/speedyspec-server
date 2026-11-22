@@ -1,5 +1,5 @@
-use crate::model::{OrderedMap, StyleValue, schema_object};
 use crate::Leaf;
+use crate::model::{OrderedMap, StyleValue, schema_object};
 
 schema_object! {
     /// `styles.background`.

@@ -24,9 +24,13 @@ fn main() -> ExitCode {
     };
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
-    let theme_json = ThemeJsonArea::new(container);
+    let theme_json = ThemeJsonArea::new(container, hooks.api());
     let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(theme_json)];
-    let php = match Php::boot(BootOptions { hooks: Rc::new(MemoryHooks::new()), preload: &[], areas }) {
+    let php = match Php::boot(BootOptions {
+        hooks: Rc::new(MemoryHooks::new()),
+        preload: &[],
+        areas,
+    }) {
         Ok(php) => php,
         Err(err) => {
             println!("FAILED: boot: {err}");
@@ -48,7 +52,10 @@ fn main() -> ExitCode {
         println!("ok: replayed_scenarios_match_wordpress");
         ExitCode::SUCCESS
     } else {
-        println!("FAILED: replayed_scenarios_match_wordpress: {} mismatches", mismatches.len());
+        println!(
+            "FAILED: replayed_scenarios_match_wordpress: {} mismatches",
+            mismatches.len()
+        );
         ExitCode::FAILURE
     }
 }
