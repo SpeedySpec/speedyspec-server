@@ -73,6 +73,11 @@ jobs:
             ${{ matrix.php-build }}/spc
             ${{ matrix.php-build }}/buildroot
           key: php-${{ matrix.name }}-${{ hashFiles('crates/speedyspec-php/php-version', 'scripts/build-php.sh') }}
+      - name: Cache static FFmpeg
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.php-build }}/ffmpeg/prefix
+          key: ffmpeg-${{ matrix.name }}-${{ hashFiles('scripts/build-ffmpeg.sh', 'scripts/build-php.sh', 'crates/speedyspec-php/php-version') }}
       - name: Build static PHP
         env:
           SPEEDYSPEC_ALLOW_HOST_INSTALL: "1"
