@@ -10,6 +10,7 @@ use speedyspec_operation::Registries;
 use speedyspec_operation_contracts::{Category, Identity, OperationError};
 use speedyspec_operation_contracts::{OperationCatalog, TypeCatalog};
 use speedyspec_operation_php::OperationArea;
+use speedyspec_php_ext::Value as PhpValue;
 use speedyspec_rest::{RestServer, RestTransport};
 use speedyspec_transport::{MemoryBindingStore, TransportRegistry};
 use speedyspec_transport_contracts::BindingStore;
@@ -84,6 +85,15 @@ impl RestService {
     pub fn server(&self) -> Result<Rc<RestServer>, OperationError> {
         crate::area::ensure_legacy_hook();
         let site = self.operations.site()?;
+        // wp_operations_init may have fired earlier in this request (an Operations::call) before the hook was added:
+        // build WordPress's REST server now, so rest_api_init registers the legacy routes.
+        if matches!(
+            crate::errors::adapter("server", &[]),
+            Some(PhpValue::Null) | None
+        ) {
+            crate::errors::adapter("rest_init", &[]);
+        }
+        crate::legacy::apply_endpoints_filter();
         let digest = self.digest();
         let legacy = crate::legacy::digest();
         if let Some(built) = self.built.borrow().as_ref()

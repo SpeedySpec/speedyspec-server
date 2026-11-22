@@ -209,10 +209,17 @@ impl RestServer {
         Some(encode::http_response(&response, head || served))
     }
 
-    /// Steps 2–11 for one request: what `rest_do_request` answers. `_embed` is read from the request's query; embedded
-    /// links are fetched once per href for the whole request, as WordPress's embed cache does.
+    /// Steps 2–11 for one request, links rendered and embedded as served over HTTP. `_embed` is read from the
+    /// request's query; embedded links are fetched once per href for the whole request, as WordPress's embed cache
+    /// does.
     pub fn dispatch(&self, request: SharedRequest, caller: &Caller) -> RestResponse {
-        self.dispatch_in(request, caller, &RefCell::new(HashMap::new()))
+        self.dispatch_in(request, caller, &RefCell::new(HashMap::new()), true)
+    }
+
+    /// Steps 2–10 as WordPress's own `dispatch()` answers: the response's links are kept apart from its data
+    /// (`response_to_data()` renders them) and nothing is embedded. For PHP's `WP_REST_Server::dispatch()`.
+    pub fn dispatch_raw(&self, request: SharedRequest, caller: &Caller) -> RestResponse {
+        self.dispatch_in(request, caller, &RefCell::new(HashMap::new()), false)
     }
 
     fn dispatch_in(
@@ -220,6 +227,7 @@ impl RestServer {
         request: SharedRequest,
         caller: &Caller,
         cache: &EmbedCache,
+        render: bool,
     ) -> RestResponse {
         if let Some(outcome) = self.hooks.pre_dispatch(&request) {
             return outcome.unwrap_or_else(|e| errors::error_response(&e));
@@ -242,7 +250,11 @@ impl RestServer {
             r.operation = Some(operation.clone());
             r.url_params = url_params;
         }
-        let embed = Embed::of(&request.borrow());
+        let embed = if render {
+            Embed::of(&request.borrow())
+        } else {
+            Embed::No
+        };
         let outcome = match self.hooks.before_callbacks(&request) {
             Err(error) => Err(error),
             Ok(()) => self.call(&operation, &request, caller, &embed, cache),
@@ -251,7 +263,9 @@ impl RestServer {
             .hooks
             .after_callbacks(outcome, &request)
             .unwrap_or_else(|e| errors::error_response(&e));
-        self.link(&mut response, &embed, caller, cache);
+        if render {
+            self.link(&mut response, &embed, caller, cache);
+        }
         response
     }
 
@@ -391,7 +405,7 @@ impl RestServer {
         sub.query_params = query::parse(raw_query);
         sub.query_params.shift_remove("_embed");
         let sub: SharedRequest = Rc::new(RefCell::new(sub));
-        let response = self.dispatch_in(sub.clone(), caller, cache);
+        let response = self.dispatch_in(sub.clone(), caller, cache, true);
         let response = self.hooks.post_dispatch(response, &sub);
         cache.borrow_mut().insert(href.to_owned(), response.clone());
         response

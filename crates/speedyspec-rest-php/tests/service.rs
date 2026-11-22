@@ -14,6 +14,10 @@ const PLUGIN: &str = r#"
 use SpeedySpec\Operation\{S, Operation, Handler};
 use SpeedySpec\Rest\Rest;
 function svc_ping( array $input, $caller ): array { return []; }
+function svc_legacy( $server ) {
+    register_rest_route( 'svc-legacy/v1', '/hello', [ 'methods' => 'GET', 'callback' => static fn () => 'hello', 'permission_callback' => '__return_true' ] );
+}
+add_action( 'rest_api_init', 'svc_legacy' );
 function svc_init(): void {
     Operation::query( 'svc/ping' )->input( null, S::object( [] ) )->output( null, S::object( [] ) )->public()->register();
     Handler::for( 'svc/ping', 'svc_ping' );
@@ -33,7 +37,7 @@ impl SiteKey for Movable {
 }
 
 fn request(b: &Booted, globals: &str) {
-    load_wordpress(&b.php);
+    load_release(&b.php);
     load(&b.php, PLUGIN);
     load(&b.php, globals);
     load(&b.php, "do_action( 'init' );");
@@ -62,6 +66,21 @@ fn main() {
         !Rc::ptr_eq(&first, &rebound)
             && matches!(&found, RouteMatch::Found { operation, .. } if operation == "svc/ping"),
         &found,
+    );
+
+    // legacy_routes_register_after_an_earlier_init
+    b.php.restart_request().unwrap();
+    request(&b, "");
+    load(
+        &b.php,
+        "\\SpeedySpec\\Operation\\Operations::call( 'svc/ping' );",
+    );
+    let server = b.service.server().expect("a server");
+    let hello = server.table().find(RestMethod::Get, "/svc-legacy/v1/hello");
+    check(
+        "legacy_routes_register_after_an_earlier_init",
+        matches!(hello, RouteMatch::Found { .. }),
+        &hello,
     );
 
     // a_new_site_gets_a_new_server

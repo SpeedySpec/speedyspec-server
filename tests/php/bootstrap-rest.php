@@ -112,5 +112,14 @@ add_action('rest_api_init', 'rest_api_default_filters', 10, 1);
 // As WordPress's test bootstrap: every REST server the tests build is the spy.
 add_filter('wp_rest_server_class', static fn () => 'Spy_REST_Server');
 
+// The server variables WordPress's test environment sets (tests_reset__SERVER).
+$_SERVER['HTTP_HOST'] = 'example.org';
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$_SERVER['REQUEST_URI'] = '';
+$_SERVER['SERVER_NAME'] = 'example.org';
+$_SERVER['SERVER_PORT'] = '80';
+$_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
+
 // WordPress has loaded: operations may initialize.
 do_action('init');

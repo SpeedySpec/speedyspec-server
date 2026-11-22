@@ -69,17 +69,23 @@ storage and dispatch go to Rust.
 
 - **What a route becomes:** each endpoint of a `register_rest_route()` route is an operation named
   `legacy-rest/{slug}-{hash}`, restricted to `rest`, with an explicit binding for its exact route.
-- **Lifetime:** legacy routes belong to the request's `WP_REST_Server` instance, as in WordPress. A new server starts
-  with none.
+- **Lifetime:** legacy routes belong to the request, and constructing a `WP_REST_Server` starts them over, as
+  WordPress's tests rely on. They are not kept per instance: a throwaway `new WP_REST_Server` mid-request empties the
+  live server's routes too.
 - **Registration:** `rest_api_init` fires from `wp_operations_init` through WordPress's own `rest_get_server()`.
-- **Duplicates:** without `$override` the first handler for a route and method wins, as WordPress's first match does.
-  With it, the later one replaces it.
+- **Duplicates:** without `$override`, a route and method already claimed keep their first handler, as WordPress's
+  first match does; a later registration serves only the methods still free. With `$override`, the route's handlers
+  are replaced wholesale. A legacy route on the same route and method as a new-style operation is logged, not refused;
+  the route table decides between them by operation name.
+- **`rest_endpoints`:** applied to the legacy routes before dispatch, as WordPress's `get_routes()` does. A route the
+  filter removes is not served, and a handler it changes (a tighter `permission_callback`, other `args`) is the one
+  dispatched.
 - **Validation in WordPress's words:** before the permission callback, the request gets the arguments' defaults, then
   WordPress's own `has_valid_params()` and `sanitize_params()` logic (required arguments, `validate_callback`,
   `sanitize_callback`, `rest_parse_request_arg` for typed arguments). Errors are WordPress's, such as
   `rest_missing_callback_param` and `rest_invalid_param` with its messages.
-- **Permission:** `true` allows; a `WP_Error` is its error; `false` or `null` is `rest_forbidden` (401 or 403); no
-  permission callback means public, with WordPress's notice.
+- **Permission:** as WordPress, a `WP_Error` is its error, `false` or `null` is `rest_forbidden` (401 or 403), and
+  anything else allows. No permission callback means public, with WordPress's notice.
 - **The callback:** it gets the request proxy. A `WP_REST_Response` keeps its status, headers and links; a `WP_Error`
   keeps its status. A callback that cannot be called is `rest_invalid_handler` (500).
 
@@ -89,8 +95,9 @@ storage and dispatch go to Rust.
 through the Rust REST server.
 - **The request:** any `WP_REST_Request` is read through its public getters. The URL parameters, defaults and
   sanitized values are written back to it, as WordPress's dispatch changes the request it is given.
-- **The response:** a `WP_REST_Response` with the matched route and handler. Neither function fires
-  `rest_post_dispatch`, as in WordPress.
+- **The response:** a `WP_REST_Response` with the matched route and handler, its links held apart from its data
+  (`response_to_data()` renders and embeds them), as WordPress's `dispatch()` returns. Neither function fires
+  `rest_post_dispatch`, as in WordPress. A method REST does not serve answers `rest_no_route`.
 - **The index:** `GET /` is trunk's own `get_index()`. `get_routes()` and `get_namespaces()` list legacy and new-style
   routes together.
 - **The hooks:** they receive the request's server and the matched handler.
@@ -106,6 +113,6 @@ yet.
 
 `tests/wordpress.rs` runs WordPress's own `rest-server.php` tests (wordpress-develop 7.1, the pinned 7.1.5 release's
 code) through the pinned PHPUnit in the embedded PHP, minus the tests that need the database or the factory. Every
-failure must be in `EXPECTED_FAILURES` with its reason. At present 119 tests run and 15 fail on purpose: batch
-requests, core's own routes, attachments, PHP's `serve_request()` output, an API PHPUnit removed, and the `Allow`
+failure must be in `EXPECTED_FAILURES` with its reason. At present all 119 copied tests run and 14 fail on purpose:
+batch requests, core's own routes, attachments, a test that creates a user, an API PHPUnit removed, and the `Allow`
 header on `OPTIONS`.

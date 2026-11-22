@@ -97,6 +97,13 @@ final class Adapter
         return ( $GLOBALS['wp_rest_server'] ?? null ) instanceof \WP_REST_Server ? $GLOBALS['wp_rest_server'] : null;
     }
 
+    /** The request's legacy routes after rest_endpoints, as trunk's get_routes() gives them; null before a server. */
+    public static function legacy_routes(): ?array
+    {
+        $server = self::server();
+        return $server ? $server->speedyspecLegacyRoutes() : null;
+    }
+
     /** On wp_operations_init: builds WordPress's REST server, which fires rest_api_init, so legacy routes register. */
     public static function rest_init(): void
     {

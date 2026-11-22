@@ -28,6 +28,12 @@ function legacy_routes( $server ) {
         register_rest_route( 'acme/v1', '/b', [ 'methods' => 'GET', 'callback' => static fn () => 'b', 'permission_callback' => '__return_true' ] );
         return;
     }
+    register_rest_route( 'acme/v1', '/swap', [ 'methods' => 'GET', 'callback' => static fn () => 'get', 'permission_callback' => '__return_true' ] );
+    register_rest_route( 'acme/v1', '/swap', [ 'methods' => 'POST', 'callback' => static fn () => 'post', 'permission_callback' => '__return_true' ], true );
+    register_rest_route( 'acme/v1', '/overlap', [ 'methods' => 'POST', 'callback' => static fn () => 'A', 'permission_callback' => '__return_true' ] );
+    register_rest_route( 'acme/v1', '/overlap', [ 'methods' => 'GET, POST', 'callback' => static fn () => 'B', 'permission_callback' => '__return_true' ] );
+    register_rest_route( 'acme/v1', '/truthy', [ 'methods' => 'GET', 'callback' => static fn () => 'ok', 'permission_callback' => static fn () => 1 ] );
+    register_rest_route( 'acme/v1', '/hardened', [ 'methods' => 'GET', 'callback' => static fn () => 'open', 'permission_callback' => '__return_true' ] );
     register_rest_route( 'acme/v1', '/perm-false', [ 'methods' => 'GET', 'callback' => static fn () => 'ran', 'permission_callback' => '__return_false' ] );
     register_rest_route( 'acme/v1', '/perm-error', [ 'methods' => 'GET', 'callback' => static fn () => 'ran', 'permission_callback' => static fn () => new WP_Error( 'x', 'X', [ 'status' => 418 ] ) ] );
     register_rest_route( 'acme/v1', '/no-perm', [ 'methods' => 'GET', 'callback' => static fn () => 'open' ] );
@@ -62,6 +68,13 @@ function legacy_routes( $server ) {
     ] );
 }
 add_action( 'rest_api_init', 'legacy_routes' );
+function legacy_harden( $endpoints ) {
+    if ( isset( $endpoints['/acme/v1/hardened'][0] ) ) {
+        $endpoints['/acme/v1/hardened'][0]['permission_callback'] = '__return_false';
+    }
+    return $endpoints;
+}
+add_filter( 'rest_endpoints', 'legacy_harden' );
 "#;
 
 fn request(b: &Booted, globals: &str) {
@@ -216,6 +229,49 @@ fn main() {
         "callback_wp_error_keeps_its_status",
         failed.0 == 409 && failed.1["code"] == "y",
         &failed,
+    );
+
+    // override_replaces_the_whole_route
+    let swapped_get = call(&b, "/wp-json/acme/v1/swap");
+    check(
+        "override_replaces_the_whole_route",
+        swapped_get.0 == 404,
+        &swapped_get,
+    );
+
+    // overlapping_methods_resolve_in_registration_order
+    let server = b.service.server().expect("a server");
+    let post = MessageFactory
+        .create_server_request(
+            Method::Post,
+            "http://x.test/wp-json/acme/v1/overlap",
+            vec![],
+        )
+        .unwrap();
+    let posted = server.serve(&post).expect("a REST request");
+    let posted: Json = serde_json::from_slice(&posted.body().borrow_mut().read_all().unwrap())
+        .unwrap_or(Json::Null);
+    let got = call(&b, "/wp-json/acme/v1/overlap");
+    check(
+        "overlapping_methods_resolve_in_registration_order",
+        posted == "A" && got == (200, Json::from("B")),
+        (&posted, &got),
+    );
+
+    // a_truthy_permission_result_allows
+    let truthy = call(&b, "/wp-json/acme/v1/truthy");
+    check(
+        "a_truthy_permission_result_allows",
+        truthy == (200, Json::from("ok")),
+        &truthy,
+    );
+
+    // rest_endpoints_changes_to_a_handler_take_effect
+    let hardened = call(&b, "/wp-json/acme/v1/hardened");
+    check(
+        "rest_endpoints_changes_to_a_handler_take_effect",
+        hardened.0 == 401,
+        &hardened,
     );
 
     // a_new_server_instance_resets_legacy_routes

@@ -98,6 +98,12 @@ class WP_REST_Server extends SpeedySpec_TrunkRestServer
         return $routes;
     }
 
+    /** @internal This request's legacy routes, filtered by rest_endpoints and normalized, as trunk lists them. */
+    public function speedyspecLegacyRoutes(): array
+    {
+        return parent::get_routes();
+    }
+
     public function get_namespaces()
     {
         return array_values( array_unique( array_merge( parent::get_namespaces(), \SpeedySpec\Rest\Native\namespaces() ) ) );

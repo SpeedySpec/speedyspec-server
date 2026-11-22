@@ -187,12 +187,6 @@ impl OperationArea {
         self.state.site().map_err(|failure| failure.error)
     }
 
-    /// The site this request registers into, without firing `wp_operations_init` (for registrations made while it
-    /// runs, such as legacy REST routes on `rest_api_init`).
-    pub fn registering(&self) -> Rc<Site> {
-        self.state.registering()
-    }
-
     /// The sites this worker serves.
     pub fn sites(&self) -> &Sites {
         &self.state.sites

@@ -88,16 +88,6 @@ impl Registries {
         Ok(())
     }
 
-    /// Registers `spec`, replacing an operation of the same name while registration is open (a legacy
-    /// `register_rest_route( …, $override = true )`). After closing it follows [`Registries::register_operation`]: an
-    /// identical definition is a no-op, anything else is refused.
-    pub fn replace_operation(&self, spec: OperationSpec) -> Result<(), RegistrationError> {
-        if !self.closed.get() {
-            self.operations.borrow_mut().remove(spec.name.as_str());
-        }
-        self.register_operation(spec)
-    }
-
     /// Limits the operation `name` to the named transports, replacing any restriction it declared itself. Order does
     /// not matter: a restriction of an operation not registered yet applies when it registers, and closing reports one
     /// whose operation never does. After closing, the same restriction is a no-op and any other is refused.

@@ -29,15 +29,13 @@ use speedyspec_wp_hooks_php::WpHooksArea;
 ///   `oembed/1.0`), registered by `create_initial_rest_routes` from database-backed controllers this suite does not
 ///   load.
 /// - `test_get_index_should_return_site_icon_and_site_logo_fields`: it needs attachments in the database.
-/// - `test_rest_enable_filter_is_deprecated`, `test_rest_send_refreshed_nonce`: they run `serve_request()`, PHP's own
-///   output path, which the shim does not serve (Rust serves HTTP); the second also creates a user with the factory.
+/// - `test_rest_send_refreshed_nonce`: it creates a user with the factory (database), then runs `serve_request()`.
 /// - `test_batch_*`: batch requests (`/batch/v1`) are not served yet.
 const EXPECTED_FAILURES: &[&str] = &[
     "test_allow_header_sent_on_options_request",
     "test_json_error_with_status",
     "test_link_embedding_with_links",
     "test_get_index_should_return_site_icon_and_site_logo_fields",
-    "test_rest_enable_filter_is_deprecated",
     "test_rest_send_refreshed_nonce",
     "test_get_routes_respects_namespace_parameter",
     "test_batch_v1_opt_in",
@@ -166,7 +164,8 @@ fn main() {
             "wordpress rest-server.php ({tests} tests, {} expected failures)",
             EXPECTED_FAILURES.len()
         ),
-        tests >= 80 && failed == EXPECTED_FAILURES,
+        // Every copied test runs: a test that stops being collected, or is skipped, is a change to look at.
+        tests == 119 && total("skipped") == 0 && failed == EXPECTED_FAILURES,
         (&status, tests, failures, errors, &failed),
     );
 }

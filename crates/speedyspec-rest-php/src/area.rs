@@ -104,13 +104,12 @@ fn native_dispatch(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
         Some(PhpValue::Str(m)) => m.clone(),
         _ => "GET".into(),
     };
-    let (method, head) = if method_name.eq_ignore_ascii_case("HEAD") {
-        (RestMethod::Head, true)
-    } else {
-        (
-            RestMethod::parse(&method_name).unwrap_or(RestMethod::Get),
-            false,
-        )
+    // A method REST does not serve (an empty one included) matches no route: WordPress answers rest_no_route.
+    let known = RestMethod::parse(&method_name);
+    let (method, head) = match known {
+        Some(RestMethod::Head) => (RestMethod::Head, true),
+        Some(method) => (method, false),
+        None => (RestMethod::Get, false),
     };
     let route = match php_field(&parts, "route") {
         Some(PhpValue::Str(r)) => r.clone(),
@@ -145,9 +144,16 @@ fn native_dispatch(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
         rest.body = raw.clone().into_bytes();
     }
     let shared = Rc::new(std::cell::RefCell::new(rest));
-    let response = match service.server() {
-        Ok(server) => server.dispatch(shared.clone(), &service.caller()),
-        Err(error) => speedyspec_rest::errors::error_response(&error),
+    let response = match (known, service.server()) {
+        (None, _) => speedyspec_rest::errors::error_response(
+            &speedyspec_operation_contracts::OperationError::new(
+                "operation_not_found",
+                speedyspec_operation_contracts::Category::NotFound,
+                "no route",
+            ),
+        ),
+        (Some(_), Ok(server)) => server.dispatch_raw(shared.clone(), &service.caller()),
+        (Some(_), Err(error)) => speedyspec_rest::errors::error_response(&error),
     };
     let (matched, operation) = {
         let r = shared.borrow();

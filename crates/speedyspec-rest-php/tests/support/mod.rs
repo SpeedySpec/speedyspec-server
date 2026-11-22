@@ -142,6 +142,7 @@ function untrailingslashit( $value ) { return rtrim( $value, '/\\' ); }
 function is_user_logged_in() { return ( $GLOBALS['uid'] ?? 0 ) > 0; }
 function get_current_user_id() { return $GLOBALS['uid'] ?? 0; }
 function __return_true() { return true; }
+function is_multisite() { return false; }
 function __return_false() { return false; }
 function absint( $maybeint ) { return abs( (int) $maybeint ); }
 function wp_is_json_media_type( $media_type ) { return 'application/json' === $media_type || str_ends_with( $media_type, '+json' ); }

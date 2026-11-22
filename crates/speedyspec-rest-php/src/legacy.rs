@@ -79,17 +79,26 @@ pub fn operation_name(namespace: &str, route: &str, methods: &[RestMethod]) -> S
     format!("legacy-rest/{slug}-{hash:08x}")
 }
 
+/// The methods of a handler: a list (`['GET']`) or WordPress's normalized map (`['GET' => true]`).
 fn methods_of(handler: &PhpValue) -> Vec<RestMethod> {
     match field(handler, "methods") {
         PhpValue::Array(items) => items
             .iter()
-            .filter_map(|(_, m)| match m {
-                PhpValue::Str(name) => RestMethod::parse(name),
+            .filter_map(|(k, m)| match (k, m) {
+                (_, PhpValue::Str(name)) => RestMethod::parse(name),
+                (Key::Str(name), _) => RestMethod::parse(name),
                 _ => None,
             })
             .collect(),
         _ => Vec::new(),
     }
+}
+
+/// Whether every method reads only (`GET`, `HEAD`, `OPTIONS`), making the endpoint a query.
+fn reads_only(methods: &[RestMethod]) -> bool {
+    methods
+        .iter()
+        .all(|m| matches!(m, RestMethod::Get | RestMethod::Head | RestMethod::Options))
 }
 
 /// One legacy endpoint registered in this request.
@@ -107,7 +116,55 @@ thread_local! {
 /// Forgets this request's legacy routes: a new `WP_REST_Server` starts with none, as WordPress's does.
 pub fn reset() {
     ENTRIES.with(|e| e.borrow_mut().clear());
+    FILTERED.with(|f| f.set(false));
     clear();
+}
+
+thread_local! {
+    /// Whether `rest_endpoints` has been applied to this request's legacy routes since they last changed.
+    static FILTERED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Applies `rest_endpoints` to this request's legacy routes, as WordPress's `get_routes()` does before dispatch: a
+/// route the filter removed is dropped, and a handler it changed (a tighter `permission_callback`, other `args` or
+/// `callback`) is the one dispatched. Runs once per change of the routes.
+pub fn apply_endpoints_filter() {
+    if FILTERED.with(std::cell::Cell::get) {
+        return;
+    }
+    FILTERED.with(|f| f.set(true));
+    let Some(PhpValue::Array(routes)) = crate::errors::adapter("legacy_routes", &[]) else {
+        return;
+    };
+    let entries: Vec<(String, Entry)> = ENTRIES.with(|e| {
+        e.borrow()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
+    });
+    for (name, entry) in entries {
+        let full = entry.binding.full_route();
+        let filtered = routes
+            .iter()
+            .find(|(k, _)| *k == Key::Str(full.clone()))
+            .map(|(_, v)| v.clone());
+        let handler = match filtered {
+            Some(PhpValue::Array(handlers)) => handlers.into_iter().map(|(_, h)| h).find(|h| {
+                let methods = methods_of(h);
+                entry.binding.methods.iter().all(|m| methods.contains(m))
+            }),
+            _ => None,
+        };
+        match handler {
+            Some(handler) => {
+                HANDLERS.with(|h| h.borrow_mut().insert(name, handler));
+            }
+            None => {
+                ENTRIES.with(|e| e.borrow_mut().shift_remove(&name));
+                HANDLERS.with(|h| h.borrow_mut().remove(&name));
+            }
+        }
+    }
 }
 
 /// This request's legacy endpoints.
@@ -141,18 +198,53 @@ pub fn register(
     };
     let prefix = format!("/{namespace}");
     let relative = route.strip_prefix(&prefix).unwrap_or(route).to_owned();
+    if replace {
+        // As WordPress's register_route with $override: the route's handlers are replaced wholesale.
+        let gone: Vec<String> = ENTRIES.with(|e| {
+            let mut entries = e.borrow_mut();
+            let gone: Vec<String> = entries
+                .iter()
+                .filter(|(_, entry)| {
+                    entry.binding.namespace == namespace && entry.binding.route == relative
+                })
+                .map(|(name, _)| name.clone())
+                .collect();
+            for name in &gone {
+                entries.shift_remove(name);
+            }
+            gone
+        });
+        HANDLERS.with(|h| {
+            let mut handlers = h.borrow_mut();
+            for name in &gone {
+                handlers.remove(name);
+            }
+        });
+    }
     for (_, handler) in items {
-        let methods = methods_of(handler);
+        // Without $override, a route and method already claimed keep their first handler, as WordPress's first
+        // matching handler wins: only the methods still free are registered.
+        let claimed: Vec<RestMethod> = ENTRIES.with(|e| {
+            e.borrow()
+                .values()
+                .filter(|entry| {
+                    entry.binding.namespace == namespace && entry.binding.route == relative
+                })
+                .flat_map(|entry| entry.binding.methods.clone())
+                .collect()
+        });
+        let methods: Vec<RestMethod> = methods_of(handler)
+            .into_iter()
+            .filter(|m| !claimed.contains(m))
+            .collect();
         if methods.is_empty() {
-            problems.push(format!("{route}: an endpoint has no method REST serves"));
+            if claimed.is_empty() {
+                problems.push(format!("{route}: an endpoint has no method REST serves"));
+            }
             continue;
         }
         let name = operation_name(namespace, route, &methods);
-        // Without $override the first registration wins, as WordPress's first matching handler does.
-        if !replace && ENTRIES.with(|e| e.borrow().contains_key(&name)) {
-            continue;
-        }
-        let builder = if methods.iter().all(|m| *m == RestMethod::Get) {
+        let builder = if reads_only(&methods) {
             Operation::query(&name)
         } else {
             Operation::command(&name)
@@ -178,6 +270,7 @@ pub fn register(
             methods,
         };
         ENTRIES.with(|e| e.borrow_mut().insert(name.clone(), Entry { spec, binding }));
+        FILTERED.with(|f| f.set(false));
         HANDLERS.with(|h| h.borrow_mut().insert(name.clone(), handler.clone()));
         let legacy: Rc<dyn OperationHandler> = Rc::new(LegacyHandler {
             operation: name.clone(),
@@ -227,9 +320,10 @@ impl PermissionCheck for LegacyPermission {
         let proxy = current_proxy()?;
         let allowed = speedyspec_php::call_catching(&callback, &[proxy])
             .map_err(|f| failed("permission_callback", f.error))?;
+        // As WordPress's respond_to_request: a WP_Error is its error, false or null refuses, anything else allows.
         match describe(&allowed) {
             Described::Error(e) => Err(e),
-            _ if matches!(allowed, PhpValue::Bool(true)) => Ok(()),
+            _ if !matches!(allowed, PhpValue::Bool(false) | PhpValue::Null) => Ok(()),
             _ if caller.user.is_none() => Err(OperationError::new(
                 "operation_unauthenticated",
                 Category::Unauthenticated,
@@ -261,8 +355,7 @@ impl LegacyPermission {
                 let (Key::Str(name), default) = (key, field(arg, "default")) else {
                     continue;
                 };
-                if let PhpValue::Array(items) = arg
-                    && items.iter().any(|(k, _)| *k == Key::Str("default".into()))
+                if !matches!(default, PhpValue::Null)
                     && let Ok(value) = speedyspec_operation_php::convert::from_php(&default)
                 {
                     r.default_params.insert(name.clone(), value);

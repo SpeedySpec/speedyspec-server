@@ -70,6 +70,28 @@ fn main() {
         &report,
     );
 
+    // dispatch_data_has_no_links
+    let raw = run(
+        &b,
+        "$r = rest_do_request( new WP_REST_Request( 'GET', '/acme/v1/reports/3' ) ); return json_encode( [ array_key_exists( '_links', $r->get_data() ), isset( $r->get_links()['author'] ) ] );",
+    );
+    check(
+        "dispatch_data_has_no_links",
+        raw == PhpValue::Str("[false,true]".into()),
+        &raw,
+    );
+
+    // an_unknown_method_is_no_route
+    let purge = run(
+        &b,
+        "$r = rest_do_request( new WP_REST_Request( 'PURGE', '/acme/v1/reports/3' ) ); return $r->get_status();",
+    );
+    check(
+        "an_unknown_method_is_no_route",
+        purge == PhpValue::Int(404),
+        &purge,
+    );
+
     // rest_do_request_reaches_a_legacy_route
     let legacy = run(
         &b,
