@@ -39,3 +39,7 @@ harness = false
 
 [[test]]
 name = "release"
+
+[[test]]
+name = "compat"
+harness = false

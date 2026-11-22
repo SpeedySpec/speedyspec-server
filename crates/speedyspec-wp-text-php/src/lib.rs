@@ -112,3 +112,28 @@ impl NativeArea for TextArea {
         self.escape.new_request();
     }
 }
+
+/// Runs the formatting scenarios through the native functions (the port side of `compat/formatting`), over `release`
+/// prepared next to it with [`prepare_release`].
+///
+/// @param php
+///     The embedded PHP, booted with the hooks, kses and text areas.
+/// @param release
+///     The pinned release's `wordpress/` directory.
+/// @return
+///     The runner.
+pub fn formatting_scenario_runner(
+    php: speedyspec_php::Php,
+    release: &std::path::Path,
+) -> Result<speedyspec_compat::PhpRunner, String> {
+    let out = release.with_file_name("wordpress-formatting-port");
+    let root = prepare_release(release, &out)?;
+    let code = format!(
+        "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', true); require {:?};",
+        format!("{}/", root.display()),
+        speedyspec_compat::compat_dir().join("formatting/setup.php").display().to_string()
+    );
+    Ok(speedyspec_compat::PhpRunner::new(php, move |php| {
+        php.eval("speedyspec://compat/formatting-setup", &code).map(|_| ()).map_err(|e| e.to_string())
+    }))
+}
