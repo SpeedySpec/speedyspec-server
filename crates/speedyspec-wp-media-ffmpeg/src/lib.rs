@@ -10,6 +10,7 @@ extern crate speedyspec_ffmpeg_sys;
 
 mod ffi;
 mod mapper;
+mod names;
 mod probe;
 mod reader;
 
