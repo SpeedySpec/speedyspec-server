@@ -1,0 +1,29 @@
+[package]
+name = "speedyspec-wp-crypto-php"
+version = "0.1.0"
+description = "WordPress's sodium functions (wp_fast_hash, wp_verify_fast_hash, wp_trusted_keys, verify_file_signature) as native PHP functions over Rust and libsodium."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-hooks = { path = "../speedyspec-hooks" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-crypto = { path = "../speedyspec-wp-crypto" }
+speedyspec-wp-crypto-contracts = { path = "../speedyspec-wp-crypto-contracts" }
+speedyspec-wp-crypto-sodium = { path = "../speedyspec-wp-crypto-sodium" }
+speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
+speedyspec-wp-text-escape = { path = "../speedyspec-wp-text-escape" }
+base64 = "0.22"
+
+[dev-dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+
+[[test]]
+name = "php"
+harness = false

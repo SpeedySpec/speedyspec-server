@@ -5623,6 +5623,26 @@ name = "speedyspec-wp-crypto-contracts"
 version = "0.1.0"
 
 [[package]]
+name = "speedyspec-wp-crypto-php"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-hooks",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-wp-crypto",
+ "speedyspec-wp-crypto-contracts",
+ "speedyspec-wp-crypto-sodium",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-text-contracts",
+ "speedyspec-wp-text-escape",
+]
+
+[[package]]
 name = "speedyspec-wp-crypto-sodium"
 version = "0.1.0"
 dependencies = [
