@@ -4,10 +4,10 @@ WordPress's theme.json engine (`WP_Theme_JSON`, `WP_Theme_JSON_Schema`) in Rust,
 `ThemeJsonApi` as the facade behind the PHP class. It follows WordPress 7.1.5, the release every area is recorded
 against. Arrays come back equal to WordPress's by PHP's `==`; CSS is byte for byte the same.
 
-Plans 1 to 3 of 4 are in: the typed model, the schema tables, migration, sanitizing, construction, merging, the
-data methods, stylesheets (`get_stylesheet` for every type, `get_styles_for_block`, layout styles, preset variables
-and classes, fluid font sizes, `wp_get_block_css_selector`), `remove_insecure_properties`, duotone SVG filters and
-`resolve_variables`. The resolver follows.
+All four plans are in: the typed model, the schema tables, migration, sanitizing, construction, merging, the data
+methods, stylesheets (`get_stylesheet` for every type, `get_styles_for_block`, layout styles, preset variables and
+classes, fluid font sizes, `wp_get_block_css_selector`), `remove_insecure_properties`, duotone SVG filters,
+`resolve_variables`, the resolver (`WP_Theme_JSON_Resolver`) and the global styles functions.
 
 ## The crates
 
@@ -28,6 +28,9 @@ and classes, fluid font sizes, `wp_get_block_css_selector`), `remove_insecure_pr
 | `layout` | `get_layout_styles`, `get_root_layout_rules` | Layout rules from WordPress's layout definitions, kept only when kses allows them. |
 | `security` | `remove_insecure_properties`, `remove_insecure_styles`, `remove_insecure_settings`, `is_safe_css_declaration`, … | Only what kses, the escapers and the user's capabilities allow (`styles.css` needs `edit_css`). |
 | `duotone` | `get_svg_filters`, `WP_Duotone::get_filter_svg_from_preset` and its `colord_*` parsing | The SVG filters for duotone presets; the block supports area keeps `WP_Duotone` itself. |
+| `resolver` | `WP_Theme_JSON_Resolver` | Core, blocks, theme (parent under child) and user layers, read, translated by `theme-i18n.json`, filtered (`wp_theme_json_data_*`) and kept per request as WordPress's statics are; `theme.json` files cached per worker by path, size and modification time; style variations; resolved file URIs. |
+| `global_styles` | `wp_get_global_settings`, `wp_get_global_styles`, `wp_get_global_stylesheet`, … | The global styles functions over the resolver, with WordPress's object cache calls (group `theme_json`); `ResolverGlobalSettings` gives fluid typography `wp_get_global_settings()`. |
+| `php_json` | `json_decode` | PHP's JSON decoding: key order, integer keys, integers, its error messages. |
 | `stylesheet` | `get_stylesheet`, `get_styles_for_block`, `process_pseudo_selectors`, `process_blocks_custom_css`, … | The stylesheet, put together part by part over a `Sheet` (the document, the ports, the blocks and their metadata). |
 
 ## Patterns, and where they are used
@@ -43,6 +46,8 @@ and classes, fluid font sizes, `wp_get_block_css_selector`), `remove_insecure_pr
 - **Strategy:** the preset rules applied while merging (`UseDefaultNames`, `RemoveDefaultSlugs`), and fluid font
   sizes (`FluidFontSize`) behind `PRESETS_METADATA`'s `value_func` and `font-size` declarations.
 - **Builder:** the stylesheet, appended part by part in WordPress's order (`Sheet::stylesheet`).
+- **Repository per origin, behind a Facade:** `ThemeJsonResolver` reads each layer from its source (files, the
+  registered blocks, the user's post) through ports, and `GlobalStylesApi` sits over it.
 - **Adapter:** the memory adapters here, `HookApiFilters` over the Rust Hook API; the PHP adapters in the `-php`
   crate.
 - **Null Object:** `NoFilters`, `NoThemeSupports`, `NoCapabilities`, `NoTranslation`.
@@ -63,7 +68,11 @@ filter may change.
 3. **A failing `wp_theme_json_get_style_nodes` callback** surfaces as a PHP `Error` carrying the hook's message,
    not as the callback's own exception.
 4. **Duotone filters** are always the compact markup WordPress prints without `SCRIPT_DEBUG`.
-5. **`get_custom_css()`** (deprecated) reads block selectors from the computed metadata; WordPress reads its static
+5. **Resolver results are new objects.** WordPress's resolver returns its static objects, so a caller that changes
+   `get_core_data()`'s result changes WordPress's cache; the port hands out a new `WP_Theme_JSON` each time.
+6. **The protected statics of `WP_Theme_JSON_Resolver`** (`$core`, `$blocks_cache`, `$i18n_schema`, …) do not exist,
+   so tests that reach them through Reflection do not apply.
+7. **`get_custom_css()`** (deprecated) reads block selectors from the computed metadata; WordPress reads its static
    cache, which is empty when nothing filled it earlier in the request.
 
 ## Testing
@@ -77,9 +86,21 @@ filter may change.
   for `safecss_filter_attr()`.
 - Security, duotone and variable tests the same way (every colour notation, kses-rewritten CSS, HTML in preset
   names, `edit_css`).
-- `compat/theme-json`: 302 recorded scenarios (the class constants, migration, the public API, the core
+- Resolver and global styles tests the same way, over nine of WordPress's test themes (`tests/data/themedir1`),
+  classic themes with theme supports, user styles, data filters and the object cache keys.
+- `compat/theme-json`: 424 recorded scenarios (the class constants, migration, the public API, the core
   `theme.json`, Twenty Twenty-Three to Twenty-Five with style variations, the PHPUnit `themedir1` themes, and each
   of their stylesheets by type, insecure-property removal, SVG filters, resolved variables and
-  `wp_filter_global_styles_post`), replayed through the native classes by `speedyspec-wp-theme-json-php`'s `compat`
+  `wp_filter_global_styles_post`, the resolver over the test themes, and each default theme's global settings, styles,
+  stylesheets and style variations with and without user styles), replayed through the native classes by `speedyspec-wp-theme-json-php`'s `compat`
   test.
 - `benches/stylesheet.rs` and `benches/php-baseline.php`; the numbers are in [docs/benchmarks.md](docs/benchmarks.md).
+
+## Not done yet
+
+- The area is not in the runtime's worker list: the worker loads WordPress's own files and runs no area's
+  `prepare_release` yet (kses, shortcodes and i18n are in the same state), and WordPress's theme.json class files
+  are not guarded, so wiring the area now would declare `WP_Theme_JSON` twice. `release.rs` is ready for it.
+- WordPress's PHPUnit theme tests (`wpThemeJson.php`, `wpThemeJsonResolver.php`, …) are not yet run against the area.
+- No per-worker stylesheet or merged-data cache: a hit would skip PHP callbacks the work reaches (kses and escaper
+  filters, data filters, notices). WordPress's own per-request statics and object cache calls are kept.
