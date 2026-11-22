@@ -84,6 +84,12 @@ if [ -n "${GITHUB_TOKEN:-}" ]; then
     token_flags=(--env GITHUB_TOKEN)
 fi
 
+# The MySQL tests reach a database the host (CI's service container) serves: host networking, URL passed by name.
+mysql_flags=()
+if [ -n "${SPEEDYSPEC_TEST_MYSQL_URL:-}" ]; then
+    mysql_flags=(--network host --env SPEEDYSPEC_TEST_MYSQL_URL)
+fi
+
 # --init: an init (tini) as PID 1 reaps orphans, as a host does; the keeper tests watch orphaned generations exit.
 exec docker run --rm --init ${tty_flag[@]+"${tty_flag[@]}"} \
     --platform "$platform" \
@@ -92,6 +98,7 @@ exec docker run --rm --init ${tty_flag[@]+"${tty_flag[@]}"} \
     --volume "$target_mount:/work/target" \
     --volume "speedyspec-server-php-registry-${platform##*/}:/usr/local/cargo/registry" \
     ${token_flags[@]+"${token_flags[@]}"} \
+    ${mysql_flags[@]+"${mysql_flags[@]}"} \
     --env CARGO_BUILD_TARGET="$rust_target" \
     --env SPEEDYSPEC_ALLOW_HOST_INSTALL=1 \
     --workdir /work \

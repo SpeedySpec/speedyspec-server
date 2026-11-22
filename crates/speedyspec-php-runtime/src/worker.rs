@@ -212,6 +212,13 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
             return 1;
         }
     };
+    let database_config = match crate::database::database_config(|key| std::env::var(key).ok()) {
+        Ok(config) => config,
+        Err(err) => {
+            log("php_worker_boot_failed", &spec, &err);
+            return 1;
+        }
+    };
     let legacy = Rc::new(RequestHooks(std::cell::RefCell::new(Rc::new(
         speedyspec_hooks_memory::MemoryHooks::new(),
     ))));
@@ -223,16 +230,32 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         .stateful(HOOK_STORE)
         .bindings(spec.bindings.clone());
     let container_area = PasswordArea::ports(container_area);
-    let crypto = CryptoArea::new(hooks.api(), sodium);
-    let password = password_area(hooks.api(), &container, sodium);
-    let areas: Vec<Rc<dyn NativeArea>> = vec![
+    let hook_api = hooks.api();
+    let crypto = CryptoArea::new(hook_api.clone(), sodium);
+    let password = password_area(hook_api.clone(), &container, sodium);
+    let mut areas: Vec<Rc<dyn NativeArea>> = vec![
         speedyspec_php_ext::twins_area(),
         Rc::new(container_area),
         Rc::new(hooks),
         Rc::new(RequestHooksArea(legacy.clone())),
-        Rc::new(crypto),
-        Rc::new(password),
     ];
+    // With database credentials: the database, object cache and options areas, for the worker's life.
+    let database = match database_config {
+        Some(config) => match crate::database::boot_database(config, &container, &hook_api) {
+            Ok((database, database_areas)) => {
+                areas.extend(database_areas);
+                Some(database)
+            }
+            Err(failure) => {
+                let (event, message) = failure.event();
+                log(event, &spec, message);
+                return 1;
+            }
+        },
+        None => None,
+    };
+    areas.push(Rc::new(crypto));
+    areas.push(Rc::new(password));
     let preload = preload(&spec);
     let php = match Php::boot(BootOptions {
         hooks: legacy,
@@ -305,20 +328,39 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
                 params,
                 broken: false,
             };
-            let (poisoned, peak) = match inside {
-                Some(script) => {
+            // A db.php drop-in would replace the native wpdb: refused, every request, before PHP runs.
+            let drop_in = match (&database, &spec.site_dir) {
+                (Some(_), Some(site)) => {
+                    speedyspec_wp_db_php::WpDbArea::check_drop_in(&site.join("wp-content")).err()
+                }
+                _ => None,
+            };
+            let (poisoned, peak) = match (drop_in, inside) {
+                (Some(err), _) => {
+                    log("php_worker_drop_in_refused", &spec, &err.to_string());
+                    request.send_headers(500, &["Content-Type: text/plain".to_string()]);
+                    request.write(err.to_string().as_bytes());
+                    (false, 0)
+                }
+                (None, Some(script)) => {
                     let served = php.serve(&mut request, &script);
                     if let Err(err) = &served.result {
                         let _ = request.responder.write_stderr(err.to_string().as_bytes());
                     }
                     (served.poisoned, served.peak_memory)
                 }
-                None => {
+                (None, None) => {
                     request.send_headers(404, &["Content-Type: text/plain".to_string()]);
                     request.write(b"not found");
                     (false, 0)
                 }
             };
+            // Connections live for the worker; a transaction a request left open does not.
+            if let Some(database) = &database
+                && let Err(err) = database.registry.reset_all()
+            {
+                log("php_worker_open_transaction", &spec, &err.to_string());
+            }
             requests += 1;
             let report = WorkerReport {
                 memory: peak,
