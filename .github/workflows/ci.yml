@@ -35,6 +35,7 @@ jobs:
           --exclude speedyspec-php --exclude speedyspec-php-ext --exclude speedyspec-container-php
           --exclude speedyspec-cqrs-php --exclude speedyspec-compat --exclude speedyspec-wp-hooks-php
           --exclude speedyspec-wp-db-php --exclude speedyspec-wp-object-cache-php --exclude speedyspec-wp-options-php
+          --exclude speedyspec-wp-cron-php
           --exclude speedyspec-wp-text-diff-php --exclude speedyspec-wp-shortcode-php
           --exclude speedyspec-data-corpus --exclude speedyspec-data-sqlite --exclude speedyspec-data-postgres
           --exclude speedyspec-wp-utf8-php --exclude speedyspec-wp-i18n-php --exclude speedyspec-wp-token-map-php
@@ -132,9 +133,11 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: scripts/linux-php.sh scripts/build-php.sh
       - name: Test with MySQL
-        run: >-
-          scripts/linux-php.sh cargo test
-          -p speedyspec-php-runtime --test database
+        run: |
+          scripts/linux-php.sh cargo test -p speedyspec-php-runtime --test database --test cron_run_once --test worker
+          scripts/linux-php.sh cargo test -p speedyspec-wp-options-sql --test conditional_mysql
+          scripts/linux-php.sh cargo test -p speedyspec-wp-options-tests --test conditional
+          scripts/linux-php.sh cargo test -p speedyspec-wp-cron -p speedyspec-wp-cron-options -p speedyspec-wp-cron-php
 
   # The crates published to crates.io (scripts/publish-crates.txt): the list is consistent with the workspace, and
   # every one of them packages. No static PHP: packaging does not build them (the php job does).

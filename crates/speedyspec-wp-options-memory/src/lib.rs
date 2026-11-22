@@ -170,6 +170,39 @@ impl OptionRepository for MemoryOptionRepository {
         Ok(1)
     }
 
+    fn update_if(
+        &self,
+        name: &OptionName,
+        expected: &SerializedValue,
+        value: Option<&SerializedValue>,
+        autoload: Option<&Autoload>,
+    ) -> Result<u64, OptionsError> {
+        {
+            let rows = self.rows.borrow();
+            match rows.get(name.as_str()) {
+                Some((v, _)) if v == expected => {}
+                _ => {
+                    self.sent();
+                    return Ok(0);
+                }
+            }
+        }
+        self.update(name, value, autoload)
+    }
+
+    fn add_if_absent(&self, option: &OptionEntity) -> Result<u64, OptionsError> {
+        self.sent();
+        let mut rows = self.rows.borrow_mut();
+        if rows.contains_key(option.name.as_str()) {
+            return Ok(0);
+        }
+        rows.insert(
+            option.name.as_str().to_string(),
+            (option.value.clone(), option.autoload.clone()),
+        );
+        Ok(1)
+    }
+
     fn remove(&self, name: &OptionName) -> Result<u64, OptionsError> {
         self.sent();
         Ok(u64::from(

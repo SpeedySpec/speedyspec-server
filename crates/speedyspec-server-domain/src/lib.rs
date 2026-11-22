@@ -19,8 +19,8 @@ pub use contracts::{
 };
 pub use error::DomainError;
 pub use manifest::{
-    AccessRule, CacheRule, GateSection, HealthSection, MANIFEST_FILE, MaintenanceScope, PhpSection,
-    PublicWhen, ReleaseManifest, StaticSection, SwitchSection,
+    AccessRule, CacheRule, CronSection, GateSection, HealthSection, MANIFEST_FILE,
+    MaintenanceScope, PhpSection, PublicWhen, ReleaseManifest, StaticSection, SwitchSection,
 };
 pub use mount::{Access, HostMatch, Mount, MountTable};
 pub use release::{Artifact, IndexEntry, ReleaseIndex};

@@ -239,6 +239,8 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         .bindings(spec.bindings.clone());
     let container_area = TextDiffArea::ports(PasswordArea::ports(container_area));
     let hook_api = hooks.api();
+    // When the app wants its scheduled call next: reported to the server after each request.
+    let next_wake = crate::wake::NextWake::new();
     let crypto = CryptoArea::new(hook_api.clone(), sodium);
     let password = password_area(hook_api.clone(), &container, sodium);
     let text_diff = text_diff_area(hook_api.clone(), &container);
@@ -247,20 +249,23 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         Rc::new(container_area),
         Rc::new(hooks),
         Rc::new(RequestHooksArea(legacy.clone())),
+        Rc::new(crate::wake::NextWakeArea(next_wake.clone())),
     ];
     // With database credentials: the database, object cache and options areas, for the worker's life.
     let database = match database_config {
-        Some(config) => match crate::database::boot_database(config, &container, &hook_api) {
-            Ok((database, database_areas)) => {
-                areas.extend(database_areas);
-                Some(database)
+        Some(config) => {
+            match crate::database::boot_database(config, &container, &hook_api, next_wake.clone()) {
+                Ok((database, database_areas)) => {
+                    areas.extend(database_areas);
+                    Some(database)
+                }
+                Err(failure) => {
+                    let (event, message) = failure.event();
+                    log(event, &spec, message);
+                    return 1;
+                }
             }
-            Err(failure) => {
-                let (event, message) = failure.event();
-                log(event, &spec, message);
-                return 1;
-            }
-        },
+        }
         None => None,
     };
     areas.push(Rc::new(crypto));
@@ -378,6 +383,7 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
                 memory: peak,
                 requests,
                 poisoned,
+                next_cron: next_wake.take(),
             };
             let _ = responder.write_stderr(&report.encode());
             if responder.end_request(0).is_err() {

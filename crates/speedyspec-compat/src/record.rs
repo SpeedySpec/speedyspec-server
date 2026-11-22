@@ -192,12 +192,12 @@ fn setup_for(area: &str, root: &Path, multisite: bool) -> Result<Setup, String> 
             "wp-includes/class-wp-object-cache.php",
             "wp-includes/cache.php",
         ],
-        "options" | "formatting" | "shortcode" | "rewrite" | "kses" | "theme-json" => &[],
+        "options" | "formatting" | "shortcode" | "rewrite" | "kses" | "theme-json" | "cron" => &[],
         other => return Err(format!("the recorder does not know the area {other}")),
     };
     if matches!(
         area,
-        "options" | "formatting" | "shortcode" | "rewrite" | "kses" | "theme-json"
+        "options" | "formatting" | "shortcode" | "rewrite" | "kses" | "theme-json" | "cron"
     ) {
         // `setup.php` loads WordPress's files itself, for either side.
         let code = format!(

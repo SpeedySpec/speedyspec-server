@@ -1,7 +1,7 @@
 //! Which hook store the Hook API uses: the one bound in the container now (the worker's memory store, or a PHP
 //! store bound in `app.<id>.php.bindings`), and the PHP store's adapter.
 
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use speedyspec_container::Container;
 use speedyspec_php_ext::{Key, PhpObject, Value, php_port};
@@ -15,23 +15,29 @@ use crate::registry;
 pub const HOOK_STORE: &str = "SpeedySpec\\WpHooks\\HookStore";
 
 /// The store bound under [`HOOK_STORE`] at the moment of each call, so a PHP binding takes every registration.
+///
+/// The container is held weakly. The Hook API's handlers are bound in it, and they hold the Hook API, which holds
+/// this store, so a strong reference would make a cycle (Container → handler → Hook API → store → Container). When
+/// the container is gone, `fallback` answers.
 pub struct ResolvedHookStore {
-    container: Rc<Container>,
+    container: Weak<Container>,
     fallback: Rc<dyn HookStore>,
 }
 
 impl ResolvedHookStore {
-    pub fn new(container: Rc<Container>, fallback: Rc<dyn HookStore>) -> ResolvedHookStore {
+    /// The store bound in `container` (without keeping it alive), or `fallback` when none is bound.
+    pub fn new(container: &Rc<Container>, fallback: Rc<dyn HookStore>) -> ResolvedHookStore {
         ResolvedHookStore {
-            container,
+            container: Rc::downgrade(container),
             fallback,
         }
     }
 
     fn current(&self) -> Rc<dyn HookStore> {
         self.container
-            .make_port::<dyn HookStore>(HOOK_STORE)
-            .unwrap_or_else(|_| self.fallback.clone())
+            .upgrade()
+            .and_then(|container| container.make_port::<dyn HookStore>(HOOK_STORE).ok())
+            .unwrap_or_else(|| self.fallback.clone())
     }
 }
 
