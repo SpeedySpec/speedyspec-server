@@ -101,7 +101,7 @@ impl CronApi {
                 };
                 for (key, event) in keys {
                     match self.run_event(timestamp, hook, key, event, foreign)? {
-                        Ran::Ran => summary.ran += 1,
+                        EventOutcome::Ran => summary.ran += 1,
                         EventOutcome::ClaimedByOthers => summary.claimed_by_others += 1,
                         EventOutcome::Unclaimed => summary.unclaimed += 1,
                     }
@@ -149,7 +149,7 @@ impl CronApi {
             let result = self.unschedule_event(&timestamp, &hook, &args, true)?;
             self.report(CronStep::Unschedule, &hook, &result, event)?;
             self.run_action(&hook, &args)?;
-            return Ok(Ran::Ran);
+            return Ok(EventOutcome::Ran);
         }
         let reschedule = if truthy(&schedule) {
             match self.plan_reschedule(&timestamp, &schedule, &hook, &args, true)? {
@@ -211,7 +211,7 @@ impl CronApi {
             }
             self.report(CronStep::Unschedule, &hook, &unscheduled, event)?;
             self.run_action(&hook, &args)?;
-            return Ok(Ran::Ran);
+            return Ok(EventOutcome::Ran);
         }
         let claimed_by_others = Cell::new(false);
         let written = self.commit(true, None, &|cron| {
@@ -241,7 +241,7 @@ impl CronApi {
             return Ok(EventOutcome::Unclaimed);
         }
         self.run_action(&hook, &args)?;
-        Ok(Ran::Ran)
+        Ok(EventOutcome::Ran)
     }
 
     /// `wp-cron.php`'s handling of a step that returned an error: logged, then its error action.
