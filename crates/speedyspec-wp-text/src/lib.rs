@@ -3,14 +3,17 @@
 //! The content filters (`wptexturize`, `wpautop` and the rest) as pure functions over bytes, matching stock
 //! WordPress byte for byte, and a `TextApi` facade that fires WordPress's filters around them.
 
+pub mod parse_str;
 pub mod preg;
 pub mod strings;
+pub mod url;
 
 mod api;
 mod autop;
 mod autop_fast;
 mod balance;
 mod ent2ncr_table;
+mod mb_lower_table;
 mod register;
 mod scan;
 mod small;
