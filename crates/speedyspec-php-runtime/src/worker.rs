@@ -16,10 +16,18 @@ use speedyspec_wp_hooks::{HookApi, HookStore};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::{HOOK_STORE, PhpHookStore, WpHooksArea};
 use speedyspec_wp_password_php::PasswordArea;
+use speedyspec_wp_text_diff_php::TextDiffArea;
 
 /// WordPress's password functions, with WordPress's rules bound in `container` under their pluggable ports.
 fn password_area(hooks: Rc<HookApi>, container: &Rc<Container>, sodium: Sodium) -> PasswordArea {
     let area = PasswordArea::new(hooks, container.clone(), Rc::new(sodium));
+    area.bind_defaults();
+    area
+}
+
+/// `wp_text_diff()`, with WordPress's implementation bound in `container` under its pluggable port.
+fn text_diff_area(hooks: Rc<HookApi>, container: &Rc<Container>) -> TextDiffArea {
+    let area = TextDiffArea::new(hooks, container.clone());
     area.bind_defaults();
     area
 }
@@ -229,10 +237,11 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         .port::<dyn HookStore>(HOOK_STORE, |object| Rc::new(PhpHookStore::new(object)))
         .stateful(HOOK_STORE)
         .bindings(spec.bindings.clone());
-    let container_area = PasswordArea::ports(container_area);
+    let container_area = TextDiffArea::ports(PasswordArea::ports(container_area));
     let hook_api = hooks.api();
     let crypto = CryptoArea::new(hook_api.clone(), sodium);
     let password = password_area(hook_api.clone(), &container, sodium);
+    let text_diff = text_diff_area(hook_api.clone(), &container);
     let mut areas: Vec<Rc<dyn NativeArea>> = vec![
         speedyspec_php_ext::twins_area(),
         Rc::new(container_area),
@@ -256,6 +265,7 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
     };
     areas.push(Rc::new(crypto));
     areas.push(Rc::new(password));
+    areas.push(Rc::new(text_diff));
     let preload = preload(&spec);
     let php = match Php::boot(BootOptions {
         hooks: legacy,
@@ -420,7 +430,17 @@ mod tests {
         REHASH_POLICY, RandomNumber, RehashPolicy,
     };
 
-    use super::{password_area, sodium_problem};
+    use speedyspec_wp_text_diff_contracts::{TEXT_DIFFER, TextDiffer};
+
+    use super::{password_area, sodium_problem, text_diff_area};
+
+    #[test]
+    fn text_diff_port_is_bound() {
+        let container = Rc::new(Container::new());
+        let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
+        let _area = text_diff_area(hooks.api(), &container);
+        assert!(container.make_port::<dyn TextDiffer>(TEXT_DIFFER).is_ok());
+    }
 
     #[test]
     fn password_ports_are_bound() {

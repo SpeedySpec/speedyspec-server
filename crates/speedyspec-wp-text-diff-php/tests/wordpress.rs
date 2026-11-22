@@ -8,6 +8,7 @@ use std::rc::Rc;
 use sha2::{Digest, Sha256};
 use speedyspec_compat::wordpress_release;
 use speedyspec_container::Container;
+use speedyspec_container_php::ContainerArea;
 use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, NativeArea, Php};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
@@ -65,9 +66,16 @@ fn main() {
     unsafe { std::env::set_var("SPEEDYSPEC_WP_ROOT", &release) };
     let phar = phpunit();
     let container = Rc::new(Container::new());
-    let hooks = WpHooksArea::new(container, Rc::new(MemoryHookStore::new())).with_testing();
-    let text_diff = TextDiffArea::new(hooks.api());
-    let areas: Vec<Rc<dyn NativeArea>> = vec![Rc::new(hooks), Rc::new(text_diff)];
+    let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new())).with_testing();
+    let text_diff = TextDiffArea::new(hooks.api(), container.clone());
+    text_diff.bind_defaults();
+    let container_area = TextDiffArea::ports(ContainerArea::new("test", container));
+    let areas: Vec<Rc<dyn NativeArea>> = vec![
+        speedyspec_php_ext::twins_area(),
+        Rc::new(container_area),
+        Rc::new(hooks),
+        Rc::new(text_diff),
+    ];
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),
         preload: &[],

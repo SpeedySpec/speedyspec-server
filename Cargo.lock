@@ -5415,6 +5415,8 @@ dependencies = [
  "speedyspec-wp-options-php",
  "speedyspec-wp-password-contracts",
  "speedyspec-wp-password-php",
+ "speedyspec-wp-text-diff-contracts",
+ "speedyspec-wp-text-diff-php",
  "tempfile",
  "tokio",
 ]
@@ -6464,12 +6466,16 @@ dependencies = [
  "proptest",
  "serde_json",
  "simdutf8",
+ "speedyspec-hooks",
  "speedyspec-wp-text-diff-contracts",
 ]
 
 [[package]]
 name = "speedyspec-wp-text-diff-contracts"
 version = "0.1.0"
+dependencies = [
+ "speedyspec-hooks",
+]
 
 [[package]]
 name = "speedyspec-wp-text-diff-php"
@@ -6479,8 +6485,10 @@ dependencies = [
  "sha2 0.10.9",
  "speedyspec-compat",
  "speedyspec-container",
+ "speedyspec-container-php",
  "speedyspec-hooks-memory",
  "speedyspec-php",
+ "speedyspec-php-ext",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
