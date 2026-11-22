@@ -60,6 +60,12 @@ impl Transport for RestTransport {
 
     fn check_binding(&self, spec: &OperationSpec, binding: &Value) -> Result<(), String> {
         let binding = RestBinding::from_value(binding)?;
+        // An open input (`any`) takes every route parameter, as legacy routes' inputs do.
+        if matches!(spec.input.schema.kind, SchemaKind::Any) {
+            return Regex::new(&format!("(?i)^{}$", binding.full_route()))
+                .map(drop)
+                .map_err(|e| format!("route is not a valid pattern: {e}"));
+        }
         let inputs: Vec<String> = match &spec.input.schema.kind {
             SchemaKind::Object { properties, .. } => properties.keys().cloned().collect(),
             SchemaKind::Ref { type_name } => self

@@ -110,9 +110,18 @@ impl RouteTable {
         (RouteTable { routes }, problems)
     }
 
-    /// The route serving `method` on `path`. Callers pass `HEAD` as `GET`. A path that matches with another method is
-    /// still `NoRoute`, as WordPress answers `rest_no_route`.
+    /// The route serving `method` on `path`. `HEAD` with no `HEAD` route falls back to the `GET` route, as WordPress
+    /// does. A path that matches with another method is still `NoRoute`, as WordPress answers `rest_no_route`.
     pub fn find(&self, method: RestMethod, path: &str) -> RouteMatch {
+        match self.find_exact(method, path) {
+            RouteMatch::NoRoute if method == RestMethod::Head => {
+                self.find_exact(RestMethod::Get, path)
+            }
+            found => found,
+        }
+    }
+
+    fn find_exact(&self, method: RestMethod, path: &str) -> RouteMatch {
         for c in &self.routes {
             if !c.entry.methods.contains(&method) {
                 continue;

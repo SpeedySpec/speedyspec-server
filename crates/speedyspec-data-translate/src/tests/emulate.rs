@@ -1,6 +1,6 @@
+use crate::testing::StaticIntrospector;
+use crate::{SessionVars, answer_emulated};
 use speedyspec_data::{DbValue, EmulatedOp, Rows};
-use speedyspec_data_translate::testing::StaticIntrospector;
-use speedyspec_data_translate::{SessionVars, answer_emulated};
 
 const WP_OPTIONS: &str = "CREATE TABLE wp_options ( option_id bigint(20) unsigned NOT NULL auto_increment, option_name varchar(191) NOT NULL default '', option_value longtext NOT NULL, autoload varchar(20) NOT NULL default 'yes', PRIMARY KEY  (option_id), UNIQUE KEY option_name (option_name), KEY autoload (autoload) ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci";
 const WP_POSTMETA: &str = "CREATE TABLE wp_postmeta ( meta_id bigint(20) unsigned NOT NULL auto_increment, post_id bigint(20) unsigned NOT NULL default '0', meta_key varchar(255) default NULL, meta_value longtext, PRIMARY KEY  (meta_id), KEY post_id (post_id), KEY meta_key (meta_key(191)) ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci";
@@ -305,7 +305,7 @@ fn noop_is_empty() {
 
 #[test]
 fn mysql_like_rules() {
-    use speedyspec_data_translate::mysql_like;
+    use crate::mysql_like;
     assert!(mysql_like(r"wp\_%", "wp_options", false));
     assert!(!mysql_like(r"wp\_%", "wpxoptions", false));
     assert!(mysql_like("wp_%", "wpxoptions", false));

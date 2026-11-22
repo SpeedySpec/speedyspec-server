@@ -65,7 +65,7 @@ pub fn rest_request(request: &HttpServerRequest) -> Option<RestRequest> {
     let (method, head) = match override_method {
         Some(name) => (RestMethod::parse(&name)?, false),
         None => match request.method() {
-            Method::Head => (RestMethod::Get, true),
+            Method::Head => (RestMethod::Head, true),
             other => (RestMethod::parse(other.as_str())?, false),
         },
     };

@@ -74,5 +74,11 @@ exposure and uses the free functions. They become ports when a second implementa
 ## Not yet
 
 - `RestMiddleware` is not wired into the running server's HTTP pipeline; that belongs to the server crates.
-- `OPTIONS` (route schemas), batch requests, JSONP, `_envelope` and CORS headers are not served.
-- The legacy shims (`register_rest_route`, `WP_REST_Server`, `rest_do_request`) are Phase 5.
+- Batch requests, JSONP, `_envelope` and CORS headers are not served. `OPTIONS` reaches `rest_pre_dispatch`, where
+  WordPress's `rest_handle_options_request` answers it; no route serves it.
+- The legacy shims live in `speedyspec-rest-php`.
+
+## For handlers that need the whole request
+
+`current_request()` is the REST request being dispatched (innermost). `answer(response)` serves a full response
+(status, headers, links) from a neutral handler, which returns the response's data. Legacy callbacks use both.

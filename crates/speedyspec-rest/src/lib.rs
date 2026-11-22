@@ -29,7 +29,7 @@ mod transport;
 
 pub use hooks::NoRestHooks;
 pub use mapping::{DefaultRestMapping, RestMapping, plural};
-pub use middleware::RestMiddleware;
+pub use middleware::{RestMiddleware, answer, current_request};
 pub use routes::{RouteEntry, RouteMatch, RouteTable};
 pub use server::RestServer;
 pub use transport::{REST, RestTransport, route_parameters};

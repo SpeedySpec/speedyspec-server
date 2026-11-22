@@ -33,6 +33,7 @@ use crate::{RouteMatch, RouteTable, coerce, decode, encode, errors, fields, inde
 /// 10. errors encoded as responses; 11. `_links` and `_embed`;
 /// 12. `rest_post_dispatch`, then `_fields`; 13. `rest_pre_serve_request`.
 pub struct RestServer {
+    container: Rc<Container>,
     registries: Rc<Registries>,
     dispatcher: Dispatcher,
     table: RouteTable,
@@ -137,12 +138,13 @@ impl RestServer {
         base_url: &str,
     ) -> RestServer {
         let (table, problems) = RouteTable::build(exposure.as_ref(), hooks.as_ref());
-        let dispatcher = Dispatcher::new(container, registries.clone()).with_middleware(Rc::new(
-            DispatchRequestMiddleware {
+        let dispatcher = Dispatcher::new(container.clone(), registries.clone()).with_middleware(
+            Rc::new(DispatchRequestMiddleware {
                 hooks: hooks.clone(),
-            },
-        ));
+            }),
+        );
         RestServer {
+            container,
             registries,
             dispatcher,
             table,
@@ -151,6 +153,16 @@ impl RestServer {
             authenticator,
             base_url: base_url.trim_end_matches('/').to_owned(),
         }
+    }
+
+    /// The container handlers are bound in.
+    pub fn container(&self) -> &Rc<Container> {
+        &self.container
+    }
+
+    /// The registries the server dispatches over.
+    pub fn registries(&self) -> &Rc<Registries> {
+        &self.registries
     }
 
     /// Routes that could not be added, and why.
@@ -197,10 +209,17 @@ impl RestServer {
         Some(encode::http_response(&response, head || served))
     }
 
-    /// Steps 2–11 for one request: what `rest_do_request` answers. `_embed` is read from the request's query; embedded
-    /// links are fetched once per href for the whole request, as WordPress's embed cache does.
+    /// Steps 2–11 for one request, links rendered and embedded as served over HTTP. `_embed` is read from the
+    /// request's query; embedded links are fetched once per href for the whole request, as WordPress's embed cache
+    /// does.
     pub fn dispatch(&self, request: SharedRequest, caller: &Caller) -> RestResponse {
-        self.dispatch_in(request, caller, &RefCell::new(HashMap::new()))
+        self.dispatch_in(request, caller, &RefCell::new(HashMap::new()), true)
+    }
+
+    /// Steps 2–10 as WordPress's own `dispatch()` answers: the response's links are kept apart from its data
+    /// (`response_to_data()` renders them) and nothing is embedded. For PHP's `WP_REST_Server::dispatch()`.
+    pub fn dispatch_raw(&self, request: SharedRequest, caller: &Caller) -> RestResponse {
+        self.dispatch_in(request, caller, &RefCell::new(HashMap::new()), false)
     }
 
     fn dispatch_in(
@@ -208,6 +227,7 @@ impl RestServer {
         request: SharedRequest,
         caller: &Caller,
         cache: &EmbedCache,
+        render: bool,
     ) -> RestResponse {
         if let Some(outcome) = self.hooks.pre_dispatch(&request) {
             return outcome.unwrap_or_else(|e| errors::error_response(&e));
@@ -230,7 +250,11 @@ impl RestServer {
             r.operation = Some(operation.clone());
             r.url_params = url_params;
         }
-        let embed = Embed::of(&request.borrow());
+        let embed = if render {
+            Embed::of(&request.borrow())
+        } else {
+            Embed::No
+        };
         let outcome = match self.hooks.before_callbacks(&request) {
             Err(error) => Err(error),
             Ok(()) => self.call(&operation, &request, caller, &embed, cache),
@@ -239,7 +263,9 @@ impl RestServer {
             .hooks
             .after_callbacks(outcome, &request)
             .unwrap_or_else(|e| errors::error_response(&e));
-        self.link(&mut response, &embed, caller, cache);
+        if render {
+            self.link(&mut response, &embed, caller, cache);
+        }
         response
     }
 
@@ -260,7 +286,7 @@ impl RestServer {
     }
 
     fn index_or_no_route(&self, method: RestMethod, path: &str) -> RestResponse {
-        if method == RestMethod::Get {
+        if matches!(method, RestMethod::Get | RestMethod::Head) {
             let trimmed = path.trim_matches('/');
             if trimmed.is_empty() {
                 return RestResponse::ok(index::root(
@@ -379,7 +405,7 @@ impl RestServer {
         sub.query_params = query::parse(raw_query);
         sub.query_params.shift_remove("_embed");
         let sub: SharedRequest = Rc::new(RefCell::new(sub));
-        let response = self.dispatch_in(sub.clone(), caller, cache);
+        let response = self.dispatch_in(sub.clone(), caller, cache, true);
         let response = self.hooks.post_dispatch(response, &sub);
         cache.borrow_mut().insert(href.to_owned(), response.clone());
         response

@@ -23,10 +23,14 @@ fn binding_round_trips_and_validates() {
     assert_eq!(b.full_route(), "/acme/v2/r/(?P<id>\\d+)");
     assert_eq!(RestBinding::from_value(&b.to_value()).unwrap(), b);
     let err = |v: Value| RestBinding::from_value(&v).unwrap_err();
-    assert_eq!(
-        err(binding("acme", "/x", &["GET"])),
-        "namespace must be vendor/version"
-    );
+    let namespace = "namespace must not be empty, end in a slash or hold spaces";
+    assert_eq!(err(binding("", "/x", &["GET"])), namespace);
+    assert_eq!(err(binding("/acme/v1", "/x", &["GET"])), namespace);
+    assert_eq!(err(binding("acme v1", "/x", &["GET"])), namespace);
+    let legacy = RestBinding::from_value(&binding("oembed/1.0", "", &["GET"])).unwrap();
+    assert_eq!(legacy.full_route(), "/oembed/1.0");
+    assert!(!legacy.is_versioned());
+    assert!(b.is_versioned());
     assert_eq!(
         err(binding("acme/v1", "x", &["GET"])),
         "route must start with /"
@@ -44,7 +48,9 @@ fn binding_round_trips_and_validates() {
 #[test]
 fn method_parse_is_case_insensitive() {
     assert_eq!(RestMethod::parse("pAtCh"), Some(RestMethod::Patch));
-    assert_eq!(RestMethod::parse("head"), None);
+    assert_eq!(RestMethod::parse("head"), Some(RestMethod::Head));
+    assert_eq!(RestMethod::parse("options"), Some(RestMethod::Options));
+    assert_eq!(RestMethod::parse("trace"), None);
     assert_eq!(RestMethod::Delete.as_str(), "DELETE");
 }
 
@@ -76,11 +82,19 @@ fn params_merge_in_trunk_order() {
     r.json_params.clear();
     assert_eq!(r.params().get("k"), Some(&Value::from("body")));
     r.body_params.clear();
-    assert_eq!(r.params().get("k"), Some(&Value::from("query")), "the query beats URL parameters, as in trunk");
+    assert_eq!(
+        r.params().get("k"),
+        Some(&Value::from("query")),
+        "the query beats URL parameters, as in trunk"
+    );
     let mut g = request(RestMethod::Get);
     g.body_params = map(&[("b", "body")]);
     g.url_params = map(&[("id", "3")]);
-    assert_eq!(g.params().get("b"), None, "body parameters are ignored on GET");
+    assert_eq!(
+        g.params().get("b"),
+        None,
+        "body parameters are ignored on GET"
+    );
     assert_eq!(g.params().get("id"), Some(&Value::from("3")));
 }
 
@@ -107,4 +121,20 @@ fn set_param_updates_every_source_or_the_first_in_order() {
 fn response_ok_is_200() {
     let r = RestResponse::ok(Value::Null);
     assert_eq!((r.status, r.links.len(), r.headers.len()), (200, 0, 0));
+}
+
+#[test]
+fn defaults_are_the_lowest_priority() {
+    let mut g = request(RestMethod::Get);
+    g.default_params = map(&[("a", "d"), ("b", "d")]);
+    g.query_params = map(&[("a", "q")]);
+    let p = g.params();
+    assert_eq!(p.get("a"), Some(&Value::from("q")));
+    assert_eq!(p.get("b"), Some(&Value::from("d")));
+    g.set_param("c", Value::from("x"));
+    assert_eq!(g.query_params.get("c"), Some(&Value::from("x")));
+    assert!(!g.default_params.contains_key("c"));
+    g.set_param("b", Value::from("y"));
+    assert_eq!(g.default_params.get("b"), Some(&Value::from("y")));
+    assert_eq!(g.params().get("b"), Some(&Value::from("y")));
 }

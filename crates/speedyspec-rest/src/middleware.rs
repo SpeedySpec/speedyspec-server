@@ -49,8 +49,19 @@ impl Drop for Dispatching {
     }
 }
 
-fn current() -> Option<SharedRequest> {
+/// The REST request being dispatched, innermost (for handlers that need the whole request, such as legacy callbacks).
+pub fn current_request() -> Option<SharedRequest> {
     DISPATCHING.with(|d| d.borrow().last().map(|f| f.request.clone()))
+}
+
+/// Answers the innermost request being dispatched with a full response: its status, headers and links are served, not
+/// just the data a neutral handler returns. Outside a dispatch it does nothing.
+pub fn answer(response: RestResponse) {
+    DISPATCHING.with(|d| {
+        if let Some(frame) = d.borrow_mut().last_mut() {
+            frame.answered = Some(response);
+        }
+    });
 }
 
 /// Fires `rest_dispatch_request` after the permission check, for calls through `rest`: an answer replaces the handler.
@@ -67,7 +78,7 @@ impl OperationMiddleware for DispatchRequestMiddleware {
         if call.caller.transport != REST {
             return next();
         }
-        let Some(request) = current() else {
+        let Some(request) = current_request() else {
             return next();
         };
         match self.hooks.dispatch_request(&request) {
@@ -75,11 +86,7 @@ impl OperationMiddleware for DispatchRequestMiddleware {
             Some(Err(error)) => Err(error),
             Some(Ok(response)) => {
                 let data = response.data.clone();
-                DISPATCHING.with(|d| {
-                    if let Some(frame) = d.borrow_mut().last_mut() {
-                        frame.answered = Some(response);
-                    }
-                });
+                answer(response);
                 Ok(Box::new(Bypass(data)))
             }
         }

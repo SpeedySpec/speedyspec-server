@@ -12,7 +12,7 @@ use crate::errors::{Described, adapter, describe, to_wp_error};
 use crate::{area, handles};
 
 /// PHP's emptiness (`empty()`).
-fn empty(value: &PhpValue) -> bool {
+pub(crate) fn empty(value: &PhpValue) -> bool {
     match value.read().as_ref() {
         PhpValue::Null => true,
         PhpValue::Bool(b) => !*b,
@@ -67,7 +67,22 @@ fn apply(hook: &str, mut args: Vec<PhpValue>) -> Applied {
         })
 }
 
-fn request_proxy(request: &SharedRequest) -> PhpValue {
+/// The `WP_REST_Server` of this request (the shim), as WordPress passes it to its hooks; `null` before one exists.
+fn server() -> PhpValue {
+    adapter("server", &[]).unwrap_or(PhpValue::Null)
+}
+
+/// The matched route's handler, as WordPress passes it to its callbacks' hooks: a legacy route's handler array, or an
+/// empty array for an operation.
+fn matched_handler(request: &SharedRequest) -> PhpValue {
+    let operation = request.borrow().operation.clone();
+    operation
+        .as_deref()
+        .and_then(crate::legacy::handler)
+        .unwrap_or(PhpValue::Array(vec![]))
+}
+
+pub(crate) fn request_proxy(request: &SharedRequest) -> PhpValue {
     area::ensure_proxies();
     let handle = handles::add_request(request.clone());
     adapter("request", &[PhpValue::Int(handle as i64)]).unwrap_or(PhpValue::Null)
@@ -137,7 +152,7 @@ impl RestHooks for PhpRestHooks {
     fn pre_dispatch(&self, request: &SharedRequest) -> Option<RestOutcome> {
         let result = match apply(
             "rest_pre_dispatch",
-            vec![PhpValue::Null, PhpValue::Null, request_proxy(request)],
+            vec![PhpValue::Null, server(), request_proxy(request)],
         ) {
             Err(error) => return Some(Err(error)),
             Ok(result) => result?,
@@ -151,7 +166,7 @@ impl RestHooks for PhpRestHooks {
     fn before_callbacks(&self, request: &SharedRequest) -> Result<(), OperationError> {
         let args = vec![
             PhpValue::Null,
-            PhpValue::Array(vec![]),
+            matched_handler(request),
             request_proxy(request),
         ];
         match apply("rest_request_before_callbacks", args)?
@@ -173,7 +188,7 @@ impl RestHooks for PhpRestHooks {
             PhpValue::Null,
             request_proxy(request),
             route,
-            PhpValue::Array(vec![]),
+            matched_handler(request),
         ];
         match apply("rest_dispatch_request", args) {
             Err(error) => Some(Err(error)),
@@ -208,7 +223,7 @@ impl RestHooks for PhpRestHooks {
         };
         let returned = match apply(
             "rest_request_after_callbacks",
-            vec![value, PhpValue::Array(vec![]), request_proxy(request)],
+            vec![value, matched_handler(request), request_proxy(request)],
         ) {
             Err(error) => return Err(error),
             Ok(None) => return outcome,
@@ -235,7 +250,7 @@ impl RestHooks for PhpRestHooks {
         let proxy = response_proxy(&response);
         match apply(
             "rest_post_dispatch",
-            vec![proxy, PhpValue::Null, request_proxy(request)],
+            vec![proxy, server(), request_proxy(request)],
         ) {
             Err(error) => speedyspec_rest::errors::error_response(&error),
             Ok(returned) => response_back(returned, &response),
@@ -245,7 +260,7 @@ impl RestHooks for PhpRestHooks {
     fn pre_serve(&self, response: &RestResponse, request: &SharedRequest) -> bool {
         let proxy = response_proxy(response);
         matches!(
-            apply("rest_pre_serve_request", vec![PhpValue::Bool(false), proxy, request_proxy(request), PhpValue::Null]),
+            apply("rest_pre_serve_request", vec![PhpValue::Bool(false), proxy, request_proxy(request), server()]),
             Ok(Some(v)) if !empty(&v)
         )
     }
