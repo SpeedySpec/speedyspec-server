@@ -5,6 +5,7 @@
 //! `speedyspec-media-probe` binary; both run [`child::run`]. It receives the file as stdin, reads it with the composite
 //! reader (MIDI or FFmpeg), and writes the outcome in the [`wire`] format to stdout.
 
+mod cached;
 pub mod child;
 mod isolated;
 mod log;
@@ -13,4 +14,5 @@ mod rss;
 mod sandbox;
 pub mod wire;
 
+pub use cached::CachedReader;
 pub use isolated::{IsolatedReader, ProbeCommand};
