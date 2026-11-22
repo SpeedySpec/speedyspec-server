@@ -9,4 +9,7 @@ mod error;
 mod ports;
 
 pub use error::TextError;
-pub use ports::{Diagnostics, ErrorLevel, Locale, ReplacementPairs, SiteSettings, TexturizeOverrides, Translator, WordCountType};
+pub use ports::{
+    Diagnostics, ErrorLevel, LinkContext, Locale, MimePairs, MimeTypes, RandomSource, ReplacementPairs, SiteSettings, Smilies,
+    TexturizeOverrides, Translator, WordCountType,
+};

@@ -16,7 +16,7 @@ use speedyspec_hooks::Value;
 use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_shortcode_contracts::TagName;
-use speedyspec_wp_text::{TextApi, TextDeps, convert_chars, force_balance_tags, wp_strip_all_tags_core};
+use speedyspec_wp_text::{TextApi, TextDeps, adapters, convert_chars, force_balance_tags, wp_strip_all_tags_core};
 use speedyspec_wp_text_corpus::{Php, cases, from_value, inputs, page};
 use speedyspec_wp_text_memory::{
     EnglishTranslator, FixedShortcodeTags, FixedSiteSettings, FixedTexturizeOverrides, RecordingDiagnostics,
@@ -71,13 +71,25 @@ fn api() -> TextApi {
         .iter()
         .map(|t| TagName::new(t.as_bytes()).unwrap())
         .collect();
+    let hooks = Rc::new(HookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)));
+    let settings = Rc::new(FixedSiteSettings::default());
+    let diagnostics = Rc::new(RecordingDiagnostics::default());
+    let escape = Rc::new(speedyspec_wp_text_escape::EscapeApi::new(hooks.clone(), settings.clone(), diagnostics.clone()));
+    let kses = adapters::kses_for(hooks.clone(), escape.clone());
     TextApi::new(TextDeps {
-        hooks: Rc::new(HookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations))),
-        settings: Rc::new(FixedSiteSettings::default()),
+        hooks,
+        settings,
         translator: Rc::new(EnglishTranslator),
-        diagnostics: Rc::new(RecordingDiagnostics::default()),
+        diagnostics,
         texturize_overrides: Rc::new(FixedTexturizeOverrides::default()),
         shortcode_tags: Rc::new(FixedShortcodeTags(tags)),
+        escape,
+        kses: kses.clone(),
+        locale: Rc::new(speedyspec_wp_text_memory::FixedLocale::default()),
+        mime_types: Rc::new(adapters::FixedMimeTypes::wordpress()),
+        random: Rc::new(adapters::PhpMtRand::seeded(1)),
+        smilies: Rc::new(adapters::FixedSmilies::wordpress(b"https://example.org/wp-includes/", b"http://example.org")),
+        link_context: Rc::new(adapters::HostLinkContext::new(kses, b"http://example.org")),
     })
 }
 

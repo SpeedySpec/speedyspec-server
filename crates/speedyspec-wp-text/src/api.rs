@@ -7,10 +7,12 @@ use std::rc::Rc;
 use speedyspec_hooks::{Key, Value as HookValue};
 use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
 use speedyspec_wp_shortcode_contracts::ShortcodeTagNames;
+use speedyspec_wp_kses::KsesApi;
 use speedyspec_wp_text_contracts::{
-    Diagnostics, ErrorLevel, SiteSettings, TextError, TexturizeOverrides, Translator, WordCountType,
+    Diagnostics, ErrorLevel, LinkContext, Locale, MimeTypes, RandomSource, SiteSettings, Smilies, TextError,
+    TexturizeOverrides, Translator, WordCountType,
 };
-use speedyspec_wp_text_escape::Charset;
+use speedyspec_wp_text_escape::{Charset, EscapeApi};
 
 use crate::autop::AutopOptions;
 use crate::autop_fast::wpautop;
@@ -40,6 +42,15 @@ pub struct TextDeps {
     pub diagnostics: Rc<dyn Diagnostics>,
     pub texturize_overrides: Rc<dyn TexturizeOverrides>,
     pub shortcode_tags: Rc<dyn ShortcodeTagNames>,
+    /// The escapers (`esc_attr`, `esc_html`, ...), whose filters fire there.
+    pub escape: Rc<EscapeApi>,
+    /// kses: `wp_allowed_protocols()`, the URI attribute list and the entity names.
+    pub kses: Rc<KsesApi>,
+    pub locale: Rc<dyn Locale>,
+    pub mime_types: Rc<dyn MimeTypes>,
+    pub random: Rc<dyn RandomSource>,
+    pub smilies: Rc<dyn Smilies>,
+    pub link_context: Rc<dyn LinkContext>,
 }
 
 /// How `wpautop()` is run; `TextApi` takes the reference or a faster equivalent.
@@ -74,7 +85,9 @@ struct Names {
 /// Functions with none of those (`normalize_whitespace`, `wp_replace_in_html_tags`, `strip_tags`, ...) have no
 /// method; call them directly.
 pub struct TextApi {
-    d: TextDeps,
+    pub(crate) d: TextDeps,
+    /// Hook names made once each (making one copies its name).
+    hook_names: RefCell<Vec<(&'static str, Rc<HookName>)>>,
     texturizer: Rc<dyn Texturizer>,
     autop: AutopFn,
     unautop: Unautop,
@@ -124,6 +137,7 @@ impl TextApi {
     pub fn new(deps: TextDeps) -> TextApi {
         TextApi {
             d: deps,
+            hook_names: RefCell::new(Vec::new()),
             texturizer: Rc::new(HandTexturizer::default()),
             autop: wpautop,
             unautop: Unautop::new(),
@@ -172,8 +186,18 @@ impl TextApi {
         &self.d
     }
 
+    /// A hook name, made once.
+    pub(crate) fn hook(&self, name: &'static str) -> Rc<HookName> {
+        if let Some((_, hook)) = self.hook_names.borrow().iter().find(|(n, _)| *n == name) {
+            return hook.clone();
+        }
+        let hook = Rc::new(HookName::from(name));
+        self.hook_names.borrow_mut().push((name, hook.clone()));
+        hook
+    }
+
     /// `apply_filters()`, through the fast path when nothing listens.
-    fn filter(
+    pub(crate) fn filter(
         &self,
         name: &HookName,
         value: HookValue,

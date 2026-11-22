@@ -47,6 +47,10 @@ const CONTENT_FILTERS: &[&str] = &[
     "sanitize_title_with_dashes",
     "sanitize_user",
     "sanitize_file_name",
+    "sanitize_title",
+    "sanitize_title_for_query",
+    "speedyspec_antispambot_seeded",
+    "speedyspec_smilies_search",
 ];
 
 /// What plans 1 and 2 port (html-split and text-escape), which their own crates check.
@@ -84,13 +88,9 @@ const PENDING: &[&str] = &[
     "sanitize_email",
     "sanitize_text_field",
     "sanitize_textarea_field",
-    "sanitize_title",
-    "sanitize_title_for_query",
     "sanitize_trackback_urls",
     "sanitize_url",
-    "speedyspec_antispambot_seeded",
     "speedyspec_make_clickable_in_comment_text",
-    "speedyspec_smilies_search",
     "stripslashes_deep",
     "stripslashes_from_strings_only",
     "urldecode_deep",
