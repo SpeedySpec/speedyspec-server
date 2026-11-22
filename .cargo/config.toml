@@ -8,6 +8,3 @@ PHP_CONFIG = { value = ".php-build/buildroot/bin/php-config", relative = true }
 # The oldest macOS the binary runs on: what the static PHP is built for too
 # (scripts/build-php.sh), so nothing linked in demands a newer one. Ignored off macOS.
 MACOSX_DEPLOYMENT_TARGET = "12.0"
-# pcre2-sys (speedyspec-wp-text) builds its bundled PCRE2 instead of linking a system libpcre2, so every machine
-# runs the same PCRE2. The static PHP's own copy has php_-prefixed symbols, so the two never clash.
-PCRE2_SYS_STATIC = "1"

@@ -1,0 +1,20 @@
+[package]
+name = "pcre2-sys"
+# Patches crates.io's pcre2-sys (see [patch.crates-io] in the workspace manifest), so the version and the
+# bindings stay those of the release it replaces.
+version = "0.2.10"
+description = "pcre2-sys with the static PHP's own PCRE2 (10.44), every symbol renamed so it links next to PHP's copy."
+edition.workspace = true
+rust-version.workspace = true
+license = "Unlicense OR MIT"
+publish = false
+
+[lib]
+name = "pcre2_sys"
+path = "src/lib.rs"
+
+[dependencies]
+libc = "0.2.146"
+
+[build-dependencies]
+cc = { version = "1.0.73", features = ["parallel"] }
