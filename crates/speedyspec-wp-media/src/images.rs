@@ -25,7 +25,11 @@ pub struct ImageType {
 }
 
 const fn t(mime: &'static str, imagetype: i64, path: ImagePath) -> ImageType {
-    ImageType { mime, imagetype, path }
+    ImageType {
+        mime,
+        imagetype,
+        path,
+    }
 }
 
 pub const JPEG: ImageType = t("image/jpeg", 2, ImagePath::Fast);
@@ -49,10 +53,14 @@ pub const SGI: ImageType = t("image/x-sgi", 0, ImagePath::Reader);
 pub const HDR: ImageType = t("image/vnd.radiance", 0, ImagePath::Reader);
 
 /// Every type `sniff` recognizes.
-pub const TYPES: &[ImageType] =
-    &[JPEG, PNG, GIF, BMP, TIFF_II, TIFF_MM, WEBP, AVIF, HEIF, JP2, PSD, ICO, JXL, QOI, PCX, PPM, PGM, SGI, HDR];
+pub const TYPES: &[ImageType] = &[
+    JPEG, PNG, GIF, BMP, TIFF_II, TIFF_MM, WEBP, AVIF, HEIF, JP2, PSD, ICO, JXL, QOI, PCX, PPM,
+    PGM, SGI, HDR,
+];
 
-const HEIF_BRANDS: &[&[u8]] = &[b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"mif1", b"msf1"];
+const HEIF_BRANDS: &[&[u8]] = &[
+    b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"mif1", b"msf1",
+];
 
 /// The image type of a file from its first bytes (32 are enough), or `None` for anything else.
 pub fn sniff(head: &[u8]) -> Option<ImageType> {
@@ -81,9 +89,15 @@ pub fn sniff(head: &[u8]) -> Option<ImageType> {
     if head.get(4..8) == Some(b"ftyp") {
         let major = head.get(8..12)?;
         let box_len = u32::from_be_bytes(head[0..4].try_into().ok()?) as usize;
-        let compatible: Vec<&[u8]> =
-            head.get(16..box_len.min(head.len())).unwrap_or(&[]).chunks_exact(4).collect();
-        if major == b"avif" || major == b"avis" || (major == b"mif1" && compatible.contains(&&b"avif"[..])) {
+        let compatible = head
+            .get(16..box_len.min(head.len()))
+            .unwrap_or(&[])
+            .as_chunks::<4>()
+            .0;
+        if major == b"avif"
+            || major == b"avis"
+            || (major == b"mif1" && compatible.contains(b"avif"))
+        {
             return Some(AVIF);
         }
         if HEIF_BRANDS.contains(&major) {
@@ -168,16 +182,31 @@ pub fn webp_info(head: &[u8]) -> Tree {
         return webp_result(None, None, None);
     }
     let le16 = |at: usize| i64::from(u16::from_le_bytes([head[at], head[at + 1]]));
-    let le24 = |at: usize| i64::from(u32::from_le_bytes([head[at], head[at + 1], head[at + 2], 0]));
+    let le24 = |at: usize| {
+        i64::from(u32::from_le_bytes([
+            head[at],
+            head[at + 1],
+            head[at + 2],
+            0,
+        ]))
+    };
     match &head[12..16] {
-        b"VP8 " => webp_result(Some(le16(26) & 0x3FFF), Some(le16(28) & 0x3FFF), Some("lossy")),
+        b"VP8 " => webp_result(
+            Some(le16(26) & 0x3FFF),
+            Some(le16(28) & 0x3FFF),
+            Some("lossy"),
+        ),
         b"VP8L" => {
             let p = |i: usize| i64::from(head[21 + i]);
             let width = (p(0) | ((p(1) & 0x3F) << 8)) + 1;
             let height = (((p(1) & 0xC0) >> 6) | (p(2) << 2) | ((p(3) & 0x03) << 10)) + 1;
             webp_result(Some(width), Some(height), Some("lossless"))
         }
-        b"VP8X" => webp_result(Some((le24(24) & 0xFF_FFFF) + 1), Some((le24(27) & 0xFF_FFFF) + 1), Some("animated-alpha")),
+        b"VP8X" => webp_result(
+            Some((le24(24) & 0xFF_FFFF) + 1),
+            Some((le24(27) & 0xFF_FFFF) + 1),
+            Some("animated-alpha"),
+        ),
         _ => webp_result(None, None, None),
     }
 }
