@@ -232,12 +232,12 @@ grep ' speedyspec-server-x86_64-unknown-linux-musl$' SHA256SUMS | sha256sum -c
 
 ### Releasing
 
-release-please keeps one release pull request open on `main`. Every crate is a release-please package, so a change
-in any of them is seen; the `cargo-workspace` plugin then bumps the server or the runtime whenever a crate it is built
-from is bumped. Only the server and the runtime get GitHub releases: after a release, the workflow tags each library
-crate at its new version (`<crate>-v<version>`, a plain tag) so release-please counts its commits from there. Changes
-outside the crates (`php-version`, `scripts/build-php.sh`) release nothing by themselves: commit a PHP update together
-with a change to the runtime crate (its changelog is a good place to say which PHP it embeds).
+release-please keeps one release pull request open on `main`. Every crate is a release-please package, so a change in
+any of them is seen; the `cargo-workspace` plugin then bumps the server or the runtime whenever a crate it is built from
+is bumped. Only the server and the runtime get GitHub releases: after a release, the workflow tags each library crate at
+its new version (`<crate>-v<version>`, a plain tag) so release-please counts its commits from there. The PHP version is
+pinned in `crates/speedyspec-php/php-version`, so a PHP update is a change to `speedyspec-php` (say which PHP it embeds
+in the commit message); `scripts/build-php.sh` is outside the crates and releases nothing by itself.
 
 Merging the release pull request builds each bumped component for every target at the merge commit and runs the
 tests of the crates it is built from there (`scripts/release-test-packages.sh`; CI tests the whole workspace, so a

@@ -35,3 +35,7 @@ harness = false
 [[test]]
 name = "global_array"
 harness = false
+
+# docs.rs has no static PHP: build.rs links nothing when DOCS_RS is set, and ext-php-rs uses its bundled bindings.
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]

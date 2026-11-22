@@ -27,8 +27,8 @@ pub use runtime::{
 };
 pub use web::WebRequest;
 
-/// The PHP version linked into this binary, from the repository's
-/// `php-version` file.
+/// The PHP version linked into this binary: the one pinned in this crate's
+/// `php-version` file, which the build refuses to link anything else than.
 pub const PHP_VERSION: &str = env!("SPEEDYSPEC_PHP_VERSION");
 
 /// Identifies the execution context PHP is running in now: the main context or one fiber
