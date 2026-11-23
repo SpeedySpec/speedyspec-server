@@ -323,10 +323,24 @@ runs its own scheduler; the app makes sure each due event runs once (WordPress's
 compare-and-swap write), so replicas never coordinate. `max_interval` is how a replica notices events scheduled
 through another replica.
 
-On a multisite network, each call runs the due events of every active site of the admin API's network (not spam,
-deleted or archived), switching to each in turn within the call's budget. A call that runs out of budget resumes at the
-next site on the following call (the network option `speedyspec_cron_cursor`), so no site waits for a visit, as it
-would in WordPress, and none starves.
+A `2xx` answer may list follow-up calls: a JSON body `{"calls": ["<query>", …]}`. The scheduler then calls the cron
+path again for each, in order, with `&<query>` after `budget`, and does not follow lists those calls answer. It stops
+the list when the app enters maintenance or the generation starts draining, and moves on past a failed follow-up
+(`php_cron_follow_up_failed`). Any other body is no follow-ups; at most 10 000 are kept, and an entry with `#` or a line
+break is dropped. A declared path that already has a query gets `&budget=…`.
+
+On a multisite network this runs every active site's due events (not spam, deleted or archived ones), each in a request
+booted as that site, with its own plugins and theme, so no site waits for a visit as it would in WordPress. The cron
+endpoint of the admin API:
+
+1. On a call with `site`, `host` and `path`: sets `$_SERVER['HTTP_HOST']` to `host` and `$_SERVER['REQUEST_URI']` to
+   `path` before loading WordPress (as WP-CLI's `--url` does), and answers `409` if `get_current_blog_id()` is not
+   `site` once it has booted (a domain mapping that resolves elsewhere).
+2. Defines `DOING_CRON` and calls `SpeedySpec\WpCron\run_due_events($budget)`, which runs the current site's events.
+3. On a call without `site`: answers `{"calls": SpeedySpec\WpCron\due_sites()}`. `due_sites()` reads the other sites'
+   `cron` options (through `switch_to_blog()`, running nothing) and returns `site=<id>&host=<domain>&path=<path>` for
+   each with an event due now, from `get_sites()` on the current network. It also reports the earliest future time
+   across the sites, so the server wakes for the next one.
 
 ## Health and maintenance
 
