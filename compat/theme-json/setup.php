@@ -203,15 +203,12 @@ function compat_add_theme_support(string $feature): void
 }
 
 /**
- * Called by the driver once it is loaded: reports the notices after each step, with this checkout's path as
- * `{repository}`.
+ * Called by the driver once it is loaded: reports the notices after each step.
  */
 function speedyspec_compat_area_setup()
 {
     SpeedySpecCompat::$report_globals = false;
     SpeedySpecCompat::$state = fn() => ['notices' => $GLOBALS['speedyspec_notices']];
-    // WordPress's JSON decode notice names the test theme's file by its absolute path.
-    SpeedySpecCompat::$paths = [dirname(__DIR__, 2) => '{repository}'];
 }
 
 /**

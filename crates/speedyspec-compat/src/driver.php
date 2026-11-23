@@ -42,9 +42,6 @@ final class SpeedySpecCompat
     /** @var string|null A per-request random string reported as `{placeholder}` (wpdb's placeholder escape). */
     public static ?string $placeholder = null;
 
-    /** @var array<string, string> Absolute paths reported by a name, such as `{repository}`, so a recording names no checkout. */
-    public static array $paths = [];
-
     /** Whether a string that is not valid UTF-8 is reported as `{"bytes": base64}` (formatting needs exact bytes). */
     public static bool $exact_bytes = false;
 
@@ -325,9 +322,6 @@ final class SpeedySpecCompat
             }
             if (self::$placeholder !== null && self::$placeholder !== '') {
                 $value = str_replace(self::$placeholder, '{placeholder}', $value);
-            }
-            if (self::$paths !== []) {
-                $value = strtr($value, self::$paths);
             }
             return self::key($value);
         }
