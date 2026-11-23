@@ -68977,7 +68977,7 @@
                 "array": [
                   [
                     0,
-                    "trigger_error:wp_json_file_decode|Error when decoding a JSON file at path /Users/jacobsantos/repos/respite-studios/wordpress-develop/.claude/worktrees/theme-json-30a882/packages/speedyspec-server-theme-json/crates/speedyspec-wp-theme-json/tests/data/themedir1/block-theme-non-latin/theme.json: Syntax error"
+                    "trigger_error:wp_json_file_decode|Error when decoding a JSON file at path {repository}/crates/speedyspec-wp-theme-json/tests/data/themedir1/block-theme-non-latin/theme.json: Syntax error"
                   ]
                 ]
               }
@@ -68999,7 +68999,7 @@
                 "array": [
                   [
                     0,
-                    "trigger_error:wp_json_file_decode|Error when decoding a JSON file at path /Users/jacobsantos/repos/respite-studios/wordpress-develop/.claude/worktrees/theme-json-30a882/packages/speedyspec-server-theme-json/crates/speedyspec-wp-theme-json/tests/data/themedir1/block-theme-non-latin/theme.json: Syntax error|1024"
+                    "trigger_error:wp_json_file_decode|Error when decoding a JSON file at path {repository}/crates/speedyspec-wp-theme-json/tests/data/themedir1/block-theme-non-latin/theme.json: Syntax error|1024"
                   ]
                 ]
               }
@@ -89424,7 +89424,7 @@
                 "array": [
                   [
                     0,
-                    "trigger_error:wp_json_file_decode|Error when decoding a JSON file at path /Users/jacobsantos/repos/respite-studios/wordpress-develop/.claude/worktrees/theme-json-30a882/packages/speedyspec-server-theme-json/crates/speedyspec-wp-theme-json/tests/data/themedir1/block-theme-non-latin/theme.json: Syntax error"
+                    "trigger_error:wp_json_file_decode|Error when decoding a JSON file at path {repository}/crates/speedyspec-wp-theme-json/tests/data/themedir1/block-theme-non-latin/theme.json: Syntax error"
                   ]
                 ]
               }
@@ -89446,7 +89446,7 @@
                 "array": [
                   [
                     0,
-                    "trigger_error:wp_json_file_decode|Error when decoding a JSON file at path /Users/jacobsantos/repos/respite-studios/wordpress-develop/.claude/worktrees/theme-json-30a882/packages/speedyspec-server-theme-json/crates/speedyspec-wp-theme-json/tests/data/themedir1/block-theme-non-latin/theme.json: Syntax error|1024"
+                    "trigger_error:wp_json_file_decode|Error when decoding a JSON file at path {repository}/crates/speedyspec-wp-theme-json/tests/data/themedir1/block-theme-non-latin/theme.json: Syntax error|1024"
                   ]
                 ]
               }
@@ -100326,7 +100326,7 @@
                 "array": [
                   [
                     0,
-                    "trigger_error:wp_json_file_decode|Error when decoding a JSON file at path /Users/jacobsantos/repos/respite-studios/wordpress-develop/.claude/worktrees/theme-json-30a882/packages/speedyspec-server-theme-json/crates/speedyspec-wp-theme-json/tests/data/themedir1/block-theme-non-latin/theme.json: Syntax error"
+                    "trigger_error:wp_json_file_decode|Error when decoding a JSON file at path {repository}/crates/speedyspec-wp-theme-json/tests/data/themedir1/block-theme-non-latin/theme.json: Syntax error"
                   ]
                 ]
               }
@@ -100348,7 +100348,7 @@
                 "array": [
                   [
                     0,
-                    "trigger_error:wp_json_file_decode|Error when decoding a JSON file at path /Users/jacobsantos/repos/respite-studios/wordpress-develop/.claude/worktrees/theme-json-30a882/packages/speedyspec-server-theme-json/crates/speedyspec-wp-theme-json/tests/data/themedir1/block-theme-non-latin/theme.json: Syntax error|1024"
+                    "trigger_error:wp_json_file_decode|Error when decoding a JSON file at path {repository}/crates/speedyspec-wp-theme-json/tests/data/themedir1/block-theme-non-latin/theme.json: Syntax error|1024"
                   ]
                 ]
               }
