@@ -15,7 +15,8 @@ use speedyspec_transport::{MemoryBindingStore, TransportRegistry};
 use speedyspec_transport_contracts::BindingStore;
 use speedyspec_xmlrpc::codec::{parse_response, write_call};
 use speedyspec_xmlrpc::{
-    DefaultFaultMapping, XMLRPC, XmlRpcMiddleware, XmlRpcServer, XmlRpcTransport,
+    DefaultFaultMapping, XMLRPC, XmlRpcMiddleware, XmlRpcServer, XmlRpcServerProvider,
+    XmlRpcTransport,
 };
 use speedyspec_xmlrpc_contracts::{
     Fault, MethodCall, MethodEntry, MethodResponse, XmlRpcBinding, XmlRpcHooks, XmlRpcLogin,
@@ -144,6 +145,10 @@ fn world_with(setup: impl FnOnce(&Hooks, &MemoryBindingStore)) -> World {
             .input::<RawInput>(S::object([("name", S::string())]))
             .output::<RawOutput>(S::any())
             .public(),
+        Operation::query("acme/broken")
+            .input::<RawInput>(S::object([]))
+            .output::<RawOutput>(S::any())
+            .public(),
         Operation::query("acme/teapot")
             .input::<RawInput>(S::object([]))
             .output::<RawOutput>(S::any())
@@ -160,7 +165,14 @@ fn world_with(setup: impl FnOnce(&Hooks, &MemoryBindingStore)) -> World {
     r.close().unwrap();
     let r = Rc::new(r);
     let container = Rc::new(Container::new());
-    let handlers: [(&str, Answer); 4] = [
+    let handlers: [(&str, Answer); 5] = [
+        ("acme/broken", |_| {
+            Err(OperationError::new(
+                "db",
+                Category::Internal,
+                "connection to db-7.internal refused",
+            ))
+        }),
         ("acme/update-report", echo),
         ("acme/hello", echo),
         ("acme/teapot", |_| {
@@ -206,6 +218,15 @@ fn world_with(setup: impl FnOnce(&Hooks, &MemoryBindingStore)) -> World {
         XMLRPC,
         XmlRpcBinding {
             method: "old.method".into(),
+            params: vec![],
+        }
+        .to_value(),
+    );
+    bindings.bind(
+        "acme/broken",
+        XMLRPC,
+        XmlRpcBinding {
+            method: "acme.broken".into(),
             params: vec![],
         }
         .to_value(),
@@ -577,6 +598,7 @@ fn list_methods_matches_ixr_order() {
             s("acme.editReport"),
             s("acme.teapot"),
             s("acme.hello"),
+            s("acme.broken"),
         ])
     );
 }
@@ -777,14 +799,68 @@ impl Handler<HttpServerRequest, HttpResponse> for NotFound {
     }
 }
 
+struct PerRequest(RefCell<Vec<Rc<XmlRpcServer>>>);
+
+impl XmlRpcServerProvider for PerRequest {
+    fn server(&self) -> Result<Rc<XmlRpcServer>, OperationError> {
+        let server = world().server;
+        self.0.borrow_mut().push(server.clone());
+        Ok(server)
+    }
+}
+
+struct Broken;
+
+impl XmlRpcServerProvider for Broken {
+    fn server(&self) -> Result<Rc<XmlRpcServer>, OperationError> {
+        Err(OperationError::new(
+            "down",
+            Category::Unavailable,
+            "registries at db-7 down",
+        ))
+    }
+}
+
+fn post_through(middleware: &XmlRpcMiddleware, method: &str, params: Vec<Value>) -> MethodResponse {
+    let body = write_call(&MethodCall {
+        method: method.into(),
+        params,
+    });
+    let response = middleware.process(request(Method::Post, "/xmlrpc.php", &body), &NotFound);
+    let bytes = response.body().borrow_mut().read_all().unwrap();
+    parse_response(&bytes).expect("a methodResponse")
+}
+
 #[test]
 fn the_middleware_passes_other_paths_on() {
-    let w = world();
-    let middleware = XmlRpcMiddleware::new(w.server.clone());
+    let middleware = XmlRpcMiddleware::new(Rc::new(PerRequest(RefCell::new(Vec::new()))));
     let other = middleware.process(request(Method::Post, "/wp-json/", b""), &NotFound);
     assert_eq!(other.status().as_u16(), 404);
     let ours = middleware.process(request(Method::Get, "/xmlrpc.php", b""), &NotFound);
     assert_eq!(ours.status().as_u16(), 405);
+}
+
+#[test]
+fn each_request_gets_its_own_server() {
+    let provider = Rc::new(PerRequest(RefCell::new(Vec::new())));
+    let middleware = XmlRpcMiddleware::new(provider.clone());
+    let edit = |password: &str| vec![Value::Int(1), s("admin"), s(password), Value::Int(7)];
+    assert_eq!(
+        fault(post_through(&middleware, "acme.editReport", edit("wrong"))).code,
+        403
+    );
+    // A failed login in one request does not refuse the next request's caller.
+    success(post_through(&middleware, "acme.editReport", edit("pw")));
+    assert_eq!(provider.0.borrow().len(), 2);
+}
+
+#[test]
+fn a_server_that_cannot_be_built_is_a_generic_fault() {
+    let middleware = XmlRpcMiddleware::new(Rc::new(Broken));
+    assert_eq!(
+        fault(post_through(&middleware, "acme.hello", vec![s("a")])),
+        Fault::new(500, "The request could not be processed.")
+    );
 }
 
 #[test]
@@ -826,5 +902,63 @@ fn an_operation_can_be_called_by_name() {
             .unwrap_err()
             .code,
         -32601
+    );
+}
+
+#[test]
+fn internal_errors_are_not_told_to_the_client() {
+    let w = world();
+    assert_eq!(
+        fault(send(&w, "acme.broken", vec![])),
+        Fault::new(500, "The request could not be processed.")
+    );
+    // An explicit fault code is the method's own answer, and is kept.
+    assert_eq!(
+        fault(send(&w, "acme.teapot", vec![])),
+        Fault::new(418, "I'm a teapot")
+    );
+}
+
+#[test]
+fn a_shared_latch_spans_servers() {
+    let latch = Rc::new(Cell::new(false));
+    let first = world();
+    let first = Rc::try_unwrap(first.server)
+        .ok()
+        .unwrap()
+        .with_login_latch(latch.clone());
+    assert!(first.login("admin", "wrong").is_err());
+    let second = world();
+    let log = second.log.clone();
+    let second = Rc::try_unwrap(second.server)
+        .ok()
+        .unwrap()
+        .with_login_latch(latch);
+    assert_eq!(second.login("admin", "pw").err().map(|f| f.code), Some(403));
+    assert!(!log.borrow().iter().any(|l| l.starts_with("login:")));
+}
+
+#[test]
+fn legacy_methods_get_dates_as_the_client_sent_them() {
+    let w = world_with(|hooks, _| {
+        hooks.add.borrow_mut().push(MethodEntry {
+            method: "old.method".into(),
+            operation: "legacy-xmlrpc/old-method".into(),
+            legacy: true,
+        });
+    });
+    let body = b"<methodCall><methodName>old.method</methodName><params><param><value><dateTime.iso8601>20240102T10:00:00Z</dateTime.iso8601></value></param></params></methodCall>";
+    let response = w.server.serve(&request(Method::Post, "/xmlrpc.php", body));
+    let bytes = response.body().borrow_mut().read_all().unwrap();
+    let echoed = success(parse_response(&bytes).unwrap());
+    assert_eq!(
+        echoed,
+        Value::map([(
+            "params",
+            Value::List(vec![Value::map([(
+                speedyspec_xmlrpc::codec::RAW_DATE,
+                s("20240102T10:00:00Z")
+            )])])
+        )])
     );
 }

@@ -14,6 +14,19 @@ use quick_xml::events::Event;
 use speedyspec_operation_contracts::Value;
 use speedyspec_xmlrpc_contracts::{Fault, MethodCall, MethodResponse};
 
+/// How `dateTime.iso8601` values are read.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Dates {
+    /// As `DateTime`, normalized to UTC: what operations take.
+    Utc,
+    /// As the client's text, in a `{RAW_DATE: text}` map: what WordPress's own methods take, since WordPress reads a
+    /// date with no zone as the site's local time and honors an explicit zone itself.
+    Raw,
+}
+
+/// The key of a raw date's map ([`Dates::Raw`]).
+pub const RAW_DATE: &str = "xmlrpc:dateTime.iso8601";
+
 /// The deepest value nesting a request may have.
 pub const MAX_VALUE_DEPTH: usize = 256;
 
@@ -152,7 +165,7 @@ pub fn parse_date(text: &str) -> Option<NaiveDateTime> {
 }
 
 /// The value a `<value>` element holds.
-fn to_value(node: &Node) -> Result<Value, Fault> {
+fn to_value(node: &Node, dates: Dates) -> Result<Value, Fault> {
     let Some(typed) = node.children.first() else {
         // A bare `<value>text</value>` is a string, whitespace kept.
         return Ok(Value::String(node.text.clone()));
@@ -169,8 +182,15 @@ fn to_value(node: &Node) -> Result<Value, Fault> {
             "0" | "false" => Value::Bool(false),
             _ => return Err(not_well_formed()),
         },
-        "string" => Value::String(text.to_owned()),
-        "dateTime.iso8601" => Value::DateTime(parse_date(text).ok_or_else(not_well_formed)?),
+        // IXR trims a string's text, as it trims every scalar.
+        "string" => Value::String(text.trim().to_owned()),
+        "dateTime.iso8601" => {
+            let at = parse_date(text).ok_or_else(not_well_formed)?;
+            match dates {
+                Dates::Utc => Value::DateTime(at),
+                Dates::Raw => Value::map([(RAW_DATE, Value::String(text.trim().to_owned()))]),
+            }
+        }
         "base64" => {
             let compact: String = text.chars().filter(|c| !c.is_ascii_whitespace()).collect();
             Value::Binary(STANDARD.decode(compact).map_err(|_| not_well_formed())?)
@@ -184,7 +204,7 @@ fn to_value(node: &Node) -> Result<Value, Fault> {
                 }
                 let name = member.child("name").ok_or_else(not_well_formed)?;
                 let value = member.child("value").ok_or_else(not_well_formed)?;
-                map.insert(name.text.clone(), to_value(value)?);
+                map.insert(name.text.trim().to_owned(), to_value(value, dates)?);
             }
             Value::Map(map)
         }
@@ -195,7 +215,7 @@ fn to_value(node: &Node) -> Result<Value, Fault> {
                 .iter()
                 .map(|item| {
                     if item.name == "value" {
-                        to_value(item)
+                        to_value(item, dates)
                     } else {
                         Err(not_well_formed())
                     }
@@ -208,7 +228,7 @@ fn to_value(node: &Node) -> Result<Value, Fault> {
 }
 
 /// The values of a `<params>` element.
-fn params(node: Option<&Node>) -> Result<Vec<Value>, Fault> {
+fn params(node: Option<&Node>, dates: Dates) -> Result<Vec<Value>, Fault> {
     let Some(params) = node else {
         return Ok(Vec::new());
     };
@@ -220,13 +240,22 @@ fn params(node: Option<&Node>) -> Result<Vec<Value>, Fault> {
                 .child("value")
                 .filter(|_| param.name == "param")
                 .ok_or_else(not_well_formed)?;
-            to_value(value)
+            to_value(value, dates)
         })
         .collect()
 }
 
-/// Reads a `methodCall`. `element_limit` is WordPress's `xmlrpc_element_limit` (0 for none).
+/// Reads a `methodCall`, with dates in UTC. `element_limit` is WordPress's `xmlrpc_element_limit` (0 for none).
 pub fn parse_call(body: &[u8], element_limit: usize) -> Result<MethodCall, Fault> {
+    parse_call_with(body, element_limit, Dates::Utc)
+}
+
+/// Reads a `methodCall`, with dates read as `dates` says.
+pub fn parse_call_with(
+    body: &[u8],
+    element_limit: usize,
+    dates: Dates,
+) -> Result<MethodCall, Fault> {
     let root = read_tree(body, element_limit)?;
     if root.name != "methodCall" {
         return Err(not_a_call());
@@ -239,7 +268,7 @@ pub fn parse_call(body: &[u8], element_limit: usize) -> Result<MethodCall, Fault
         .to_owned();
     Ok(MethodCall {
         method,
-        params: params(root.child("params"))?,
+        params: params(root.child("params"), dates)?,
     })
 }
 
@@ -250,7 +279,10 @@ pub fn parse_response(body: &[u8]) -> Result<MethodResponse, Fault> {
         return Err(not_well_formed());
     }
     if let Some(fault) = root.child("fault") {
-        let value = to_value(fault.child("value").ok_or_else(not_well_formed)?)?;
+        let value = to_value(
+            fault.child("value").ok_or_else(not_well_formed)?,
+            Dates::Utc,
+        )?;
         let code = match value.get("faultCode") {
             Some(Value::Int(code)) => *code,
             _ => return Err(not_well_formed()),
@@ -261,7 +293,7 @@ pub fn parse_response(body: &[u8]) -> Result<MethodResponse, Fault> {
         };
         return Ok(MethodResponse::Fault(Fault::new(code, message)));
     }
-    let mut values = params(root.child("params"))?;
+    let mut values = params(root.child("params"), Dates::Utc)?;
     if values.len() != 1 {
         return Err(not_well_formed());
     }

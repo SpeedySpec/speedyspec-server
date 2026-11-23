@@ -9,7 +9,7 @@ use base64::engine::general_purpose::STANDARD;
 use indexmap::IndexMap;
 use speedyspec_operation_contracts::Value;
 use speedyspec_php_ext::{Key, Value as PhpValue};
-use speedyspec_xmlrpc::codec::parse_date;
+use speedyspec_xmlrpc::codec::{Dates, RAW_DATE, parse_date};
 
 const ADAPTER: &str = "SpeedySpec\\XmlRpc\\Internal\\Adapter::";
 
@@ -38,8 +38,14 @@ fn text(value: Option<&PhpValue>) -> String {
     }
 }
 
-/// The neutral value a tagged array describes.
+/// The neutral value a tagged array describes, dates in UTC.
 pub(crate) fn from_tagged(tagged: &PhpValue) -> Value {
+    from_tagged_with(tagged, Dates::Utc)
+}
+
+/// The neutral value a tagged array describes, dates read as `dates` says: [`Dates::Raw`] keeps an `IXR_Date`'s text,
+/// zone and all, for WordPress's own methods.
+pub(crate) fn from_tagged_with(tagged: &PhpValue, dates: Dates) -> Value {
     let tagged = tagged.read();
     let PhpValue::Array(items) = tagged.as_ref() else {
         return Value::Null;
@@ -59,15 +65,20 @@ pub(crate) fn from_tagged(tagged: &PhpValue) -> Value {
         "s" => Value::String(text(value)),
         "d" => {
             let iso = text(value);
-            parse_date(&iso).map_or(Value::String(iso), Value::DateTime)
+            match dates {
+                Dates::Raw => Value::map([(RAW_DATE, Value::String(iso))]),
+                Dates::Utc => parse_date(&iso).map_or(Value::String(iso), Value::DateTime),
+            }
         }
         "x" => STANDARD
             .decode(text(value))
             .map_or(Value::Binary(Vec::new()), Value::Binary),
         "l" => match value {
-            Some(PhpValue::Array(list)) => {
-                Value::List(list.iter().map(|(_, v)| from_tagged(v)).collect())
-            }
+            Some(PhpValue::Array(list)) => Value::List(
+                list.iter()
+                    .map(|(_, v)| from_tagged_with(v, dates))
+                    .collect(),
+            ),
             _ => Value::List(Vec::new()),
         },
         "m" => {
@@ -77,7 +88,7 @@ pub(crate) fn from_tagged(tagged: &PhpValue) -> Value {
                     if let PhpValue::Array(pair) = pair
                         && let [(_, key), (_, item)] = pair.as_slice()
                     {
-                        map.insert(text(Some(key)), from_tagged(item));
+                        map.insert(text(Some(key)), from_tagged_with(item, dates));
                     }
                 }
             }

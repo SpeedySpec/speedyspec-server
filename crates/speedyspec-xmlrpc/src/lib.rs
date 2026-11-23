@@ -14,6 +14,6 @@ mod transport;
 
 pub use faults::DefaultFaultMapping;
 pub use mapping::DefaultXmlRpcMapping;
-pub use middleware::XmlRpcMiddleware;
+pub use middleware::{XmlRpcMiddleware, XmlRpcServerProvider};
 pub use server::{DEFAULT_ELEMENT_LIMIT, XmlRpcServer, category_of, error_of};
 pub use transport::{XMLRPC, XmlRpcTransport};

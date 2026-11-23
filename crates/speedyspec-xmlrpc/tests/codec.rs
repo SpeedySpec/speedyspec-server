@@ -1,6 +1,8 @@
 use chrono::NaiveDate;
 use speedyspec_operation_contracts::Value;
-use speedyspec_xmlrpc::codec::{parse_call, parse_response, write_call, write_response};
+use speedyspec_xmlrpc::codec::{
+    Dates, RAW_DATE, parse_call, parse_call_with, parse_response, write_call, write_response,
+};
 use speedyspec_xmlrpc_contracts::{Fault, MethodCall, MethodResponse};
 
 const LIMIT: usize = 30000;
@@ -286,4 +288,36 @@ fn responses_parse_back() {
     assert_eq!(parse_response(&write_response(&fault)).unwrap(), fault);
     let ok = MethodResponse::Success(Value::List(vec![Value::Int(3)]));
     assert_eq!(parse_response(&write_response(&ok)).unwrap(), ok);
+}
+
+#[test]
+fn strings_names_and_method_names_are_trimmed_as_ixr_trims_them() {
+    let parsed = parse_call(
+        b"<methodCall><methodName> demo.test\n</methodName><params><param><value><string>\n  secret\n</string></value></param><param><value><struct><member><name> key </name><value><string> v </string></value></member></struct></value></param></params></methodCall>",
+        LIMIT,
+    )
+    .unwrap();
+    assert_eq!(parsed.method, "demo.test");
+    assert_eq!(parsed.params[0], Value::String("secret".into()));
+    assert_eq!(
+        parsed.params[1],
+        Value::map([("key", Value::String("v".into()))])
+    );
+}
+
+#[test]
+fn raw_dates_keep_the_clients_text() {
+    let body = call(&param(
+        "<dateTime.iso8601> 20240102T10:00:00+02:00 </dateTime.iso8601>",
+    ));
+    let raw = parse_call_with(body.as_bytes(), LIMIT, Dates::Raw).unwrap();
+    assert_eq!(
+        raw.params[0],
+        Value::map([(RAW_DATE, Value::String("20240102T10:00:00+02:00".into()))])
+    );
+    let bad = call(&param("<dateTime.iso8601>never</dateTime.iso8601>"));
+    assert_eq!(
+        parse_call_with(bad.as_bytes(), LIMIT, Dates::Raw).unwrap_err(),
+        not_well_formed()
+    );
 }

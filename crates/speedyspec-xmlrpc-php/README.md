@@ -34,14 +34,18 @@ WordPress's method bodies run as they are. It is declared by an autoloader when 
 - **Legacy methods (LegacyHandlerAdapter):** every entry that is not an operation, WordPress's `this:` methods included,
   is an operation named `legacy-xmlrpc/{slug}-{hash}`, restricted to `xmlrpc`, so it never appears on REST. It runs as
   `IXR_Server::call()` runs it: one parameter is passed unwrapped, `this:` methods run on the request's server, and a
-  missing method answers IXR's `-32601`. An `IXR_Error` it returns keeps its fault code.
+  missing method answers IXR's `-32601`. An `IXR_Error` it returns keeps its fault code. Dates reach it as the
+  client sent them (`IXR_Date` with its zone), so WordPress stores the instant the client meant.
 - **`login()`** goes through the Rust server, so operation and legacy methods share one failed-login latch.
 - **`call()` (LegacyCallerAdapter)** reaches any method, WordPress's, a plugin's or an operation's, and returns PHP
   values: `IXR_Date` for dates, `IXR_Base64` for binary, an `IXR_Error` for a fault.
 - **`serve_request()`** answers the request through the Rust server.
 
-One instance is one request's server: constructing another starts over, with a new latch. `XmlRpcService` builds the
-Rust server for the request, through `wp_xmlrpc_server_class` when no instance exists yet.
+A new instance gets a new table, under new legacy operation names, while a server still serving keeps its methods: a
+plugin method that builds its own `wp_xmlrpc_server` breaks nothing. The failed-login latch belongs to the request and
+is shared by every instance in it. `XmlRpcService` builds the Rust server for the request, through
+`wp_xmlrpc_server_class` when no instance exists yet, and is the `XmlRpcServerProvider` for `XmlRpcMiddleware`;
+`end_request()` clears the request's methods and latch.
 
 ## Hooks
 

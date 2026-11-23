@@ -40,12 +40,16 @@ function acme_init(): void {
 add_action( 'wp_operations_init', 'acme_init' );
 
 function acme_old( $args ) { return [ 'got' => $args ]; }
+function acme_date( $args ) { return $args instanceof IXR_Date ? $args->getIso() : 'not a date'; }
+function acme_nested( $args ) { $inner = new wp_xmlrpc_server(); return 'nested'; }
 function acme_teapot( $args ) { return new IXR_Error( 418, 'Teapot' ); }
 final class Acme_Override { public static function blogs( $args ) { return 'overridden'; } }
 function acme_methods( $methods ) {
     $GLOBALS['saw_operation_method'] = ( $methods['acme.hello'] ?? null ) instanceof SpeedySpec\XmlRpc\OperationMethod;
     $methods['acme.old']         = 'acme_old';
     $methods['acme.teapot']      = 'acme_teapot';
+    $methods['acme.nested']      = 'acme_nested';
+    $methods['acme.date']        = 'acme_date';
     $methods['acme.missing']     = 'acme_not_a_function';
     $methods['wp.getUsersBlogs'] = [ 'Acme_Override', 'blogs' ];
     unset( $methods['pingback.ping'] );
@@ -92,6 +96,16 @@ fn main() {
     let when: Rc<dyn OperationHandler> = Rc::new(When);
     bind_handler(&b.container, "acme/when", move |_, _| Ok(when.clone()));
     load(&b.php, "$GLOBALS['s'] = new wp_xmlrpc_server();");
+
+    let dates = text(
+        &b,
+        "return $GLOBALS['s']->call( 'acme.date', [ new IXR_Date( '20240102T10:00:00Z' ) ] ) . ' ' . $GLOBALS['s']->call( 'acme.date', [ new IXR_Date( '20240102T10:00:00' ) ] );",
+    );
+    check(
+        "legacy_methods_keep_the_dates_zone",
+        dates == "20240102T10:00:00Z 20240102T10:00:00",
+        &dates,
+    );
 
     let five = eval(
         &b.php,
@@ -232,5 +246,27 @@ fn main() {
         "a_new_server_is_disabled_by_the_filter",
         disabled == "405",
         &disabled,
+    );
+
+    b.service.end_request();
+    load(
+        &b.php,
+        "remove_filter( 'xmlrpc_enabled', '__return_false' ); $GLOBALS['authenticated'] = []; $GLOBALS['s'] = new wp_xmlrpc_server();",
+    );
+    let nested = text(
+        &b,
+        "$r = $GLOBALS['s']->call( 'system.multicall', [ [
+             [ 'methodName' => 'wp.getOptions', 'params' => [ 1, 'eve', 'x' ] ],
+             [ 'methodName' => 'acme.nested', 'params' => [] ],
+             [ 'methodName' => 'demo.sayHello', 'params' => [] ],
+             [ 'methodName' => 'wp.getOptions', 'params' => [ 1, 'admin', 'pw' ] ],
+         ] ] );
+         return json_encode( [ $r, $GLOBALS['authenticated'] ] );",
+    );
+    let incorrect = r#"{"faultCode":403,"faultString":"Incorrect username or password."}"#;
+    check(
+        "a_server_built_inside_a_method_neither_breaks_the_call_nor_resets_the_latch",
+        nested == format!(r#"[[{incorrect},["nested"],["Hello!"],{incorrect}],["eve"]]"#),
+        &nested,
     );
 }

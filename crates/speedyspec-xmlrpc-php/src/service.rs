@@ -1,7 +1,7 @@
 //! The XML-RPC server of a request: the composition root PHP's `wp_xmlrpc_server` and, later, the server's HTTP
 //! wiring use.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use speedyspec_container::Container;
@@ -13,21 +13,25 @@ use speedyspec_operation_contracts::{
 use speedyspec_operation_php::OperationArea;
 use speedyspec_transport::{Exposure, TransportRegistry};
 use speedyspec_transport_contracts::{BindingStore, ExposureLookup};
-use speedyspec_xmlrpc::{DefaultFaultMapping, XMLRPC, XmlRpcServer, XmlRpcTransport};
+use speedyspec_xmlrpc::{
+    DefaultFaultMapping, XMLRPC, XmlRpcServer, XmlRpcServerProvider, XmlRpcTransport,
+};
 use speedyspec_xmlrpc_contracts::XmlRpcBinding;
 
 use crate::convert::adapter;
 use crate::{PhpXmlRpcHooks, PhpXmlRpcLogin};
 
 /// Builds the request's XML-RPC server: the site's operations exposed on `xmlrpc`, plus the legacy methods of the
-/// request's `wp_xmlrpc_server`, with WordPress's hooks and login. One `wp_xmlrpc_server` is one server: a new one
-/// ([`XmlRpcService::reset`]) starts over, with a new failed-login latch.
+/// request's `wp_xmlrpc_server`, with WordPress's hooks and login. A new `wp_xmlrpc_server` ([`XmlRpcService::reset`])
+/// gets a new server for its table; the failed-login latch belongs to the request, shared by every server in it, and
+/// is cleared only by [`XmlRpcService::end_request`].
 pub struct XmlRpcService {
     container: Rc<Container>,
     operations: Rc<OperationArea>,
     bindings: Rc<dyn BindingStore>,
     identity: Rc<dyn Identity>,
     server: RefCell<Option<Rc<XmlRpcServer>>>,
+    latch: Rc<Cell<bool>>,
 }
 
 fn unavailable(error: impl std::fmt::Display) -> OperationError {
@@ -51,12 +55,20 @@ impl XmlRpcService {
             bindings,
             identity,
             server: RefCell::new(None),
+            latch: Rc::new(Cell::new(false)),
         }
     }
 
-    /// Forgets the request's server.
+    /// A new `wp_xmlrpc_server`: the next call builds a server for its table.
     pub fn reset(&self) {
         *self.server.borrow_mut() = None;
+    }
+
+    /// The request ended: its server, its legacy methods and its failed-login latch are forgotten.
+    pub fn end_request(&self) {
+        self.reset();
+        self.latch.set(false);
+        crate::legacy::end_request();
     }
 
     /// The site's operations exposed on `xmlrpc`.
@@ -102,15 +114,18 @@ impl XmlRpcService {
         }
         let site = self.operations.site()?;
         let exposure = self.exposure()?;
-        let server = Rc::new(XmlRpcServer::new(
-            self.container.clone(),
-            combine(&site.registries),
-            exposure,
-            Rc::new(PhpXmlRpcHooks::new()),
-            Rc::new(PhpXmlRpcLogin::new(self.identity.clone())),
-            Rc::new(DefaultFaultMapping),
-            self.identity.clone(),
-        ));
+        let server = Rc::new(
+            XmlRpcServer::new(
+                self.container.clone(),
+                combine(&site.registries),
+                exposure,
+                Rc::new(PhpXmlRpcHooks::new()),
+                Rc::new(PhpXmlRpcLogin::new(self.identity.clone())),
+                Rc::new(DefaultFaultMapping),
+                self.identity.clone(),
+            )
+            .with_login_latch(self.latch.clone()),
+        );
         *self.server.borrow_mut() = Some(server.clone());
         Ok(server)
     }
@@ -146,4 +161,10 @@ fn combine(site: &Registries) -> Rc<Registries> {
         eprintln!("speedyspec_wordpress: an XML-RPC definition was dropped: {problem}");
     }
     Rc::new(registries)
+}
+
+impl XmlRpcServerProvider for XmlRpcService {
+    fn server(&self) -> Result<Rc<XmlRpcServer>, OperationError> {
+        XmlRpcService::server(self)
+    }
 }

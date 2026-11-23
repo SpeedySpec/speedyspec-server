@@ -235,15 +235,17 @@ final class Adapter
      * Lists the request's method table for the Rust server.
      *
      * @return array
-     *   `[ method, 'op', operation ]` for an operation, `[ method, 'legacy', callback ]` for anything else.
+     *   `[ method, 'op', operation ]` for an operation, `[ method, 'legacy', [ callback, server ] ]` for anything
+     *   else: a `this:` method runs on the server whose table it is in.
      */
     public static function table(): array
     {
-        $rows = [];
-        foreach ((array) (self::server()->methods ?? []) as $method => $callback) {
+        $rows   = [];
+        $server = self::server();
+        foreach ((array) ($server->methods ?? []) as $method => $callback) {
             $rows[] = $callback instanceof \SpeedySpec\XmlRpc\OperationMethod
                 ? [(string) $method, 'op', $callback->operation]
-                : [(string) $method, 'legacy', $callback];
+                : [(string) $method, 'legacy', [$callback, $server]];
         }
         return $rows;
     }
@@ -252,20 +254,20 @@ final class Adapter
      * Runs one legacy method as IXR_Server::call() runs it: a single parameter unwrapped, `this:` methods on the
      * request's server, IXR's faults for a missing method.
      *
-     * @param mixed $callback
-     *   The table entry.
+     * @param array $entry
+     *   The table entry and the server whose table it is in.
      * @param array $params
      *   The tagged parameters.
      * @return array
      *   The tagged result, or a tagged fault.
      */
-    public static function invoke(mixed $callback, array $params): array
+    public static function invoke(array $entry, array $params): array
     {
+        [$callback, $server] = $entry;
         $args = self::untag(['t' => 'l', 'v' => $params]);
         if (1 === count($args)) {
             $args = $args[0];
         }
-        $server = self::server();
         if (is_string($callback) && str_starts_with($callback, 'this:')) {
             $method = substr($callback, 5);
             if (null === $server || ! method_exists($server, $method)) {
@@ -446,8 +448,14 @@ final class Adapter
             case 'l':
                 return array_map([self::class, 'untag'], (array) $value);
             case 'm':
+                $pairs = (array) $value;
+                // A date as the client sent it, zone and all: WordPress reads its zone itself.
+                if (1 === count($pairs) && 'xmlrpc:dateTime.iso8601' === ($pairs[0][0] ?? null)) {
+                    $iso = (string) (self::untag($pairs[0][1]) ?? '');
+                    return class_exists('IXR_Date', false) ? new \IXR_Date($iso) : $iso;
+                }
                 $map = [];
-                foreach ((array) $value as [$key, $item]) {
+                foreach ($pairs as [$key, $item]) {
                     $map[$key] = self::untag($item);
                 }
                 return $map;

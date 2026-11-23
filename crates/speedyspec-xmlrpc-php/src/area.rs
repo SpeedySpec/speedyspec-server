@@ -14,7 +14,7 @@ use speedyspec_xmlrpc::XMLRPC;
 use speedyspec_xmlrpc_contracts::{Fault, XmlRpcBinding, XmlRpcParam};
 
 use crate::XmlRpcService;
-use crate::convert::{from_tagged, to_tagged};
+use crate::convert::{from_tagged, from_tagged_with, to_tagged};
 
 const FACADE: &str = include_str!("php/xmlrpc.php");
 const TRUNK_SERVER: &str = include_str!("php/trunk-xmlrpc-server.php");
@@ -69,6 +69,17 @@ fn params_of(args: &[PhpValue], at: usize) -> Vec<speedyspec_operation_contracts
     }
 }
 
+/// The parameters with their dates as the caller gave them, for legacy methods.
+fn raw_params_of(args: &[PhpValue], at: usize) -> Vec<speedyspec_operation_contracts::Value> {
+    match args.get(at) {
+        Some(PhpValue::Array(items)) => items
+            .iter()
+            .map(|(_, v)| from_tagged_with(v, speedyspec_xmlrpc::codec::Dates::Raw))
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
 /// A new `wp_xmlrpc_server`: the request's table and server start over.
 fn native_reset(_args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     crate::legacy::reset();
@@ -112,7 +123,11 @@ fn native_login(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
 /// `wp_xmlrpc_server::call()` (LegacyCallerAdapter): any method, through the Rust server.
 fn native_call(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     let outcome = match service()?.server() {
-        Ok(server) => server.call(&arg_text(args, 0), params_of(args, 1)),
+        Ok(server) => server.call_with(
+            &arg_text(args, 0),
+            params_of(args, 1),
+            Some(raw_params_of(args, 1)),
+        ),
         Err(error) => Err(unavailable_fault(&error)),
     };
     Ok(tagged_outcome(outcome))
@@ -284,9 +299,9 @@ impl NativeArea for XmlRpcArea {
     }
 
     fn request_end(&self) {
-        crate::legacy::reset();
-        if let Some(service) = SERVICE.with(|s| s.borrow().clone()) {
-            service.reset();
+        match SERVICE.with(|s| s.borrow().clone()) {
+            Some(service) => service.end_request(),
+            None => crate::legacy::end_request(),
         }
     }
 }

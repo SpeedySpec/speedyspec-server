@@ -3,8 +3,10 @@
 //! The method table belongs to the request's `wp_xmlrpc_server`, as in WordPress: every entry that is not an
 //! operation (WordPress's own `this:` methods, a plugin's functions and static methods) becomes an operation
 //! restricted to `xmlrpc`, named `legacy-xmlrpc/{slug}-{hash}`, with an open input. Its handler runs the entry as
-//! `IXR_Server::call()` does. The table is request-scoped and kept apart from the site's closed registries;
-//! `XmlRpcService` serves the site's operations plus this table. A new `wp_xmlrpc_server` starts over.
+//! `IXR_Server::call()` does, `this:` methods on the `wp_xmlrpc_server` whose table they came from. The table is
+//! request-scoped and kept apart from the site's closed registries; `XmlRpcService` serves the site's operations plus
+//! this table. A new `wp_xmlrpc_server` reads a new table, under new operation names, while the methods of the server
+//! still serving keep working: the entries are forgotten only when the request ends.
 
 use std::any::Any;
 use std::cell::RefCell;
@@ -31,13 +33,23 @@ thread_local! {
     static OPERATIONS: RefCell<IndexMap<String, OperationSpec>> = RefCell::new(IndexMap::new());
     /// This request's served table, read from the `wp_xmlrpc_server`.
     static TABLE: RefCell<Option<Vec<MethodEntry>>> = const { RefCell::new(None) };
+    /// Which `wp_xmlrpc_server` of the request the table belongs to.
+    static GENERATION: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
-/// Forgets this request's table: a new `wp_xmlrpc_server` starts over, as WordPress's does.
+/// A new `wp_xmlrpc_server`: its table is read afresh, under new operation names. The entries of earlier servers stay,
+/// so a server still serving a call keeps its methods.
 pub fn reset() {
-    CALLBACKS.with(|c| c.borrow_mut().clear());
     OPERATIONS.with(|o| o.borrow_mut().clear());
     TABLE.with(|t| *t.borrow_mut() = None);
+    GENERATION.with(|g| g.set(g.get().wrapping_add(1)));
+}
+
+/// The request ended: every entry is forgotten.
+pub fn end_request() {
+    reset();
+    CALLBACKS.with(|c| c.borrow_mut().clear());
+    GENERATION.with(|g| g.set(0));
 }
 
 /// This request's legacy operations.
@@ -56,8 +68,8 @@ fn fnv(text: &str) -> u32 {
     })
 }
 
-/// The operation name of a legacy method: `legacy-xmlrpc/{slug}-{hash}`.
-pub fn operation_name(method: &str) -> String {
+/// The operation name of a legacy method of the request's `generation`-th server: `legacy-xmlrpc/{slug}-{hash}`.
+pub fn operation_name(method: &str, generation: u32) -> String {
     let mut slug = String::new();
     for c in method.to_ascii_lowercase().chars() {
         if c.is_ascii_lowercase() || c.is_ascii_digit() {
@@ -68,7 +80,10 @@ pub fn operation_name(method: &str) -> String {
     }
     let slug = slug.trim_matches('-');
     let slug = if slug.is_empty() { "method" } else { slug };
-    format!("legacy-xmlrpc/{slug}-{:08x}", fnv(method))
+    format!(
+        "legacy-xmlrpc/{slug}-{:08x}",
+        fnv(&format!("{method}\u{0}{generation}"))
+    )
 }
 
 fn text(value: &PhpValue) -> String {
@@ -101,7 +116,7 @@ pub(crate) fn read_table(container: &Rc<Container>) -> Vec<String> {
             });
             continue;
         }
-        let name = operation_name(&method);
+        let name = operation_name(&method, GENERATION.with(std::cell::Cell::get));
         let spec = match Operation::command(&name)
             .input::<RawInput>(S::any())
             .output::<RawOutput>(S::any())

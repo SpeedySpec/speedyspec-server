@@ -22,8 +22,10 @@ Patterns: Adapter (the codec), Strategy (`DefaultXmlRpcMapping`, `DefaultFaultMa
 | `array` | `List` |
 | `nil` | `Null` |
 
-Dates are read as `YYYYMMDDTHH:MM:SS`, `YYYY-MM-DDTHH:MM:SS` or `YYYYMMDDTHHMMSS`, with an optional `Z` or offset, and
-written as `YYYYMMDDTHH:MM:SS`. `Null` is written as an empty `<string>` and every integer as `<int>`, as IXR writes
+Strings, member names and method names are trimmed, as IXR trims them. Dates are read as `YYYYMMDDTHH:MM:SS`, `YYYY-MM-DDTHH:MM:SS` or `YYYYMMDDTHHMMSS`, with an optional `Z` or offset, and
+written as `YYYYMMDDTHH:MM:SS`. `parse_call_with(…, Dates::Raw)` keeps each date as the client's text instead, in a
+`{"xmlrpc:dateTime.iso8601": text}` map: WordPress's own methods take it, because WordPress reads a date with no zone
+as the site's local time and honors an explicit zone itself. `Null` is written as an empty `<string>` and every integer as `<int>`, as IXR writes
 them. Scalars are read strictly: a non-numeric `<int>` is a parse fault, where IXR would cast it to 0.
 
 The request body is the client's, so reading is defensive:
@@ -66,7 +68,9 @@ first by operation name is served, and the other is logged and skipped.
 | Unavailable | 503 |
 | Internal | 500 |
 
-An error carrying `details.fault_code` keeps that code. Faults are sent with HTTP 200, as IXR sends them.
+An error carrying `details.fault_code` keeps that code. An internal error without one is logged and sent as 500
+`The request could not be processed.`, so no internal detail reaches the client. Faults are sent with HTTP 200, as IXR
+sends them.
 
 ## The server
 
@@ -80,10 +84,13 @@ writes `text/xml; charset=UTF-8`. `call()`:
 - **An operation:** too few parameters is 400 `Insufficient arguments passed to this XML-RPC method.`; extra ones are
   ignored; `*` is optional and must be a struct; positional fields win over the same keys in it. With credentials in
   its parameters, the call logs in; without, it is anonymous. Then `xmlrpc_call`, then dispatch.
-- **A legacy entry:** dispatched with `{params: [...]}` as it came; its own body logs in and fires `xmlrpc_call`, as
+- **A legacy entry:** dispatched with `{params: [...]}` as it came, dates as the client sent them; its own body logs in and fires `xmlrpc_call`, as
   WordPress's methods do.
 - **Login:** 405 `XML-RPC services are disabled on this site.` when disabled; 403 `Incorrect username or password.`
   through `xmlrpc_login_error` on bad credentials; and after one failure, 403 for every later login in the request
-  without trying again, as WordPress's `auth_failed` does.
+  without trying again, as WordPress's `auth_failed` does. `with_login_latch` shares that flag between the request's
+  servers.
 
-`XmlRpcMiddleware` serves `/xmlrpc.php` (also under a subdirectory) and passes every other path on.
+`XmlRpcMiddleware` serves `/xmlrpc.php` (also under a subdirectory) and passes every other path on. A server lasts one
+request, so the middleware takes an `XmlRpcServerProvider` and asks it for the request's server every time; a provider
+that fails is answered with a generic 500 fault.

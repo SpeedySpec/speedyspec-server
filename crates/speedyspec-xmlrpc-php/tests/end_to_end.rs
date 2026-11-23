@@ -13,6 +13,9 @@ class Acme_Server extends wp_xmlrpc_server {
 }
 function acme_server_class( $class ) { return 'Acme_Server'; }
 add_filter( 'wp_xmlrpc_server_class', 'acme_server_class' );
+function acme_date( $args ) { return $args instanceof IXR_Date ? $args->getIso() : 'not a date'; }
+function acme_date_method( $methods ) { $methods['acme.date'] = 'acme_date'; return $methods; }
+add_filter( 'xmlrpc_methods', 'acme_date_method' );
 "#;
 
 fn post(b: &Booted, body: &str) -> (u16, String, String) {
@@ -66,6 +69,16 @@ fn main() {
     check(
         "a_wordpress_fault_over_http",
         body.contains("<int>400</int>") && body.contains("Requires two integers."),
+        &body,
+    );
+
+    let (_, _, body) = post(
+        &b,
+        "<methodCall><methodName>acme.date</methodName><params><param><value><dateTime.iso8601>20240102T10:00:00-05:00</dateTime.iso8601></value></param></params></methodCall>",
+    );
+    check(
+        "a_zoned_date_reaches_wordpress_as_sent",
+        body.contains("<string>20240102T10:00:00-05:00</string>"),
         &body,
     );
 

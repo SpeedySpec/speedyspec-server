@@ -17,7 +17,7 @@ use speedyspec_xmlrpc_contracts::{
     XmlRpcMapping, XmlRpcParam,
 };
 
-use crate::codec::{parse_call, write_response};
+use crate::codec::{Dates, parse_call, parse_call_with, write_response};
 use crate::{DefaultXmlRpcMapping, XMLRPC};
 
 /// WordPress's default `xmlrpc_element_limit`.
@@ -51,8 +51,8 @@ fn text(value: Option<&Value>) -> String {
     }
 }
 
-/// Serves `xmlrpc.php` for one request: one server is one request, so a failed login stays failed for the rest of
-/// it, as WordPress's `auth_failed` does. The method table comes from [`XmlRpcHooks::methods`] the first time it is
+/// Serves `xmlrpc.php` for one request: a failed login stays failed for the rest of it, as WordPress's `auth_failed`
+/// does ([`XmlRpcServer::with_login_latch`] shares that flag with the request's other servers). The method table comes from [`XmlRpcHooks::methods`] the first time it is
 /// needed.
 pub struct XmlRpcServer {
     dispatcher: Dispatcher,
@@ -64,7 +64,7 @@ pub struct XmlRpcServer {
     faults: Rc<dyn FaultMapping>,
     identity: Rc<dyn Identity>,
     table: OnceCell<Vec<MethodEntry>>,
-    login_failed: Cell<bool>,
+    login_failed: Rc<Cell<bool>>,
 }
 
 impl XmlRpcServer {
@@ -89,8 +89,15 @@ impl XmlRpcServer {
             faults,
             identity,
             table: OnceCell::new(),
-            login_failed: Cell::new(false),
+            login_failed: Rc::new(Cell::new(false)),
         }
+    }
+
+    /// The server sharing `latch`, the request's failed-login flag, with the request's other servers: after one
+    /// failed login anywhere in the request, every later login fails without trying again.
+    pub fn with_login_latch(mut self, latch: Rc<Cell<bool>>) -> Self {
+        self.login_failed = latch;
+        self
     }
 
     /// The server with another default mapping, for bindings that name a method but not its parameters.
@@ -124,9 +131,16 @@ impl XmlRpcServer {
             );
         }
         let body = request.body().borrow_mut().read_all().unwrap_or_default();
-        let response = match parse_call(&body, self.hooks.element_limit(DEFAULT_ELEMENT_LIMIT)) {
+        let limit = self.hooks.element_limit(DEFAULT_ELEMENT_LIMIT);
+        let response = match parse_call(&body, limit) {
             Err(fault) => MethodResponse::Fault(fault),
-            Ok(call) => match self.call(&call.method, call.params) {
+            Ok(call) => match self.call_with(
+                &call.method,
+                call.params,
+                parse_call_with(&body, limit, Dates::Raw)
+                    .ok()
+                    .map(|raw| raw.params),
+            ) {
                 Ok(value) => MethodResponse::Success(value),
                 Err(fault) => MethodResponse::Fault(fault),
             },
@@ -177,10 +191,21 @@ impl XmlRpcServer {
 
     /// Calls one method with its positional parameters: a system method, an operation, or a legacy method.
     pub fn call(&self, method: &str, params: Vec<Value>) -> Result<Value, Fault> {
+        self.call_with(method, params, None)
+    }
+
+    /// Calls one method, with `raw`: the same parameters with their dates as the client sent them
+    /// ([`Dates::Raw`]), which a legacy method receives in place of `params`.
+    pub fn call_with(
+        &self,
+        method: &str,
+        params: Vec<Value>,
+        raw: Option<Vec<Value>>,
+    ) -> Result<Value, Fault> {
         match method {
             GET_CAPABILITIES => return Ok(capabilities()),
             LIST_METHODS => return Ok(self.list_methods()),
-            MULTICALL => return self.multicall(params),
+            MULTICALL => return self.multicall(params, raw),
             _ => {}
         }
         let Some(entry) = self.table().iter().find(|e| e.method == method).cloned() else {
@@ -190,11 +215,11 @@ impl XmlRpcServer {
             // A legacy method logs in and fires `xmlrpc_call` itself, as WordPress's methods do. Its raw input is
             // `{params: [...]}`, the positional parameters as they came.
             let caller = self.anonymous();
-            let input = Value::map([("params", Value::List(params))]);
+            let input = Value::map([("params", Value::List(raw.unwrap_or(params)))]);
             return self
                 .dispatcher
                 .call(&entry.operation, input, &caller)
-                .map_err(|e| Fault::from_error(&e, self.faults.as_ref()));
+                .map_err(|e| self.fault_of(&e));
         }
         self.run_operation(method, &entry.operation, params)
     }
@@ -205,6 +230,17 @@ impl XmlRpcServer {
             .binding(operation)
             .ok_or_else(|| no_method(operation))?;
         self.run_operation(&binding.method, operation, params)
+    }
+
+    /// The fault an error is sent as. An internal error with no fault code of its own is logged and sent with a
+    /// generic message, so no internal detail reaches the client.
+    fn fault_of(&self, error: &OperationError) -> Fault {
+        let fault = Fault::from_error(error, self.faults.as_ref());
+        if error.category == Category::Internal && error.details.get("fault_code").is_none() {
+            eprintln!("speedyspec_xmlrpc: an XML-RPC call failed: {error}");
+            return Fault::new(fault.code, "The request could not be processed.");
+        }
+        fault
     }
 
     fn anonymous(&self) -> Caller {
@@ -262,10 +298,10 @@ impl XmlRpcServer {
         };
         self.hooks
             .call(method, &params)
-            .map_err(|e| Fault::from_error(&e, self.faults.as_ref()))?;
+            .map_err(|e| self.fault_of(&e))?;
         self.dispatcher
             .call(operation, Value::Map(input), &caller)
-            .map_err(|e| Fault::from_error(&e, self.faults.as_ref()))
+            .map_err(|e| self.fault_of(&e))
     }
 
     /// Logs in, as WordPress's `wp_xmlrpc_server::login` does: 405 when XML-RPC is disabled, 403 (through
@@ -306,7 +342,11 @@ impl XmlRpcServer {
     }
 
     /// IXR's `system.multicall`: `[value]` for each success, `{faultCode, faultString}` for each fault.
-    fn multicall(&self, params: Vec<Value>) -> Result<Value, Fault> {
+    fn multicall(&self, params: Vec<Value>, raw: Option<Vec<Value>>) -> Result<Value, Fault> {
+        let mut raw_calls = match raw.and_then(|raw| raw.into_iter().next()) {
+            Some(Value::List(calls)) => Some(calls.into_iter()),
+            _ => None,
+        };
         let calls = match params.into_iter().next() {
             Some(Value::List(calls)) => calls,
             _ => {
@@ -319,19 +359,24 @@ impl XmlRpcServer {
         let results = calls
             .into_iter()
             .map(|call| {
-                let method = text(call.get("methodName"));
-                let params = match call.get("params") {
+                let params_of = |call: &Value| match call.get("params") {
                     None | Some(Value::Null) => Vec::new(),
                     Some(Value::List(params)) => params.clone(),
                     Some(other) => vec![other.clone()],
                 };
+                let method = text(call.get("methodName"));
+                let params = params_of(&call);
+                let raw = raw_calls
+                    .as_mut()
+                    .and_then(Iterator::next)
+                    .map(|raw| params_of(&raw));
                 let result = if method == MULTICALL {
                     Err(Fault::new(
                         -32600,
                         "Recursive calls to system.multicall are forbidden",
                     ))
                 } else {
-                    self.call(&method, params)
+                    self.call_with(&method, params, raw)
                 };
                 match result {
                     Ok(value) => Value::List(vec![value]),
@@ -373,7 +418,7 @@ fn capabilities() -> Value {
     ])
 }
 
-fn respond(status: u16, headers: &[(&str, &str)], body: &[u8]) -> HttpResponse {
+pub(crate) fn respond(status: u16, headers: &[(&str, &str)], body: &[u8]) -> HttpResponse {
     let mut response = HttpResponse::new(StatusCode::new(status).expect("a valid status"));
     for (name, value) in headers {
         response = response
