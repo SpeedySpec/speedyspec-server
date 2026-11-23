@@ -10,3 +10,7 @@ license.workspace = true
 [dependencies]
 speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
 speedyspec-xmlrpc-contracts = { path = "../speedyspec-xmlrpc-contracts" }
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+indexmap = "2"
+quick-xml = "0.42.0"

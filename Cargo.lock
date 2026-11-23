@@ -6864,6 +6864,10 @@ dependencies = [
 name = "speedyspec-xmlrpc"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "indexmap",
+ "quick-xml",
  "speedyspec-operation-contracts",
  "speedyspec-xmlrpc-contracts",
 ]
