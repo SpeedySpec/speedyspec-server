@@ -11,10 +11,13 @@ use speedyspec_wp_media::functions::{
     Outcome, add_id3_tag_data, media_creation_timestamp, read_audio_metadata, read_video_metadata,
 };
 use speedyspec_wp_media::images;
+use speedyspec_wp_media::mime;
 use speedyspec_wp_media::neutral::neutral;
 use speedyspec_wp_media_contracts::{MEDIA_READER, MediaReader, MediaSource, ProbeLimits, Tree};
 
-use crate::adapters::{Pending, PhpTagSanitizer, PhpTimeParser, TooLarge};
+use crate::adapters::{
+    FileinfoHandle, Pending, PhpFileinfo, PhpTagSanitizer, PhpTimeParser, TooLarge,
+};
 use crate::convert::{from_php, to_php};
 
 pub(crate) struct Natives {
@@ -23,6 +26,7 @@ pub(crate) struct Natives {
     pub limits: ProbeLimits,
     pub default: std::cell::RefCell<Option<Rc<dyn MediaReader>>>,
     pub pending: Pending,
+    pub fileinfo: FileinfoHandle,
 }
 
 fn hook_error(err: HookError) -> NativeError {
@@ -196,6 +200,37 @@ impl Natives {
         Ok(to_php(&images::avif_info(&info)))
     }
 
+    /// The MIME type `wp_check_filetype_and_ext()` compares with the claimed `$type`: fileinfo's, confirmed by the
+    /// reader when fileinfo files audio as video or video as audio (a local file).
+    fn content_mime(&self, args: &[Value]) -> Result<Value, NativeError> {
+        let path = bytes(args.first());
+        let claimed = String::from_utf8_lossy(&bytes(args.get(1))).into_owned();
+        let fileinfo = PhpFileinfo {
+            pending: self.pending.clone(),
+            handle: self.fileinfo.clone(),
+        };
+        let found = mime::content_mime(
+            path_of(&path),
+            &claimed,
+            &fileinfo,
+            &LazyReader(self),
+            &self.limits,
+        );
+        match found {
+            // Fileinfo answered, so anything pending is the reader's: a reader that fails, or can't be resolved,
+            // leaves fileinfo's answer standing rather than failing the upload check.
+            Some(mime) => {
+                self.pending.take();
+                Ok(Value::Str(mime))
+            }
+            // Fileinfo itself failed; the reader was never consulted.
+            None => {
+                self.rethrow_pending()?;
+                Ok(Value::Bool(false))
+            }
+        }
+    }
+
     fn read_media(&self, args: &[Value]) -> Result<Value, NativeError> {
         let Some(reader) = self.default.borrow().clone() else {
             return Ok(Value::Bool(false));
@@ -210,6 +245,26 @@ impl Natives {
                 Err(_) => Value::Bool(false),
             },
         )
+    }
+}
+
+/// The `MEDIA_READER` port resolved only when a read is asked for (Virtual Proxy): most filetype checks never need
+/// a reader, and one that can't be resolved reads as a crash, which the content rule answers with fileinfo's type.
+struct LazyReader<'a>(&'a Natives);
+
+impl MediaReader for LazyReader<'_> {
+    fn read(
+        &self,
+        source: MediaSource,
+        limits: &ProbeLimits,
+    ) -> Result<speedyspec_wp_media_contracts::MediaInfo, speedyspec_wp_media_contracts::ReadError>
+    {
+        match self.0.container.make_port::<dyn MediaReader>(MEDIA_READER) {
+            Ok(reader) => reader.read(source, limits),
+            Err(err) => Err(speedyspec_wp_media_contracts::ReadError::Crashed(
+                err.to_string(),
+            )),
+        }
     }
 }
 
@@ -250,5 +305,40 @@ pub(crate) fn functions(natives: &Rc<Natives>) -> Vec<FunctionBuilder<'static>> 
     out.push(native::function(&format!("{ns}avif_info"), move |args| {
         n.avif_info(args)
     }));
+    let n = natives.clone();
+    out.push(native::function(
+        &format!("{ns}content_mime"),
+        move |args| n.content_mime(args),
+    ));
+    out.push(native::function(&format!("{ns}mime_types"), |_| {
+        Ok(pairs(
+            mime::mime_types()
+                .into_iter()
+                .map(|(k, v)| (k, Tree::Str(v.into()))),
+        ))
+    }));
+    out.push(native::function(&format!("{ns}ext_types"), |_| {
+        Ok(pairs(mime::ext_types().into_iter().map(|(k, list)| {
+            (
+                k,
+                Tree::List(list.into_iter().map(|e| Tree::Str(e.into())).collect()),
+            )
+        })))
+    }));
+    out.push(native::function(
+        &format!("{ns}image_mimes_to_exts"),
+        |_| {
+            Ok(pairs(
+                mime::image_mimes_to_exts()
+                    .into_iter()
+                    .map(|(k, v)| (k, Tree::Str(v.into()))),
+            ))
+        },
+    ));
     out
+}
+
+/// An ordered PHP array from string keys.
+fn pairs<'a>(items: impl Iterator<Item = (&'a str, Tree)>) -> Value {
+    to_php(&Tree::Map(items.map(|(k, v)| (k.to_owned(), v)).collect()))
 }

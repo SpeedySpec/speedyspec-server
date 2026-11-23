@@ -38,3 +38,7 @@ harness = false
 [[test]]
 name = "wordpress"
 harness = false
+
+[[test]]
+name = "mime"
+harness = false

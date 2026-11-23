@@ -187,7 +187,10 @@ pub fn getid3_view(info: &MediaInfo) -> Tree {
     let c = &info.container;
 
     top.opt("filesize", info.file_size.map(|n| int(n as i64)));
-    top.opt("fileformat", tables::fileformat(c).map(s));
+    top.opt(
+        "fileformat",
+        tables::fileformat(c, audio.first().map(|a| &a.codec)).map(s),
+    );
     let vendor = info
         .tags
         .iter()

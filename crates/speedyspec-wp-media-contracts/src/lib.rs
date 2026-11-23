@@ -17,6 +17,6 @@ pub use info::{
     AudioStream, BitrateMode, Codec, ContainerKind, ImageKind, ImageStream, MediaInfo, Picture,
     RawViews, Stream, Tag, TagKey, TagSystem, VideoStream,
 };
-pub use ports::{TagSanitizer, TimeParser};
+pub use ports::{ContentSniffer, TagSanitizer, TimeParser};
 pub use reader::{Limit, MEDIA_READER, MediaReader, MediaSource, ProbeLimits, ReadError};
 pub use tree::Tree;
