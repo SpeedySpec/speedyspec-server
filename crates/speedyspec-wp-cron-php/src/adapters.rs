@@ -4,7 +4,7 @@ use speedyspec_hooks::Key;
 use speedyspec_wp_cron::{RustArgsKeyer, md5_hex};
 use speedyspec_wp_cron_contracts::{
     ArgsKeyer, Clock, CronError, CronResult, CronStep, DoingCron, ErrorReporter, EventKey,
-    PhpObjects, Translator,
+    NetworkSites, PhpObjects, SiteSwitcher, Translator,
 };
 use speedyspec_wp_hooks::HookValue;
 
@@ -185,5 +185,90 @@ impl ErrorReporter for PhpErrorReporter {
             ],
         )
         .unwrap_or(HookValue::Null)
+    }
+}
+
+/// A PHP call whose exception reaches the caller as a [`CronError`] carrying it.
+fn call_or_throw(function: &str, args: &[HookValue]) -> Result<HookValue, CronError> {
+    speedyspec_php::call_catching(&HookValue::Str(function.into()), args).map_err(|failure| {
+        CronError {
+            message: failure.error.to_string(),
+            payload: failure
+                .exception
+                .map(|e| std::rc::Rc::new(e) as std::rc::Rc<dyn std::any::Any>),
+        }
+    })
+}
+
+/// A site id as PHP gives it (an int, or a numeric string from `get_sites()`).
+fn site_id(value: &HookValue) -> Option<u64> {
+    match &*value.read() {
+        HookValue::Int(n) => u64::try_from(*n).ok(),
+        HookValue::Str(s) => s.trim().parse().ok(),
+        _ => None,
+    }
+}
+
+/// The network option holding the last site whose turn ended.
+const CURSOR: &str = "speedyspec_cron_cursor";
+
+/// The network's active sites through `get_sites()`, and the cursor through the site options; a single site when
+/// `is_multisite()` is missing or false.
+pub struct PhpNetworkSites;
+
+impl NetworkSites for PhpNetworkSites {
+    fn is_multisite(&self) -> bool {
+        function_exists("is_multisite")
+            && function_exists("get_sites")
+            && matches!(call("is_multisite", &[]), Some(HookValue::Bool(true)))
+    }
+
+    fn site_ids(&self) -> Result<Vec<u64>, CronError> {
+        let key = |k: &str| Key::Str(k.into());
+        let query = HookValue::Array(vec![
+            (key("fields"), HookValue::Str("ids".into())),
+            (key("number"), HookValue::Int(0)),
+            (key("spam"), HookValue::Int(0)),
+            (key("deleted"), HookValue::Int(0)),
+            (key("archived"), HookValue::Int(0)),
+            (key("orderby"), HookValue::Str("id".into())),
+            (key("order"), HookValue::Str("ASC".into())),
+        ]);
+        Ok(
+            match call_or_throw("get_sites", &[query])?.read().into_owned() {
+                HookValue::Array(items) => items.iter().filter_map(|(_, v)| site_id(v)).collect(),
+                _ => Vec::new(),
+            },
+        )
+    }
+
+    fn cursor(&self) -> Result<Option<u64>, CronError> {
+        Ok(site_id(&call_or_throw(
+            "get_site_option",
+            &[HookValue::Str(CURSOR.into()), HookValue::Bool(false)],
+        )?))
+    }
+
+    fn set_cursor(&self, site: u64) -> Result<(), CronError> {
+        call_or_throw(
+            "update_site_option",
+            &[HookValue::Str(CURSOR.into()), HookValue::Int(site as i64)],
+        )?;
+        Ok(())
+    }
+}
+
+/// `switch_to_blog()` and `restore_current_blog()`.
+pub struct PhpSiteSwitcher;
+
+impl SiteSwitcher for PhpSiteSwitcher {
+    fn switch_to(&self, site: u64) -> Result<(), CronError> {
+        call_or_throw("switch_to_blog", &[HookValue::Int(site as i64)])?;
+        Ok(())
+    }
+
+    fn restore(&self) -> Result<(), CronError> {
+        call_or_throw("restore_current_blog", &[])?;
+        Ok(())
     }
 }

@@ -323,6 +323,11 @@ runs its own scheduler; the app makes sure each due event runs once (WordPress's
 compare-and-swap write), so replicas never coordinate. `max_interval` is how a replica notices events scheduled
 through another replica.
 
+On a multisite network, each call runs the due events of every active site of the admin API's network (not spam,
+deleted or archived), switching to each in turn within the call's budget. A call that runs out of budget resumes at the
+next site on the following call (the network option `speedyspec_cron_cursor`), so no site waits for a visit, as it
+would in WordPress, and none starves.
+
 ## Health and maintenance
 
 A php release may name its probes: `"php": { "health": { "live": "/healthz", "ready": "/readyz" } }`. The server calls

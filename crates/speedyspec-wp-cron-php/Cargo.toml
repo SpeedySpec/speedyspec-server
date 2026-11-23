@@ -46,3 +46,7 @@ harness = false
 [[test]]
 name = "wordpress"
 harness = false
+
+[[test]]
+name = "network_php"
+harness = false
