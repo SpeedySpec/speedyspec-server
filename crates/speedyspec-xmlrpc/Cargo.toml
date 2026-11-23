@@ -8,6 +8,11 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-http = { path = "../speedyspec-http" }
+speedyspec-http-message = { path = "../speedyspec-http-message" }
+speedyspec-operation = { path = "../speedyspec-operation" }
+speedyspec-operation-dispatch = { path = "../speedyspec-operation-dispatch" }
 speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
 speedyspec-xmlrpc-contracts = { path = "../speedyspec-xmlrpc-contracts" }
 base64 = "0.22"
@@ -18,4 +23,3 @@ speedyspec-transport = { path = "../speedyspec-transport" }
 speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }
 
 [dev-dependencies]
-speedyspec-operation = { path = "../speedyspec-operation" }
