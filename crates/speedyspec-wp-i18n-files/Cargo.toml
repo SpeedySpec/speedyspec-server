@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-i18n-files"
-version = "0.1.3"
+version = "0.1.4"
 publish = false
 description = "WordPress translation file readers (MO, .l10n.php) and the standard file probe, as adapters of speedyspec-wp-i18n-contracts."
 edition.workspace = true

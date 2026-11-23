@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-password-bcrypt"
-version = "0.2.0"
+version = "0.3.0"
 publish = false
 description = "The password port's bcrypt, over the bcrypt crate, matching PHP's crypt() and password_verify()."
 edition.workspace = true

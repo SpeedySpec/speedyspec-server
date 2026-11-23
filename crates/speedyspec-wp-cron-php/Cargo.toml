@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-cron-php"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "WordPress's cron functions as native PHP functions over the Rust cron port, with a thin cron.php wrapper."
 edition.workspace = true

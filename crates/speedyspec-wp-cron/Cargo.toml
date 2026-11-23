@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-cron"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "WordPress's cron scheduling API in Rust: the commands and queries of cron.php over a CronStore, each write a compare-and-swap."
 edition.workspace = true

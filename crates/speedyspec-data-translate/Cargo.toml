@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-data-translate"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "MySQL-to-portable rewrite passes, MySQL type parsing and the MySQL schema catalogue, shared by the SQLite and PostgreSQL engines."
 edition.workspace = true

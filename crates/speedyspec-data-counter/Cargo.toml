@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-data-counter"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "Valkey's INCRBY rules for key-value stores that emulate it: canonical decimal counters."
 edition.workspace = true

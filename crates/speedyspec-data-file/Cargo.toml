@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-data-file"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "The file Direct Store: a directory of files, written atomically, with exclusive locks."
 edition.workspace = true
