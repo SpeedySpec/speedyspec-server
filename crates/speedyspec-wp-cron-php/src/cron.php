@@ -167,8 +167,13 @@ namespace SpeedySpec\WpCron
             'orderby'    => 'id',
             'order'      => 'ASC',
         );
-        foreach (\get_sites($query) as $site)
+        foreach ((array) \get_sites($query) as $site)
         {
+            // A `the_sites` filter may hand back anything: only a site with an id is called.
+            if (!is_object($site) || (int) $site->blog_id <= 0)
+            {
+                continue;
+            }
             $sites[] = array((int) $site->blog_id, (string) $site->domain, (string) $site->path);
         }
         return $sites;

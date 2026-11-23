@@ -97,6 +97,8 @@ impl CronScheduler {
             // No call before this, whatever is reported: the floor between two calls.
             let mut not_before = Instant::now();
             let mut backoff: Option<Duration> = None;
+            // The follow-up the last round ended on: the next round starts after it, so no site always comes last.
+            let mut last_follow_up: Option<String> = None;
             loop {
                 tokio::select! {
                     _ = tokio::time::sleep_until(next_wake.max(not_before)) => {}
@@ -118,7 +120,8 @@ impl CronScheduler {
                     next_wake = Instant::now() + config.max_interval;
                     continue;
                 }
-                let mut started = Instant::now();
+                let round_started = Instant::now();
+                let mut started = round_started;
                 let mut reported: Option<Instant> = None;
                 let result = collecting_reports(
                     calls.call(&app, &path, None, config.budget, config.timeout),
@@ -126,11 +129,29 @@ impl CronScheduler {
                     &mut reported,
                 )
                 .await;
-                // The follow-ups, in order; their own lists are not followed (one level).
-                for query in result.as_deref().unwrap_or_default() {
-                    if paused.load(std::sync::atomic::Ordering::SeqCst) || maintenance.is_on(&app) {
+                // The follow-ups, in order, starting after the one the last round ended on, until `max_interval` from
+                // the round's start (so the app's own call is never held back longer); their own lists are not
+                // followed (one level). Sites not reached are still due, so the next round lists them again.
+                let list = result.as_deref().unwrap_or_default();
+                let list_was_empty = list.is_empty();
+                let start = last_follow_up
+                    .as_ref()
+                    .and_then(|last| list.iter().position(|q| q == last))
+                    .map_or(0, |i| i + 1);
+                for query in list[start.min(list.len())..]
+                    .iter()
+                    .chain(&list[..start.min(list.len())])
+                {
+                    if Instant::now() >= round_started + config.max_interval
+                        || paused.load(std::sync::atomic::Ordering::SeqCst)
+                        || maintenance.is_on(&app)
+                    {
                         break;
                     }
+                    // A switch mid-list: the live release's path, or no more calls when it declares none.
+                    let Some((path, _)) = target() else {
+                        break;
+                    };
                     started = Instant::now();
                     let follow_up = collecting_reports(
                         calls.call(&app, &path, Some(query), config.budget, config.timeout),
@@ -141,6 +162,7 @@ impl CronScheduler {
                     if let Err(err) = follow_up {
                         tracing::warn!(event = "php_cron_follow_up_failed", app = %app, query = %query, error = %err);
                     }
+                    last_follow_up = Some(query.clone());
                 }
                 let now = Instant::now();
                 next_wake = match result {
@@ -158,6 +180,10 @@ impl CronScheduler {
                     }
                 };
                 next_wake = next_wake.min(now + config.max_interval);
+                if !list_was_empty {
+                    // After follow-ups, the next round is due `max_interval` from this one's start, not its end.
+                    next_wake = next_wake.min(round_started + config.max_interval);
+                }
                 not_before = started + MIN_GAP;
             }
         });
@@ -294,6 +320,7 @@ mod tests {
         task: tokio::task::JoinHandle<()>,
         started: Instant,
         maintenance: std::sync::Arc<MaintenanceSet>,
+        paused: std::sync::Arc<std::sync::atomic::AtomicBool>,
     }
 
     impl Drop for Running {
@@ -319,14 +346,20 @@ mod tests {
         let maintenance = std::sync::Arc::new(MaintenanceSet::default());
         let started = Instant::now();
         let paused = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let (task, sink) =
-            CronScheduler::spawn(app(), target, fake.clone(), maintenance.clone(), paused);
+        let (task, sink) = CronScheduler::spawn(
+            app(),
+            target,
+            fake.clone(),
+            maintenance.clone(),
+            paused.clone(),
+        );
         Running {
             fake,
             sink,
             task,
             started,
             maintenance,
+            paused,
         }
     }
 
@@ -543,9 +576,7 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn maintenance_stops_the_list() {
-        let mut slow = std::sync::Arc::into_inner(fake()).unwrap();
-        slow.takes = Duration::from_secs(2);
-        let slow = std::sync::Arc::new(slow);
+        let slow = taking(2);
         *slow.answers.lock().unwrap() = vec![follow_ups(&["site=2", "site=3", "site=4"])];
         let r = start(slow, fixed(60));
         // During the first follow-up (2 s to 4 s), the app goes into maintenance.
@@ -553,6 +584,73 @@ mod tests {
         r.maintenance.set(&app(), MaintenanceSource::Operator, true);
         tokio::time::sleep(Duration::from_secs(10)).await;
         assert_eq!(r.called(), vec!["/cron.php", "/cron.php&site=2"]);
+    }
+
+    fn taking(seconds: u64) -> std::sync::Arc<Fake> {
+        let mut slow = std::sync::Arc::into_inner(fake()).unwrap();
+        slow.takes = Duration::from_secs(seconds);
+        std::sync::Arc::new(slow)
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn long_list_keeps_max_interval_and_rotates() {
+        let slow = taking(4);
+        *slow.answers.lock().unwrap() = vec![
+            follow_ups(&["a", "b", "c"]),
+            Ok(Vec::new()),
+            Ok(Vec::new()),
+            follow_ups(&["a", "b", "c"]),
+        ];
+        let r = start(slow, fixed(10));
+        tokio::time::sleep(Duration::from_secs(23)).await;
+        // Round 1 (deadline 10): main 0-4, a 4-8, b 8-12. Round 2 at 12 (deadline 22) starts after b: c, then a.
+        assert_eq!(
+            r.called(),
+            vec![
+                "/cron.php",
+                "/cron.php&a",
+                "/cron.php&b",
+                "/cron.php",
+                "/cron.php&c",
+                "/cron.php&a"
+            ]
+        );
+        assert_eq!(
+            r.call_seconds()[3],
+            12,
+            "the app's own call is not held back"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn draining_stops_the_list() {
+        let slow = taking(2);
+        *slow.answers.lock().unwrap() = vec![follow_ups(&["site=2", "site=3"])];
+        let r = start(slow, fixed(60));
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        r.paused.store(true, std::sync::atomic::Ordering::SeqCst);
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        assert_eq!(r.called(), vec!["/cron.php", "/cron.php&site=2"]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn switch_mid_list_uses_the_live_path() {
+        let path = std::sync::Arc::new(Mutex::new(Some("/cron.php".to_string())));
+        let current = path.clone();
+        let target: CronTarget =
+            std::sync::Arc::new(move || current.lock().unwrap().clone().map(|p| (p, config(60))));
+        let slow = taking(2);
+        *slow.answers.lock().unwrap() = vec![follow_ups(&["site=2", "site=3", "site=4"])];
+        let r = start(slow, target);
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        *path.lock().unwrap() = Some("/new.php".to_string());
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        *path.lock().unwrap() = None;
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        assert_eq!(
+            r.called(),
+            vec!["/cron.php", "/cron.php&site=2", "/new.php&site=3"]
+        );
     }
 
     #[tokio::test(start_paused = true)]

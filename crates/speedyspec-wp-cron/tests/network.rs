@@ -149,11 +149,15 @@ fn wake_is_earliest_across_sites() {
 }
 
 #[test]
-fn failed_switch_restores() {
+fn failed_switch_restores_and_skips_the_site() {
     let n = net(&[1, 2, 3]);
     seed(&n, 3, &[(-10, "due")]);
     n.network.fail_switch_to(2);
-    assert!(n.api.due_sites().is_err());
+    assert_eq!(
+        ids(&n.api.due_sites().unwrap()),
+        vec![3],
+        "the failing site is skipped, the rest listed"
+    );
     assert_eq!(n.network.depth(), 0, "the failed switch is restored");
     assert_eq!(n.network.current(), 1);
 }
@@ -181,5 +185,39 @@ fn nothing_runs_while_switched() {
         n.network.store(2).raw(),
         Some(option_with(&[(NOW - 10, "due")])),
         "the event is still there for site 2's own call"
+    );
+}
+
+#[test]
+fn legacy_option_is_upgraded_in_its_own_site() {
+    let n = net(&[1, 2]);
+    // A version-less (pre-2.1) option: `_get_cron_array()` upgrades and saves it.
+    let legacy = HookValue::Array(vec![(
+        speedyspec_wp_hooks::Key::Int(NOW - 10),
+        HookValue::Array(vec![(
+            speedyspec_wp_hooks::Key::Str("legacy".into()),
+            HookValue::Array(vec![(
+                speedyspec_wp_hooks::Key::Str("args".into()),
+                HookValue::Array(vec![]),
+            )]),
+        )]),
+    )]);
+    n.network.store(2).set_raw(Some(legacy));
+    assert_eq!(ids(&n.api.due_sites().unwrap()), vec![2]);
+    assert_eq!(n.network.depth(), 0);
+    assert_eq!(
+        n.network.store(1).raw(),
+        None,
+        "the main site's option is untouched"
+    );
+    let upgraded = n.network.store(2).raw().expect("site 2 saved");
+    let HookValue::Array(items) = upgraded else {
+        panic!("an array")
+    };
+    assert!(
+        items
+            .iter()
+            .any(|(k, _)| *k == speedyspec_wp_hooks::Key::Str("version".into())),
+        "upgraded in site 2's own store"
     );
 }

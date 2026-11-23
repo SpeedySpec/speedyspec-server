@@ -47,7 +47,8 @@ define('MULTISITE', true);
 function get_sites($args = array()) {
     $GLOBALS['get_sites_args'] = $args;
     $sites = array();
-    foreach (array(array('1', 'example.test', '/'), array('2', 'example.test', '/site2/')) as $row) {
+    $sites[] = null; // a the_sites filter's junk: skipped
+    foreach (array(array('0', 'zero.test', '/'), array('1', 'example.test', '/'), array('2', 'example.test', '/site2/')) as $row) {
         $site = new stdClass(); $site->blog_id = $row[0]; $site->domain = $row[1]; $site->path = $row[2];
         $sites[] = $site;
     }
@@ -199,6 +200,15 @@ fn main() {
             $r = SpeedySpec\\WpCron\\run_due_events();
             $left = unserialize($wpdb->get_var(\"SELECT option_value FROM cronnet_2_options WHERE option_name = 'cron'\"));
             return $ran === array() && $r['ran'] === 0 && !array_key_exists('sites', $r) && count($left) === 2;",
+            seed(-30)
+        ),
+    );
+    yes(
+        "string_budget_is_read",
+        &format!(
+            "{} $count = 0; add_action('site_hook', function () use (&$count) {{ $count++; }});
+            switch_to_blog(2); $r = SpeedySpec\\WpCron\\run_due_events('0'); restore_current_blog();
+            return $count === 1 && $r['next'] === time();",
             seed(-30)
         ),
     );

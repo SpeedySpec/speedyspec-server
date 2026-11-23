@@ -340,9 +340,12 @@ through another replica.
 
 A `2xx` answer may list follow-up calls: a JSON body `{"calls": ["<query>", …]}`. The scheduler then calls the cron
 path again for each, in order, with `&<query>` after `budget`, and does not follow lists those calls answer. It stops
-the list when the app enters maintenance or the generation starts draining, and moves on past a failed follow-up
-(`php_cron_follow_up_failed`). Any other body is no follow-ups; at most 10 000 are kept, and an entry with `#` or a line
-break is dropped. A declared path that already has a query gets `&budget=…`.
+the list when the app enters maintenance, the generation starts draining, the live release declares no cron path, or
+`max_interval` has passed since the round began (the next round then starts after the last follow-up called, so no
+entry always comes last, and calls the app's own path on time). A failed follow-up is logged
+(`php_cron_follow_up_failed`) and the list goes on. Any other body is no follow-ups; at most 10 000 are kept, an entry
+with `#` or a line break is dropped, and the whole answer must fit the 1 MiB limit on internal answers. A declared path
+that already has a query gets `&budget=…`.
 
 On a multisite network this runs every active site's due events (not spam, deleted or archived ones), each in a request
 booted as that site, with its own plugins and theme, so no site waits for a visit as it would in WordPress. The cron
@@ -354,8 +357,9 @@ endpoint of the admin API:
 2. Defines `DOING_CRON` and calls `SpeedySpec\WpCron\run_due_events($budget)`, which runs the current site's events.
 3. On a call without `site`: answers `{"calls": SpeedySpec\WpCron\due_sites()}`. `due_sites()` reads the other sites'
    `cron` options (through `switch_to_blog()`, running nothing) and returns `site=<id>&host=<domain>&path=<path>` for
-   each with an event due now, from `get_sites()` on the current network. It also reports the earliest future time
-   across the sites, so the server wakes for the next one.
+   each with an event due now, from `get_sites()` on the current network, as many as fit in 512 KiB (the rest are
+   listed by later calls). A site whose switch or read fails is skipped. It also reports the earliest future time
+   across the sites, so the server wakes for the next one. `budget` may be passed as `$_GET['budget']` is (a string).
 
 ## Health and maintenance
 

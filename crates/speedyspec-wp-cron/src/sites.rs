@@ -24,9 +24,13 @@ impl CronApi {
             let switched = self.p.switcher.switch_to(site.id);
             // WordPress pushes its stack before `switch_blog` fires, so a failed switch is restored too.
             let read = switched.and_then(|()| self.get_cron_array());
-            let restored = self.p.switcher.restore();
-            let cron = read?;
-            restored?;
+            // A failed restore leaves the request on the wrong site: nothing after it can be trusted.
+            self.p.switcher.restore()?;
+            // One site that cannot be read (a throwing `switch_blog` or `option_cron` callback, a database error)
+            // is skipped, so it does not hold up every other site's cron.
+            let Ok(cron) = read else {
+                continue;
+            };
             let mut is_due = false;
             for event in cron.events() {
                 if event.timestamp <= now {

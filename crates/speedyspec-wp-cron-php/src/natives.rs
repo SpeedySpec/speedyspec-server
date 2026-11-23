@@ -180,6 +180,8 @@ pub(crate) fn functions(api: &Rc<CronApi>) -> Vec<FunctionBuilder<'static>> {
             let budget = match args.first().map(|v| v.read().into_owned()) {
                 Some(HookValue::Int(n)) => n as f64,
                 Some(HookValue::Float(f)) => f,
+                // `$_GET['budget']` as it arrives.
+                Some(HookValue::Str(text)) => text.trim().parse().unwrap_or(30.0),
                 _ => 30.0,
             };
             // A huge or infinite budget is no limit (`from_secs_f64` would panic on it).
@@ -207,11 +209,12 @@ pub(crate) fn functions(api: &Rc<CronApi>) -> Vec<FunctionBuilder<'static>> {
         "SpeedySpec\\WpCron\\due_sites",
         move |_args| {
             let sites = lister.due_sites().map_err(native_error)?;
+            let queries = within_answer(sites.iter().map(follow_up_query));
             Ok(HookValue::Array(
-                sites
+                queries
                     .into_iter()
                     .enumerate()
-                    .map(|(i, site)| (Key::Int(i as i64), HookValue::Str(follow_up_query(&site))))
+                    .map(|(i, query)| (Key::Int(i as i64), HookValue::Str(query)))
                     .collect(),
             ))
         },
@@ -230,6 +233,21 @@ pub(crate) fn follow_up_query(site: &SiteRef) -> String {
     )
 }
 
+/// The most bytes of queries one answer lists: half the server's 1 MiB limit on an internal answer, leaving room for
+/// JSON quoting and whatever else the endpoint answers. Sites past it are still due, so the next call lists them.
+const ANSWER_BYTES: usize = 512 * 1024;
+
+/// The leading `queries` that fit in [`ANSWER_BYTES`] (each counted with its JSON quotes and comma).
+pub(crate) fn within_answer(queries: impl Iterator<Item = String>) -> Vec<String> {
+    let mut used = 0;
+    queries
+        .take_while(|query| {
+            used += query.len() + 3;
+            used <= ANSWER_BYTES
+        })
+        .collect()
+}
+
 /// PHP's `rawurlencode()`: every byte but `A-Z a-z 0-9 - _ . ~` as `%XX`.
 fn rawurlencode(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
@@ -246,6 +264,14 @@ fn rawurlencode(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn answer_stays_under_the_limit() {
+        let query = "x".repeat(97);
+        let kept = within_answer(std::iter::repeat_n(query, 10_000));
+        assert_eq!(kept.len(), ANSWER_BYTES / 100);
+        assert!(within_answer(std::iter::empty()).is_empty());
+    }
 
     #[test]
     fn follow_up_query_encodes_like_rawurlencode() {
