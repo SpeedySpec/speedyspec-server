@@ -1,7 +1,9 @@
-//! The ports WordPress's media rules need, over PHP: kses, `strtotime`, and a PHP object replacing the reader.
+//! The ports WordPress's media rules need, over PHP: kses, `strtotime`, fileinfo, and a PHP object replacing the
+//! reader.
 
 use std::cell::RefCell;
 
+use std::path::Path;
 use std::rc::Rc;
 
 use speedyspec_hooks::Key;
@@ -10,7 +12,8 @@ use speedyspec_php_ext::PhpObject;
 use speedyspec_wp_hooks::HookValue as Value;
 use speedyspec_wp_media::neutral::from_neutral;
 use speedyspec_wp_media_contracts::{
-    MediaInfo, MediaReader, MediaSource, ProbeLimits, ReadError, TagSanitizer, TimeParser, Tree,
+    ContentSniffer, MediaInfo, MediaReader, MediaSource, ProbeLimits, ReadError, TagSanitizer,
+    TimeParser, Tree,
 };
 
 use crate::convert::{from_php, to_php};
@@ -128,5 +131,65 @@ impl MediaReader for TooLarge {
         Err(ReadError::LimitExceeded(
             speedyspec_wp_media_contracts::Limit::Bytes,
         ))
+    }
+}
+
+/// PHP's fileinfo (`finfo_file()` with `FILEINFO_MIME_TYPE`), the content check WordPress makes (Adapter). A thrown
+/// exception is kept for the native function to rethrow.
+pub struct PhpFileinfo {
+    pub pending: Pending,
+    /// The request's `finfo` handle, opened on first use: opening one loads the magic database.
+    pub handle: FileinfoHandle,
+}
+
+/// A request's `finfo` handle, shared by every check in it. PHP frees it with the request, so the area forgets it at
+/// each request's start.
+#[derive(Clone, Default)]
+pub struct FileinfoHandle(Rc<RefCell<Option<Value>>>);
+
+impl FileinfoHandle {
+    /// Forgets the handle (the request that opened it has ended).
+    pub fn clear(&self) {
+        self.0.borrow_mut().take();
+    }
+}
+
+/// PHP's `FILEINFO_MIME_TYPE`.
+const FILEINFO_MIME_TYPE: i64 = 16;
+
+impl PhpFileinfo {
+    fn finfo(&self) -> Option<Value> {
+        if let Some(finfo) = self.handle.0.borrow().clone() {
+            return Some(finfo);
+        }
+        match speedyspec_php::call_catching(
+            &Value::Str("finfo_open".into()),
+            &[Value::Int(FILEINFO_MIME_TYPE)],
+        ) {
+            Ok(Value::Bool(false)) => None,
+            Ok(finfo) => {
+                *self.handle.0.borrow_mut() = Some(finfo.clone());
+                Some(finfo)
+            }
+            Err(failure) => {
+                self.pending.keep(&failure);
+                None
+            }
+        }
+    }
+}
+
+impl ContentSniffer for PhpFileinfo {
+    fn sniff(&self, path: &Path) -> Option<String> {
+        let finfo = self.finfo()?;
+        let arg = to_php(&Tree::Bytes(path.as_os_str().as_encoded_bytes().to_vec()));
+        match speedyspec_php::call_catching(&Value::Str("finfo_file".into()), &[finfo, arg]) {
+            Ok(Value::Str(mime)) => Some(mime),
+            Ok(_) => None,
+            Err(failure) => {
+                self.pending.keep(&failure);
+                None
+            }
+        }
     }
 }

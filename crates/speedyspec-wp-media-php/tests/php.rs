@@ -422,4 +422,265 @@ fn main() {
         v["fileformat"] == "wav" && v["length"] == 1,
         &r,
     );
+
+    // The MIME list and filetype checks (plan 5).
+    let media_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat/media");
+    let at = |rel: &str| media_dir.join(rel).display().to_string();
+
+    let r = php.eval(
+        "speedyspec://test/mime-types",
+        "$t = wp_get_mime_types(); $k = array_keys($t);
+         return json_encode([$t['caf'] ?? null, $t['jpg|jpeg|jpe'], $k[array_search('mka', $k) + 1], $k[array_search('heifs', $k) + 1]]);",
+    );
+    let v = json(&r);
+    check(
+        "mime_types_keep_wordpress_and_add_rows",
+        v[0] == "audio/x-caf" && v[1] == "image/jpeg" && v[2] == "aif|aiff|aifc" && v[3] == "jp2",
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/mime-filters",
+        "add_filter('mime_types', function () { return array('x' => 'y'); });
+         add_filter('ext2type', function ($t) { $t['made'] = array('foo'); return $t; });
+         $r = [wp_get_mime_types(), wp_ext2type('FOO'), wp_ext2type('caf')];
+         remove_all_filters('mime_types'); remove_all_filters('ext2type');
+         return json_encode($r);",
+    );
+    let v = json(&r);
+    check(
+        "mime_types_and_ext2type_filters_run",
+        v[0] == serde_json::json!({"x": "y"}) && v[1] == "made" && v[2] == "audio",
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/allowed",
+        // A function declared in the same script exists before it runs, so the capability is declared afterwards.
+        "$GLOBALS['without'] = get_allowed_mime_types();
+         eval('function current_user_can($cap) { return $cap === \"unfiltered_html\"; }');
+         $without = $GLOBALS['without'];
+         $with = get_allowed_mime_types();
+         return json_encode([isset($without['htm|html']), isset($without['js']), isset($without['swf']), isset($without['caf']), isset($with['htm|html']), isset($with['js']), isset($with['exe'])]);",
+    );
+    check(
+        "allowed_mime_types_drop_html_and_js_without_capability",
+        json(&r) == serde_json::json!([false, false, false, true, true, true, false]),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/regex-key",
+        "add_filter('upload_mimes', function ($m) { return $m + array('svg|svgz' => 'image/svg+xml', 'jpe?g2' => 'image/x-test'); });
+         $r = [wp_check_filetype('a.SVGZ'), wp_check_filetype('b.jpg2'), wp_check_filetype('c.jpeg2'), wp_check_filetype('d.jpeeg2')];
+         remove_all_filters('upload_mimes');
+         return json_encode($r);",
+    );
+    check(
+        "check_filetype_reads_a_plugins_regex_key",
+        json(&r)
+            == serde_json::json!([
+                {"ext": "SVGZ", "type": "image/svg+xml"},
+                {"ext": "jpg2", "type": "image/x-test"},
+                {"ext": "jpeg2", "type": "image/x-test"},
+                {"ext": false, "type": false}
+            ]),
+        &r,
+    );
+
+    let filetype = |file: &str, name: &str| {
+        php.eval(
+            "speedyspec://test/filetype",
+            &format!("return json_encode(wp_check_filetype_and_ext({file:?}, {name:?}));"),
+        )
+    };
+
+    let r = filetype(&at("uploads/tone.caf"), "tone.caf");
+    check(
+        "filetype_and_ext_accepts_added_formats",
+        json(&r)
+            == serde_json::json!({"ext": "caf", "type": "audio/x-caf", "proper_filename": false}),
+        &r,
+    );
+
+    let mka = filetype(&at("corpus/tone.mka"), "tone.mka");
+    let wma = filetype(&at("corpus/tone.wma"), "tone.wma");
+    check(
+        "audio_only_matroska_is_accepted",
+        json(&mka)
+            == serde_json::json!({"ext": "mka", "type": "audio/x-matroska", "proper_filename": false})
+            && json(&wma)
+                == serde_json::json!({"ext": "wma", "type": "audio/x-ms-wma", "proper_filename": false}),
+        (&mka, &wma),
+    );
+
+    let html = kit::write_temp(
+        b"<!DOCTYPE html><html><body><script>alert(1)</script></body></html>\n",
+        "mp3",
+    );
+    let r = filetype(&html.path().display().to_string(), "song.mp3");
+    check(
+        "html_named_mp3_is_rejected",
+        json(&r) == serde_json::json!({"ext": false, "type": false, "proper_filename": false}),
+        &r,
+    );
+
+    let r = filetype(&at("images/mislabelled.jpg"), "mislabelled.jpg");
+    check(
+        "png_named_jpg_gets_proper_filename",
+        json(&r)
+            == serde_json::json!({"ext": "png", "type": "image/png", "proper_filename": "mislabelled.png"}),
+        &r,
+    );
+
+    let r = filetype(&at("images/photo.jxl"), "photo.png");
+    check(
+        "jxl_named_png_becomes_jxl",
+        json(&r)
+            == serde_json::json!({"ext": "jxl", "type": "image/jxl", "proper_filename": "photo.jxl"}),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/filetype-wrapper",
+        &format!(
+            "class MkaWrap {{
+                 public $context; private $pos = 0;
+                 public function stream_open($p, $m, $o, &$op) {{ return true; }}
+                 public function stream_read($n) {{ $d = substr($GLOBALS['mka'], $this->pos, $n); $this->pos += strlen($d); return $d; }}
+                 public function stream_eof() {{ return $this->pos >= strlen($GLOBALS['mka']); }}
+                 public function stream_seek($o, $w) {{ $this->pos = $w === SEEK_SET ? $o : ($w === SEEK_CUR ? $this->pos + $o : strlen($GLOBALS['mka']) + $o); return true; }}
+                 public function stream_tell() {{ return $this->pos; }}
+                 public function stream_stat() {{ return ['size' => strlen($GLOBALS['mka']), 'mode' => 0100644]; }}
+                 public function url_stat($p, $f) {{ return ['size' => strlen($GLOBALS['mka']), 'mode' => 0100644]; }}
+             }}
+             stream_wrapper_register('mkawrap', 'MkaWrap');
+             $GLOBALS['mka'] = file_get_contents({:?});
+             return json_encode(wp_check_filetype_and_ext('mkawrap://tone.mka', 'tone.mka'));",
+            at("corpus/tone.mka")
+        ),
+    );
+    check(
+        "stream_wrapper_path_uses_fileinfo",
+        json(&r) == serde_json::json!({"ext": false, "type": false, "proper_filename": false}),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/default-ext",
+        "return json_encode([wp_get_default_extension_for_mime_type('audio/mpeg'), wp_get_default_extension_for_mime_type('video/mpeg'), wp_get_default_extension_for_mime_type('audio/x-caf'), wp_get_default_extension_for_mime_type('wibble/wobble')]);",
+    );
+    check(
+        "default_extension_unchanged_for_shared_mimes",
+        json(&r) == serde_json::json!(["mp3", "mpeg", "caf", false]),
+        &r,
+    );
+
+    let wp_data =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/php/wordpress/media/data/uploads");
+    let phone = wp_data
+        .join("audio-in-video-container.m4a")
+        .display()
+        .to_string();
+    let csv = wp_data.join("test.csv").display().to_string();
+    let r = php.eval(
+        "speedyspec://test/real-mime",
+        &format!(
+            "add_filter('wp_check_filetype_and_ext', function ($r, $f, $n, $m, $real) {{ $GLOBALS['real'][] = $real; return $r; }}, 10, 5);
+             $GLOBALS['real'] = array();
+             $phone = wp_check_filetype_and_ext({phone:?}, 'phone.m4a');
+             $mka = wp_check_filetype_and_ext({:?}, 'tone.mka');
+             remove_all_filters('wp_check_filetype_and_ext');
+             return json_encode([$phone['type'], $GLOBALS['real'][0] === finfo_file(finfo_open(FILEINFO_MIME_TYPE), {phone:?}), $mka['type'], $GLOBALS['real'][1]]);",
+            at("corpus/tone.mka")
+        ),
+    );
+    check(
+        "real_mime_is_fileinfos_where_wordpress_accepts",
+        json(&r) == serde_json::json!(["audio/mpeg", true, "audio/x-matroska", "audio/x-matroska"]),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/throwing-reader",
+        &format!(
+            "\\SpeedySpec\\Container\\Container::getInstance()->bind(\\SpeedySpec\\WpMedia\\MediaReader::class, fn () => new class implements \\SpeedySpec\\WpMedia\\MediaReader {{
+                 public function read($path) {{ throw new RuntimeException('unknown format'); }}
+             }});
+             try {{
+                 return json_encode([wp_check_filetype_and_ext({:?}, 'tone.mka'), wp_check_filetype_and_ext({csv:?}, 'test.csv')['type']]);
+             }} catch (Throwable $e) {{ return 'threw: ' . $e->getMessage(); }}",
+            at("corpus/tone.mka")
+        ),
+    );
+    check(
+        "a_throwing_reader_leaves_fileinfos_answer",
+        json(&r)
+            == serde_json::json!([{"ext": false, "type": false, "proper_filename": false}, "text/csv"]),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/unresolvable-reader",
+        &format!(
+            "\\SpeedySpec\\Container\\Container::getInstance()->bind(\\SpeedySpec\\WpMedia\\MediaReader::class, function () {{ throw new RuntimeException('no reader'); }});
+             try {{
+                 return json_encode([wp_check_filetype_and_ext({csv:?}, 'test.csv')['type'], wp_check_filetype_and_ext({:?}, 'tone.mka')['type']]);
+             }} catch (Throwable $e) {{ return 'threw: ' . $e->getMessage(); }}",
+            at("corpus/tone.mka")
+        ),
+    );
+    check(
+        "an_unresolvable_reader_leaves_fileinfos_answer",
+        json(&r) == serde_json::json!(["text/csv", false]),
+        &r,
+    );
+
+    // One fileinfo handle per request: it answers every check, and a new request gets a new one.
+    let twice = format!(
+        "return json_encode([wp_check_filetype_and_ext({csv:?}, 'a.csv')['type'], wp_check_filetype_and_ext({csv:?}, 'b.csv')['type']]);"
+    );
+    let first = php.eval("speedyspec://test/finfo-twice", &twice);
+    php.restart_request().expect("a fresh request");
+    php.eval("speedyspec://test/load", &load)
+        .expect("WordPress's functions load");
+    let again = php.eval("speedyspec://test/finfo-again", &twice);
+    check(
+        "fileinfo_handle_is_kept_per_request",
+        json(&first) == serde_json::json!(["text/csv", "text/csv"]) && json(&again) == json(&first),
+        (&first, &again),
+    );
+
+    // A stream wrapper fileinfo can read (it hands over a real stream): fileinfo's answer decides, as in WordPress,
+    // and the reader isn't consulted for a path it can't open.
+    let r = php.eval(
+        "speedyspec://test/readable-wrapper",
+        &format!(
+            "class FileWrap {{
+                 public $context; private $h;
+                 private static function real($p) {{ return $GLOBALS['wrapped'][substr($p, strlen('filewrap://'))]; }}
+                 public function stream_open($p, $m, $o, &$op) {{ $this->h = fopen(self::real($p), 'rb'); return (bool) $this->h; }}
+                 public function stream_read($n) {{ return fread($this->h, $n); }}
+                 public function stream_eof() {{ return feof($this->h); }}
+                 public function stream_seek($o, $w) {{ return fseek($this->h, $o, $w) === 0; }}
+                 public function stream_tell() {{ return ftell($this->h); }}
+                 public function stream_stat() {{ return fstat($this->h); }}
+                 public function stream_cast($as) {{ return $this->h; }}
+                 public function url_stat($p, $f) {{ return @stat(self::real($p)); }}
+             }}
+             stream_wrapper_register('filewrap', 'FileWrap');
+             $GLOBALS['wrapped'] = array('test.csv' => {csv:?}, 'tone.mka' => {:?});
+             return json_encode([wp_check_filetype_and_ext('filewrap://test.csv', 'test.csv'), wp_check_filetype_and_ext('filewrap://tone.mka', 'tone.mka')]);",
+            at("corpus/tone.mka")
+        ),
+    );
+    check(
+        "readable_stream_wrapper_uses_fileinfos_answer",
+        json(&r)
+            == serde_json::json!([
+                {"ext": "csv", "type": "text/csv", "proper_filename": false},
+                {"ext": false, "type": false, "proper_filename": false}
+            ]),
+        &r,
+    );
 }

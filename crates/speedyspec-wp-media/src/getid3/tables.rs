@@ -3,9 +3,10 @@
 
 use speedyspec_wp_media_contracts::{Codec, ContainerKind, ImageKind, TagKey, TagSystem};
 
-/// getID3's `fileformat`.
-pub fn fileformat(container: &ContainerKind) -> Option<&'static str> {
+/// getID3's `fileformat` (`audio` is the first audio stream's codec: MPEG audio is `mp2` or `mp3` by layer).
+pub fn fileformat(container: &ContainerKind, audio: Option<&Codec>) -> Option<&'static str> {
     Some(match container {
+        ContainerKind::Mp3 if audio == Some(&Codec::Mp2) => "mp2",
         ContainerKind::Mp3 => "mp3",
         ContainerKind::Mp4 | ContainerKind::QuickTime | ContainerKind::ThreeGp => "mp4",
         ContainerKind::Matroska => "matroska",
@@ -94,6 +95,12 @@ pub fn mime_type(
         ContainerKind::Dts => "audio/dts",
         ContainerKind::RealMedia => "audio/x-realaudio",
         ContainerKind::Midi => "audio/midi",
+        ContainerKind::Other(name) => match name.as_str() {
+            "au" => "audio/basic",
+            "voc" => "audio/voc",
+            "mpegvideo" => "video/mpeg",
+            _ => return None,
+        },
         _ => return None,
     })
 }
@@ -101,12 +108,14 @@ pub fn mime_type(
 /// getID3's `audio.dataformat`.
 pub fn audio_dataformat(container: &ContainerKind, codec: &Codec) -> Option<&'static str> {
     Some(match container {
+        ContainerKind::Mp3 if codec == &Codec::Mp2 => "mp2",
         ContainerKind::Mp3 => "mp3",
         ContainerKind::Mp4 | ContainerKind::QuickTime | ContainerKind::ThreeGp => "mp4",
         ContainerKind::Flac => "flac",
         ContainerKind::Wav => "wav",
         ContainerKind::Aiff => "aiff",
         ContainerKind::Asf => "wma",
+        ContainerKind::Ac3 if codec == &Codec::Eac3 => "eac3",
         ContainerKind::Ac3 => "ac3",
         ContainerKind::Dts => "dts",
         ContainerKind::Flv => "flv",
@@ -176,6 +185,7 @@ pub fn audio_bitrate_mode(
         return None;
     }
     Some(match (container, codec) {
+        (ContainerKind::Mp3, Codec::Mp2) => "cbr",
         (ContainerKind::Mp3, _) => "vbr",
         (ContainerKind::Avi, _) => "cbr",
         (

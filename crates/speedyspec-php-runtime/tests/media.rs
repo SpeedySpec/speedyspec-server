@@ -86,6 +86,40 @@ async fn wp_getimagesize_in_a_worker() {
     );
 }
 
+/// An audio-only Matroska file that fileinfo calls video is confirmed as audio by the worker's own probe child (under
+/// seccomp on Linux), so `wp_check_filetype_and_ext()` accepts it; an HTML file named `.mp3` stays rejected.
+#[tokio::test(flavor = "current_thread")]
+async fn wp_check_filetype_and_ext_in_a_worker() {
+    let dir = tempfile::tempdir().unwrap();
+    let corpus = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat/media/corpus");
+    let site = dir.path().join("site");
+    std::fs::create_dir_all(&site).unwrap();
+    std::fs::copy(corpus.join("tone.mka"), site.join("tone.mka")).unwrap();
+    std::fs::write(
+        site.join("page.mp3"),
+        "<!DOCTYPE html><html><body>hi</body></html>\n",
+    )
+    .unwrap();
+    let app = support::release(
+        dir.path(),
+        "app",
+        &format!(
+            "<?php $m = wp_check_filetype_and_ext({:?}, 'tone.mka'); $h = wp_check_filetype_and_ext({:?}, 'page.mp3'); echo json_encode([$m['type'], $h['type']]);",
+            site.join("tone.mka").display().to_string(),
+            site.join("page.mp3").display().to_string()
+        ),
+    );
+    let mut worker = support::spawn(dir.path(), &app, Some(&site), &[]);
+    worker.ready().await;
+    let answer = worker.get(&app.join("index.php"), "/").await;
+    assert_eq!(
+        answer.body(),
+        r#"["audio\/x-matroska",false]"#,
+        "{}",
+        answer.stdout
+    );
+}
+
 #[test]
 fn media_probe_subcommand_reads_stdin() {
     let dir = tempfile::tempdir().unwrap();

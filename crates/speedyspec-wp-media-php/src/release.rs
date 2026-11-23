@@ -19,6 +19,16 @@ pub const PORTED_FUNCTIONS: &[(&str, &str)] = &[
     ("wp-includes/media.php", "wp_get_avif_info"),
     ("wp-includes/media.php", "wp_get_webp_info"),
     ("wp-includes/functions.php", "wp_get_image_mime"),
+    ("wp-includes/functions.php", "wp_ext2type"),
+    (
+        "wp-includes/functions.php",
+        "wp_get_default_extension_for_mime_type",
+    ),
+    ("wp-includes/functions.php", "wp_check_filetype"),
+    ("wp-includes/functions.php", "wp_check_filetype_and_ext"),
+    ("wp-includes/functions.php", "wp_get_mime_types"),
+    ("wp-includes/functions.php", "wp_get_ext_types"),
+    ("wp-includes/functions.php", "get_allowed_mime_types"),
 ];
 
 /// `file`'s text (a path under the release root) without the ported functions it declares, each with its docblock.

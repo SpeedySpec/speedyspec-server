@@ -1,0 +1,713 @@
+{
+    "wordpress": "7.1.5",
+    "getid3": "1.9.25-202603080933",
+    "php": "8.5.12",
+    "files": {
+        "bars.dv": {
+            "kind": "video",
+            "metadata": {
+                "filesize": 120000
+            },
+            "file_format": null,
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 120000,
+                "filepath": "<corpus>",
+                "filename": "bars.dv",
+                "filenamepath": "<corpus>/bars.dv",
+                "encoding": "UTF-8",
+                "error": [
+                    "unable to determine file format"
+                ]
+            },
+            "creation_timestamp": false,
+            "us": 64
+        },
+        "bars.m2ts": {
+            "kind": "video",
+            "metadata": {
+                "filesize": 215040
+            },
+            "file_format": null,
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 215040,
+                "filepath": "<corpus>",
+                "filename": "bars.m2ts",
+                "filenamepath": "<corpus>/bars.m2ts",
+                "encoding": "UTF-8",
+                "error": [
+                    "unable to determine file format"
+                ]
+            },
+            "creation_timestamp": false,
+            "us": 61
+        },
+        "bars.m2v": {
+            "kind": "video",
+            "metadata": {
+                "filesize": 92844,
+                "mime_type": "video/mpeg"
+            },
+            "file_format": null,
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 92844,
+                "filepath": "<corpus>",
+                "filename": "bars.m2v",
+                "filenamepath": "<corpus>/bars.m2v",
+                "encoding": "UTF-8",
+                "mime_type": "video/mpeg",
+                "error": [
+                    "Format not supported, module \"module.audio-video.mpeg.php\" was removed."
+                ]
+            },
+            "creation_timestamp": false,
+            "us": 52
+        },
+        "bars.mxf": {
+            "kind": "video",
+            "metadata": {
+                "filesize": 416313
+            },
+            "file_format": null,
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 416313,
+                "filepath": "<corpus>",
+                "filename": "bars.mxf",
+                "filenamepath": "<corpus>/bars.mxf",
+                "encoding": "UTF-8",
+                "error": [
+                    "unable to determine file format"
+                ]
+            },
+            "creation_timestamp": false,
+            "us": 60
+        },
+        "bars.ogm": {
+            "kind": "video",
+            "metadata": {
+                "filesize": 26190,
+                "mime_type": "video/ogg",
+                "width": 160,
+                "height": 120,
+                "fileformat": "ogg",
+                "dataformat": "theora"
+            },
+            "file_format": "ogg",
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 26190,
+                "filepath": "<corpus>",
+                "filename": "bars.ogm",
+                "filenamepath": "<corpus>/bars.ogm",
+                "avdataoffset": 0,
+                "avdataend": 24377,
+                "fileformat": "ogg",
+                "video": {
+                    "dataformat": "theora",
+                    "resolution_x": 160,
+                    "resolution_y": 120,
+                    "frame_rate": 10.0,
+                    "pixel_aspect_ratio": 1.0
+                },
+                "warning": [
+                    "Ogg Theora (v3) not fully supported in this version of getID3 [1.9.25-202603080933] -- bitrate, playtime and all audio data are currently unavailable"
+                ],
+                "encoding": "UTF-8",
+                "mime_type": "video/ogg",
+                "ogg": {
+                    "pageheader": {
+                        "0": {
+                            "page_start_offset": 70,
+                            "stream_structver": 0,
+                            "flags_raw": 2,
+                            "flags": {
+                                "fresh": false,
+                                "bos": true,
+                                "eos": false
+                            },
+                            "pcm_abs_position": 0,
+                            "stream_serialno": 352247288,
+                            "page_seqno": 0,
+                            "page_checksum": 2645104545,
+                            "page_segments": 1,
+                            "page_length": 30,
+                            "segment_table": [
+                                30
+                            ],
+                            "header_end_offset": 98,
+                            "page_end_offset": 128
+                        },
+                        "theora": {
+                            "theora_magic": {
+                                "$latin1": "807468656f7261"
+                            },
+                            "version_major": 3,
+                            "version_minor": 2,
+                            "version_revision": 1,
+                            "frame_width_macroblocks": 10,
+                            "frame_height_macroblocks": 8,
+                            "resolution_x": 160,
+                            "resolution_y": 120,
+                            "picture_offset_x": 0,
+                            "picture_offset_y": 8,
+                            "frame_rate_numerator": 10,
+                            "frame_rate_denominator": 1,
+                            "pixel_aspect_numerator": 1,
+                            "pixel_aspect_denominator": 1,
+                            "color_space_id": 0,
+                            "nominal_bitrate": 0,
+                            "flags": 18624,
+                            "quality": 18,
+                            "kfg_shift": 6,
+                            "pixel_format_id": 0,
+                            "reserved": 0,
+                            "color_space": "Undefined",
+                            "pixel_format": "4:2:0"
+                        },
+                        "eos": {
+                            "page_start_offset": 24377,
+                            "stream_structver": 0,
+                            "flags_raw": 4,
+                            "flags": {
+                                "fresh": false,
+                                "bos": false,
+                                "eos": true
+                            },
+                            "pcm_abs_position": 88200,
+                            "stream_serialno": 352247288,
+                            "page_seqno": 3,
+                            "page_checksum": 1994534346,
+                            "page_segments": 43,
+                            "page_length": 1743,
+                            "segment_table": [
+                                39,
+                                37,
+                                40,
+                                37,
+                                38,
+                                37,
+                                37,
+                                39,
+                                38,
+                                40,
+                                37,
+                                41,
+                                37,
+                                38,
+                                39,
+                                39,
+                                37,
+                                40,
+                                37,
+                                37,
+                                39,
+                                39,
+                                37,
+                                39,
+                                36,
+                                37,
+                                39,
+                                37,
+                                39,
+                                37,
+                                37,
+                                37,
+                                39,
+                                37,
+                                40,
+                                37,
+                                39,
+                                37,
+                                40,
+                                38,
+                                39,
+                                53,
+                                127
+                            ],
+                            "header_end_offset": 24447,
+                            "page_end_offset": 26190
+                        }
+                    },
+                    "samples": 88200,
+                    "encoding": "UTF-8"
+                }
+            },
+            "creation_timestamp": false,
+            "us": 92
+        },
+        "bars.rm": {
+            "kind": "video",
+            "metadata": {
+                "filesize": 101643,
+                "mime_type": "audio/x-realaudio"
+            },
+            "file_format": null,
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 101643,
+                "filepath": "<corpus>",
+                "filename": "bars.rm",
+                "filenamepath": "<corpus>/bars.rm",
+                "encoding": "UTF-8",
+                "mime_type": "audio/x-realaudio",
+                "error": [
+                    "Format not supported, module \"module.audio-video.real.php\" was removed."
+                ]
+            },
+            "creation_timestamp": false,
+            "us": 48
+        },
+        "bars.vob": {
+            "kind": "video",
+            "metadata": {
+                "filesize": 192512,
+                "mime_type": "video/mpeg"
+            },
+            "file_format": null,
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 192512,
+                "filepath": "<corpus>",
+                "filename": "bars.vob",
+                "filenamepath": "<corpus>/bars.vob",
+                "encoding": "UTF-8",
+                "mime_type": "video/mpeg",
+                "error": [
+                    "Format not supported, module \"module.audio-video.mpeg.php\" was removed."
+                ]
+            },
+            "creation_timestamp": false,
+            "us": 47
+        },
+        "tone.au": {
+            "kind": "audio",
+            "metadata": {
+                "filesize": 176432,
+                "mime_type": "audio/basic"
+            },
+            "file_format": null,
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 176432,
+                "filepath": "<corpus>",
+                "filename": "tone.au",
+                "filenamepath": "<corpus>/tone.au",
+                "encoding": "UTF-8",
+                "mime_type": "audio/basic",
+                "error": [
+                    "Format not supported, module \"module.audio.au.php\" was removed."
+                ]
+            },
+            "creation_timestamp": false,
+            "us": 43
+        },
+        "tone.caf": {
+            "kind": "audio",
+            "metadata": {
+                "filesize": 35555
+            },
+            "file_format": null,
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 35555,
+                "filepath": "<corpus>",
+                "filename": "tone.caf",
+                "filenamepath": "<corpus>/tone.caf",
+                "encoding": "UTF-8",
+                "error": [
+                    "unable to determine file format"
+                ]
+            },
+            "creation_timestamp": false,
+            "us": 59
+        },
+        "tone.eac3": {
+            "kind": "audio",
+            "metadata": {
+                "dataformat": "eac3",
+                "bitrate_mode": "cbr",
+                "lossless": false,
+                "sample_rate": 44100,
+                "bitrate": 112000.0,
+                "channelmode": "mono",
+                "channels": 1,
+                "compression_ratio": 0.15873015873015872,
+                "fileformat": "ac3",
+                "filesize": 24240,
+                "mime_type": "audio/ac3",
+                "length": 2,
+                "length_formatted": "0:02"
+            },
+            "file_format": "ac3",
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 24240,
+                "filepath": "<corpus>",
+                "filename": "tone.eac3",
+                "filenamepath": "<corpus>/tone.eac3",
+                "avdataoffset": 0,
+                "avdataend": 24240,
+                "fileformat": "ac3",
+                "audio": {
+                    "dataformat": "eac3",
+                    "bitrate_mode": "cbr",
+                    "lossless": false,
+                    "sample_rate": 44100,
+                    "bitrate": 112000.0,
+                    "channelmode": "mono",
+                    "channels": 1,
+                    "compression_ratio": 0.15873015873015872
+                },
+                "error": [
+                    "E-AC3 parsing is incomplete and experimental in this version of getID3 (1.9.25-202603080933). Notably the bitrate calculations are wrong -- value might (or not) be correct, but it is not calculated correctly. Email info@getid3.org if you know how to calculate EAC3 bitrate correctly."
+                ],
+                "encoding": "UTF-8",
+                "mime_type": "audio/ac3",
+                "ac3": {
+                    "raw": {
+                        "bsi": {
+                            "bsid": 16,
+                            "strmtyp": 0,
+                            "substreamid": 0,
+                            "frmsiz": 207,
+                            "fscod": 1,
+                            "numblkscod": 3,
+                            "acmod": 1,
+                            "flags": {
+                                "lfeon": false,
+                                "compr": false,
+                                "mixmdat": false,
+                                "infomdat": false,
+                                "addbsi": false
+                            },
+                            "dialnorm": 31
+                        }
+                    },
+                    "bsi": {
+                        "blocks_per_sync_frame": 6
+                    },
+                    "sample_rate": 44100,
+                    "bitrate": 112000.0,
+                    "channel_config": "1/0",
+                    "num_channels": 1,
+                    "channel_order": "C",
+                    "lfe_enabled": false,
+                    "channels_enabled": {
+                        "ch1": false,
+                        "ch2": false,
+                        "left": false,
+                        "right": false,
+                        "center": true,
+                        "surround_mono": false,
+                        "surround_left": false,
+                        "surround_right": false,
+                        "lfe": false
+                    },
+                    "dialogue_normalization": "-31dB"
+                },
+                "bitrate": 112000.0,
+                "playtime_seconds": 1.7314285714285715,
+                "playtime_string": "0:02"
+            },
+            "creation_timestamp": false,
+            "us": 76
+        },
+        "tone.mp2": {
+            "kind": "audio",
+            "metadata": {
+                "dataformat": "mp2",
+                "channels": 1,
+                "sample_rate": 44100,
+                "bitrate": 128000,
+                "channelmode": "mono",
+                "bitrate_mode": "cbr",
+                "lossless": false,
+                "encoder_options": "CBR128",
+                "compression_ratio": 0.18140589569160998,
+                "fileformat": "mp2",
+                "filesize": 32182,
+                "mime_type": "audio/mpeg",
+                "length": 2,
+                "length_formatted": "0:02"
+            },
+            "file_format": "mp2",
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 32182,
+                "filepath": "<corpus>",
+                "filename": "tone.mp2",
+                "filenamepath": "<corpus>/tone.mp2",
+                "avdataoffset": 0,
+                "avdataend": 32182,
+                "fileformat": "mp2",
+                "audio": {
+                    "dataformat": "mp2",
+                    "channels": 1,
+                    "sample_rate": 44100,
+                    "bitrate": 128000,
+                    "channelmode": "mono",
+                    "bitrate_mode": "cbr",
+                    "lossless": false,
+                    "encoder_options": "CBR128",
+                    "compression_ratio": 0.18140589569160998
+                },
+                "encoding": "UTF-8",
+                "mime_type": "audio/mpeg",
+                "mpeg": {
+                    "audio": {
+                        "raw": {
+                            "synch": 4094,
+                            "version": 3,
+                            "layer": 2,
+                            "protection": 1,
+                            "bitrate": 8,
+                            "sample_rate": 0,
+                            "padding": 0,
+                            "private": 0,
+                            "channelmode": 3,
+                            "modeextension": 0,
+                            "copyright": 0,
+                            "original": 1,
+                            "emphasis": 0
+                        },
+                        "version": "1",
+                        "layer": 2,
+                        "channelmode": "mono",
+                        "channels": 1,
+                        "sample_rate": 44100,
+                        "protection": false,
+                        "private": false,
+                        "modeextension": "4-31",
+                        "copyright": false,
+                        "original": true,
+                        "emphasis": "none",
+                        "padding": false,
+                        "bitrate": 128000,
+                        "framelength": 417,
+                        "bitrate_mode": "cbr"
+                    }
+                },
+                "playtime_seconds": 2.011375,
+                "bitrate": 128000,
+                "playtime_string": "0:02"
+            },
+            "creation_timestamp": false,
+            "us": 152
+        },
+        "tone.tta": {
+            "kind": "audio",
+            "metadata": {
+                "filesize": 29143,
+                "mime_type": "application/octet-stream"
+            },
+            "file_format": null,
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 29143,
+                "filepath": "<corpus>",
+                "filename": "tone.tta",
+                "filenamepath": "<corpus>/tone.tta",
+                "encoding": "UTF-8",
+                "ape": {
+                    "tag_offset_end": 29143,
+                    "footer": {
+                        "raw": {
+                            "footer_tag": "APETAGEX",
+                            "version": 2000,
+                            "tagsize": 61,
+                            "tag_items": 1,
+                            "global_flags": 2147483648,
+                            "reserved": "\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"
+                        },
+                        "tag_version": 2,
+                        "flags": {
+                            "header": true,
+                            "footer": false,
+                            "this_is_header": false,
+                            "item_contents_raw": 0,
+                            "read_only": false,
+                            "item_contents": "utf-8"
+                        }
+                    },
+                    "tag_offset_start": 29050,
+                    "header": {
+                        "raw": {
+                            "footer_tag": "APETAGEX",
+                            "version": 2000,
+                            "tagsize": 61,
+                            "tag_items": 1,
+                            "global_flags": 2684354560,
+                            "reserved": "\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"
+                        },
+                        "tag_version": 2,
+                        "flags": {
+                            "header": true,
+                            "footer": false,
+                            "this_is_header": true,
+                            "item_contents_raw": 0,
+                            "read_only": false,
+                            "item_contents": "utf-8"
+                        }
+                    },
+                    "items": {
+                        "encoder": {
+                            "offset": 29090,
+                            "data": [
+                                "Lavf60.16.100"
+                            ],
+                            "flags": {
+                                "header": false,
+                                "footer": false,
+                                "this_is_header": false,
+                                "item_contents_raw": 0,
+                                "read_only": false,
+                                "item_contents": "utf-8"
+                            }
+                        }
+                    },
+                    "comments": {
+                        "encoder": [
+                            "Lavf60.16.100"
+                        ]
+                    }
+                },
+                "mime_type": "application/octet-stream",
+                "error": [
+                    "Format not supported, module \"module.audio.tta.php\" was removed."
+                ]
+            },
+            "creation_timestamp": false,
+            "us": 58
+        },
+        "tone.voc": {
+            "kind": "audio",
+            "metadata": {
+                "filesize": 44305,
+                "mime_type": "audio/voc"
+            },
+            "file_format": null,
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 44305,
+                "filepath": "<corpus>",
+                "filename": "tone.voc",
+                "filenamepath": "<corpus>/tone.voc",
+                "encoding": "UTF-8",
+                "mime_type": "audio/voc",
+                "error": [
+                    "Format not supported, module \"module.audio.voc.php\" was removed."
+                ]
+            },
+            "creation_timestamp": false,
+            "us": 46
+        },
+        "tone.w64": {
+            "kind": "audio",
+            "metadata": {
+                "filesize": 176504
+            },
+            "file_format": null,
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 176504,
+                "filepath": "<corpus>",
+                "filename": "tone.w64",
+                "filenamepath": "<corpus>/tone.w64",
+                "encoding": "UTF-8",
+                "error": [
+                    "unable to determine file format"
+                ]
+            },
+            "creation_timestamp": false,
+            "us": 60
+        },
+        "tone.wv": {
+            "kind": "audio",
+            "metadata": {
+                "filesize": 40493,
+                "mime_type": "application/octet-stream"
+            },
+            "file_format": null,
+            "data": {
+                "GETID3_VERSION": "1.9.25-202603080933",
+                "filesize": 40493,
+                "filepath": "<corpus>",
+                "filename": "tone.wv",
+                "filenamepath": "<corpus>/tone.wv",
+                "encoding": "UTF-8",
+                "ape": {
+                    "tag_offset_end": 40493,
+                    "footer": {
+                        "raw": {
+                            "footer_tag": "APETAGEX",
+                            "version": 2000,
+                            "tagsize": 61,
+                            "tag_items": 1,
+                            "global_flags": 2147483648,
+                            "reserved": "\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"
+                        },
+                        "tag_version": 2,
+                        "flags": {
+                            "header": true,
+                            "footer": false,
+                            "this_is_header": false,
+                            "item_contents_raw": 0,
+                            "read_only": false,
+                            "item_contents": "utf-8"
+                        }
+                    },
+                    "tag_offset_start": 40400,
+                    "header": {
+                        "raw": {
+                            "footer_tag": "APETAGEX",
+                            "version": 2000,
+                            "tagsize": 61,
+                            "tag_items": 1,
+                            "global_flags": 2684354560,
+                            "reserved": "\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"
+                        },
+                        "tag_version": 2,
+                        "flags": {
+                            "header": true,
+                            "footer": false,
+                            "this_is_header": true,
+                            "item_contents_raw": 0,
+                            "read_only": false,
+                            "item_contents": "utf-8"
+                        }
+                    },
+                    "items": {
+                        "encoder": {
+                            "offset": 40440,
+                            "data": [
+                                "Lavf60.16.100"
+                            ],
+                            "flags": {
+                                "header": false,
+                                "footer": false,
+                                "this_is_header": false,
+                                "item_contents_raw": 0,
+                                "read_only": false,
+                                "item_contents": "utf-8"
+                            }
+                        }
+                    },
+                    "comments": {
+                        "encoder": [
+                            "Lavf60.16.100"
+                        ]
+                    }
+                },
+                "mime_type": "application/octet-stream",
+                "error": [
+                    "Format not supported, module \"module.audio.wavpack.php\" was removed."
+                ]
+            },
+            "creation_timestamp": false,
+            "us": 64
+        }
+    }
+}
