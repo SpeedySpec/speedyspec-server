@@ -46,6 +46,8 @@ impl Site {
 
 /// A php release declaring `php.cron` and `/wp-cron.php` as internal. `cron.php` appends the time and the client
 /// address to `calls.txt`, sleeps as long as `sleep` says, and reports its next time `next` seconds ahead (default 2).
+/// It appends its query string to `queries.txt` and, unless it is a follow-up (`site` set), answers `follow`'s
+/// contents.
 fn php_release(dir: &Path) -> PathBuf {
     let root = dir.join("release-app");
     std::fs::create_dir_all(&root).unwrap();
@@ -63,7 +65,7 @@ fn php_release(dir: &Path) -> PathBuf {
     std::fs::write(root.join("wp-cron.php"), "<?php echo 'wp-cron';\n").unwrap();
     std::fs::write(
         root.join("cron.php"),
-        "<?php\n$c = WP_CONTENT_DIR;\nfile_put_contents(\"$c/calls.txt\", sprintf(\"%.3F %s\\n\", microtime(true), $_SERVER['REMOTE_ADDR'] ?? ''), FILE_APPEND);\nif (is_file(\"$c/sleep\")) { sleep((int) file_get_contents(\"$c/sleep\")); }\n$next = is_file(\"$c/next\") ? (int) file_get_contents(\"$c/next\") : 2;\n\\SpeedySpec\\Runtime\\report_next_wake(time() + $next);\necho '{}';\n",
+        "<?php\n$c = WP_CONTENT_DIR;\nfile_put_contents(\"$c/calls.txt\", sprintf(\"%.3F %s\\n\", microtime(true), $_SERVER['REMOTE_ADDR'] ?? ''), FILE_APPEND);\nif (is_file(\"$c/sleep\")) { sleep((int) file_get_contents(\"$c/sleep\")); }\n$next = is_file(\"$c/next\") ? (int) file_get_contents(\"$c/next\") : 2;\n\\SpeedySpec\\Runtime\\report_next_wake(time() + $next);\nfile_put_contents(\"$c/queries.txt\", $_SERVER['QUERY_STRING'] . \"\\n\", FILE_APPEND);\necho (is_file(\"$c/follow\") && !isset($_GET['site'])) ? file_get_contents(\"$c/follow\") : '{}';\n",
     )
     .unwrap();
     root
@@ -163,5 +165,30 @@ fn visitor_report_pulls_cron_forward() {
     assert!(
         calls[1].0 - asked < 3.0,
         "the visitor's report pulled the call forward: {calls:?}"
+    );
+}
+
+#[test]
+fn follow_ups_reach_the_app() {
+    let site = site(&[(
+        "follow",
+        r#"{"calls":["site=2&host=a.test&path=%2Fsite2%2F"]}"#,
+    )]);
+    let queries = site.content().join("queries.txt");
+    let deadline = Instant::now() + Duration::from_secs(9);
+    let lines = loop {
+        let text = std::fs::read_to_string(&queries).unwrap_or_default();
+        let lines: Vec<String> = text.lines().map(str::to_string).collect();
+        if lines.len() >= 2 || Instant::now() > deadline {
+            break lines;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    };
+    assert!(lines.len() >= 2, "{lines:?}");
+    assert!(lines[0].starts_with("budget="), "{lines:?}");
+    assert!(
+        lines[1].starts_with("budget=")
+            && lines[1].ends_with("&site=2&host=a.test&path=%2Fsite2%2F"),
+        "{lines:?}"
     );
 }

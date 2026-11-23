@@ -5,6 +5,9 @@
 //! (the `next_cron` of each worker report, through the [`WakeSink`] it hands out) or as the end of its own call. It
 //! never reads the app's data and knows nothing of WordPress: a path, a time, and a number in a report. Every replica
 //! runs its own; the app makes sure a due event runs once (its claims), so replicas never coordinate.
+//!
+//! A call's answer may list follow-up calls (on a WordPress network, one per subsite with a due event, each booted as
+//! that site): opaque query strings the scheduler appends to the cron path, called in order right after.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -18,14 +21,36 @@ use crate::php::WakeSink;
 
 /// The scheduler's call to an app's cron path.
 pub trait CronCalls: Send + Sync {
-    /// `GET <path>?budget=<seconds>` on the app's cron lane, bounded by `timeout`; a 2xx answer is `Ok`.
+    /// `GET <path>?budget=<seconds>` (then `&<query>` for a follow-up) on the app's cron lane, bounded by `timeout`.
+    /// A 2xx answer is `Ok` with the follow-up queries it lists.
     fn call<'a>(
         &'a self,
         app: &'a AppId,
         path: &'a str,
+        query: Option<&'a str>,
         budget: Duration,
         timeout: Duration,
-    ) -> BoxFuture<'a, Result<(), CallError>>;
+    ) -> BoxFuture<'a, Result<Vec<String>, CallError>>;
+}
+
+/// Awaits `call`, folding every report that arrives meanwhile into `reported` (the earliest wins).
+async fn collecting_reports(
+    call: BoxFuture<'_, Result<Vec<String>, CallError>>,
+    rx: &mut tokio::sync::mpsc::UnboundedReceiver<u64>,
+    reported: &mut Option<Instant>,
+) -> Result<Vec<String>, CallError> {
+    tokio::pin!(call);
+    loop {
+        // Reports first: the call's own report is queued before the call ends.
+        tokio::select! {
+            biased;
+            Some(next) = rx.recv() => {
+                let at = instant_for(next);
+                *reported = Some(reported.map_or(at, |r| r.min(at)));
+            }
+            result = &mut call => return result,
+        }
+    }
 }
 
 /// The app's cron path and settings, read every round (so a switch or a new release applies at once); `None` when
@@ -93,24 +118,33 @@ impl CronScheduler {
                     next_wake = Instant::now() + config.max_interval;
                     continue;
                 }
-                let started = Instant::now();
-                let call = calls.call(&app, &path, config.budget, config.timeout);
-                tokio::pin!(call);
+                let mut started = Instant::now();
                 let mut reported: Option<Instant> = None;
-                let result = loop {
-                    // Reports first: the call's own report is queued before the call ends.
-                    tokio::select! {
-                        biased;
-                        Some(next) = rx.recv() => {
-                            let at = instant_for(next);
-                            reported = Some(reported.map_or(at, |r| r.min(at)));
-                        }
-                        result = &mut call => break result,
+                let result = collecting_reports(
+                    calls.call(&app, &path, None, config.budget, config.timeout),
+                    &mut rx,
+                    &mut reported,
+                )
+                .await;
+                // The follow-ups, in order; their own lists are not followed (one level).
+                for query in result.as_deref().unwrap_or_default() {
+                    if paused.load(std::sync::atomic::Ordering::SeqCst) || maintenance.is_on(&app) {
+                        break;
                     }
-                };
+                    started = Instant::now();
+                    let follow_up = collecting_reports(
+                        calls.call(&app, &path, Some(query), config.budget, config.timeout),
+                        &mut rx,
+                        &mut reported,
+                    )
+                    .await;
+                    if let Err(err) = follow_up {
+                        tracing::warn!(event = "php_cron_follow_up_failed", app = %app, query = %query, error = %err);
+                    }
+                }
                 let now = Instant::now();
                 next_wake = match result {
-                    Ok(()) => {
+                    Ok(_) => {
                         backoff = None;
                         reported.unwrap_or(now + config.max_interval)
                     }
@@ -185,7 +219,7 @@ mod tests {
     /// Records when each call started; answers from a script (`Ok` once the list runs out), each taking `takes`.
     struct Fake {
         calls: Mutex<Vec<(Instant, String)>>,
-        answers: Mutex<Vec<Result<(), CallError>>>,
+        answers: Mutex<Vec<Result<Vec<String>, CallError>>>,
         takes: Duration,
         /// Reported to the sink during the call, as a worker report would be: seconds from now.
         report: Mutex<Option<(WakeSinkSlot, i64)>>,
@@ -198,14 +232,16 @@ mod tests {
             &'a self,
             _app: &'a AppId,
             path: &'a str,
+            query: Option<&'a str>,
             _budget: Duration,
             _timeout: Duration,
-        ) -> BoxFuture<'a, Result<(), CallError>> {
+        ) -> BoxFuture<'a, Result<Vec<String>, CallError>> {
             Box::pin(async move {
-                self.calls
-                    .lock()
-                    .unwrap()
-                    .push((Instant::now(), path.to_string()));
+                let called = match query {
+                    Some(query) => format!("{path}&{query}"),
+                    None => path.to_string(),
+                };
+                self.calls.lock().unwrap().push((Instant::now(), called));
                 tokio::time::sleep(self.takes).await;
                 let report = self.report.lock().unwrap().clone();
                 if let Some((slot, seconds)) = report
@@ -215,7 +251,7 @@ mod tests {
                 }
                 let mut answers = self.answers.lock().unwrap();
                 if answers.is_empty() {
-                    Ok(())
+                    Ok(Vec::new())
                 } else {
                     answers.remove(0)
                 }
@@ -445,6 +481,90 @@ mod tests {
         (r.sink)(0);
         tokio::time::sleep(Duration::from_millis(100)).await;
         assert!(r.fake.calls.lock().unwrap().len() <= before + 1);
+    }
+
+    impl Running {
+        /// What each call asked for: the path, then `&` and the follow-up's query.
+        fn called(&self) -> Vec<String> {
+            self.fake
+                .calls
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|(_, c)| c.clone())
+                .collect()
+        }
+    }
+
+    fn follow_ups(queries: &[&str]) -> Result<Vec<String>, CallError> {
+        Ok(queries.iter().map(|q| q.to_string()).collect())
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn follow_ups_called_in_order() {
+        let f = fake();
+        *f.answers.lock().unwrap() = vec![follow_ups(&["site=2", "site=3"])];
+        let r = start(f, fixed(60));
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        assert_eq!(
+            r.called(),
+            vec!["/cron.php", "/cron.php&site=2", "/cron.php&site=3"]
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn follow_ups_are_one_level() {
+        let f = fake();
+        *f.answers.lock().unwrap() = vec![follow_ups(&["site=2"]), follow_ups(&["site=9"])];
+        let r = start(f, fixed(60));
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        assert_eq!(r.called(), vec!["/cron.php", "/cron.php&site=2"]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn failed_follow_up_continues() {
+        let f = fake();
+        *f.answers.lock().unwrap() =
+            vec![follow_ups(&["site=2", "site=3"]), Err(CallError::Timeout)];
+        let r = start(f, fixed(60));
+        tokio::time::sleep(Duration::from_secs(65)).await;
+        assert_eq!(
+            r.called(),
+            vec![
+                "/cron.php",
+                "/cron.php&site=2",
+                "/cron.php&site=3",
+                "/cron.php"
+            ],
+            "no backoff either: the main call succeeded"
+        );
+        assert_eq!(r.call_seconds()[3], 60);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn maintenance_stops_the_list() {
+        let mut slow = std::sync::Arc::into_inner(fake()).unwrap();
+        slow.takes = Duration::from_secs(2);
+        let slow = std::sync::Arc::new(slow);
+        *slow.answers.lock().unwrap() = vec![follow_ups(&["site=2", "site=3", "site=4"])];
+        let r = start(slow, fixed(60));
+        // During the first follow-up (2 s to 4 s), the app goes into maintenance.
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        r.maintenance.set(&app(), MaintenanceSource::Operator, true);
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        assert_eq!(r.called(), vec!["/cron.php", "/cron.php&site=2"]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn follow_up_report_pulls_wake() {
+        let reporting = fake();
+        let slot: WakeSinkSlot = std::sync::Arc::new(std::sync::OnceLock::new());
+        *reporting.report.lock().unwrap() = Some((slot.clone(), 20));
+        *reporting.answers.lock().unwrap() = vec![follow_ups(&["site=2"])];
+        let r = start(reporting, fixed(60));
+        let _ = slot.set(r.sink.clone());
+        tokio::time::sleep(Duration::from_secs(25)).await;
+        assert_eq!(r.call_seconds(), vec![0, 0, 20]);
     }
 
     #[tokio::test(start_paused = true)]
