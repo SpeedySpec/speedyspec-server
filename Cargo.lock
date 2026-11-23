@@ -6861,6 +6861,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-xmlrpc"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-operation-contracts",
+ "speedyspec-xmlrpc-contracts",
+]
+
+[[package]]
+name = "speedyspec-xmlrpc-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-operation-contracts",
+]
+
+[[package]]
+name = "speedyspec-xmlrpc-php"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-operation-contracts",
+ "speedyspec-xmlrpc",
+ "speedyspec-xmlrpc-contracts",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"

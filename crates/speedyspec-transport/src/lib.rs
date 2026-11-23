@@ -9,6 +9,7 @@
 
 mod bindings;
 mod exposure;
+pub mod naming;
 mod pipeline;
 mod registry;
 mod stage;
