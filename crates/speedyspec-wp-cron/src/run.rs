@@ -75,6 +75,7 @@ impl CronApi {
             claimed_by_others: 0,
             unclaimed: 0,
             next: None,
+            sites: 1,
         };
         if ready.is_empty() {
             summary.next = self.get_cron_array()?.earliest();

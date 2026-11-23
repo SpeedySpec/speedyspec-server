@@ -73,3 +73,20 @@ pub trait ErrorReporter {
     /// code and message, and the event as JSON) and returns the `WP_Error` to hand to the step's error action.
     fn report(&self, step: CronStep, hook: &Value, error: &CronResult, event: &Value) -> Value;
 }
+
+/// The network's sites, and where the last network walk stopped. A single-site install answers `is_multisite()`
+/// false and is asked nothing else.
+pub trait NetworkSites {
+    fn is_multisite(&self) -> bool;
+    /// The current network's active sites (not spam, deleted or archived).
+    fn site_ids(&self) -> Result<Vec<u64>, CronError>;
+    /// The last site whose turn ended (a network option; last writer wins).
+    fn cursor(&self) -> Result<Option<u64>, CronError>;
+    fn set_cursor(&self, site: u64) -> Result<(), CronError>;
+}
+
+/// `switch_to_blog()` and `restore_current_blog()`: the database tables, object cache and options follow.
+pub trait SiteSwitcher {
+    fn switch_to(&self, site: u64) -> Result<(), CronError>;
+    fn restore(&self) -> Result<(), CronError>;
+}

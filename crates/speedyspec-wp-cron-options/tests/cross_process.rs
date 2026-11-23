@@ -116,6 +116,8 @@ fn cron_api(db: Rc<WpDb>) -> CronApi {
         wake: Rc::new(RecordingWake::new()),
         doing_cron: Rc::new(MemoryDoingCron::new()),
         errors: Rc::new(CollectingErrors::new()),
+        network: Rc::new(speedyspec_wp_cron::memory::SingleSite),
+        switcher: Rc::new(speedyspec_wp_cron::memory::SingleSite),
     })
 }
 

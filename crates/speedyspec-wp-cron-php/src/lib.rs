@@ -79,6 +79,8 @@ fn api(hooks: &Rc<HookApi>, options: &Rc<OptionsApi>, wake: Rc<dyn WakeReporter>
         wake,
         doing_cron: Rc::new(PhpDoingCron),
         errors: Rc::new(PhpErrorReporter),
+        network: Rc::new(speedyspec_wp_cron::memory::SingleSite),
+        switcher: Rc::new(speedyspec_wp_cron::memory::SingleSite),
     }))
 }
 
