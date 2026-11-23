@@ -58,7 +58,6 @@ fn runs_due_in_order_and_skips_future() {
             ran: 2,
             claimed_by_others: 0,
             unclaimed: 0,
-            sites: 1,
             next: Some(NOW + 100)
         }
     );
@@ -283,7 +282,6 @@ fn nothing_due_reports_earliest() {
             ran: 0,
             claimed_by_others: 0,
             unclaimed: 0,
-            sites: 1,
             next: Some(NOW + 600)
         }
     );

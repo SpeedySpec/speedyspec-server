@@ -9,7 +9,7 @@ use speedyspec_php::native::{self, NativeError};
 use std::time::Duration;
 
 use speedyspec_wp_cron::{CronApi, SpawnOutcome, truthy};
-use speedyspec_wp_cron_contracts::{CronError, CronResult};
+use speedyspec_wp_cron_contracts::{CronError, CronResult, SiteRef};
 use speedyspec_wp_hooks::HookValue;
 
 fn arg(args: &[HookValue], i: usize) -> HookValue {
@@ -180,11 +180,13 @@ pub(crate) fn functions(api: &Rc<CronApi>) -> Vec<FunctionBuilder<'static>> {
             let budget = match args.first().map(|v| v.read().into_owned()) {
                 Some(HookValue::Int(n)) => n as f64,
                 Some(HookValue::Float(f)) => f,
+                // `$_GET['budget']` as it arrives.
+                Some(HookValue::Str(text)) => text.trim().parse().unwrap_or(30.0),
                 _ => 30.0,
             };
-            let summary = runner
-                .run_network_due_events(Duration::from_secs_f64(budget.max(0.0)))
-                .map_err(native_error)?;
+            // A huge or infinite budget is no limit (`from_secs_f64` would panic on it).
+            let budget = Duration::try_from_secs_f64(budget.max(0.0)).unwrap_or(Duration::MAX);
+            let summary = runner.run_due_events(budget).map_err(native_error)?;
             Ok(HookValue::Array(vec![
                 (Key::Str("ran".into()), HookValue::Int(summary.ran as i64)),
                 (
@@ -196,15 +198,91 @@ pub(crate) fn functions(api: &Rc<CronApi>) -> Vec<FunctionBuilder<'static>> {
                     HookValue::Int(summary.unclaimed as i64),
                 ),
                 (
-                    Key::Str("sites".into()),
-                    HookValue::Int(summary.sites as i64),
-                ),
-                (
                     Key::Str("next".into()),
                     summary.next.map_or(HookValue::Null, HookValue::Int),
                 ),
             ]))
         },
     ));
+    let lister = api.clone();
+    functions.push(native::function(
+        "SpeedySpec\\WpCron\\due_sites",
+        move |_args| {
+            let sites = lister.due_sites().map_err(native_error)?;
+            let queries = within_answer(sites.iter().map(follow_up_query));
+            Ok(HookValue::Array(
+                queries
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, query)| (Key::Int(i as i64), HookValue::Str(query)))
+                    .collect(),
+            ))
+        },
+    ));
     functions
+}
+
+/// The query string of a site's follow-up cron call: `site=<id>&host=<domain>&path=<path>`, each value encoded as
+/// `rawurlencode()` does.
+pub(crate) fn follow_up_query(site: &SiteRef) -> String {
+    format!(
+        "site={}&host={}&path={}",
+        site.id,
+        rawurlencode(&site.domain),
+        rawurlencode(&site.path)
+    )
+}
+
+/// The most bytes of queries one answer lists: half the server's 1 MiB limit on an internal answer, leaving room for
+/// JSON quoting and whatever else the endpoint answers. Sites past it are still due, so the next call lists them.
+const ANSWER_BYTES: usize = 512 * 1024;
+
+/// The leading `queries` that fit in [`ANSWER_BYTES`] (each counted with its JSON quotes and comma).
+pub(crate) fn within_answer(queries: impl Iterator<Item = String>) -> Vec<String> {
+    let mut used = 0;
+    queries
+        .take_while(|query| {
+            used += query.len() + 3;
+            used <= ANSWER_BYTES
+        })
+        .collect()
+}
+
+/// PHP's `rawurlencode()`: every byte but `A-Z a-z 0-9 - _ . ~` as `%XX`.
+fn rawurlencode(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for byte in text.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            out.push(byte as char);
+        } else {
+            out.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn answer_stays_under_the_limit() {
+        let query = "x".repeat(97);
+        let kept = within_answer(std::iter::repeat_n(query, 10_000));
+        assert_eq!(kept.len(), ANSWER_BYTES / 100);
+        assert!(within_answer(std::iter::empty()).is_empty());
+    }
+
+    #[test]
+    fn follow_up_query_encodes_like_rawurlencode() {
+        let site = SiteRef {
+            id: 7,
+            domain: "ex-ample.test".into(),
+            path: "/a b/ü/".into(),
+        };
+        assert_eq!(
+            follow_up_query(&site),
+            "site=7&host=ex-ample.test&path=%2Fa%20b%2F%C3%BC%2F"
+        );
+    }
 }

@@ -20,7 +20,7 @@ pub struct CronParts {
     pub wake: Rc<dyn WakeReporter>,
     pub doing_cron: Rc<dyn DoingCron>,
     pub errors: Rc<dyn ErrorReporter>,
-    /// The network's sites, for the walk that runs every site's due events.
+    /// The network's sites, for listing the subsites with due events.
     pub network: Rc<dyn NetworkSites>,
     pub switcher: Rc<dyn SiteSwitcher>,
 }

@@ -100,16 +100,17 @@ impl super::cron::CronCalls for FastCgiGateCalls {
         &'a self,
         app: &'a AppId,
         path: &'a str,
+        query: Option<&'a str>,
         budget: Duration,
         timeout: Duration,
-    ) -> BoxFuture<'a, Result<(), CallError>> {
+    ) -> BoxFuture<'a, Result<Vec<String>, CallError>> {
         Box::pin(async move {
-            let path = format!("{path}?budget={}", budget.as_secs_f64());
+            let uri = cron_uri(path, budget, query);
             let response = FastCgiGateCalls::call(
                 self,
                 app,
                 Method::GET,
-                &path,
+                &uri,
                 HeaderMap::new(),
                 Bytes::new(),
                 timeout,
@@ -117,7 +118,7 @@ impl super::cron::CronCalls for FastCgiGateCalls {
             )
             .await?;
             if response.status().is_success() {
-                Ok(())
+                Ok(read_follow_ups(response.body()))
             } else {
                 Err(CallError::Unavailable(format!(
                     "the cron path answered {}",
@@ -126,6 +127,40 @@ impl super::cron::CronCalls for FastCgiGateCalls {
             }
         })
     }
+}
+
+/// The cron call's URI: the declared path with `budget` added (after `&` when the path has a query already), then a
+/// follow-up's query.
+fn cron_uri(path: &str, budget: Duration, query: Option<&str>) -> String {
+    let separator = if path.contains('?') { '&' } else { '?' };
+    let mut uri = format!("{path}{separator}budget={}", budget.as_secs_f64());
+    if let Some(query) = query {
+        uri.push('&');
+        uri.push_str(query);
+    }
+    uri
+}
+
+/// The most follow-up calls one answer may list.
+const FOLLOW_UPS_MAX: usize = 10_000;
+
+/// The follow-up queries a cron answer lists: the strings of a JSON object's `calls` array. Anything else is none; an
+/// entry with `#` or a line break is dropped (it would end or split the URI), and at most [`FOLLOW_UPS_MAX`] are kept.
+fn read_follow_ups(body: &[u8]) -> Vec<String> {
+    let Ok(serde_json::Value::Object(answer)) = serde_json::from_slice::<serde_json::Value>(body)
+    else {
+        return Vec::new();
+    };
+    let Some(serde_json::Value::Array(calls)) = answer.get("calls") else {
+        return Vec::new();
+    };
+    calls
+        .iter()
+        .filter_map(|call| call.as_str())
+        .filter(|query| !query.contains(['#', '\r', '\n']))
+        .take(FOLLOW_UPS_MAX)
+        .map(str::to_string)
+        .collect()
 }
 
 /// The most a session answer may be.
@@ -336,6 +371,39 @@ mod tests {
         let mut response = http::Response::new(Bytes::from(body.to_string()));
         *response.status_mut() = http::StatusCode::from_u16(status).unwrap();
         response
+    }
+
+    #[test]
+    fn read_follow_ups_reads_calls() {
+        assert_eq!(
+            read_follow_ups(br#"{"calls":["site=2&host=a.test&path=%2F","site=3"],"ran":1}"#),
+            vec!["site=2&host=a.test&path=%2F", "site=3"]
+        );
+        assert!(read_follow_ups(b"").is_empty());
+        assert!(read_follow_ups(b"not json").is_empty());
+        assert!(read_follow_ups(br#"{}"#).is_empty());
+        assert!(read_follow_ups(br#"["site=2"]"#).is_empty());
+        assert!(read_follow_ups(br#"{"calls":"site=2"}"#).is_empty());
+        assert_eq!(
+            read_follow_ups(br#"{"calls":[2,null,"a#b","c\nd","e\rf","ok"]}"#),
+            vec!["ok"]
+        );
+        let many = format!(
+            "{{\"calls\":[{}]}}",
+            vec!["\"s=1\""; FOLLOW_UPS_MAX + 5].join(",")
+        );
+        assert_eq!(read_follow_ups(many.as_bytes()).len(), FOLLOW_UPS_MAX);
+    }
+
+    #[test]
+    fn path_with_query_appends() {
+        let budget = Duration::from_secs(30);
+        assert_eq!(cron_uri("/cron.php", budget, None), "/cron.php?budget=30");
+        assert_eq!(cron_uri("/x?a=1", budget, None), "/x?a=1&budget=30");
+        assert_eq!(
+            cron_uri("/cron.php", budget, Some("site=2&host=a.test")),
+            "/cron.php?budget=30&site=2&host=a.test"
+        );
     }
 
     #[test]

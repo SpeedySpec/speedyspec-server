@@ -4,7 +4,7 @@ use speedyspec_hooks::Key;
 use speedyspec_wp_cron::{RustArgsKeyer, md5_hex};
 use speedyspec_wp_cron_contracts::{
     ArgsKeyer, Clock, CronError, CronResult, CronStep, DoingCron, ErrorReporter, EventKey,
-    NetworkSites, PhpObjects, SiteSwitcher, Translator,
+    NetworkSites, PhpObjects, SiteRef, SiteSwitcher, Translator,
 };
 use speedyspec_wp_hooks::HookValue;
 
@@ -200,61 +200,57 @@ fn call_or_throw(function: &str, args: &[HookValue]) -> Result<HookValue, CronEr
     })
 }
 
-/// A site id as PHP gives it (an int, or a numeric string from `get_sites()`).
-fn site_id(value: &HookValue) -> Option<u64> {
-    match &*value.read() {
-        HookValue::Int(n) => u64::try_from(*n).ok(),
-        HookValue::Str(s) => s.trim().parse().ok(),
-        _ => None,
-    }
-}
-
-/// The network option holding the last site whose turn ended.
-const CURSOR: &str = "speedyspec_cron_cursor";
-
-/// The network's active sites through `get_sites()`, and the cursor through the site options; a single site when
-/// `is_multisite()` is missing or false.
+/// The network's active sites through `get_sites()` (by way of `SpeedySpec\WpCron\network_sites()`); a single site
+/// when `is_multisite()` is missing or false.
 pub struct PhpNetworkSites;
 
 impl NetworkSites for PhpNetworkSites {
     fn is_multisite(&self) -> bool {
         function_exists("is_multisite")
             && function_exists("get_sites")
+            && function_exists("get_current_network_id")
             && matches!(call("is_multisite", &[]), Some(HookValue::Bool(true)))
     }
 
-    fn site_ids(&self) -> Result<Vec<u64>, CronError> {
-        let key = |k: &str| Key::Str(k.into());
-        let query = HookValue::Array(vec![
-            (key("fields"), HookValue::Str("ids".into())),
-            (key("number"), HookValue::Int(0)),
-            (key("spam"), HookValue::Int(0)),
-            (key("deleted"), HookValue::Int(0)),
-            (key("archived"), HookValue::Int(0)),
-            (key("orderby"), HookValue::Str("id".into())),
-            (key("order"), HookValue::Str("ASC".into())),
-        ]);
-        Ok(
-            match call_or_throw("get_sites", &[query])?.read().into_owned() {
-                HookValue::Array(items) => items.iter().filter_map(|(_, v)| site_id(v)).collect(),
-                _ => Vec::new(),
-            },
-        )
+    fn sites(&self) -> Result<Vec<SiteRef>, CronError> {
+        let HookValue::Array(rows) = call_or_throw("SpeedySpec\\WpCron\\network_sites", &[])?
+            .read()
+            .into_owned()
+        else {
+            return Ok(Vec::new());
+        };
+        Ok(rows
+            .iter()
+            .filter_map(|(_, row)| match row.read().into_owned() {
+                HookValue::Array(fields) => match fields.as_slice() {
+                    [(_, id), (_, domain), (_, path)] => {
+                        match (
+                            id.read().into_owned(),
+                            domain.read().into_owned(),
+                            path.read().into_owned(),
+                        ) {
+                            (HookValue::Int(id), HookValue::Str(domain), HookValue::Str(path)) => {
+                                Some(SiteRef {
+                                    id: u64::try_from(id).ok()?,
+                                    domain,
+                                    path,
+                                })
+                            }
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect())
     }
 
-    fn cursor(&self) -> Result<Option<u64>, CronError> {
-        Ok(site_id(&call_or_throw(
-            "get_site_option",
-            &[HookValue::Str(CURSOR.into()), HookValue::Bool(false)],
-        )?))
-    }
-
-    fn set_cursor(&self, site: u64) -> Result<(), CronError> {
-        call_or_throw(
-            "update_site_option",
-            &[HookValue::Str(CURSOR.into()), HookValue::Int(site as i64)],
-        )?;
-        Ok(())
+    fn current(&self) -> u64 {
+        match call("get_current_blog_id", &[]) {
+            Some(HookValue::Int(n)) => u64::try_from(n).unwrap_or(1),
+            _ => 1,
+        }
     }
 }
 
