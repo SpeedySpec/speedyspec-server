@@ -55,3 +55,85 @@ The image functions are compared with WordPress 7.1.5 on PHP 8.5.12 (`recorded-i
   `wp_getimagesize()` and `wp_get_image_mime()`; the native functions type them by content and size them through
   FFmpeg (`IMAGETYPE_UNKNOWN`, with `bits` and `channels` when FFmpeg knows them).
 - **TGA** has no magic number, so the image functions return `false` for it, as WordPress does.
+
+## Formats added to the MIME list
+
+`wp_get_mime_types()` returns WordPress 7.1.5's list unchanged, in order, plus one row for every format below.
+`wp_get_ext_types()` files each new extension under its kind, and `getimagesize_mimes_to_exts` gains the new image
+types. Each added row's file in `compat/media` is read by the media reader as that kind (`uploads.rs`,
+`every_added_row_is_read`). WordPress rejects these uploads; the native functions accept them (`mime-differences.json`).
+Image types are also renamed to their real extension (`proper_filename`) when uploaded under another image extension,
+as WordPress does for the types it knows.
+
+| Extensions | MIME type | Kind | Corpus file |
+|---|---|---|---|
+| `jp2` | `image/jp2` | image | `images/photo.jp2` |
+| `jxl` | `image/jxl` | image | `images/photo.jxl` |
+| `qoi` | `image/qoi` | image | `images/photo.qoi` |
+| `pcx` | `image/x-pcx` | image | `images/photo.pcx` |
+| `ppm` | `image/x-portable-pixmap` | image | `images/photo.ppm` |
+| `pgm` | `image/x-portable-graymap` | image | `images/photo.pgm` |
+| `sgi` | `image/x-sgi` | image | `images/photo.sgi` |
+| `hdr` | `image/vnd.radiance` | image | `images/photo.hdr` |
+| `m2ts, mts` | `video/mp2t` | video | `uploads/bars.m2ts` |
+| `mxf` | `application/mxf` | video | `uploads/bars.mxf` |
+| `dv` | `video/dv` | video | `uploads/bars.dv` |
+| `vob` | `video/mpeg` | video | `uploads/bars.vob` |
+| `m2v, mpv` | `video/mpeg` | video | `uploads/bars.m2v` |
+| `rm, rmvb` | `application/vnd.rn-realmedia` | video | `uploads/bars.rm` |
+| `ogm` | `video/ogg` | video | `uploads/bars.ogm` |
+| `aif, aiff, aifc` | `audio/aiff` | audio | `corpus/tone.aiff` |
+| `ac3` | `audio/ac3` | audio | `corpus/tone.ac3` |
+| `eac3, ec3` | `audio/eac3` | audio | `uploads/tone.eac3` |
+| `opus` | `audio/opus` | audio | `corpus/tone.opus` |
+| `caf` | `audio/x-caf` | audio | `uploads/tone.caf` |
+| `wv` | `audio/x-wavpack` | audio | `uploads/tone.wv` |
+| `tta` | `audio/x-tta` | audio | `uploads/tone.tta` |
+| `au, snd` | `audio/basic` | audio | `uploads/tone.au` |
+| `mp1, mp2, m2a` | `audio/mpeg` | audio | `uploads/tone.mp2` |
+| `w64` | `audio/x-w64` | audio | `uploads/tone.w64` |
+| `voc` | `audio/x-voc` | audio | `uploads/tone.voc` |
+
+## Extensions left out
+
+| Extension | Why |
+|---|---|
+| `.ts` | also TypeScript (and Qt translation) source |
+| `.dts` | also Device Tree Source |
+| `.tga` | no magic number to type it by, and no decoder in the build to size it |
+| `.pbm` | its decoder is not in the build, so it can't be sized |
+| `.rgb` | a generic name many raw formats share |
+
+A plugin can still add any of them through the `mime_types` or `upload_mimes` filters.
+
+## Content checks
+
+`wp_check_filetype_and_ext()` is WordPress 7.1.5's function and is compared with it over every corpus file, under its
+own name and renamed to `.jpg`, `.png`, `.mp3`, `.mp4`, `.mka`, `.txt` and `.pdf` (`recorded-mime.json`, made by
+`record-mime.php`). Its content type is fileinfo's, as in WordPress, with one exception.
+
+- **Audio that fileinfo calls video.** Fileinfo calls an audio-only Matroska file `video/x-matroska` and a WMA file
+  `video/x-ms-asf`, so WordPress 7.1.5 rejects `.mka` and `.wma` uploads. When fileinfo and the file's extension name
+  different kinds (audio and video), the media reader reads the file. If the file holds only audio, as the extension
+  says (or holds video, when the extension says video), the upload is accepted.
+- **Other audio extensions.** WordPress compares only the top-level type of audio and video files, so it accepts an
+  Ogg file named `.mp3`. Once the reader has confirmed a file as audio, the same rule accepts the WMA file named `.mp3`
+  or `.mka`, and the Matroska file named `.mp3`.
+- **Nothing else changes.** The reader is never consulted when fileinfo names a non-media type (`text/html`, `image/png`,
+  `application/pdf`, …), when fileinfo already agrees, for stream-wrapper paths, or when the reader fails. Documents,
+  files pretending to be media, and every upload WordPress accepts are judged exactly as WordPress judges them.
+- **RealAudio stays rejected.** Fileinfo calls `.ra` files `application/vnd.rn-realmedia`, which is not an audio type,
+  so `.ra` uploads are rejected as WordPress rejects them.
+
+## Metadata of the added formats
+
+`wp_read_audio_metadata()` and `wp_read_video_metadata()` over `uploads/` are compared with WordPress 7.1.5 and getID3
+(`recorded-uploads.json`); allowed differences are in `upload-differences.json`, plus the general reasons above
+(bitrates, encoder options).
+
+- **Formats getID3 doesn't read.** For DV, M2TS, MXF, RealVideo, VOB, CAF, TTA, Wave64 and WavPack, getID3 1.9.25
+  gives WordPress only the file size; the native functions return the reader's length, dimensions and audio
+  parameters. MXF's and DV's technical identifiers (uid, product, timecode) reach the metadata as tags, as every
+  format's tags do.
+- **Partly read.** getID3 reads an `.ogm` file's Theora stream but not its Vorbis stream, a raw MPEG-2 video stream's
+  type but not its size, and AU and VOC files' type but no audio parameters; the native functions fill them in.

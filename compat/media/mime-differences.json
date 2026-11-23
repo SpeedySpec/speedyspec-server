@@ -1,0 +1,157 @@
+[
+  {
+    "file": "corpus/tone.ac3",
+    "name": "tone.ac3",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "corpus/tone.aiff",
+    "name": "tone.aiff",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "corpus/tone.opus",
+    "name": "tone.opus",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/bars.dv",
+    "name": "bars.dv",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/bars.m2ts",
+    "name": "bars.m2ts",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/bars.m2v",
+    "name": "bars.m2v",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/bars.mxf",
+    "name": "bars.mxf",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/bars.ogm",
+    "name": "bars.ogm",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/bars.rm",
+    "name": "bars.rm",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/bars.vob",
+    "name": "bars.vob",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/tone.au",
+    "name": "tone.au",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/tone.caf",
+    "name": "tone.caf",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/tone.eac3",
+    "name": "tone.eac3",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/tone.mp2",
+    "name": "tone.mp2",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/tone.tta",
+    "name": "tone.tta",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/tone.voc",
+    "name": "tone.voc",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/tone.w64",
+    "name": "tone.w64",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "uploads/tone.wv",
+    "name": "tone.wv",
+    "reason": "the extension is one of the formats added to the MIME list; WordPress 7.1.5 doesn't list it, so it rejects the upload (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.hdr",
+    "name": "*",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.jp2",
+    "name": "*",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.jxl",
+    "name": "*",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.pcx",
+    "name": "*",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.pgm",
+    "name": "*",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.ppm",
+    "name": "*",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.qoi",
+    "name": "*",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.sgi",
+    "name": "*",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "corpus/tone.mka",
+    "name": "tone.mka",
+    "reason": "fileinfo files this audio-only file as video (video/x-matroska, video/x-ms-asf), so WordPress 7.1.5 rejects it; the media reader confirms it holds only audio (DIFFERENCES.md, Content checks)"
+  },
+  {
+    "file": "corpus/tone.mka",
+    "name": "tone.mp3",
+    "reason": "the media reader confirms audio, and WordPress compares only the top-level type of audio and video files, so another audio extension is accepted as WordPress accepts an Ogg file named .mp3 (DIFFERENCES.md, Content checks)"
+  },
+  {
+    "file": "corpus/tone.wma",
+    "name": "tone.wma",
+    "reason": "fileinfo files this audio-only file as video (video/x-matroska, video/x-ms-asf), so WordPress 7.1.5 rejects it; the media reader confirms it holds only audio (DIFFERENCES.md, Content checks)"
+  },
+  {
+    "file": "corpus/tone.wma",
+    "name": "tone.mp3",
+    "reason": "the media reader confirms audio, and WordPress compares only the top-level type of audio and video files, so another audio extension is accepted as WordPress accepts an Ogg file named .mp3 (DIFFERENCES.md, Content checks)"
+  },
+  {
+    "file": "corpus/tone.wma",
+    "name": "tone.mka",
+    "reason": "the media reader confirms audio, and WordPress compares only the top-level type of audio and video files, so another audio extension is accepted as WordPress accepts an Ogg file named .mp3 (DIFFERENCES.md, Content checks)"
+  }
+]

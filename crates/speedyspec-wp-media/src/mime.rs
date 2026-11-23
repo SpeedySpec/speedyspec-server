@@ -347,7 +347,7 @@ pub fn ext_types() -> Vec<(&'static str, Vec<&'static str>)> {
         .collect()
 }
 
-/// The `getimagesize_mimes_to_exts` filter's default: WordPress's seven, then each added image type's MIME and
+/// The `getimagesize_mimes_to_exts` filter's default: WordPress's eleven, then each added image type's MIME and
 /// first extension.
 pub fn image_mimes_to_exts() -> Vec<(&'static str, &'static str)> {
     let mut out = vec![
@@ -358,6 +358,11 @@ pub fn image_mimes_to_exts() -> Vec<(&'static str, &'static str)> {
         ("image/tiff", "tif"),
         ("image/webp", "webp"),
         ("image/avif", "avif"),
+        // WordPress's own choice: every HEIC and HEIF type takes the extension HEIC files commonly carry.
+        ("image/heic", "heic"),
+        ("image/heif", "heic"),
+        ("image/heic-sequence", "heic"),
+        ("image/heif-sequence", "heic"),
     ];
     for row in ADDED.iter().filter(|r| r.kind == Kind::Image) {
         out.push((row.mime, row.exts.split('|').next().unwrap_or(row.exts)));

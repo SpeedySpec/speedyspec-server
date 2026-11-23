@@ -112,6 +112,10 @@ fn image_mimes_to_exts_extends_wordpress() {
         ("image/tiff", "tif"),
         ("image/webp", "webp"),
         ("image/avif", "avif"),
+        ("image/heic", "heic"),
+        ("image/heif", "heic"),
+        ("image/heic-sequence", "heic"),
+        ("image/heif-sequence", "heic"),
     ];
     let map = image_mimes_to_exts();
     assert_eq!(&map[..wordpress.len()], &wordpress);

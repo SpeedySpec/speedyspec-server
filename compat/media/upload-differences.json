@@ -1,0 +1,172 @@
+[
+  {
+    "file": "bars.dv",
+    "path": ".metadata",
+    "reason": "getID3 1.9.25 doesn't read DV: WordPress gets only the file size; the values are the media reader's (DV's timecode reaches the metadata as a tag, as every format's tags do)"
+  },
+  {
+    "file": "bars.m2ts",
+    "path": ".metadata",
+    "reason": "getID3 1.9.25 doesn't read MPEG-TS with 192-byte (M2TS) packets: WordPress gets only the file size; the values are the media reader's"
+  },
+  {
+    "file": "bars.m2ts",
+    "path": ".file_format",
+    "reason": "getID3 1.9.25 doesn't read MPEG-TS with 192-byte (M2TS) packets: WordPress gets only the file size; the values are the media reader's"
+  },
+  {
+    "file": "bars.m2v",
+    "path": ".metadata.height",
+    "reason": "getID3 reads a raw MPEG-2 video stream's type but not its frame size; width and height are the media reader's"
+  },
+  {
+    "file": "bars.m2v",
+    "path": ".metadata.lossless",
+    "reason": "getID3 reads a raw MPEG-2 video stream's type but not its frame size; width and height are the media reader's"
+  },
+  {
+    "file": "bars.m2v",
+    "path": ".metadata.width",
+    "reason": "getID3 reads a raw MPEG-2 video stream's type but not its frame size; width and height are the media reader's"
+  },
+  {
+    "file": "bars.mxf",
+    "path": ".metadata",
+    "reason": "getID3 1.9.25 doesn't read MXF: WordPress gets only the file size; the values are the media reader's. MXF's technical identifiers (uid, product, timecode, …) reach the metadata as tags, as every format's tags do"
+  },
+  {
+    "file": "bars.ogm",
+    "path": ".metadata.audio",
+    "reason": "getID3 reads Ogg's Theora stream but not the Vorbis stream beside it in an .ogm file; the audio and length are the media reader's"
+  },
+  {
+    "file": "bars.ogm",
+    "path": ".metadata.length",
+    "reason": "getID3 reads Ogg's Theora stream but not the Vorbis stream beside it in an .ogm file; the audio and length are the media reader's"
+  },
+  {
+    "file": "bars.ogm",
+    "path": ".metadata.length_formatted",
+    "reason": "getID3 reads Ogg's Theora stream but not the Vorbis stream beside it in an .ogm file; the audio and length are the media reader's"
+  },
+  {
+    "file": "bars.ogm",
+    "path": ".metadata.lossless",
+    "reason": "getID3 reads Ogg's Theora stream but not the Vorbis stream beside it in an .ogm file; the audio and length are the media reader's"
+  },
+  {
+    "file": "bars.rm",
+    "path": ".metadata",
+    "reason": "getID3 1.9.25 doesn't read RealVideo in RealMedia: WordPress gets only the file size; the values are the media reader's"
+  },
+  {
+    "file": "bars.rm",
+    "path": ".file_format",
+    "reason": "getID3 1.9.25 doesn't read RealVideo in RealMedia: WordPress gets only the file size; the values are the media reader's"
+  },
+  {
+    "file": "bars.vob",
+    "path": ".metadata",
+    "reason": "getID3 1.9.25 doesn't read DVD program streams (VOB): WordPress gets only the file size; the values are the media reader's"
+  },
+  {
+    "file": "bars.vob",
+    "path": ".file_format",
+    "reason": "getID3 1.9.25 doesn't read DVD program streams (VOB): WordPress gets only the file size; the values are the media reader's"
+  },
+  {
+    "file": "tone.au",
+    "path": ".metadata.bitrate_mode",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.au",
+    "path": ".metadata.bits_per_sample",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.au",
+    "path": ".metadata.channelmode",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.au",
+    "path": ".metadata.channels",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.au",
+    "path": ".metadata.length",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.au",
+    "path": ".metadata.length_formatted",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.au",
+    "path": ".metadata.lossless",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.au",
+    "path": ".metadata.sample_rate",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.caf",
+    "path": ".metadata",
+    "reason": "getID3 1.9.25 doesn't read Core Audio Format: WordPress gets only the file size; the values are the media reader's"
+  },
+  {
+    "file": "tone.tta",
+    "path": ".metadata",
+    "reason": "getID3 1.9.25 doesn't read True Audio: WordPress gets only the file size; the values are the media reader's"
+  },
+  {
+    "file": "tone.voc",
+    "path": ".metadata.bitrate_mode",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.voc",
+    "path": ".metadata.bits_per_sample",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.voc",
+    "path": ".metadata.channelmode",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.voc",
+    "path": ".metadata.channels",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.voc",
+    "path": ".metadata.lossless",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.voc",
+    "path": ".metadata.sample_rate",
+    "reason": "getID3 names the format but reads no audio parameters from it; they are the media reader's"
+  },
+  {
+    "file": "tone.w64",
+    "path": ".metadata",
+    "reason": "getID3 1.9.25 doesn't read Sony Wave64: WordPress gets only the file size; the values are the media reader's"
+  },
+  {
+    "file": "tone.w64",
+    "path": ".file_format",
+    "reason": "getID3 1.9.25 doesn't read Sony Wave64: WordPress gets only the file size; the values are the media reader's"
+  },
+  {
+    "file": "tone.wv",
+    "path": ".metadata",
+    "reason": "getID3 1.9.25 doesn't read WavPack: WordPress gets only the file size; the values are the media reader's"
+  }
+]
