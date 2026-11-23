@@ -46,6 +46,9 @@ if (!function_exists('_deprecated_argument')) {
 }
 if (!function_exists('wp_trigger_error')) {
     function wp_trigger_error($function_name, $message, $error_level = E_USER_NOTICE) {
+        // Messages name test themes by absolute path; the checkout's root becomes `<repo>` so a recording made in
+        // one checkout replays in any other.
+        $message = str_replace(dirname(__DIR__, 2), '<repo>', $message);
         $GLOBALS['speedyspec_notices'][] = "trigger_error:$function_name|$message|$error_level";
     }
 }
