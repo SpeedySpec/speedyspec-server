@@ -153,5 +153,20 @@
     "file": "corpus/tone.wma",
     "name": "tone.mka",
     "reason": "the media reader confirms audio, and WordPress compares only the top-level type of audio and video files, so another audio extension is accepted as WordPress accepts an Ogg file named .mp3 (DIFFERENCES.md, Content checks)"
+  },
+  {
+    "file": "corpus/bars.3gp",
+    "name": "bars.mp3",
+    "reason": "WordPress 7.2 (trunk ce78d2d6eb) accepts audio in an MP4 or 3GP container that fileinfo calls video/mp4 or video/3gpp under an .mp3-family extension; the recording is 7.1.5's, which rejects it (DIFFERENCES.md, Content checks)"
+  },
+  {
+    "file": "corpus/bars.mp4",
+    "name": "bars.mp3",
+    "reason": "WordPress 7.2 (trunk ce78d2d6eb) accepts audio in an MP4 or 3GP container that fileinfo calls video/mp4 or video/3gpp under an .mp3-family extension; the recording is 7.1.5's, which rejects it (DIFFERENCES.md, Content checks)"
+  },
+  {
+    "file": "corpus/truncated.mp4",
+    "name": "truncated.mp3",
+    "reason": "WordPress 7.2 (trunk ce78d2d6eb) accepts audio in an MP4 or 3GP container that fileinfo calls video/mp4 or video/3gpp under an .mp3-family extension; the recording is 7.1.5's, which rejects it (DIFFERENCES.md, Content checks)"
   }
 ]

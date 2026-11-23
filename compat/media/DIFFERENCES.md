@@ -122,6 +122,9 @@ own name and renamed to `.jpg`, `.png`, `.mp3`, `.mp4`, `.mka`, `.txt` and `.pdf
 - **Nothing else changes.** The reader is never consulted when fileinfo names a non-media type (`text/html`, `image/png`,
   `application/pdf`, …), when fileinfo already agrees, for stream-wrapper paths, or when the reader fails. Documents,
   files pretending to be media, and every upload WordPress accepts are judged exactly as WordPress judges them.
+- **WordPress 7.2's changes.** The function follows WordPress 7.2 (trunk ce78d2d6eb), whose own tests run on it: an
+  MP4 or 3GP file that fileinfo calls `video/mp4` or `video/3gpp` is accepted under an `.mp3`-family extension, and a
+  TrueType font may be reported as `font/ttf` or `font/sfnt`. The recording is 7.1.5's, which rejects the first.
 - **RealAudio stays rejected.** Fileinfo calls `.ra` files `application/vnd.rn-realmedia`, which is not an audio type,
   so `.ra` uploads are rejected as WordPress rejects them.
 

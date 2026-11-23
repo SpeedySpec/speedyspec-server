@@ -284,10 +284,10 @@ namespace
     if (!function_exists('wp_check_filetype_and_ext')) {
         function wp_check_filetype_and_ext($file, $filename, $mimes = null)
         {
-            // WordPress 7.1.5's function, with two changes: the getimagesize_mimes_to_exts default names the image
-            // types the media reader adds, and a local file's content type comes from Native\content_mime(), which
-            // is fileinfo's answer unless fileinfo files audio as video (or video as audio) and the reader confirms
-            // the claimed kind.
+            // WordPress 7.2's function (trunk ce78d2d6eb), with two changes: the getimagesize_mimes_to_exts default
+            // names the image types the media reader adds, and a local file's content type comes from
+            // Native\content_mime(), which is fileinfo's answer unless fileinfo files audio as video (or video as
+            // audio) and the reader confirms the claimed kind.
             $proper_filename = false;
 
             $wp_filetype = wp_check_filetype($filename, $mimes);
@@ -370,8 +370,18 @@ namespace
                     }
                 } elseif (str_starts_with($real_mime, 'video/') || str_starts_with($real_mime, 'audio/')) {
                     if (substr($real_mime, 0, strcspn($real_mime, '/')) !== substr($type, 0, strcspn($type, '/'))) {
-                        $type = false;
-                        $ext  = false;
+                        // WordPress 7.2: audio in an MP4 or 3GP container that fileinfo calls video is allowed
+                        // under an .mp3-family extension.
+                        $cross_container_types = array(
+                            'audio/mpeg' => array('video/mp4', 'video/3gpp'),
+                        );
+
+                        if (empty($cross_container_types[$type])
+                            || !in_array($real_mime, $cross_container_types[$type], true)
+                        ) {
+                            $type = false;
+                            $ext  = false;
+                        }
                     }
                 } elseif ('text/plain' === $real_mime) {
                     if (!in_array(
@@ -415,6 +425,12 @@ namespace
                         true
                     )
                     ) {
+                        $type = false;
+                        $ext  = false;
+                    }
+                } elseif (in_array($real_mime, array('font/ttf', 'font/sfnt'), true)) {
+                    // WordPress 7.2: libmagic reports TrueType fonts as either type, so both are accepted.
+                    if (!in_array($type, array('font/ttf', 'font/sfnt'), true)) {
                         $type = false;
                         $ext  = false;
                     }
