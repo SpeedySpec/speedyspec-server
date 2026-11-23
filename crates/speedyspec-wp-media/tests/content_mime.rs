@@ -217,3 +217,15 @@ fn non_media_claim_never_reads() {
         Some("video/mp4")
     );
 }
+
+/// WordPress 7.2 already accepts audio in an MP4 or 3GP container that fileinfo calls video under `.mp3`-family
+/// names, with fileinfo's type as `$real_mime`: the reader isn't consulted and fileinfo's answer stands.
+#[test]
+fn wordpress_cross_container_audio_never_reads() {
+    for found in ["video/mp4", "video/3gpp"] {
+        assert_eq!(
+            sniff("audio/mpeg", Some(found), &Never).as_deref(),
+            Some(found)
+        );
+    }
+}

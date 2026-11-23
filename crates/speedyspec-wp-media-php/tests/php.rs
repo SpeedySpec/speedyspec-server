@@ -575,4 +575,64 @@ fn main() {
         json(&r) == serde_json::json!(["mp3", "mpeg", "caf", false]),
         &r,
     );
+
+    let wp_data =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/php/wordpress/media/data/uploads");
+    let phone = wp_data
+        .join("audio-in-video-container.m4a")
+        .display()
+        .to_string();
+    let csv = wp_data.join("test.csv").display().to_string();
+    let r = php.eval(
+        "speedyspec://test/real-mime",
+        &format!(
+            "add_filter('wp_check_filetype_and_ext', function ($r, $f, $n, $m, $real) {{ $GLOBALS['real'][] = $real; return $r; }}, 10, 5);
+             $GLOBALS['real'] = array();
+             $phone = wp_check_filetype_and_ext({phone:?}, 'phone.m4a');
+             $mka = wp_check_filetype_and_ext({:?}, 'tone.mka');
+             remove_all_filters('wp_check_filetype_and_ext');
+             return json_encode([$phone['type'], $GLOBALS['real'][0] === finfo_file(finfo_open(FILEINFO_MIME_TYPE), {phone:?}), $mka['type'], $GLOBALS['real'][1]]);",
+            at("corpus/tone.mka")
+        ),
+    );
+    check(
+        "real_mime_is_fileinfos_where_wordpress_accepts",
+        json(&r) == serde_json::json!(["audio/mpeg", true, "audio/x-matroska", "audio/x-matroska"]),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/throwing-reader",
+        &format!(
+            "\\SpeedySpec\\Container\\Container::getInstance()->bind(\\SpeedySpec\\WpMedia\\MediaReader::class, fn () => new class implements \\SpeedySpec\\WpMedia\\MediaReader {{
+                 public function read($path) {{ throw new RuntimeException('unknown format'); }}
+             }});
+             try {{
+                 return json_encode([wp_check_filetype_and_ext({:?}, 'tone.mka'), wp_check_filetype_and_ext({csv:?}, 'test.csv')['type']]);
+             }} catch (Throwable $e) {{ return 'threw: ' . $e->getMessage(); }}",
+            at("corpus/tone.mka")
+        ),
+    );
+    check(
+        "a_throwing_reader_leaves_fileinfos_answer",
+        json(&r)
+            == serde_json::json!([{"ext": false, "type": false, "proper_filename": false}, "text/csv"]),
+        &r,
+    );
+
+    let r = php.eval(
+        "speedyspec://test/unresolvable-reader",
+        &format!(
+            "\\SpeedySpec\\Container\\Container::getInstance()->bind(\\SpeedySpec\\WpMedia\\MediaReader::class, function () {{ throw new RuntimeException('no reader'); }});
+             try {{
+                 return json_encode([wp_check_filetype_and_ext({csv:?}, 'test.csv')['type'], wp_check_filetype_and_ext({:?}, 'tone.mka')['type']]);
+             }} catch (Throwable $e) {{ return 'threw: ' . $e->getMessage(); }}",
+            at("corpus/tone.mka")
+        ),
+    );
+    check(
+        "an_unresolvable_reader_leaves_fileinfos_answer",
+        json(&r) == serde_json::json!(["text/csv", false]),
+        &r,
+    );
 }

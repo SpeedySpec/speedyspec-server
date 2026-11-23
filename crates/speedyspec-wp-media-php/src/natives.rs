@@ -205,16 +205,26 @@ impl Natives {
         let fileinfo = PhpFileinfo {
             pending: self.pending.clone(),
         };
-        let reader = self.reader()?;
         let found = mime::content_mime(
             path_of(&path),
             &claimed,
             &fileinfo,
-            reader.as_ref(),
+            &LazyReader(self),
             &self.limits,
         );
-        self.rethrow_pending()?;
-        Ok(found.map_or(Value::Bool(false), Value::Str))
+        match found {
+            // Fileinfo answered, so anything pending is the reader's: a reader that fails, or can't be resolved,
+            // leaves fileinfo's answer standing rather than failing the upload check.
+            Some(mime) => {
+                self.pending.take();
+                Ok(Value::Str(mime))
+            }
+            // Fileinfo itself failed; the reader was never consulted.
+            None => {
+                self.rethrow_pending()?;
+                Ok(Value::Bool(false))
+            }
+        }
     }
 
     fn read_media(&self, args: &[Value]) -> Result<Value, NativeError> {
@@ -231,6 +241,26 @@ impl Natives {
                 Err(_) => Value::Bool(false),
             },
         )
+    }
+}
+
+/// The `MEDIA_READER` port resolved only when a read is asked for (Virtual Proxy): most filetype checks never need
+/// a reader, and one that can't be resolved reads as a crash, which the content rule answers with fileinfo's type.
+struct LazyReader<'a>(&'a Natives);
+
+impl MediaReader for LazyReader<'_> {
+    fn read(
+        &self,
+        source: MediaSource,
+        limits: &ProbeLimits,
+    ) -> Result<speedyspec_wp_media_contracts::MediaInfo, speedyspec_wp_media_contracts::ReadError>
+    {
+        match self.0.container.make_port::<dyn MediaReader>(MEDIA_READER) {
+            Ok(reader) => reader.read(source, limits),
+            Err(err) => Err(speedyspec_wp_media_contracts::ReadError::Crashed(
+                err.to_string(),
+            )),
+        }
     }
 }
 

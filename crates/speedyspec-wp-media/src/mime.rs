@@ -375,8 +375,9 @@ pub fn image_mimes_to_exts() -> Vec<(&'static str, &'static str)> {
 /// It is fileinfo's answer, except in one case. When both the claim and fileinfo are audio or video but of different
 /// kinds (an audio-only Matroska that fileinfo calls `video/x-matroska`), the media reader decides. If it reads a
 /// stream of the claimed kind, the answer is that kind with the reader's (or the claim's) subtype. The reader can
-/// only turn WordPress's prefix mismatch into an accept: it is never consulted for content fileinfo calls anything
-/// else, so documents and files that only pretend to be media are judged exactly as WordPress judges them.
+/// only turn WordPress's prefix mismatch into an accept: it is never consulted where WordPress 7.2 already accepts
+/// the file ([`CROSS_CONTAINER_TYPES`]), nor for content fileinfo calls anything else, so documents and files that
+/// only pretend to be media are judged exactly as WordPress judges them.
 pub fn content_mime(
     path: &Path,
     claimed: &str,
@@ -390,7 +391,7 @@ pub fn content_mime(
     let (Some(claimed_kind), Some(found_kind)) = (claimed_kind, found_kind) else {
         return Some(found);
     };
-    if claimed_kind == found_kind {
+    if claimed_kind == found_kind || cross_container(claimed, &found) {
         return Some(found);
     }
     let Ok(info) = reader.read(MediaSource::Path(path.to_path_buf()), limits) else {
@@ -418,6 +419,18 @@ pub fn content_mime(
         "audio"
     };
     Some(format!("{top}/{subtype}"))
+}
+
+/// WordPress 7.2's allowance in `wp_check_filetype_and_ext()`: audio in an MP4 or 3GP container that fileinfo calls
+/// video is accepted under an `.mp3`-family extension, with fileinfo's type, so the reader has nothing to confirm.
+/// The facade applies the same table.
+pub const CROSS_CONTAINER_TYPES: &[(&str, &[&str])] =
+    &[("audio/mpeg", &["video/mp4", "video/3gpp"])];
+
+fn cross_container(claimed: &str, found: &str) -> bool {
+    CROSS_CONTAINER_TYPES
+        .iter()
+        .any(|(c, founds)| *c == claimed && founds.contains(&found))
 }
 
 /// `audio/…` or `video/…`, by the MIME type's top-level type.

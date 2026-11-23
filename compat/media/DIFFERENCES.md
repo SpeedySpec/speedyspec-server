@@ -116,6 +116,10 @@ own name and renamed to `.jpg`, `.png`, `.mp3`, `.mp4`, `.mka`, `.txt` and `.pdf
   `video/x-ms-asf`, so WordPress 7.1.5 rejects `.mka` and `.wma` uploads. When fileinfo and the file's extension name
   different kinds (audio and video), the media reader reads the file. If the file holds only audio, as the extension
   says (or holds video, when the extension says video), the upload is accepted.
+  The `wp_check_filetype_and_ext` filter's fifth argument (`$real_mime`) is then the reader's type with the
+  extension's kind (`audio/x-matroska`), not fileinfo's. Where WordPress 7.2 already accepts audio that fileinfo calls
+  `video/mp4` or `video/3gpp` under an `.mp3`-family extension, the reader is not consulted and `$real_mime` is
+  fileinfo's, as in WordPress.
 - **Other audio extensions.** WordPress compares only the top-level type of audio and video files, so it accepts an
   Ogg file named `.mp3`. Once the reader has confirmed a file as audio, the same rule accepts the WMA file named `.mp3`
   or `.mka`, and the Matroska file named `.mp3`.
