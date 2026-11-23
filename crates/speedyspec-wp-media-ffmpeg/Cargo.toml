@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-media-ffmpeg"
-version = "0.2.0"
+version = "0.2.1"
 description = "The media reader over FFmpeg: a C shim over libavformat, bounded and offline, mapped to MediaInfo."
 edition.workspace = true
 rust-version.workspace = true

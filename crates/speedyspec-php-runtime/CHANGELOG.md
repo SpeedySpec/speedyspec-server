@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-php-runtime-v1.3.0...speedyspec-php-runtime-v1.4.0) (2026-11-23)
+
+
+### Features
+
+* **wp-media:** WordPress's MIME list widened to every format the reader reads, and content checks through it (plan 5 of 5) ([#108](https://github.com/SpeedySpec/speedyspec-server/issues/108)) ([c3dc4ae](https://github.com/SpeedySpec/speedyspec-server/commit/c3dc4ae41fa256b14bfa3ba9c2ae3dc0924d1f4e))
+
 ## [1.3.0](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-php-runtime-v1.2.0...speedyspec-php-runtime-v1.3.0) (2026-11-22)
 
 

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-theme-json-php"
-version = "0.1.3"
+version = "0.1.4"
 publish = false
 description = "WordPress's theme.json classes in PHP, thin wrappers over the Rust theme.json engine."
 edition.workspace = true
