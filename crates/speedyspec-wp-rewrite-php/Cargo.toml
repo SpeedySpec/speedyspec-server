@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-rewrite-php"
-version = "0.1.5"
+version = "0.1.6"
 publish = false
 description = "WordPress's rewrite API (WP_Rewrite, WP_MatchesMapRegex, rewrite.php) in PHP over the Rust port."
 edition.workspace = true

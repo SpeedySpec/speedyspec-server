@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-i18n-php"
-version = "0.1.5"
+version = "0.1.6"
 publish = false
 description = "WordPress's translation functions in PHP over the Rust translations port: the native __() family, the translation controller and file classes, and a release prepared for them."
 edition.workspace = true

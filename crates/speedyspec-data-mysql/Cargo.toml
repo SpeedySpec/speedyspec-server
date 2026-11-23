@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-data-mysql"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "The MySQL engine for speedyspec's data layer: SQL store, dialect, introspector and factory over the blocking mysql driver."
 edition.workspace = true

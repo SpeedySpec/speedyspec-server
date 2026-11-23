@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-kses-lexical"
-version = "0.4.0"
+version = "0.5.0"
 publish = false
 description = "kses.php's pure string functions (entities, protocols, attribute parsing) over fast byte matchers."
 edition.workspace = true

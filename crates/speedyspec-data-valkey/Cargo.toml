@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-data-valkey"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "The Valkey NoSQL Store: keyspaces as key prefixes over one blocking connection."
 edition.workspace = true

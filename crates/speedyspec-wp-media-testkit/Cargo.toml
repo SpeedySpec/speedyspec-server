@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-media-testkit"
-version = "0.1.0"
+version = "0.2.0"
 description = "Test only: small, valid media files built in code, for the media readers' tests, fuzz seeds and benchmarks."
 edition.workspace = true
 rust-version.workspace = true

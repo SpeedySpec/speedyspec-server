@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-server-app"
-version = "0.1.6"
+version = "0.1.7"
 publish = false
 description = "Use cases of the SpeedySpec server: the compatibility check and, later, the release lifecycle."
 edition.workspace = true

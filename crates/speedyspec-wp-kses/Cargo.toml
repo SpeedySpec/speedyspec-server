@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-kses"
-version = "0.1.3"
+version = "0.1.4"
 publish = false
 description = "WordPress's kses sanitizer in Rust: a fused single-pass wp_kses, the allowlists, safecss_filter_attr and the API."
 edition.workspace = true
