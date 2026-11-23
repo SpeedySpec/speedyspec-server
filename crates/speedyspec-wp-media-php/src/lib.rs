@@ -1,9 +1,16 @@
-//! WordPress's audio and video metadata functions as native PHP functions (Facade, Adapter, Plugin).
+//! WordPress's media functions as native PHP functions (Facade, Adapter, Plugin).
 //!
-//! [`MediaArea`] declares `wp_read_audio_metadata()`, `wp_read_video_metadata()`, `wp_add_id3_tag_data()` and
-//! `wp_get_media_creation_timestamp()` at the start of every request (from `media.php`), each inside a
-//! `function_exists` guard, over natives in `SpeedySpec\WpMedia\Native` that run WordPress's rules
-//! (`speedyspec-wp-media`) over the media reader port.
+//! [`MediaArea`] declares, at the start of every request (from `media.php`) and each inside a `function_exists`
+//! guard:
+//! - the audio and video functions: `wp_read_audio_metadata()`, `wp_read_video_metadata()`, `wp_add_id3_tag_data()`
+//!   and `wp_get_media_creation_timestamp()`;
+//! - the image functions: `wp_getimagesize()`, `wp_get_image_mime()`, `wp_get_webp_info()` and `wp_get_avif_info()`;
+//! - the MIME list and filetype checks: `wp_get_mime_types()`, `wp_get_ext_types()`, `get_allowed_mime_types()`,
+//!   `wp_check_filetype()`, `wp_ext2type()`, `wp_get_default_extension_for_mime_type()` and
+//!   `wp_check_filetype_and_ext()`.
+//!
+//! They run over natives in `SpeedySpec\WpMedia\Native` that apply WordPress's rules (`speedyspec-wp-media`) over the
+//! media reader port; fileinfo is reached through PHP's `finfo_file()`.
 //!
 //! The reader is a container port: [`MediaArea::bind_defaults`] binds the runtime's reader (the isolated, cached
 //! FFmpeg reader) under [`MEDIA_READER`], and [`MediaArea::ports`] lets a PHP object implementing
@@ -27,7 +34,7 @@ use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_wp_hooks::HookApi;
 use speedyspec_wp_media_contracts::{MEDIA_READER, MediaReader, ProbeLimits};
 
-pub use adapters::{Pending, PhpReplacement, PhpTagSanitizer, PhpTimeParser};
+pub use adapters::{Pending, PhpFileinfo, PhpReplacement, PhpTagSanitizer, PhpTimeParser};
 pub use convert::{from_php, to_php};
 pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
 pub use twins::MediaReaderTwin;

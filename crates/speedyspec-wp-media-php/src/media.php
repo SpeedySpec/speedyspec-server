@@ -195,4 +195,247 @@ namespace
             return \SpeedySpec\WpMedia\Native\wp_get_media_creation_timestamp($metadata);
         }
     }
+
+    if (!function_exists('wp_get_mime_types')) {
+        function wp_get_mime_types()
+        {
+            // WordPress's list with every format the media reader reads added after its kind's rows.
+            return apply_filters('mime_types', \SpeedySpec\WpMedia\Native\mime_types());
+        }
+    }
+
+    if (!function_exists('wp_get_ext_types')) {
+        function wp_get_ext_types()
+        {
+            return apply_filters('ext2type', \SpeedySpec\WpMedia\Native\ext_types());
+        }
+    }
+
+    // The small algorithms over these lists are WordPress's own: plugins filter the lists and add keys with regex
+    // syntax that only PCRE reads exactly, and the capability check is PHP's.
+    if (!function_exists('get_allowed_mime_types')) {
+        function get_allowed_mime_types($user = null)
+        {
+            $t = wp_get_mime_types();
+
+            unset($t['swf'], $t['exe']);
+            if (function_exists('current_user_can')) {
+                $unfiltered = $user ? user_can($user, 'unfiltered_html') : current_user_can('unfiltered_html');
+            }
+
+            if (empty($unfiltered)) {
+                unset($t['htm|html'], $t['js']);
+            }
+
+            return apply_filters('upload_mimes', $t, $user);
+        }
+    }
+
+    if (!function_exists('wp_ext2type')) {
+        function wp_ext2type($ext)
+        {
+            $ext = strtolower($ext);
+
+            $ext2type = wp_get_ext_types();
+            foreach ($ext2type as $type => $exts) {
+                if (in_array($ext, $exts, true)) {
+                    return $type;
+                }
+            }
+            return null;
+        }
+    }
+
+    if (!function_exists('wp_get_default_extension_for_mime_type')) {
+        function wp_get_default_extension_for_mime_type($mime_type)
+        {
+            $extensions = explode('|', array_search($mime_type, wp_get_mime_types(), true));
+
+            if (empty($extensions[0])) {
+                return false;
+            }
+
+            return $extensions[0];
+        }
+    }
+
+    if (!function_exists('wp_check_filetype')) {
+        function wp_check_filetype($filename, $mimes = null)
+        {
+            if (empty($mimes)) {
+                $mimes = get_allowed_mime_types();
+            }
+            $type = false;
+            $ext  = false;
+
+            foreach ($mimes as $ext_preg => $mime_match) {
+                $ext_preg = '!\.(' . $ext_preg . ')$!i';
+                if (preg_match($ext_preg, $filename, $ext_matches)) {
+                    $type = $mime_match;
+                    $ext  = $ext_matches[1];
+                    break;
+                }
+            }
+
+            return compact('ext', 'type');
+        }
+    }
+
+    if (!function_exists('wp_check_filetype_and_ext')) {
+        function wp_check_filetype_and_ext($file, $filename, $mimes = null)
+        {
+            // WordPress 7.1.5's function, with two changes: the getimagesize_mimes_to_exts default names the image
+            // types the media reader adds, and a local file's content type comes from Native\content_mime(), which
+            // is fileinfo's answer unless fileinfo files audio as video (or video as audio) and the reader confirms
+            // the claimed kind.
+            $proper_filename = false;
+
+            $wp_filetype = wp_check_filetype($filename, $mimes);
+            $ext         = $wp_filetype['ext'];
+            $type        = $wp_filetype['type'];
+
+            if (!file_exists($file)) {
+                return compact('ext', 'type', 'proper_filename');
+            }
+
+            $real_mime = false;
+
+            if ($type && str_starts_with($type, 'image/')) {
+                $real_mime = wp_get_image_mime($file);
+
+                $heic_images_extensions = array(
+                    'heif',
+                    'heics',
+                    'heifs',
+                );
+
+                if ($real_mime && ($real_mime !== $type || in_array($ext, $heic_images_extensions, true))) {
+                    $mime_to_ext = apply_filters(
+                        'getimagesize_mimes_to_exts',
+                        \SpeedySpec\WpMedia\Native\image_mimes_to_exts()
+                    );
+
+                    if (!empty($mime_to_ext[$real_mime])) {
+                        $filename_parts = explode('.', $filename);
+
+                        array_pop($filename_parts);
+                        $filename_parts[] = $mime_to_ext[$real_mime];
+                        $new_filename     = implode('.', $filename_parts);
+
+                        if ($new_filename !== $filename) {
+                            $proper_filename = $new_filename;
+                        }
+
+                        $wp_filetype = wp_check_filetype($new_filename, $mimes);
+                        $ext         = $wp_filetype['ext'];
+                        $type        = $wp_filetype['type'];
+                    } else {
+                        $real_mime = false;
+                    }
+                }
+            }
+
+            if ($type && !$real_mime && extension_loaded('fileinfo')) {
+                $local = \SpeedySpec\WpMedia\local($file);
+                if ($local !== null) {
+                    $real_mime = \SpeedySpec\WpMedia\Native\content_mime($local, $type);
+                } else {
+                    $finfo     = finfo_open(FILEINFO_MIME_TYPE);
+                    $real_mime = finfo_file($finfo, $file);
+                }
+
+                $google_docs_types = array(
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                );
+
+                foreach ($google_docs_types as $google_docs_type) {
+                    // Google Docs exports some files with the MIME type doubled.
+                    if (2 === substr_count($real_mime, $google_docs_type)) {
+                        $real_mime = $google_docs_type;
+                    }
+                }
+
+                $nonspecific_types = array(
+                    'application/octet-stream',
+                    'application/encrypted',
+                    'application/CDFV2-encrypted',
+                    'application/zip',
+                );
+
+                if (in_array($real_mime, $nonspecific_types, true)) {
+                    if (!in_array(substr($type, 0, strcspn($type, '/')), array('application', 'video', 'audio'), true)) {
+                        $type = false;
+                        $ext  = false;
+                    }
+                } elseif (str_starts_with($real_mime, 'video/') || str_starts_with($real_mime, 'audio/')) {
+                    if (substr($real_mime, 0, strcspn($real_mime, '/')) !== substr($type, 0, strcspn($type, '/'))) {
+                        $type = false;
+                        $ext  = false;
+                    }
+                } elseif ('text/plain' === $real_mime) {
+                    if (!in_array(
+                        $type,
+                        array(
+                            'text/plain',
+                            'text/csv',
+                            'application/csv',
+                            'text/richtext',
+                            'text/tsv',
+                            'text/vtt',
+                        ),
+                        true
+                    )
+                    ) {
+                        $type = false;
+                        $ext  = false;
+                    }
+                } elseif ('application/csv' === $real_mime) {
+                    if (!in_array(
+                        $type,
+                        array(
+                            'text/csv',
+                            'text/plain',
+                            'application/csv',
+                        ),
+                        true
+                    )
+                    ) {
+                        $type = false;
+                        $ext  = false;
+                    }
+                } elseif ('text/rtf' === $real_mime) {
+                    if (!in_array(
+                        $type,
+                        array(
+                            'text/rtf',
+                            'text/plain',
+                            'application/rtf',
+                        ),
+                        true
+                    )
+                    ) {
+                        $type = false;
+                        $ext  = false;
+                    }
+                } else {
+                    if ($type !== $real_mime) {
+                        $type = false;
+                        $ext  = false;
+                    }
+                }
+            }
+
+            if ($type) {
+                $allowed = get_allowed_mime_types();
+
+                if (!in_array($type, $allowed, true)) {
+                    $type = false;
+                    $ext  = false;
+                }
+            }
+
+            return apply_filters('wp_check_filetype_and_ext', compact('ext', 'type', 'proper_filename'), $file, $filename, $mimes, $real_mime);
+        }
+    }
 }
