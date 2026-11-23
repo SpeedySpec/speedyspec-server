@@ -25,6 +25,11 @@ speedyspec-xmlrpc = { path = "../speedyspec-xmlrpc" }
 speedyspec-xmlrpc-contracts = { path = "../speedyspec-xmlrpc-contracts" }
 
 [dev-dependencies]
+serde_json = "1"
+sha2 = "0.10"
+ureq = "3"
+speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 speedyspec-compat = { path = "../speedyspec-compat" }
 speedyspec-container-php = { path = "../speedyspec-container-php" }
@@ -44,4 +49,8 @@ harness = false
 
 [[test]]
 name = "end_to_end"
+harness = false
+
+[[test]]
+name = "wordpress"
 harness = false

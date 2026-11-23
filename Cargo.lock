@@ -6893,6 +6893,8 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "indexmap",
+ "serde_json",
+ "sha2 0.10.9",
  "speedyspec-compat",
  "speedyspec-container",
  "speedyspec-container-php",
@@ -6907,8 +6909,11 @@ dependencies = [
  "speedyspec-php-ext",
  "speedyspec-transport",
  "speedyspec-transport-contracts",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
  "speedyspec-xmlrpc",
  "speedyspec-xmlrpc-contracts",
+ "ureq",
 ]
 
 [[package]]
