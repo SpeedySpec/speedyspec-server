@@ -4,6 +4,8 @@
 
 use std::path::{Path, PathBuf};
 
+use speedyspec_compat::ReleaseMirror;
+
 /// The class files the area replaces whole: it declares every class they declare.
 pub const REPLACED_FILES: &[&str] = &[
     "class-wp-theme-json.php",
@@ -66,56 +68,13 @@ pub fn strip_ported(source: &str) -> Result<String, String> {
 /// (emptied) and `global-styles-and-settings.php` (without the ported functions). Reuses a copy already prepared,
 /// rewriting a file that differs. Returns `out`.
 pub fn prepare_release(release: &Path, out: &Path) -> Result<PathBuf, String> {
-    let err = |p: &Path, e: std::io::Error| format!("{}: {e}", p.display());
-    let includes = release.join("wp-includes");
-    std::fs::create_dir_all(out.join("wp-includes")).map_err(|e| err(out, e))?;
-    for entry in std::fs::read_dir(release).map_err(|e| err(release, e))? {
-        let entry = entry.map_err(|e| err(release, e))?;
-        if entry.file_name() != "wp-includes" {
-            link(&entry.path(), &out.join(entry.file_name()))?;
-        }
+    let mirror = ReleaseMirror::new(release, out)?;
+    for file in REPLACED_FILES {
+        mirror.write(&format!("wp-includes/{file}"), EMPTIED)?;
     }
-    for entry in std::fs::read_dir(&includes).map_err(|e| err(&includes, e))? {
-        let entry = entry.map_err(|e| err(&includes, e))?;
-        let name = entry.file_name();
-        let written = name == STRIPPED || REPLACED_FILES.iter().any(|f| name == *f);
-        if !written {
-            link(&entry.path(), &out.join("wp-includes").join(&name))?;
-        }
-    }
-    let mut files: Vec<(String, String)> = REPLACED_FILES
-        .iter()
-        .map(|f| ((*f).to_owned(), EMPTIED.to_owned()))
-        .collect();
-    let source = includes.join(STRIPPED);
-    files.push((
-        STRIPPED.to_owned(),
-        strip_ported(&std::fs::read_to_string(&source).map_err(|e| err(&source, e))?)?,
-    ));
-    for (file, wanted) in files {
-        let target = out.join("wp-includes").join(&file);
-        if std::fs::read_to_string(&target).ok().as_deref() != Some(wanted.as_str()) {
-            let staged = target.with_extension(format!("php.{}", std::process::id()));
-            std::fs::write(&staged, wanted).map_err(|e| err(&staged, e))?;
-            std::fs::rename(&staged, &target).map_err(|e| err(&target, e))?;
-        }
-    }
+    let stripped = format!("wp-includes/{STRIPPED}");
+    mirror.write(&stripped, &strip_ported(&mirror.read(&stripped)?)?)?;
     Ok(out.to_path_buf())
-}
-
-fn link(from: &Path, to: &Path) -> Result<(), String> {
-    if to.exists() || to.symlink_metadata().is_ok() {
-        return Ok(());
-    }
-    #[cfg(unix)]
-    let made = std::os::unix::fs::symlink(from, to);
-    #[cfg(not(unix))]
-    let made = if from.is_dir() {
-        Err(std::io::Error::other("links need unix"))
-    } else {
-        std::fs::copy(from, to).map(|_| ())
-    };
-    made.map_err(|e| format!("{}: {e}", to.display()))
 }
 
 #[cfg(test)]

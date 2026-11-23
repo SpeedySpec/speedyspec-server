@@ -2,6 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
+use speedyspec_compat::ReleaseMirror;
+
 /// Every function of `wp-includes/formatting.php` this crate provides natively (the names `native_names()` returns).
 pub const PORTED_FUNCTIONS: &[&str] = &[
     "wp_html_split",
@@ -126,16 +128,9 @@ pub fn strip_ported(source: &str) -> Result<String, String> {
 /// @return
 ///     `out`.
 pub fn prepare_release(release: &Path, out: &Path) -> Result<PathBuf, String> {
-    let err = |p: &Path, e: std::io::Error| format!("{}: {e}", p.display());
     speedyspec_wp_kses_php::prepare_release(release, out)?;
-    let source = release.join("wp-includes/formatting.php");
-    let wanted = strip_ported(&std::fs::read_to_string(&source).map_err(|e| err(&source, e))?)?;
-    let target = out.join("wp-includes/formatting.php");
-    let is_file = target.symlink_metadata().is_ok_and(|m| m.file_type().is_file());
-    if !is_file || std::fs::read_to_string(&target).ok().as_deref() != Some(wanted.as_str()) {
-        let staged = target.with_extension(format!("php.{}", std::process::id()));
-        std::fs::write(&staged, wanted).map_err(|e| err(&staged, e))?;
-        std::fs::rename(&staged, &target).map_err(|e| err(&target, e))?;
-    }
+    let mirror = ReleaseMirror::new(release, out)?;
+    let formatting = "wp-includes/formatting.php";
+    mirror.write(formatting, &strip_ported(&mirror.read(formatting)?)?)?;
     Ok(out.to_path_buf())
 }

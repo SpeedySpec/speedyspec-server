@@ -4,6 +4,8 @@
 
 use std::path::{Path, PathBuf};
 
+use speedyspec_compat::ReleaseMirror;
+
 /// The functions the native area declares, by the release file that declares them.
 pub const PORTED_FUNCTIONS: &[(&str, &str)] = &[
     ("wp-includes/functions.php", "wp_fast_hash"),
@@ -55,48 +57,11 @@ pub fn strip_ported(file: &str, source: &str) -> Result<String, String> {
 /// files, written without the ported functions, and the directories holding them, made real so their other entries
 /// can be links. Reuses a copy already prepared, rewriting a stripped file that differs. Returns `out`.
 pub fn prepare_release(release: &Path, out: &Path) -> Result<PathBuf, String> {
+    let mirror = ReleaseMirror::new(release, out)?;
     let mut stripped: Vec<&str> = PORTED_FUNCTIONS.iter().map(|(f, _)| *f).collect();
     stripped.dedup();
-    mirror(release, out, Path::new(""), &stripped)?;
     for file in stripped {
-        let source = release.join(file);
-        let text =
-            std::fs::read_to_string(&source).map_err(|e| format!("{}: {e}", source.display()))?;
-        let wanted = strip_ported(file, &text)?;
-        let target = out.join(file);
-        if std::fs::read_to_string(&target).ok().as_deref() != Some(wanted.as_str()) {
-            let staged = target.with_extension(format!("php.{}", std::process::id()));
-            std::fs::write(&staged, wanted).map_err(|e| format!("{}: {e}", staged.display()))?;
-            std::fs::rename(&staged, &target).map_err(|e| format!("{}: {e}", target.display()))?;
-        }
+        mirror.write(file, &strip_ported(file, &mirror.read(file)?)?)?;
     }
     Ok(out.to_path_buf())
-}
-
-/// Mirrors the directory `relative` of `release` into `out`: entries on the way to a stripped file are descended
-/// into, stripped files are left for the caller, everything else is linked.
-fn mirror(release: &Path, out: &Path, relative: &Path, stripped: &[&str]) -> Result<(), String> {
-    let dir = release.join(relative);
-    std::fs::create_dir_all(out.join(relative)).map_err(|e| format!("{}: {e}", out.display()))?;
-    for entry in std::fs::read_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))? {
-        let entry = entry.map_err(|e| format!("{}: {e}", dir.display()))?;
-        let path = relative.join(entry.file_name());
-        let name = path.to_string_lossy();
-        if stripped.contains(&name.as_ref()) {
-            continue;
-        }
-        if stripped.iter().any(|f| f.starts_with(&format!("{name}/"))) {
-            mirror(release, out, &path, stripped)?;
-        } else {
-            link(&entry.path(), &out.join(&path))?;
-        }
-    }
-    Ok(())
-}
-
-fn link(from: &Path, to: &Path) -> Result<(), String> {
-    if to.symlink_metadata().is_ok() {
-        return Ok(());
-    }
-    std::os::unix::fs::symlink(from, to).map_err(|e| format!("{}: {e}", to.display()))
 }

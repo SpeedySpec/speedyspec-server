@@ -8,12 +8,12 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
 speedyspec-php = { path = "../speedyspec-php" }
 speedyspec-hooks = { path = "../speedyspec-hooks" }
 speedyspec-wp-utf8 = { path = "../speedyspec-wp-utf8" }
 
 [dev-dependencies]
-speedyspec-compat = { path = "../speedyspec-compat" }
 speedyspec-container = { path = "../speedyspec-container" }
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
 speedyspec-php-ext = { path = "../speedyspec-php-ext" }
