@@ -25,7 +25,8 @@ use speedyspec_wp_hooks::HookApi;
 use speedyspec_wp_options::OptionsApi;
 
 pub use adapters::{
-    PhpArgsKeyer, PhpDoingCron, PhpErrorReporter, PhpEventObjects, PhpTranslator, SystemClock,
+    PhpArgsKeyer, PhpDoingCron, PhpErrorReporter, PhpEventObjects, PhpNetworkSites,
+    PhpSiteSwitcher, PhpTranslator, SystemClock,
 };
 pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
 
@@ -79,6 +80,8 @@ fn api(hooks: &Rc<HookApi>, options: &Rc<OptionsApi>, wake: Rc<dyn WakeReporter>
         wake,
         doing_cron: Rc::new(PhpDoingCron),
         errors: Rc::new(PhpErrorReporter),
+        network: Rc::new(PhpNetworkSites),
+        switcher: Rc::new(PhpSiteSwitcher),
     }))
 }
 

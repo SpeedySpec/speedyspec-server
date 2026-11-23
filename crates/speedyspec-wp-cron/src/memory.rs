@@ -5,8 +5,8 @@ use std::cell::{Cell, RefCell};
 
 use speedyspec_php_serialize::{from_hook_value, serialize};
 use speedyspec_wp_cron_contracts::{
-    CronError, CronResult, CronStep, CronStore, DoingCron, ErrorReporter, SaveOutcome, Version,
-    WakeReporter,
+    CronError, CronResult, CronStep, CronStore, DoingCron, ErrorReporter, NetworkSites,
+    SaveOutcome, SiteSwitcher, Version, WakeReporter,
 };
 use speedyspec_wp_hooks::HookValue;
 use speedyspec_wp_hooks::Key;
@@ -231,5 +231,138 @@ impl ErrorReporter for CollectingErrors {
             (Key::Str("__wp_error".into()), HookValue::Bool(true)),
             (Key::Str("code".into()), HookValue::Str(code)),
         ])
+    }
+}
+
+/// A single-site install: not multisite, nothing to switch.
+pub struct SingleSite;
+
+impl NetworkSites for SingleSite {
+    fn is_multisite(&self) -> bool {
+        false
+    }
+    fn site_ids(&self) -> Result<Vec<u64>, CronError> {
+        Ok(Vec::new())
+    }
+    fn cursor(&self) -> Result<Option<u64>, CronError> {
+        Ok(None)
+    }
+    fn set_cursor(&self, _: u64) -> Result<(), CronError> {
+        Ok(())
+    }
+}
+
+impl SiteSwitcher for SingleSite {
+    fn switch_to(&self, _: u64) -> Result<(), CronError> {
+        Ok(())
+    }
+    fn restore(&self) -> Result<(), CronError> {
+        Ok(())
+    }
+}
+
+/// A network in memory: each site its own [`MemoryCronStore`], the `cron` store answering for the current site, and a
+/// record of every switch.
+pub struct MemoryNetwork {
+    stores: Vec<(u64, std::rc::Rc<MemoryCronStore>)>,
+    current: Cell<u64>,
+    stack: RefCell<Vec<u64>>,
+    cursor: Cell<Option<u64>>,
+    switches: RefCell<Vec<u64>>,
+}
+
+impl MemoryNetwork {
+    /// A network of `sites`, the first one current.
+    pub fn new(sites: &[u64]) -> MemoryNetwork {
+        MemoryNetwork {
+            stores: sites
+                .iter()
+                .map(|&s| (s, std::rc::Rc::new(MemoryCronStore::new())))
+                .collect(),
+            current: Cell::new(sites.first().copied().unwrap_or(1)),
+            stack: RefCell::new(Vec::new()),
+            cursor: Cell::new(None),
+            switches: RefCell::new(Vec::new()),
+        }
+    }
+
+    pub fn store(&self, site: u64) -> std::rc::Rc<MemoryCronStore> {
+        self.stores
+            .iter()
+            .find(|(s, _)| *s == site)
+            .map(|(_, store)| store.clone())
+            .expect("a site of this network")
+    }
+
+    pub fn current(&self) -> u64 {
+        self.current.get()
+    }
+
+    /// Switches not yet restored.
+    pub fn depth(&self) -> usize {
+        self.stack.borrow().len()
+    }
+
+    /// Every site switched to, in order.
+    pub fn switches(&self) -> Vec<u64> {
+        self.switches.borrow().clone()
+    }
+
+    pub fn cursor_value(&self) -> Option<u64> {
+        self.cursor.get()
+    }
+
+    pub fn set_cursor_value(&self, cursor: Option<u64>) {
+        self.cursor.set(cursor);
+    }
+
+    fn here(&self) -> std::rc::Rc<MemoryCronStore> {
+        self.store(self.current.get())
+    }
+}
+
+impl CronStore for MemoryNetwork {
+    fn load(&self) -> Result<(HookValue, Version), CronError> {
+        self.here().load()
+    }
+    fn reload(&self) -> Result<(HookValue, Version, bool), CronError> {
+        self.here().reload()
+    }
+    fn save_if(&self, expected: &Version, value: HookValue) -> Result<SaveOutcome, CronError> {
+        self.here().save_if(expected, value)
+    }
+    fn save(&self, value: HookValue) -> Result<bool, CronError> {
+        self.here().save(value)
+    }
+}
+
+impl NetworkSites for MemoryNetwork {
+    fn is_multisite(&self) -> bool {
+        true
+    }
+    fn site_ids(&self) -> Result<Vec<u64>, CronError> {
+        Ok(self.stores.iter().map(|(s, _)| *s).collect())
+    }
+    fn cursor(&self) -> Result<Option<u64>, CronError> {
+        Ok(self.cursor.get())
+    }
+    fn set_cursor(&self, site: u64) -> Result<(), CronError> {
+        self.cursor.set(Some(site));
+        Ok(())
+    }
+}
+
+impl SiteSwitcher for MemoryNetwork {
+    fn switch_to(&self, site: u64) -> Result<(), CronError> {
+        self.stack.borrow_mut().push(self.current.get());
+        self.current.set(site);
+        self.switches.borrow_mut().push(site);
+        Ok(())
+    }
+    fn restore(&self) -> Result<(), CronError> {
+        if let Some(previous) = self.stack.borrow_mut().pop() {
+            self.current.set(previous);
+        }
+        Ok(())
     }
 }

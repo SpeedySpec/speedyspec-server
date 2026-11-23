@@ -3,8 +3,8 @@
 use std::rc::Rc;
 
 use speedyspec_wp_cron_contracts::{
-    ArgsKeyer, Clock, CronError, CronStore, DoingCron, ErrorReporter, PhpObjects, Translator,
-    WakeReporter,
+    ArgsKeyer, Clock, CronError, CronStore, DoingCron, ErrorReporter, NetworkSites, PhpObjects,
+    SiteSwitcher, Translator, WakeReporter,
 };
 use speedyspec_wp_hooks::{HookApi, HookError, HookName, HookValue};
 
@@ -20,6 +20,9 @@ pub struct CronParts {
     pub wake: Rc<dyn WakeReporter>,
     pub doing_cron: Rc<dyn DoingCron>,
     pub errors: Rc<dyn ErrorReporter>,
+    /// The network's sites, for the walk that runs every site's due events.
+    pub network: Rc<dyn NetworkSites>,
+    pub switcher: Rc<dyn SiteSwitcher>,
 }
 
 /// WordPress's cron API. Each method takes PHP's arguments as passed and answers as WordPress does.

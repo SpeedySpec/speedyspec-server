@@ -7,6 +7,7 @@
 mod api;
 mod keyer;
 pub mod memory;
+mod network;
 mod php;
 mod read;
 mod run;

@@ -15,8 +15,8 @@ pub use array::{CronArray, EventData, EventKey, ScheduledEvent, key_for};
 pub use natsort::strnatcasecmp;
 pub use outcome::{CronError, CronResult, RunSummary, SaveOutcome, Version};
 pub use ports::{
-    ArgsKeyer, Clock, CronStep, CronStore, DoingCron, ErrorReporter, PhpObjects, Translator,
-    WakeReporter,
+    ArgsKeyer, Clock, CronStep, CronStore, DoingCron, ErrorReporter, NetworkSites, PhpObjects,
+    SiteSwitcher, Translator, WakeReporter,
 };
 
 /// A PHP-shaped value, as the Hook API carries it.

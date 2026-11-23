@@ -22,6 +22,8 @@ pub struct RunSummary {
     pub unclaimed: u64,
     /// When the next event is due (the current time when the run stopped at its budget); `None` with none left.
     pub next: Option<i64>,
+    /// Sites visited: 1 on a single site, each site whose events were run on a network.
+    pub sites: u64,
 }
 
 /// What a compare-and-swap save did.

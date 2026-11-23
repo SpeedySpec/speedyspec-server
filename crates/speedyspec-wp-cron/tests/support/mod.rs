@@ -108,6 +108,8 @@ pub fn fixture_over(store: Rc<MemoryCronStore>) -> Fixture {
         objects: Rc::new(ArrayObjects),
         wake: wake.clone(),
         doing_cron: doing.clone(),
+        network: Rc::new(speedyspec_wp_cron::memory::SingleSite),
+        switcher: Rc::new(speedyspec_wp_cron::memory::SingleSite),
         errors: errors.clone(),
     });
     Fixture {

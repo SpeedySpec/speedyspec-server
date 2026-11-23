@@ -183,7 +183,7 @@ pub(crate) fn functions(api: &Rc<CronApi>) -> Vec<FunctionBuilder<'static>> {
                 _ => 30.0,
             };
             let summary = runner
-                .run_due_events(Duration::from_secs_f64(budget.max(0.0)))
+                .run_network_due_events(Duration::from_secs_f64(budget.max(0.0)))
                 .map_err(native_error)?;
             Ok(HookValue::Array(vec![
                 (Key::Str("ran".into()), HookValue::Int(summary.ran as i64)),
@@ -194,6 +194,10 @@ pub(crate) fn functions(api: &Rc<CronApi>) -> Vec<FunctionBuilder<'static>> {
                 (
                     Key::Str("unclaimed".into()),
                     HookValue::Int(summary.unclaimed as i64),
+                ),
+                (
+                    Key::Str("sites".into()),
+                    HookValue::Int(summary.sites as i64),
                 ),
                 (
                     Key::Str("next".into()),
