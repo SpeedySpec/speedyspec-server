@@ -8,6 +8,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
 foldhash = "0.2"
 speedyspec-container = { path = "../speedyspec-container" }
 speedyspec-hooks = { path = "../speedyspec-hooks" }
@@ -21,7 +22,6 @@ speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
 speedyspec-wp-utf8-php = { path = "../speedyspec-wp-utf8-php" }
 
 [dev-dependencies]
-speedyspec-compat = { path = "../speedyspec-compat" }
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
 speedyspec-php-ext = { path = "../speedyspec-php-ext" }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }

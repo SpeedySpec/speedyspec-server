@@ -4,6 +4,8 @@
 
 use std::path::{Path, PathBuf};
 
+use speedyspec_compat::ReleaseMirror;
+
 /// The `l10n.php` functions declared natively.
 pub const PORTED_FUNCTIONS: &[&str] = &[
     "translate",
@@ -60,25 +62,6 @@ pub fn strip_ported(source: &str) -> Result<String, String> {
         .filter(|(_, k)| *k)
         .map(|(l, _)| *l)
         .collect())
-}
-
-fn err(p: &Path, e: std::io::Error) -> String {
-    format!("{}: {e}", p.display())
-}
-
-fn write_if_changed(path: &Path, text: &str) -> Result<(), String> {
-    if path
-        .symlink_metadata()
-        .is_ok_and(|m| m.file_type().is_symlink())
-    {
-        std::fs::remove_file(path).map_err(|e| err(path, e))?;
-    }
-    if std::fs::read_to_string(path).ok().as_deref() == Some(text) {
-        return Ok(());
-    }
-    let temp = path.with_extension(format!("php.{}", std::process::id()));
-    std::fs::write(&temp, text).map_err(|e| err(&temp, e))?;
-    std::fs::rename(&temp, path).map_err(|e| err(path, e))
 }
 
 /// Native fast paths put at the start of WordPress's own methods, by file in `wp-includes/pomo/` and method
@@ -146,53 +129,33 @@ pub fn patch_pomo(file: &str, source: &str) -> Result<String, String> {
     Ok(out)
 }
 
-/// Makes `out_includes/<dir>` a real directory: `stubbed` files written as stubs, the rest linked to the release's.
-fn stub_dir(
-    includes: &Path,
-    out_includes: &Path,
-    dir: &str,
-    stubbed: &[&str],
-) -> Result<(), String> {
-    let target_dir = out_includes.join(dir);
-    if target_dir
-        .symlink_metadata()
-        .is_ok_and(|m| m.file_type().is_symlink())
-    {
-        std::fs::remove_file(&target_dir).map_err(|e| err(&target_dir, e))?;
-    }
-    std::fs::create_dir_all(&target_dir).map_err(|e| err(&target_dir, e))?;
-    let source_dir = includes.join(dir);
-    for entry in std::fs::read_dir(&source_dir).map_err(|e| err(&source_dir, e))? {
-        let entry = entry.map_err(|e| err(&source_dir, e))?;
-        let name = entry.file_name();
-        let target = target_dir.join(&name);
-        let file = name.to_string_lossy();
-        if stubbed.contains(&file.as_ref()) {
-            write_if_changed(&target, STUB)?;
-        } else if dir == "pomo" && POMO_FAST_PATHS.iter().any(|(f, _, _)| *f == file) {
-            let path = entry.path();
-            let source = std::fs::read_to_string(&path).map_err(|e| err(&path, e))?;
-            write_if_changed(&target, &patch_pomo(&file, &source)?)?;
-        } else if target.symlink_metadata().is_err() {
-            #[cfg(unix)]
-            std::os::unix::fs::symlink(entry.path(), &target).map_err(|e| err(&target, e))?;
-        }
-    }
-    Ok(())
-}
-
 /// Prepares `release` in `out` for both the UTF-8 and the translation natives. Returns `out`.
 pub fn prepare_release(release: &Path, out: &Path) -> Result<PathBuf, String> {
     speedyspec_wp_utf8_php::prepare_release(release, out)?;
-    let includes = release.join("wp-includes");
-    let out_includes = out.join("wp-includes");
-    let l10n = includes.join("l10n.php");
-    let stripped = strip_ported(&std::fs::read_to_string(&l10n).map_err(|e| err(&l10n, e))?)?;
-    write_if_changed(&out_includes.join("l10n.php"), &stripped)?;
-    for name in STUBBED_INCLUDES {
-        write_if_changed(&out_includes.join(name), STUB)?;
+    let mirror = ReleaseMirror::new(release, out)?;
+    let l10n = "wp-includes/l10n.php";
+    mirror.write(l10n, &strip_ported(&mirror.read(l10n)?)?)?;
+    let stubs = STUBBED_INCLUDES
+        .iter()
+        .map(|name| format!("wp-includes/{name}"))
+        .chain(
+            STUBBED
+                .iter()
+                .map(|name| format!("wp-includes/l10n/{name}")),
+        )
+        .chain(
+            STUBBED_POMO
+                .iter()
+                .map(|name| format!("wp-includes/pomo/{name}")),
+        );
+    for stub in stubs {
+        mirror.write(&stub, STUB)?;
     }
-    stub_dir(&includes, &out_includes, "l10n", STUBBED)?;
-    stub_dir(&includes, &out_includes, "pomo", STUBBED_POMO)?;
+    let mut patched: Vec<&str> = POMO_FAST_PATHS.iter().map(|(f, _, _)| *f).collect();
+    patched.dedup();
+    for file in patched {
+        let relative = format!("wp-includes/pomo/{file}");
+        mirror.write(&relative, &patch_pomo(file, &mirror.read(&relative)?)?)?;
+    }
     Ok(out.to_path_buf())
 }

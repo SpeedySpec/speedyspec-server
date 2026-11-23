@@ -13,9 +13,11 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+mod mirror;
 mod php;
 mod record;
 
+pub use mirror::ReleaseMirror;
 pub use php::{DRIVER, PhpRunner};
 
 /// The WordPress functions the object cache calls, declared the same on both sides of `compat/object-cache`.

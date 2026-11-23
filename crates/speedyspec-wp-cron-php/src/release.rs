@@ -3,6 +3,8 @@
 
 use std::path::{Path, PathBuf};
 
+use speedyspec_compat::ReleaseMirror;
+
 /// The `cron.php` functions the native area declares: all of them.
 pub const PORTED_FUNCTIONS: &[&str] = &[
     "wp_schedule_single_event",
@@ -58,18 +60,8 @@ pub fn strip_ported(source: &str) -> Result<String, String> {
 /// `wp-includes/cron.php` (a link there) replaced by a copy without the ported functions. Returns `out`.
 pub fn prepare_release(release: &Path, out: &Path) -> Result<PathBuf, String> {
     speedyspec_wp_options_php::prepare_release(release, out)?;
-    let err = |p: &Path, e: std::io::Error| format!("{}: {e}", p.display());
-    let source = release.join("wp-includes/cron.php");
-    let wanted = strip_ported(&std::fs::read_to_string(&source).map_err(|e| err(&source, e))?)?;
-    let target = out.join("wp-includes/cron.php");
-    let is_link = std::fs::symlink_metadata(&target).is_ok_and(|m| m.file_type().is_symlink());
-    if is_link || std::fs::read_to_string(&target).ok().as_deref() != Some(wanted.as_str()) {
-        let staged = target.with_extension(format!("php.{}", std::process::id()));
-        std::fs::write(&staged, wanted).map_err(|e| err(&staged, e))?;
-        if is_link {
-            std::fs::remove_file(&target).map_err(|e| err(&target, e))?;
-        }
-        std::fs::rename(&staged, &target).map_err(|e| err(&target, e))?;
-    }
+    let mirror = ReleaseMirror::new(release, out)?;
+    let cron = "wp-includes/cron.php";
+    mirror.write(cron, &strip_ported(&mirror.read(cron)?)?)?;
     Ok(out.to_path_buf())
 }

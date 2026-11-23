@@ -3,6 +3,8 @@
 
 use std::path::{Path, PathBuf};
 
+use speedyspec_compat::ReleaseMirror;
+
 /// The `option.php` functions the native area declares.
 pub const PORTED_FUNCTIONS: &[&str] = &[
     "get_option",
@@ -79,57 +81,8 @@ pub fn strip_ported(source: &str) -> Result<String, String> {
 /// which is written without the ported functions. Reuses a copy already prepared, rewriting its `option.php` when
 /// it was stripped of other functions. Returns `out`.
 pub fn prepare_release(release: &Path, out: &Path) -> Result<PathBuf, String> {
-    let err = |p: &Path, e: std::io::Error| format!("{}: {e}", p.display());
-    let option = out.join("wp-includes/option.php");
-    if option.exists() {
-        // A copy another build prepared (another port list, the same temp directory) is brought to this one's.
-        let source = release.join("wp-includes/option.php");
-        let wanted = strip_ported(&std::fs::read_to_string(&source).map_err(|e| err(&source, e))?)?;
-        if std::fs::read_to_string(&option).ok().as_deref() != Some(wanted.as_str()) {
-            let temp = option.with_extension(format!("php.{}", std::process::id()));
-            std::fs::write(&temp, wanted).map_err(|e| err(&temp, e))?;
-            std::fs::rename(&temp, &option).map_err(|e| err(&option, e))?;
-        }
-        return Ok(out.to_path_buf());
-    }
-    std::fs::create_dir_all(out.join("wp-includes")).map_err(|e| err(out, e))?;
-    for entry in std::fs::read_dir(release).map_err(|e| err(release, e))? {
-        let entry = entry.map_err(|e| err(release, e))?;
-        if entry.file_name() == "wp-includes" {
-            continue;
-        }
-        link(&entry.path(), &out.join(entry.file_name()))?;
-    }
-    let includes = release.join("wp-includes");
-    for entry in std::fs::read_dir(&includes).map_err(|e| err(&includes, e))? {
-        let entry = entry.map_err(|e| err(&includes, e))?;
-        if entry.file_name() == "option.php" {
-            continue;
-        }
-        link(
-            &entry.path(),
-            &out.join("wp-includes").join(entry.file_name()),
-        )?;
-    }
-    let source =
-        std::fs::read_to_string(includes.join("option.php")).map_err(|e| err(&includes, e))?;
-    let staged = out.join("wp-includes/option.php.partial");
-    std::fs::write(&staged, strip_ported(&source)?).map_err(|e| err(&staged, e))?;
-    std::fs::rename(&staged, &option).map_err(|e| err(&option, e))?;
+    let mirror = ReleaseMirror::new(release, out)?;
+    let option = "wp-includes/option.php";
+    mirror.write(option, &strip_ported(&mirror.read(option)?)?)?;
     Ok(out.to_path_buf())
-}
-
-fn link(from: &Path, to: &Path) -> Result<(), String> {
-    if to.exists() {
-        return Ok(());
-    }
-    #[cfg(unix)]
-    let made = std::os::unix::fs::symlink(from, to);
-    #[cfg(not(unix))]
-    let made = if from.is_dir() {
-        Err(std::io::Error::other("links need unix"))
-    } else {
-        std::fs::copy(from, to).map(|_| ())
-    };
-    made.map_err(|e| format!("{}: {e}", to.display()))
 }
