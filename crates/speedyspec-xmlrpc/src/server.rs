@@ -14,11 +14,11 @@ use speedyspec_transport::Exposure;
 use speedyspec_transport_contracts::ExposureLookup;
 use speedyspec_xmlrpc_contracts::{
     Fault, FaultMapping, MethodEntry, MethodResponse, XmlRpcBinding, XmlRpcHooks, XmlRpcLogin,
-    XmlRpcParam,
+    XmlRpcMapping, XmlRpcParam,
 };
 
-use crate::XMLRPC;
 use crate::codec::{parse_call, write_response};
+use crate::{DefaultXmlRpcMapping, XMLRPC};
 
 /// WordPress's default `xmlrpc_element_limit`.
 pub const DEFAULT_ELEMENT_LIMIT: usize = 30000;
@@ -56,6 +56,8 @@ fn text(value: Option<&Value>) -> String {
 /// needed.
 pub struct XmlRpcServer {
     dispatcher: Dispatcher,
+    registries: Rc<Registries>,
+    mapping: Rc<dyn XmlRpcMapping>,
     exposure: Rc<Exposure>,
     hooks: Rc<dyn XmlRpcHooks>,
     login: Rc<dyn XmlRpcLogin>,
@@ -78,7 +80,9 @@ impl XmlRpcServer {
         identity: Rc<dyn Identity>,
     ) -> XmlRpcServer {
         XmlRpcServer {
-            dispatcher: Dispatcher::new(container, registries),
+            dispatcher: Dispatcher::new(container, registries.clone()),
+            registries,
+            mapping: Rc::new(DefaultXmlRpcMapping),
             exposure,
             hooks,
             login,
@@ -87,6 +91,27 @@ impl XmlRpcServer {
             table: OnceCell::new(),
             login_failed: Cell::new(false),
         }
+    }
+
+    /// The server with another default mapping, for bindings that name a method but not its parameters.
+    pub fn with_mapping(mut self, mapping: Rc<dyn XmlRpcMapping>) -> Self {
+        self.mapping = mapping;
+        self
+    }
+
+    /// An exposed operation's binding. A binding that names its method but not its parameters takes the default
+    /// mapping's parameters.
+    fn binding(&self, operation: &str) -> Option<XmlRpcBinding> {
+        let exposed = self.exposure.find(XMLRPC, operation)?;
+        let mut binding = XmlRpcBinding::from_value(&exposed.binding).ok()?;
+        if exposed.binding.get("params").is_none() {
+            binding.params = self
+                .mapping
+                .binding(&exposed.spec, self.registries.as_ref())
+                .map(|b| b.params)
+                .unwrap_or_default();
+        }
+        Some(binding)
     }
 
     /// Answers one HTTP request to `xmlrpc.php`. Faults are sent with 200, as IXR sends them.
@@ -184,11 +209,7 @@ impl XmlRpcServer {
         operation: &str,
         params: Vec<Value>,
     ) -> Result<Value, Fault> {
-        let binding = self
-            .exposure
-            .find(XMLRPC, operation)
-            .and_then(|exposed| XmlRpcBinding::from_value(&exposed.binding).ok())
-            .ok_or_else(|| no_method(method))?;
+        let binding = self.binding(operation).ok_or_else(|| no_method(method))?;
         let required = binding
             .params
             .iter()

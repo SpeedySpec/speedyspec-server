@@ -786,3 +786,29 @@ fn the_middleware_passes_other_paths_on() {
     let ours = middleware.process(request(Method::Get, "/xmlrpc.php", b""), &NotFound);
     assert_eq!(ours.status().as_u16(), 405);
 }
+
+#[test]
+fn a_binding_without_params_uses_the_default_params() {
+    let w = world_with(|_, bindings| {
+        bindings.bind(
+            "acme/update-report",
+            XMLRPC,
+            Value::map([("method", s("acme.renamed"))]),
+        );
+    });
+    let value = success(send(
+        &w,
+        "acme.renamed",
+        vec![
+            Value::Int(1),
+            s("admin"),
+            s("pw"),
+            Value::Int(4),
+            Value::map([("title", s("T"))]),
+        ],
+    ));
+    assert_eq!(
+        value,
+        Value::map([("id", Value::Int(4)), ("title", s("T"))])
+    );
+}

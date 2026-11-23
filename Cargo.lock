@@ -6890,7 +6890,23 @@ dependencies = [
 name = "speedyspec-xmlrpc-php"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "indexmap",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-hooks-memory",
+ "speedyspec-http",
+ "speedyspec-http-message",
+ "speedyspec-operation",
  "speedyspec-operation-contracts",
+ "speedyspec-operation-dispatch",
+ "speedyspec-operation-php",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-transport",
+ "speedyspec-transport-contracts",
  "speedyspec-xmlrpc",
  "speedyspec-xmlrpc-contracts",
 ]

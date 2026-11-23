@@ -8,6 +8,32 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+base64 = "0.22"
+indexmap = "2"
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-http = { path = "../speedyspec-http" }
+speedyspec-http-message = { path = "../speedyspec-http-message" }
+speedyspec-operation = { path = "../speedyspec-operation" }
 speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
+speedyspec-operation-dispatch = { path = "../speedyspec-operation-dispatch" }
+speedyspec-operation-php = { path = "../speedyspec-operation-php" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-transport = { path = "../speedyspec-transport" }
+speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }
 speedyspec-xmlrpc = { path = "../speedyspec-xmlrpc" }
 speedyspec-xmlrpc-contracts = { path = "../speedyspec-xmlrpc-contracts" }
+
+[dev-dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+
+[[test]]
+name = "hooks"
+harness = false
+
+[[test]]
+name = "facade"
+harness = false

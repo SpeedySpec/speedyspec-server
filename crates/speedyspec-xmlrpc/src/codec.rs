@@ -126,7 +126,7 @@ fn read_tree(body: &[u8], element_limit: usize) -> Result<Node, Fault> {
 }
 
 /// A date in any accepted form, normalized to UTC.
-fn parse_date(text: &str) -> Option<NaiveDateTime> {
+pub fn parse_date(text: &str) -> Option<NaiveDateTime> {
     let text = text.trim();
     let (local, offset_minutes) = if let Some(local) = text.strip_suffix('Z') {
         (local, 0)
