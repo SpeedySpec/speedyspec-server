@@ -66,3 +66,27 @@ from FFmpeg `lavfi` `testsrc2` frames, 64×48 (RGBA variants with alpha 128; ani
 | `photo.qoi`, `.pcx`, `.tga`, `.ppm`, `.pgm`, `.sgi`, `.hdr`, `.jp2` | FFmpeg's native encoders |
 | `photo.psd` | ImageMagick |
 | `truncated.jpg`, `empty.png`, `mislabelled.jpg` | the first 200 bytes of `baseline.jpg`; 0 bytes; a copy of `rgb.png` |
+
+## `uploads/`
+
+Every file in `uploads/` was made by `make-upload-corpus.sh` (Alpine 3.22's FFmpeg in a throwaway container) from the
+same synthetic sources: a mono 440 Hz `sine` (44.1 kHz, 2 s unless noted) and `lavfi` `testsrc2` 160×120 at 10 fps.
+They cover the formats the widened MIME list adds that `corpus/` doesn't already hold.
+
+| File | How |
+|---|---|
+| `tone.eac3` | E-AC-3 96k |
+| `tone.caf` | ALAC in Core Audio Format |
+| `tone.wv` | WavPack |
+| `tone.tta` | True Audio |
+| `tone.au` | PCM s16be in Sun AU |
+| `tone.mp2` | MPEG-1 Layer II 128k |
+| `tone.w64` | PCM s16le in Sony Wave64 |
+| `tone.voc` | 22.05 kHz PCM u8 in Creative Voice |
+| `bars.m2ts` | MPEG-2 video and MP2 audio in MPEG-TS with 192-byte packets (`-mpegts_m2ts_mode 1`) |
+| `bars.mxf` | MPEG-2 video 352×288 at 25 fps and PCM s16le 48 kHz in MXF |
+| `bars.dv` | one 720×480 NTSC DV frame (`-target ntsc-dv`), no audio |
+| `bars.vob` | MPEG-2 video and MP2 audio in a DVD program stream (`-f vob`) |
+| `bars.m2v` | raw MPEG-2 video elementary stream |
+| `bars.rm` | RealVideo 1.0 176×144 and RealAudio 1.0 8 kHz mono in RealMedia |
+| `bars.ogm` | Theora and Vorbis in Ogg |

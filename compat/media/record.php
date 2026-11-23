@@ -33,7 +33,10 @@ require ABSPATH . WPINC . '/kses.php';
 require ABSPATH . WPINC . '/functions.php';
 require ABSPATH . 'wp-admin/includes/media.php';
 
-$audio_ext = ['mp3', 'm4a', 'flac', 'ogg', 'opus', 'wav', 'aiff', 'wma', 'ra', 'ac3', 'dts', 'aac', 'mka', 'mid'];
+$audio_ext = [
+    'mp3', 'm4a', 'flac', 'ogg', 'opus', 'wav', 'aiff', 'wma', 'ra', 'ac3', 'dts', 'aac', 'mka', 'mid',
+    'eac3', 'caf', 'wv', 'tta', 'au', 'mp2', 'w64', 'voc',
+];
 
 /** A value as plain JSON: binary strings by length and hash, short non-UTF-8 strings as hex, NAN and INF as strings. */
 function plain($value)
@@ -81,11 +84,19 @@ foreach ($names as $name) {
         $times[] = (hrtime(true) - $t) / 1000;
     }
     sort($times);
+    // getID3 records the absolute path it read; the corpus directory becomes `<corpus>` so the recording names no
+    // machine's folders.
+    $data = $first['data'] ?? null;
+    foreach (['filepath', 'filenamepath'] as $key) {
+        if (is_array($data) && isset($data[$key]) && is_string($data[$key])) {
+            $data[$key] = str_replace(rtrim($corpus, '/'), '<corpus>', $data[$key]);
+        }
+    }
     $files[$name] = [
         'kind' => $kind,
         'metadata' => plain($metadata),
         'file_format' => plain($first['file_format'] ?? null),
-        'data' => plain($first['data'] ?? null),
+        'data' => plain($data),
         'creation_timestamp' => $first ? wp_get_media_creation_timestamp($first['data']) : null,
         'us' => (int) round($times[2]),
     ];
