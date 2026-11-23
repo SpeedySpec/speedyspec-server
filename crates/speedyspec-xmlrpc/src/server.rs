@@ -196,14 +196,22 @@ impl XmlRpcServer {
                 .call(&entry.operation, input, &caller)
                 .map_err(|e| Fault::from_error(&e, self.faults.as_ref()));
         }
-        self.call_operation(method, &entry.operation, params)
+        self.run_operation(method, &entry.operation, params)
+    }
+
+    /// Calls the operation `operation` with positional parameters, by its binding, as its method would be called.
+    pub fn call_operation(&self, operation: &str, params: Vec<Value>) -> Result<Value, Fault> {
+        let binding = self
+            .binding(operation)
+            .ok_or_else(|| no_method(operation))?;
+        self.run_operation(&binding.method, operation, params)
     }
 
     fn anonymous(&self) -> Caller {
         Caller::new(None, XMLRPC, self.identity.clone())
     }
 
-    fn call_operation(
+    fn run_operation(
         &self,
         method: &str,
         operation: &str,

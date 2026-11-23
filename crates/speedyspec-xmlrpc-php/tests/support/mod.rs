@@ -12,7 +12,7 @@ use speedyspec_operation_php::{FixedSiteKey, OperationArea, SiteId};
 use speedyspec_php::{BootOptions, NativeArea, Php, PhpError};
 use speedyspec_php_ext::Value as PhpValue;
 use speedyspec_transport::MemoryBindingStore;
-use speedyspec_xmlrpc_php::XmlRpcArea;
+use speedyspec_xmlrpc_php::{XmlRpcArea, XmlRpcService};
 
 /// WordPress's hook functions, minimal (filters with accepted-args counts and priorities, actions, removal).
 pub const HOOKS: &str = r#"
@@ -62,6 +62,11 @@ function __( $text, $domain = 'default' ) { return $text; }
 function __return_true() { return true; }
 function __return_false() { return false; }
 function is_wp_error( $thing ) { return $thing instanceof WP_Error; }
+function get_bloginfo( $show = '', $filter = 'raw' ) { return 'blog ' . $show; }
+function get_admin_url( $blog_id = null, $path = '', $scheme = 'admin' ) { return 'http://x.test/wp-admin/' . $path; }
+function wp_login_url( $redirect = '', $force_reauth = false ) { return 'http://x.test/wp-login.php'; }
+function current_theme_supports( $feature, ...$args ) { return false; }
+function wp_slash( $value ) { return is_string( $value ) ? addslashes( $value ) : $value; }
 function _doing_it_wrong( $function_name, $message, $version ) { $GLOBALS['__doing_it_wrong'][] = $function_name . ': ' . $message; }
 "#;
 
@@ -75,6 +80,7 @@ pub fn check(name: &str, ok: bool, detail: impl std::fmt::Debug) {
 }
 
 pub struct Booted {
+    pub service: Rc<XmlRpcService>,
     pub php: Php,
     pub container: Rc<Container>,
     pub operations: Rc<OperationArea>,
@@ -94,10 +100,16 @@ pub fn boot() -> Booted {
             fingerprint: String::new(),
         })),
     ));
+    let service = Rc::new(XmlRpcService::new(
+        container.clone(),
+        operations.clone(),
+        bindings.clone(),
+        identity.clone(),
+    ));
     let areas: Vec<Rc<dyn NativeArea>> = vec![
         Rc::new(ContainerArea::new("test", container.clone())),
         operations.clone(),
-        Rc::new(XmlRpcArea::new(bindings.clone())),
+        Rc::new(XmlRpcArea::new(bindings.clone()).with_service(service.clone())),
     ];
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),
@@ -106,6 +118,7 @@ pub fn boot() -> Booted {
     })
     .expect("PHP boots");
     Booted {
+        service,
         php,
         container,
         operations,

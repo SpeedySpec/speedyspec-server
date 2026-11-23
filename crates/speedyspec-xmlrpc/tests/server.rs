@@ -812,3 +812,19 @@ fn a_binding_without_params_uses_the_default_params() {
         Value::map([("id", Value::Int(4)), ("title", s("T"))])
     );
 }
+
+#[test]
+fn an_operation_can_be_called_by_name() {
+    let w = world();
+    assert_eq!(
+        w.server.call_operation("acme/hello", vec![s("z")]),
+        Ok(Value::map([("name", s("z"))]))
+    );
+    assert_eq!(
+        w.server
+            .call_operation("acme/nothing", vec![])
+            .unwrap_err()
+            .code,
+        -32601
+    );
+}

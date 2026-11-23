@@ -37,3 +37,11 @@ harness = false
 [[test]]
 name = "facade"
 harness = false
+
+[[test]]
+name = "legacy"
+harness = false
+
+[[test]]
+name = "end_to_end"
+harness = false
