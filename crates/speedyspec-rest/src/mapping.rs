@@ -27,22 +27,7 @@ pub trait RestMapping {
 /// Subscriptions have no default route.
 pub struct DefaultRestMapping;
 
-/// The English plural of a resource type name.
-pub fn plural(name: &str) -> String {
-    let consonant_y = name.ends_with('y')
-        && name
-            .chars()
-            .rev()
-            .nth(1)
-            .is_some_and(|c| !"aeiou".contains(c));
-    if consonant_y {
-        format!("{}ies", &name[..name.len() - 1])
-    } else if ["s", "x", "ch", "sh"].iter().any(|end| name.ends_with(end)) {
-        format!("{name}es")
-    } else {
-        format!("{name}s")
-    }
-}
+pub use speedyspec_transport::naming::plural;
 
 fn input_properties<'a>(
     spec: &'a OperationSpec,

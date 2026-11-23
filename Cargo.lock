@@ -6861,6 +6861,62 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-xmlrpc"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "indexmap",
+ "quick-xml",
+ "speedyspec-container",
+ "speedyspec-http",
+ "speedyspec-http-message",
+ "speedyspec-operation",
+ "speedyspec-operation-contracts",
+ "speedyspec-operation-dispatch",
+ "speedyspec-transport",
+ "speedyspec-transport-contracts",
+ "speedyspec-xmlrpc-contracts",
+]
+
+[[package]]
+name = "speedyspec-xmlrpc-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-operation-contracts",
+]
+
+[[package]]
+name = "speedyspec-xmlrpc-php"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "indexmap",
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-hooks-memory",
+ "speedyspec-http",
+ "speedyspec-http-message",
+ "speedyspec-operation",
+ "speedyspec-operation-contracts",
+ "speedyspec-operation-dispatch",
+ "speedyspec-operation-php",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-transport",
+ "speedyspec-transport-contracts",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-xmlrpc",
+ "speedyspec-xmlrpc-contracts",
+ "ureq",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"

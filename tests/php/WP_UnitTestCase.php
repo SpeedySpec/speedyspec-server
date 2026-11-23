@@ -444,6 +444,33 @@ abstract class WP_UnitTestCase extends TestCase
         $this->assertNotInstanceOf('WP_Error', $actual, $message);
     }
 
+    /**
+     * Asserts that a value is an IXR_Error, as WordPress's test case does.
+     */
+    public function assertIXRError($actual, $message = '')
+    {
+        $this->assertInstanceOf('IXR_Error', $actual, $message);
+    }
+
+    /**
+     * Asserts that a value is not an IXR_Error, naming the error's message when it is, as WordPress's test case does.
+     */
+    public function assertNotIXRError($actual, $message = '')
+    {
+        if ($actual instanceof IXR_Error)
+        {
+            $message .= ' ' . $actual->message;
+        }
+        $this->assertNotInstanceOf('IXR_Error', $actual, $message);
+    }
+
+    /**
+     * Removes the uploads a test added; the suites run here add none, so there is nothing to remove.
+     */
+    public function remove_added_uploads()
+    {
+    }
+
     public function assertSameSets($expected, $actual, $message = '')
     {
         $this->assertIsArray($expected, $message . ' Expected value must be an array.');

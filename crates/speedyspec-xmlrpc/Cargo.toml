@@ -1,0 +1,25 @@
+[package]
+name = "speedyspec-xmlrpc"
+version = "0.1.0"
+publish = false
+description = "The XML-RPC transport: the XML-RPC codec, default method names and WordPress fault codes, and the XML-RPC server with system methods, multicall and login."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-http = { path = "../speedyspec-http" }
+speedyspec-http-message = { path = "../speedyspec-http-message" }
+speedyspec-operation = { path = "../speedyspec-operation" }
+speedyspec-operation-dispatch = { path = "../speedyspec-operation-dispatch" }
+speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
+speedyspec-xmlrpc-contracts = { path = "../speedyspec-xmlrpc-contracts" }
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+indexmap = "2"
+quick-xml = "0.42.0"
+speedyspec-transport = { path = "../speedyspec-transport" }
+speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }
+
+[dev-dependencies]
