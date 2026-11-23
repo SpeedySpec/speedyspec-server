@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-hooks-php"
-version = "0.1.8"
+version = "0.1.9"
 description = "WordPress's hook functions, WP_Hook and the hook globals in PHP, native over the Rust Hook API."
 edition.workspace = true
 rust-version.workspace = true
@@ -10,7 +10,7 @@ repository.workspace = true
 exclude = ["tests/"]
 
 [dependencies]
-speedyspec-compat = { path = "../speedyspec-compat", version = "0.8.0" }
+speedyspec-compat = { path = "../speedyspec-compat", version = "0.8.1" }
 speedyspec-container = { path = "../speedyspec-container", version = "0.1.4" }
 speedyspec-cqrs = { path = "../speedyspec-cqrs", version = "0.1.4" }
 speedyspec-php = { path = "../speedyspec-php", version = "0.7.0" }
