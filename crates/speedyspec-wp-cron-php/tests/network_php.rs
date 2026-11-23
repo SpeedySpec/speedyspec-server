@@ -1,4 +1,5 @@
-//! The network walk from PHP: one `run_due_events()` runs every site's due events, each from its own options table.
+//! The network from PHP: `due_sites()` lists the subsites with a due event, for the server's per-site calls, and
+//! `run_due_events()` runs only the site the request is booted as.
 //! A process of its own, since multisite must be on from the moment PHP boots (`harness = false`).
 
 use std::collections::BTreeMap;
@@ -43,7 +44,15 @@ const WORDPRESS: &str = r#"
 function wp_installing($is_installing = null) { return false; }
 function is_multisite() { return true; }
 define('MULTISITE', true);
-function get_sites($args = array()) { return array('1', '2'); }
+function get_sites($args = array()) {
+    $GLOBALS['get_sites_args'] = $args;
+    $sites = array();
+    foreach (array(array('1', 'example.test', '/'), array('2', 'example.test', '/site2/')) as $row) {
+        $site = new stdClass(); $site->blog_id = $row[0]; $site->domain = $row[1]; $site->path = $row[2];
+        $sites[] = $site;
+    }
+    return $sites;
+}
 function switch_to_blog($new_blog_id) {
     global $wpdb;
     $GLOBALS['_wp_switched_stack'][] = $GLOBALS['blog_id'];
@@ -150,27 +159,51 @@ fn main() {
             $wpdb->query("DROP TABLE IF EXISTS $table");
             $wpdb->query("CREATE TABLE $table (option_id bigint(20) unsigned NOT NULL auto_increment, option_name varchar(191) NOT NULL default '', option_value longtext NOT NULL, autoload varchar(20) NOT NULL default 'yes', PRIMARY KEY (option_id), UNIQUE KEY option_name (option_name), KEY autoload (autoload)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci");
         }
-        $wpdb->query('DROP TABLE IF EXISTS cronnet_sitemeta');
-        $wpdb->query("CREATE TABLE cronnet_sitemeta (meta_id bigint(20) unsigned NOT NULL auto_increment, site_id bigint(20) unsigned NOT NULL default '0', meta_key varchar(255) default NULL, meta_value longtext, PRIMARY KEY (meta_id), KEY meta_key (meta_key(191)), KEY site_id (site_id)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci");
         return true;"#,
     )
     .unwrap();
 
+    // Each check starts from: site 1 empty, site 2 with one event `$offset` seconds from now.
+    let seed = |offset: i64| {
+        format!(
+            "foreach (array(1, 2) as $site) {{ switch_to_blog($site); _set_cron_array(array()); restore_current_blog(); }}
+            switch_to_blog(2); wp_schedule_single_event(time() + ({offset}), 'site_hook'); restore_current_blog();"
+        )
+    };
     yes(
-        "network_runs_every_site",
-        "global $wpdb;
-        $ran = array(); add_action('site_hook', function () use (&$ran) { $ran[] = get_current_blog_id(); });
-        foreach (array(1, 2) as $site) {
-            switch_to_blog($site); _set_cron_array(array()); wp_schedule_single_event(time() - 30, 'site_hook'); restore_current_blog();
-        }
-        $r = SpeedySpec\\WpCron\\run_due_events();
-        $left = array();
-        foreach (array('cronnet_options', 'cronnet_2_options') as $table) {
-            $left[$table] = unserialize($wpdb->get_var(\"SELECT option_value FROM $table WHERE option_name = 'cron'\"));
-        }
-        $empty = array('version' => 2);
-        return $ran === array(1, 2) && $r['ran'] === 2 && $r['sites'] === 2 && get_current_blog_id() === 1
-            && $left['cronnet_options'] === $empty && $left['cronnet_2_options'] === $empty
-            && (int) get_site_option('speedyspec_cron_cursor') === 2;",
+        "due_sites_lists_the_due_subsite",
+        &format!(
+            "{} return SpeedySpec\\WpCron\\due_sites() === array('site=2&host=example.test&path=%2Fsite2%2F')
+                && get_current_blog_id() === 1 && $GLOBALS['_wp_switched_stack'] === array();",
+            seed(-30)
+        ),
+    );
+    yes(
+        "due_sites_skips_a_quiet_subsite",
+        &format!(
+            "{} return SpeedySpec\\WpCron\\due_sites() === array();",
+            seed(600)
+        ),
+    );
+    yes(
+        "get_sites_gets_the_network",
+        "$a = $GLOBALS['get_sites_args'];
+        return $a['network_id'] === 1 && $a['fields'] === '' && $a['number'] === 0 && $a['spam'] === 0
+            && $a['deleted'] === 0 && $a['archived'] === 0 && $a['orderby'] === 'id' && $a['order'] === 'ASC';",
+    );
+    yes(
+        "run_due_events_runs_this_site_only",
+        &format!(
+            "{} global $wpdb;
+            $ran = array(); add_action('site_hook', function () use (&$ran) {{ $ran[] = get_current_blog_id(); }});
+            $r = SpeedySpec\\WpCron\\run_due_events();
+            $left = unserialize($wpdb->get_var(\"SELECT option_value FROM cronnet_2_options WHERE option_name = 'cron'\"));
+            return $ran === array() && $r['ran'] === 0 && !array_key_exists('sites', $r) && count($left) === 2;",
+            seed(-30)
+        ),
+    );
+    yes(
+        "infinite_budget_runs",
+        "$r = SpeedySpec\\WpCron\\run_due_events(INF); return is_array($r) && $r['ran'] === 0;",
     );
 }

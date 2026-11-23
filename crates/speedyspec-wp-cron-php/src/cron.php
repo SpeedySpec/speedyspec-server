@@ -147,6 +147,32 @@ namespace SpeedySpec\WpCron
         }
         return class_exists('WP_Error', false) && $thing instanceof \WP_Error;
     }
+
+    /**
+     * The current network's active sites, for the server's per-site cron calls (the WP_Site objects stay in PHP).
+     *
+     * @return list<array{0: int, 1: string, 2: string}>
+     *   Each site's id, domain and path, in id order.
+     */
+    function network_sites()
+    {
+        $sites = array();
+        $query = array(
+            'fields'     => '',
+            'number'     => 0,
+            'spam'       => 0,
+            'deleted'    => 0,
+            'archived'   => 0,
+            'network_id' => \get_current_network_id(),
+            'orderby'    => 'id',
+            'order'      => 'ASC',
+        );
+        foreach (\get_sites($query) as $site)
+        {
+            $sites[] = array((int) $site->blog_id, (string) $site->domain, (string) $site->path);
+        }
+        return $sites;
+    }
 }
 
 namespace

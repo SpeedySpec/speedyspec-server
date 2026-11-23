@@ -9,7 +9,7 @@ use speedyspec_php::native::{self, NativeError};
 use std::time::Duration;
 
 use speedyspec_wp_cron::{CronApi, SpawnOutcome, truthy};
-use speedyspec_wp_cron_contracts::{CronError, CronResult};
+use speedyspec_wp_cron_contracts::{CronError, CronResult, SiteRef};
 use speedyspec_wp_hooks::HookValue;
 
 fn arg(args: &[HookValue], i: usize) -> HookValue {
@@ -182,9 +182,9 @@ pub(crate) fn functions(api: &Rc<CronApi>) -> Vec<FunctionBuilder<'static>> {
                 Some(HookValue::Float(f)) => f,
                 _ => 30.0,
             };
-            let summary = runner
-                .run_network_due_events(Duration::from_secs_f64(budget.max(0.0)))
-                .map_err(native_error)?;
+            // A huge or infinite budget is no limit (`from_secs_f64` would panic on it).
+            let budget = Duration::try_from_secs_f64(budget.max(0.0)).unwrap_or(Duration::MAX);
+            let summary = runner.run_due_events(budget).map_err(native_error)?;
             Ok(HookValue::Array(vec![
                 (Key::Str("ran".into()), HookValue::Int(summary.ran as i64)),
                 (
@@ -196,15 +196,67 @@ pub(crate) fn functions(api: &Rc<CronApi>) -> Vec<FunctionBuilder<'static>> {
                     HookValue::Int(summary.unclaimed as i64),
                 ),
                 (
-                    Key::Str("sites".into()),
-                    HookValue::Int(summary.sites as i64),
-                ),
-                (
                     Key::Str("next".into()),
                     summary.next.map_or(HookValue::Null, HookValue::Int),
                 ),
             ]))
         },
     ));
+    let lister = api.clone();
+    functions.push(native::function(
+        "SpeedySpec\\WpCron\\due_sites",
+        move |_args| {
+            let sites = lister.due_sites().map_err(native_error)?;
+            Ok(HookValue::Array(
+                sites
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, site)| (Key::Int(i as i64), HookValue::Str(follow_up_query(&site))))
+                    .collect(),
+            ))
+        },
+    ));
     functions
+}
+
+/// The query string of a site's follow-up cron call: `site=<id>&host=<domain>&path=<path>`, each value encoded as
+/// `rawurlencode()` does.
+pub(crate) fn follow_up_query(site: &SiteRef) -> String {
+    format!(
+        "site={}&host={}&path={}",
+        site.id,
+        rawurlencode(&site.domain),
+        rawurlencode(&site.path)
+    )
+}
+
+/// PHP's `rawurlencode()`: every byte but `A-Z a-z 0-9 - _ . ~` as `%XX`.
+fn rawurlencode(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for byte in text.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            out.push(byte as char);
+        } else {
+            out.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn follow_up_query_encodes_like_rawurlencode() {
+        let site = SiteRef {
+            id: 7,
+            domain: "ex-ample.test".into(),
+            path: "/a b/ü/".into(),
+        };
+        assert_eq!(
+            follow_up_query(&site),
+            "site=7&host=ex-ample.test&path=%2Fa%20b%2F%C3%BC%2F"
+        );
+    }
 }
