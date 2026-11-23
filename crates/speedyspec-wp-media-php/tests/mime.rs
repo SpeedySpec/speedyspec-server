@@ -174,7 +174,7 @@ fn main() {
     let listed = |file: &str, name: &str| {
         differences
             .iter()
-            .position(|d| d["file"] == file && (d["name"] == name || d["name"] == "*"))
+            .position(|d| d["file"] == file && d["name"] == name)
     };
     let mut used = vec![false; differences.len()];
     let mut mismatches = Vec::new();

@@ -138,24 +138,50 @@ impl MediaReader for TooLarge {
 /// exception is kept for the native function to rethrow.
 pub struct PhpFileinfo {
     pub pending: Pending,
+    /// The request's `finfo` handle, opened on first use: opening one loads the magic database.
+    pub handle: FileinfoHandle,
+}
+
+/// A request's `finfo` handle, shared by every check in it. PHP frees it with the request, so the area forgets it at
+/// each request's start.
+#[derive(Clone, Default)]
+pub struct FileinfoHandle(Rc<RefCell<Option<Value>>>);
+
+impl FileinfoHandle {
+    /// Forgets the handle (the request that opened it has ended).
+    pub fn clear(&self) {
+        self.0.borrow_mut().take();
+    }
 }
 
 /// PHP's `FILEINFO_MIME_TYPE`.
 const FILEINFO_MIME_TYPE: i64 = 16;
 
-impl ContentSniffer for PhpFileinfo {
-    fn sniff(&self, path: &Path) -> Option<String> {
-        let finfo = match speedyspec_php::call_catching(
+impl PhpFileinfo {
+    fn finfo(&self) -> Option<Value> {
+        if let Some(finfo) = self.handle.0.borrow().clone() {
+            return Some(finfo);
+        }
+        match speedyspec_php::call_catching(
             &Value::Str("finfo_open".into()),
             &[Value::Int(FILEINFO_MIME_TYPE)],
         ) {
-            Ok(Value::Bool(false)) => return None,
-            Ok(finfo) => finfo,
+            Ok(Value::Bool(false)) => None,
+            Ok(finfo) => {
+                *self.handle.0.borrow_mut() = Some(finfo.clone());
+                Some(finfo)
+            }
             Err(failure) => {
                 self.pending.keep(&failure);
-                return None;
+                None
             }
-        };
+        }
+    }
+}
+
+impl ContentSniffer for PhpFileinfo {
+    fn sniff(&self, path: &Path) -> Option<String> {
+        let finfo = self.finfo()?;
         let arg = to_php(&Tree::Bytes(path.as_os_str().as_encoded_bytes().to_vec()));
         match speedyspec_php::call_catching(&Value::Str("finfo_file".into()), &[finfo, arg]) {
             Ok(Value::Str(mime)) => Some(mime),

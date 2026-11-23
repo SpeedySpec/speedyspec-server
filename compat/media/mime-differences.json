@@ -91,42 +91,122 @@
   },
   {
     "file": "images/photo.hdr",
-    "name": "*",
+    "name": "photo.hdr",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.hdr",
+    "name": "photo.jpg",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.hdr",
+    "name": "photo.png",
     "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
   },
   {
     "file": "images/photo.jp2",
-    "name": "*",
+    "name": "photo.jp2",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.jp2",
+    "name": "photo.jpg",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.jp2",
+    "name": "photo.png",
     "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
   },
   {
     "file": "images/photo.jxl",
-    "name": "*",
+    "name": "photo.jxl",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.jxl",
+    "name": "photo.jpg",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.jxl",
+    "name": "photo.png",
     "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
   },
   {
     "file": "images/photo.pcx",
-    "name": "*",
+    "name": "photo.pcx",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.pcx",
+    "name": "photo.jpg",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.pcx",
+    "name": "photo.png",
     "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
   },
   {
     "file": "images/photo.pgm",
-    "name": "*",
+    "name": "photo.pgm",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.pgm",
+    "name": "photo.jpg",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.pgm",
+    "name": "photo.png",
     "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
   },
   {
     "file": "images/photo.ppm",
-    "name": "*",
+    "name": "photo.ppm",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.ppm",
+    "name": "photo.jpg",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.ppm",
+    "name": "photo.png",
     "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
   },
   {
     "file": "images/photo.qoi",
-    "name": "*",
+    "name": "photo.qoi",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.qoi",
+    "name": "photo.jpg",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.qoi",
+    "name": "photo.png",
     "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
   },
   {
     "file": "images/photo.sgi",
-    "name": "*",
+    "name": "photo.sgi",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.sgi",
+    "name": "photo.jpg",
+    "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
+  },
+  {
+    "file": "images/photo.sgi",
+    "name": "photo.png",
     "reason": "an image type added to the MIME list and to getimagesize_mimes_to_exts: accepted under its own extension, and renamed to it (proper_filename) when uploaded under another image extension; WordPress 7.1.5 rejects it (DIFFERENCES.md, Formats added to the MIME list)"
   },
   {

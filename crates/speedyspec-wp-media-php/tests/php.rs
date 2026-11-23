@@ -635,4 +635,52 @@ fn main() {
         json(&r) == serde_json::json!(["text/csv", false]),
         &r,
     );
+
+    // One fileinfo handle per request: it answers every check, and a new request gets a new one.
+    let twice = format!(
+        "return json_encode([wp_check_filetype_and_ext({csv:?}, 'a.csv')['type'], wp_check_filetype_and_ext({csv:?}, 'b.csv')['type']]);"
+    );
+    let first = php.eval("speedyspec://test/finfo-twice", &twice);
+    php.restart_request().expect("a fresh request");
+    php.eval("speedyspec://test/load", &load)
+        .expect("WordPress's functions load");
+    let again = php.eval("speedyspec://test/finfo-again", &twice);
+    check(
+        "fileinfo_handle_is_kept_per_request",
+        json(&first) == serde_json::json!(["text/csv", "text/csv"]) && json(&again) == json(&first),
+        (&first, &again),
+    );
+
+    // A stream wrapper fileinfo can read (it hands over a real stream): fileinfo's answer decides, as in WordPress,
+    // and the reader isn't consulted for a path it can't open.
+    let r = php.eval(
+        "speedyspec://test/readable-wrapper",
+        &format!(
+            "class FileWrap {{
+                 public $context; private $h;
+                 private static function real($p) {{ return $GLOBALS['wrapped'][substr($p, strlen('filewrap://'))]; }}
+                 public function stream_open($p, $m, $o, &$op) {{ $this->h = fopen(self::real($p), 'rb'); return (bool) $this->h; }}
+                 public function stream_read($n) {{ return fread($this->h, $n); }}
+                 public function stream_eof() {{ return feof($this->h); }}
+                 public function stream_seek($o, $w) {{ return fseek($this->h, $o, $w) === 0; }}
+                 public function stream_tell() {{ return ftell($this->h); }}
+                 public function stream_stat() {{ return fstat($this->h); }}
+                 public function stream_cast($as) {{ return $this->h; }}
+                 public function url_stat($p, $f) {{ return @stat(self::real($p)); }}
+             }}
+             stream_wrapper_register('filewrap', 'FileWrap');
+             $GLOBALS['wrapped'] = array('test.csv' => {csv:?}, 'tone.mka' => {:?});
+             return json_encode([wp_check_filetype_and_ext('filewrap://test.csv', 'test.csv'), wp_check_filetype_and_ext('filewrap://tone.mka', 'tone.mka')]);",
+            at("corpus/tone.mka")
+        ),
+    );
+    check(
+        "readable_stream_wrapper_uses_fileinfos_answer",
+        json(&r)
+            == serde_json::json!([
+                {"ext": "csv", "type": "text/csv", "proper_filename": false},
+                {"ext": false, "type": false, "proper_filename": false}
+            ]),
+        &r,
+    );
 }

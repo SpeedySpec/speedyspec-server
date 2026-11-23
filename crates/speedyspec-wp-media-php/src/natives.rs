@@ -15,7 +15,9 @@ use speedyspec_wp_media::mime;
 use speedyspec_wp_media::neutral::neutral;
 use speedyspec_wp_media_contracts::{MEDIA_READER, MediaReader, MediaSource, ProbeLimits, Tree};
 
-use crate::adapters::{Pending, PhpFileinfo, PhpTagSanitizer, PhpTimeParser, TooLarge};
+use crate::adapters::{
+    FileinfoHandle, Pending, PhpFileinfo, PhpTagSanitizer, PhpTimeParser, TooLarge,
+};
 use crate::convert::{from_php, to_php};
 
 pub(crate) struct Natives {
@@ -24,6 +26,7 @@ pub(crate) struct Natives {
     pub limits: ProbeLimits,
     pub default: std::cell::RefCell<Option<Rc<dyn MediaReader>>>,
     pub pending: Pending,
+    pub fileinfo: FileinfoHandle,
 }
 
 fn hook_error(err: HookError) -> NativeError {
@@ -204,6 +207,7 @@ impl Natives {
         let claimed = String::from_utf8_lossy(&bytes(args.get(1))).into_owned();
         let fileinfo = PhpFileinfo {
             pending: self.pending.clone(),
+            handle: self.fileinfo.clone(),
         };
         let found = mime::content_mime(
             path_of(&path),

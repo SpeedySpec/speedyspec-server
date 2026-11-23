@@ -34,7 +34,9 @@ use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_wp_hooks::HookApi;
 use speedyspec_wp_media_contracts::{MEDIA_READER, MediaReader, ProbeLimits};
 
-pub use adapters::{Pending, PhpFileinfo, PhpReplacement, PhpTagSanitizer, PhpTimeParser};
+pub use adapters::{
+    FileinfoHandle, Pending, PhpFileinfo, PhpReplacement, PhpTagSanitizer, PhpTimeParser,
+};
 pub use convert::{from_php, to_php};
 pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
 pub use twins::MediaReaderTwin;
@@ -56,6 +58,7 @@ impl MediaArea {
                 limits,
                 default: RefCell::new(None),
                 pending: Pending::default(),
+                fileinfo: Default::default(),
             }),
         }
     }
@@ -84,6 +87,8 @@ impl NativeArea for MediaArea {
     }
 
     fn request_start(&self) {
+        // The last request's finfo handle went with it.
+        self.natives.fileinfo.clear();
         if let Err(err) = speedyspec_php::eval("speedyspec://wp-media", FACADE) {
             eprintln!("speedyspec_wordpress: installing WordPress's media functions failed: {err}");
         }

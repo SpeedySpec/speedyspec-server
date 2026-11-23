@@ -108,9 +108,10 @@ A plugin can still add any of them through the `mime_types` or `upload_mimes` fi
 
 ## Content checks
 
-`wp_check_filetype_and_ext()` is WordPress 7.1.5's function and is compared with it over every corpus file, under its
-own name and renamed to `.jpg`, `.png`, `.mp3`, `.mp4`, `.mka`, `.txt` and `.pdf` (`recorded-mime.json`, made by
-`record-mime.php`). Its content type is fileinfo's, as in WordPress, with one exception.
+`wp_check_filetype_and_ext()` is WordPress 7.2's function (trunk ce78d2d6eb). It is compared with a recording of
+WordPress 7.1.5 over every corpus file, under its own name and renamed to `.jpg`, `.png`, `.mp3`, `.mp4`, `.mka`,
+`.txt` and `.pdf` (`recorded-mime.json`, made by `record-mime.php`). Its content type is fileinfo's, as in WordPress,
+with one exception.
 
 - **Audio that fileinfo calls video.** Fileinfo calls an audio-only Matroska file `video/x-matroska` and a WMA file
   `video/x-ms-asf`, so WordPress 7.1.5 rejects `.mka` and `.wma` uploads. When fileinfo and the file's extension name
