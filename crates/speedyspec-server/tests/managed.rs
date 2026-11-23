@@ -56,7 +56,10 @@ fn first_start_installs_auto_app() {
     assert_eq!(status, 200, "log: {:?}", server.log());
     assert_eq!(body, "admin-1.0.0");
     assert!(
-        server.has_event("installed") && server.has_event("switched"),
+        // The app serves as soon as it is activated; `switched` is logged after the state commits, so it can trail
+        // the first 200.
+        server.wait_for_event("installed", Duration::from_secs(5))
+            && server.wait_for_event("switched", Duration::from_secs(5)),
         "{:?}",
         server.log()
     );
