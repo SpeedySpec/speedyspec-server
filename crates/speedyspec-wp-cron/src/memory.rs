@@ -6,7 +6,7 @@ use std::cell::{Cell, RefCell};
 use speedyspec_php_serialize::{from_hook_value, serialize};
 use speedyspec_wp_cron_contracts::{
     CronError, CronResult, CronStep, CronStore, DoingCron, ErrorReporter, NetworkSites,
-    SaveOutcome, SiteSwitcher, Version, WakeReporter,
+    SaveOutcome, SiteRef, SiteSwitcher, Version, WakeReporter,
 };
 use speedyspec_wp_hooks::HookValue;
 use speedyspec_wp_hooks::Key;
@@ -241,14 +241,11 @@ impl NetworkSites for SingleSite {
     fn is_multisite(&self) -> bool {
         false
     }
-    fn site_ids(&self) -> Result<Vec<u64>, CronError> {
+    fn sites(&self) -> Result<Vec<SiteRef>, CronError> {
         Ok(Vec::new())
     }
-    fn cursor(&self) -> Result<Option<u64>, CronError> {
-        Ok(None)
-    }
-    fn set_cursor(&self, _: u64) -> Result<(), CronError> {
-        Ok(())
+    fn current(&self) -> u64 {
+        1
     }
 }
 
@@ -261,14 +258,14 @@ impl SiteSwitcher for SingleSite {
     }
 }
 
-/// A network in memory: each site its own [`MemoryCronStore`], the `cron` store answering for the current site, and a
-/// record of every switch.
+/// A network in memory: each site its own [`MemoryCronStore`] (domain `site<id>.test`, path `/`), the `cron` store
+/// answering for the current site, and a record of every switch.
 pub struct MemoryNetwork {
     stores: Vec<(u64, std::rc::Rc<MemoryCronStore>)>,
     current: Cell<u64>,
     stack: RefCell<Vec<u64>>,
-    cursor: Cell<Option<u64>>,
     switches: RefCell<Vec<u64>>,
+    failing: Cell<Option<u64>>,
 }
 
 impl MemoryNetwork {
@@ -281,8 +278,8 @@ impl MemoryNetwork {
                 .collect(),
             current: Cell::new(sites.first().copied().unwrap_or(1)),
             stack: RefCell::new(Vec::new()),
-            cursor: Cell::new(None),
             switches: RefCell::new(Vec::new()),
+            failing: Cell::new(None),
         }
     }
 
@@ -292,10 +289,6 @@ impl MemoryNetwork {
             .find(|(s, _)| *s == site)
             .map(|(_, store)| store.clone())
             .expect("a site of this network")
-    }
-
-    pub fn current(&self) -> u64 {
-        self.current.get()
     }
 
     /// Switches not yet restored.
@@ -308,12 +301,9 @@ impl MemoryNetwork {
         self.switches.borrow().clone()
     }
 
-    pub fn cursor_value(&self) -> Option<u64> {
-        self.cursor.get()
-    }
-
-    pub fn set_cursor_value(&self, cursor: Option<u64>) {
-        self.cursor.set(cursor);
+    /// Switching to `site` fails after the switch, as a throwing `switch_blog` callback does.
+    pub fn fail_switch_to(&self, site: u64) {
+        self.failing.set(Some(site));
     }
 
     fn here(&self) -> std::rc::Rc<MemoryCronStore> {
@@ -340,15 +330,19 @@ impl NetworkSites for MemoryNetwork {
     fn is_multisite(&self) -> bool {
         true
     }
-    fn site_ids(&self) -> Result<Vec<u64>, CronError> {
-        Ok(self.stores.iter().map(|(s, _)| *s).collect())
+    fn sites(&self) -> Result<Vec<SiteRef>, CronError> {
+        Ok(self
+            .stores
+            .iter()
+            .map(|(id, _)| SiteRef {
+                id: *id,
+                domain: format!("site{id}.test"),
+                path: "/".to_string(),
+            })
+            .collect())
     }
-    fn cursor(&self) -> Result<Option<u64>, CronError> {
-        Ok(self.cursor.get())
-    }
-    fn set_cursor(&self, site: u64) -> Result<(), CronError> {
-        self.cursor.set(Some(site));
-        Ok(())
+    fn current(&self) -> u64 {
+        self.current.get()
     }
 }
 
@@ -357,6 +351,9 @@ impl SiteSwitcher for MemoryNetwork {
         self.stack.borrow_mut().push(self.current.get());
         self.current.set(site);
         self.switches.borrow_mut().push(site);
+        if self.failing.get() == Some(site) {
+            return Err(CronError::new("switch_blog failed"));
+        }
         Ok(())
     }
     fn restore(&self) -> Result<(), CronError> {

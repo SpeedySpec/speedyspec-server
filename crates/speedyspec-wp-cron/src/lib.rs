@@ -7,11 +7,11 @@
 mod api;
 mod keyer;
 pub mod memory;
-mod network;
 mod php;
 mod read;
 mod run;
 mod schedules;
+mod sites;
 mod spawn;
 mod write;
 

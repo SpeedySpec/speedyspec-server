@@ -1,15 +1,15 @@
-//! The network walk: every active site's due events in one call, resuming where the last call stopped.
+//! The subsites to call: which other sites of the network have an event due now (each is then run by its own
+//! request, booted as that site).
 
 mod support;
 
-use std::cell::Cell;
-use std::rc::Rc;
-use std::time::Duration;
-
 use speedyspec_wp_cron::memory::{CollectingErrors, MemoryDoingCron, MemoryNetwork, RecordingWake};
 use speedyspec_wp_cron::{CronApi, CronParts, RustArgsKeyer};
+use speedyspec_wp_cron_contracts::{CronError, NetworkSites, SiteRef, SiteSwitcher};
 use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
+use std::cell::Cell;
+use std::rc::Rc;
 use support::*;
 
 struct Net {
@@ -53,116 +53,133 @@ fn seed(n: &Net, site: u64, events: &[(i64, &str)]) {
     n.network.store(site).set_raw(Some(option_with(&rows)));
 }
 
-fn budget() -> Duration {
-    Duration::from_secs(30)
+fn ids(sites: &[SiteRef]) -> Vec<u64> {
+    sites.iter().map(|s| s.id).collect()
 }
 
-#[test]
-fn single_site_calls_no_port() {
-    let f = fixture();
-    f.store.set_raw(Some(option_with(&[(NOW - 10, "a")])));
-    let summary = f.api.run_network_due_events(budget()).unwrap();
-    assert_eq!((summary.ran, summary.sites), (1, 1));
-}
+/// A single site that fails the test if asked anything but `is_multisite`.
+struct OnlyIsMultisite;
 
-#[test]
-fn every_site_runs() {
-    let n = net(&[1, 2, 3]);
-    for site in [1, 2, 3] {
-        seed(&n, site, &[(-10, "due"), (500 + site as i64, "later")]);
+impl NetworkSites for OnlyIsMultisite {
+    fn is_multisite(&self) -> bool {
+        false
     }
-    let summary = n.api.run_network_due_events(budget()).unwrap();
-    assert_eq!((summary.ran, summary.sites), (3, 3));
-    for site in [1, 2, 3] {
-        assert_eq!(
-            n.network.store(site).raw(),
-            Some(option_with(&[(NOW + 500 + site as i64, "later")]))
-        );
+    fn sites(&self) -> Result<Vec<SiteRef>, CronError> {
+        panic!("sites() on a single site")
     }
-    assert_eq!(n.network.switches(), vec![1, 2, 3]);
-    assert_eq!(n.network.current(), 1, "the starting site is restored");
-}
-
-#[test]
-fn budget_resumes_at_the_next_site() {
-    let n = net(&[1, 2, 3]);
-    for site in [1, 2, 3] {
-        seed(&n, site, &[(-10, "due")]);
+    fn current(&self) -> u64 {
+        panic!("current() on a single site")
     }
-    let first = n.api.run_network_due_events(Duration::ZERO).unwrap();
-    assert_eq!((first.ran, first.sites, first.next), (1, 1, Some(NOW)));
-    assert_eq!(n.network.cursor_value(), Some(1));
-    let second = n.api.run_network_due_events(Duration::ZERO).unwrap();
-    assert_eq!(second.ran, 1);
-    assert_eq!(n.network.switches(), vec![1, 2]);
+}
+
+impl SiteSwitcher for OnlyIsMultisite {
+    fn switch_to(&self, _: u64) -> Result<(), CronError> {
+        panic!("switch_to() on a single site")
+    }
+    fn restore(&self) -> Result<(), CronError> {
+        panic!("restore() on a single site")
+    }
 }
 
 #[test]
-fn missing_cursor_site_starts_at_the_next() {
-    let n = net(&[1, 3, 5]);
-    n.network.set_cursor_value(Some(4));
-    n.api.run_network_due_events(budget()).unwrap();
-    assert_eq!(n.network.switches(), vec![5, 1, 3]);
+fn single_site_lists_nothing_and_calls_no_port() {
+    let hooks = Rc::new(HookApi::new(
+        Rc::new(MemoryHookStore::new()),
+        Rc::new(IgnoreDeprecations),
+    ));
+    let api = CronApi::new(CronParts {
+        hooks,
+        store: Rc::new(speedyspec_wp_cron::memory::MemoryCronStore::new()),
+        keyer: Rc::new(RustArgsKeyer),
+        clock: Rc::new(FixedClock(Cell::new(NOW as f64 + 0.5))),
+        translator: Rc::new(SameText),
+        objects: Rc::new(ArrayObjects),
+        wake: Rc::new(RecordingWake::new()),
+        doing_cron: Rc::new(MemoryDoingCron::new()),
+        errors: Rc::new(CollectingErrors::new()),
+        network: Rc::new(OnlyIsMultisite),
+        switcher: Rc::new(OnlyIsMultisite),
+    });
+    assert_eq!(api.due_sites().unwrap(), Vec::new());
 }
 
 #[test]
-fn one_site_runs_once_per_call() {
-    let n = net(&[7]);
-    seed(&n, 7, &[(-10, "due")]);
-    n.network.set_cursor_value(Some(7));
-    let summary = n.api.run_network_due_events(budget()).unwrap();
-    assert_eq!((summary.ran, summary.sites), (1, 1));
-    assert_eq!(n.network.switches(), vec![7]);
+fn lists_due_sites_in_id_order() {
+    let n = net(&[1, 2, 3, 4]);
+    seed(&n, 2, &[(-10, "due")]);
+    seed(&n, 3, &[(600, "later")]);
+    seed(&n, 4, &[(0, "now"), (900, "later")]);
+    let due = n.api.due_sites().unwrap();
+    assert_eq!(ids(&due), vec![2, 4]);
+    assert_eq!(
+        due[0],
+        SiteRef {
+            id: 2,
+            domain: "site2.test".into(),
+            path: "/".into()
+        }
+    );
+    assert_eq!(n.network.switches(), vec![2, 3, 4]);
+    assert_eq!(n.network.depth(), 0, "every switch restored");
 }
 
 #[test]
-fn throwing_site_restores_and_moves_the_cursor() {
+fn never_lists_the_current_site() {
     let n = net(&[1, 2]);
-    seed(&n, 1, &[(-10, "boom")]);
-    seed(&n, 2, &[(-10, "fine")]);
+    seed(&n, 1, &[(-10, "due")]);
+    assert_eq!(n.api.due_sites().unwrap(), Vec::new());
+    assert_eq!(n.network.switches(), vec![2]);
+}
+
+#[test]
+fn future_site_wakes_not_listed() {
+    let n = net(&[1, 2]);
+    seed(&n, 2, &[(300, "soon")]);
+    assert_eq!(n.api.due_sites().unwrap(), Vec::new());
+    assert_eq!(n.wake.earliest(), Some(NOW + 300));
+}
+
+#[test]
+fn wake_is_earliest_across_sites() {
+    let n = net(&[1, 2, 3]);
+    seed(&n, 2, &[(-5, "due"), (900, "late")]);
+    seed(&n, 3, &[(300, "soon")]);
+    assert_eq!(ids(&n.api.due_sites().unwrap()), vec![2]);
+    assert_eq!(n.wake.earliest(), Some(NOW + 300));
+}
+
+#[test]
+fn failed_switch_restores() {
+    let n = net(&[1, 2, 3]);
+    seed(&n, 3, &[(-10, "due")]);
+    n.network.fail_switch_to(2);
+    assert!(n.api.due_sites().is_err());
+    assert_eq!(n.network.depth(), 0, "the failed switch is restored");
+    assert_eq!(n.network.current(), 1);
+}
+
+#[test]
+fn nothing_runs_while_switched() {
+    let n = net(&[1, 2]);
+    seed(&n, 2, &[(-10, "due")]);
+    let ran = Rc::new(Cell::new(0));
+    let counter = ran.clone();
     n.hooks
         .add_filter(
-            &HookName::from("boom"),
-            Callback::rust("throw", |_: &[HookValue]| {
-                Err(speedyspec_wp_hooks::HookError::message("boom"))
+            &HookName::from("due"),
+            Callback::rust("count", move |_: &[HookValue]| {
+                counter.set(counter.get() + 1);
+                Ok(HookValue::Null)
             }),
             &HookValue::Int(10),
             0,
         )
         .unwrap();
-    assert!(n.api.run_network_due_events(budget()).is_err());
-    assert_eq!(n.network.current(), 1, "restored");
-    assert_eq!(n.network.depth(), 0, "every switch restored");
-    assert_eq!(n.network.cursor_value(), Some(1));
-    // The next call starts after the throwing site, then wraps to it (its event was claimed before it threw).
-    let next = n.api.run_network_due_events(budget()).unwrap();
-    assert_eq!(n.network.switches(), vec![1, 2, 1]);
-    assert_eq!(next.ran, 1);
-}
-
-#[test]
-fn budget_spent_after_the_last_site() {
-    let n = net(&[1, 2]);
-    seed(&n, 2, &[(-10, "due")]);
-    n.network.set_cursor_value(Some(1));
-    let summary = n.api.run_network_due_events(Duration::ZERO).unwrap();
-    assert_eq!((summary.ran, summary.next), (1, Some(NOW)));
-    assert_eq!(n.network.cursor_value(), Some(2));
-    let again = n.api.run_network_due_events(Duration::ZERO).unwrap();
-    assert_eq!(again.sites, 1);
+    assert_eq!(ids(&n.api.due_sites().unwrap()), vec![2]);
+    assert_eq!(ran.get(), 0);
     assert_eq!(
-        n.network.switches(),
-        vec![2, 1],
-        "wrapped to the first site"
+        n.network.store(2).raw(),
+        Some(option_with(&[(NOW - 10, "due")])),
+        "the event is still there for site 2's own call"
     );
-}
-
-#[test]
-fn wake_is_earliest_across_sites() {
-    let n = net(&[1, 2]);
-    seed(&n, 1, &[(900, "late")]);
-    seed(&n, 2, &[(300, "soon")]);
-    let summary = n.api.run_network_due_events(budget()).unwrap();
-    assert_eq!(summary.next, Some(NOW + 300));
-    assert_eq!(n.wake.earliest(), Some(NOW + 300));
 }
