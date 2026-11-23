@@ -14,3 +14,8 @@ base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 indexmap = "2"
 quick-xml = "0.42.0"
+speedyspec-transport = { path = "../speedyspec-transport" }
+speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }
+
+[dev-dependencies]
+speedyspec-operation = { path = "../speedyspec-operation" }

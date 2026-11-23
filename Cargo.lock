@@ -6868,7 +6868,10 @@ dependencies = [
  "chrono",
  "indexmap",
  "quick-xml",
+ "speedyspec-operation",
  "speedyspec-operation-contracts",
+ "speedyspec-transport",
+ "speedyspec-transport-contracts",
  "speedyspec-xmlrpc-contracts",
 ]
 
