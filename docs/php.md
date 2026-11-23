@@ -137,6 +137,21 @@ WordPress's `wp_read_audio_metadata()`, `wp_read_video_metadata()`, `wp_add_id3_
   `wp_get_avif_info()` takes its figures from the same call. Types only FFmpeg reads (JPEG XL, QOI, PCX, PPM/PGM, SGI,
   Radiance HDR) go through the isolated, cached reader and come back in `getimagesize()`'s shape with
   `IMAGETYPE_UNKNOWN`. `wp_get_webp_info()` parses the WebP header as WordPress does.
+- **Uploads.** `wp_get_mime_types()`, `wp_get_ext_types()`, `get_allowed_mime_types()`, `wp_check_filetype()`,
+  `wp_ext2type()`, `wp_get_default_extension_for_mime_type()` and `wp_check_filetype_and_ext()` are native-backed:
+  - **The list.** It is WordPress's, unchanged and in order, plus one row for every audio, video and image format
+    the reader reads that has a usual extension and MIME type: AIFF, AC-3, E-AC-3, Opus, CAF, WavPack, TTA, AU, MP2,
+    Wave64, VOC, M2TS, MXF, DV, VOB, MPEG-2 video, RealMedia, OGM, JPEG 2000, JPEG XL, QOI, PCX, PPM, PGM, SGI and
+    Radiance HDR.
+  - **Where the rows come from.** Each row is proven by a file in `compat/media` that the reader reads as that kind.
+    `.ts`, `.dts`, `.tga`, `.pbm` and `.rgb` are left out (see DIFFERENCES.md).
+  - **Filters and regex keys.** The filters (`mime_types`, `ext2type`, `upload_mimes`, `getimagesize_mimes_to_exts`,
+    `wp_check_filetype_and_ext`) fire as in WordPress, and the per-key regex checks run in PHP, so plugins' keys
+    (`svg|svgz`, `jpe?g`) behave exactly as before.
+  - **The content check.** `wp_check_filetype_and_ext()` is WordPress 7.2's, and its content type is fileinfo's. The
+    reader is consulted only when fileinfo and the extension name different kinds of media (an audio-only `.mka` or
+    `.wma` that fileinfo calls video), and only to confirm the extension's kind. Anything fileinfo calls a document,
+    text or image is judged exactly as WordPress judges it.
 - **Differences from WordPress** are listed, with reasons, in `compat/media/DIFFERENCES.md`; the corpus test
   (`speedyspec-wp-media-corpus`) fails when one appears or disappears. The deliberate one: files without ID3 tags get
   their title, artist and album from their own tag format.
