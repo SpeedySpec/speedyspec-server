@@ -13,3 +13,9 @@ pub trait TagSanitizer {
 pub trait TimeParser {
     fn strtotime(&self, text: &[u8]) -> Option<i64>;
 }
+
+/// The MIME type of a file's content, as PHP's fileinfo (`FILEINFO_MIME_TYPE`) names it; `None` when it can't tell.
+/// `wp_check_filetype_and_ext()` compares it with the type the file's name claims.
+pub trait ContentSniffer {
+    fn sniff(&self, path: &std::path::Path) -> Option<String>;
+}

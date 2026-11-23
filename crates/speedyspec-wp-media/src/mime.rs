@@ -4,7 +4,13 @@
 //! WordPress 7.1.5's own lists are kept verbatim and in order ([`WORDPRESS_MIME_TYPES`], [`WORDPRESS_EXT_TYPES`]);
 //! each added row ([`ADDED`]) follows the last WordPress row of its kind and is proven by a corpus file the reader
 //! reads as that kind. Extensions that clash with a non-media type, or that the build can't size, are left out
-//! ([`LEFT_OUT`]).
+//! ([`LEFT_OUT`]). [`content_mime`] is the content check `wp_check_filetype_and_ext()` makes.
+
+use std::path::Path;
+
+use speedyspec_wp_media_contracts::{
+    ContentSniffer, MediaReader, MediaSource, ProbeLimits, Stream,
+};
 
 /// Which kind of media a row lists, and so where it goes in the lists.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -357,4 +363,63 @@ pub fn image_mimes_to_exts() -> Vec<(&'static str, &'static str)> {
         out.push((row.mime, row.exts.split('|').next().unwrap_or(row.exts)));
     }
     out
+}
+
+/// The MIME type `wp_check_filetype_and_ext()` compares with `claimed` (the type the file's name gives it).
+///
+/// It is fileinfo's answer, except in one case. When both the claim and fileinfo are audio or video but of different
+/// kinds (an audio-only Matroska that fileinfo calls `video/x-matroska`), the media reader decides. If it reads a
+/// stream of the claimed kind, the answer is that kind with the reader's (or the claim's) subtype. The reader can
+/// only turn WordPress's prefix mismatch into an accept: it is never consulted for content fileinfo calls anything
+/// else, so documents and files that only pretend to be media are judged exactly as WordPress judges them.
+pub fn content_mime(
+    path: &Path,
+    claimed: &str,
+    fileinfo: &dyn ContentSniffer,
+    reader: &dyn MediaReader,
+    limits: &ProbeLimits,
+) -> Option<String> {
+    let found = fileinfo.sniff(path)?;
+    let claimed_kind = media_kind(claimed);
+    let found_kind = media_kind(&found);
+    let (Some(claimed_kind), Some(found_kind)) = (claimed_kind, found_kind) else {
+        return Some(found);
+    };
+    if claimed_kind == found_kind {
+        return Some(found);
+    }
+    let Ok(info) = reader.read(MediaSource::Path(path.to_path_buf()), limits) else {
+        return Some(found);
+    };
+    let has_video = info.streams.iter().any(|s| matches!(s, Stream::Video(_)));
+    let has_audio = info.streams.iter().any(|s| matches!(s, Stream::Audio(_)));
+    let confirmed = match claimed_kind {
+        Kind::Video => has_video,
+        Kind::Audio => has_audio && !has_video,
+        Kind::Image => false,
+    };
+    if !confirmed {
+        return Some(found);
+    }
+    let subtype = info
+        .mime_type
+        .as_deref()
+        .and_then(|m| m.split_once('/'))
+        .or_else(|| claimed.split_once('/'))
+        .map_or("", |(_, subtype)| subtype);
+    let top = if claimed_kind == Kind::Video {
+        "video"
+    } else {
+        "audio"
+    };
+    Some(format!("{top}/{subtype}"))
+}
+
+/// `audio/…` or `video/…`, by the MIME type's top-level type.
+fn media_kind(mime: &str) -> Option<Kind> {
+    match mime.split_once('/').map(|(top, _)| top) {
+        Some("audio") => Some(Kind::Audio),
+        Some("video") => Some(Kind::Video),
+        _ => None,
+    }
 }
