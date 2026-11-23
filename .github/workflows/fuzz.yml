@@ -43,8 +43,8 @@ jobs:
           FFMPEG_PREFIX: ${{ runner.temp }}/ffmpeg-fuzz/prefix
           SPEEDYSPEC_PHP_PREFIX: ${{ runner.temp }}/zlib
           CC: clang
-        working-directory: fuzz-media
-        run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=1800 -timeout=10 -rss_limit_mb=2048
+        # The media targets live apart from kses's fuzz/, which cargo-fuzz would use by default.
+        run: cargo fuzz run --fuzz-dir fuzz-media ${{ matrix.target }} -- -max_total_time=1800 -timeout=10 -rss_limit_mb=2048
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
