@@ -28,7 +28,7 @@ pub use adapters::{
     PhpArgsKeyer, PhpDoingCron, PhpErrorReporter, PhpEventObjects, PhpNetworkSites,
     PhpSiteSwitcher, PhpTranslator, SystemClock,
 };
-pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
+pub use release::{CRON_ENDPOINT, PORTED_FUNCTIONS, prepare_release, strip_ported};
 
 const FACADE: &str = include_str!("cron.php");
 

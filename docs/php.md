@@ -348,8 +348,13 @@ with `#` or a line break is dropped, and the whole answer must fit the 1 MiB lim
 that already has a query gets `&budget=…`.
 
 On a multisite network this runs every active site's due events (not spam, deleted or archived ones), each in a request
-booted as that site, with its own plugins and theme, so no site waits for a visit as it would in WordPress. The cron
-endpoint of the admin API:
+booted as that site, with its own plugins and theme, so no site waits for a visit as it would in WordPress.
+
+A release prepared with `speedyspec_wp_cron_php::prepare_release` ships the endpoint as `speedyspec-cron.php` at its
+root, and replaces `wp-cron.php` with a file that answers 404, so visitors cannot start a run on any app built from it.
+Its manifest declares `"php": { "cron": { "path": "/speedyspec-cron.php" } }` (no `internal` entry is needed for
+`wp-cron.php`). The endpoint also answers 404 to a request with a client address, since the server's internal calls
+carry none. On each call it:
 
 1. On a call with `site`, `host` and `path`: sets `$_SERVER['HTTP_HOST']` to `host` and `$_SERVER['REQUEST_URI']` to
    `path` before loading WordPress (as WP-CLI's `--url` does), and answers `409` if `get_current_blog_id()` is not
@@ -360,6 +365,9 @@ endpoint of the admin API:
    each with an event due now, from `get_sites()` on the current network, as many as fit in 512 KiB (the rest are
    listed by later calls). A site whose switch or read fails is skipped. It also reports the earliest future time
    across the sites, so the server wakes for the next one. `budget` may be passed as `$_GET['budget']` is (a string).
+
+It answers JSON: the run's summary (`ran`, `claimed_by_others`, `unclaimed`, `next`) and `calls` (`[]` on a follow-up
+or a single site).
 
 ## Health and maintenance
 

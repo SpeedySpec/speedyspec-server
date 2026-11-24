@@ -5922,6 +5922,7 @@ dependencies = [
  "speedyspec-wp-object-cache-php",
  "speedyspec-wp-options",
  "speedyspec-wp-options-php",
+ "tempfile",
  "ureq",
 ]
 

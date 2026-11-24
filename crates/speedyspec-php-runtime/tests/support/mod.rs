@@ -104,7 +104,12 @@ impl Worker {
 
     /// Sends a GET for `script` and collects the answer.
     pub async fn get(&self, script: &Path, uri: &str) -> Answer {
-        let params = vec![
+        self.get_with(script, uri, &[]).await
+    }
+
+    /// Sends a GET for `script` with `extra` FastCGI params (such as `QUERY_STRING` or `REMOTE_ADDR`).
+    pub async fn get_with(&self, script: &Path, uri: &str, extra: &[(&str, &str)]) -> Answer {
+        let mut params = vec![
             (b"REQUEST_METHOD".to_vec(), b"GET".to_vec()),
             (
                 b"SCRIPT_FILENAME".to_vec(),
@@ -112,6 +117,9 @@ impl Worker {
             ),
             (b"REQUEST_URI".to_vec(), uri.as_bytes().to_vec()),
         ];
+        for (name, value) in extra {
+            params.push((name.as_bytes().to_vec(), value.as_bytes().to_vec()));
+        }
         let body = futures_util::stream::empty::<std::io::Result<Bytes>>();
         let mut response = Client::request(&self.socket, params, body).await.unwrap();
         let mut stdout = Vec::new();
