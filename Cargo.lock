@@ -4932,6 +4932,7 @@ name = "speedyspec-abilities-php"
 version = "0.1.0"
 dependencies = [
  "serde_json",
+ "sha2 0.10.9",
  "speedyspec-abilities",
  "speedyspec-abilities-contracts",
  "speedyspec-compat",
@@ -4948,6 +4949,7 @@ dependencies = [
  "speedyspec-transport-contracts",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
+ "ureq",
 ]
 
 [[package]]

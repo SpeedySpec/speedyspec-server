@@ -92,7 +92,8 @@ pub fn to_wp_error(error: &OperationError) -> PhpValue {
     .unwrap_or(PhpValue::Null)
 }
 
-/// A result crossing from PHP (`[ 'value', $v ]` or `[ 'error', $code, $message, $data ]`), its value still PHP's.
+/// A result crossing from PHP (`[ 'value', $v ]`, `[ 'php', $v ]` for a value with objects, or
+/// `[ 'error', $code, $message, $data ]`), its value still PHP's.
 pub(crate) fn outcome(result: &PhpValue) -> Result<PhpValue, OperationError> {
     let PhpValue::Array(items) = result else {
         return Ok(PhpValue::Null);

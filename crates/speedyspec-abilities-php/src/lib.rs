@@ -18,6 +18,7 @@ mod hooks;
 pub mod legacy;
 mod service;
 mod steps;
+mod values;
 
 pub use area::AbilitiesArea;
 pub use hooks::PhpAbilityHooks;

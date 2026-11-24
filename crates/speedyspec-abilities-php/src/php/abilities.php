@@ -204,7 +204,34 @@ final class Adapter
     private static function outcome(mixed $value): array
     {
         $error = self::describe_error($value);
-        return null === $error ? ['value', $value] : ['error', ...$error];
+        if (null !== $error) {
+            return ['error', ...$error];
+        }
+        return self::plain($value) ? ['value', $value] : ['php', $value];
+    }
+
+    /**
+     * Decides whether a value crosses to Rust as plain data (no objects anywhere in it).
+     *
+     * @param mixed $value
+     *   The value.
+     * @return bool
+     *   Whether it is null, a scalar, or an array of plain values.
+     */
+    private static function plain(mixed $value): bool
+    {
+        if (null === $value || is_scalar($value)) {
+            return true;
+        }
+        if (! is_array($value)) {
+            return false;
+        }
+        foreach ($value as $item) {
+            if (! self::plain($item)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

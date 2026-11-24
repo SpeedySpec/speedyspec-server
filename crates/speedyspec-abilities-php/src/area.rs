@@ -38,7 +38,7 @@ fn native_execute(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     let ability = args.first().cloned().unwrap_or(PhpValue::Null);
     let input = match args.get(1) {
         None | Some(PhpValue::Null) => None,
-        Some(value) => Some(from_php(value).unwrap_or(speedyspec_operation_contracts::Value::Null)),
+        Some(value) => Some(crate::values::neutral(value)),
     };
     let object = speedyspec_php_ext::PhpObject::new(ability.clone()).ok_or_else(|| {
         NativeError::throw("InvalidArgumentException", "execute takes a WP_Ability")
@@ -61,7 +61,7 @@ fn native_execute(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     let handle = crate::handles::add(ability);
     let outcome = crate::execute::run(&service, &name, id, handle, input, operation);
     Ok(match outcome {
-        Ok(value) => speedyspec_operation_php::convert::to_php(&value),
+        Ok(value) => crate::values::php(&value),
         Err(error) => crate::errors::to_wp_error(&error),
     })
 }

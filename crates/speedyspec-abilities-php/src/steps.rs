@@ -5,7 +5,7 @@ use std::rc::Rc;
 use speedyspec_abilities_contracts::{AbilityOutcome, AbilityResult, AbilitySteps};
 use speedyspec_operation_contracts::{Caller, OperationError, Value};
 use speedyspec_operation_dispatch::Dispatcher;
-use speedyspec_operation_php::convert::{from_php, to_php};
+
 use speedyspec_php_ext::{Key, Value as PhpValue};
 
 use crate::errors::outcome;
@@ -19,7 +19,7 @@ pub(crate) fn step(
 ) -> Result<PhpValue, OperationError> {
     let args = PhpValue::Array(vec![(
         Key::Int(0),
-        input.as_ref().map_or(PhpValue::Null, to_php),
+        input.as_ref().map_or(PhpValue::Null, crate::values::php),
     )]);
     let result = speedyspec_php::call_catching(
         &PhpValue::Str("SpeedySpec\\Abilities\\Internal\\Adapter::step".into()),
@@ -64,7 +64,7 @@ impl AbilitySteps for PhpAbilitySteps {
     fn normalize_input(&self, input: Option<Value>) -> AbilityResult<Option<Value>> {
         step(self.handle, "normalize_input", &input).map(|v| match v {
             PhpValue::Null => None,
-            v => Some(from_php(&v).unwrap_or(Value::Null)),
+            v => Some(crate::values::neutral(&v)),
         })
     }
 

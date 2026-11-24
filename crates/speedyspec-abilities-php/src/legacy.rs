@@ -162,8 +162,7 @@ impl OperationHandler for LegacyHandler {
             None | Some(Value::Null) => None,
             Some(value) => Some(value.clone()),
         };
-        step(self.handle.get(), "do_execute", &input)
-            .map(|v| speedyspec_operation_php::convert::from_php(&v).unwrap_or(Value::Null))
+        step(self.handle.get(), "do_execute", &input).map(|v| crate::values::neutral(&v))
     }
 }
 

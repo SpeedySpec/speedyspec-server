@@ -3,7 +3,7 @@
 use speedyspec_abilities::errors::hook_failed;
 use speedyspec_abilities_contracts::{AbilityHooks, AbilityOutcome, AbilityResult};
 use speedyspec_operation_contracts::{OperationError, Value};
-use speedyspec_operation_php::convert::{from_php, to_php};
+
 use speedyspec_php_ext::Value as PhpValue;
 
 use crate::errors::{outcome, to_wp_error};
@@ -37,11 +37,11 @@ fn guarded(method: &str, args: &[PhpValue]) -> Result<PhpValue, OperationError> 
 }
 
 fn php_input(input: &Option<Value>) -> PhpValue {
-    input.as_ref().map_or(PhpValue::Null, to_php)
+    input.as_ref().map_or(PhpValue::Null, crate::values::php)
 }
 
 fn neutral(value: &PhpValue) -> Value {
-    from_php(value).unwrap_or(Value::Null)
+    crate::values::neutral(value)
 }
 
 fn valid_php(valid: &AbilityResult<()>) -> PhpValue {
@@ -193,7 +193,7 @@ impl AbilityHooks for PhpAbilityHooks {
             return result;
         }
         let php = match &result {
-            Ok(value) => to_php(value),
+            Ok(value) => crate::values::php(value),
             Err(error) => to_wp_error(error),
         };
         let filtered = guarded(
@@ -214,7 +214,11 @@ impl AbilityHooks for PhpAbilityHooks {
         }
         let result = guarded(
             "validate_output",
-            &[name_php(name), valid_php(&valid), to_php(output)],
+            &[
+                name_php(name),
+                valid_php(&valid),
+                crate::values::php(output),
+            ],
         )?;
         outcome(&result).map(drop)
     }
@@ -234,7 +238,7 @@ impl AbilityHooks for PhpAbilityHooks {
             &[
                 name_php(name),
                 php_input(input),
-                to_php(output),
+                crate::values::php(output),
                 handles::get(ability),
             ],
         )
