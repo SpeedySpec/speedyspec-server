@@ -4913,7 +4913,9 @@ name = "speedyspec-abilities"
 version = "0.1.0"
 dependencies = [
  "speedyspec-abilities-contracts",
+ "speedyspec-operation",
  "speedyspec-operation-contracts",
+ "speedyspec-transport-contracts",
 ]
 
 [[package]]

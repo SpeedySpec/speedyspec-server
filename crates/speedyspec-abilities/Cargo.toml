@@ -10,3 +10,7 @@ license.workspace = true
 [dependencies]
 speedyspec-abilities-contracts = { path = "../speedyspec-abilities-contracts" }
 speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
+speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }
+
+[dev-dependencies]
+speedyspec-operation = { path = "../speedyspec-operation" }
