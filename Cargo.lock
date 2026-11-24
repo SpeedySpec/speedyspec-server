@@ -4933,7 +4933,18 @@ version = "0.1.0"
 dependencies = [
  "speedyspec-abilities",
  "speedyspec-abilities-contracts",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-hooks-memory",
+ "speedyspec-operation",
  "speedyspec-operation-contracts",
+ "speedyspec-operation-dispatch",
+ "speedyspec-operation-php",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-transport",
+ "speedyspec-transport-contracts",
 ]
 
 [[package]]

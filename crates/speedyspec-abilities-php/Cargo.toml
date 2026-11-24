@@ -10,4 +10,25 @@ license.workspace = true
 [dependencies]
 speedyspec-abilities = { path = "../speedyspec-abilities" }
 speedyspec-abilities-contracts = { path = "../speedyspec-abilities-contracts" }
+speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-operation = { path = "../speedyspec-operation" }
 speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
+speedyspec-operation-dispatch = { path = "../speedyspec-operation-dispatch" }
+speedyspec-operation-php = { path = "../speedyspec-operation-php" }
+speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-transport = { path = "../speedyspec-transport" }
+speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }
+
+[dev-dependencies]
+speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+
+[[test]]
+name = "hooks"
+harness = false
+
+[[test]]
+name = "facade"
+harness = false
