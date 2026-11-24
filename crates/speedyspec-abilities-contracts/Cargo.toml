@@ -1,0 +1,11 @@
+[package]
+name = "speedyspec-abilities-contracts"
+version = "0.1.0"
+publish = false
+description = "The Abilities transport's contracts: the ability binding and annotations, and the mapping, hooks and steps ports."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }

@@ -4909,6 +4909,51 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-abilities"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-abilities-contracts",
+ "speedyspec-container",
+ "speedyspec-operation",
+ "speedyspec-operation-contracts",
+ "speedyspec-operation-dispatch",
+ "speedyspec-transport-contracts",
+]
+
+[[package]]
+name = "speedyspec-abilities-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-operation-contracts",
+]
+
+[[package]]
+name = "speedyspec-abilities-php"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "serde_json",
+ "sha2 0.10.9",
+ "speedyspec-abilities",
+ "speedyspec-abilities-contracts",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-hooks-memory",
+ "speedyspec-operation",
+ "speedyspec-operation-contracts",
+ "speedyspec-operation-dispatch",
+ "speedyspec-operation-php",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-transport",
+ "speedyspec-transport-contracts",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "ureq",
+]
+
+[[package]]
 name = "speedyspec-cache"
 version = "0.2.0"
 

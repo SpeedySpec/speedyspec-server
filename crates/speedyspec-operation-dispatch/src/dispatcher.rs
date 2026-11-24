@@ -7,7 +7,8 @@ use speedyspec_container::Container;
 use speedyspec_operation::Registries;
 use speedyspec_operation::validate::{normalize, validate, violations_value};
 use speedyspec_operation_contracts::{
-    Caller, Category, Kind, OperationCatalog, OperationError, Value,
+    Caller, Category, INTERNAL_TRANSPORT, Kind, OperationCatalog, OperationError, OperationSpec,
+    Value,
 };
 
 use crate::{
@@ -36,7 +37,9 @@ impl Dispatcher {
         self
     }
 
-    pub fn call(&self, name: &str, input: Value, caller: &Caller) -> Result<Value, OperationError> {
+    /// The operation `name` as `caller` may reach it: registration closed, exposed on the caller's transport, not a
+    /// subscription.
+    fn spec(&self, name: &str, transport: &str) -> Result<Rc<OperationSpec>, OperationError> {
         if !self.registries.is_closed() {
             return Err(OperationError::new(
                 "registry_open",
@@ -47,7 +50,7 @@ impl Dispatcher {
         let spec = self
             .registries
             .get_operation(name)
-            .filter(|spec| spec.exposed_on(&caller.transport))
+            .filter(|spec| spec.exposed_on(transport))
             .ok_or_else(|| {
                 OperationError::new(
                     "operation_not_found",
@@ -62,15 +65,71 @@ impl Dispatcher {
                 format!("{name} is a subscription, which is not served yet"),
             ));
         }
-        let input = normalize(&spec.input.schema, &input, self.registries.as_ref());
+        Ok(spec)
+    }
+
+    /// The normalized input, validated against the operation's input schema.
+    fn checked_input(&self, spec: &OperationSpec, input: &Value) -> Result<Value, OperationError> {
+        let input = normalize(&spec.input.schema, input, self.registries.as_ref());
         validate(&spec.input.schema, &input, self.registries.as_ref()).map_err(|violations| {
             OperationError::new(
                 "invalid_input",
                 Category::InvalidArgument,
-                format!("invalid input for {name}"),
+                format!("invalid input for {}", spec.name.as_str()),
             )
             .with_details(violations_value(&violations))
         })?;
+        Ok(input)
+    }
+
+    /// Validates `input` against the operation's input schema, as [`Dispatcher::call`] does before the handler, for
+    /// transports that check input as a step of their own (the Abilities API). Reachability is checked from the
+    /// internal transport.
+    pub fn validate(&self, name: &str, input: &Value) -> Result<(), OperationError> {
+        let spec = self.spec(name, INTERNAL_TRANSPORT)?;
+        self.checked_input(&spec, input).map(drop)
+    }
+
+    /// Runs the operation's permission check for `caller` on `input` (normalized, validated and hydrated first), as
+    /// [`Dispatcher::call`] does before the handler.
+    pub fn authorize(
+        &self,
+        name: &str,
+        input: &Value,
+        caller: &Caller,
+    ) -> Result<(), OperationError> {
+        let spec = self.spec(name, &caller.transport)?;
+        let input = self.checked_input(&spec, input)?;
+        let hydrated = spec.input.mapper.hydrate(&input)?;
+        spec.permission.check(caller, hydrated.as_ref())
+    }
+
+    pub fn call(&self, name: &str, input: Value, caller: &Caller) -> Result<Value, OperationError> {
+        self.dispatch(name, input, caller, &self.middleware)
+    }
+
+    /// Calls the operation with every middleware but the permission check, for a transport that decided permission
+    /// itself after [`Dispatcher::authorize`] (WordPress's `wp_ability_permission_result` can grant what the check
+    /// refused). Input and output are validated as in [`Dispatcher::call`].
+    pub fn call_authorized(
+        &self,
+        name: &str,
+        input: Value,
+        caller: &Caller,
+    ) -> Result<Value, OperationError> {
+        // The permission middleware is always the first.
+        self.dispatch(name, input, caller, &self.middleware[1..])
+    }
+
+    fn dispatch(
+        &self,
+        name: &str,
+        input: Value,
+        caller: &Caller,
+        middleware: &[Rc<dyn OperationMiddleware>],
+    ) -> Result<Value, OperationError> {
+        let spec = self.spec(name, &caller.transport)?;
+        let input = self.checked_input(&spec, &input)?;
         let handler = self
             .container
             .make_port::<dyn OperationHandler>(&handler_key(name))
@@ -96,7 +155,7 @@ impl Dispatcher {
                 handler.handle(spec.input.mapper.hydrate(&input)?, caller)
             }
         };
-        let output = match run(&self.middleware, &call, &run_handler)?.downcast::<Bypass>() {
+        let output = match run(middleware, &call, &run_handler)?.downcast::<Bypass>() {
             Ok(bypass) => return Ok(bypass.0),
             Err(output) => output,
         };
