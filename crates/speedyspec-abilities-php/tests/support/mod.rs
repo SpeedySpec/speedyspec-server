@@ -3,7 +3,7 @@
 
 use std::rc::Rc;
 
-use speedyspec_abilities_php::AbilitiesArea;
+use speedyspec_abilities_php::{AbilitiesArea, AbilitiesService};
 use speedyspec_container::Container;
 use speedyspec_container_php::ContainerArea;
 use speedyspec_hooks_memory::MemoryHooks;
@@ -61,6 +61,8 @@ function do_action( string $hook, mixed ...$args ): void {
 function __( $text, $domain = 'default' ) { return $text; }
 function __return_true() { return true; }
 function __return_false() { return false; }
+function wp_parse_args( $args, $defaults = array() ) { return array_merge( $defaults, is_array( $args ) ? $args : array() ); }
+function get_current_user_id() { return $GLOBALS['uid'] ?? 0; }
 function is_wp_error( $thing ) { return $thing instanceof WP_Error; }
 function _doing_it_wrong( $function_name, $message, $version ) { $GLOBALS['__doing_it_wrong'][] = $function_name . ': ' . $message . ' (' . $version . ')'; }
 "#;
@@ -75,6 +77,7 @@ pub fn check(name: &str, ok: bool, detail: impl std::fmt::Debug) {
 }
 
 pub struct Booted {
+    pub service: Rc<AbilitiesService>,
     pub php: Php,
     pub container: Rc<Container>,
     pub operations: Rc<OperationArea>,
@@ -94,10 +97,16 @@ pub fn boot() -> Booted {
             fingerprint: String::new(),
         })),
     ));
+    let service = Rc::new(AbilitiesService::new(
+        container.clone(),
+        operations.clone(),
+        bindings.clone(),
+        identity.clone(),
+    ));
     let areas: Vec<Rc<dyn NativeArea>> = vec![
         Rc::new(ContainerArea::new("test", container.clone())),
         operations.clone(),
-        Rc::new(AbilitiesArea::new(bindings.clone())),
+        Rc::new(AbilitiesArea::new(bindings.clone()).with_service(service.clone())),
     ];
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),
@@ -106,6 +115,7 @@ pub fn boot() -> Booted {
     })
     .expect("PHP boots");
     Booted {
+        service,
         php,
         container,
         operations,

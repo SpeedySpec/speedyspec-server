@@ -208,6 +208,23 @@ final class Adapter
     }
 
     /**
+     * Runs one of an ability's steps.
+     *
+     * @param object $ability
+     *   The WP_Ability.
+     * @param string $step
+     *   The step.
+     * @param array $args
+     *   Its arguments.
+     * @return array
+     *   The error, or the value.
+     */
+    public static function step(object $ability, string $step, array $args): array
+    {
+        return self::outcome($ability->speedyspec_step($step, ...$args));
+    }
+
+    /**
      * Fires `wp_ability_invoked`.
      */
     public static function invoked(string $name, mixed $input, mixed $ability): void
