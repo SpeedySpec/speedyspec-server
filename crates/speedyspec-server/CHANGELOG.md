@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-server-v0.3.0...speedyspec-server-v0.3.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* **wp-cron:** run each multisite site's cron in its own request ([#110](https://github.com/SpeedySpec/speedyspec-server/issues/110)) ([7dec438](https://github.com/SpeedySpec/speedyspec-server/commit/7dec4386f85def904c07fc01df5ccbc43e168042))
+
 ## [0.3.0](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-server-v0.2.2...speedyspec-server-v0.3.0) (2026-11-22)
 
 

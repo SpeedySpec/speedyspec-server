@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-shortcode-php"
-version = "0.1.7"
+version = "0.1.8"
 publish = false
 description = "WordPress's shortcode functions in PHP, native over the Rust Shortcode API."
 edition.workspace = true

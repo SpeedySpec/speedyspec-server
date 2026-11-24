@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-media-contracts"
-version = "0.3.0"
+version = "0.4.0"
 description = "The media reader port and the library-neutral description of a media file (MediaInfo)."
 edition.workspace = true
 rust-version.workspace = true
