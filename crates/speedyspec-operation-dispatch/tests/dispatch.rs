@@ -355,3 +355,29 @@ fn neutral_handler_still_passes_permission() {
     assert_eq!(e.category, Category::PermissionDenied);
     assert!(!*ran.borrow());
 }
+
+#[test]
+fn validate_and_authorize_are_separate_steps() {
+    let d = dispatcher(ok_handler());
+    assert_eq!(d.validate("core/get-post", &input(7)), Ok(()));
+    assert_eq!(
+        d.validate("core/get-post", &Value::map::<&str>([]))
+            .map_err(|e| e.code),
+        Err("invalid_input".to_owned())
+    );
+    assert_eq!(
+        d.authorize("core/get-post", &input(7), &caller(Some(1))),
+        Ok(())
+    );
+    let refused = d
+        .authorize("core/get-post", &input(7), &caller(Some(2)))
+        .unwrap_err();
+    assert!(matches!(
+        refused.category,
+        Category::PermissionDenied | Category::Unauthenticated
+    ));
+    assert_eq!(
+        d.validate("core/nothing", &input(1)).map_err(|e| e.code),
+        Err("operation_not_found".to_owned())
+    );
+}

@@ -8,9 +8,11 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+speedyspec-operation-dispatch = { path = "../speedyspec-operation-dispatch" }
 speedyspec-abilities-contracts = { path = "../speedyspec-abilities-contracts" }
 speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
 speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }
 
 [dev-dependencies]
+speedyspec-container = { path = "../speedyspec-container" }
 speedyspec-operation = { path = "../speedyspec-operation" }

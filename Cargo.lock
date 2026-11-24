@@ -4913,8 +4913,10 @@ name = "speedyspec-abilities"
 version = "0.1.0"
 dependencies = [
  "speedyspec-abilities-contracts",
+ "speedyspec-container",
  "speedyspec-operation",
  "speedyspec-operation-contracts",
+ "speedyspec-operation-dispatch",
  "speedyspec-transport-contracts",
 ]
 
