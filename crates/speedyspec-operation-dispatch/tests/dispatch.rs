@@ -381,3 +381,18 @@ fn validate_and_authorize_are_separate_steps() {
         Err("operation_not_found".to_owned())
     );
 }
+
+#[test]
+fn call_authorized_skips_only_the_permission_check() {
+    let d = dispatcher(ok_handler());
+    assert!(d.call("core/get-post", input(7), &caller(Some(2))).is_err());
+    assert_eq!(
+        d.call_authorized("core/get-post", input(7), &caller(Some(2))),
+        Ok(Value::map([("title", Value::from("post 7"))]))
+    );
+    assert_eq!(
+        d.call_authorized("core/get-post", Value::map::<&str>([]), &caller(Some(2)))
+            .map_err(|e| e.code),
+        Err("invalid_input".to_owned())
+    );
+}

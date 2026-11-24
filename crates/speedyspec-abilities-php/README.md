@@ -27,7 +27,9 @@ These stay WordPress's:
   a subclass, or one built directly) is a request-scoped operation `legacy-abilities/{slug}-{hash}`, restricted to
   `abilities`, whose handler is the ability's `do_execute`.
 - **Values:** plain data crosses as neutral values. A value with objects in it, such as an object a filter or an
-  ability returns, stays PHP's and comes back as the same value.
+  ability returns, stays PHP's and comes back as the same value. Plain data that uses the stand-in's key is
+  escaped, so a client can't forge one. A `WP_Error` from PHP comes back as the same object, every code of it kept.
+  An operation's own error gets a `status` from its category, and an internal one a generic message.
 
 ## Operations as abilities
 
@@ -36,7 +38,14 @@ At request start, where WordPress's Hook API is native, `Adapter::hook()` adds t
 - on `wp_abilities_api_init`, every operation exposed on `abilities` is registered through `wp_register_ability()`
   as a `SpeedySpec\Abilities\OperationAbility`, with its exported JSON Schemas and its metadata.
 
-Executing an `OperationAbility` runs `OperationSteps`, with WordPress's current user as the caller.
+Executing an `OperationAbility` runs `OperationSteps`, with WordPress's current user as the caller. Its
+`normalize_input()`, `validate_input()` and `check_permissions()` are the operation's steps too, so a caller of one
+step alone gets the operation's answer. WordPress's REST run controller checks permission that way before it
+executes. A `wp_ability_permission_result` grant is final: the operation's own check does not run again inside
+execute.
+
+Default categories register last on `wp_abilities_api_categories_init` (`PHP_INT_MAX`), so a plugin's own category of
+its vendor's slug wins; operations register first on `wp_abilities_api_init`.
 
 ```php
 use SpeedySpec\Abilities\Abilities;

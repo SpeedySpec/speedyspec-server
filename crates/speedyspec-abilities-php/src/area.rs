@@ -93,6 +93,53 @@ fn native_publish(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     Ok(PhpValue::Null)
 }
 
+/// `OperationAbility::normalize_input()`, `validate_input()` and `check_permissions()`: the operation's step, so a
+/// caller of the step alone (WordPress's REST run controller checks permission before executing) gets the operation's
+/// answer.
+fn native_operation_step(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    use speedyspec_abilities_contracts::AbilitySteps;
+    let service = service()?;
+    let ability = args.first().cloned().unwrap_or(PhpValue::Null);
+    let step = arg_text(args, 1);
+    let input = match args.get(2) {
+        None | Some(PhpValue::Null) => None,
+        Some(value) => Some(crate::values::neutral(value)),
+    };
+    let object = speedyspec_php_ext::PhpObject::new(ability.clone()).ok_or_else(|| {
+        NativeError::throw("InvalidArgumentException", "the step takes an ability")
+    })?;
+    let name = match object.call("get_name", vec![]) {
+        Ok(PhpValue::Str(name)) => name,
+        _ => String::new(),
+    };
+    let handle = crate::handles::add(ability);
+    let steps = match service.operation_steps(&name, handle) {
+        Ok(steps) => steps,
+        Err(error) => return Ok(crate::errors::to_wp_error(&error)),
+    };
+    let wp = crate::errors::to_wp_error;
+    Ok(match step.as_str() {
+        "normalize_input" => match steps.normalize_input(input) {
+            Ok(value) => value.as_ref().map_or(PhpValue::Null, crate::values::php),
+            Err(error) => wp(&error),
+        },
+        "validate_input" => match steps.validate_input(&input) {
+            Ok(()) => PhpValue::Bool(true),
+            Err(error) => wp(&error),
+        },
+        "check_permissions" => match steps.check_permissions(&input) {
+            Ok(allowed) => PhpValue::Bool(allowed),
+            Err(error) => wp(&error),
+        },
+        other => {
+            return Err(NativeError::throw(
+                "InvalidArgumentException",
+                format!("{other} is not an operation ability step"),
+            ));
+        }
+    })
+}
+
 /// `[ slug, … ]`: the default categories of the operations exposed as abilities.
 fn native_operation_categories(_args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     let mut slugs: Vec<String> = Vec::new();
@@ -210,11 +257,12 @@ type NativeFn = fn(&[PhpValue]) -> Result<PhpValue, NativeError>;
 
 impl NativeArea for AbilitiesArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
-        let entries: [(&str, NativeFn); 4] = [
+        let entries: [(&str, NativeFn); 5] = [
             ("publish", native_publish),
             ("execute", native_execute),
             ("operation_categories", native_operation_categories),
             ("operation_abilities", native_operation_abilities),
+            ("operation_step", native_operation_step),
         ];
         entries
             .into_iter()

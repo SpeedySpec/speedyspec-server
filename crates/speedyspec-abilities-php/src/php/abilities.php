@@ -205,7 +205,7 @@ final class Adapter
     {
         $error = self::describe_error($value);
         if (null !== $error) {
-            return ['error', ...$error];
+            return ['error', ...$error, $value];
         }
         return self::plain($value) ? ['value', $value] : ['php', $value];
     }
@@ -235,7 +235,11 @@ final class Adapter
     }
 
     /**
-     * Adds the hooks that register operations as abilities, before any other callback of the init actions.
+     * Adds the hooks that register operations as abilities.
+     *
+     * Default categories register last on the categories action, so a plugin's own category of the same slug (its
+     * vendor's, by convention) wins; operations register first on the abilities action, which fires after every
+     * category exists.
      */
     public static function hook(): void
     {
@@ -243,12 +247,12 @@ final class Adapter
             return;
         }
         foreach ([
-            'wp_abilities_api_categories_init' => 'register_categories',
-            'wp_abilities_api_init'            => 'register_operations',
-        ] as $hook => $method) {
+            ['wp_abilities_api_categories_init', 'register_categories', PHP_INT_MAX],
+            ['wp_abilities_api_init', 'register_operations', PHP_INT_MIN],
+        ] as [$hook, $method, $priority]) {
             $callback = [self::class, $method];
             if (false === has_action($hook, $callback)) {
-                add_action($hook, $callback, PHP_INT_MIN);
+                add_action($hook, $callback, $priority);
             }
         }
     }

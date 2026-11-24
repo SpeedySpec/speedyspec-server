@@ -104,7 +104,8 @@ impl AbilitySteps for OperationSteps {
     fn execute(&self, input: &Option<Value>) -> AbilityOutcome {
         let result = self
             .dispatcher
-            .call(self.name(), self.value(input), &self.caller)
+            // The permission step decided, its filter included; the operation's check does not run again.
+            .call_authorized(self.name(), self.value(input), &self.caller)
             .map_err(|error| {
                 if error.code == "invalid_output" {
                     wp_error(

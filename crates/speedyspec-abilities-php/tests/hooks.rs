@@ -5,7 +5,7 @@ mod support;
 use speedyspec_abilities::errors::wp_error;
 use speedyspec_abilities_contracts::AbilityHooks;
 use speedyspec_abilities_php::{PhpAbilityHooks, errors, handles};
-use speedyspec_operation_contracts::{Category, Value};
+use speedyspec_operation_contracts::{Category, OperationError, Value};
 use speedyspec_php_ext::Value as PhpValue;
 use support::*;
 
@@ -186,5 +186,36 @@ fn main() {
             .as_ref()
             .is_err_and(|e| e.code == "ability_hook_failed" && e.category == Category::Internal),
         &exploded,
+    );
+
+    let described = |error: OperationError| {
+        let php = errors::to_wp_error(&error);
+        speedyspec_php::call(
+            &PhpValue::Str("json_encode".into()),
+            &[speedyspec_php::call(
+                &PhpValue::Str("SpeedySpec\\Abilities\\Internal\\Adapter::describe_error".into()),
+                &[php],
+            )
+            .unwrap()],
+        )
+    };
+    let not_found = described(OperationError::new(
+        "report_not_found",
+        Category::NotFound,
+        "No report.",
+    ));
+    let internal = described(
+        OperationError::new(
+            "operation_no_handler",
+            Category::Internal,
+            "container: no binding for x",
+        )
+        .with_details(Value::from("secret")),
+    );
+    check(
+        "operation_errors_carry_a_status_and_hide_internal_detail",
+        matches!(&not_found, Ok(PhpValue::Str(s)) if s == r#"["report_not_found","No report.",{"status":404}]"#)
+            && matches!(&internal, Ok(PhpValue::Str(s)) if s == r#"["operation_no_handler","The request could not be processed.",{"status":500}]"#),
+        (&not_found, &internal),
     );
 }

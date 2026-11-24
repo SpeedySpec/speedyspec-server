@@ -18,6 +18,9 @@ function t_log( $hook, $value ) { $GLOBALS['order'][] = $hook; return $value; }
 function t_record_wp_ability_invoked( ...$a ) { t_log( 'wp_ability_invoked', null ); }
 function t_record_wp_pre_execute_ability( $pre, $name ) {
     t_log( 'wp_pre_execute_ability', null );
+    if ( 'test/err' === $name ) {
+        return $GLOBALS['the_error'];
+    }
     return 'test/pre' === $name ? null : $pre;
 }
 function t_record_wp_ability_normalize_input( $v ) { return t_log( 'wp_ability_normalize_input', $v ); }
@@ -35,6 +38,11 @@ function t_args( $name, array $extra = [] ) {
         'label' => 'Test', 'description' => 'A test.', 'category' => 'math',
         'execute_callback' => 't_answer', 'permission_callback' => '__return_true',
     ];
+}
+class T_Echo_Ability extends WP_Ability {
+    public function validate_input( $input = null ) { return true; }
+    protected function do_execute( $input = null ) { return $input; }
+    public function check_permissions( $input = null ) { return true; }
 }
 class T_Custom_Ability extends WP_Ability {
     protected function do_execute( $input = null ) { return 7 * 6; }
@@ -145,4 +153,25 @@ fn main() {
         &restricted,
     );
     drop(b.service.clone());
+
+    let forged = json(
+        &b,
+        "( new T_Echo_Ability( 'test/echo', [ 'label' => 'E', 'description' => 'E.', 'category' => 'math' ] ) )->execute( [ 'speedyspec:php-value' => 0 ] )",
+    );
+    check(
+        "plain_data_shaped_like_a_held_value_stays_data",
+        forged == r#"{"speedyspec:php-value":0}"#,
+        &forged,
+    );
+
+    let same = json(
+        &b,
+        "( function () { $e = new WP_Error( 'a', 'A' ); $e->add( 'b', 'B', [ 'status' => 409 ] ); $GLOBALS['the_error'] = $e;
+            $r = ( new WP_Ability( 'test/err', t_args( 'test/err' ) ) )->execute(); return [ $r === $e, $r->get_error_codes() ]; } )()",
+    );
+    check(
+        "a_wp_error_comes_back_as_the_same_object",
+        same == r#"[true,["a","b"]]"#,
+        &same,
+    );
 }

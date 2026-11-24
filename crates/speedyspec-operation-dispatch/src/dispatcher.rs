@@ -105,6 +105,29 @@ impl Dispatcher {
     }
 
     pub fn call(&self, name: &str, input: Value, caller: &Caller) -> Result<Value, OperationError> {
+        self.dispatch(name, input, caller, &self.middleware)
+    }
+
+    /// Calls the operation with every middleware but the permission check, for a transport that decided permission
+    /// itself after [`Dispatcher::authorize`] (WordPress's `wp_ability_permission_result` can grant what the check
+    /// refused). Input and output are validated as in [`Dispatcher::call`].
+    pub fn call_authorized(
+        &self,
+        name: &str,
+        input: Value,
+        caller: &Caller,
+    ) -> Result<Value, OperationError> {
+        // The permission middleware is always the first.
+        self.dispatch(name, input, caller, &self.middleware[1..])
+    }
+
+    fn dispatch(
+        &self,
+        name: &str,
+        input: Value,
+        caller: &Caller,
+        middleware: &[Rc<dyn OperationMiddleware>],
+    ) -> Result<Value, OperationError> {
         let spec = self.spec(name, &caller.transport)?;
         let input = self.checked_input(&spec, &input)?;
         let handler = self
@@ -132,7 +155,7 @@ impl Dispatcher {
                 handler.handle(spec.input.mapper.hydrate(&input)?, caller)
             }
         };
-        let output = match run(&self.middleware, &call, &run_handler)?.downcast::<Bypass>() {
+        let output = match run(middleware, &call, &run_handler)?.downcast::<Bypass>() {
             Ok(bypass) => return Ok(bypass.0),
             Err(output) => output,
         };

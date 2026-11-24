@@ -362,3 +362,84 @@ fn an_invalid_output_is_ability_invalid_output() {
         e.message
     );
 }
+
+struct Grant;
+
+impl AbilityHooks for Grant {
+    fn invoked(&self, _: &str, _: &Option<Value>, _: u64) -> Result<(), OperationError> {
+        Ok(())
+    }
+    fn pre_execute(
+        &self,
+        _: &str,
+        _: &Option<Value>,
+        _: u64,
+    ) -> Result<Option<AbilityOutcome>, OperationError> {
+        Ok(None)
+    }
+    fn normalize_input(&self, _: &str, i: Option<Value>, _: u64) -> AbilityResult<Option<Value>> {
+        Ok(i)
+    }
+    fn validate_input(
+        &self,
+        _: &str,
+        v: AbilityResult<()>,
+        _: &Option<Value>,
+    ) -> AbilityResult<()> {
+        v
+    }
+    fn permission_result(
+        &self,
+        _: &str,
+        _: AbilityResult<bool>,
+        _: &Option<Value>,
+        _: u64,
+    ) -> AbilityResult<bool> {
+        Ok(true)
+    }
+    fn before_execute(&self, _: &str, _: &Option<Value>, _: u64) -> Result<(), OperationError> {
+        Ok(())
+    }
+    fn execute_result(
+        &self,
+        _: &str,
+        r: AbilityOutcome,
+        _: &Option<Value>,
+        _: u64,
+    ) -> AbilityOutcome {
+        r
+    }
+    fn validate_output(&self, _: &str, v: AbilityResult<()>, _: &Value) -> AbilityResult<()> {
+        v
+    }
+    fn after_execute(
+        &self,
+        _: &str,
+        _: &Option<Value>,
+        _: &Value,
+        _: u64,
+    ) -> Result<(), OperationError> {
+        Ok(())
+    }
+    fn doing_it_wrong(&self, _: &str, _: &str, _: &str) {}
+}
+
+#[test]
+fn a_permission_filter_grant_is_final() {
+    let (dispatcher, registries) = operation_world();
+    let spec = speedyspec_operation_contracts::OperationCatalog::get_operation(
+        registries.as_ref(),
+        "acme/get-report",
+    )
+    .unwrap();
+    let caller = Caller::new(None, ABILITIES, Rc::new(MemoryIdentity::new()));
+    let hooks: Rc<dyn AbilityHooks> = Rc::new(Grant);
+    let steps = OperationSteps::new(dispatcher, spec, caller, hooks.clone(), 1);
+    let out = AbilitiesServer::new(hooks).execute(
+        "acme/get-report",
+        Some(Value::map([("id", Value::Int(4))])),
+        &steps,
+        1,
+    );
+    assert_eq!(out, Ok(Value::map([("id", Value::Int(4))])));
+}

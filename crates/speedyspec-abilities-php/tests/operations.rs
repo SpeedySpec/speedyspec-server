@@ -22,6 +22,8 @@ function acme_init(): void {
         ->input( null, S::object( [ 'id' => S::integer()->required() ] ) )->output( null, S::any() )->public()->register();
     Handler::for( 'acme/delete-report', 'acme_delete_report' );
     Abilities::publish( 'acme/delete-report' )->category( 'reports' )->label( 'Delete report' )->public( true );
+    Operation::query( 'zeta/ping' )->input( null, S::object( [] ) )->output( null, S::any() )->public()->register();
+    Handler::for( 'zeta/ping', 'acme_delete_report' );
     Operation::query( 'acme/rest-only' )->input( null, S::object( [] ) )->output( null, S::any() )->public()
         ->transports( 'rest' )->register();
     Handler::for( 'acme/rest-only', 'acme_delete_report' );
@@ -29,6 +31,7 @@ function acme_init(): void {
 add_action( 'wp_operations_init', 'acme_init' );
 function acme_categories(): void {
     wp_register_ability_category( 'reports', [ 'label' => 'Reports', 'description' => 'Report abilities.' ] );
+    wp_register_ability_category( 'acme', [ 'label' => 'Acme', 'description' => 'Acme abilities.' ] );
 }
 add_action( 'wp_abilities_api_categories_init', 'acme_categories' );
 function t_order( ...$args ) { $GLOBALS['order'][] = current_action(); return $args[0] ?? null; }
@@ -143,5 +146,33 @@ fn main() {
         "wp_get_abilities_filters_operation_abilities",
         filtered == r#"[["acme\/get-report"],["acme\/delete-report"]]"#,
         &filtered,
+    );
+
+    let categories = json(
+        &b,
+        "[ wp_get_ability_category( 'acme' )->get_label(), wp_get_ability_category( 'zeta' )->get_label(), $GLOBALS['__doing_it_wrong'] ?? [] ]",
+    );
+    check(
+        "a_plugin_s_own_vendor_category_wins",
+        categories == r#"["Acme","zeta",[]]"#,
+        &categories,
+    );
+
+    load(&b.php, "$GLOBALS['uid'] = 7;");
+    let direct = json(
+        &b,
+        "( function () { $a = wp_get_ability( 'acme/get-report' ); $in = $a->normalize_input( [ 'id' => 4 ] );
+            $bad = $a->validate_input( [ 'id' => 'x' ] );
+            return [ $in, $a->validate_input( $in ), $a->check_permissions( $in ), is_wp_error( $bad ) ? $bad->get_error_code() : $bad ]; } )()",
+    );
+    load(&b.php, "$GLOBALS['uid'] = 8;");
+    let refused = json(
+        &b,
+        "wp_get_ability( 'acme/get-report' )->check_permissions( [ 'id' => 4 ] )",
+    );
+    check(
+        "an_operation_ability_s_steps_work_when_called_directly",
+        direct == r#"[{"id":4},true,true,"ability_invalid_input"]"# && refused == "false",
+        (&direct, &refused),
     );
 }
