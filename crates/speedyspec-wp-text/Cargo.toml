@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-text"
-version = "0.1.6"
+version = "0.1.7"
 publish = false
 description = "WordPress's content filters and sanitizers (wptexturize, wpautop and the rest) in Rust, byte for byte, behind a TextApi facade that fires their filters."
 edition.workspace = true

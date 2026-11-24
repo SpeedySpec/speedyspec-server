@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-media-isolate"
-version = "0.2.1"
+version = "0.3.0"
 description = "Reads untrusted media in a short-lived, resource-limited child killed at its deadline, with a shared result cache."
 edition.workspace = true
 rust-version.workspace = true

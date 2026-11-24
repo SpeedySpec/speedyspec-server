@@ -1,5 +1,7 @@
 # Changelog
 
+## [1.4.1](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-php-runtime-v1.4.0...speedyspec-php-runtime-v1.4.1) (2026-11-24)
+
 ## [1.4.0](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-php-runtime-v1.3.0...speedyspec-php-runtime-v1.4.0) (2026-11-23)
 
 
