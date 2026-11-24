@@ -4909,6 +4909,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-abilities"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-abilities-contracts",
+ "speedyspec-operation-contracts",
+]
+
+[[package]]
+name = "speedyspec-abilities-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-operation-contracts",
+]
+
+[[package]]
+name = "speedyspec-abilities-php"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-abilities",
+ "speedyspec-abilities-contracts",
+ "speedyspec-operation-contracts",
+]
+
+[[package]]
 name = "speedyspec-cache"
 version = "0.2.0"
 
