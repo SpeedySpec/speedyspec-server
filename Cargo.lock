@@ -4931,6 +4931,7 @@ dependencies = [
 name = "speedyspec-abilities-php"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "speedyspec-abilities",
  "speedyspec-abilities-contracts",
  "speedyspec-compat",
@@ -4945,6 +4946,8 @@ dependencies = [
  "speedyspec-php-ext",
  "speedyspec-transport",
  "speedyspec-transport-contracts",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
 ]
 
 [[package]]

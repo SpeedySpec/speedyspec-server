@@ -208,6 +208,54 @@ final class Adapter
     }
 
     /**
+     * Adds the hooks that register operations as abilities, before any other callback of the init actions.
+     */
+    public static function hook(): void
+    {
+        if (! function_exists('add_action') || ! function_exists('has_action')) {
+            return;
+        }
+        foreach ([
+            'wp_abilities_api_categories_init' => 'register_categories',
+            'wp_abilities_api_init'            => 'register_operations',
+        ] as $hook => $method) {
+            $callback = [self::class, $method];
+            if (false === has_action($hook, $callback)) {
+                add_action($hook, $callback, PHP_INT_MIN);
+            }
+        }
+    }
+
+    /**
+     * Registers the default categories of the operations exposed as abilities that are not registered yet.
+     */
+    public static function register_categories(): void
+    {
+        foreach (\SpeedySpec\Abilities\Native\operation_categories() as $slug) {
+            if (! wp_has_ability_category($slug)) {
+                wp_register_ability_category(
+                    $slug,
+                    ['label' => $slug, 'description' => sprintf('Abilities of %s.', $slug)]
+                );
+            }
+        }
+    }
+
+    /**
+     * Registers every operation exposed as an ability.
+     */
+    public static function register_operations(): void
+    {
+        $unused = [\SpeedySpec\Abilities\OperationAbility::class, 'unused'];
+        foreach (\SpeedySpec\Abilities\Native\operation_abilities() as [$name, $args]) {
+            $args['execute_callback']    = $unused;
+            $args['permission_callback'] = $unused;
+            $args['ability_class']       = \SpeedySpec\Abilities\OperationAbility::class;
+            wp_register_ability($name, $args);
+        }
+    }
+
+    /**
      * Runs one of an ability's steps.
      *
      * @param object $ability

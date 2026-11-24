@@ -8,12 +8,13 @@ use speedyspec_operation_php::convert::from_php;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
-use speedyspec_php_ext::Value as PhpValue;
+use speedyspec_php_ext::{Key, Value as PhpValue};
 use speedyspec_transport_contracts::BindingStore;
 
 const FACADE: &str = include_str!("php/abilities.php");
 const TRUNK_ABILITY: &str = include_str!("php/trunk-ability.php");
 const SHIM_ABILITY: &str = include_str!("php/wp-ability.php");
+const OPERATION_ABILITY: &str = include_str!("php/operation-ability.php");
 const NATIVE: &str = "SpeedySpec\\Abilities\\Native\\";
 const REGISTRATION_EXCEPTION: &str = "SpeedySpec\\Operation\\RegistrationException";
 
@@ -53,8 +54,12 @@ fn native_execute(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
         Ok(PhpValue::Int(id)) => id,
         _ => 0,
     };
+    let operation = matches!(
+        speedyspec_php::call(&PhpValue::Str("get_class".into()), std::slice::from_ref(&ability)),
+        Ok(PhpValue::Str(class)) if class == "SpeedySpec\\Abilities\\OperationAbility"
+    );
     let handle = crate::handles::add(ability);
-    let outcome = crate::execute::run(&service, &name, id, handle, input);
+    let outcome = crate::execute::run(&service, &name, id, handle, input, operation);
     Ok(match outcome {
         Ok(value) => speedyspec_operation_php::convert::to_php(&value),
         Err(error) => crate::errors::to_wp_error(&error),
@@ -88,6 +93,102 @@ fn native_publish(args: &[PhpValue]) -> Result<PhpValue, NativeError> {
     Ok(PhpValue::Null)
 }
 
+/// `[ slug, … ]`: the default categories of the operations exposed as abilities.
+fn native_operation_categories(_args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    let mut slugs: Vec<String> = Vec::new();
+    for (_, binding, default_category) in abilities()? {
+        if let Some(slug) = binding.category
+            && default_category
+            && !slugs.contains(&slug)
+        {
+            slugs.push(slug);
+        }
+    }
+    Ok(PhpValue::Array(
+        slugs
+            .into_iter()
+            .enumerate()
+            .map(|(i, s)| (Key::Int(i as i64), PhpValue::Str(s)))
+            .collect(),
+    ))
+}
+
+fn abilities() -> Result<
+    Vec<(
+        Rc<speedyspec_operation_contracts::OperationSpec>,
+        AbilityBinding,
+        bool,
+    )>,
+    NativeError,
+> {
+    Ok(service()?.abilities().unwrap_or_else(|err| {
+        eprintln!("speedyspec_wordpress: no operations are abilities: {err}");
+        Vec::new()
+    }))
+}
+
+/// `[ [ name, args ], … ]`: each operation exposed as an ability, with the arguments `wp_register_ability` takes.
+fn native_operation_abilities(_args: &[PhpValue]) -> Result<PhpValue, NativeError> {
+    use speedyspec_operation_contracts::Value;
+    let mut rows = Vec::new();
+    for (i, (spec, binding, _)) in abilities()?.into_iter().enumerate() {
+        let flag = |b: Option<bool>| b.map_or(Value::Null, Value::Bool);
+        let mut meta = vec![
+            (
+                "annotations".to_owned(),
+                Value::map([
+                    ("readonly", flag(binding.annotations.readonly)),
+                    ("destructive", flag(binding.annotations.destructive)),
+                    ("idempotent", flag(binding.annotations.idempotent)),
+                ]),
+            ),
+            (
+                "show_in_rest".to_owned(),
+                Value::Bool(binding.show_in_rest.unwrap_or(false)),
+            ),
+            (
+                "public".to_owned(),
+                Value::Bool(binding.public.unwrap_or(false)),
+            ),
+        ];
+        if let Value::Map(extra) = &binding.meta {
+            for (key, value) in extra {
+                if !meta.iter().any(|(k, _)| k == key) {
+                    meta.push((key.clone(), value.clone()));
+                }
+            }
+        }
+        let schema = |s: &speedyspec_operation_contracts::Schema| {
+            crate::service::from_json(&speedyspec_operation::export::json_schema(s))
+        };
+        let args = Value::map([
+            ("label", Value::String(binding.label.unwrap_or_default())),
+            (
+                "description",
+                Value::String(binding.description.unwrap_or_default()),
+            ),
+            (
+                "category",
+                Value::String(binding.category.unwrap_or_default()),
+            ),
+            ("input_schema", schema(&spec.input.schema)),
+            ("output_schema", schema(&spec.output.schema)),
+            ("meta", Value::Map(meta.into_iter().collect())),
+        ]);
+        rows.push((
+            Key::Int(i as i64),
+            PhpValue::Array(vec![
+                (Key::Int(0), PhpValue::Str(spec.name.as_str().to_owned())),
+                (
+                    Key::Int(1),
+                    speedyspec_operation_php::convert::to_php(&args),
+                ),
+            ]),
+        ));
+    }
+    Ok(PhpValue::Array(rows))
+}
+
 /// The native area that gives PHP `Abilities::publish` and the Abilities adapter.
 pub struct AbilitiesArea;
 
@@ -109,8 +210,12 @@ type NativeFn = fn(&[PhpValue]) -> Result<PhpValue, NativeError>;
 
 impl NativeArea for AbilitiesArea {
     fn functions(&self) -> Vec<FunctionBuilder<'static>> {
-        let entries: [(&str, NativeFn); 2] =
-            [("publish", native_publish), ("execute", native_execute)];
+        let entries: [(&str, NativeFn); 4] = [
+            ("publish", native_publish),
+            ("execute", native_execute),
+            ("operation_categories", native_operation_categories),
+            ("operation_abilities", native_operation_abilities),
+        ];
         entries
             .into_iter()
             .map(|(name, f)| native::function(&format!("{NATIVE}{name}"), f))
@@ -129,12 +234,18 @@ impl NativeArea for AbilitiesArea {
             for (label, source) in [
                 ("speedyspec://abilities/trunk-ability", TRUNK_ABILITY),
                 ("speedyspec://abilities/ability", SHIM_ABILITY),
+                (
+                    "speedyspec://abilities/operation-ability",
+                    OPERATION_ABILITY,
+                ),
             ] {
                 if let Err(err) = speedyspec_php::eval(label, source) {
                     eprintln!("speedyspec_wordpress: declaring {label} failed: {err}");
                 }
             }
         }
+        // Where WordPress's Hook API is native, it exists now: register operations as abilities on its init actions.
+        crate::errors::adapter("hook", &[]);
     }
 
     fn request_end(&self) {

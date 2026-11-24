@@ -13,7 +13,12 @@ pub(crate) fn run(
     object: i64,
     handle: u64,
     input: Option<Value>,
+    operation: bool,
 ) -> AbilityOutcome {
+    if operation {
+        let steps = service.operation_steps(name, handle)?;
+        return service.server().execute(name, input, &steps, handle);
+    }
     let (dispatcher, operation) =
         crate::legacy::operation_for(service.container(), name, object, handle)?;
     let steps = PhpAbilitySteps::new(handle, dispatcher, operation, service.caller());

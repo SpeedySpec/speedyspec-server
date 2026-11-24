@@ -58,6 +58,10 @@ function do_action( string $hook, mixed ...$args ): void {
         }
     }
 }
+"#;
+
+/// The WordPress helpers the adapters and WordPress's ability files call, with no hook functions.
+pub const HELPERS: &str = r#"
 function __( $text, $domain = 'default' ) { return $text; }
 function __return_true() { return true; }
 function __return_false() { return false; }
@@ -86,6 +90,16 @@ pub struct Booted {
 }
 
 pub fn boot() -> Booted {
+    boot_with(false)
+}
+
+/// Booted with WordPress's native Hook API (`add_action`, `did_action`, `doing_action`, …), as WordPress's registries
+/// need.
+pub fn boot_native() -> Booted {
+    boot_with(true)
+}
+
+fn boot_with(native_hooks: bool) -> Booted {
     let container = Rc::new(Container::new());
     let identity: Rc<dyn Identity> = Rc::new(MemoryIdentity::new().grant(7, "edit_report"));
     let bindings = Rc::new(MemoryBindingStore::new());
@@ -103,11 +117,22 @@ pub fn boot() -> Booted {
         bindings.clone(),
         identity.clone(),
     ));
-    let areas: Vec<Rc<dyn NativeArea>> = vec![
+    let mut areas: Vec<Rc<dyn NativeArea>> = Vec::new();
+    if native_hooks {
+        areas.push(speedyspec_php_ext::twins_area());
+        areas.push(Rc::new(
+            speedyspec_wp_hooks_php::WpHooksArea::new(
+                container.clone(),
+                Rc::new(speedyspec_wp_hooks_memory::MemoryHookStore::new()),
+            )
+            .with_testing(),
+        ));
+    }
+    areas.extend::<Vec<Rc<dyn NativeArea>>>(vec![
         Rc::new(ContainerArea::new("test", container.clone())),
         operations.clone(),
         Rc::new(AbilitiesArea::new(bindings.clone()).with_service(service.clone())),
-    ];
+    ]);
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),
         preload: &[],
@@ -129,9 +154,20 @@ pub fn release() -> std::path::PathBuf {
     speedyspec_compat::wordpress_release("7.1.5").expect("the pinned WordPress release")
 }
 
-/// Loads the hook functions, `WP_Error` and `WP_Filter_Sentinel` from the release into the current request.
+/// Loads the stub hook functions, the helpers, `WP_Error` and `WP_Filter_Sentinel` into the current request.
 pub fn load_wordpress(php: &Php) {
     load(php, HOOKS);
+    load_files(php);
+}
+
+/// The helpers, `WP_Error` and `WP_Filter_Sentinel`, for a PHP booted with WordPress's native Hook API
+/// ([`boot_native`]).
+pub fn load_wordpress_native(php: &Php) {
+    load_files(php);
+}
+
+fn load_files(php: &Php) {
+    load(php, HELPERS);
     load(
         php,
         "function esc_html( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES ); }",
