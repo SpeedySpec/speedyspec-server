@@ -6,8 +6,9 @@ function wp_installing($is_installing = null) {
     if (null !== $is_installing) { $old = $installing; $installing = (bool) $is_installing; return $old; }
     return $installing;
 }
-function is_multisite() { return false; }
-function get_current_blog_id() { return 1; }
+// A fixture that boots a network declares these first.
+if (!function_exists('is_multisite')) { function is_multisite() { return false; } }
+if (!function_exists('get_current_blog_id')) { function get_current_blog_id() { return 1; } }
 function get_current_network_id() { return 1; }
 function __($text, $domain = 'default') { return $text; }
 function esc_html($text) { return htmlspecialchars((string) $text, ENT_QUOTES); }

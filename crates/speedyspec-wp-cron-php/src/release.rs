@@ -1,9 +1,19 @@
 //! A WordPress release prepared for the native cron functions: the options port's prepared release, with
-//! `wp-includes/cron.php` written without the functions this port declares (which would otherwise be declared twice).
+//! `wp-includes/cron.php` written without the functions this port declares (which would otherwise be declared twice),
+//! SpeedySpec's cron endpoint at [`CRON_ENDPOINT`], and `wp-cron.php` answering 404.
 
 use std::path::{Path, PathBuf};
 
 use speedyspec_compat::ReleaseMirror;
+
+/// Where a prepared release has SpeedySpec's cron endpoint: the path its manifest declares as `php.cron`.
+pub const CRON_ENDPOINT: &str = "speedyspec-cron.php";
+
+/// The endpoint the server's cron scheduler calls (see `docs/php.md`, "Scheduled cron calls").
+const ENDPOINT_SOURCE: &str = include_str!("endpoint.php");
+
+/// `wp-cron.php` in a prepared release: 404, since the server's scheduler runs cron.
+const WP_CRON_STUB: &str = include_str!("wp-cron-stub.php");
 
 /// The `cron.php` functions the native area declares: all of them.
 pub const PORTED_FUNCTIONS: &[&str] = &[
@@ -57,11 +67,14 @@ pub fn strip_ported(source: &str) -> Result<String, String> {
 }
 
 /// Prepares `release` (a `wordpress/` root) in `out`: [`speedyspec_wp_options_php::prepare_release`]'s copy, with
-/// `wp-includes/cron.php` (a link there) replaced by a copy without the ported functions. Returns `out`.
+/// `wp-includes/cron.php` (a link there) replaced by a copy without the ported functions, [`CRON_ENDPOINT`] added, and
+/// `wp-cron.php` replaced by a 404. Returns `out`.
 pub fn prepare_release(release: &Path, out: &Path) -> Result<PathBuf, String> {
     speedyspec_wp_options_php::prepare_release(release, out)?;
     let mirror = ReleaseMirror::new(release, out)?;
     let cron = "wp-includes/cron.php";
     mirror.write(cron, &strip_ported(&mirror.read(cron)?)?)?;
+    mirror.write(CRON_ENDPOINT, ENDPOINT_SOURCE)?;
+    mirror.write("wp-cron.php", WP_CRON_STUB)?;
     Ok(out.to_path_buf())
 }
