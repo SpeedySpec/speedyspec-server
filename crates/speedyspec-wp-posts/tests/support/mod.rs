@@ -8,7 +8,8 @@ use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::{
     NAME_LENGTH_VERSION, PostStatusRegistry, PostTypePorts, PostTypeRegistry, Untranslated,
     check_post_type_name, is_post_type_hierarchical, post_stati, post_status_name_viewable,
-    post_type_exists, post_type_name_viewable, post_types, post_types_by_support,
+    post_status_names, post_type_exists, post_type_name_viewable, post_type_names, post_types,
+    post_types_by_support,
 };
 use speedyspec_wp_posts_contracts::{
     PostStatuses, PostTypeError, PostTypes, RewriteContext, TitleSanitizer,
@@ -393,23 +394,27 @@ pub fn replay_calls(
             }
             "get_post_types" => {
                 let (args, names, operator) = list_args(&args);
-                let found = post_types(&registries.post_types, &args, &operator);
-                replayed.result = keyed_list(
-                    found
+                let types = &registries.post_types;
+                replayed.result = PhpValue::Array(if names {
+                    post_type_names(types, &args, &operator)
+                } else {
+                    post_types(types, &args, &operator)
                         .into_iter()
-                        .map(|t| (t.name().as_str().to_owned(), t.to_php())),
-                    names,
-                );
+                        .map(|(key, t)| (key, t.to_php()))
+                        .collect()
+                });
             }
             "get_post_stati" => {
                 let (args, names, operator) = list_args(&args);
-                let found = post_stati(&registries.statuses, &args, &operator);
-                replayed.result = keyed_list(
-                    found
+                let statuses = &registries.statuses;
+                replayed.result = PhpValue::Array(if names {
+                    post_status_names(statuses, &args, &operator)
+                } else {
+                    post_stati(statuses, &args, &operator)
                         .into_iter()
-                        .map(|s| (s.name().as_str().to_owned(), s.to_php())),
-                    names,
-                );
+                        .map(|(key, s)| (key, s.to_php()))
+                        .collect()
+                });
             }
             "get_post_types_by_support" => {
                 // `array_fill_keys( (array) $feature, true )`: each value becomes a key.
@@ -423,9 +428,7 @@ pub fn replay_calls(
                     post_types_by_support(&registries.post_types, &features, &operator)
                         .into_iter()
                         .zip(0..)
-                        .map(|(post_type, i)| {
-                            (PhpKey::Int(i), PhpValue::Str(post_type.into_bytes()))
-                        })
+                        .map(|(post_type, i)| (PhpKey::Int(i), key_value(post_type)))
                         .collect(),
                 );
             }
@@ -490,20 +493,12 @@ fn list_args(args: &[PhpValue]) -> (Vec<(PhpKey, PhpValue)>, bool, String) {
     (filter, names, operator)
 }
 
-/// PHP's keyed result: `name => name` for `names` (`pluck( 'name' )`), else `name => object`.
-fn keyed_list(found: impl Iterator<Item = (String, PhpValue)>, names: bool) -> PhpValue {
-    PhpValue::Array(
-        found
-            .map(|(name, object)| {
-                let value = if names {
-                    PhpValue::Str(name.as_bytes().to_vec())
-                } else {
-                    object
-                };
-                (PhpKey::Str(name.into_bytes()), value)
-            })
-            .collect(),
-    )
+/// An array key as the value `array_keys()` gives.
+fn key_value(key: PhpKey) -> PhpValue {
+    match key {
+        PhpKey::Int(i) => PhpValue::Int(i),
+        PhpKey::Str(s) => PhpValue::Str(s),
+    }
 }
 
 /// A recorded `[hook, callback, priority, accepted_args]` list.

@@ -5,15 +5,18 @@
 //! The filter is a Specification over each list entry: an argument matches when the entry's field passes its
 //! presence test (`isset()` for an object, `array_key_exists()` for an array) and is loosely equal (PHP 8's `==`) to
 //! the argument's value. [`ListItem`] is the presence test, one impl per entry shape.
+//!
+//! The lists return PHP's array keys with each entry, so an adapter can rebuild the `key => value` array exactly:
+//! a registry's key is the registered name as PHP converts an array key (`"123"` is the int `123`). `names` plucks
+//! each object's `name` property, as `WP_List_Util::pluck( 'name' )` does, not the Rust name field.
 
 use std::borrow::Cow;
 
 use indexmap::IndexSet;
-use speedyspec_php_serialize::semantics::{loose_eq, to_array_key};
+use speedyspec_php_serialize::semantics::{get, loose_eq, to_array_key};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts_contracts::{
-    PostStatusName, PostStatusObject, PostStatuses, PostType, PostTypeName, PostTypeSupports,
-    PostTypes,
+    PostStatusObject, PostStatuses, PostType, PostTypeSupports, PostTypes,
 };
 
 /// `WP_List_Util::filter()`'s operators.
@@ -98,14 +101,24 @@ impl ListItem for Vec<(String, PhpValue)> {
     }
 }
 
+/// `$list[ $name ]`'s key for a registered name: an integer-like name is an int key.
+fn registry_key(name: &str) -> PhpKey {
+    to_array_key(&PhpValue::Str(name.as_bytes().to_vec())).expect("a string is always a key")
+}
+
+/// `pluck( 'name' )` on an object: its `name` property, or null when it has none (PHP warns "Undefined property").
+fn pluck_name(properties: &[(PhpKey, PhpValue)]) -> PhpValue {
+    get(properties, "name").cloned().unwrap_or(PhpValue::Null)
+}
+
 /// `wp_filter_object_list()` without `$field`: empty `args` return every item whatever the operator; an unknown
 /// operator returns none; otherwise each item counts its loosely equal matches and is kept for AND (all), OR (any)
-/// or NOT (none).
+/// or NOT (none). Keys are kept, as `WP_List_Util::filter()` keeps them.
 pub fn filter_object_list<T: ListItem>(
-    items: Vec<(String, T)>,
+    items: Vec<(PhpKey, T)>,
     args: &[(PhpKey, PhpValue)],
     operator: &str,
-) -> Vec<(String, T)> {
+) -> Vec<(PhpKey, T)> {
     if args.is_empty() {
         return items;
     }
@@ -124,71 +137,66 @@ pub fn filter_object_list<T: ListItem>(
         .collect()
 }
 
-/// `get_post_types( $args, 'objects', $operator )`.
+/// `get_post_types( $args, 'objects', $operator )`: `key => object` pairs, in registration order.
 pub fn post_types(
     types: &dyn PostTypes,
     args: &[(PhpKey, PhpValue)],
     operator: &str,
-) -> Vec<PostType> {
+) -> Vec<(PhpKey, PostType)> {
     let items = types
         .post_types()
         .into_iter()
-        .map(|t| (t.name().as_str().to_owned(), t))
+        .map(|t| (registry_key(t.name().as_str()), t))
         .collect();
     filter_object_list(items, args, operator)
-        .into_iter()
-        .map(|(_, t)| t)
-        .collect()
 }
 
-/// `get_post_types( $args, 'names', $operator )`.
+/// `get_post_types( $args, 'names', $operator )`: `key => $object->name` pairs.
 pub fn post_type_names(
     types: &dyn PostTypes,
     args: &[(PhpKey, PhpValue)],
     operator: &str,
-) -> Vec<PostTypeName> {
+) -> Vec<(PhpKey, PhpValue)> {
     post_types(types, args, operator)
         .into_iter()
-        .map(|t| t.name().clone())
+        .map(|(key, t)| (key, pluck_name(t.properties())))
         .collect()
 }
 
-/// `get_post_stati( $args, 'objects', $operator )`.
+/// `get_post_stati( $args, 'objects', $operator )`: `key => object` pairs, in registration order.
 pub fn post_stati(
     statuses: &dyn PostStatuses,
     args: &[(PhpKey, PhpValue)],
     operator: &str,
-) -> Vec<PostStatusObject> {
+) -> Vec<(PhpKey, PostStatusObject)> {
     let items = statuses
         .statuses()
         .into_iter()
-        .map(|s| (s.name().as_str().to_owned(), s))
+        .map(|s| (registry_key(s.name().as_str()), s))
         .collect();
     filter_object_list(items, args, operator)
-        .into_iter()
-        .map(|(_, s)| s)
-        .collect()
 }
 
-/// `get_post_stati( $args, 'names', $operator )`.
+/// `get_post_stati( $args, 'names', $operator )`: `key => $object->name` pairs.
 pub fn post_status_names(
     statuses: &dyn PostStatuses,
     args: &[(PhpKey, PhpValue)],
     operator: &str,
-) -> Vec<PostStatusName> {
+) -> Vec<(PhpKey, PhpValue)> {
     post_stati(statuses, args, operator)
         .into_iter()
-        .map(|s| s.name().clone())
+        .map(|(key, s)| (key, pluck_name(s.properties())))
         .collect()
 }
 
 /// `get_post_types_by_support()`: `array_fill_keys( (array) $feature, true )`, so duplicates collapse, filtered
-/// over `$_wp_post_type_features`; the post types left, in that array's order.
+/// over `$_wp_post_type_features`; `array_keys()` of what is left, so the values of a `0..n` list, in that array's
+/// order (an integer-like post type is an int).
 pub fn post_types_by_support(
     supports: &dyn PostTypeSupports,
     features: &[&str],
     operator: &str,
-) -> Vec<String> {
+) -> Vec<PhpKey> {
     let args: Vec<(PhpKey, PhpValue)> = features
         .iter()
         .filter_map(|f| to_array_key(&PhpValue::Str(f.as_bytes().to_vec())))
@@ -196,7 +204,12 @@ pub fn post_types_by_support(
         .into_iter()
         .map(|key| (key, PhpValue::Bool(true)))
         .collect();
-    filter_object_list(supports.features(), &args, operator)
+    let items = supports
+        .features()
+        .into_iter()
+        .map(|(post_type, features)| (registry_key(&post_type), features))
+        .collect();
+    filter_object_list(items, args.as_slice(), operator)
         .into_iter()
         .map(|(post_type, _)| post_type)
         .collect()
@@ -205,6 +218,8 @@ pub fn post_types_by_support(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use speedyspec_php_serialize::semantics::key_to_string;
+    use speedyspec_wp_posts_contracts::{PostStatusName, PostTypeName};
 
     fn s(v: &str) -> PhpValue {
         PhpValue::Str(v.as_bytes().to_vec())
@@ -263,8 +278,23 @@ mod tests {
         ])
     }
 
-    fn names(found: Vec<PostTypeName>) -> Vec<String> {
-        found.into_iter().map(|n| n.as_str().to_owned()).collect()
+    /// The plucked names, each checked against its key.
+    fn names(found: Vec<(PhpKey, PhpValue)>) -> Vec<String> {
+        found
+            .into_iter()
+            .map(|(key, name)| {
+                let PhpValue::Str(name) = name else {
+                    panic!("not a string name: {name:?}")
+                };
+                let name = String::from_utf8(name).unwrap();
+                assert_eq!(key_to_string(&key), name);
+                name
+            })
+            .collect()
+    }
+
+    fn keys(found: Vec<PhpKey>) -> Vec<String> {
+        found.iter().map(key_to_string).collect()
     }
 
     fn features() -> Features {
@@ -348,11 +378,11 @@ mod tests {
     fn by_support_dedupes_features() {
         // `array( 'a', 'a' )` is one argument, so AND needs only `a`.
         assert_eq!(
-            post_types_by_support(&features(), &["a", "a"], "and"),
+            keys(post_types_by_support(&features(), &["a", "a"], "and")),
             ["book", "guide"]
         );
         assert_eq!(
-            post_types_by_support(&features(), &["a", "c"], "and"),
+            keys(post_types_by_support(&features(), &["a", "c"], "and")),
             ["book"]
         );
     }
@@ -360,7 +390,10 @@ mod tests {
     #[test]
     fn not_includes_types_with_no_features_left() {
         // A post type whose features were all removed keeps its (empty) entry, and NOT keeps it.
-        assert_eq!(post_types_by_support(&features(), &["a"], "not"), ["empty"]);
+        assert_eq!(
+            keys(post_types_by_support(&features(), &["a"], "not")),
+            ["empty"]
+        );
     }
 
     #[test]
@@ -375,18 +408,50 @@ mod tests {
             }
         }
         let status = |name: &str, public: PhpValue| {
-            PostStatusObject::new(PostStatusName::new(name), vec![(k("public"), public)])
+            PostStatusObject::new(
+                PostStatusName::new(name),
+                vec![(k("name"), s(name)), (k("public"), public)],
+            )
         };
         let statuses = Statuses(vec![
             status("open", PhpValue::Bool(true)),
             status("held", PhpValue::Null),
         ]);
         let args = [(k("public"), PhpValue::Bool(true))];
-        let found: Vec<String> = post_status_names(&statuses, &args, "and")
-            .into_iter()
-            .map(|n| n.as_str().to_owned())
-            .collect();
-        assert_eq!(found, ["open"]);
+        assert_eq!(names(post_status_names(&statuses, &args, "and")), ["open"]);
         assert_eq!(post_stati(&statuses, &args, "not").len(), 1);
+    }
+
+    #[test]
+    fn names_pluck_the_name_property_under_php_keys() {
+        // The property is what PHP plucks, even when it differs from the field; a missing one is null.
+        let mut renamed = post_type("book", &[]);
+        renamed.remove("name");
+        renamed.set("name", PhpValue::Int(9));
+        let mut nameless = post_type("tome", &[]);
+        nameless.remove("name");
+        let types = Types(vec![renamed, nameless, post_type("123", &[])]);
+        assert_eq!(
+            post_type_names(&types, &[], "and"),
+            vec![
+                (k("book"), PhpValue::Int(9)),
+                (k("tome"), PhpValue::Null),
+                (PhpKey::Int(123), s("123")),
+            ]
+        );
+        let found: Vec<PhpKey> = post_types(&types, &[], "and")
+            .into_iter()
+            .map(|(key, _)| key)
+            .collect();
+        assert_eq!(found, [k("book"), k("tome"), PhpKey::Int(123)]);
+
+        let features = Features(vec![(
+            "123".to_owned(),
+            vec![("a".to_owned(), PhpValue::Bool(true))],
+        )]);
+        assert_eq!(
+            post_types_by_support(&features, &["a"], "and"),
+            [PhpKey::Int(123)]
+        );
     }
 }
