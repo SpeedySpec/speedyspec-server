@@ -1,6 +1,6 @@
 {
-    "wordpress": "7.1.5",
-    "getid3": "1.9.25-202603080933",
+    "wordpress": "7.2-RC2",
+    "getid3": "1.9.28-202610301738",
     "php": "8.5.12",
     "files": {
         "bars.3gp": {
@@ -30,11 +30,11 @@
             },
             "file_format": "mp4",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 109397,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "bars.3gp",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/bars.3gp",
+                "filenamepath": "<corpus>/bars.3gp",
                 "avdataoffset": 44,
                 "avdataend": 109397,
                 "fileformat": "mp4",
@@ -716,7 +716,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": -2082844800,
-            "us": 238
+            "us": 199
         },
         "bars.avi": {
             "kind": "video",
@@ -748,11 +748,11 @@
             },
             "file_format": "avi",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 118554,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "bars.avi",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/bars.avi",
+                "filenamepath": "<corpus>/bars.avi",
                 "avdataoffset": 10000,
                 "avdataend": 116962,
                 "fileformat": "avi",
@@ -1068,7 +1068,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 167
+            "us": 128
         },
         "bars.flv": {
             "kind": "video",
@@ -1096,11 +1096,11 @@
             },
             "file_format": "flv",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 111991,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "bars.flv",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/bars.flv",
+                "filenamepath": "<corpus>/bars.flv",
                 "avdataoffset": 0,
                 "avdataend": 111991,
                 "fileformat": "flv",
@@ -1170,7 +1170,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 309
+            "us": 275
         },
         "bars.m4v": {
             "kind": "video",
@@ -1200,11 +1200,11 @@
             },
             "file_format": "mp4",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 39823,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "bars.m4v",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/bars.m4v",
+                "filenamepath": "<corpus>/bars.m4v",
                 "avdataoffset": 48,
                 "avdataend": 39823,
                 "fileformat": "mp4",
@@ -1964,7 +1964,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": -2082844800,
-            "us": 243
+            "us": 199
         },
         "bars.mkv": {
             "kind": "video",
@@ -1989,11 +1989,11 @@
             },
             "file_format": "matroska",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 39076,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "bars.mkv",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/bars.mkv",
+                "filenamepath": "<corpus>/bars.mkv",
                 "avdataoffset": 0,
                 "avdataend": 39076,
                 "fileformat": "matroska",
@@ -2355,7 +2355,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": 1714979289,
-            "us": 400
+            "us": 381
         },
         "bars.mov": {
             "kind": "video",
@@ -2383,11 +2383,11 @@
             },
             "file_format": "mp4",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 39886,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "bars.mov",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/bars.mov",
+                "filenamepath": "<corpus>/bars.mov",
                 "avdataoffset": 36,
                 "avdataend": 39886,
                 "fileformat": "mp4",
@@ -3108,7 +3108,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": 1714979289,
-            "us": 218
+            "us": 186
         },
         "bars.mp4": {
             "kind": "video",
@@ -3138,11 +3138,11 @@
             },
             "file_format": "mp4",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 39835,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "bars.mp4",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/bars.mp4",
+                "filenamepath": "<corpus>/bars.mp4",
                 "avdataoffset": 48,
                 "avdataend": 39835,
                 "fileformat": "mp4",
@@ -3912,7 +3912,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": 1714979289,
-            "us": 226
+            "us": 197
         },
         "bars.mpg": {
             "kind": "video",
@@ -3922,11 +3922,11 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 192512,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "bars.mpg",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/bars.mpg",
+                "filenamepath": "<corpus>/bars.mpg",
                 "encoding": "UTF-8",
                 "mime_type": "video/mpeg",
                 "error": [
@@ -3934,7 +3934,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 67
+            "us": 46
         },
         "bars.ogv": {
             "kind": "video",
@@ -3948,11 +3948,11 @@
             },
             "file_format": "ogg",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 26190,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "bars.ogv",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/bars.ogv",
+                "filenamepath": "<corpus>/bars.ogv",
                 "avdataoffset": 0,
                 "avdataend": 24377,
                 "fileformat": "ogg",
@@ -3964,7 +3964,7 @@
                     "pixel_aspect_ratio": 1.0
                 },
                 "warning": [
-                    "Ogg Theora (v3) not fully supported in this version of getID3 [1.9.25-202603080933] -- bitrate, playtime and all audio data are currently unavailable"
+                    "Ogg Theora (v3) not fully supported in this version of getID3 [1.9.28-202610301738] -- bitrate, playtime and all audio data are currently unavailable"
                 ],
                 "encoding": "UTF-8",
                 "mime_type": "video/ogg",
@@ -4087,7 +4087,7 @@
                 }
             },
             "creation_timestamp": false,
-            "us": 122
+            "us": 94
         },
         "bars.ts": {
             "kind": "video",
@@ -4097,11 +4097,11 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 207740,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "bars.ts",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/bars.ts",
+                "filenamepath": "<corpus>/bars.ts",
                 "encoding": "UTF-8",
                 "mime_type": "video/MP2T",
                 "error": [
@@ -4109,7 +4109,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 89
+            "us": 58
         },
         "bars.webm": {
             "kind": "video",
@@ -4134,11 +4134,11 @@
             },
             "file_format": "webm",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 36680,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "bars.webm",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/bars.webm",
+                "filenamepath": "<corpus>/bars.webm",
                 "avdataoffset": 0,
                 "avdataend": 36680,
                 "fileformat": "webm",
@@ -4491,7 +4491,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": 1714979289,
-            "us": 432
+            "us": 395
         },
         "bars.wmv": {
             "kind": "video",
@@ -4525,11 +4525,11 @@
             },
             "file_format": "asf",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 135307,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "bars.wmv",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/bars.wmv",
+                "filenamepath": "<corpus>/bars.wmv",
                 "avdataoffset": 809,
                 "avdataend": 135209,
                 "fileformat": "asf",
@@ -4891,28 +4891,28 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": 1714979289,
-            "us": 154
+            "us": 121
         },
         "empty.wav": {
             "kind": "audio",
             "metadata": [],
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 0,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "empty.wav",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/empty.wav",
+                "filenamepath": "<corpus>/empty.wav",
                 "warning": [
                     "Unable to check for ID3v1 because file is too small"
                 ],
                 "encoding": "UTF-8",
                 "error": [
-                    "Caught exception: cannot fseek(-170). resource/stream does not appear to support seeking"
+                    "unable to determine file format"
                 ]
             },
             "creation_timestamp": false,
-            "us": 54
+            "us": 42
         },
         "garbage.mp3": {
             "kind": "audio",
@@ -4922,11 +4922,11 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 4096,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "garbage.mp3",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/garbage.mp3",
+                "filenamepath": "<corpus>/garbage.mp3",
                 "error": [
                     "Could not find valid MPEG synch before end of file"
                 ],
@@ -4934,7 +4934,7 @@
                 "mime_type": "audio/mpeg"
             },
             "creation_timestamp": false,
-            "us": 277
+            "us": 252
         },
         "latin1-v1.mp3": {
             "kind": "audio",
@@ -4963,11 +4963,11 @@
             },
             "file_format": "mp3",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 24892,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "latin1-v1.mp3",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/latin1-v1.mp3",
+                "filenamepath": "<corpus>/latin1-v1.mp3",
                 "avdataoffset": 0,
                 "avdataend": 24764,
                 "fileformat": "mp3",
@@ -5189,30 +5189,32 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 197
+            "us": 179
         },
         "note.mid": {
             "kind": "audio",
             "metadata": {
-                "filesize": 50
+                "filesize": 50,
+                "mime_type": "audio/midi"
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 50,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "note.mid",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/note.mid",
+                "filenamepath": "<corpus>/note.mid",
                 "warning": [
                     "Unable to check for ID3v1 because file is too small"
                 ],
                 "encoding": "UTF-8",
+                "mime_type": "audio/midi",
                 "error": [
-                    "Caught exception: cannot fseek(-120). resource/stream does not appear to support seeking"
+                    "Format not supported, module \"module.audio.midi.php\" was removed."
                 ]
             },
             "creation_timestamp": false,
-            "us": 57
+            "us": 39
         },
         "tagged-v23.mp3": {
             "kind": "audio",
@@ -5253,11 +5255,11 @@
             },
             "file_format": "mp3",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 35066,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tagged-v23.mp3",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tagged-v23.mp3",
+                "filenamepath": "<corpus>/tagged-v23.mp3",
                 "avdataoffset": 2049,
                 "avdataend": 35066,
                 "fileformat": "mp3",
@@ -5748,7 +5750,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 246
+            "us": 219
         },
         "tagged-v24.mp3": {
             "kind": "audio",
@@ -5784,11 +5786,11 @@
             },
             "file_format": "mp3",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 25564,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tagged-v24.mp3",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tagged-v24.mp3",
+                "filenamepath": "<corpus>/tagged-v24.mp3",
                 "avdataoffset": 800,
                 "avdataend": 25564,
                 "fileformat": "mp3",
@@ -6137,7 +6139,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 208
+            "us": 188
         },
         "tone-24.wav": {
             "kind": "audio",
@@ -6161,11 +6163,11 @@
             },
             "file_format": "wav",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 264702,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone-24.wav",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone-24.wav",
+                "filenamepath": "<corpus>/tone-24.wav",
                 "avdataoffset": 102,
                 "avdataend": 264702,
                 "fileformat": "wav",
@@ -6261,7 +6263,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 101
+            "us": 74
         },
         "tone-vbr.mp3": {
             "kind": "audio",
@@ -6284,11 +6286,11 @@
             },
             "file_format": "mp3",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 13856,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone-vbr.mp3",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone-vbr.mp3",
+                "filenamepath": "<corpus>/tone-vbr.mp3",
                 "avdataoffset": 45,
                 "avdataend": 13856,
                 "fileformat": "mp3",
@@ -6520,7 +6522,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 221
+            "us": 203
         },
         "tone.aac": {
             "kind": "audio",
@@ -6530,11 +6532,11 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 24597,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.aac",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.aac",
+                "filenamepath": "<corpus>/tone.aac",
                 "encoding": "UTF-8",
                 "mime_type": "audio/aac",
                 "error": [
@@ -6542,7 +6544,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 59
+            "us": 41
         },
         "tone.ac3": {
             "kind": "audio",
@@ -6563,11 +6565,11 @@
             },
             "file_format": "ac3",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 32322,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.ac3",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.ac3",
+                "filenamepath": "<corpus>/tone.ac3",
                 "avdataoffset": 0,
                 "avdataend": 32322,
                 "fileformat": "ac3",
@@ -6644,7 +6646,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 80
+            "us": 61
         },
         "tone.aiff": {
             "kind": "audio",
@@ -6666,11 +6668,11 @@
             },
             "file_format": "aiff",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 352854,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.aiff",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.aiff",
+                "filenamepath": "<corpus>/tone.aiff",
                 "avdataoffset": 46,
                 "avdataend": 352854,
                 "fileformat": "aiff",
@@ -6722,7 +6724,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 91
+            "us": 70
         },
         "tone.dts": {
             "kind": "audio",
@@ -6744,11 +6746,11 @@
             },
             "file_format": "dts",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 354304,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.dts",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.dts",
+                "filenamepath": "<corpus>/tone.dts",
                 "avdataoffset": 0,
                 "avdataend": 354304,
                 "fileformat": "dts",
@@ -6813,7 +6815,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 75
+            "us": 57
         },
         "tone.flac": {
             "kind": "audio",
@@ -6845,11 +6847,11 @@
             },
             "file_format": "flac",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 57785,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.flac",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.flac",
+                "filenamepath": "<corpus>/tone.flac",
                 "avdataoffset": 9059,
                 "avdataend": 57785,
                 "fileformat": "flac",
@@ -6981,7 +6983,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 106
+            "us": 84
         },
         "tone.m4a": {
             "kind": "audio",
@@ -7013,11 +7015,11 @@
             },
             "file_format": "mp4",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 27084,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.m4a",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.m4a",
+                "filenamepath": "<corpus>/tone.m4a",
                 "avdataoffset": 44,
                 "avdataend": 27084,
                 "fileformat": "mp4",
@@ -7607,7 +7609,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": -2082844800,
-            "us": 189
+            "us": 162
         },
         "tone.mka": {
             "kind": "audio",
@@ -7630,11 +7632,11 @@
             },
             "file_format": "matroska",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 11646,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.mka",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.mka",
+                "filenamepath": "<corpus>/tone.mka",
                 "avdataoffset": 0,
                 "avdataend": 11646,
                 "fileformat": "matroska",
@@ -7954,7 +7956,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 349
+            "us": 326
         },
         "tone.mp3": {
             "kind": "audio",
@@ -7977,11 +7979,11 @@
             },
             "file_format": "mp3",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 33062,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.mp3",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.mp3",
+                "filenamepath": "<corpus>/tone.mp3",
                 "avdataoffset": 45,
                 "avdataend": 33062,
                 "fileformat": "mp3",
@@ -8213,7 +8215,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 201
+            "us": 179
         },
         "tone.ogg": {
             "kind": "audio",
@@ -8236,11 +8238,11 @@
             },
             "file_format": "ogg",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 10478,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.ogg",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.ogg",
+                "filenamepath": "<corpus>/tone.ogg",
                 "avdataoffset": 204,
                 "avdataend": 7250,
                 "fileformat": "ogg",
@@ -8442,7 +8444,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 120
+            "us": 101
         },
         "tone.opus": {
             "kind": "audio",
@@ -8465,11 +8467,11 @@
             },
             "file_format": "ogg",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 20577,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.opus",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.opus",
+                "filenamepath": "<corpus>/tone.opus",
                 "avdataoffset": 157,
                 "avdataend": 20236,
                 "fileformat": "ogg",
@@ -8606,7 +8608,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 106
+            "us": 86
         },
         "tone.ra": {
             "kind": "audio",
@@ -8616,11 +8618,11 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 3499,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.ra",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.ra",
+                "filenamepath": "<corpus>/tone.ra",
                 "encoding": "UTF-8",
                 "mime_type": "audio/x-realaudio",
                 "error": [
@@ -8628,7 +8630,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 62
+            "us": 42
         },
         "tone.wav": {
             "kind": "audio",
@@ -8652,11 +8654,11 @@
             },
             "file_format": "wav",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 352878,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.wav",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.wav",
+                "filenamepath": "<corpus>/tone.wav",
                 "avdataoffset": 78,
                 "avdataend": 352878,
                 "fileformat": "wav",
@@ -8751,7 +8753,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 96
+            "us": 74
         },
         "tone.wma": {
             "kind": "audio",
@@ -8776,11 +8778,11 @@
             },
             "file_format": "asf",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 19900,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "tone.wma",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/tone.wma",
+                "filenamepath": "<corpus>/tone.wma",
                 "avdataoffset": 700,
                 "avdataend": 19900,
                 "fileformat": "asf",
@@ -9070,7 +9072,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": 0,
-            "us": 134
+            "us": 111
         },
         "truncated.mp4": {
             "kind": "video",
@@ -9081,11 +9083,11 @@
             },
             "file_format": "quicktime",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 2048,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "truncated.mp4",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/truncated.mp4",
+                "filenamepath": "<corpus>/truncated.mp4",
                 "avdataoffset": 0,
                 "avdataend": 2048,
                 "fileformat": "quicktime",
@@ -9121,7 +9123,7 @@
                 }
             },
             "creation_timestamp": false,
-            "us": 78
+            "us": 57
         },
         "v1-only.mp3": {
             "kind": "audio",
@@ -9148,11 +9150,11 @@
             },
             "file_format": "mp3",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 24892,
-                "filepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus",
+                "filepath": "<corpus>",
                 "filename": "v1-only.mp3",
-                "filenamepath": "/Users/jacobsantos/repos/respite-studios/wordpress-develop/packages/speedyspec-server-media/compat/media/corpus/v1-only.mp3",
+                "filenamepath": "<corpus>/v1-only.mp3",
                 "avdataoffset": 0,
                 "avdataend": 24764,
                 "fileformat": "mp3",
@@ -9370,7 +9372,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 194
+            "us": 167
         }
     }
 }

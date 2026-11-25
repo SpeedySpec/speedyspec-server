@@ -1,16 +1,16 @@
 # Where the native media functions differ from WordPress
 
 The native `wp_read_audio_metadata()`, `wp_read_video_metadata()`, `wp_add_id3_tag_data()` and
-`wp_get_media_creation_timestamp()` are compared with WordPress 7.1.5 and its bundled getID3 (`recorded.json`, made
+`wp_get_media_creation_timestamp()` are compared with WordPress 7.2-RC2 and its bundled getID3 (`recorded.json`, made
 by `record.php` over `corpus/`). Every difference the comparison allows is listed in `differences.json`, with the
 reason here.
 
 ## WordPress versions
 
-- The recording is WordPress 7.1.5 (the compat suites' pinned release). Upstream trunk `ce78d2d6eb` (7.2) differs in
-  one place: `wp_read_video_metadata()` no longer wraps the creation-timestamp lookup in
-  `if ( empty( $metadata['created_timestamp'] ) )`. Nothing sets that key earlier in the function, so the output is
-  the same.
+- The recordings are WordPress 7.2-RC2's (the compat suites' pinned release), with its bundled getID3
+  1.9.28-202610301738. The native functions follow 7.2: `wp_read_video_metadata()` looks the creation timestamp up
+  without 7.1's `if ( empty( $metadata['created_timestamp'] ) )` guard, and `wp_check_filetype_and_ext()` is 7.2's
+  (see Content checks).
 
 ## Deliberate
 
@@ -45,7 +45,7 @@ Each is a path in `differences.json`; the corpus test fails if one stops differi
 
 ## Images
 
-The image functions are compared with WordPress 7.1.5 on PHP 8.5.12 (`recorded-images.json`, made by
+The image functions are compared with WordPress 7.2-RC2 on PHP 8.5.12 (`recorded-images.json`, made by
 `record-images.php` over `images/`); allowed differences are in `image-differences.json`.
 
 - **The fast path is PHP's.** For every type PHP 8.5's `getimagesize()` reads (JPEG, PNG, GIF, BMP, TIFF, WebP, AVIF,
@@ -58,7 +58,7 @@ The image functions are compared with WordPress 7.1.5 on PHP 8.5.12 (`recorded-i
 
 ## Formats added to the MIME list
 
-`wp_get_mime_types()` returns WordPress 7.1.5's list unchanged, in order, plus one row for every format below.
+`wp_get_mime_types()` returns WordPress 7.2-RC2's list unchanged, in order, plus one row for every format below.
 `wp_get_ext_types()` files each new extension under its kind, and `getimagesize_mimes_to_exts` gains the new image
 types. Each added row's file in `compat/media` is read by the media reader as that kind (`uploads.rs`,
 `every_added_row_is_read`). WordPress rejects these uploads; the native functions accept them (`mime-differences.json`).
@@ -108,13 +108,13 @@ A plugin can still add any of them through the `mime_types` or `upload_mimes` fi
 
 ## Content checks
 
-`wp_check_filetype_and_ext()` is WordPress 7.2's function (trunk ce78d2d6eb). It is compared with a recording of
-WordPress 7.1.5 over every corpus file, under its own name and renamed to `.jpg`, `.png`, `.mp3`, `.mp4`, `.mka`,
+`wp_check_filetype_and_ext()` is WordPress 7.2's function. It is compared with a recording of
+WordPress 7.2-RC2 over every corpus file, under its own name and renamed to `.jpg`, `.png`, `.mp3`, `.mp4`, `.mka`,
 `.txt` and `.pdf` (`recorded-mime.json`, made by `record-mime.php`). Its content type is fileinfo's, as in WordPress,
 with one exception.
 
 - **Audio that fileinfo calls video.** Fileinfo calls an audio-only Matroska file `video/x-matroska` and a WMA file
-  `video/x-ms-asf`, so WordPress 7.1.5 rejects `.mka` and `.wma` uploads. When fileinfo and the file's extension name
+  `video/x-ms-asf`, so WordPress rejects `.mka` and `.wma` uploads. When fileinfo and the file's extension name
   different kinds (audio and video), the media reader reads the file. If the file holds only audio, as the extension
   says (or holds video, when the extension says video), the upload is accepted.
   The `wp_check_filetype_and_ext` filter's fifth argument (`$real_mime`) is then the reader's type with the
@@ -127,19 +127,19 @@ with one exception.
 - **Nothing else changes.** The reader is never consulted when fileinfo names a non-media type (`text/html`, `image/png`,
   `application/pdf`, …), when fileinfo already agrees, for stream-wrapper paths, or when the reader fails. Documents,
   files pretending to be media, and every upload WordPress accepts are judged exactly as WordPress judges them.
-- **WordPress 7.2's changes.** The function follows WordPress 7.2 (trunk ce78d2d6eb), whose own tests run on it: an
-  MP4 or 3GP file that fileinfo calls `video/mp4` or `video/3gpp` is accepted under an `.mp3`-family extension, and a
-  TrueType font may be reported as `font/ttf` or `font/sfnt`. The recording is 7.1.5's, which rejects the first.
+- **WordPress 7.2's changes.** The function follows WordPress 7.2, whose own tests run on it: an MP4 or 3GP file
+  that fileinfo calls `video/mp4` or `video/3gpp` is accepted under an `.mp3`-family extension, and a TrueType font
+  may be reported as `font/ttf` or `font/sfnt`. The recording is 7.2-RC2's, so neither is a listed difference.
 - **RealAudio stays rejected.** Fileinfo calls `.ra` files `application/vnd.rn-realmedia`, which is not an audio type,
   so `.ra` uploads are rejected as WordPress rejects them.
 
 ## Metadata of the added formats
 
-`wp_read_audio_metadata()` and `wp_read_video_metadata()` over `uploads/` are compared with WordPress 7.1.5 and getID3
+`wp_read_audio_metadata()` and `wp_read_video_metadata()` over `uploads/` are compared with WordPress 7.2-RC2 and getID3
 (`recorded-uploads.json`); allowed differences are in `upload-differences.json`, plus the general reasons above
 (bitrates, encoder options).
 
-- **Formats getID3 doesn't read.** For DV, M2TS, MXF, RealVideo, VOB, CAF, TTA, Wave64 and WavPack, getID3 1.9.25
+- **Formats getID3 doesn't read.** For DV, M2TS, MXF, RealVideo, VOB, CAF, TTA, Wave64 and WavPack, getID3 1.9.28
   gives WordPress only the file size; the native functions return the reader's length, dimensions and audio
   parameters. MXF's and DV's technical identifiers (uid, product, timecode) reach the metadata as tags, as every
   format's tags do.

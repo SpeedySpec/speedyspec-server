@@ -1,5 +1,5 @@
 {
-    "wordpress": "7.1.5",
+    "wordpress": "7.2-RC2",
     "php": "8.5.12",
     "wp_get_mime_types": [
         [
@@ -1351,8 +1351,8 @@
             "file": "corpus/bars.3gp",
             "name": "bars.mp3",
             "result": {
-                "ext": false,
-                "type": false,
+                "ext": "mp3",
+                "type": "audio/mpeg",
                 "proper_filename": false
             },
             "finfo": "video/3gpp",
@@ -1879,8 +1879,8 @@
             "file": "corpus/bars.mp4",
             "name": "bars.mp3",
             "result": {
-                "ext": false,
-                "type": false,
+                "ext": "mp3",
+                "type": "audio/mpeg",
                 "proper_filename": false
             },
             "finfo": "video/mp4",
@@ -4167,8 +4167,8 @@
             "file": "corpus/truncated.mp4",
             "name": "truncated.mp3",
             "result": {
-                "ext": false,
-                "type": false,
+                "ext": "mp3",
+                "type": "audio/mpeg",
                 "proper_filename": false
             },
             "finfo": "video/mp4",
@@ -4282,1326 +4282,6 @@
                 "proper_filename": false
             },
             "finfo": "audio/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.dv",
-            "name": "bars.dv",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/x-dv",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.dv",
-            "name": "bars.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/x-dv",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.dv",
-            "name": "bars.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/x-dv",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.dv",
-            "name": "bars.mp3",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/x-dv",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.dv",
-            "name": "bars.mp4",
-            "result": {
-                "ext": "mp4",
-                "type": "video/mp4",
-                "proper_filename": false
-            },
-            "finfo": "video/x-dv",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.dv",
-            "name": "bars.mka",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/x-dv",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.dv",
-            "name": "bars.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/x-dv",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.dv",
-            "name": "bars.pdf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/x-dv",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2ts",
-            "name": "bars.m2ts",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/MP2T",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2ts",
-            "name": "bars.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/MP2T",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2ts",
-            "name": "bars.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/MP2T",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2ts",
-            "name": "bars.mp3",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/MP2T",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2ts",
-            "name": "bars.mp4",
-            "result": {
-                "ext": "mp4",
-                "type": "video/mp4",
-                "proper_filename": false
-            },
-            "finfo": "video/MP2T",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2ts",
-            "name": "bars.mka",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/MP2T",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2ts",
-            "name": "bars.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/MP2T",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2ts",
-            "name": "bars.pdf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/MP2T",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2v",
-            "name": "bars.m2v",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2v",
-            "name": "bars.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2v",
-            "name": "bars.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2v",
-            "name": "bars.mp3",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2v",
-            "name": "bars.mp4",
-            "result": {
-                "ext": "mp4",
-                "type": "video/mp4",
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2v",
-            "name": "bars.mka",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2v",
-            "name": "bars.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.m2v",
-            "name": "bars.pdf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.mxf",
-            "name": "bars.mxf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/mxf",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.mxf",
-            "name": "bars.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/mxf",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.mxf",
-            "name": "bars.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/mxf",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.mxf",
-            "name": "bars.mp3",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/mxf",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.mxf",
-            "name": "bars.mp4",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/mxf",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.mxf",
-            "name": "bars.mka",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/mxf",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.mxf",
-            "name": "bars.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/mxf",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.mxf",
-            "name": "bars.pdf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/mxf",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.ogm",
-            "name": "bars.ogm",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/ogg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.ogm",
-            "name": "bars.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/ogg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.ogm",
-            "name": "bars.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/ogg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.ogm",
-            "name": "bars.mp3",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/ogg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.ogm",
-            "name": "bars.mp4",
-            "result": {
-                "ext": "mp4",
-                "type": "video/mp4",
-                "proper_filename": false
-            },
-            "finfo": "video/ogg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.ogm",
-            "name": "bars.mka",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/ogg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.ogm",
-            "name": "bars.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/ogg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.ogm",
-            "name": "bars.pdf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/ogg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.rm",
-            "name": "bars.rm",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/vnd.rn-realmedia",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.rm",
-            "name": "bars.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/vnd.rn-realmedia",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.rm",
-            "name": "bars.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/vnd.rn-realmedia",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.rm",
-            "name": "bars.mp3",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/vnd.rn-realmedia",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.rm",
-            "name": "bars.mp4",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/vnd.rn-realmedia",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.rm",
-            "name": "bars.mka",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/vnd.rn-realmedia",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.rm",
-            "name": "bars.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/vnd.rn-realmedia",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.rm",
-            "name": "bars.pdf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/vnd.rn-realmedia",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.vob",
-            "name": "bars.vob",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.vob",
-            "name": "bars.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.vob",
-            "name": "bars.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.vob",
-            "name": "bars.mp3",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.vob",
-            "name": "bars.mp4",
-            "result": {
-                "ext": "mp4",
-                "type": "video/mp4",
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.vob",
-            "name": "bars.mka",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.vob",
-            "name": "bars.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/bars.vob",
-            "name": "bars.pdf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "video/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.au",
-            "name": "tone.au",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/basic",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.au",
-            "name": "tone.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/basic",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.au",
-            "name": "tone.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/basic",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.au",
-            "name": "tone.mp3",
-            "result": {
-                "ext": "mp3",
-                "type": "audio/mpeg",
-                "proper_filename": false
-            },
-            "finfo": "audio/basic",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.au",
-            "name": "tone.mp4",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/basic",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.au",
-            "name": "tone.mka",
-            "result": {
-                "ext": "mka",
-                "type": "audio/x-matroska",
-                "proper_filename": false
-            },
-            "finfo": "audio/basic",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.au",
-            "name": "tone.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/basic",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.au",
-            "name": "tone.pdf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/basic",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.caf",
-            "name": "tone.caf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.caf",
-            "name": "tone.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.caf",
-            "name": "tone.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.caf",
-            "name": "tone.mp3",
-            "result": {
-                "ext": "mp3",
-                "type": "audio/mpeg",
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.caf",
-            "name": "tone.mp4",
-            "result": {
-                "ext": "mp4",
-                "type": "video/mp4",
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.caf",
-            "name": "tone.mka",
-            "result": {
-                "ext": "mka",
-                "type": "audio/x-matroska",
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.caf",
-            "name": "tone.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.caf",
-            "name": "tone.pdf",
-            "result": {
-                "ext": "pdf",
-                "type": "application/pdf",
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.eac3",
-            "name": "tone.eac3",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/vnd.dolby.dd-raw",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.eac3",
-            "name": "tone.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/vnd.dolby.dd-raw",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.eac3",
-            "name": "tone.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/vnd.dolby.dd-raw",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.eac3",
-            "name": "tone.mp3",
-            "result": {
-                "ext": "mp3",
-                "type": "audio/mpeg",
-                "proper_filename": false
-            },
-            "finfo": "audio/vnd.dolby.dd-raw",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.eac3",
-            "name": "tone.mp4",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/vnd.dolby.dd-raw",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.eac3",
-            "name": "tone.mka",
-            "result": {
-                "ext": "mka",
-                "type": "audio/x-matroska",
-                "proper_filename": false
-            },
-            "finfo": "audio/vnd.dolby.dd-raw",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.eac3",
-            "name": "tone.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/vnd.dolby.dd-raw",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.eac3",
-            "name": "tone.pdf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/vnd.dolby.dd-raw",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.mp2",
-            "name": "tone.mp2",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.mp2",
-            "name": "tone.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.mp2",
-            "name": "tone.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.mp2",
-            "name": "tone.mp3",
-            "result": {
-                "ext": "mp3",
-                "type": "audio/mpeg",
-                "proper_filename": false
-            },
-            "finfo": "audio/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.mp2",
-            "name": "tone.mp4",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.mp2",
-            "name": "tone.mka",
-            "result": {
-                "ext": "mka",
-                "type": "audio/x-matroska",
-                "proper_filename": false
-            },
-            "finfo": "audio/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.mp2",
-            "name": "tone.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.mp2",
-            "name": "tone.pdf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/mpeg",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.tta",
-            "name": "tone.tta",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.tta",
-            "name": "tone.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.tta",
-            "name": "tone.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.tta",
-            "name": "tone.mp3",
-            "result": {
-                "ext": "mp3",
-                "type": "audio/mpeg",
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.tta",
-            "name": "tone.mp4",
-            "result": {
-                "ext": "mp4",
-                "type": "video/mp4",
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.tta",
-            "name": "tone.mka",
-            "result": {
-                "ext": "mka",
-                "type": "audio/x-matroska",
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.tta",
-            "name": "tone.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.tta",
-            "name": "tone.pdf",
-            "result": {
-                "ext": "pdf",
-                "type": "application/pdf",
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.voc",
-            "name": "tone.voc",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/x-unknown",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.voc",
-            "name": "tone.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/x-unknown",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.voc",
-            "name": "tone.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/x-unknown",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.voc",
-            "name": "tone.mp3",
-            "result": {
-                "ext": "mp3",
-                "type": "audio/mpeg",
-                "proper_filename": false
-            },
-            "finfo": "audio/x-unknown",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.voc",
-            "name": "tone.mp4",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/x-unknown",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.voc",
-            "name": "tone.mka",
-            "result": {
-                "ext": "mka",
-                "type": "audio/x-matroska",
-                "proper_filename": false
-            },
-            "finfo": "audio/x-unknown",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.voc",
-            "name": "tone.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/x-unknown",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.voc",
-            "name": "tone.pdf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/x-unknown",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.w64",
-            "name": "tone.w64",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/x-w64",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.w64",
-            "name": "tone.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/x-w64",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.w64",
-            "name": "tone.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/x-w64",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.w64",
-            "name": "tone.mp3",
-            "result": {
-                "ext": "mp3",
-                "type": "audio/mpeg",
-                "proper_filename": false
-            },
-            "finfo": "audio/x-w64",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.w64",
-            "name": "tone.mp4",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/x-w64",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.w64",
-            "name": "tone.mka",
-            "result": {
-                "ext": "mka",
-                "type": "audio/x-matroska",
-                "proper_filename": false
-            },
-            "finfo": "audio/x-w64",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.w64",
-            "name": "tone.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/x-w64",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.w64",
-            "name": "tone.pdf",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "audio/x-w64",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.wv",
-            "name": "tone.wv",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.wv",
-            "name": "tone.jpg",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.wv",
-            "name": "tone.png",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.wv",
-            "name": "tone.mp3",
-            "result": {
-                "ext": "mp3",
-                "type": "audio/mpeg",
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.wv",
-            "name": "tone.mp4",
-            "result": {
-                "ext": "mp4",
-                "type": "video/mp4",
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.wv",
-            "name": "tone.mka",
-            "result": {
-                "ext": "mka",
-                "type": "audio/x-matroska",
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.wv",
-            "name": "tone.txt",
-            "result": {
-                "ext": false,
-                "type": false,
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
-            "image_mime": false
-        },
-        {
-            "file": "uploads/tone.wv",
-            "name": "tone.pdf",
-            "result": {
-                "ext": "pdf",
-                "type": "application/pdf",
-                "proper_filename": false
-            },
-            "finfo": "application/octet-stream",
             "image_mime": false
         },
         {
@@ -8969,6 +7649,1326 @@
             },
             "finfo": "image/jpeg",
             "image_mime": "image/jpeg"
+        },
+        {
+            "file": "uploads/bars.dv",
+            "name": "bars.dv",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/x-dv",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.dv",
+            "name": "bars.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/x-dv",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.dv",
+            "name": "bars.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/x-dv",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.dv",
+            "name": "bars.mp3",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/x-dv",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.dv",
+            "name": "bars.mp4",
+            "result": {
+                "ext": "mp4",
+                "type": "video/mp4",
+                "proper_filename": false
+            },
+            "finfo": "video/x-dv",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.dv",
+            "name": "bars.mka",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/x-dv",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.dv",
+            "name": "bars.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/x-dv",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.dv",
+            "name": "bars.pdf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/x-dv",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2ts",
+            "name": "bars.m2ts",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/MP2T",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2ts",
+            "name": "bars.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/MP2T",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2ts",
+            "name": "bars.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/MP2T",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2ts",
+            "name": "bars.mp3",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/MP2T",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2ts",
+            "name": "bars.mp4",
+            "result": {
+                "ext": "mp4",
+                "type": "video/mp4",
+                "proper_filename": false
+            },
+            "finfo": "video/MP2T",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2ts",
+            "name": "bars.mka",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/MP2T",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2ts",
+            "name": "bars.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/MP2T",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2ts",
+            "name": "bars.pdf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/MP2T",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2v",
+            "name": "bars.m2v",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2v",
+            "name": "bars.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2v",
+            "name": "bars.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2v",
+            "name": "bars.mp3",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2v",
+            "name": "bars.mp4",
+            "result": {
+                "ext": "mp4",
+                "type": "video/mp4",
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2v",
+            "name": "bars.mka",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2v",
+            "name": "bars.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.m2v",
+            "name": "bars.pdf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.mxf",
+            "name": "bars.mxf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/mxf",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.mxf",
+            "name": "bars.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/mxf",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.mxf",
+            "name": "bars.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/mxf",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.mxf",
+            "name": "bars.mp3",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/mxf",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.mxf",
+            "name": "bars.mp4",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/mxf",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.mxf",
+            "name": "bars.mka",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/mxf",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.mxf",
+            "name": "bars.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/mxf",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.mxf",
+            "name": "bars.pdf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/mxf",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.ogm",
+            "name": "bars.ogm",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/ogg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.ogm",
+            "name": "bars.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/ogg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.ogm",
+            "name": "bars.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/ogg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.ogm",
+            "name": "bars.mp3",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/ogg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.ogm",
+            "name": "bars.mp4",
+            "result": {
+                "ext": "mp4",
+                "type": "video/mp4",
+                "proper_filename": false
+            },
+            "finfo": "video/ogg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.ogm",
+            "name": "bars.mka",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/ogg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.ogm",
+            "name": "bars.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/ogg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.ogm",
+            "name": "bars.pdf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/ogg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.rm",
+            "name": "bars.rm",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/vnd.rn-realmedia",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.rm",
+            "name": "bars.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/vnd.rn-realmedia",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.rm",
+            "name": "bars.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/vnd.rn-realmedia",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.rm",
+            "name": "bars.mp3",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/vnd.rn-realmedia",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.rm",
+            "name": "bars.mp4",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/vnd.rn-realmedia",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.rm",
+            "name": "bars.mka",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/vnd.rn-realmedia",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.rm",
+            "name": "bars.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/vnd.rn-realmedia",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.rm",
+            "name": "bars.pdf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/vnd.rn-realmedia",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.vob",
+            "name": "bars.vob",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.vob",
+            "name": "bars.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.vob",
+            "name": "bars.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.vob",
+            "name": "bars.mp3",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.vob",
+            "name": "bars.mp4",
+            "result": {
+                "ext": "mp4",
+                "type": "video/mp4",
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.vob",
+            "name": "bars.mka",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.vob",
+            "name": "bars.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/bars.vob",
+            "name": "bars.pdf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "video/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.au",
+            "name": "tone.au",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/basic",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.au",
+            "name": "tone.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/basic",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.au",
+            "name": "tone.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/basic",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.au",
+            "name": "tone.mp3",
+            "result": {
+                "ext": "mp3",
+                "type": "audio/mpeg",
+                "proper_filename": false
+            },
+            "finfo": "audio/basic",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.au",
+            "name": "tone.mp4",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/basic",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.au",
+            "name": "tone.mka",
+            "result": {
+                "ext": "mka",
+                "type": "audio/x-matroska",
+                "proper_filename": false
+            },
+            "finfo": "audio/basic",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.au",
+            "name": "tone.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/basic",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.au",
+            "name": "tone.pdf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/basic",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.caf",
+            "name": "tone.caf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.caf",
+            "name": "tone.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.caf",
+            "name": "tone.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.caf",
+            "name": "tone.mp3",
+            "result": {
+                "ext": "mp3",
+                "type": "audio/mpeg",
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.caf",
+            "name": "tone.mp4",
+            "result": {
+                "ext": "mp4",
+                "type": "video/mp4",
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.caf",
+            "name": "tone.mka",
+            "result": {
+                "ext": "mka",
+                "type": "audio/x-matroska",
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.caf",
+            "name": "tone.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.caf",
+            "name": "tone.pdf",
+            "result": {
+                "ext": "pdf",
+                "type": "application/pdf",
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.eac3",
+            "name": "tone.eac3",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/vnd.dolby.dd-raw",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.eac3",
+            "name": "tone.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/vnd.dolby.dd-raw",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.eac3",
+            "name": "tone.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/vnd.dolby.dd-raw",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.eac3",
+            "name": "tone.mp3",
+            "result": {
+                "ext": "mp3",
+                "type": "audio/mpeg",
+                "proper_filename": false
+            },
+            "finfo": "audio/vnd.dolby.dd-raw",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.eac3",
+            "name": "tone.mp4",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/vnd.dolby.dd-raw",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.eac3",
+            "name": "tone.mka",
+            "result": {
+                "ext": "mka",
+                "type": "audio/x-matroska",
+                "proper_filename": false
+            },
+            "finfo": "audio/vnd.dolby.dd-raw",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.eac3",
+            "name": "tone.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/vnd.dolby.dd-raw",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.eac3",
+            "name": "tone.pdf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/vnd.dolby.dd-raw",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.mp2",
+            "name": "tone.mp2",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.mp2",
+            "name": "tone.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.mp2",
+            "name": "tone.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.mp2",
+            "name": "tone.mp3",
+            "result": {
+                "ext": "mp3",
+                "type": "audio/mpeg",
+                "proper_filename": false
+            },
+            "finfo": "audio/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.mp2",
+            "name": "tone.mp4",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.mp2",
+            "name": "tone.mka",
+            "result": {
+                "ext": "mka",
+                "type": "audio/x-matroska",
+                "proper_filename": false
+            },
+            "finfo": "audio/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.mp2",
+            "name": "tone.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.mp2",
+            "name": "tone.pdf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/mpeg",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.tta",
+            "name": "tone.tta",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.tta",
+            "name": "tone.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.tta",
+            "name": "tone.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.tta",
+            "name": "tone.mp3",
+            "result": {
+                "ext": "mp3",
+                "type": "audio/mpeg",
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.tta",
+            "name": "tone.mp4",
+            "result": {
+                "ext": "mp4",
+                "type": "video/mp4",
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.tta",
+            "name": "tone.mka",
+            "result": {
+                "ext": "mka",
+                "type": "audio/x-matroska",
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.tta",
+            "name": "tone.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.tta",
+            "name": "tone.pdf",
+            "result": {
+                "ext": "pdf",
+                "type": "application/pdf",
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.voc",
+            "name": "tone.voc",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/x-unknown",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.voc",
+            "name": "tone.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/x-unknown",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.voc",
+            "name": "tone.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/x-unknown",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.voc",
+            "name": "tone.mp3",
+            "result": {
+                "ext": "mp3",
+                "type": "audio/mpeg",
+                "proper_filename": false
+            },
+            "finfo": "audio/x-unknown",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.voc",
+            "name": "tone.mp4",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/x-unknown",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.voc",
+            "name": "tone.mka",
+            "result": {
+                "ext": "mka",
+                "type": "audio/x-matroska",
+                "proper_filename": false
+            },
+            "finfo": "audio/x-unknown",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.voc",
+            "name": "tone.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/x-unknown",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.voc",
+            "name": "tone.pdf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/x-unknown",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.w64",
+            "name": "tone.w64",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/x-w64",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.w64",
+            "name": "tone.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/x-w64",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.w64",
+            "name": "tone.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/x-w64",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.w64",
+            "name": "tone.mp3",
+            "result": {
+                "ext": "mp3",
+                "type": "audio/mpeg",
+                "proper_filename": false
+            },
+            "finfo": "audio/x-w64",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.w64",
+            "name": "tone.mp4",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/x-w64",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.w64",
+            "name": "tone.mka",
+            "result": {
+                "ext": "mka",
+                "type": "audio/x-matroska",
+                "proper_filename": false
+            },
+            "finfo": "audio/x-w64",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.w64",
+            "name": "tone.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/x-w64",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.w64",
+            "name": "tone.pdf",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "audio/x-w64",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.wv",
+            "name": "tone.wv",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.wv",
+            "name": "tone.jpg",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.wv",
+            "name": "tone.png",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.wv",
+            "name": "tone.mp3",
+            "result": {
+                "ext": "mp3",
+                "type": "audio/mpeg",
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.wv",
+            "name": "tone.mp4",
+            "result": {
+                "ext": "mp4",
+                "type": "video/mp4",
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.wv",
+            "name": "tone.mka",
+            "result": {
+                "ext": "mka",
+                "type": "audio/x-matroska",
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.wv",
+            "name": "tone.txt",
+            "result": {
+                "ext": false,
+                "type": false,
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
+        },
+        {
+            "file": "uploads/tone.wv",
+            "name": "tone.pdf",
+            "result": {
+                "ext": "pdf",
+                "type": "application/pdf",
+                "proper_filename": false
+            },
+            "finfo": "application/octet-stream",
+            "image_mime": false
         }
     ]
 }
