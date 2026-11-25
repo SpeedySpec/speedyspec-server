@@ -1,0 +1,16 @@
+[package]
+name = "speedyspec-wp-meta-sql"
+version = "0.1.0"
+publish = false
+description = "The meta row mapper: a meta table row to the meta entity and back."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[package.metadata.speedyspec]
+seam = "meta"
+role = "adapter"
+
+[dependencies]
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-wp-meta-contracts = { path = "../speedyspec-wp-meta-contracts" }

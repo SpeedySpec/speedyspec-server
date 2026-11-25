@@ -1,0 +1,18 @@
+[package]
+name = "speedyspec-wp-meta-contracts"
+version = "0.1.0"
+publish = false
+description = "WordPress's metadata API contracts: the meta values, the entity and its errors."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[package.metadata.speedyspec]
+seam = "meta"
+role = "contracts"
+
+[dependencies]
+speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+
+[features]
+conformance = []
