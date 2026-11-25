@@ -6,15 +6,18 @@
 //! replayed on one `PostStatusRegistry` each; the `lists` scenario: get_post_types(), get_post_stati(),
 //! get_post_types_by_support() and the exists, hierarchical and viewable predicates over registered types,
 //! statuses and features; and get_post_statuses(), get_page_statuses() and
-//! _wp_privacy_statuses() untranslated.
+//! _wp_privacy_statuses() untranslated; and the `initial` runs: create_initial_post_types() from a clean state,
+//! with and without permalinks and attachment pages, the globals, actions and taxonomies it left, and the queries
+//! run after it.
 
 mod support;
 
 use speedyspec_php_serialize::semantics::is_empty;
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::{
-    LabelSource, Untranslated, merge_filtered_labels, meta_capabilities, page_statuses,
-    post_statuses, post_type_capabilities, post_type_labels, privacy_statuses, resolve_post_type,
+    InitialOptions, LabelSource, Untranslated, create_initial_post_types, merge_filtered_labels,
+    meta_capabilities, page_statuses, post_statuses, post_type_capabilities, post_type_labels,
+    privacy_statuses, resolve_post_type,
 };
 use speedyspec_wp_posts_contracts::{PostStatuses, PostTypeName, PostTypeSupports, PostTypes};
 
@@ -364,4 +367,77 @@ fn list_scenarios_match_wordpress() {
         assert_scenario_state(scenario, &registries);
     }
     assert_eq!(calls, 87);
+}
+
+#[test]
+fn initial_post_types_match_wordpress() {
+    let cases = support::cases();
+    let runs = cases["initial"].as_array().unwrap();
+    assert_eq!(runs.len(), 2);
+    let mut queries = 0;
+    for run in runs {
+        let run_name = run["name"].as_str().unwrap();
+        let ports = support::ports(!run["permalinks"].as_str().unwrap().is_empty());
+        let options = InitialOptions {
+            attachment_pages_enabled: run["attachment_pages"].as_str().unwrap() == "1",
+        };
+        let mut registries = support::Registries::default();
+        let registrations = create_initial_post_types(
+            &mut registries.post_types,
+            &mut registries.statuses,
+            &options,
+            &ports,
+        );
+        assert_scenario_state(run, &registries);
+
+        let actions: Vec<support::Action> = registrations
+            .iter()
+            .flat_map(|r| r.actions.iter())
+            .map(|a| {
+                (
+                    PhpValue::Str(a.hook.as_bytes().to_vec()),
+                    a.callback.clone(),
+                    a.priority,
+                    i64::from(a.accepted_args),
+                )
+            })
+            .collect();
+        assert_eq!(
+            actions,
+            support::recorded_actions(&run["actions"]),
+            "initial/{run_name} actions"
+        );
+        let taxonomies: Vec<serde_json::Value> = registrations
+            .iter()
+            .flat_map(|r| {
+                r.taxonomies.iter().map(|t| {
+                    serde_json::json!([
+                        String::from_utf8(speedyspec_php_serialize::semantics::to_php_string(t))
+                            .unwrap(),
+                        r.post_type.name().as_str()
+                    ])
+                })
+            })
+            .collect();
+        assert_eq!(
+            serde_json::Value::Array(taxonomies),
+            run["taxonomies"],
+            "initial/{run_name} taxonomies"
+        );
+
+        support::replay_calls(registries, &run["queries"], &ports, |call, got, _| {
+            queries += 1;
+            let at = format!("initial/{run_name}/{queries}/{}", call["fn"]);
+            assert_eq!(
+                support::normalize_keys(got.result),
+                support::normalize_keys(support::decode(&call["result"])),
+                "{at} result"
+            );
+            assert_eq!(
+                got.doing_it_wrong, call["doing_it_wrong"],
+                "{at} doing_it_wrong"
+            );
+        });
+    }
+    assert_eq!(queries, 68);
 }

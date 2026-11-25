@@ -1,9 +1,10 @@
 //! WordPress's post type and post status rules: the key rule for names, the post type labels and capabilities,
 //! `WP_Post_Type`'s argument resolution, the post type registry with its supports and meta capabilities, and the
 //! post status rules and registry, the filtered post type and status lists, and the exists, hierarchical and
-//! viewable predicates.
+//! viewable predicates, and `create_initial_post_types()`.
 
 mod caps;
+mod initial;
 mod key;
 mod labels;
 mod list;
@@ -13,6 +14,7 @@ mod registry;
 mod status;
 
 pub use caps::{meta_capabilities, post_type_capabilities};
+pub use initial::{InitialOptions, create_initial_post_types};
 
 pub use key::{NAME_LENGTH_VERSION, check_post_type_name, sanitize_key};
 pub use labels::{

@@ -322,6 +322,8 @@ mod tests {
         // `1 == 'yes'` is false in PHP 8: 'yes' is not numeric, so 1 compares as "1".
         assert_eq!(query(PhpValue::Int(1)), ["book", "one"]);
         assert_eq!(query(s("1")), ["book", "one"]);
+        // `true == 'yes'` is true, `1 == 'yes'` is false (PHP 8.5.12, the static PHP).
+        assert_eq!(query(s("yes")), ["book", "yes"]);
         assert_eq!(query(PhpValue::Bool(false)), ["secret"]);
     }
 

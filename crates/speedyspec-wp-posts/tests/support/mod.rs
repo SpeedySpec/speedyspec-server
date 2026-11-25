@@ -247,11 +247,21 @@ pub struct Registries {
 /// Replays a scenario on one [`Registries`], calling `each` with every recorded call, what the registries answered
 /// and the registries after it; returns the registries at the end.
 #[allow(dead_code)]
-pub fn replay(scenario: &Value, mut each: impl FnMut(&Value, Replayed, &Registries)) -> Registries {
+pub fn replay(scenario: &Value, each: impl FnMut(&Value, Replayed, &Registries)) -> Registries {
     let ports = ports(!scenario["permalinks"].as_str().unwrap().is_empty());
-    let mut registries = Registries::default();
+    replay_calls(Registries::default(), &scenario["calls"], &ports, each)
+}
+
+/// Replays recorded `calls` on `registries`, as [`replay`] does, from whatever state they hold.
+#[allow(dead_code)]
+pub fn replay_calls(
+    mut registries: Registries,
+    calls: &Value,
+    ports: &PostTypePorts<'_>,
+    mut each: impl FnMut(&Value, Replayed, &Registries),
+) -> Registries {
     let mut hooks = Hooks::default();
-    for call in scenario["calls"].as_array().unwrap() {
+    for call in calls.as_array().unwrap() {
         let PhpValue::Array(args) = decode(&call["args"]) else {
             panic!("args is an array");
         };
@@ -283,7 +293,7 @@ pub fn replay(scenario: &Value, mut each: impl FnMut(&Value, Replayed, &Registri
                         let registration =
                             registries
                                 .post_types
-                                .register(name.clone(), type_args, &ports);
+                                .register(name.clone(), type_args, ports);
                         replayed.actions = registration
                             .actions
                             .into_iter()

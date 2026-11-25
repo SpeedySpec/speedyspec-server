@@ -51,7 +51,7 @@ fn not(value: Option<&PhpValue>) -> PhpValue {
 }
 
 /// `_n_noop( $singular, $plural )`.
-fn n_noop(singular: PhpValue, plural: PhpValue) -> PhpValue {
+pub(crate) fn n_noop(singular: PhpValue, plural: PhpValue) -> PhpValue {
     let key = |k: &str| PhpKey::Str(k.as_bytes().to_vec());
     PhpValue::Array(vec![
         (PhpKey::Int(0), singular.clone()),
