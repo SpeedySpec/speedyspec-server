@@ -32,6 +32,7 @@ pub use queries::{
 };
 pub use registry::{
     ActionToAdd, ActionToRemove, PostTypeRegistration, PostTypeRegistry, PostTypeUnregistration,
+    SupportToAdd, add_supports, unregistration,
 };
 pub use status::{
     PostStatusRegistry, page_statuses, post_statuses, privacy_statuses, resolve_post_status,

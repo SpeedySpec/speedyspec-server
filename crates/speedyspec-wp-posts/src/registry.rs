@@ -7,6 +7,11 @@
 //! adapter. Rewrite rules and query vars are left to the rewrite seam. `add_supports()` walks an object `supports`'
 //! properties as it walks an array's entries, as PHP's `foreach` does.
 //!
+//! The write side is pure, so phase 4's PHP adapter can apply it to `$_wp_post_type_features` and
+//! `$post_type_meta_caps` itself: [`add_supports`] reads the features through the [`PostTypeSupports`] port and
+//! returns the `add_post_type_support()` calls to make, and [`unregistration`] returns the features and meta
+//! capabilities to remove. [`PostTypeRegistry`] is the in-memory adapter that applies both to its own maps.
+//!
 //! Approximations, none of them recorded:
 //! - a non-empty `supports` that is neither an array nor an object adds no features (PHP warns in `foreach`) and is
 //!   still removed;
@@ -60,13 +65,146 @@ pub struct PostTypeRegistration {
     pub taxonomies: Vec<PhpValue>,
 }
 
-/// What `unregister_post_type()` removed and what it leaves to the adapter.
+/// What `unregister_post_type()` removes and what it leaves to the adapter.
 #[derive(Debug, Clone)]
 pub struct PostTypeUnregistration {
     /// The object that was registered.
     pub post_type: PostType,
+    /// `remove_supports()`: the `$_wp_post_type_features` key to unset (the post type's name).
+    pub supports_to_remove: String,
+    /// `remove_rewrite_rules()`: the `$post_type_meta_caps` keys to unset, one per array-key `cap` value, in
+    /// order.
+    pub meta_caps_to_remove: Vec<String>,
     /// `unregister_meta_boxes()` (priority 10, when the callback is truthy), then `remove_hooks()` (priority 5).
     pub actions: Vec<ActionToRemove>,
+}
+
+/// An `add_post_type_support( $post_type, $feature, ...$args )` call the adapter makes.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SupportToAdd {
+    /// The post type.
+    pub post_type: String,
+    /// `$feature`, as the list `(array) $feature` makes it. Never empty: a call with no features adds nothing and
+    /// is left out.
+    pub features: Vec<String>,
+    /// `...$args`: empty stores `true`, otherwise the list is stored.
+    pub args: Vec<PhpValue>,
+}
+
+impl SupportToAdd {
+    fn new(post_type: &str, features: Vec<String>, args: Vec<PhpValue>) -> Self {
+        Self {
+            post_type: post_type.to_owned(),
+            features,
+            args,
+        }
+    }
+
+    fn adds(&self, feature: &str) -> bool {
+        self.features.iter().any(|f| f == feature)
+    }
+}
+
+/// `WP_Post_Type::add_supports()`: the `add_post_type_support()` calls it makes, in order, given the features
+/// `supports` holds before them. Unsets `supports` on the object when it was not empty, as WordPress does.
+///
+/// The `editor`-implies-`autosave` rule asks `post_type_supports()` after the loop's calls, so it counts a feature
+/// that was already there (a plugin's `add_post_type_support()` before registration) as well as one the loop adds.
+/// `add_post_type_support()` only adds, so that is `supports` or the calls.
+pub fn add_supports(
+    post_type: &mut PostType,
+    supports: &dyn PostTypeSupports,
+) -> Vec<SupportToAdd> {
+    let name = post_type.name().as_str().to_owned();
+    let value = post_type.get("supports").cloned().unwrap_or(PhpValue::Null);
+    let mut calls = Vec::new();
+    if !is_empty(&value) {
+        // `foreach ( $this->supports as $feature => $args )`: an array's entries or an object's properties.
+        if let PhpValue::Array(items)
+        | PhpValue::Object {
+            properties: items, ..
+        } = value
+        {
+            for (feature, args) in items {
+                if matches!(args, PhpValue::Array(_)) {
+                    calls.push(SupportToAdd::new(
+                        &name,
+                        vec![key_to_string(&feature)],
+                        vec![args],
+                    ));
+                } else {
+                    let features: Vec<String> = to_array(args)
+                        .iter()
+                        .filter_map(|(_, f)| to_array_key(f))
+                        .map(|f| key_to_string(&f))
+                        .collect();
+                    if !features.is_empty() {
+                        calls.push(SupportToAdd::new(&name, features, Vec::new()));
+                    }
+                }
+            }
+        }
+        post_type.remove("supports");
+        // 'editor' implies 'autosave' for backward compatibility.
+        let supported = |feature: &str| {
+            supports.supports(&name, feature) || calls.iter().any(|c| c.adds(feature))
+        };
+        if supported("editor") && !supported("autosave") {
+            calls.push(SupportToAdd::new(
+                &name,
+                vec!["autosave".to_owned()],
+                Vec::new(),
+            ));
+        }
+    } else if !matches!(value, PhpValue::Bool(false)) {
+        let defaults = ["title", "editor", "autosave"].map(str::to_owned).to_vec();
+        calls.push(SupportToAdd::new(&name, defaults, Vec::new()));
+    }
+    calls
+}
+
+/// `unregister_post_type()` for a registered type: `Builtin` when its `_builtin` is truthy; otherwise its features,
+/// the meta capability of every `cap` value and its actions, for the registry or adapter to remove.
+pub fn unregistration(post_type: PostType) -> Result<PostTypeUnregistration, PostTypeError> {
+    if post_type.get("_builtin").is_some_and(|b| !is_empty(b)) {
+        return Err(PostTypeError::Builtin);
+    }
+    let name = post_type.name().as_str().to_owned();
+
+    // remove_rewrite_rules()' meta capabilities: `unset( $post_type_meta_caps[ $cap ] )` for every cap.
+    let caps = match post_type.get("cap") {
+        Some(PhpValue::Object { properties, .. }) => properties.as_slice(),
+        Some(PhpValue::Array(items)) => items.as_slice(),
+        _ => &[],
+    };
+    let meta_caps_to_remove = caps
+        .iter()
+        .filter_map(|(_, cap)| to_array_key(cap))
+        .map(|cap| key_to_string(&cap))
+        .collect();
+
+    let mut actions = Vec::new();
+    if let Some(cb) = post_type
+        .get("register_meta_box_cb")
+        .filter(|cb| !is_empty(cb))
+    {
+        actions.push(ActionToRemove {
+            hook: format!("add_meta_boxes_{name}"),
+            callback: cb.clone(),
+            priority: 10,
+        });
+    }
+    actions.push(ActionToRemove {
+        hook: format!("future_{name}"),
+        callback: PhpValue::Str(FUTURE_POST_HOOK.as_bytes().to_vec()),
+        priority: 5,
+    });
+    Ok(PostTypeUnregistration {
+        post_type,
+        supports_to_remove: name,
+        meta_caps_to_remove,
+        actions,
+    })
 }
 
 /// `$wp_post_types`, `$_wp_post_type_features` and `$post_type_meta_caps`, in insertion order.
@@ -99,7 +237,9 @@ impl PostTypeRegistry {
             self.meta_caps.insert(custom, core);
         }
         let mut post_type = resolved.post_type;
-        self.add_supports(&mut post_type);
+        for call in add_supports(&mut post_type, &*self) {
+            self.apply_support(call);
+        }
 
         let name = post_type.name().as_str().to_owned();
         let mut actions = Vec::new();
@@ -138,85 +278,25 @@ impl PostTypeRegistry {
         }
     }
 
-    /// `WP_Post_Type::add_supports()`.
-    fn add_supports(&mut self, post_type: &mut PostType) {
-        let name = post_type.name().as_str().to_owned();
-        let supports = post_type.get("supports").cloned().unwrap_or(PhpValue::Null);
-        if !is_empty(&supports) {
-            // `foreach ( $this->supports as $feature => $args )`: an array's entries or an object's properties.
-            if let PhpValue::Array(items)
-            | PhpValue::Object {
-                properties: items, ..
-            } = supports
-            {
-                for (feature, args) in items {
-                    if matches!(args, PhpValue::Array(_)) {
-                        self.add_support(&name, &[&key_to_string(&feature)], vec![args]);
-                    } else {
-                        let features: Vec<String> = to_array(args)
-                            .iter()
-                            .filter_map(|(_, f)| to_array_key(f))
-                            .map(|f| key_to_string(&f))
-                            .collect();
-                        let features: Vec<&str> = features.iter().map(String::as_str).collect();
-                        self.add_support(&name, &features, Vec::new());
-                    }
-                }
-            }
-            post_type.remove("supports");
-            // 'editor' implies 'autosave' for backward compatibility.
-            if self.supports(&name, "editor") && !self.supports(&name, "autosave") {
-                self.add_support(&name, &["autosave"], Vec::new());
-            }
-        } else if !matches!(supports, PhpValue::Bool(false)) {
-            self.add_support(&name, &["title", "editor", "autosave"], Vec::new());
-        }
-    }
-
     /// `unregister_post_type()`: `Invalid` when the type is missing, `Builtin` when its `_builtin` is truthy.
-    /// Otherwise removes the type's features, the meta capability of every `cap` value and the entry.
+    /// Otherwise applies [`unregistration`]: removes the type's features, the meta capability of every `cap` value
+    /// and the entry.
     pub fn unregister(&mut self, name: &str) -> Result<PostTypeUnregistration, PostTypeError> {
         let post_type = self.post_types.get(name).ok_or(PostTypeError::Invalid)?;
-        if post_type.get("_builtin").is_some_and(|b| !is_empty(b)) {
-            return Err(PostTypeError::Builtin);
+        let unregistration = unregistration(post_type.clone())?;
+        self.features
+            .shift_remove(&unregistration.supports_to_remove);
+        for cap in &unregistration.meta_caps_to_remove {
+            self.meta_caps.shift_remove(cap);
         }
+        self.post_types.shift_remove(name);
+        Ok(unregistration)
+    }
 
-        // remove_supports().
-        self.features.shift_remove(name);
-
-        // remove_rewrite_rules()' meta capabilities: `unset( $post_type_meta_caps[ $cap ] )` for every cap.
-        let caps = match post_type.get("cap") {
-            Some(PhpValue::Object { properties, .. }) => properties.clone(),
-            Some(PhpValue::Array(items)) => items.clone(),
-            _ => Vec::new(),
-        };
-        for (_, cap) in caps {
-            if let Some(cap) = to_array_key(&cap) {
-                self.meta_caps.shift_remove(&key_to_string(&cap));
-            }
-        }
-
-        let post_type = self
-            .post_types
-            .shift_remove(name)
-            .expect("checked present above");
-        let mut actions = Vec::new();
-        if let Some(cb) = post_type
-            .get("register_meta_box_cb")
-            .filter(|cb| !is_empty(cb))
-        {
-            actions.push(ActionToRemove {
-                hook: format!("add_meta_boxes_{name}"),
-                callback: cb.clone(),
-                priority: 10,
-            });
-        }
-        actions.push(ActionToRemove {
-            hook: format!("future_{name}"),
-            callback: PhpValue::Str(FUTURE_POST_HOOK.as_bytes().to_vec()),
-            priority: 5,
-        });
-        Ok(PostTypeUnregistration { post_type, actions })
+    /// Makes one [`SupportToAdd`] call.
+    pub fn apply_support(&mut self, call: SupportToAdd) {
+        let features: Vec<&str> = call.features.iter().map(String::as_str).collect();
+        self.add_support(&call.post_type, &features, call.args);
     }
 
     /// `add_post_type_support()`: each feature set to `true`, or to the `args` list when it is non-empty. No
@@ -297,5 +377,152 @@ impl PostTypeSupports for PostTypeRegistry {
             .keys()
             .map(|post_type| (post_type.clone(), self.all_supports(post_type)))
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn s(v: &str) -> PhpValue {
+        PhpValue::Str(v.as_bytes().to_vec())
+    }
+
+    fn k(v: &str) -> PhpKey {
+        PhpKey::Str(v.as_bytes().to_vec())
+    }
+
+    fn list(items: &[&str]) -> PhpValue {
+        PhpValue::Array(
+            items
+                .iter()
+                .zip(0..)
+                .map(|(v, i)| (PhpKey::Int(i), s(v)))
+                .collect(),
+        )
+    }
+
+    /// `$_wp_post_type_features` as a plugin left it before `register_post_type()`.
+    struct Features(Vec<(String, Vec<(String, PhpValue)>)>);
+
+    impl PostTypeSupports for Features {
+        fn supports(&self, post_type: &str, feature: &str) -> bool {
+            self.0
+                .iter()
+                .any(|(t, fs)| t == post_type && fs.iter().any(|(f, _)| f == feature))
+        }
+
+        fn features(&self) -> Vec<(String, Vec<(String, PhpValue)>)> {
+            self.0.clone()
+        }
+    }
+
+    fn book(supports: PhpValue) -> PostType {
+        PostType::new(
+            PostTypeName::new("book"),
+            vec![(k("name"), s("book")), (k("supports"), supports)],
+        )
+    }
+
+    fn call(features: &[&str], args: Vec<PhpValue>) -> SupportToAdd {
+        SupportToAdd::new(
+            "book",
+            features.iter().map(|f| (*f).to_owned()).collect(),
+            args,
+        )
+    }
+
+    #[test]
+    fn editor_added_by_a_plugin_before_registration_implies_autosave() {
+        // add_post_type_support( 'book', 'editor' ); register_post_type( 'book', array( 'supports' => array( 'title' ) ) ):
+        // post_type_supports( 'book', 'editor' ) is true after the loop, so WordPress adds 'autosave'.
+        let plugin = Features(vec![(
+            "book".to_owned(),
+            vec![("editor".to_owned(), PhpValue::Bool(true))],
+        )]);
+        let mut post_type = book(list(&["title"]));
+        assert_eq!(
+            add_supports(&mut post_type, &plugin),
+            [
+                call(&["title"], Vec::new()),
+                call(&["autosave"], Vec::new())
+            ]
+        );
+        assert_eq!(post_type.get("supports"), None);
+
+        // With 'autosave' there too, nothing more is added.
+        let plugin = Features(vec![(
+            "book".to_owned(),
+            vec![
+                ("editor".to_owned(), PhpValue::Bool(true)),
+                ("autosave".to_owned(), PhpValue::Bool(true)),
+            ],
+        )]);
+        let mut post_type = book(list(&["title"]));
+        assert_eq!(
+            add_supports(&mut post_type, &plugin),
+            [call(&["title"], Vec::new())]
+        );
+    }
+
+    #[test]
+    fn add_supports_keeps_wordpress_order() {
+        let none = Features(Vec::new());
+        let supports = PhpValue::Array(vec![
+            (PhpKey::Int(0), s("editor")),
+            (k("thumbnail"), list(&["x"])),
+            (PhpKey::Int(1), PhpValue::Null),
+        ]);
+        let mut post_type = book(supports);
+        assert_eq!(
+            add_supports(&mut post_type, &none),
+            [
+                call(&["editor"], Vec::new()),
+                call(&["thumbnail"], vec![list(&["x"])]),
+                call(&["autosave"], Vec::new()),
+            ]
+        );
+
+        // Empty `supports` adds the defaults and stays; `false` adds nothing.
+        let mut post_type = book(PhpValue::Null);
+        assert_eq!(
+            add_supports(&mut post_type, &none),
+            [call(&["title", "editor", "autosave"], Vec::new())]
+        );
+        assert_eq!(post_type.get("supports"), Some(&PhpValue::Null));
+        let mut post_type = book(PhpValue::Bool(false));
+        assert!(add_supports(&mut post_type, &none).is_empty());
+    }
+
+    #[test]
+    fn unregistration_returns_what_to_remove() {
+        let post_type = PostType::new(
+            PostTypeName::new("book"),
+            vec![
+                (k("name"), s("book")),
+                (
+                    k("cap"),
+                    PhpValue::Object {
+                        class: "stdClass".into(),
+                        properties: vec![
+                            (k("edit_post"), s("edit_tome")),
+                            (k("bad"), PhpValue::Array(Vec::new())),
+                            (k("read"), PhpValue::Int(7)),
+                        ],
+                    },
+                ),
+            ],
+        );
+        let removal = unregistration(post_type).unwrap();
+        assert_eq!(removal.supports_to_remove, "book");
+        // A non-key `cap` value removes nothing (PHP throws "Illegal offset type"); an int is its decimal key.
+        assert_eq!(removal.meta_caps_to_remove, ["edit_tome", "7"]);
+        assert_eq!(removal.actions.len(), 1);
+
+        let builtin = PostType::new(
+            PostTypeName::new("post"),
+            vec![(k("_builtin"), PhpValue::Bool(true))],
+        );
+        assert_eq!(unregistration(builtin).unwrap_err(), PostTypeError::Builtin);
     }
 }
