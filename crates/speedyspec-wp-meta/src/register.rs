@@ -11,11 +11,12 @@
 //! - a non-array `show_in_rest.schema` skips the merge into the default's schema, where PHP's `array_merge` throws.
 
 use speedyspec_php_serialize::{PhpKey, PhpValue};
-use speedyspec_wp_meta_contracts::{Callables, DefaultSchemaCheck, MetaKey, RevisionSupport};
+use speedyspec_wp_meta_contracts::{
+    Callables, DefaultSchemaCheck, MetaKey, ProtectedMeta, RevisionSupport,
+};
 
 use crate::hook_names::MetaHookNames;
 use crate::php::{array_merge, get, is_empty, isset, set, unset};
-use crate::protected::is_protected_key;
 
 /// `register_meta()`'s `$args` after the steps before the `register_meta_args` filter.
 #[derive(Clone, Debug, PartialEq)]
@@ -94,6 +95,8 @@ pub struct RegisterPorts<'a> {
     pub revisions: &'a dyn RevisionSupport,
     pub schema: &'a dyn DefaultSchemaCheck,
     pub callables: &'a dyn Callables,
+    /// `is_protected_meta()`, asked only when no `auth_callback` was given.
+    pub protected: &'a dyn ProtectedMeta,
 }
 
 const ARRAY_NEEDS_ITEMS: &str = "When registering an \"array\" meta type to show in the REST API, you must specify the schema for each array item in \"show_in_rest.schema.items\".";
@@ -236,7 +239,7 @@ pub fn resolve_registration(
 
     // If `auth_callback` is not provided, fall back to `is_protected_meta()`.
     if get(&args, "auth_callback").is_none_or(is_empty) {
-        let fallback: &[u8] = if is_protected_key(key) {
+        let fallback: &[u8] = if ports.protected.is_protected(key, object_type) {
             b"__return_false"
         } else {
             b"__return_true"
@@ -315,7 +318,10 @@ fn rejected(message: &str, version: &'static str, filters: Vec<FilterToAdd>) -> 
 
 #[cfg(test)]
 mod tests {
+    use std::cell::Cell;
+
     use super::*;
+    use crate::protected::UnfilteredProtection;
 
     struct Yes;
     impl RevisionSupport for Yes {
@@ -347,6 +353,7 @@ mod tests {
             revisions: &Yes,
             schema: &Yes,
             callables: &Yes,
+            protected: &UnfilteredProtection,
         };
         let prepared = prepare_registration(PhpValue::Array(args), None, &Yes);
         resolve_registration("post", &MetaKey::from("color"), prepared, &ports)
@@ -421,6 +428,7 @@ mod tests {
             revisions: &Yes,
             schema: &Yes,
             callables: &WithArrays,
+            protected: &UnfilteredProtection,
         };
         resolve_registration("post", &MetaKey::from("color"), prepared, &ports)
     }
@@ -489,5 +497,57 @@ mod tests {
         // The filter dropped the sanitize callback, so only the auth fallback is added.
         assert_eq!(filters.len(), 1);
         assert_eq!(filters[0].callback, s("__return_true"));
+    }
+
+    /// Counts how often `is_protected_meta()` is asked, and answers `protected`.
+    struct Counting {
+        asked: Cell<u32>,
+        protected: bool,
+    }
+    impl ProtectedMeta for Counting {
+        fn is_protected(&self, _: &MetaKey, meta_type: &str) -> bool {
+            assert_eq!(meta_type, "post");
+            self.asked.set(self.asked.get() + 1);
+            self.protected
+        }
+    }
+
+    fn register_with(protected: &Counting, args: Vec<(PhpKey, PhpValue)>) -> Registration {
+        let ports = RegisterPorts {
+            revisions: &Yes,
+            schema: &Yes,
+            callables: &Yes,
+            protected,
+        };
+        let prepared = prepare_registration(PhpValue::Array(args), None, &Yes);
+        resolve_registration("post", &MetaKey::from("color"), prepared, &ports)
+    }
+
+    #[test]
+    fn protected_port_is_not_asked_when_auth_callback_is_given() {
+        let port = Counting {
+            asked: Cell::new(0),
+            protected: true,
+        };
+        let Registration::Registered { key, .. } =
+            register_with(&port, vec![(k("auth_callback"), s("mine"))])
+        else {
+            panic!("registered");
+        };
+        assert_eq!(port.asked.get(), 0);
+        assert_eq!(key.arg("auth_callback"), Some(&s("mine")));
+    }
+
+    #[test]
+    fn protected_port_decides_the_fallback_auth_callback() {
+        let port = Counting {
+            asked: Cell::new(0),
+            protected: true,
+        };
+        let Registration::Registered { key, .. } = register_with(&port, vec![]) else {
+            panic!("registered");
+        };
+        assert_eq!(port.asked.get(), 1);
+        assert_eq!(key.arg("auth_callback"), Some(&s("__return_false")));
     }
 }

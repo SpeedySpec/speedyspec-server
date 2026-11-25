@@ -1,6 +1,6 @@
 //! `is_protected_meta()`'s built-in rule, before the `is_protected_meta` filter.
 
-use speedyspec_wp_meta_contracts::MetaKey;
+use speedyspec_wp_meta_contracts::{MetaKey, ProtectedMeta};
 
 /// `preg_replace( '/[^\x20-\x7E\p{L}]/', '', $key )` has no `u` flag, so it works on bytes: bytes 0x20-0x7E survive,
 /// and of 0x80-0xFF only the Latin-1 letter bytes do.
@@ -14,6 +14,15 @@ fn survives(byte: u8) -> bool {
 /// Whether the key is protected: its first surviving byte is `_`. The `is_protected_meta` filter is not applied.
 pub fn is_protected_key(key: &MetaKey) -> bool {
     key.as_bytes().iter().copied().find(|b| survives(*b)) == Some(b'_')
+}
+
+/// `is_protected_meta()` with no filter attached: the built-in rule alone.
+pub struct UnfilteredProtection;
+
+impl ProtectedMeta for UnfilteredProtection {
+    fn is_protected(&self, key: &MetaKey, _meta_type: &str) -> bool {
+        is_protected_key(key)
+    }
 }
 
 #[cfg(test)]

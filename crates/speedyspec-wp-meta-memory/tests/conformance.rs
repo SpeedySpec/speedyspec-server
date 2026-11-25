@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use speedyspec_wp_meta_contracts::conformance::meta_repository_suite;
+use speedyspec_wp_meta_contracts::conformance::{binary_safe_suite, meta_repository_suite};
 use speedyspec_wp_meta_contracts::{MetaRepositories, MetaType};
 use speedyspec_wp_meta_memory::{MemoryMetaRepositories, MemoryMetaRepository};
 
@@ -8,6 +8,11 @@ use speedyspec_wp_meta_memory::{MemoryMetaRepositories, MemoryMetaRepository};
 fn memory_repository_passes_the_suite() {
     meta_repository_suite(&MemoryMetaRepository::new(MetaType::new("post").unwrap()));
     meta_repository_suite(&MemoryMetaRepository::new(MetaType::new("user").unwrap()));
+}
+
+#[test]
+fn memory_repository_passes_the_binary_safe_suite() {
+    binary_safe_suite(&MemoryMetaRepository::new(MetaType::new("post").unwrap()));
 }
 
 #[test]

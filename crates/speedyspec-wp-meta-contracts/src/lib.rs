@@ -10,7 +10,7 @@ mod values;
 pub use entity::Meta;
 pub use error::MetaError;
 pub use ports::{
-    Callables, DefaultSchemaCheck, MetaRepositories, MetaRepository, ObjectSubtypes,
+    Callables, DefaultSchemaCheck, MetaRepositories, MetaRepository, ObjectSubtypes, ProtectedMeta,
     RevisionSupport,
 };
 pub use values::{MetaId, MetaKey, MetaType, ObjectId, SerializedValue};

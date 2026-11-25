@@ -7,15 +7,12 @@ use std::fmt;
 pub enum MetaError {
     /// The database reported a failure.
     Db(String),
-    /// A meta type with no table.
-    NoTable(String),
 }
 
 impl fmt::Display for MetaError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MetaError::Db(e) => write!(f, "the database failed: {e}"),
-            MetaError::NoTable(t) => write!(f, "the meta type {t} has no table"),
         }
     }
 }

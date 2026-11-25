@@ -60,7 +60,8 @@ pub trait MetaRepository {
     ) -> Result<u64, MetaError>;
     /// `delete_metadata_by_mid()`: `wpdb::delete WHERE {id} = %d`.
     fn delete_by_mid(&self, mid: MetaId) -> Result<u64, MetaError>;
-    /// `update_meta_cache()`: `SELECT {object}, meta_key, meta_value ... WHERE {object} IN (..) ORDER BY {id} ASC`.
+    /// `update_meta_cache()`'s query with the id column added, because [`Meta`] carries `mid`:
+    /// `SELECT {id}, {object}, meta_key, meta_value ... WHERE {object} IN (..) ORDER BY {id} ASC`.
     fn for_objects(&self, objects: &[ObjectId]) -> Result<Vec<Meta>, MetaError>;
 }
 
@@ -88,4 +89,10 @@ pub trait DefaultSchemaCheck {
 /// `is_callable()`, for `register_meta()`'s callback arguments (a PHP adapter answers for real callables).
 pub trait Callables {
     fn is_callable(&self, value: &PhpValue) -> bool;
+}
+
+/// `is_protected_meta()`'s answer, bound by the seam that applies the `is_protected_meta` filter.
+pub trait ProtectedMeta {
+    /// Whether `key` is protected for `meta_type` (the object type, as `register_meta()` passes it).
+    fn is_protected(&self, key: &MetaKey, meta_type: &str) -> bool;
 }

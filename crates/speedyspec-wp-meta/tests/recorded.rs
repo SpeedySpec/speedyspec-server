@@ -36,8 +36,8 @@ use indexmap::IndexMap;
 use serde_json::Value;
 use speedyspec_php_serialize::PhpKey;
 use speedyspec_wp_meta::{
-    MetaKeyRegistry, RegisterPorts, Registration, allowed_args, filters_to_remove,
-    prepare_registration, resolve_registration,
+    MetaKeyRegistry, RegisterPorts, Registration, UnfilteredProtection, allowed_args,
+    filters_to_remove, prepare_registration, resolve_registration,
 };
 use speedyspec_wp_meta_contracts::{
     Callables, DefaultSchemaCheck, MetaType, ObjectId, ObjectSubtypes, RevisionSupport,
@@ -105,6 +105,7 @@ fn ports() -> RegisterPorts<'static> {
         revisions: &Revisions,
         schema: &Schema,
         callables: &Named,
+        protected: &UnfilteredProtection,
     }
 }
 

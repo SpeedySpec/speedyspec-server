@@ -8,7 +8,7 @@ mod register;
 mod registry;
 
 pub use hook_names::MetaHookNames;
-pub use protected::is_protected_key;
+pub use protected::{UnfilteredProtection, is_protected_key};
 pub use register::{
     FilterToAdd, PreparedArgs, RegisterPorts, RegisteredMetaKey, Registration, allowed_args,
     prepare_registration, resolve_registration,

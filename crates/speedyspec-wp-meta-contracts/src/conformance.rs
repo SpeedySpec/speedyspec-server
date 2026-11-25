@@ -74,6 +74,20 @@ pub fn meta_repository_suite(repo: &dyn MetaRepository) {
         || format!("{untouched:?}"),
     );
 
+    // update_same_bytes_is_zero: MySQL's changed-rows count (wpdb has no CLIENT_FOUND_ROWS), which
+    // `update_metadata()` turns into false. Every row of object 1 holds "pink"; row `c` holds "green".
+    let same_by_key = repo
+        .update_by_key(ObjectId(1), &color, Some(&val("pink")), None)
+        .expect("update_by_key");
+    let same_by_mid = repo
+        .update_by_mid(c, &color, Some(&val("green")))
+        .expect("update_by_mid");
+    ensure(
+        "update_same_bytes_is_zero",
+        same_by_key == 0 && same_by_mid == 0,
+        || format!("{same_by_key} {same_by_mid}"),
+    );
+
     // update_by_key_previous_matches_only
     let size = key("size");
     let s1 = add(3, &size, Some(&val("s")));
@@ -299,6 +313,18 @@ pub fn meta_repository_suite(repo: &dyn MetaRepository) {
         nothing.is_empty(),
         || format!("{nothing:?}"),
     );
+}
+
+/// Checks for repositories whose columns are binary-safe (memory, latin1 or binary tables); `meta_repository_suite`
+/// leaves them out. On stock utf8mb4 tables `wpdb::process_fields()` strips invalid text and `$wpdb->insert` returns
+/// false, so a faithful SQL repository answers `Ok(None)` from `add` and fails this suite by design. Like
+/// `meta_repository_suite`, it needs an empty table.
+pub fn binary_safe_suite(repo: &dyn MetaRepository) {
+    let add = |object: u64, k: &MetaKey, v: Option<&SerializedValue>| {
+        repo.add(ObjectId(object), k, v)
+            .expect("add")
+            .expect("the insert returns an id")
+    };
 
     // non_utf8_key_and_value_round_trip
     let raw_key = MetaKey::new(vec![b'k', 0x00, 0xC2, 0xA0, 0xFF]);
