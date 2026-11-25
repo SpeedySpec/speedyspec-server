@@ -6366,6 +6366,7 @@ name = "speedyspec-wp-meta"
 version = "0.1.0"
 dependencies = [
  "hex",
+ "indexmap",
  "serde_json",
  "speedyspec-php-serialize",
  "speedyspec-wp-meta-contracts",

@@ -18,6 +18,13 @@ impl MetaHookNames {
         }
     }
 
+    /// For `register_meta()`'s `$object_type`, which WordPress does not check is non-empty.
+    pub(crate) fn for_object_type(object_type: &str) -> MetaHookNames {
+        MetaHookNames {
+            meta_type: object_type.to_owned(),
+        }
+    }
+
     fn named(&self, prefix: &str, suffix: &str) -> String {
         format!("{prefix}{}{suffix}", self.meta_type)
     }
