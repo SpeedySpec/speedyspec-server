@@ -17,8 +17,9 @@ pub const ROOT_BLOCK_SELECTOR: &str = "body";
 pub const ROOT_CSS_PROPERTIES_SELECTOR: &str = ":root";
 
 /// The WordPress release the embedded `wordpress-<release>.*` files were exported from. `include_bytes!` takes only a
-/// literal, so this macro is the one place the crate names the release; a test checks that
-/// `compat/theme-json/source.json` pins the same one.
+/// literal, so this macro is the one place the crate names the release; a test checks that it equals the theme-json
+/// area's release (`compat/theme-json/source.json`'s override, else `compat/wordpress.json`'s pin). Moving the pin
+/// edits this macro too.
 macro_rules! data_release {
     () => {
         "7.2-RC2"
@@ -220,16 +221,18 @@ mod tests {
 
     #[test]
     fn the_embedded_files_come_from_the_theme_json_areas_release() {
-        let path = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../compat/theme-json/source.json"
-        );
-        let source = std::fs::read_to_string(path).expect("compat/theme-json/source.json");
-        let pinned = format!("\"wordpress\": \"{}\"", data_release!());
-        assert!(
-            source.contains(&pinned),
-            "compat/theme-json/source.json does not pin WordPress {}: re-export the wordpress-<release>.* files \
-             with tools/ and change data_release!",
+        let compat = concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat");
+        let json = |path: String| -> serde_json::Value {
+            serde_json::from_str(&std::fs::read_to_string(&path).expect(&path)).expect(&path)
+        };
+        let source = json(format!("{compat}/theme-json/source.json"));
+        let table = json(format!("{compat}/wordpress.json"));
+        let release = source["wordpress"].as_str().or(table["wordpress"].as_str());
+        assert_eq!(
+            release,
+            Some(data_release!()),
+            "the theme-json area is recorded from WordPress {release:?}, not {}: re-export the \
+             wordpress-<release>.* files with tools/ and change data_release!",
             data_release!()
         );
     }

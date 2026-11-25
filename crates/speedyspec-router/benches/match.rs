@@ -19,13 +19,17 @@ impl RuleGuard for Accept {
 }
 
 fn fixture() -> serde_json::Value {
-    // The fixture of the release compat/rewrite/source.json pins.
+    // The fixture of the rewrite area's release: its source.json override, else compat/wordpress.json's pin.
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat/rewrite");
-    let source: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(format!("{dir}/source.json")).expect("compat/rewrite/source.json"),
-    )
-    .expect("json");
-    let version = source["wordpress"].as_str().expect("a pinned release");
+    let json = |path: String| -> serde_json::Value {
+        serde_json::from_str(&std::fs::read_to_string(&path).expect(&path)).expect("json")
+    };
+    let source = json(format!("{dir}/source.json"));
+    let table = json(format!("{dir}/../wordpress.json"));
+    let version = source["wordpress"]
+        .as_str()
+        .or(table["wordpress"].as_str())
+        .expect("a pinned release");
     serde_json::from_str(
         &std::fs::read_to_string(format!("{dir}/wordpress-{version}.json"))
             .expect("compat/rewrite fixture"),

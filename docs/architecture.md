@@ -89,10 +89,10 @@ WordPress's behaviour is not reimplemented from reading its code alone; it is re
 1. **A catalogue** (`compat/<area>/scenarios.json`): scenarios of calls, with callback fixtures ("append `-a`",
    "remove myself"), covering every function and method and the edge cases (priorities, recursion, changing a hook
    while it runs, the globals).
-2. **The recorder** (`cargo run -p speedyspec-compat -- record <area> --wordpress <version>`) fetches the pinned
-   WordPress release (`compat/<area>/source.json`, checked by SHA-256), runs every scenario against its original code
-   in the embedded PHP, and writes `compat/<area>/wordpress-<version>.json`: every return value, every callback
-   invocation, and the globals after each step.
+2. **The recorder** (`cargo run -p speedyspec-compat -- record <area> --wordpress <version>`) fetches WordPress
+   `<version>` from the release table (`compat/wordpress.json`, checked by SHA-256), runs every scenario against its
+   original code in the embedded PHP, and writes `compat/<area>/wordpress-<version>.json`: every return value, every
+   callback invocation, and the globals after each step.
 3. **The replayer** (`speedyspec_compat::replay`) runs the scenarios against the port and compares each step
    exactly. A difference fails unless `compat/<area>/breaks.json` lists it as a documented break.
 4. WordPress's own PHPUnit tests for the area also run against the port (`tests/php/`).
@@ -100,6 +100,25 @@ WordPress's behaviour is not reimplemented from reading its code alone; it is re
 
 The driver that runs scenarios (`speedyspec-compat/src/driver.php`) is the same on both sides, and normalises what
 depends on the implementation (object ids in callback ids, closures) to fixture labels.
+
+### The WordPress release
+
+`compat/wordpress.json` is the one release table: `wordpress`, the release the repository is pinned to, and
+`releases`, each release's tarball URL and SHA-256. Every area, `speedyspec_compat::wordpress_release`, and the kses
+testkit resolve releases from it. An area's `compat/<area>/source.json` is `{}`, or `{ "wordpress": "<version>" }`
+to keep that one area on another release in the table; `speedyspec_compat::area_wordpress` returns the override or
+the pin, and the replayer reads that release's fixture.
+
+Moving to a new release:
+
+1. Add its entry (URL and SHA-256) to `releases` in `compat/wordpress.json` and change `wordpress` to it.
+2. Re-record each area (`cargo run -p speedyspec-compat -- record <area> --wordpress <version>`; posts and meta with
+   their `record.php`), and regenerate the data two crates embed at compile time. `include_str!` and
+   `include_bytes!` take only literals, so each names the release in a `data_release!` macro, and a test fails until
+   the macro equals the area's release: `speedyspec-wp-kses` (`data/allowed-<release>.json`, from
+   `scripts/generate-allowed.php`) and `speedyspec-wp-theme-json-contracts` (`wordpress-<release>.*`, from `tools/`).
+3. Replay. A difference is a change in WordPress: follow it in the port, or list it in the area's `breaks.json`
+   with the reason.
 
 ### The Hook API's documented break
 

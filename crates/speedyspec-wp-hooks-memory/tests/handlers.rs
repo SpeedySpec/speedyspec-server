@@ -781,12 +781,17 @@ fn accepted_args_truncates() {
 
 #[test]
 fn callback_identity_matches_wordpress() {
-    // The fixture of the release compat/hooks/source.json pins.
+    // The fixture of the hooks area's release: its source.json override, else compat/wordpress.json's pin.
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat/hooks");
-    let source: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(format!("{dir}/source.json")).unwrap())
-            .unwrap();
-    let version = source["wordpress"].as_str().unwrap();
+    let json = |path: String| -> serde_json::Value {
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+    };
+    let source = json(format!("{dir}/source.json"));
+    let table = json(format!("{dir}/../wordpress.json"));
+    let version = source["wordpress"]
+        .as_str()
+        .or(table["wordpress"].as_str())
+        .unwrap();
     let fixture: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(format!("{dir}/wordpress-{version}.json")).unwrap(),
     )

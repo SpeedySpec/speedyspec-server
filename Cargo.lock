@@ -6882,6 +6882,7 @@ name = "speedyspec-wp-theme-json-contracts"
 version = "0.1.3"
 dependencies = [
  "indexmap",
+ "serde_json",
  "speedyspec-hooks",
  "speedyspec-php-serialize",
  "speedyspec-wp-kses-contracts",

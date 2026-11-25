@@ -7,27 +7,40 @@ use sha2::{Digest, Sha256};
 
 const LIMIT: u64 = 256 * 1024 * 1024;
 
-/// The kses area's pin, `compat/kses/source.json`: the release every comparison is made against, its URL and its
-/// SHA-256.
+/// The kses area's release: `compat/kses/source.json`'s `wordpress` override, else the repository's pin in
+/// `compat/wordpress.json`; and that release's URL and SHA-256 from the same table.
 struct Pin {
     wordpress: String,
     url: String,
     sha256: String,
 }
 
+fn json(path: &Path) -> Result<serde_json::Value, String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))
+}
+
 fn pin() -> Result<Pin, String> {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat/kses/source.json");
-    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let source: serde_json::Value =
-        serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+    let compat = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat");
+    let table_path = compat.join("wordpress.json");
+    let table = json(&table_path)?;
+    let area = compat.join("kses/source.json");
+    let source = if area.exists() {
+        json(&area)?
+    } else {
+        serde_json::Value::Null
+    };
     let field = |value: &serde_json::Value, name: &str| {
         value[name]
             .as_str()
             .map(str::to_owned)
-            .ok_or_else(|| format!("{}: no {name}", path.display()))
+            .ok_or_else(|| format!("{}: no {name}", table_path.display()))
     };
-    let wordpress = field(&source, "wordpress")?;
-    let release = &source["releases"][wordpress.as_str()];
+    let wordpress = match source["wordpress"].as_str() {
+        Some(version) => version.to_owned(),
+        None => field(&table, "wordpress")?,
+    };
+    let release = &table["releases"][wordpress.as_str()];
     Ok(Pin {
         url: field(release, "url")?,
         sha256: field(release, "sha256")?,
@@ -35,7 +48,8 @@ fn pin() -> Result<Pin, String> {
     })
 }
 
-/// The release every comparison is made against: `compat/kses/source.json`'s `wordpress`.
+/// The release every comparison is made against: the kses area's release (its `source.json` override, else the
+/// repository's pin).
 pub fn wordpress() -> String {
     pin().unwrap_or_else(|e| panic!("{e}")).wordpress
 }

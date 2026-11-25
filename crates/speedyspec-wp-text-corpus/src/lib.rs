@@ -205,12 +205,17 @@ struct Break {
 
 #[derive(Deserialize)]
 struct Source {
-    wordpress: String,
+    #[serde(default)]
+    wordpress: Option<String>,
 }
 
-/// The WordPress release the corpus was recorded from: `compat/formatting/source.json`'s `wordpress`.
+/// The WordPress release the corpus was recorded from: the formatting area's release, its `source.json`'s
+/// `wordpress` override, else the repository's pin in `compat/wordpress.json`.
 pub fn wordpress() -> String {
-    read::<Source>(&compat_dir().join("source.json")).wordpress
+    read::<Source>(&compat_dir().join("source.json"))
+        .wordpress
+        .or_else(|| read::<Source>(&compat_dir().join("../wordpress.json")).wordpress)
+        .expect("compat/wordpress.json pins a release")
 }
 
 fn compat_dir() -> PathBuf {

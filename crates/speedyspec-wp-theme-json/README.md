@@ -2,7 +2,7 @@
 
 WordPress's theme.json engine (`WP_Theme_JSON`, `WP_Theme_JSON_Schema`) in Rust, split into domain pieces, with
 `ThemeJsonApi` as the facade behind the PHP class. It follows the WordPress release every area is recorded
-against (`compat/*/source.json`). Arrays come back equal to WordPress's by PHP's `==`; CSS is byte for byte the same.
+against (`compat/wordpress.json`). Arrays come back equal to WordPress's by PHP's `==`; CSS is byte for byte the same.
 
 All four plans are in: the typed model, the schema tables, migration, sanitizing, construction, merging, the data
 methods, stylesheets (`get_stylesheet` for every type, `get_styles_for_block`, layout styles, preset variables and

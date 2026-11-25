@@ -5,7 +5,8 @@ use serde_json::Value as Json;
 use speedyspec_hooks::{Key, Value};
 
 /// The WordPress release `data/allowed-<release>.json` was generated from. `include_str!` takes only a literal, so this
-/// macro is the one place the crate names the release; a test checks that `compat/kses/source.json` pins the same one.
+/// macro is the one place the crate names the release; a test checks that it equals the kses area's release
+/// (`compat/kses/source.json`'s override, else `compat/wordpress.json`'s pin). Moving the pin edits this macro too.
 macro_rules! data_release {
     () => {
         "7.2-RC2"
@@ -155,15 +156,18 @@ pub fn allow_pdf_objects(url: &[u8], upload_url: &[u8]) -> bool {
 mod release {
     #[test]
     fn the_allowlists_come_from_the_kses_areas_release() {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat/kses/source.json");
-        let source: serde_json::Value =
-            serde_json::from_str(&std::fs::read_to_string(path).expect("compat/kses/source.json"))
-                .expect("compat/kses/source.json is JSON");
+        let compat = concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat");
+        let json = |path: String| -> serde_json::Value {
+            serde_json::from_str(&std::fs::read_to_string(&path).expect(&path)).expect(&path)
+        };
+        let source = json(format!("{compat}/kses/source.json"));
+        let table = json(format!("{compat}/wordpress.json"));
+        let release = source["wordpress"].as_str().or(table["wordpress"].as_str());
         assert_eq!(
-            source["wordpress"].as_str(),
+            release,
             Some(data_release!()),
-            "compat/kses/source.json does not pin WordPress {}: regenerate data/allowed-<release>.json with \
-             scripts/generate-allowed.php and change data_release!",
+            "the kses area is recorded from WordPress {release:?}, not {}: regenerate \
+             data/allowed-<release>.json with scripts/generate-allowed.php and change data_release!",
             data_release!()
         );
     }

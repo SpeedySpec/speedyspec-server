@@ -5,7 +5,7 @@
  * Usage: php record.php <wordpress-root> <out-dir> [<expected-wordpress-version>]
  *
  * The recording stops unless the release's `$wp_version` is the expected version: the third argument, else
- * `SPEEDYSPEC_COMPAT_WORDPRESS`, else the repository's pin, `compat/hooks/source.json`'s `wordpress`.
+ * `SPEEDYSPEC_COMPAT_WORDPRESS`, else the repository's pin, `compat/wordpress.json`'s `wordpress`.
  *
  * Run it with the static PHP the runtime embeds (`.php-build/buildroot/bin/php`) against the pinned WordPress root
  * that `speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())` unpacks.
@@ -75,7 +75,7 @@ if (!$root || !$out) {
 }
 if (!$expected) {
     $expected = getenv('SPEEDYSPEC_COMPAT_WORDPRESS')
-        ?: json_decode((string) file_get_contents(__DIR__ . '/../hooks/source.json'), true)['wordpress'];
+        ?: json_decode((string) file_get_contents(__DIR__ . '/../wordpress.json'), true)['wordpress'];
 }
 $root = rtrim($root, '/') . '/';
 define('ABSPATH', $root);
