@@ -1,0 +1,20 @@
+[package]
+name = "speedyspec-wp-meta"
+version = "0.1.0"
+publish = false
+description = "WordPress's metadata API rules: the protected-key rule and the meta hook names."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[package.metadata.speedyspec]
+seam = "meta"
+role = "implementation"
+
+[dependencies]
+speedyspec-wp-meta-contracts = { path = "../speedyspec-wp-meta-contracts" }
+speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+
+[dev-dependencies]
+serde_json = "1"
+hex = "0.4"
