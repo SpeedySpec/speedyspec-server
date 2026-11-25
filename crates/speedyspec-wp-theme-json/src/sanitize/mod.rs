@@ -215,8 +215,6 @@ fn build_schemas(input: &Value, valid: &ValidNames) -> Schemas {
                 for state in &breakpoints {
                     let mut state_schema = non_top.clone();
                     state_schema.set(key("elements"), elements.clone());
-                    // A snapshot: blocks earlier in this loop already carry their `variations`.
-                    state_schema.set(key("blocks"), blocks_styles.clone());
                     for selector in pseudos {
                         state_schema.set(key(selector), non_top.clone());
                     }
@@ -235,6 +233,35 @@ fn build_schemas(input: &Value, valid: &ValidNames) -> Schemas {
 
     let mut styles = VALID_STYLES.with(Clone::clone);
     styles.set(key("blocks"), blocks_styles);
+    // A block style variation partial (it has `blockTypes`) declares its styles at the root of `styles`, so the root
+    // allows the states a variation allows: breakpoints, and the pseudo selectors of its block types (WordPress 7.2).
+    if let Some(Value::Array(block_types)) = array_path::child(input, &key("blockTypes"))
+        && !block_types.is_empty()
+    {
+        let mut pseudos: Vec<String> = Vec::new();
+        PSEUDO_BLOCKS.with(|pseudo| {
+            for (_, block_type) in block_types {
+                if let Value::Str(block_type) = block_type {
+                    for selector in lookup(pseudo, block_type).unwrap_or_default() {
+                        if !pseudos.contains(selector) {
+                            pseudos.push(selector.clone());
+                        }
+                    }
+                }
+            }
+        });
+        for state in &breakpoints {
+            let mut state_schema = non_top.clone();
+            state_schema.set(key("elements"), elements.clone());
+            for selector in &pseudos {
+                state_schema.set(key(selector), non_top.clone());
+            }
+            styles.set(key(state), state_schema);
+        }
+        for selector in &pseudos {
+            styles.set(key(selector), non_top.clone());
+        }
+    }
     styles.set(key("elements"), elements);
     let mut settings = valid_settings;
     settings.set(key("blocks"), blocks_settings);
@@ -247,6 +274,72 @@ fn build_schemas(input: &Value, valid: &ValidNames) -> Schemas {
         .entry(key("typography"))
         .set(key("fontFamilies"), per_origin);
     Schemas { styles, settings }
+}
+
+/// A preset is an array whose `slug`, when set, is a scalar: consumers read `$preset['slug']` as a string.
+fn is_valid_preset(preset: &Value) -> bool {
+    matches!(preset, Value::Array(_))
+        && array_path::child(preset, &key("slug"))
+            .is_none_or(|slug| !matches!(slug, Value::Array(_) | Value::Opaque(_)))
+}
+
+fn valid_presets(presets: &Value) -> Value {
+    Value::Array(
+        crate::php_value::entries(presets)
+            .iter()
+            .filter(|(_, preset)| is_valid_preset(preset))
+            .enumerate()
+            .map(|(i, (_, preset))| (Key::Int(i as i64), preset.clone()))
+            .collect(),
+    )
+}
+
+/// Drops the presets that are not arrays with a scalar `slug` from every settings node (WordPress 7.2): a list is
+/// filtered and reindexed, an origin-keyed one per origin.
+fn drop_invalid_presets(mut result: Value) -> Value {
+    let mut nodes: Vec<Vec<String>> = vec![Vec::new()];
+    if let Some(Value::Array(blocks)) = array_path::child(&result, &key("blocks")) {
+        for (name, _) in blocks {
+            let name = match name {
+                Key::Str(s) => s.clone(),
+                Key::Int(i) => i.to_string(),
+            };
+            nodes.push(vec!["blocks".into(), name]);
+        }
+    }
+    for node in nodes {
+        for metadata in schema::presets_metadata().iter() {
+            let path: Vec<&str> = node
+                .iter()
+                .chain(metadata.path.iter())
+                .map(String::as_str)
+                .collect();
+            let Some(presets @ Value::Array(_)) = array_path::get(&result, &path).cloned() else {
+                continue;
+            };
+            let presets = if array_path::child(&presets, &Key::Int(0))
+                .is_some_and(|v| !matches!(v, Value::Null))
+            {
+                valid_presets(&presets)
+            } else {
+                let mut presets = presets;
+                for origin in speedyspec_wp_theme_json_contracts::Origin::ALL {
+                    if let Some(list @ Value::Array(_)) =
+                        array_path::child(&presets, &key(origin.as_str())).cloned()
+                    {
+                        array_path::insert(
+                            &mut presets,
+                            key(origin.as_str()),
+                            valid_presets(&list),
+                        );
+                    }
+                }
+                presets
+            };
+            array_path::set(&mut result, &path, presets);
+        }
+    }
+    result
 }
 
 /// `WP_Theme_JSON::sanitize( $input, $valid_block_names, $valid_element_names, $valid_variations )`.
@@ -286,6 +379,9 @@ pub fn sanitize(input: &Value, valid: &ValidNames) -> Value {
             let sanitized =
                 viewport::sanitize_viewport_settings(array_path::child(&given, &key("viewport")));
             array_path::insert(&mut result, key("viewport"), sanitized);
+        }
+        if subtree == "settings" {
+            result = drop_invalid_presets(result);
         }
         if matches!(&result, Value::Array(e) if e.is_empty()) {
             array_path::unset(&mut output, &[subtree]);

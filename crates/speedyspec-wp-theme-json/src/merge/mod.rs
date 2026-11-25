@@ -120,8 +120,9 @@ pub fn merge_value(base: Value, incoming: Value, deps: &ThemeJsonDeps) -> Value 
             flattened,
             &array_or_empty(array_path::get(&merged, &scale_path)),
         );
+        // Only an array is a scale (WordPress 7.2).
         let Some(scale) = array_path::get(&incoming, &scale_path)
-            .filter(|s| !matches!(s, Value::Null))
+            .filter(|s| matches!(s, Value::Array(_)))
             .cloned()
         else {
             continue;

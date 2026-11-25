@@ -47,7 +47,8 @@ pub fn compute_spacing_sizes(scale: &Value, deps: &ThemeJsonDeps) -> Value {
     let medium = medium_value.and_then(to_number);
     let operator = field(scale, "operator");
     let increment = field(scale, "increment").and_then(to_number);
-    let unit_value = field(scale, "unit");
+    // The unit must be a string (WordPress 7.2).
+    let unit_value = field(scale, "unit").filter(|v| matches!(v, Value::Str(_) | Value::Bytes(_)));
     let (Some(steps), Some(medium), Some(increment), Some(unit_value), Some(medium_value)) =
         (steps, medium, increment, unit_value, medium_value)
     else {

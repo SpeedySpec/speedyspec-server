@@ -1,4 +1,5 @@
-//! WordPress 7.1.5's `WP_Theme_JSON` class constants: the schema tables every piece of the engine reads.
+//! WordPress's `WP_Theme_JSON` class constants, from the release `data_release!` names: the schema tables every
+//! piece of the engine reads.
 //!
 //! The values are WordPress's own, exported by `tools/export-constants.php` as PHP `serialize()` output and
 //! embedded here, so they cannot drift from the release by a transcription mistake. The compat scenarios
@@ -20,13 +21,13 @@ pub const ROOT_CSS_PROPERTIES_SELECTOR: &str = ":root";
 /// `compat/theme-json/source.json` pins the same one.
 macro_rules! data_release {
     () => {
-        "7.1.5"
+        "7.2-RC2"
     };
 }
 
 const SERIALIZED: &[u8] = include_bytes!(concat!("wordpress-", data_release!(), ".constants"));
 
-/// WordPress 7.1.5's `wp-includes/theme-i18n.json`: which settings and titles are translated, and with which
+/// The release's `wp-includes/theme-i18n.json`: which settings and titles are translated, and with which
 /// context.
 pub const THEME_I18N: &str =
     include_str!(concat!("wordpress-", data_release!(), ".theme-i18n.json"));
@@ -248,6 +249,7 @@ mod tests {
                 "color.duotone",
                 "typography.fontSizes",
                 "typography.fontFamilies",
+                "typography.textShadowPresets",
                 "spacing.spacingSizes",
                 "shadow.presets",
                 "border.radiusSizes",

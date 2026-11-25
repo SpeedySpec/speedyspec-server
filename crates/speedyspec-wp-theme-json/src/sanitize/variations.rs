@@ -23,6 +23,10 @@ pub fn unwrap_shared_block_style_variations(doc: Value, valid: &ValidNames) -> V
                 .filter(|v| !matches!(v, Value::Null))
                 .cloned()
                 .unwrap_or(Value::Array(Vec::new()));
+            // Both sides must be arrays (WordPress 7.2).
+            if !matches!(block_level, Value::Array(_)) || !matches!(top_level, Value::Array(_)) {
+                continue;
+            }
             let merged = array_path::replace_recursive(top_level, block_level);
             if php_non_empty(Some(&merged)) {
                 array_path::set(

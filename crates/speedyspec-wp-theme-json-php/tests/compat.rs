@@ -1,4 +1,4 @@
-//! `WP_Theme_JSON` and `WP_Theme_JSON_Schema` recorded from WordPress 7.1.5 (`compat/theme-json`), replayed through
+//! `WP_Theme_JSON` and `WP_Theme_JSON_Schema` recorded from the pinned release (`compat/theme-json`), replayed through
 //! the native classes. Arrays are compared after `compat_canon()` (PHP's `==`); strings byte for byte.
 //!
 //! PHP boots once per process, so this file has its own `main()` (`harness = false`).

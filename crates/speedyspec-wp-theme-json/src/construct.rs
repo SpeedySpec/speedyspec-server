@@ -91,8 +91,10 @@ pub fn construct_value(doc: Value, origin: &[u8], deps: &ThemeJsonDeps) -> Value
         }
     }
 
+    // Only an array is a scale (WordPress 7.2).
     let scale_path = ["settings", "spacing", "spacingScale"];
-    if let Some(scale) = array_path::get(&doc, &scale_path).filter(|s| !matches!(s, Value::Null)) {
+    if let Some(scale) = array_path::get(&doc, &scale_path).filter(|s| matches!(s, Value::Array(_)))
+    {
         let keyed = match scale {
             Value::Array(e) => e
                 .iter()

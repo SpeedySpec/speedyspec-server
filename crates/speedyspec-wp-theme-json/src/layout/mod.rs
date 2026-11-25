@@ -110,28 +110,37 @@ impl Sheet<'_> {
                 self.decl(),
             )
         };
+        // The row value alone sets the flow and constrained layouts' vertical margins (WordPress 7.2); a missing
+        // axis of a split value is `0`.
+        let mut row_gap = gap.clone();
         if let Value::Array(_) = gap {
-            gap = if array_path::isset(&gap, &["top"]) && array_path::isset(&gap, &["left"]) {
-                let row = property_value(
-                    &node,
-                    &["spacing".into(), "blockGap".into(), "top".into()],
-                    None,
-                    self.decl(),
-                );
-                let column = property_value(
-                    &node,
-                    &["spacing".into(), "blockGap".into(), "left".into()],
-                    None,
-                    self.decl(),
-                );
-                if row == column {
-                    row
+            let has_row = array_path::isset(&gap, &["top"]);
+            let has_column = array_path::isset(&gap, &["left"]);
+            if has_row || has_column {
+                let axis = |name: &str, present: bool| {
+                    if present {
+                        property_value(
+                            &node,
+                            &["spacing".into(), "blockGap".into(), name.into()],
+                            None,
+                            self.decl(),
+                        )
+                    } else {
+                        Value::Str("0".into())
+                    }
+                };
+                let row = axis("top", has_row);
+                let column = axis("left", has_column);
+                gap = if row == column {
+                    row.clone()
                 } else {
                     Value::Str(format!("{} {}", text(&row), text(&column)))
-                }
+                };
+                row_gap = row;
             } else {
-                Value::Null
-            };
+                gap = Value::Null;
+                row_gap = Value::Null;
+            }
         }
         let has_gap = !matches!(gap, Value::Null | Value::Bool(false))
             && !matches!(&gap, Value::Str(s) if s.is_empty());
@@ -151,6 +160,11 @@ impl Sheet<'_> {
                     continue;
                 }
                 let class_name = text(&class_name);
+                let layout_gap = if key == "default" || key == "constrained" {
+                    &row_gap
+                } else {
+                    &gap
+                };
                 for (_, rule) in entries(&spacing_rules) {
                     let Some(rule_selector) =
                         array_path::get(rule, &["selector"]).filter(|v| !matches!(v, Value::Null))
@@ -170,7 +184,7 @@ impl Sheet<'_> {
                         let current = if as_str(value).is_some() {
                             value.clone()
                         } else {
-                            gap.clone()
+                            layout_gap.clone()
                         };
                         if self.is_safe_css_declaration(&property, &current) {
                             declarations.push(Declaration::new(property, current));

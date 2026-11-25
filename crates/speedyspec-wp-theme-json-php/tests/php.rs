@@ -110,7 +110,7 @@ fn case_resolve_variables(php: &Php) -> Result<(), String> {
     )
 }
 
-/// Expected markup from WordPress 7.1.5's `WP_Duotone`.
+/// Expected markup from WordPress's `WP_Duotone`.
 fn case_svg_filters(php: &Php) -> Result<(), String> {
     expect_json(
         php,
@@ -121,7 +121,7 @@ fn case_svg_filters(php: &Php) -> Result<(), String> {
 
 const SMALL_DOC: &str = "['version'=>3,'settings'=>['color'=>['palette'=>[['slug'=>'Big-1','color'=>'#123','name'=>'B']]],'custom'=>['a'=>['b'=>'c']]],'styles'=>['elements'=>['link'=>['color'=>['text'=>'red'],':hover'=>['color'=>['text'=>'blue']]]]]]";
 
-/// Expected CSS from WordPress 7.1.5 for `SMALL_DOC`.
+/// Expected CSS from WordPress for `SMALL_DOC`.
 fn case_get_stylesheet(php: &Php) -> Result<(), String> {
     expect_json(
         php,
@@ -247,7 +247,7 @@ fn case_constants(php: &Php) -> Result<(), String> {
         "return [WP_Theme_JSON::LATEST_SCHEMA, WP_Theme_JSON::ROOT_BLOCK_SELECTOR, WP_Theme_JSON::VALID_ORIGINS,
                  WP_Theme_JSON::PRESETS_METADATA[4]['value_func'], count(WP_Theme_JSON::ELEMENTS),
                  WP_Theme_JSON_Schema::V1_TO_V2_RENAMED_PATHS['border.customRadius']];",
-        r#"[3,"body",["default","blocks","theme","custom"],"wp_get_typography_font_size_value",13,"border.radius"]"#,
+        r#"[3,"body",["default","blocks","theme","custom"],"wp_get_typography_font_size_value",14,"border.radius"]"#,
     )
 }
 

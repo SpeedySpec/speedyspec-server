@@ -71,7 +71,8 @@ impl GlobalStylesApi {
         self.resolver.deps().theme.is_development_mode()
     }
 
-    /// `wp_get_global_settings( $path, $context )`.
+    /// `wp_get_global_settings( $path, $context )`. It keeps no cache of its own since WordPress 7.2: the resolver
+    /// caches the merged data.
     pub fn get_global_settings(
         &self,
         path: &Value,
@@ -79,26 +80,8 @@ impl GlobalStylesApi {
     ) -> Result<Value, ThemeJsonError> {
         let path = with_block(path, context);
         let origin = origin_of(context);
-        let key = format!("wp_get_global_settings_{origin}");
-        let can_use_cached = !self.development_mode();
-        let mut settings = None;
-        if can_use_cached {
-            settings = self
-                .cache
-                .get(&key, GROUP)
-                .filter(|v| !matches!(v, Value::Bool(false)));
-        }
-        let settings = match settings {
-            Some(s) => s,
-            None => {
-                let merged = self.resolver.get_merged_data(&Value::Str(origin.into()))?;
-                let s = self.resolver.api().get_settings(&merged);
-                if can_use_cached {
-                    self.cache.set(&key, s.clone(), GROUP);
-                }
-                s
-            }
-        };
+        let merged = self.resolver.get_merged_data(&Value::Str(origin.into()))?;
+        let settings = self.resolver.api().get_settings(&merged);
         Ok(at_path_or_all(settings, &path))
     }
 
@@ -253,8 +236,6 @@ impl GlobalStylesApi {
         for key in [
             "wp_get_global_stylesheet",
             "wp_get_global_styles_svg_filters",
-            "wp_get_global_settings_custom",
-            "wp_get_global_settings_theme",
             "wp_get_global_styles_custom_css",
             "wp_get_theme_data_template_parts",
         ] {
