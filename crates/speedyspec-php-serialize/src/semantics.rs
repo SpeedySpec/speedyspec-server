@@ -17,6 +17,8 @@ pub fn is_empty(value: &PhpValue) -> bool {
 }
 
 /// `$array['name']` for a string key.
+///
+/// `name` must not be integer-like (`"5"`): PHP stores such a key as an int, and this matches string keys only.
 pub fn get<'a>(items: &'a [(PhpKey, PhpValue)], name: &str) -> Option<&'a PhpValue> {
     items
         .iter()
@@ -25,11 +27,16 @@ pub fn get<'a>(items: &'a [(PhpKey, PhpValue)], name: &str) -> Option<&'a PhpVal
 }
 
 /// `isset( $array['name'] )`: present and not null.
+///
+/// `name` must not be integer-like (`"5"`): PHP stores such a key as an int, and this matches string keys only.
 pub fn isset<'a>(items: &'a [(PhpKey, PhpValue)], name: &str) -> Option<&'a PhpValue> {
     get(items, name).filter(|v| !matches!(v, PhpValue::Null))
 }
 
 /// `$array['name'] = $value`: replaces in place, or appends.
+///
+/// `name` must not be integer-like (`"5"`): PHP stores such a key as an int, and this matches string keys only,
+/// so it would append a string key beside PHP's int one.
 pub fn set(items: &mut Vec<(PhpKey, PhpValue)>, name: &str, value: PhpValue) {
     let key = PhpKey::Str(name.as_bytes().to_vec());
     match items.iter_mut().find(|(k, _)| *k == key) {
@@ -38,7 +45,9 @@ pub fn set(items: &mut Vec<(PhpKey, PhpValue)>, name: &str, value: PhpValue) {
     }
 }
 
-/// `unset( $array['name'] )`.
+/// `unset( $array['name'] )`: drops every entry with that string key.
+///
+/// `name` must not be integer-like (`"5"`): PHP stores such a key as an int, and this matches string keys only.
 pub fn unset(items: &mut Vec<(PhpKey, PhpValue)>, name: &str) {
     items.retain(|(k, _)| !matches!(k, PhpKey::Str(s) if s.as_slice() == name.as_bytes()));
 }
@@ -113,8 +122,9 @@ pub fn key_to_string(key: &PhpKey) -> String {
     }
 }
 
-/// `(array) $value`: an array as it is, an object's properties (integer-like names as int keys), an enum's
-/// `name` (and `value`), null as `array()`, and any other value as `array( 0 => $value )`.
+/// `(array) $value`: an array as it is, an object's properties (integer-like names as int keys), an enum as its
+/// `name` alone (no `value`, even for a backed enum: [`PhpValue::Enum`] carries no value), null as `array()`, and any
+/// other value as `array( 0 => $value )`.
 pub fn to_array(value: PhpValue) -> Vec<(PhpKey, PhpValue)> {
     match value {
         PhpValue::Null => Vec::new(),
