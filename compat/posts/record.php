@@ -17,7 +17,9 @@
  *   over from call to call within one. Each call records its arguments, its result, the `_doing_it_wrong()`
  *   messages it raised (captured through the `doing_it_wrong_run` action), the actions it added and removed (a diff
  *   of `$wp_filter` before and after) and the `register_taxonomy_for_object_type()` calls it made. Each scenario
- *   ends with `$wp_post_types`, `$wp_post_statuses`, `$_wp_post_type_features` and `$post_type_meta_caps`.
+ *   ends with `$wp_post_types`, `$wp_post_statuses`, `$_wp_post_type_features` and `$post_type_meta_caps`. In
+ *   `post_types`, each call also records `meta_caps`, `$post_type_meta_caps` after it, so that unregistering's
+ *   removal of meta capabilities is observable call by call.
  * - `status_labels`: `get_post_statuses()`, `get_page_statuses()` and `_wp_privacy_statuses()`.
  * - `initial`: `create_initial_post_types()` from a clean state, once without permalinks or attachment pages and
  *   once with both, with the globals, actions and taxonomies it left and the results of `queries` run after it.
@@ -50,7 +52,8 @@
  * - `add_rewrite_tag()`, `add_rewrite_rule()`, `add_permastruct()`, `remove_rewrite_tag()` and
  *   `remove_permastruct()` (rewrite.php) do nothing;
  * - `register_taxonomy_for_object_type()` (taxonomy.php) appends `[taxonomy, object_type]` to the call's
- *   `taxonomies` and returns true; `get_object_taxonomies()` returns an empty array;
+ *   `taxonomies` and returns true; `get_object_taxonomies()` returns an empty array, so the taxonomy removal
+ *   `unregister_post_type()` makes cannot be recorded here;
  * - `$wp` is an object whose `add_query_var()` and `remove_query_var()` do nothing;
  * - `$wp_rewrite` is an object with `front` `/`, `root` empty, the five default `feeds`, `pagination_base` `page`
  *   and no `extra_rules_top`.
@@ -276,7 +279,7 @@ function check_warnings(string $where): void
 }
 
 /** Calls `$fn(...$args)`, recording its result, `_doing_it_wrong()` messages, action and taxonomy changes. */
-function call(string $fn, array $args): array
+function call(string $fn, array $args, bool $with_meta_caps = false): array
 {
     global $doing_it_wrong, $recorder_taxonomies;
     $doing_it_wrong = [];
@@ -294,7 +297,7 @@ function call(string $fn, array $args): array
         'actions'         => array_values(array_diff_key($after, $before)),
         'actions_removed' => array_values(array_diff_key($before, $after)),
         'taxonomies'      => $recorder_taxonomies,
-    ];
+    ] + ($with_meta_caps ? ['meta_caps' => enc($GLOBALS['post_type_meta_caps'])] : []);
 }
 
 /** The post type and status globals as a scenario leaves them. */
@@ -309,12 +312,12 @@ function globals_snapshot(): array
 }
 
 /** Runs a scenario's calls from a clean state. */
-function scenario(string $name, array $calls, string $permalinks = ''): array
+function scenario(string $name, array $calls, string $permalinks = '', bool $with_meta_caps = false): array
 {
     reset_state($permalinks);
     $recorded = [];
     foreach ($calls as [$fn, $args]) {
-        $recorded[] = call($fn, $args);
+        $recorded[] = call($fn, $args, $with_meta_caps);
     }
     return ['name' => $name, 'permalinks' => $permalinks, 'calls' => $recorded] + globals_snapshot();
 }
@@ -478,7 +481,11 @@ $post_types = [
         ]]],
     ],
     'unregister' => [
-        ['register_post_type', ['book', ['register_meta_box_cb' => 'speedyspec_meta_boxes', 'map_meta_cap' => true]]],
+        ['register_post_type', ['book', [
+            'register_meta_box_cb' => 'speedyspec_meta_boxes',
+            'capability_type'      => 'tome',
+            'map_meta_cap'         => true,
+        ]]],
         ['unregister_post_type', ['book']],
         ['unregister_post_type', ['missing']],
         ['register_post_type', ['core', ['_builtin' => true]]],
@@ -499,7 +506,7 @@ $post_types = [
     ],
 ];
 foreach ($post_types as $name => $calls) {
-    $cases['post_types'][] = scenario($name, $calls);
+    $cases['post_types'][] = scenario($name, $calls, '', true);
 }
 
 // register_post_status().
@@ -545,7 +552,7 @@ $cases['status_labels'] = [
 check_warnings('status_labels');
 
 // get_post_types(), get_post_stati(), get_post_types_by_support() and the predicates.
-$type_names = ['book', 'secret', 'guide', 'one', 'yes', 'fifth', 'missing'];
+$type_names = ['book', 'secret', 'guide', 'one', 'yes', 'fifth', 'core', 'missing'];
 $status_names = ['open', 'held', 'gone', 'seen', 'missing'];
 $lists = [
     ['register_post_type', ['book', ['public' => true]]],
@@ -554,6 +561,7 @@ $lists = [
     ['register_post_type', ['one', ['public' => 1]]],
     ['register_post_type', ['yes', ['public' => 'yes']]],
     ['register_post_type', ['fifth', ['menu_position' => 5]]],
+    ['register_post_type', ['core', ['_builtin' => true]]],
     ['register_post_status', ['open', ['public' => true]]],
     ['register_post_status', ['held', ['protected' => true]]],
     ['register_post_status', ['gone', ['internal' => true]]],
@@ -569,6 +577,7 @@ $type_queries = [
     ['public' => '1'],
     ['public' => false],
     ['_builtin' => false],
+    ['_builtin' => true],
     ['show_in_menu' => 'tools.php'],
     ['menu_position' => null],
     ['menu_position' => '5'],
