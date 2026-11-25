@@ -1,6 +1,6 @@
-//! `get_post_types()` (post.php, 7.1.5 lines 1685-1691), `get_post_stati()` (1579-1585) and
-//! `get_post_types_by_support()` (2400-2406): `wp_filter_object_list()` (functions.php 5419-5433) over
-//! `WP_List_Util::filter()` (class-wp-list-util.php 98-141), then `pluck( 'name' )` for `names`.
+//! `get_post_types()` (post.php, 7.2-RC2 lines 1676-1682), `get_post_stati()` (1567-1573) and
+//! `get_post_types_by_support()` (2449-2455): `wp_filter_object_list()` (functions.php 5527-5541) over
+//! `WP_List_Util::filter()` (class-wp-list-util.php 100-143), then `pluck( 'name' )` for `names`.
 //!
 //! The filter is a Specification over each list entry: an argument matches when the entry's field passes its
 //! presence test (`isset()` for an object, `array_key_exists()` for an array) and is loosely equal (PHP 8's `==`) to

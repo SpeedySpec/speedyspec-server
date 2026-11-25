@@ -1,5 +1,5 @@
-//! `new WP_Post_Type( $name, $args )`: the declared properties and `set_props()` (class-wp-post-type.php, 7.1.5
-//! lines 25-670), after its `register_post_type_args` and `register_{$post_type}_post_type_args` filters, which the
+//! `new WP_Post_Type( $name, $args )`: the declared properties and `set_props()` (class-wp-post-type.php, 7.2-RC2
+//! lines 25-687), after its `register_post_type_args` and `register_{$post_type}_post_type_args` filters, which the
 //! caller applies to `args` first.
 //!
 //! The labels come from [`post_type_labels`] with no `post_type_labels_{$post_type}` callback; phase 4 runs that
@@ -53,7 +53,7 @@ fn arr() -> PhpValue {
     PhpValue::Array(Vec::new())
 }
 
-/// The declared properties and their defaults (lines 25-456), in declaration order.
+/// The declared properties and their defaults (lines 25-482), in declaration order.
 fn declared(name: &PostTypeName) -> Vec<(PhpKey, PhpValue)> {
     use PhpValue::{Bool, Null};
     [
@@ -66,6 +66,7 @@ fn declared(name: &PostTypeName) -> Vec<(PhpKey, PhpValue)> {
         ("exclude_from_search", Null),
         ("publicly_queryable", Null),
         ("embeddable", Null),
+        ("randomable", Null),
         ("show_ui", Null),
         ("show_in_menu", Null),
         ("show_in_nav_menus", Null),
@@ -88,6 +89,7 @@ fn declared(name: &PostTypeName) -> Vec<(PhpKey, PhpValue)> {
         ("rewrite", Null),
         ("supports", Null),
         ("show_in_rest", Null),
+        ("show_in_abilities", Null),
         ("rest_base", Null),
         ("rest_namespace", Null),
         ("rest_controller_class", Null),
@@ -103,7 +105,7 @@ fn declared(name: &PostTypeName) -> Vec<(PhpKey, PhpValue)> {
     .collect()
 }
 
-/// `set_props()`' `$defaults` (lines 528-564), in order.
+/// `set_props()`' `$defaults` (lines 554-592), in order.
 fn defaults() -> Vec<(PhpKey, PhpValue)> {
     use PhpValue::{Bool, Null};
     [
@@ -114,6 +116,7 @@ fn defaults() -> Vec<(PhpKey, PhpValue)> {
         ("exclude_from_search", Null),
         ("publicly_queryable", Null),
         ("embeddable", Null),
+        ("randomable", Null),
         ("show_ui", Null),
         ("show_in_menu", Null),
         ("show_in_nav_menus", Null),
@@ -132,6 +135,7 @@ fn defaults() -> Vec<(PhpKey, PhpValue)> {
         ("can_export", Bool(true)),
         ("delete_with_user", Null),
         ("show_in_rest", Bool(false)),
+        ("show_in_abilities", Bool(false)),
         ("rest_base", Bool(false)),
         ("rest_namespace", Bool(false)),
         ("rest_controller_class", Bool(false)),
@@ -179,18 +183,31 @@ pub fn resolve_post_type(
     let mut args = array_merge(defaults(), args);
     set(&mut args, "name", name_value.clone());
 
-    // The null defaults (lines 570-614), in order.
+    // The null defaults (lines 598-640), in order.
     for key in ["publicly_queryable", "show_ui", "embeddable"] {
         if is_null(&args, key) {
             let value = arg(&args, "public");
             set(&mut args, key, value);
         }
     }
+    // `$args['randomable'] ??= $args['publicly_queryable'] && (bool) $args['has_archive'];`
+    if is_null(&args, "randomable") {
+        let randomable =
+            !is_empty(&arg(&args, "publicly_queryable")) && !is_empty(&arg(&args, "has_archive"));
+        set(&mut args, "randomable", PhpValue::Bool(randomable));
+    }
     if matches!(get(&args, "rest_namespace"), Some(PhpValue::Bool(false)))
         && get(&args, "show_in_rest").is_some_and(|v| !is_empty(v))
     {
         set(&mut args, "rest_namespace", s("wp/v2"));
     }
+    // `$args['show_in_abilities'] = true === $args['show_in_abilities'];`
+    let show_in_abilities = matches!(get(&args, "show_in_abilities"), Some(PhpValue::Bool(true)));
+    set(
+        &mut args,
+        "show_in_abilities",
+        PhpValue::Bool(show_in_abilities),
+    );
     if is_null(&args, "show_in_menu") || is_empty(&arg(&args, "show_ui")) {
         let value = arg(&args, "show_ui");
         set(&mut args, "show_in_menu", value);

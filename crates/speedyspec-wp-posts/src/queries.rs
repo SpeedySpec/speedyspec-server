@@ -1,6 +1,6 @@
-//! The post type and status predicates: `post_type_exists()` (post.php, 7.1.5 lines 1622-1624),
-//! `is_post_type_hierarchical()` (1599-1606), `is_post_type_viewable()` (2447-2477) and `is_post_status_viewable()`
-//! (2491-2529).
+//! The post type and status predicates: `post_type_exists()` (post.php, 7.2-RC2 lines 1610-1612),
+//! `is_post_type_hierarchical()` (1587-1594), `is_post_type_viewable()` (2496-2526) and `is_post_status_viewable()`
+//! (2540-2578).
 //!
 //! The `is_post_type_viewable` and `is_post_status_viewable` filters, and their `true ===` check, are phase 4's;
 //! these are the values passed to them. The adapter answers the `is_scalar()` and `is_string()` checks on a name.

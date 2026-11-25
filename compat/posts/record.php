@@ -429,6 +429,12 @@ $set_props = [
     ['rewrite-string', '/%postname%/', ['rewrite' => 'x']],
     ['rewrite-false', '/%postname%/', ['rewrite' => false]],
     ['rewrite-true-no-permalinks', '', ['rewrite' => true]],
+    ['randomable-archive', '', ['public' => true, 'has_archive' => 'books']],
+    ['randomable-not-queryable', '', ['public' => true, 'publicly_queryable' => false, 'has_archive' => true]],
+    ['randomable-given', '', ['randomable' => 'yes']],
+    ['abilities', '', ['show_in_abilities' => true]],
+    ['abilities-truthy', '', ['show_in_abilities' => 1]],
+    ['abilities-array', '', ['show_in_abilities' => ['read' => true]]],
 ];
 foreach ($set_props as [$name, $permalinks, $args]) {
     reset_state($permalinks);
@@ -498,6 +504,13 @@ $post_types = [
         ['unregister_post_type', ['missing']],
         ['register_post_type', ['core', ['_builtin' => true]]],
         ['unregister_post_type', ['core']],
+    ],
+    'unregister-shared-caps' => [
+        ['register_post_type', ['book', ['capability_type' => 'tome', 'map_meta_cap' => true]]],
+        ['register_post_type', ['scroll', ['capability_type' => 'tome', 'map_meta_cap' => true]]],
+        ['register_post_type', ['note', ['capability_type' => 'note', 'map_meta_cap' => false]]],
+        ['unregister_post_type', ['book']],
+        ['unregister_post_type', ['scroll']],
     ],
     'supports-api' => [
         ['add_post_type_support', ['book', ['a', 'b']]],
