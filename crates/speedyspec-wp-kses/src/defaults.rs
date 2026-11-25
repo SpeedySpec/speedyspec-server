@@ -156,10 +156,12 @@ mod release {
     #[test]
     fn the_allowlists_come_from_the_kses_areas_release() {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat/kses/source.json");
-        let source = std::fs::read_to_string(path).expect("compat/kses/source.json");
-        let pinned = format!("\"wordpress\": \"{}\"", data_release!());
-        assert!(
-            source.contains(&pinned),
+        let source: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).expect("compat/kses/source.json"))
+                .expect("compat/kses/source.json is JSON");
+        assert_eq!(
+            source["wordpress"].as_str(),
+            Some(data_release!()),
             "compat/kses/source.json does not pin WordPress {}: regenerate data/allowed-<release>.json with \
              scripts/generate-allowed.php and change data_release!",
             data_release!()
