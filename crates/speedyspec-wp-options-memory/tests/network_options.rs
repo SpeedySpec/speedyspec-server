@@ -547,7 +547,6 @@ fn load_core_site_options_only_on_multisite() {
             "_site_transient_timeout_theme_roots",
             "_site_transient_theme_roots",
             "site_admins",
-            "can_compress_scripts",
             "global_terms_enabled",
             "ms_files_rewriting",
             "WPLANG"

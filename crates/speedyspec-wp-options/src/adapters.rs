@@ -66,6 +66,7 @@ pub const CORE_SANITIZED_OPTIONS: &[&str] = &[
     "permalink_structure",
     "category_base",
     "tag_base",
+    "wp_random_base",
     "default_role",
     "moderation_keys",
     "disallowed_keys",

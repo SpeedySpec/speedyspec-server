@@ -13,14 +13,13 @@ use crate::{
 };
 
 /// The names `wp_load_core_site_options()` primes.
-const CORE_SITE_OPTIONS: [&str; 10] = [
+const CORE_SITE_OPTIONS: [&str; 9] = [
     "site_name",
     "siteurl",
     "active_sitewide_plugins",
     "_site_transient_timeout_theme_roots",
     "_site_transient_theme_roots",
     "site_admins",
-    "can_compress_scripts",
     "global_terms_enabled",
     "ms_files_rewriting",
     "WPLANG",
