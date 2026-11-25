@@ -69,12 +69,18 @@ foreach (
     array(
         'html5-named-character-references', 'class-wp-html-attribute-token', 'class-wp-html-span',
         'class-wp-html-doctype-info', 'class-wp-html-text-replacement', 'class-wp-html-decoder',
-        'class-wp-html-tag-processor',
+        'class-wp-html-tag-processor', 'class-wp-html-unsupported-exception', 'class-wp-html-active-formatting-elements',
+        'class-wp-html-open-elements', 'class-wp-html-token', 'class-wp-html-stack-event', 'class-wp-html-processor-state',
+        'class-wp-html-processor',
     ) as $speedyspec_file
 )
 {
     require ABSPATH . WPINC . "/html-api/{$speedyspec_file}.php";
 }
+// WordPress 7.2's wp_kses() sanitizes through wp_sanitize_html_kses() on a booted site (default-filters.php turns
+// `wp_kses_force_legacy_parser` off), which needs the whole HTML API and the block processor. The html_api_*
+// scenarios turn the filter off the same way.
+require ABSPATH . WPINC . '/class-wp-block-processor.php';
 require ABSPATH . WPINC . '/formatting.php';
 require ABSPATH . WPINC . '/functions.php';
 require ABSPATH . WPINC . '/kses.php';
