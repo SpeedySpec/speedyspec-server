@@ -6,9 +6,10 @@ use serde_json::{Value, json};
 use speedyspec_php_serialize::semantics::{key_to_string, to_array, to_array_key, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::{
-    NAME_LENGTH_VERSION, PostTypePorts, PostTypeRegistry, Untranslated, check_post_type_name,
+    NAME_LENGTH_VERSION, PostStatusRegistry, PostTypePorts, PostTypeRegistry, Untranslated,
+    check_post_type_name,
 };
-use speedyspec_wp_posts_contracts::{PostTypeError, RewriteContext, TitleSanitizer};
+use speedyspec_wp_posts_contracts::{PostStatuses, PostTypeError, RewriteContext, TitleSanitizer};
 
 /// The recorded cases. The file is large: read it once per test.
 #[allow(dead_code)]
@@ -231,15 +232,21 @@ impl Hooks {
     }
 }
 
-/// Replays a `post_types` scenario on one [`PostTypeRegistry`], calling `each` with every recorded call, what the
-/// registry answered and the registry after it; returns the registry at the end.
+/// `$wp_post_types` (with its features and meta capabilities) and `$wp_post_statuses`, as one scenario leaves them.
+#[derive(Default)]
+pub struct Registries {
+    /// The post types.
+    pub post_types: PostTypeRegistry,
+    /// The post statuses.
+    pub statuses: PostStatusRegistry,
+}
+
+/// Replays a scenario on one [`Registries`], calling `each` with every recorded call, what the registries answered
+/// and the registries after it; returns the registries at the end.
 #[allow(dead_code)]
-pub fn replay(
-    scenario: &Value,
-    mut each: impl FnMut(&Value, Replayed, &PostTypeRegistry),
-) -> PostTypeRegistry {
+pub fn replay(scenario: &Value, mut each: impl FnMut(&Value, Replayed, &Registries)) -> Registries {
     let ports = ports(!scenario["permalinks"].as_str().unwrap().is_empty());
-    let mut registry = PostTypeRegistry::new();
+    let mut registries = Registries::default();
     let mut hooks = Hooks::default();
     for call in scenario["calls"].as_array().unwrap() {
         let PhpValue::Array(args) = decode(&call["args"]) else {
@@ -270,7 +277,10 @@ pub fn replay(
                         replayed.result = wp_error(error);
                     }
                     Ok(name) => {
-                        let registration = registry.register(name.clone(), type_args, &ports);
+                        let registration =
+                            registries
+                                .post_types
+                                .register(name.clone(), type_args, &ports);
                         replayed.actions = registration
                             .actions
                             .into_iter()
@@ -300,7 +310,7 @@ pub fn replay(
                 }
             }
             "unregister_post_type" => {
-                replayed.result = match registry.unregister(&key_text(&args[0])) {
+                replayed.result = match registries.post_types.unregister(&key_text(&args[0])) {
                     Ok(unregistration) => {
                         replayed.actions_removed = unregistration
                             .actions
@@ -318,30 +328,61 @@ pub fn replay(
                     .map(|(_, f)| key_text(f))
                     .collect();
                 let features: Vec<&str> = features.iter().map(String::as_str).collect();
-                registry.add_support(&key_text(&args[0]), &features, args[2..].to_vec());
+                registries.post_types.add_support(
+                    &key_text(&args[0]),
+                    &features,
+                    args[2..].to_vec(),
+                );
             }
             "remove_post_type_support" => {
-                registry.remove_support(&key_text(&args[0]), &key_text(&args[1]));
+                registries
+                    .post_types
+                    .remove_support(&key_text(&args[0]), &key_text(&args[1]));
             }
             "post_type_supports" => {
                 use speedyspec_wp_posts_contracts::PostTypeSupports;
-                replayed.result =
-                    PhpValue::Bool(registry.supports(&key_text(&args[0]), &key_text(&args[1])));
+                replayed.result = PhpValue::Bool(
+                    registries
+                        .post_types
+                        .supports(&key_text(&args[0]), &key_text(&args[1])),
+                );
             }
             "get_all_post_type_supports" => {
                 replayed.result = PhpValue::Array(
-                    registry
+                    registries
+                        .post_types
                         .all_supports(&key_text(&args[0]))
                         .into_iter()
                         .map(|(f, v)| (PhpKey::Str(f.into_bytes()), v))
                         .collect(),
                 );
             }
+            "register_post_status" => {
+                let status_args = match args.get(1) {
+                    Some(PhpValue::Array(items)) => items.clone(),
+                    None => Vec::new(),
+                    Some(other) => panic!("unrecorded args {other:?}"),
+                };
+                replayed.result = registries
+                    .statuses
+                    .register(&to_php_string(&args[0]), status_args)
+                    .to_php();
+            }
+            "get_post_status_object" => {
+                // `! is_string( $post_status )` is null.
+                replayed.result = match &args[0] {
+                    PhpValue::Str(name) => registries
+                        .statuses
+                        .status(&String::from_utf8_lossy(name))
+                        .map_or(PhpValue::Null, |status| status.to_php()),
+                    _ => PhpValue::Null,
+                };
+            }
             other => panic!("unrecorded function {other}"),
         }
-        each(call, replayed, &registry);
+        each(call, replayed, &registries);
     }
-    registry
+    registries
 }
 
 /// A recorded `[hook, callback, priority, accepted_args]` list.
