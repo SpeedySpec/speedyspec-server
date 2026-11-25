@@ -187,6 +187,29 @@ mod tests {
         PhpKey::Str(v.as_bytes().to_vec())
     }
 
+    /// `is_null()` treats a missing property as null, which is only sound while every property it checks has a
+    /// default.
+    #[test]
+    fn every_null_checked_property_has_a_default() {
+        let defaults = defaults();
+        for prop in [
+            "public",
+            "internal",
+            "protected",
+            "private",
+            "publicly_queryable",
+            "exclude_from_search",
+            "show_in_admin_all_list",
+            "show_in_admin_status_list",
+            "date_floating",
+        ] {
+            assert!(
+                defaults.iter().any(|(key, _)| *key == k(prop)),
+                "{prop} has no default"
+            );
+        }
+    }
+
     #[test]
     fn all_null_flags_make_internal() {
         let status = resolve_post_status(PostStatusName::new("archived"), Vec::new());

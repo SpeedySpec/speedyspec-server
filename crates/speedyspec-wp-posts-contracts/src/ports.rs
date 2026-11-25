@@ -39,6 +39,9 @@ pub trait PostTypeSupports {
 }
 
 /// `$wp_post_statuses`.
+///
+/// Lookups take UTF-8 names. PHP keys statuses by bytes, so the adapter must decide how a non-UTF-8 name maps (no
+/// stored status has one when every name went through `sanitize_key()`, which keeps only ASCII).
 pub trait PostStatuses {
     /// One registered post status.
     fn status(&self, name: &str) -> Option<PostStatusObject>;
