@@ -6356,6 +6356,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-meta-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-php-serialize",
+]
+
+[[package]]
 name = "speedyspec-wp-object-cache"
 version = "0.2.0"
 dependencies = [
