@@ -1,4 +1,4 @@
-//! The request benchmark: WordPress translations through the port (embedded PHP) against stock WordPress 7.1.5 on
+//! The request benchmark: WordPress translations through the port (embedded PHP) against stock WordPress on
 //! the same static PHP (CLI), both with OPcache and the tracing JIT, over core de_DE and WooCommerce de_DE.
 //!
 //! Run `benches/fetch-packs.sh` first. The bar: with nothing hooked, a translated request at least 3x faster than

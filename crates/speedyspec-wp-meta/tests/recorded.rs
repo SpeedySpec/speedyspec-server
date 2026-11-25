@@ -1,4 +1,4 @@
-//! Replays what `compat/meta/record.php` recorded from WordPress 7.1.5: `is_protected_meta()` with no filter added,
+//! Replays what `compat/meta/record.php` recorded from the pinned release: `is_protected_meta()` with no filter added,
 //! and the `register_meta()` scenarios and `filter_default_metadata()` cases.
 
 mod support;
@@ -28,7 +28,7 @@ fn protected_keys_match_wordpress() {
 }
 
 // register_meta(), unregister_meta_key(), registered_meta_key_exists(), get_registered_meta_keys() and
-// filter_default_metadata(), as WordPress 7.1.5 answered them under record.php's stubs.
+// filter_default_metadata(), as WordPress answered them under record.php's stubs.
 
 use std::collections::BTreeMap;
 

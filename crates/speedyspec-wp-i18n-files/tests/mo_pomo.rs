@@ -1,4 +1,4 @@
-//! MO for pomo and the translation file writers, against WordPress 7.1.5 (recorded in `data/mo-recorded.json` by
+//! MO for pomo and the translation file writers, against WordPress (recorded in `data/mo-recorded.json` by
 //! `data/record-mo.php`).
 
 use std::path::{Path, PathBuf};

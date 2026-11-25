@@ -169,7 +169,7 @@ fn string_numeric_priorities_sort_numerically() {
     assert_eq!(
         w.apply("f", "x"),
         s("x-a-c-b"),
-        "recorded from WordPress 7.1.5"
+        "recorded from WordPress"
     );
     let has = w
         .queries
@@ -512,7 +512,7 @@ fn exception_leaves_the_current_filter_as_wordpress_does() {
     );
 }
 
-// ----- HookIteration (Review Focus 2), as recorded from WordPress 7.1.5
+// ----- HookIteration (Review Focus 2), as recorded from WordPress
 
 /// A callback that adds `added` to `f` at `priority` the first time it runs.
 fn adder(w: &World, priority: i64, added: Callback) -> Callback {

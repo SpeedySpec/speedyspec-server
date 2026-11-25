@@ -1,4 +1,4 @@
-//! Replays what `compat/crypto/record.php` recorded from WordPress 7.1.5 on PHP 8.5.12, through WordPress's rules
+//! Replays what `compat/crypto/record.php` recorded from the pinned release on PHP 8.5.12, through WordPress's rules
 //! (`speedyspec-wp-crypto`) over libsodium.
 //!
 //! Fast hashes must come out byte for byte, and every signature case must end the same way, with the same hash, skip

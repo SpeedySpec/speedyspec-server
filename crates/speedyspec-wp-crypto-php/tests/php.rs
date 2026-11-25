@@ -1,5 +1,5 @@
 //! WordPress's sodium functions in embedded PHP: the facade over the native functions, replaying every case
-//! `compat/crypto/record.php` recorded from WordPress 7.1.5, with WordPress's own `WP_Error` loaded.
+//! `compat/crypto/record.php` recorded from the pinned release, with WordPress's own `WP_Error` loaded.
 //!
 //! PHP boots once per process, so this test has its own `main()` (`harness = false`) and runs each check in order.
 

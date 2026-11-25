@@ -1,5 +1,5 @@
 //! The translation functions in embedded PHP: the native `__()` family, the controller and file shells, and
-//! WordPress's own l10n code around them, replayed against WordPress 7.1.5 (`compat/i18n/cases.json`, recorded by
+//! WordPress's own l10n code around them, replayed against WordPress (`compat/i18n/cases.json`, recorded by
 //! `compat/i18n/record.php` over the fixtures).
 //!
 //! PHP boots once per process, so this test has its own `main()` (`harness = false`).

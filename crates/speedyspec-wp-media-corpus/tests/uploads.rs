@@ -1,5 +1,5 @@
 //! The formats the widened MIME list adds: every added row's corpus file is read as that row's kind, and the files in
-//! `compat/media/uploads` read through WordPress's rules match what WordPress 7.1.5 and getID3 returned
+//! `compat/media/uploads` read through WordPress's rules match what WordPress and getID3 returned
 //! (`compat/media/recorded-uploads.json`), except the paths `compat/media/upload-differences.json` lists.
 
 mod common;

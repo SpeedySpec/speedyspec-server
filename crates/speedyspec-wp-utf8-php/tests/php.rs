@@ -1,4 +1,4 @@
-//! The UTF-8 functions in embedded PHP: the facade over the natives, and every case WordPress 7.1.5 recorded
+//! The UTF-8 functions in embedded PHP: the facade over the natives, and every case WordPress recorded
 //! (`compat/utf8/cases.json`) replayed through it.
 //!
 //! PHP boots once per process, so this test has its own `main()` (`harness = false`).

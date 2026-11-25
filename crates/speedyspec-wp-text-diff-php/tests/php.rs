@@ -1,4 +1,4 @@
-//! `wp_text_diff()` in embedded PHP: the facade over the native function, with WordPress 7.1.5's own functions
+//! `wp_text_diff()` in embedded PHP: the facade over the native function, with the pinned release's own functions
 //! loaded around it.
 //!
 //! PHP boots once per process, so this test has its own `main()` (`harness = false`) and runs each case in order.

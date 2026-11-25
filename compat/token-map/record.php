@@ -1,6 +1,6 @@
 <?php
 /**
- * Records WordPress 7.1.5's token map into cases.json.
+ * Records WordPress's token map into cases.json.
  *
  * Usage: .php-build/buildroot/bin/php compat/token-map/record.php <wordpress-root>
  */

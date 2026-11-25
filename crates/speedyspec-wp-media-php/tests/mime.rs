@@ -1,4 +1,4 @@
-//! WordPress's MIME list and filetype checks, replayed against WordPress 7.1.5's recording
+//! WordPress's MIME list and filetype checks, replayed against the pinned release's recording
 //! (`compat/media/recorded-mime.json`): every corpus file under its own name and under other extensions, through the
 //! facade, with the in-process reader. Differences are listed in `compat/media/mime-differences.json`, each with a
 //! reason in `DIFFERENCES.md`; WordPress's own list entries must come through unchanged.

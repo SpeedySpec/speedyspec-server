@@ -1,5 +1,5 @@
 //! Every file in `compat/media/corpus` read with FFmpeg (or the MIDI reader) through WordPress's rules must match what
-//! WordPress 7.1.5 and getID3 returned (`compat/media/recorded.json`), except the paths
+//! WordPress and getID3 returned (`compat/media/recorded.json`), except the paths
 //! `compat/media/differences.json` lists, each with a reason in `DIFFERENCES.md`.
 
 mod common;

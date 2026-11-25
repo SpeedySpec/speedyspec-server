@@ -1,5 +1,5 @@
 //! The token map in embedded PHP: WordPress's class and HTML5 table from the prepared release, replayed against
-//! WordPress 7.1.5 (`compat/token-map/cases.json`, recorded by `compat/token-map/record.php`).
+//! WordPress (`compat/token-map/cases.json`, recorded by `compat/token-map/record.php`).
 //!
 //! PHP boots once per process, so this test has its own `main()` (`harness = false`).
 

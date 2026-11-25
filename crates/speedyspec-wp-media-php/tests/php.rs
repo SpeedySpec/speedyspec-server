@@ -1,4 +1,4 @@
-//! WordPress's media functions in embedded PHP: the facade over the natives, with WordPress 7.1.5's own functions
+//! WordPress's media functions in embedded PHP: the facade over the natives, with the pinned release's own functions
 //! (kses among them) loaded around it, reading in-process through the sniffing reader.
 //!
 //! PHP boots once per process, so this test has its own `main()` (`harness = false`) and runs each case in order.
@@ -40,7 +40,7 @@ fn json(result: &Result<HookValue, PhpError>) -> serde_json::Value {
     serde_json::from_str(&text(result)).unwrap_or(serde_json::Value::Null)
 }
 
-/// WordPress 7.1.5 without the functions the media area declares natively.
+/// The pinned release without the functions the media area declares natively.
 fn speedyspec_media_release() -> std::path::PathBuf {
     let release = speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
         .expect("the pinned release");
