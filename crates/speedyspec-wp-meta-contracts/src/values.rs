@@ -81,7 +81,7 @@ pub struct ObjectId(pub u64);
 pub struct MetaId(pub u64);
 
 /// The bytes in `meta_value`: already `maybe_serialize()`d by the caller (Serialized LOB).
-#[derive(Clone, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SerializedValue(Vec<u8>);
 
 impl SerializedValue {

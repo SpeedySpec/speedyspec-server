@@ -2,8 +2,10 @@
 
 use std::fmt;
 
+/// A failure the metadata API cannot hide, as `$wpdb` hides none of these.
 #[derive(Debug)]
 pub enum MetaError {
+    /// The database reported a failure.
     Db(String),
     /// A meta type with no table.
     NoTable(String),
