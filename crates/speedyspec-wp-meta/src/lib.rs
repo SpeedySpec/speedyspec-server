@@ -2,7 +2,6 @@
 //! registered-keys registry (`$wp_meta_keys`).
 
 mod hook_names;
-mod php;
 mod protected;
 mod register;
 mod registry;

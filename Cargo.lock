@@ -6597,6 +6597,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-posts"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "indexmap",
+ "serde_json",
+ "speedyspec-php-serialize",
+ "speedyspec-wp-posts-contracts",
+]
+
+[[package]]
 name = "speedyspec-wp-posts-contracts"
 version = "0.1.0"
 dependencies = [

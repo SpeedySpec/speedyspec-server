@@ -6,6 +6,8 @@ mod read;
 mod value;
 mod write;
 
+pub mod semantics;
+
 pub use float::php_float;
 pub use read::{UnserializeError, unserialize};
 pub use value::{PhpKey, PhpValue};
