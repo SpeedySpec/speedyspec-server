@@ -359,6 +359,23 @@ fn main() {
         remove_filter('rewrite_rules_array', $throw);
         return $caught === $thrown;"#,
     );
+    // So does one thrown inside wp_is_random_content_redirect_enabled(), which the random rules ask.
+    yes(
+        &php,
+        "random_content_redirect_exception_is_rethrown_unchanged",
+        r#"global $wp_rewrite;
+        $thrown = new DomainException('random');
+        $throw = function () use ($thrown) { throw $thrown; };
+        add_filter('wp_enable_random_content_redirect', $throw);
+        try {
+            $wp_rewrite->random_rewrite_rules();
+            $caught = null;
+        } catch (Throwable $e) {
+            $caught = $e;
+        }
+        remove_filter('wp_enable_random_content_redirect', $throw);
+        return $caught === $thrown;"#,
+    );
     let flushed = eval(
         &php,
         "do_action('wp_loaded'); flush_rewrite_rules(false); return true;",

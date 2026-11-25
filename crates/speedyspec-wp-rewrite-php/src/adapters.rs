@@ -1,5 +1,6 @@
 //! The rewrite port's outbound ports, answered by WordPress's PHP functions (Gateway) until those areas are ported.
 
+use std::any::Any;
 use std::rc::Rc;
 
 use speedyspec_php_ext::{Key, Value};
@@ -210,20 +211,25 @@ impl ViewablePosts for PhpViewablePosts {
     }
 }
 
-/// `wp_is_random_content_redirect_enabled()`, from query.php, which stays PHP until queries are ported.
+/// `wp_is_random_content_redirect_enabled()`, from query.php, which stays PHP until queries are ported. An exception
+/// it throws is the error's cause, so the native functions rethrow it unchanged, as they do a hook callback's.
 pub struct PhpRandomContentRedirects;
 
 impl RandomContentRedirects for PhpRandomContentRedirects {
     fn enabled(&self) -> Result<bool, RewriteError> {
-        speedyspec_php::call(
+        speedyspec_php::call_catching(
             &Value::Str("wp_is_random_content_redirect_enabled".into()),
             &[],
         )
         .map(|enabled| truthy(&enabled))
-        .map_err(|err| {
-            RewriteError::new(format!(
-                "wp_is_random_content_redirect_enabled() failed: {err}"
-            ))
+        .map_err(|failure| RewriteError {
+            message: format!(
+                "wp_is_random_content_redirect_enabled() failed: {}",
+                failure.error
+            ),
+            cause: failure
+                .exception
+                .map(|exception| Rc::new(exception) as Rc<dyn Any>),
         })
     }
 }
