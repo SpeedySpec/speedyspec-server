@@ -3,11 +3,11 @@
 //! Ported from WordPress 7.1.5's `wp-includes/meta.php`.
 
 use indexmap::IndexMap;
+use speedyspec_php_serialize::semantics::{is_integer_key, isset};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_meta_contracts::{Callables, MetaKey, MetaType, ObjectId, ObjectSubtypes};
 
 use crate::hook_names::MetaHookNames;
-use crate::php::{is_integer_key, isset};
 use crate::register::RegisteredMetaKey;
 
 type Keys = IndexMap<MetaKey, RegisteredMetaKey>;

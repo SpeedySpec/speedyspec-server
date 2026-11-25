@@ -10,13 +10,13 @@
 //! - an array or object `object_subtype` becomes `""`, where PHP throws;
 //! - a non-array `show_in_rest.schema` skips the merge into the default's schema, where PHP's `array_merge` throws.
 
+use speedyspec_php_serialize::semantics::{array_merge, get, is_empty, isset, set, unset};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_meta_contracts::{
     Callables, DefaultSchemaCheck, MetaKey, ProtectedMeta, RevisionSupport,
 };
 
 use crate::hook_names::MetaHookNames;
-use crate::php::{array_merge, get, is_empty, isset, set, unset};
 
 /// `register_meta()`'s `$args` after the steps before the `register_meta_args` filter.
 #[derive(Clone, Debug, PartialEq)]

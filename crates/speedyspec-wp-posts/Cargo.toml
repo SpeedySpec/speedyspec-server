@@ -1,0 +1,21 @@
+[package]
+name = "speedyspec-wp-posts"
+version = "0.1.0"
+publish = false
+description = "WordPress's post type and post status rules: names, labels, registration and the registries."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[package.metadata.speedyspec]
+seam = "query"
+role = "implementation"
+
+[dependencies]
+speedyspec-wp-posts-contracts = { path = "../speedyspec-wp-posts-contracts" }
+speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+indexmap = "2"
+
+[dev-dependencies]
+serde_json = "1"
+hex = "0.4"
