@@ -1,7 +1,9 @@
 //! Post type capabilities: `get_post_type_capabilities()` and `_post_type_meta_capabilities()` (post.php,
 //! 7.1.5 lines 2034-2101), without the `$post_type_meta_caps` global, which the registry keeps.
 
-use speedyspec_php_serialize::semantics::{array_merge, get, isset, set, to_php_string};
+use speedyspec_php_serialize::semantics::{
+    array_merge, get, isset, key_to_string, set, to_array_key, to_php_string,
+};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 
 /// The meta capabilities `_post_type_meta_capabilities()` remembers, in PHP's `in_array()` list order.
@@ -82,7 +84,8 @@ fn base(items: &[(PhpKey, PhpValue)], index: i64) -> Vec<u8> {
 
 /// `_post_type_meta_capabilities()`: `(custom, core)` for core in read_post, delete_post, edit_post, in the caps'
 /// order. As in `$post_type_meta_caps[ $custom ] = $core`, a custom capability named twice keeps its first
-/// position and its last core capability.
+/// position and its last core capability, and the custom capability becomes an array key as PHP converts one
+/// (`false` is `"0"`, `true` `"1"`, `1.7` `"1"`), written as text.
 pub fn meta_capabilities(caps: &[(PhpKey, PhpValue)]) -> Vec<(String, &'static str)> {
     let mut out: Vec<(String, &'static str)> = Vec::new();
     for (core, custom) in caps {
@@ -90,7 +93,12 @@ pub fn meta_capabilities(caps: &[(PhpKey, PhpValue)]) -> Vec<(String, &'static s
         let Some(core) = META_CAPS.iter().find(|m| m.as_bytes() == core.as_slice()) else {
             continue;
         };
-        let custom = String::from_utf8_lossy(&to_php_string(custom)).into_owned();
+        // `$post_type_meta_caps[ $custom ]`: PHP's array key conversion. An array or object custom cap is
+        // skipped (PHP throws "Illegal offset type").
+        let Some(custom) = to_array_key(custom) else {
+            continue;
+        };
+        let custom = key_to_string(&custom);
         match out.iter_mut().find(|(c, _)| *c == custom) {
             Some(entry) => entry.1 = core,
             None => out.push((custom, core)),
@@ -109,6 +117,32 @@ mod tests {
 
     fn k(v: &str) -> PhpKey {
         PhpKey::Str(v.as_bytes().to_vec())
+    }
+
+    #[test]
+    fn custom_caps_are_keyed_as_php_array_keys() {
+        let caps = vec![
+            (k("edit_post"), PhpValue::Bool(false)),
+            (k("read_post"), PhpValue::Float(1.7)),
+            (k("delete_post"), s("7")),
+        ];
+        assert_eq!(
+            meta_capabilities(&caps),
+            vec![
+                ("0".to_owned(), "edit_post"),
+                ("1".to_owned(), "read_post"),
+                ("7".to_owned(), "delete_post")
+            ]
+        );
+        // true and 1.7 are both key 1: the later core wins, in the first place.
+        let caps = vec![
+            (k("edit_post"), PhpValue::Bool(true)),
+            (k("read_post"), PhpValue::Float(1.7)),
+        ];
+        assert_eq!(
+            meta_capabilities(&caps),
+            vec![("1".to_owned(), "read_post")]
+        );
     }
 
     #[test]

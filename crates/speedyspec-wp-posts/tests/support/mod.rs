@@ -2,10 +2,13 @@
 
 use std::path::PathBuf;
 
-use serde_json::Value;
+use serde_json::{Value, json};
+use speedyspec_php_serialize::semantics::{key_to_string, to_array, to_array_key, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
-use speedyspec_wp_posts::{PostTypePorts, Untranslated};
-use speedyspec_wp_posts_contracts::{RewriteContext, TitleSanitizer};
+use speedyspec_wp_posts::{
+    NAME_LENGTH_VERSION, PostTypePorts, PostTypeRegistry, Untranslated, check_post_type_name,
+};
+use speedyspec_wp_posts_contracts::{PostTypeError, RewriteContext, TitleSanitizer};
 
 /// The recorded cases. The file is large: read it once per test.
 #[allow(dead_code)]
@@ -157,4 +160,204 @@ pub fn ports(permalinks: bool) -> PostTypePorts<'static> {
         },
         titles: &Dashes,
     }
+}
+
+/// An action as the recorder writes it: `[hook, callback, priority, accepted_args]`.
+pub type Action = (PhpValue, PhpValue, i64, i64);
+
+/// What one replayed call gave, in the recording's terms.
+#[allow(dead_code)]
+pub struct Replayed {
+    /// The function's return value.
+    pub result: PhpValue,
+    /// `_doing_it_wrong()` calls, as `{function, message, version}`.
+    pub doing_it_wrong: Value,
+    /// Callbacks the call hooked that were not hooked before.
+    pub actions: Vec<Action>,
+    /// Callbacks the call unhooked that were hooked before, with their accepted args.
+    pub actions_removed: Vec<Action>,
+    /// `register_taxonomy_for_object_type()` calls, as `[taxonomy, object_type]`.
+    pub taxonomies: Value,
+}
+
+/// A `WP_Error` as [`decode`] gives it.
+#[allow(dead_code)]
+pub fn wp_error(error: PostTypeError) -> PhpValue {
+    PhpValue::Object {
+        class: "WP_Error".to_owned(),
+        properties: vec![
+            (
+                PhpKey::Str(b"code".to_vec()),
+                PhpValue::Str(error.code().as_bytes().to_vec()),
+            ),
+            (
+                PhpKey::Str(b"message".to_vec()),
+                PhpValue::Str(error.message().as_bytes().to_vec()),
+            ),
+        ],
+    }
+}
+
+/// `$array[ $value ]`'s key as Rust keys post types and features.
+fn key_text(value: &PhpValue) -> String {
+    key_to_string(&to_array_key(value).expect("a scalar key"))
+}
+
+/// `$wp_filter` as the recorder's diff sees it: `(hook, priority, callback)` to accepted args, in insertion order.
+#[derive(Default)]
+struct Hooks(Vec<((PhpValue, i64, PhpValue), i64)>);
+
+impl Hooks {
+    fn add(
+        &mut self,
+        hook: &str,
+        callback: PhpValue,
+        priority: i64,
+        accepted: i64,
+    ) -> Option<Action> {
+        let key = (PhpValue::Str(hook.as_bytes().to_vec()), priority, callback);
+        if self.0.iter().any(|(k, _)| *k == key) {
+            return None;
+        }
+        self.0.push((key.clone(), accepted));
+        Some((key.0, key.2, priority, accepted))
+    }
+
+    fn remove(&mut self, hook: &str, callback: PhpValue, priority: i64) -> Option<Action> {
+        let key = (PhpValue::Str(hook.as_bytes().to_vec()), priority, callback);
+        let at = self.0.iter().position(|(k, _)| *k == key)?;
+        let (key, accepted) = self.0.remove(at);
+        Some((key.0, key.2, priority, accepted))
+    }
+}
+
+/// Replays a `post_types` scenario on one [`PostTypeRegistry`], calling `each` with every recorded call, what the
+/// registry answered and the registry after it; returns the registry at the end.
+#[allow(dead_code)]
+pub fn replay(
+    scenario: &Value,
+    mut each: impl FnMut(&Value, Replayed, &PostTypeRegistry),
+) -> PostTypeRegistry {
+    let ports = ports(!scenario["permalinks"].as_str().unwrap().is_empty());
+    let mut registry = PostTypeRegistry::new();
+    let mut hooks = Hooks::default();
+    for call in scenario["calls"].as_array().unwrap() {
+        let PhpValue::Array(args) = decode(&call["args"]) else {
+            panic!("args is an array");
+        };
+        let args: Vec<PhpValue> = args.into_iter().map(|(_, v)| v).collect();
+        let mut replayed = Replayed {
+            result: PhpValue::Null,
+            doing_it_wrong: json!([]),
+            actions: Vec::new(),
+            actions_removed: Vec::new(),
+            taxonomies: json!([]),
+        };
+        match call["fn"].as_str().unwrap() {
+            "register_post_type" => {
+                let type_args = match args.get(1) {
+                    Some(PhpValue::Array(items)) => items.clone(),
+                    None => Vec::new(),
+                    Some(other) => panic!("unrecorded args {other:?}"),
+                };
+                match check_post_type_name(&to_php_string(&args[0])) {
+                    Err(error) => {
+                        replayed.doing_it_wrong = json!([{
+                            "function": "register_post_type",
+                            "message": error.message(),
+                            "version": NAME_LENGTH_VERSION,
+                        }]);
+                        replayed.result = wp_error(error);
+                    }
+                    Ok(name) => {
+                        let registration = registry.register(name.clone(), type_args, &ports);
+                        replayed.actions = registration
+                            .actions
+                            .into_iter()
+                            .filter_map(|a| {
+                                hooks.add(
+                                    &a.hook,
+                                    a.callback,
+                                    a.priority,
+                                    i64::from(a.accepted_args),
+                                )
+                            })
+                            .collect();
+                        replayed.taxonomies = Value::Array(
+                            registration
+                                .taxonomies
+                                .iter()
+                                .map(|t| {
+                                    json!([
+                                        String::from_utf8(to_php_string(t)).unwrap(),
+                                        name.as_str()
+                                    ])
+                                })
+                                .collect(),
+                        );
+                        replayed.result = registration.post_type.to_php();
+                    }
+                }
+            }
+            "unregister_post_type" => {
+                replayed.result = match registry.unregister(&key_text(&args[0])) {
+                    Ok(unregistration) => {
+                        replayed.actions_removed = unregistration
+                            .actions
+                            .into_iter()
+                            .filter_map(|a| hooks.remove(&a.hook, a.callback, a.priority))
+                            .collect();
+                        PhpValue::Bool(true)
+                    }
+                    Err(error) => wp_error(error),
+                };
+            }
+            "add_post_type_support" => {
+                let features: Vec<String> = to_array(args[1].clone())
+                    .iter()
+                    .map(|(_, f)| key_text(f))
+                    .collect();
+                let features: Vec<&str> = features.iter().map(String::as_str).collect();
+                registry.add_support(&key_text(&args[0]), &features, args[2..].to_vec());
+            }
+            "remove_post_type_support" => {
+                registry.remove_support(&key_text(&args[0]), &key_text(&args[1]));
+            }
+            "post_type_supports" => {
+                use speedyspec_wp_posts_contracts::PostTypeSupports;
+                replayed.result =
+                    PhpValue::Bool(registry.supports(&key_text(&args[0]), &key_text(&args[1])));
+            }
+            "get_all_post_type_supports" => {
+                replayed.result = PhpValue::Array(
+                    registry
+                        .all_supports(&key_text(&args[0]))
+                        .into_iter()
+                        .map(|(f, v)| (PhpKey::Str(f.into_bytes()), v))
+                        .collect(),
+                );
+            }
+            other => panic!("unrecorded function {other}"),
+        }
+        each(call, replayed, &registry);
+    }
+    registry
+}
+
+/// A recorded `[hook, callback, priority, accepted_args]` list.
+#[allow(dead_code)]
+pub fn recorded_actions(value: &Value) -> Vec<Action> {
+    value
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| {
+            (
+                decode(&a[0]),
+                decode(&a[1]),
+                a[2].as_i64().unwrap(),
+                a[3].as_i64().unwrap(),
+            )
+        })
+        .collect()
 }

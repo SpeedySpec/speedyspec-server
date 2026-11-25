@@ -1,6 +1,8 @@
 //! Replays what `compat/posts/record.php` recorded from WordPress 7.1.5: `get_post_type_labels()` over plain
 //! objects, with no `post_type_labels_{$post_type}` filter added; `get_post_type_capabilities()` with the meta
-//! capabilities it remembers; and `new WP_Post_Type()`'s `set_props()`, under each recorded permalink structure.
+//! capabilities it remembers; `new WP_Post_Type()`'s `set_props()`, under each recorded permalink structure; and
+//! the `post_types` scenarios: register_post_type(), unregister_post_type() and the supports functions replayed on
+//! one `PostTypeRegistry` each.
 
 mod support;
 
@@ -10,7 +12,7 @@ use speedyspec_wp_posts::{
     LabelSource, Untranslated, merge_filtered_labels, meta_capabilities, post_type_capabilities,
     post_type_labels, resolve_post_type,
 };
-use speedyspec_wp_posts_contracts::PostTypeName;
+use speedyspec_wp_posts_contracts::{PostTypeName, PostTypeSupports, PostTypes};
 
 #[test]
 fn labels_match_wordpress() {
@@ -120,4 +122,104 @@ fn set_props_matches_wordpress() {
         let want = support::normalize_keys(support::decode(&case["object"]));
         assert_eq!(got, want, "set_props/{name}");
     }
+}
+
+/// `$post_type_meta_caps` as the registry keeps it, in the recording's terms.
+fn registry_meta_caps(registry: &speedyspec_wp_posts::PostTypeRegistry) -> Vec<(String, String)> {
+    registry
+        .meta_caps()
+        .into_iter()
+        .map(|(custom, core)| (custom, core.to_owned()))
+        .collect()
+}
+
+#[test]
+fn post_type_scenarios_match_wordpress() {
+    let cases = support::cases();
+    let scenarios = cases["post_types"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 11);
+    let mut calls = 0;
+    for scenario in scenarios {
+        let scenario_name = scenario["name"].as_str().unwrap();
+        let registry = support::replay(scenario, |call, got, registry| {
+            calls += 1;
+            let at = format!("{scenario_name}/{calls}/{}", call["fn"]);
+            assert_eq!(
+                support::normalize_keys(got.result),
+                support::normalize_keys(support::decode(&call["result"])),
+                "{at} result"
+            );
+            assert_eq!(
+                got.doing_it_wrong, call["doing_it_wrong"],
+                "{at} doing_it_wrong"
+            );
+            assert_eq!(
+                got.actions,
+                support::recorded_actions(&call["actions"]),
+                "{at} actions"
+            );
+            assert_eq!(
+                got.actions_removed,
+                support::recorded_actions(&call["actions_removed"]),
+                "{at} actions_removed"
+            );
+            assert_eq!(got.taxonomies, call["taxonomies"], "{at} taxonomies");
+            assert_eq!(
+                registry_meta_caps(registry),
+                recorded_meta_caps(support::decode(&call["meta_caps"])),
+                "{at} meta_caps"
+            );
+        });
+
+        let post_types = PhpValue::Array(
+            registry
+                .post_types()
+                .iter()
+                .map(|t| {
+                    (
+                        PhpKey::Str(t.name().as_str().as_bytes().to_vec()),
+                        t.to_php(),
+                    )
+                })
+                .collect(),
+        );
+        assert_eq!(
+            post_types,
+            support::normalize_keys(support::decode(&scenario["wp_post_types"])),
+            "{scenario_name} wp_post_types"
+        );
+        let features = PhpValue::Array(
+            registry
+                .features()
+                .into_iter()
+                .map(|(post_type, features)| {
+                    (
+                        PhpKey::Str(post_type.into_bytes()),
+                        PhpValue::Array(
+                            features
+                                .into_iter()
+                                .map(|(f, v)| (PhpKey::Str(f.into_bytes()), v))
+                                .collect(),
+                        ),
+                    )
+                })
+                .collect(),
+        );
+        let want_features = match support::normalize_keys(support::decode(&scenario["features"])) {
+            PhpValue::Array(items) => PhpValue::Array(
+                items
+                    .into_iter()
+                    .map(|(k, v)| (k, support::normalize_keys(v)))
+                    .collect(),
+            ),
+            other => other,
+        };
+        assert_eq!(features, want_features, "{scenario_name} features");
+        assert_eq!(
+            registry_meta_caps(&registry),
+            recorded_meta_caps(support::decode(&scenario["meta_caps"])),
+            "{scenario_name} meta_caps"
+        );
+    }
+    assert_eq!(calls, 33);
 }

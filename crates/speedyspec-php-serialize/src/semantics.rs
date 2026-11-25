@@ -81,6 +81,35 @@ pub fn is_integer_key(bytes: &[u8]) -> bool {
             .is_some()
 }
 
+/// `$array[ $value ]`'s key: null is `""`, a bool `0` or `1`, a float truncated toward zero (`0` when NaN, infinite
+/// or out of the int range), an integer-like string an int; `None` for an array or object, where PHP throws
+/// "Illegal offset type".
+pub fn to_array_key(value: &PhpValue) -> Option<PhpKey> {
+    match value {
+        PhpValue::Null => Some(PhpKey::Str(Vec::new())),
+        PhpValue::Bool(b) => Some(PhpKey::Int(i64::from(*b))),
+        PhpValue::Int(i) => Some(PhpKey::Int(*i)),
+        PhpValue::Float(f) => {
+            let fits = f.is_finite() && *f >= i64::MIN as f64 && *f < i64::MAX as f64;
+            Some(PhpKey::Int(if fits { f.trunc() as i64 } else { 0 }))
+        }
+        PhpValue::Str(s) if is_integer_key(s) => std::str::from_utf8(s)
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .map(PhpKey::Int),
+        PhpValue::Str(s) => Some(PhpKey::Str(s.clone())),
+        _ => None,
+    }
+}
+
+/// An array key as text: an int in decimal, a string as it is (lossily, when it is not UTF-8).
+pub fn key_to_string(key: &PhpKey) -> String {
+    match key {
+        PhpKey::Int(i) => i.to_string(),
+        PhpKey::Str(s) => String::from_utf8_lossy(s).into_owned(),
+    }
+}
+
 /// `(array) $value`: an array as it is, an object's properties (integer-like names as int keys), an enum's
 /// `name` (and `value`), null as `array()`, and any other value as `array( 0 => $value )`.
 pub fn to_array(value: PhpValue) -> Vec<(PhpKey, PhpValue)> {
@@ -409,6 +438,29 @@ mod tests {
                 (k("c"), s("4"))
             ]
         );
+    }
+
+    #[test]
+    fn array_keys_convert_as_php_does() {
+        use PhpValue::{Bool, Float, Int, Null};
+        let cases = [
+            (Null, Some(k(""))),
+            (Bool(false), Some(PhpKey::Int(0))),
+            (Bool(true), Some(PhpKey::Int(1))),
+            (Int(-7), Some(PhpKey::Int(-7))),
+            (Float(1.9), Some(PhpKey::Int(1))),
+            (Float(-2.5), Some(PhpKey::Int(-2))),
+            (Float(f64::NAN), Some(PhpKey::Int(0))),
+            (s("12"), Some(PhpKey::Int(12))),
+            (s("012"), Some(k("012"))),
+            (s("edit_book"), Some(k("edit_book"))),
+            (PhpValue::Array(vec![]), None),
+        ];
+        for (value, want) in cases {
+            assert_eq!(to_array_key(&value), want, "{value:?}");
+        }
+        assert_eq!(key_to_string(&PhpKey::Int(-3)), "-3");
+        assert_eq!(key_to_string(&k("a")), "a");
     }
 
     #[test]

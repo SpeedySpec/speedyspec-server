@@ -9,7 +9,11 @@
 //! - a non-array `capabilities` counts as empty (PHP throws a `TypeError` in `array_merge()`);
 //! - an array `capability_type` missing index 0 or 1 gives `""` in the capability names (PHP warns), and `null`
 //!   as the stored `capability_type` when index 0 is missing;
-//! - an int arg key becomes an int property name, as `get_object_vars()` reports it.
+//! - an int arg key becomes an int property name, as `get_object_vars()` reports it;
+//! - [`apply_filtered_labels`] merges against the stored labels, which have already been through the no-filter
+//!   merge (`array_merge( $d, $d )`), not against PHP's pre-filter defaults. The two differ only when the labels
+//!   have int keys (`labels => 'Books'` gives key `0`, renumbered to `1` by that merge), so such keys are renumbered
+//!   once more than PHP would.
 
 use speedyspec_php_serialize::semantics::{
     array_merge, get, is_empty, isset, set, to_array, to_php_string, unset,
