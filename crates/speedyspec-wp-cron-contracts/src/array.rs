@@ -1,8 +1,10 @@
 //! The cron array: `[ timestamp => [ hook => [ md5( serialize( args ) ) => event ] ] ]`, without `version`.
 
+use std::cmp::Ordering;
+
 use speedyspec_hooks::{Key, Value};
 
-use crate::natsort::strnatcasecmp;
+use crate::keysort::{ksort_compare, zend_sort};
 
 /// The key PHP gives a string used as an array key: a canonical decimal integer that fits becomes an integer.
 pub fn key_for(text: &str) -> Key {
@@ -237,11 +239,22 @@ impl CronArray {
         }
     }
 
-    /// `uksort( $crons, 'strnatcasecmp' )`: stable, as PHP 8's sort is.
-    pub fn natural_sort(&mut self) {
-        self.entries.sort_by(|(a, _), (b, _)| {
-            strnatcasecmp(key_text(a).as_bytes(), key_text(b).as_bytes())
-        });
+    /// `ksort( $crons )` (WordPress 7.2): PHP's `zend_sort()`, made stable as PHP 8 makes it (equal keys keep their
+    /// order).
+    pub fn key_sort(&mut self) {
+        let mut indexed: Vec<(usize, (Key, Value))> = std::mem::take(&mut self.entries)
+            .into_iter()
+            .enumerate()
+            .collect();
+        zend_sort(
+            &mut indexed,
+            |(i, (a, _)), (j, (b, _))| match ksort_compare(a, b) {
+                Ordering::Greater => true,
+                Ordering::Less => false,
+                Ordering::Equal => i > j,
+            },
+        );
+        self.entries = indexed.into_iter().map(|(_, entry)| entry).collect();
     }
 
     /// The smallest timestamp key, if any: when the next event may be due.

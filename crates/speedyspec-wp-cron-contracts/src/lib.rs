@@ -7,12 +7,12 @@
 //! - [`ArgsKeyer`], [`Clock`], [`Translator`] and [`PhpObjects`] are ports for what WordPress asks of PHP.
 
 mod array;
-mod natsort;
+mod keysort;
 mod outcome;
 mod ports;
 
 pub use array::{CronArray, EventData, EventKey, ScheduledEvent, key_for};
-pub use natsort::strnatcasecmp;
+pub use keysort::ksort_compare;
 pub use outcome::{CronError, CronResult, RunSummary, SaveOutcome, Version};
 pub use ports::{
     ArgsKeyer, Clock, CronStep, CronStore, DoingCron, ErrorReporter, NetworkSites, PhpObjects,
