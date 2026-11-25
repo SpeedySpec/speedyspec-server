@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use speedyspec_php_serialize::semantics::{get, set, unset};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 
 macro_rules! name {
@@ -39,28 +40,17 @@ name!(
     PostStatusName
 );
 
-fn find(properties: &[(PhpKey, PhpValue)], prop: &str) -> Option<usize> {
-    properties
-        .iter()
-        .position(|(k, _)| matches!(k, PhpKey::Str(s) if s == prop.as_bytes()))
-}
-
-fn set(properties: &mut Vec<(PhpKey, PhpValue)>, prop: &str, value: PhpValue) {
-    match find(properties, prop) {
-        Some(i) => properties[i].1 = value,
-        None => properties.push((PhpKey::Str(prop.as_bytes().to_vec()), value)),
-    }
-}
-
-fn remove(properties: &mut Vec<(PhpKey, PhpValue)>, prop: &str) {
-    if let Some(i) = find(properties, prop) {
-        properties.remove(i);
-    }
-}
-
 macro_rules! object {
     ($(#[$doc:meta])* $ty:ident, $name:ident, $class:literal) => {
         $(#[$doc])*
+        ///
+        /// The name lives twice: the `name` field is the Rust-side name the registries key the object by, and the
+        /// `name` property is what PHP code sees (`$object->name`, `wp_list_pluck( $list, 'name' )`). WordPress sets
+        /// the property to the registered key, so the two agree. [`Self::set`] keeps them in step: setting the
+        /// `name` property to a string also sets the field (lossily, when the bytes are not UTF-8). [`Self::new`]
+        /// takes both as given, and [`Self::remove`] leaves the field alone.
+        ///
+        /// Property names must not be integer-like (`"5"`): lookups match string keys only.
         #[derive(Debug, Clone)]
         pub struct $ty {
             name: $name,
@@ -68,12 +58,12 @@ macro_rules! object {
         }
 
         impl $ty {
-            /// An object with these properties, in order.
+            /// An object with these properties, in order. Its `name` property should be the name.
             pub fn new(name: $name, properties: Vec<(PhpKey, PhpValue)>) -> Self {
                 Self { name, properties }
             }
 
-            /// The name.
+            /// The name the registries key the object by. PHP code reads the `name` property instead.
             pub fn name(&self) -> &$name {
                 &self.name
             }
@@ -85,17 +75,20 @@ macro_rules! object {
 
             /// One property.
             pub fn get(&self, prop: &str) -> Option<&PhpValue> {
-                find(&self.properties, prop).map(|i| &self.properties[i].1)
+                get(&self.properties, prop)
             }
 
-            /// Replaces a property in place, or appends it.
+            /// Replaces a property in place, or appends it. A string `name` also sets the name field.
             pub fn set(&mut self, prop: &str, value: PhpValue) {
+                if let ("name", PhpValue::Str(bytes)) = (prop, &value) {
+                    self.name = $name::new(String::from_utf8_lossy(bytes));
+                }
                 set(&mut self.properties, prop, value);
             }
 
-            /// Drops a property, as `unset( $object->prop )` does.
+            /// Drops a property, as `unset( $object->prop )` does. The name field stays.
             pub fn remove(&mut self, prop: &str) {
-                remove(&mut self.properties, prop);
+                unset(&mut self.properties, prop);
             }
 
             /// The PHP object.

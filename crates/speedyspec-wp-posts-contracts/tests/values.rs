@@ -41,6 +41,24 @@ fn post_type_set_replaces_in_place_and_appends() {
 }
 
 #[test]
+fn setting_the_name_property_keeps_the_field_in_step() {
+    let mut pt = post_type();
+    pt.set("name", PhpValue::Str(b"tome".to_vec()));
+    assert_eq!(pt.name().as_str(), "tome");
+    assert_eq!(pt.get("name"), Some(&PhpValue::Str(b"tome".to_vec())));
+    // A non-string name leaves the field; removing the property does too.
+    pt.set("name", PhpValue::Int(5));
+    assert_eq!(pt.name().as_str(), "tome");
+    pt.remove("name");
+    assert_eq!(pt.name().as_str(), "tome");
+    assert!(pt.get("name").is_none());
+
+    let mut st = PostStatusObject::new(PostStatusName::new("draft"), Vec::new());
+    st.set("name", PhpValue::Str(b"pending".to_vec()));
+    assert_eq!(st.name().as_str(), "pending");
+}
+
+#[test]
 fn post_type_remove_drops_the_prop() {
     let mut pt = post_type();
     pt.remove("public");
