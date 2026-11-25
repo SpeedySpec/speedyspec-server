@@ -24,7 +24,7 @@ pub trait MetaRepository {
         key: &MetaKey,
         value: Option<&SerializedValue>,
     ) -> Result<Option<MetaId>, MetaError>;
-    /// `update_metadata()`: `SELECT {id} ... WHERE meta_key = %s AND {object} = %d`.
+    /// `update_metadata()`: `SELECT {id} ... WHERE meta_key = %s AND {object} = %d`; the ids come back in id order.
     fn ids_for(&self, object: ObjectId, key: &MetaKey) -> Result<Vec<MetaId>, MetaError>;
     /// `update_metadata()`: `wpdb::update` of `meta_value` `WHERE {object} = %d AND meta_key = %s [AND meta_value = %s]`.
     fn update_by_key(
@@ -66,6 +66,7 @@ pub trait MetaRepository {
 
 /// `_get_meta_table()` as a factory (Abstract Factory): `None` when the type has no table.
 pub trait MetaRepositories {
+    /// The repository for `meta_type`, shared by every caller; `None` when the type has no table.
     fn for_type(&self, meta_type: &MetaType) -> Option<Rc<dyn MetaRepository>>;
 }
 
