@@ -52,7 +52,7 @@ cargo bench -p speedyspec-wp-shortcode
 - **Scanner and parser tables:** the expected values in `tests/support/*_cases.rs` were taken from PHP 8.5 and
   WordPress's own `shortcodes.php`.
 - **Fuzzing:** `scan_diff` and `atts_diff` fuzz each fast strategy against its reference.
-- **Recorded compatibility:** `compat/shortcode` holds 206 scenarios recorded from WordPress 7.1.5. They come from
+- **Recorded compatibility:** `compat/shortcode` holds 206 scenarios recorded from the WordPress release its `source.json` pins. They come from
   WordPress's shortcode tests, their data providers, the whole-post test data, and edge cases. They replay through
   all four combinations of scanner and parser.
 
