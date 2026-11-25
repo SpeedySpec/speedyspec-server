@@ -6597,6 +6597,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-posts-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-php-serialize",
+]
+
+[[package]]
 name = "speedyspec-wp-rewrite"
 version = "0.1.4"
 dependencies = [
