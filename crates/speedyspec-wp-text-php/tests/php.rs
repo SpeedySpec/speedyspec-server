@@ -164,6 +164,22 @@ fn natives(php: &Php, api: &std::rc::Rc<speedyspec_wp_text::TextApi>) {
 
     request(php);
     yes(
+        "sanitize_locale_name_refuses_non_strings_unfiltered",
+        r#"add_filter('sanitize_locale_name', function () { return 'filtered'; });
+        return sanitize_locale_name(array('en_US')) === '' && sanitize_locale_name(5) === ''
+            && sanitize_locale_name('en US') === 'filtered';"#,
+    );
+    yes(
+        "pre_kses_less_than_runs_only_in_legacy_mode",
+        r#"$legacy = wp_pre_kses_less_than('a < b') === 'a &lt; b';
+        $GLOBALS['wp_kses_operating_mode'] = 'html-api';
+        $skipped = wp_pre_kses_less_than('a < b') === 'a < b';
+        $GLOBALS['wp_kses_operating_mode'] = null;
+        $null = wp_pre_kses_less_than('a < b') === 'a &lt; b';
+        $GLOBALS['wp_kses_operating_mode'] = 'legacy';
+        return $legacy && $skipped && $null;"#,
+    );
+    yes(
         "argument_count_error",
         r#"try { esc_html(); return false; } catch (ArgumentCountError $e) {
             return $e->getMessage() === 'Too few arguments to function esc_html(), 0 passed and exactly 1 expected'; }"#,

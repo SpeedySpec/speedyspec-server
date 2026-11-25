@@ -432,7 +432,19 @@ fn format_to_edit(a: &[Value]) -> R {
     ask(FormatToEdit { content: string(a, 0)?, rich_text: bool_or(a, 1, false) })
 }
 
+/// Runs only in kses's `legacy` operating mode (WordPress 7.2): `wp_sanitize_html_kses()` sets `html-api` while it
+/// calls the `pre_kses` filters, and the content then passes through unchanged.
 fn wp_pre_kses_less_than(a: &[Value]) -> R {
+    // `'legacy' !== ( $wp_kses_operating_mode ?? 'legacy' )`: unset or null is legacy, anything else must be it.
+    let legacy = speedyspec_php::global("wp_kses_operating_mode").is_none_or(|mode| match &*mode.read() {
+        Value::Null => true,
+        Value::Str(s) => s == "legacy",
+        Value::Bytes(b) => b == b"legacy",
+        _ => false,
+    });
+    if !legacy {
+        return Ok(arg(a, 0));
+    }
     bytes(ask(WpPreKsesLessThan { content: string(a, 0)? })?)
 }
 
@@ -480,7 +492,11 @@ fn sanitize_html_class(a: &[Value]) -> R {
     ask(SanitizeHtmlClass { classname: string(a, 0)?, fallback: string_or(a, 1, b"")? })
 }
 
+/// A value that is not a string is `''`, unfiltered (WordPress 7.2): request values can arrive as arrays.
 fn sanitize_locale_name(a: &[Value]) -> R {
+    if !matches!(arg(a, 0), Value::Str(_) | Value::Bytes(_)) {
+        return Ok(Value::Str(String::new()));
+    }
     ask(SanitizeLocaleName { locale_name: string(a, 0)? })
 }
 

@@ -1,4 +1,4 @@
-//! WordPress's HTML API syntax pieces, ported from WordPress 7.1.5.
+//! WordPress's HTML API syntax pieces, ported from WordPress.
 //!
 //! - [`decode`], [`decode_attribute`], [`decode_text_node`] and [`read_character_reference`] are `WP_HTML_Decoder`.
 //! - [`named_reference`] is the lookup `WP_Token_Map::read_token()` does over the HTML5 named character references,

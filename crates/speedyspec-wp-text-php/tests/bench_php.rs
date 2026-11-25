@@ -1,4 +1,4 @@
-//! The native formatting functions against WordPress 7.1.5's own formatting.php in the same embedded PHP, on the
+//! The native formatting functions against the pinned WordPress release's own formatting.php in the same embedded PHP, on the
 //! corpus's inputs, called from PHP as WordPress calls them. Run on demand:
 //! `SPEEDYSPEC_TEXT_BENCH=1 cargo test --release -p speedyspec-wp-text-php --test bench_php` (add
 //! `SPEEDYSPEC_TEXT_BENCH_ONLY=<function>` to time one function).

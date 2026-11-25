@@ -29,7 +29,7 @@ fn strips_exactly_the_ported_functions() {
     let before = declared(&source);
     let after = declared(&stripped);
     for name in PORTED_FUNCTIONS {
-        assert!(before.iter().any(|n| n == name), "7.1.5's formatting.php declares {name}");
+        assert!(before.iter().any(|n| n == name), "the release's formatting.php declares {name}");
         assert!(!after.iter().any(|n| n == name), "{name} is stripped");
     }
     let kept: Vec<&String> = before.iter().filter(|n| !PORTED_FUNCTIONS.contains(&n.as_str())).collect();

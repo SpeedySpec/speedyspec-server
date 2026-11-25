@@ -30,7 +30,7 @@ struct ShortcodePatterns {
     whole: Pattern,
 }
 
-/// 7.1.5's `wptexturize()` loop, verbatim, on PCRE2. The reference for every other [`Texturizer`].
+/// WordPress's `wptexturize()` loop, verbatim, on PCRE2. The reference for every other [`Texturizer`].
 ///
 /// It keeps the compiled split pattern for each set of shortcode names it has seen.
 #[derive(Default)]

@@ -29,7 +29,7 @@ impl FixedSmilies {
         FixedSmilies { table, search, includes_base, site_url }
     }
 
-    /// WordPress 7.1.5's default `$wpsmiliestrans` (from `smilies_init()`).
+    /// WordPress's default `$wpsmiliestrans` (from `smilies_init()`).
     ///
     /// @param includes_base
     ///     `includes_url()`.

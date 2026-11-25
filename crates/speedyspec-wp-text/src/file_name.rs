@@ -19,7 +19,7 @@ use crate::title::{SanitizeContext, sanitize_title_with_dashes};
 pub struct MimeTable(pub Vec<(Vec<u8>, Vec<u8>)>);
 
 impl MimeTable {
-    /// WordPress 7.1.5's `wp_get_mime_types()` before its `mime_types` filter.
+    /// WordPress's `wp_get_mime_types()` before its `mime_types` filter.
     ///
     /// @return
     ///     The default list.
@@ -39,7 +39,7 @@ impl MimeTable {
     }
 }
 
-/// WordPress 7.1.5's `$special_chars` in `sanitize_file_name()`, in order, `chr( 0 )` last.
+/// WordPress's `$special_chars` in `sanitize_file_name()`, in order, `chr( 0 )` last.
 ///
 /// @return
 ///     The characters removed from file names, before the `sanitize_file_name_chars` filter.

@@ -8,7 +8,7 @@ use speedyspec_wp_shortcode_contracts::{TagName, shortcode_tag_alternation};
 
 use crate::preg::{Pattern, preg_replace};
 
-/// The pattern 7.1.5's `shortcode_unautop()` builds from the tag names and the spaces fragment.
+/// The pattern WordPress's `shortcode_unautop()` builds from the tag names and the spaces fragment.
 fn unautop_pattern(tags: &[TagName], spaces: &[u8]) -> Vec<u8> {
     let mut p = Vec::new();
     p.extend_from_slice(b"/<p>(?:");

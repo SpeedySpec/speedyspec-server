@@ -96,7 +96,7 @@ if (true) {
         $GLOBALS['speedyspec_formatting_diagnostics'][] = ['trigger_error', $function_name, $message, $error_level];
     }
 
-    // Copied verbatim from WordPress 7.1.5's wp-includes/functions.php (is_utf8_charset, _canonical_charset,
+    // Copied verbatim from WordPress's wp-includes/functions.php (is_utf8_charset, _canonical_charset,
     // mbstring_binary_safe_encoding, reset_mbstring_encoding) and deprecated.php (addslashes_gpc). Those files cannot
     // be required here: they need the real options API, which the stubs above stand in for.
     function is_utf8_charset( $blog_charset = null ) {
@@ -204,14 +204,14 @@ if (true) {
     require ABSPATH . WPINC . '/formatting.php';
     require ABSPATH . WPINC . '/shortcodes.php';
 
-    // Formatting's default callbacks on the hooks its own functions fire, copied from WordPress 7.1.5's
+    // Formatting's default callbacks on the hooks its own functions fire, copied from WordPress's
     // wp-includes/default-filters.php. The rest of formatting's share of that file is on hooks other seams fire;
     // `register_text_filters` and its tests cover those.
     add_filter( 'sanitize_title', 'sanitize_title_with_dashes', 10, 3 );
 
-    // The shortcodes a booted WordPress 7.1.5 has, in its registration order: media.php registers wp_caption,
-    // caption, gallery, playlist, audio and video (wp-settings.php line 265), and WP_Embed's constructor registers
-    // embed (wp-settings.php line 468). Their handlers are placeholders; formatting only reads the names.
+    // The shortcodes a booted WordPress has, in its registration order: media.php registers wp_caption,
+    // caption, gallery, playlist, audio and video (wp-settings.php line 276), and WP_Embed's constructor registers
+    // embed (wp-settings.php line 485). Their handlers are placeholders; formatting only reads the names.
     function speedyspec_shortcode_placeholder()
     {
         return '';
@@ -369,7 +369,7 @@ if (true) {
 
     // What plan 4's corpus needs from outside formatting.php: the URL, link, MIME and smiley helpers it calls, copied
     // verbatim below, then the smiley globals built once as a booted site has them.
-    // Copied verbatim from WordPress 7.1.5's wp-includes/http.php.
+    // Copied verbatim from WordPress's wp-includes/http.php.
     /**
      * A wrapper for PHP's parse_url() function that handles consistency in the return values
      * across PHP versions.
@@ -439,7 +439,7 @@ if (true) {
     	return _get_component_from_parsed_url_array( $parts, $component );
     }
 
-    // Copied verbatim from WordPress 7.1.5's wp-includes/http.php.
+    // Copied verbatim from WordPress's wp-includes/http.php.
     /**
      * Retrieves a specific component from a parsed URL array.
      *
@@ -502,7 +502,7 @@ if (true) {
     	}
     }
 
-    // Copied verbatim from WordPress 7.1.5's wp-includes/http.php.
+    // Copied verbatim from WordPress's wp-includes/http.php.
     /**
      * Translates a PHP_URL_* constant to the named array keys PHP uses.
      *
@@ -534,7 +534,7 @@ if (true) {
     	return $translation[ $constant ] ?? false;
     }
 
-    // Copied verbatim from WordPress 7.1.5's wp-includes/link-template.php.
+    // Copied verbatim from WordPress's wp-includes/link-template.php.
     /**
      * Returns an array of URL hosts which are considered to be internal hosts.
      *
@@ -553,6 +553,7 @@ if (true) {
      * @return string[] An array of URL hosts.
      */
     function wp_internal_hosts() {
+    	/** @var list<lowercase-string>|null $internal_hosts */
     	static $internal_hosts;
 
     	if ( empty( $internal_hosts ) ) {
@@ -569,15 +570,17 @@ if (true) {
     				wp_parse_url( home_url(), PHP_URL_HOST ),
     			)
     		);
-    		$internal_hosts = array_unique(
-    			array_map( 'strtolower', (array) $internal_hosts )
+    		$internal_hosts = array_values(
+    			array_unique(
+    				array_map( 'strtolower', (array) $internal_hosts )
+    			)
     		);
     	}
 
     	return $internal_hosts;
     }
 
-    // Copied verbatim from WordPress 7.1.5's wp-includes/link-template.php.
+    // Copied verbatim from WordPress's wp-includes/link-template.php.
     /**
      * Determines whether or not the specified URL is of a host included in the internal hosts list.
      *
@@ -596,7 +599,7 @@ if (true) {
     	return false;
     }
 
-    // Copied verbatim from WordPress 7.1.5's wp-includes/functions.php.
+    // Copied verbatim from WordPress's wp-includes/functions.php.
     /**
      * Retrieves the list of mime types and file extensions.
      *
@@ -617,8 +620,8 @@ if (true) {
     	 *
     	 * @since 3.5.0
     	 *
-    	 * @param string[] $wp_get_mime_types Mime types keyed by the file extension regex
-    	 *                                    corresponding to those types.
+    	 * @param array<string, string> $wp_get_mime_types Mime types keyed by the file extension regex
+    	 *                                                 corresponding to those types.
     	 */
     	return apply_filters(
     		'mime_types',
@@ -737,7 +740,7 @@ if (true) {
     	);
     }
 
-    // Copied verbatim from WordPress 7.1.5's wp-includes/functions.php.
+    // Copied verbatim from WordPress's wp-includes/functions.php.
     /**
      * Retrieves the list of allowed mime types and file extensions.
      *
@@ -764,13 +767,13 @@ if (true) {
     	 *
     	 * @since 2.0.0
     	 *
-    	 * @param array            $t    Mime types keyed by the file extension regex corresponding to those types.
-    	 * @param int|WP_User|null $user User ID, User object or null if not provided (indicates current user).
+    	 * @param array<string, string> $t    Mime types keyed by the file extension regex corresponding to those types.
+    	 * @param int|WP_User|null      $user User ID, User object or null if not provided (indicates current user).
     	 */
     	return apply_filters( 'upload_mimes', $t, $user );
     }
 
-    // Copied verbatim from WordPress 7.1.5's wp-includes/functions.php.
+    // Copied verbatim from WordPress's wp-includes/functions.php.
     /**
      * Retrieves the file type from the file name.
      *
@@ -807,7 +810,7 @@ if (true) {
     	return compact( 'ext', 'type' );
     }
 
-    // Copied verbatim from WordPress 7.1.5's wp-includes/functions.php.
+    // Copied verbatim from WordPress's wp-includes/functions.php.
     /**
      * Converts smiley code to the icon graphic file equivalent.
      *
@@ -940,7 +943,7 @@ if (true) {
     	$wp_smiliessearch .= ')(?=' . $spaces . '|$)/m';
     }
 
-    // make_absolute_url() copied verbatim from WordPress 7.1.5's wp-includes/class-wp-http.php; the real class
+    // make_absolute_url() copied verbatim from WordPress's wp-includes/class-wp-http.php; the real class
     // file needs the Requests autoloader, so this stand-in class holds only that method.
     class WP_Http
     {
@@ -1033,7 +1036,7 @@ if (true) {
     }
 
 
-    // Copied verbatim from WordPress 7.1.5's wp-includes/functions.php.
+    // Copied verbatim from WordPress's wp-includes/functions.php.
     /**
      * Retrieves a list of protocols to allow in HTML attributes.
      *
@@ -1075,7 +1078,7 @@ if (true) {
     }
     } // function_exists( 'wp_allowed_protocols' ): kses-php declares it natively on the port's side.
 
-    // Copied verbatim from WordPress 7.1.5's wp-includes/functions.php.
+    // Copied verbatim from WordPress's wp-includes/functions.php.
     /**
      * Checks value to find if it was serialized.
      *

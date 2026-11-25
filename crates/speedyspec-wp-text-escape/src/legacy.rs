@@ -1,6 +1,6 @@
 //! The deprecated `seems_utf8()`.
 
-/// `seems_utf8()` as WordPress 7.1.5 writes it: a byte-pattern check that accepts the obsolete 5- and 6-byte forms
+/// `seems_utf8()` as WordPress writes it: a byte-pattern check that accepts the obsolete 5- and 6-byte forms
 /// and checks neither overlong forms nor surrogates. Kept only because callers still use it; the facade reports its
 /// deprecation.
 pub fn seems_utf8_core(text: &[u8]) -> bool {

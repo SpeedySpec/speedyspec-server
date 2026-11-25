@@ -18,7 +18,7 @@ pub struct FilterContext {
     pub admin: bool,
 }
 
-/// `(hook, function, priority, accepted_args, admin only)` for every `add_filter()` line in WordPress 7.1.5's
+/// `(hook, function, priority, accepted_args, admin only)` for every `add_filter()` line in WordPress's
 /// `wp-includes/default-filters.php` that names a function this crate ports, in file order.
 const REGISTRATIONS: &[(&str, &str, i64, i64, bool)] = &[
     ("pre_term_name", "sanitize_text_field", 10, 1, false),
