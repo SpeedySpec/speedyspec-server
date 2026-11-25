@@ -41,7 +41,7 @@ impl AttsParser for Switch {
 }
 
 fn main() -> ExitCode {
-    let release = match wordpress_release("7.1.5") {
+    let release = match wordpress_release(&speedyspec_compat::area_wordpress("shortcode")) {
         Ok(root) => root,
         Err(why) => {
             println!("FAILED: the WordPress release: {why}");

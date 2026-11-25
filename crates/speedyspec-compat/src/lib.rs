@@ -22,7 +22,9 @@ pub use php::{DRIVER, PhpRunner};
 
 /// The WordPress functions the object cache calls, declared the same on both sides of `compat/object-cache`.
 pub const OBJECT_CACHE_STUBS: &str = include_str!("object_cache_stubs.php");
-pub use record::{Source, area_runner, record, record_for, wordpress_release};
+pub use record::{
+    Source, area_runner, area_wordpress, pinned_wordpress, record, record_for, wordpress_release,
+};
 
 /// A catalogue of scenarios for one area.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

@@ -33,7 +33,8 @@ fn text(result: &Result<HookValue, PhpError>) -> String {
 }
 
 fn main() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("WordPress 7.1.5");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned release");
     let prepared = prepare_release(&release, &release.with_file_name("wordpress-i18n-port"))
         .expect("release prepared");
     let container = Rc::new(Container::new());

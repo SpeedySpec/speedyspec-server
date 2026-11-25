@@ -4,7 +4,9 @@ use speedyspec_wp_options_php::{PORTED_FUNCTIONS, prepare_release, strip_ported}
 
 #[test]
 fn strips_exactly_the_ported_functions() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release =
+        speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("options"))
+            .expect("the pinned release");
     let source = std::fs::read_to_string(release.join("wp-includes/option.php")).unwrap();
     let stripped = strip_ported(&source).unwrap();
     for name in PORTED_FUNCTIONS {
@@ -51,7 +53,9 @@ fn strips_exactly_the_ported_functions() {
 
 #[test]
 fn a_stale_prepared_copy_is_rewritten() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release =
+        speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("options"))
+            .expect("the pinned release");
     let source = std::fs::read_to_string(release.join("wp-includes/option.php")).unwrap();
     let out = tempfile::tempdir().unwrap();
     let root = prepare_release(&release, &out.path().join("wordpress")).unwrap();

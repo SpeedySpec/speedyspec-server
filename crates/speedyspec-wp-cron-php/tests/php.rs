@@ -74,7 +74,8 @@ fn main() {
         println!("skip: SPEEDYSPEC_TEST_MYSQL_URL is not set");
         return;
     };
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("WordPress 7.1.5");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("cron"))
+        .expect("the pinned release");
     let name = url.rsplit('/').next().unwrap_or_default().to_string();
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));

@@ -2,10 +2,14 @@
 /**
  * Records WordPress's post type and post status rules into the fixtures the Rust posts port is tested against.
  *
- * Usage: php record.php <wordpress-root> <out-dir>
+ * Usage: php record.php <wordpress-root> <out-dir> [<expected-wordpress-version>]
  *
- * Run it with the static PHP the runtime embeds (`.php-build/buildroot/bin/php`) against the WordPress 7.1.5 root
- * that `speedyspec_compat::wordpress_release("7.1.5")` unpacks. It records these sections into `<out-dir>/cases.json`:
+ * The recording stops unless the release's `$wp_version` is the expected version: the third argument, else
+ * `SPEEDYSPEC_COMPAT_WORDPRESS`, else the repository's pin, `compat/hooks/source.json`'s `wordpress`.
+ *
+ * Run it with the static PHP the runtime embeds (`.php-build/buildroot/bin/php`) against the pinned WordPress root
+ * that `speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())` unpacks.
+ * It records these sections into `<out-dir>/cases.json`:
  *
  * - `labels`: `get_post_type_labels()` over a plain object built from `object` (the input, recorded before the
  *   call, since the function rewrites `labels` in place).
@@ -64,10 +68,14 @@
 
 declare(strict_types=1);
 
-[$_, $root, $out] = $argv + [null, null, null];
+[$_, $root, $out, $expected] = $argv + [null, null, null, null];
 if (!$root || !$out) {
-    fwrite(STDERR, "usage: php record.php <wordpress-root> <out-dir>\n");
+    fwrite(STDERR, "usage: php record.php <wordpress-root> <out-dir> [<expected-wordpress-version>]\n");
     exit(2);
+}
+if (!$expected) {
+    $expected = getenv('SPEEDYSPEC_COMPAT_WORDPRESS')
+        ?: json_decode((string) file_get_contents(__DIR__ . '/../hooks/source.json'), true)['wordpress'];
 }
 $root = rtrim($root, '/') . '/';
 define('ABSPATH', $root);
@@ -334,8 +342,8 @@ $cases = [
     'lists'         => [],
     'initial'       => [],
 ];
-if ('7.1.5' !== $cases['wordpress']) {
-    fwrite(STDERR, "expected WordPress 7.1.5, found {$cases['wordpress']}\n");
+if ($expected !== $cases['wordpress']) {
+    fwrite(STDERR, "expected WordPress {$expected}, found {$cases['wordpress']}\n");
     exit(1);
 }
 

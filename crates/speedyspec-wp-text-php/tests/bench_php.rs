@@ -157,7 +157,7 @@ fn main() {
         println!("skipped: set SPEEDYSPEC_TEXT_BENCH=1 to run the PHP benchmark");
         return;
     }
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("formatting")).expect("the pinned release");
     let out = tempfile::tempdir().unwrap();
     let root = prepare_release(&release, &out.path().join("wordpress")).unwrap();
     let container = Rc::new(Container::new());

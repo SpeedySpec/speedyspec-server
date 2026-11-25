@@ -42,7 +42,8 @@ fn json(result: &Result<HookValue, PhpError>) -> serde_json::Value {
 
 /// WordPress 7.1.5 without the functions the media area declares natively.
 fn speedyspec_media_release() -> std::path::PathBuf {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("WordPress 7.1.5");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned release");
     speedyspec_wp_media_php::prepare_release(
         &release,
         &Path::new(env!("CARGO_TARGET_TMPDIR")).join("wordpress-media-php"),

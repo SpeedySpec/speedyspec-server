@@ -118,7 +118,8 @@ fn main() {
     );
 
     let phar = phpunit();
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("kses"))
+        .expect("the pinned release");
     let prepared = tempfile::tempdir().unwrap();
     let wp = prepare_release(&release, &prepared.path().join("wordpress")).unwrap();
     // SAFETY: set before PHP boots, on the only thread.

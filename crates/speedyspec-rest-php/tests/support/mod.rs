@@ -172,7 +172,8 @@ function wp_list_filter( $input_list, $args = array(), $operator = 'AND' ) {
 
 /// The pinned WordPress release's root.
 pub fn release() -> std::path::PathBuf {
-    speedyspec_compat::wordpress_release("7.1.5").expect("the pinned WordPress release")
+    speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned WordPress release")
 }
 
 /// Loads the hook functions, the stubs and the release's error, response and request classes and REST functions (not

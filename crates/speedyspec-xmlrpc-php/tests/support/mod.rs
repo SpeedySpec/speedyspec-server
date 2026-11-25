@@ -129,7 +129,8 @@ pub fn boot() -> Booted {
 
 /// The pinned WordPress release's root.
 pub fn release() -> std::path::PathBuf {
-    speedyspec_compat::wordpress_release("7.1.5").expect("the pinned WordPress release")
+    speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned WordPress release")
 }
 
 /// Loads the hook functions, `WP_Error` and the release's IXR classes into the current request.

@@ -15,7 +15,7 @@ use speedyspec_wp_hooks_php::WpHooksArea;
 use speedyspec_wp_theme_json_php::{ThemeJsonArea, theme_json_scenario_runner};
 
 fn main() -> ExitCode {
-    let release = match wordpress_release("7.1.5") {
+    let release = match wordpress_release(&speedyspec_compat::area_wordpress("theme-json")) {
         Ok(root) => root,
         Err(why) => {
             println!("FAILED: the WordPress release: {why}");

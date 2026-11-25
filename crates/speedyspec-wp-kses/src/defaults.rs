@@ -4,8 +4,16 @@
 use serde_json::Value as Json;
 use speedyspec_hooks::{Key, Value};
 
+/// The WordPress release `data/allowed-<release>.json` was generated from. `include_str!` takes only a literal, so this
+/// macro is the one place the crate names the release; a test checks that `compat/kses/source.json` pins the same one.
+macro_rules! data_release {
+    () => {
+        "7.1.5"
+    };
+}
+
 /// `$allowedposttags` (after `_wp_add_global_attributes`) and `$allowedtags`, as pairs so order survives JSON.
-const DATA: &str = include_str!("../data/allowed-7.1.5.json");
+const DATA: &str = include_str!(concat!("../data/allowed-", data_release!(), ".json"));
 
 fn from_json(v: &Json) -> Value {
     match v {
@@ -141,4 +149,20 @@ pub fn allow_pdf_objects(url: &[u8], upload_url: &[u8]) -> bool {
     let (host, port) = host_and_port(upload_url);
     let prefix = |scheme: &[u8]| [scheme, b"://", &host, &port, b"/"].concat();
     url.starts_with(&prefix(b"http")) || url.starts_with(&prefix(b"https"))
+}
+
+#[cfg(test)]
+mod release {
+    #[test]
+    fn the_allowlists_come_from_the_kses_areas_release() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat/kses/source.json");
+        let source = std::fs::read_to_string(path).expect("compat/kses/source.json");
+        let pinned = format!("\"wordpress\": \"{}\"", data_release!());
+        assert!(
+            source.contains(&pinned),
+            "compat/kses/source.json does not pin WordPress {}: regenerate data/allowed-<release>.json with \
+             scripts/generate-allowed.php and change data_release!",
+            data_release!()
+        );
+    }
 }

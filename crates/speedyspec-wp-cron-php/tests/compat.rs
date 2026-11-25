@@ -70,7 +70,8 @@ fn main() {
         areas,
     })
     .expect("PHP boots");
-    let release = wordpress_release("7.1.5").expect("the pinned release");
+    let release =
+        wordpress_release(&speedyspec_compat::area_wordpress("cron")).expect("the pinned release");
     let mut runner = cron_scenario_runner(php, &release).expect("the release prepares");
     let mismatches = replay("cron", &mut runner);
     for m in &mismatches {

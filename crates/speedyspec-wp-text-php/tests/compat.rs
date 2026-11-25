@@ -32,7 +32,8 @@ fn main() {
         areas,
     })
     .expect("PHP boots");
-    let release = wordpress_release("7.1.5").expect("the pinned release");
+    let release = wordpress_release(&speedyspec_compat::area_wordpress("formatting"))
+        .expect("the pinned release");
     let mut runner = formatting_scenario_runner(php, &release).expect("the release prepares");
     // SPEEDYSPEC_COMPAT_TRACE=1 replays one scenario at a time, naming each and its time; SPEEDYSPEC_COMPAT_ONLY
     // picks one.

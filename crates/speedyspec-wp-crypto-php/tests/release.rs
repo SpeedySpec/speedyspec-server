@@ -12,7 +12,8 @@ fn declared(text: &str) -> Vec<String> {
 
 #[test]
 fn strips_exactly_the_ported_functions() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned release");
     for file in ["wp-includes/functions.php", "wp-admin/includes/file.php"] {
         let source = std::fs::read_to_string(release.join(file)).unwrap();
         let stripped = strip_ported(file, &source).unwrap();
@@ -49,7 +50,8 @@ fn strips_exactly_the_ported_functions() {
 
 #[test]
 fn prepared_release_links_everything_else() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned release");
     let out = std::env::temp_dir().join(format!(
         "speedyspec-wp-crypto-release-{}",
         std::process::id()

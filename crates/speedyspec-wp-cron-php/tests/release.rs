@@ -2,7 +2,8 @@ use speedyspec_wp_cron_php::{PORTED_FUNCTIONS, strip_ported};
 
 #[test]
 fn strips_only_ported() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").unwrap();
+    let release =
+        speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("cron")).unwrap();
     let source = std::fs::read_to_string(release.join("wp-includes/cron.php")).unwrap();
     let stripped = strip_ported(&source).unwrap();
     for name in PORTED_FUNCTIONS {
@@ -17,7 +18,8 @@ fn strips_only_ported() {
 
 #[test]
 fn prepared_release_has_the_endpoint_and_no_wp_cron() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").unwrap();
+    let release =
+        speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("cron")).unwrap();
     let out = tempfile::tempdir().unwrap();
     let prepared = speedyspec_wp_cron_php::prepare_release(&release, out.path()).unwrap();
     let endpoint =

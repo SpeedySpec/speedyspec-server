@@ -63,7 +63,8 @@ fn phpunit() -> PathBuf {
 }
 
 fn main() {
-    let release = wordpress_release("7.1.5").expect("the pinned WordPress release");
+    let release = wordpress_release(&speedyspec_compat::area_wordpress("theme-json"))
+        .expect("the pinned WordPress release");
     let prepared = prepare_release(
         &release,
         &release.with_file_name("wordpress-theme-json-port"),

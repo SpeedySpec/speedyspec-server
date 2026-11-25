@@ -12,7 +12,8 @@ fn declared(text: &str) -> Vec<String> {
 
 #[test]
 fn kses_keeps_only_what_stays_php() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("kses"))
+        .expect("the pinned release");
     let source = std::fs::read_to_string(release.join("wp-includes/kses.php")).unwrap();
     let stripped = strip_ported("kses.php", &source).unwrap();
     assert_eq!(
@@ -38,7 +39,8 @@ fn kses_keeps_only_what_stays_php() {
 
 #[test]
 fn functions_loses_only_wp_allowed_protocols() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("kses"))
+        .expect("the pinned release");
     let source = std::fs::read_to_string(release.join("wp-includes/functions.php")).unwrap();
     let stripped = strip_ported("functions.php", &source).unwrap();
     let before = declared(&source);
@@ -50,7 +52,8 @@ fn functions_loses_only_wp_allowed_protocols() {
 
 #[test]
 fn prepared_release_lints() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("kses"))
+        .expect("the pinned release");
     let out = tempfile::tempdir().unwrap();
     let root = prepare_release(&release, &out.path().join("wordpress")).unwrap();
     assert!(root.join("wp-includes/option.php").exists());
@@ -81,7 +84,8 @@ fn params(text: &str, name: &str) -> Option<String> {
 
 #[test]
 fn facade_declares_every_ported_function_with_its_signature() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("kses"))
+        .expect("the pinned release");
     let kses = std::fs::read_to_string(release.join("wp-includes/kses.php")).unwrap();
     let functions = std::fs::read_to_string(release.join("wp-includes/functions.php")).unwrap();
     for name in PORTED_FUNCTIONS {

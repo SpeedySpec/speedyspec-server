@@ -19,12 +19,18 @@ impl RuleGuard for Accept {
 }
 
 fn fixture() -> serde_json::Value {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../compat/rewrite/wordpress-7.1.5.json"
-    );
-    serde_json::from_str(&std::fs::read_to_string(path).expect("compat/rewrite fixture"))
-        .expect("json")
+    // The fixture of the release compat/rewrite/source.json pins.
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat/rewrite");
+    let source: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(format!("{dir}/source.json")).expect("compat/rewrite/source.json"),
+    )
+    .expect("json");
+    let version = source["wordpress"].as_str().expect("a pinned release");
+    serde_json::from_str(
+        &std::fs::read_to_string(format!("{dir}/wordpress-{version}.json"))
+            .expect("compat/rewrite fixture"),
+    )
+    .expect("json")
 }
 
 /// The rules `get_option( 'rewrite_rules' )` returned after the postname structure's flush (step 3).

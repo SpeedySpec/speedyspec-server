@@ -151,7 +151,8 @@ fn boot_with(native_hooks: bool) -> Booted {
 
 /// The pinned WordPress release's root.
 pub fn release() -> std::path::PathBuf {
-    speedyspec_compat::wordpress_release("7.1.5").expect("the pinned WordPress release")
+    speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned WordPress release")
 }
 
 /// Loads the stub hook functions, the helpers, `WP_Error` and `WP_Filter_Sentinel` into the current request.

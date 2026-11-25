@@ -28,7 +28,8 @@ fn is_true(r: &Result<HookValue, PhpError>) -> bool {
 }
 
 fn main() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("WordPress 7.1.5");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned release");
     let compat = format!("{}/../../compat/crypto/", env!("CARGO_MANIFEST_DIR"));
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container, Rc::new(MemoryHookStore::new()));

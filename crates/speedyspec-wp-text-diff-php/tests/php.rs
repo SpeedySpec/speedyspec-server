@@ -33,7 +33,8 @@ fn text(result: &Result<HookValue, PhpError>) -> String {
 }
 
 fn main() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("WordPress 7.1.5");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned release");
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
     let text_diff = TextDiffArea::new(hooks.api(), container.clone());

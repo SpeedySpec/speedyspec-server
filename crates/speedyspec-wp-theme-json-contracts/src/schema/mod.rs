@@ -15,13 +15,23 @@ pub const ROOT_BLOCK_SELECTOR: &str = "body";
 /// The selector CSS custom properties are declared on (`ROOT_CSS_PROPERTIES_SELECTOR`).
 pub const ROOT_CSS_PROPERTIES_SELECTOR: &str = ":root";
 
-const SERIALIZED: &[u8] = include_bytes!("wordpress-7.1.5.constants");
+/// The WordPress release the embedded `wordpress-<release>.*` files were exported from. `include_bytes!` takes only a
+/// literal, so this macro is the one place the crate names the release; a test checks that
+/// `compat/theme-json/source.json` pins the same one.
+macro_rules! data_release {
+    () => {
+        "7.1.5"
+    };
+}
+
+const SERIALIZED: &[u8] = include_bytes!(concat!("wordpress-", data_release!(), ".constants"));
 
 /// WordPress 7.1.5's `wp-includes/theme-i18n.json`: which settings and titles are translated, and with which
 /// context.
-pub const THEME_I18N: &str = include_str!("wordpress-7.1.5.theme-i18n.json");
+pub const THEME_I18N: &str =
+    include_str!(concat!("wordpress-", data_release!(), ".theme-i18n.json"));
 
-const LAYOUT: &[u8] = include_bytes!("wordpress-7.1.5.layout");
+const LAYOUT: &[u8] = include_bytes!(concat!("wordpress-", data_release!(), ".layout"));
 
 thread_local! {
     static LAYOUT_DEFINITIONS: Rc<Value> = Rc::new(unserialize(LAYOUT));
@@ -206,6 +216,22 @@ pub fn element_names() -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_embedded_files_come_from_the_theme_json_areas_release() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../compat/theme-json/source.json"
+        );
+        let source = std::fs::read_to_string(path).expect("compat/theme-json/source.json");
+        let pinned = format!("\"wordpress\": \"{}\"", data_release!());
+        assert!(
+            source.contains(&pinned),
+            "compat/theme-json/source.json does not pin WordPress {}: re-export the wordpress-<release>.* files \
+             with tools/ and change data_release!",
+            data_release!()
+        );
+    }
 
     #[test]
     fn presets_metadata_order() {

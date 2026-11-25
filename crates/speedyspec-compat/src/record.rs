@@ -28,6 +28,21 @@ pub struct Release {
 /// The largest release tarball the recorder accepts.
 const LIMIT: u64 = 256 * 1024 * 1024;
 
+/// The WordPress release the repository is pinned to: `compat/hooks/source.json`'s `wordpress`. Tests that load a
+/// release with no compat area of their own (abilities, REST, crypto, i18n, ...) run against this one.
+pub fn pinned_wordpress() -> String {
+    area_wordpress("hooks")
+}
+
+/// The WordPress release `area`'s fixture is recorded from: `compat/<area>/source.json`'s `wordpress`, the one
+/// [`crate::load`] reads. An area's tests run against it, so each area moves to a new release when it is re-recorded.
+pub fn area_wordpress(area: &str) -> String {
+    let path = compat_dir().join(area).join("source.json");
+    read_json::<Source>(&path)
+        .unwrap_or_else(|e| panic!("{e}"))
+        .wordpress
+}
+
 /// The pinned WordPress `version` (`compat/hooks/source.json`), unpacked once into the system's temporary directory
 /// and reused; its `wordpress/` root.
 pub fn wordpress_release(version: &str) -> Result<PathBuf, String> {

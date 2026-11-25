@@ -55,7 +55,8 @@ fn request(php: &Php, root: &std::path::Path, before: &str) {
 }
 
 fn main() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("kses"))
+        .expect("the pinned release");
     let out = tempfile::tempdir().unwrap();
     let root = prepare_release(&release, &out.path().join("wordpress")).unwrap();
 

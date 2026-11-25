@@ -315,7 +315,9 @@ fn main() {
 
 /// Boots the embedded PHP with the native areas and runs one PHPUnit configuration.
 fn run_one(run: &Run, url: &str) {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release =
+        speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("options"))
+            .expect("the pinned release");
     let prepared = prepare_release(&release, &release.with_file_name("wordpress-options-port"))
         .expect("prepared");
     // SAFETY: nothing else runs yet; PHP is not booted and this process has one thread.
