@@ -4,6 +4,8 @@ use std::path::PathBuf;
 
 use serde_json::Value;
 use speedyspec_php_serialize::{PhpKey, PhpValue};
+use speedyspec_wp_posts::{PostTypePorts, Untranslated};
+use speedyspec_wp_posts_contracts::{RewriteContext, TitleSanitizer};
 
 /// The recorded cases. The file is large: read it once per test.
 #[allow(dead_code)]
@@ -98,4 +100,61 @@ pub fn property<'a>(value: &'a PhpValue, name: &str) -> Option<&'a PhpValue> {
         .iter()
         .find(|(k, _)| matches!(k, PhpKey::Str(s) if s.as_slice() == name.as_bytes()))
         .map(|(_, v)| v)
+}
+
+/// `is_admin() || get_option( 'permalink_structure' )`, fixed.
+#[allow(dead_code)]
+pub struct Permalinks(pub bool);
+
+impl RewriteContext for Permalinks {
+    fn rewrite_applies(&self) -> bool {
+        self.0
+    }
+}
+
+/// Enough of `sanitize_title_with_dashes()` for the recordings: ASCII-lowercase, whitespace to `-`, bytes outside
+/// `[a-z0-9_-]` dropped, runs of `-` collapsed and trimmed (`My Books!` becomes `my-books`).
+#[allow(dead_code)]
+pub struct Dashes;
+
+impl TitleSanitizer for Dashes {
+    fn sanitize_title_with_dashes(&self, title: &[u8]) -> Vec<u8> {
+        let mut out: Vec<u8> = Vec::with_capacity(title.len());
+        for byte in title.to_ascii_lowercase() {
+            let byte = if byte.is_ascii_whitespace() {
+                b'-'
+            } else {
+                byte
+            };
+            if !(byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_' || byte == b'-')
+            {
+                continue;
+            }
+            if byte == b'-' && out.last() == Some(&b'-') {
+                continue;
+            }
+            out.push(byte);
+        }
+        while out.last() == Some(&b'-') {
+            out.pop();
+        }
+        while out.first() == Some(&b'-') {
+            out.remove(0);
+        }
+        out
+    }
+}
+
+/// The ports `set_props()` reads through: WordPress's English, the fixed rewrite context and [`Dashes`].
+#[allow(dead_code)]
+pub fn ports(permalinks: bool) -> PostTypePorts<'static> {
+    PostTypePorts {
+        translator: &Untranslated,
+        rewrite: if permalinks {
+            &Permalinks(true)
+        } else {
+            &Permalinks(false)
+        },
+        titles: &Dashes,
+    }
 }
