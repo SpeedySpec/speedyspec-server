@@ -181,6 +181,43 @@ fn supports_list_removes_property() {
 }
 
 #[test]
+fn supports_object_iterates_its_properties() {
+    // `foreach` over an object walks its properties, as it does an array's entries.
+    let mut registry = PostTypeRegistry::new();
+    let supports = PhpValue::Object {
+        class: "stdClass".to_owned(),
+        properties: vec![
+            (k("0"), s("title")),
+            (
+                k("custom"),
+                PhpValue::Array(vec![(k("notes"), PhpValue::Bool(true))]),
+            ),
+            (k("1"), s("thumbnail")),
+        ],
+    };
+    let registration = registry.register(
+        PostTypeName::new("book"),
+        vec![(k("supports"), supports)],
+        &support::ports(false),
+    );
+    assert_eq!(registration.post_type.get("supports"), None);
+    assert_eq!(
+        registry.all_supports("book"),
+        vec![
+            ("title".to_owned(), PhpValue::Bool(true)),
+            (
+                "custom".to_owned(),
+                PhpValue::Array(vec![(
+                    PhpKey::Int(0),
+                    PhpValue::Array(vec![(k("notes"), PhpValue::Bool(true))])
+                )])
+            ),
+            ("thumbnail".to_owned(), PhpValue::Bool(true)),
+        ]
+    );
+}
+
+#[test]
 fn editor_implies_autosave_unless_present() {
     let mut registry = PostTypeRegistry::new();
     register(

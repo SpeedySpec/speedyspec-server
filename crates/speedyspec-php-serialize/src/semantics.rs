@@ -81,17 +81,20 @@ pub fn is_integer_key(bytes: &[u8]) -> bool {
             .is_some()
 }
 
-/// `$array[ $value ]`'s key: null is `""`, a bool `0` or `1`, a float truncated toward zero (`0` when NaN, infinite
-/// or out of the int range), an integer-like string an int; `None` for an array or object, where PHP throws
-/// "Illegal offset type".
+/// `$array[ $value ]`'s key: null is `""`, a bool `0` or `1`, a float truncated toward zero (a finite float outside
+/// the int range wraps modulo 2^64, as PHP 8.5's `zend_dval_to_lval()` does: `1e20` is `7766279631452241920`,
+/// `2^63` is `i64::MIN`; NaN and infinities are `0`), an integer-like string an int; `None` for an array or object,
+/// where PHP throws "Illegal offset type".
 pub fn to_array_key(value: &PhpValue) -> Option<PhpKey> {
     match value {
         PhpValue::Null => Some(PhpKey::Str(Vec::new())),
         PhpValue::Bool(b) => Some(PhpKey::Int(i64::from(*b))),
         PhpValue::Int(i) => Some(PhpKey::Int(*i)),
+        PhpValue::Float(f) if !f.is_finite() => Some(PhpKey::Int(0)),
         PhpValue::Float(f) => {
-            let fits = f.is_finite() && *f >= i64::MIN as f64 && *f < i64::MAX as f64;
-            Some(PhpKey::Int(if fits { f.trunc() as i64 } else { 0 }))
+            // `%` is exact, so the remainder is an integer in (-2^64, 2^64): i128 holds it, and `as i64` wraps it.
+            let wrapped = f.trunc() % 18_446_744_073_709_551_616.0;
+            Some(PhpKey::Int(wrapped as i128 as i64))
         }
         PhpValue::Str(s) if is_integer_key(s) => std::str::from_utf8(s)
             .ok()
@@ -451,6 +454,15 @@ mod tests {
             (Float(1.9), Some(PhpKey::Int(1))),
             (Float(-2.5), Some(PhpKey::Int(-2))),
             (Float(f64::NAN), Some(PhpKey::Int(0))),
+            (Float(f64::INFINITY), Some(PhpKey::Int(0))),
+            (Float(f64::NEG_INFINITY), Some(PhpKey::Int(0))),
+            // PHP 8.5 wraps a finite float outside the int range modulo 2^64.
+            (Float(1e20), Some(PhpKey::Int(7766279631452241920))),
+            (Float(-1e20), Some(PhpKey::Int(-7766279631452241920))),
+            (Float(9223372036854775808.0), Some(PhpKey::Int(i64::MIN))),
+            (Float(1e19), Some(PhpKey::Int(-8446744073709551616))),
+            (Float(18446744073709551616.0), Some(PhpKey::Int(0))),
+            (Float(1.5e300), Some(PhpKey::Int(0))),
             (s("12"), Some(PhpKey::Int(12))),
             (s("012"), Some(k("012"))),
             (s("edit_book"), Some(k("edit_book"))),

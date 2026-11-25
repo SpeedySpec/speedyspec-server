@@ -4,10 +4,12 @@
 //! `register_taxonomies()` and their removal counterparts (class-wp-post-type.php 676-860).
 //!
 //! The registry hooks nothing and registers no taxonomy: it returns the actions and taxonomies for phase 4's
-//! adapter. Rewrite rules and query vars are left to the rewrite seam.
+//! adapter. Rewrite rules and query vars are left to the rewrite seam. `add_supports()` walks an object `supports`'
+//! properties as it walks an array's entries, as PHP's `foreach` does.
 //!
 //! Approximations, none of them recorded:
-//! - a non-empty, non-array `supports` adds no features (PHP warns in `foreach`) and is still removed;
+//! - a non-empty `supports` that is neither an array nor an object adds no features (PHP warns in `foreach`) and is
+//!   still removed;
 //! - a `supports` list entry's value becomes a feature as PHP's `(array)` cast and array key conversion make it
 //!   (`false` is `"0"`, `1.5` is `"1"`, null adds nothing);
 //! - a non-scalar value in `cap` removes no meta capability (PHP throws "Illegal offset type").
@@ -141,7 +143,12 @@ impl PostTypeRegistry {
         let name = post_type.name().as_str().to_owned();
         let supports = post_type.get("supports").cloned().unwrap_or(PhpValue::Null);
         if !is_empty(&supports) {
-            if let PhpValue::Array(items) = supports {
+            // `foreach ( $this->supports as $feature => $args )`: an array's entries or an object's properties.
+            if let PhpValue::Array(items)
+            | PhpValue::Object {
+                properties: items, ..
+            } = supports
+            {
                 for (feature, args) in items {
                     if matches!(args, PhpValue::Array(_)) {
                         self.add_support(&name, &[&key_to_string(&feature)], vec![args]);
