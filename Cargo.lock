@@ -6387,6 +6387,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-meta-sql"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+ "speedyspec-wp-meta-contracts",
+]
+
+[[package]]
 name = "speedyspec-wp-object-cache"
 version = "0.2.0"
 dependencies = [
