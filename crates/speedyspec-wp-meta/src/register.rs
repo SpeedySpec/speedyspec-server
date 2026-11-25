@@ -1,8 +1,14 @@
 //! `register_meta()`'s rules, ported from WordPress 7.1.5's `wp-includes/meta.php`.
 //!
-//! The domain decides; the phase-3 adapter applies: it runs the `register_meta_args` filter before
-//! [`resolve_registration`], adds the [`FilterToAdd`]s, adds `filter_default_metadata` when asked and stores a
+//! The domain decides; the phase-3 adapter applies. It calls [`prepare_registration`] (the steps before the
+//! `register_meta_args` filter), runs that filter on [`PreparedArgs::args`], then calls [`resolve_registration`]
+//! (everything after it). It adds the [`FilterToAdd`]s, adds `filter_default_metadata` when asked and stores a
 //! [`Registration::Registered`] key in the [`MetaKeyRegistry`](crate::MetaKeyRegistry).
+//!
+//! Approximations, none of which WordPress records (it documents the subtype as a string):
+//! - a float `object_subtype` is truncated to an int, as the array key is, though PHP's hook name keeps the decimals;
+//! - an array or object `object_subtype` becomes `""`, where PHP throws;
+//! - a non-array `show_in_rest.schema` skips the merge into the default's schema, where PHP's `array_merge` throws.
 
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_meta_contracts::{Callables, DefaultSchemaCheck, MetaKey, RevisionSupport};
@@ -11,13 +17,15 @@ use crate::hook_names::MetaHookNames;
 use crate::php::{array_merge, get, is_empty, isset, set, unset};
 use crate::protected::is_protected_key;
 
-/// `register_meta()`'s `$args`.
+/// `register_meta()`'s `$args` after the steps before the `register_meta_args` filter.
 #[derive(Clone, Debug, PartialEq)]
-pub enum RegisterArgs {
-    /// An array of arguments (`(array) $args` when it is not callable).
-    Array(Vec<(PhpKey, PhpValue)>),
-    /// The pre-4.6.0 form: `$args` is the sanitize callback itself.
-    LegacySanitize(PhpValue),
+pub struct PreparedArgs {
+    /// What the `register_meta_args` filter receives; the adapter may replace it with the filter's answer.
+    pub args: Vec<(PhpKey, PhpValue)>,
+    /// `$args` was itself a callable: the pre-4.6.0 sanitize form.
+    pub has_old_sanitize_cb: bool,
+    /// `$deprecated` was a callable: the pre-4.6.0 auth form.
+    pub has_old_auth_cb: bool,
 }
 
 /// One `add_filter()` call `register_meta()` makes.
@@ -137,27 +145,58 @@ fn subtype_name(value: &PhpValue) -> String {
     }
 }
 
-/// register_meta() after its register_meta_args filter (the filter is phase 3's).
-pub fn resolve_registration(
-    object_type: &str,
-    key: &MetaKey,
-    args: RegisterArgs,
+/// PHP's `(array) $value` for a value that is not callable.
+fn to_array(value: PhpValue) -> Vec<(PhpKey, PhpValue)> {
+    match value {
+        PhpValue::Null => Vec::new(),
+        PhpValue::Array(items) => items,
+        PhpValue::Object { properties, .. } => properties,
+        scalar => vec![(PhpKey::Int(0), scalar)],
+    }
+}
+
+/// `register_meta()` before its `register_meta_args` filter, in PHP's order: a callable `$args` (an array callable
+/// such as `[obj, 'method']` included) becomes `['sanitize_callback' => $args]`, anything else `(array) $args`;
+/// then a callable `$deprecated` becomes `$args['auth_callback']`.
+pub fn prepare_registration(
+    args: PhpValue,
     deprecated: Option<PhpValue>,
-    ports: &RegisterPorts<'_>,
-) -> Registration {
+    callables: &dyn Callables,
+) -> PreparedArgs {
     // There used to be individual args for sanitize and auth callbacks.
-    let (mut args, has_old_sanitize_cb) = match args {
-        RegisterArgs::Array(items) => (items, false),
-        RegisterArgs::LegacySanitize(callback) => (
-            vec![(PhpKey::Str(b"sanitize_callback".to_vec()), callback)],
+    let (mut args, has_old_sanitize_cb) = if callables.is_callable(&args) {
+        (
+            vec![(PhpKey::Str(b"sanitize_callback".to_vec()), args)],
             true,
-        ),
+        )
+    } else {
+        (to_array(args), false)
     };
     let mut has_old_auth_cb = false;
-    if let Some(deprecated) = deprecated.filter(|d| ports.callables.is_callable(d)) {
+    if let Some(deprecated) = deprecated.filter(|d| callables.is_callable(d)) {
         set(&mut args, "auth_callback", deprecated);
         has_old_auth_cb = true;
     }
+    PreparedArgs {
+        args,
+        has_old_sanitize_cb,
+        has_old_auth_cb,
+    }
+}
+
+/// register_meta() after its register_meta_args filter (the filter is phase 3's): `prepared` comes from
+/// [`prepare_registration`], its `args` possibly replaced by the filter, its flags kept.
+pub fn resolve_registration(
+    object_type: &str,
+    key: &MetaKey,
+    prepared: PreparedArgs,
+    ports: &RegisterPorts<'_>,
+) -> Registration {
+    let PreparedArgs {
+        args,
+        has_old_sanitize_cb,
+        has_old_auth_cb,
+    } = prepared;
 
     // unset( $defaults['default'] ); $args = wp_parse_args( $args, $defaults );
     let mut defaults = defaults();
@@ -309,13 +348,8 @@ mod tests {
             schema: &Yes,
             callables: &Yes,
         };
-        resolve_registration(
-            "post",
-            &MetaKey::from("color"),
-            RegisterArgs::Array(args),
-            None,
-            &ports,
-        )
+        let prepared = prepare_registration(PhpValue::Array(args), None, &Yes);
+        resolve_registration("post", &MetaKey::from("color"), prepared, &ports)
     }
 
     #[test]
@@ -366,5 +400,94 @@ mod tests {
         };
         assert!(key.single());
         assert_eq!(key.default(), Some(&PhpValue::Null));
+    }
+
+    /// `is_callable()` true for strings and for `[class, method]` arrays.
+    struct WithArrays;
+    impl Callables for WithArrays {
+        fn is_callable(&self, value: &PhpValue) -> bool {
+            match value {
+                PhpValue::Str(_) => true,
+                PhpValue::Array(items) => {
+                    items.len() == 2 && items.iter().all(|(_, v)| matches!(v, PhpValue::Str(_)))
+                }
+                _ => false,
+            }
+        }
+    }
+
+    fn resolve(prepared: PreparedArgs) -> Registration {
+        let ports = RegisterPorts {
+            revisions: &Yes,
+            schema: &Yes,
+            callables: &WithArrays,
+        };
+        resolve_registration("post", &MetaKey::from("color"), prepared, &ports)
+    }
+
+    #[test]
+    fn array_callable_is_the_legacy_sanitize_form() {
+        let callable = PhpValue::Array(vec![
+            (PhpKey::Int(0), s("Klass")),
+            (PhpKey::Int(1), s("clean")),
+        ]);
+        let prepared = prepare_registration(callable.clone(), None, &WithArrays);
+        assert!(prepared.has_old_sanitize_cb);
+        assert!(!prepared.has_old_auth_cb);
+        assert_eq!(
+            prepared.args,
+            vec![(k("sanitize_callback"), callable.clone())]
+        );
+        let Registration::HooksOnly { filters, .. } = resolve(prepared) else {
+            panic!("hooks only");
+        };
+        assert_eq!(filters[0].hook, b"sanitize_post_meta_color");
+        assert_eq!(filters[0].callback, callable);
+    }
+
+    #[test]
+    fn non_callable_args_are_cast_to_an_array() {
+        let prepared = prepare_registration(PhpValue::Int(5), None, &Yes);
+        assert_eq!(prepared.args, vec![(PhpKey::Int(0), PhpValue::Int(5))]);
+        assert!(!prepared.has_old_sanitize_cb);
+        assert!(
+            prepare_registration(PhpValue::Null, None, &Yes)
+                .args
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn deprecated_auth_goes_into_the_args_the_filter_sees() {
+        let prepared = prepare_registration(
+            PhpValue::Array(vec![(k("auth_callback"), s("first"))]),
+            Some(s("old_auth")),
+            &Yes,
+        );
+        assert!(prepared.has_old_auth_cb);
+        assert_eq!(prepared.args, vec![(k("auth_callback"), s("old_auth"))]);
+        // A non-callable $deprecated is ignored.
+        let prepared = prepare_registration(PhpValue::Array(vec![]), Some(PhpValue::Int(1)), &Yes);
+        assert!(!prepared.has_old_auth_cb);
+        assert!(prepared.args.is_empty());
+    }
+
+    #[test]
+    fn old_flags_survive_a_filter_that_changes_args() {
+        // A register_meta_args filter that throws the args away and returns its own.
+        let mut prepared =
+            prepare_registration(PhpValue::Array(vec![]), Some(s("old_auth")), &WithArrays);
+        prepared.args = vec![(k("single"), PhpValue::Bool(true))];
+        assert!(matches!(resolve(prepared), Registration::HooksOnly { .. }));
+
+        let mut prepared = prepare_registration(s("old_sanitize"), None, &WithArrays);
+        prepared.args = allowed_args(vec![(k("foo"), s("bar"))]);
+        assert!(prepared.args.is_empty());
+        let Registration::HooksOnly { filters, .. } = resolve(prepared) else {
+            panic!("hooks only");
+        };
+        // The filter dropped the sanitize callback, so only the auth fallback is added.
+        assert_eq!(filters.len(), 1);
+        assert_eq!(filters[0].callback, s("__return_true"));
     }
 }

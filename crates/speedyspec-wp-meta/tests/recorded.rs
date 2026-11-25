@@ -36,8 +36,8 @@ use indexmap::IndexMap;
 use serde_json::Value;
 use speedyspec_php_serialize::PhpKey;
 use speedyspec_wp_meta::{
-    MetaKeyRegistry, RegisterArgs, RegisterPorts, Registration, allowed_args, filters_to_remove,
-    resolve_registration,
+    MetaKeyRegistry, RegisterPorts, Registration, allowed_args, filters_to_remove,
+    prepare_registration, resolve_registration,
 };
 use speedyspec_wp_meta_contracts::{
     Callables, DefaultSchemaCheck, MetaType, ObjectId, ObjectSubtypes, RevisionSupport,
@@ -94,6 +94,7 @@ impl ObjectSubtypes for Subtypes {
         match (meta_type.name(), object.0) {
             ("post", 10) => "page".to_owned(),
             ("post", 11) => "post".to_owned(),
+            ("comment", _) => "comment".to_owned(),
             _ => String::new(),
         }
     }
@@ -271,20 +272,13 @@ impl Replay {
                 self.initialized = true;
                 let object_type = str_of(&args[0]);
                 let key = MetaKey::new(bytes_of(&args[1]));
-                let register_args = match &args[2] {
-                    PhpValue::Array(items) if self.allowed_list => {
-                        RegisterArgs::Array(allowed_args(items.clone()))
-                    }
-                    PhpValue::Array(items) => RegisterArgs::Array(items.clone()),
-                    callable if Named.is_callable(callable) => {
-                        RegisterArgs::LegacySanitize(callable.clone())
-                    }
-                    PhpValue::Null => RegisterArgs::Array(Vec::new()),
-                    scalar => RegisterArgs::Array(vec![(PhpKey::Int(0), scalar.clone())]),
-                };
-                let deprecated = args.get(3).cloned();
-                let registration =
-                    resolve_registration(&object_type, &key, register_args, deprecated, &ports());
+                let mut prepared =
+                    prepare_registration(args[2].clone(), args.get(3).cloned(), &Named);
+                // The register_meta_args filter: only the allowed-list scenario hooks one.
+                if self.allowed_list {
+                    prepared.args = allowed_args(prepared.args);
+                }
+                let registration = resolve_registration(&object_type, &key, prepared, &ports());
                 let default_hook = format!("default_{object_type}_metadata").into_bytes();
                 let default_cb = PhpValue::Str(b"filter_default_metadata".to_vec());
                 let apply = |filters: &mut Filters,

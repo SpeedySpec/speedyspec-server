@@ -10,7 +10,7 @@ mod registry;
 pub use hook_names::MetaHookNames;
 pub use protected::is_protected_key;
 pub use register::{
-    FilterToAdd, RegisterArgs, RegisterPorts, RegisteredMetaKey, Registration, allowed_args,
-    resolve_registration,
+    FilterToAdd, PreparedArgs, RegisterPorts, RegisteredMetaKey, Registration, allowed_args,
+    prepare_registration, resolve_registration,
 };
 pub use registry::{MetaKeyRegistry, filters_to_remove};
