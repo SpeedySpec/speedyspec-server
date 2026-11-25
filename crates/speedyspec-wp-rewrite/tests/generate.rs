@@ -1,12 +1,14 @@
-//! WordPress 7.1.5's rewrite_rules(), mod_rewrite_rules() and iis7_url_rewrite_rules(), recorded by
-//! fixtures/rules/record.php, replayed; and the hooks generation fires.
+//! WordPress's rewrite_rules(), mod_rewrite_rules() and iis7_url_rewrite_rules(), recorded from the rewrite area's
+//! pinned release by fixtures/rules/record.php, replayed; and the hooks generation fires.
 
 mod support;
 
 use serde_json::Value;
 use speedyspec_routing::{Endpoint, EndpointMask, PermastructArgs, Rule, RulePriority};
 use speedyspec_wp_hooks::{Callback, HookName, HookValue};
-use speedyspec_wp_rewrite::{RewriteState, RewriteStateSource, RuleQuery};
+use speedyspec_wp_rewrite::{
+    QueryableTaxonomy, RandomablePostType, RewriteState, RewriteStateSource, RuleQuery,
+};
 use support::{Fixture, fixture_with};
 
 fn cases() -> Vec<Value> {
@@ -83,6 +85,22 @@ fn setup(case: &Value) -> (Fixture, RewriteState) {
         "type/%post_format%",
         PermastructArgs::default(),
     );
+    for p in case["permastructs"].as_array().unwrap() {
+        let name = p[0].as_str().unwrap();
+        f.service.add_rewrite_tag(
+            &mut s,
+            &format!("%{name}%"),
+            p[2].as_str().unwrap(),
+            p[3].as_str().unwrap(),
+        );
+        f.service.add_permastruct(
+            &mut s,
+            name,
+            p[1].as_str().unwrap(),
+            PermastructArgs::default(),
+        );
+    }
+    random_content(&f, case);
     for e in case["endpoints"].as_array().unwrap() {
         s.endpoints.push(Endpoint {
             mask: EndpointMask(e[0].as_u64().unwrap() as u32),
@@ -102,6 +120,62 @@ fn setup(case: &Value) -> (Fixture, RewriteState) {
         }
     }
     (f, s)
+}
+
+/// `rewrite['slug']` when `rewrite` is an array holding a string slug.
+fn rewrite_slug(rewrite: &Value) -> Option<String> {
+    rewrite
+        .get("slug")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+}
+
+/// The case's randomable post types, publicly queryable taxonomies, published posts and random content switch.
+fn random_content(f: &Fixture, case: &Value) {
+    *f.post_types.randomable.borrow_mut() = case["randomable"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| RandomablePostType {
+            name: t["name"].as_str().unwrap().into(),
+            archive_slug: t["has_archive"].as_str().map(str::to_string),
+            rewrites: t["rewrite"].is_object(),
+            rewrite_slug: rewrite_slug(&t["rewrite"]),
+        })
+        .collect();
+    *f.taxonomies.0.borrow_mut() = case["taxonomies"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| QueryableTaxonomy {
+            name: t["name"].as_str().unwrap().into(),
+            rewrite_slug: rewrite_slug(&t["rewrite"]),
+            object_types: t["object_type"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|o| o.as_str().unwrap().to_string())
+                .collect(),
+        })
+        .collect();
+    *f.posts.0.borrow_mut() = case["posts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| (p[0].as_str().unwrap().into(), p[1].as_str().unwrap().into()))
+        .collect();
+    if !case["random"].as_bool().unwrap() {
+        f.hooks
+            .add_filter(
+                &HookName::from("wp_enable_random_content_redirect"),
+                Callback::rust("disable_random", |_: &[HookValue]| {
+                    Ok(HookValue::Bool(false))
+                }),
+                &HookValue::Int(10),
+                1,
+            )
+            .unwrap();
+    }
 }
 
 fn replay(name: &str) {
@@ -172,6 +246,31 @@ fn verbose_mod_rewrite_rules() {
 }
 
 #[test]
+fn random_content_rules_for_authors_taxonomies_and_post_types() {
+    replay("random_content");
+}
+
+#[test]
+fn a_post_at_a_custom_random_base_drops_the_random_rule() {
+    replay("random_base_taken");
+}
+
+#[test]
+fn a_page_at_the_random_base_drops_the_random_rule() {
+    replay("random_base_page_taken");
+}
+
+#[test]
+fn a_post_elsewhere_leaves_the_random_rule() {
+    replay("random_base_post_elsewhere");
+}
+
+#[test]
+fn disabled_random_content_adds_no_rules() {
+    replay("random_disabled");
+}
+
+#[test]
 fn filters_fire_in_order() {
     let case = cases()
         .into_iter()
@@ -189,6 +288,8 @@ fn filters_fire_in_order() {
         "category_rewrite_rules",
         "post_tag_rewrite_rules",
         "post_format_rewrite_rules",
+        "wp_enable_random_content_redirect",
+        "random_rewrite_rules",
         "generate_rewrite_rules",
         "rewrite_rules_array",
     ];

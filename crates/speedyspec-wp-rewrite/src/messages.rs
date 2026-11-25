@@ -83,10 +83,12 @@ rewrite_message!(command SetPermalinkStructure { structure: String } -> R<()>,
     |s, st, src, m| s.set_permalink_structure(&mut st, &m.structure));
 rewrite_message!(command SetCategoryBase { base: String } -> R<()>, |s, st, src, m| s.set_category_base(&mut st, &m.base));
 rewrite_message!(command SetTagBase { base: String } -> R<()>, |s, st, src, m| s.set_tag_base(&mut st, &m.base));
+rewrite_message!(command SetRandomBase { base: String } -> R<()>, |s, st, src, m| s.set_random_base(&mut st, &m.base));
 rewrite_message!(query GetRewriteRules {} -> R<Vec<Rule>>, |s, st, src, m| s.wp_rewrite_rules(&mut st, src.as_ref()));
 rewrite_message!(query GenerateAllRewriteRules {} -> R<Vec<Rule>>, |s, st, src, m| s.rewrite_rules(&mut st, src.as_ref()));
 rewrite_message!(query GeneratePermastructRules { structure: String, args: PermastructArgs } -> R<Vec<Rule>>,
     |s, st, src, m| s.expand(&st, &m.structure, m.args).map(|rules| rules.into_rules()));
+rewrite_message!(query GenerateRandomRewriteRules {} -> R<Vec<Rule>>, |s, st, src, m| s.random_rewrite_rules(&st));
 rewrite_message!(query GetModRewriteRules {} -> R<String>, |s, st, src, m| s.mod_rewrite_rules(&mut st, src.as_ref()));
 rewrite_message!(query GetIis7RewriteRules { add_parent_tags: bool } -> R<String>,
     |s, st, src, m| s.iis7_url_rewrite_rules(&st, m.add_parent_tags));
@@ -102,8 +104,8 @@ pub fn register_rewrite_handlers(container: &Container, service: Rc<RewriteServi
     bind!(
         commands: InitRewrite, AddRewriteRule, AddExternalRule, AddRewriteTag, RemoveRewriteTag, AddPermastruct,
             RemovePermastruct, AddRewriteEndpoint, FlushRewriteRules, SetPermalinkStructure, SetCategoryBase,
-            SetTagBase;
-        queries: GetRewriteRules, GenerateAllRewriteRules, GeneratePermastructRules, GetModRewriteRules,
-            GetIis7RewriteRules
+            SetTagBase, SetRandomBase;
+        queries: GetRewriteRules, GenerateAllRewriteRules, GeneratePermastructRules, GenerateRandomRewriteRules,
+            GetModRewriteRules, GetIis7RewriteRules
     );
 }

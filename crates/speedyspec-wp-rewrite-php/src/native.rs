@@ -13,10 +13,10 @@ use speedyspec_router::wordpress::matches_map_with;
 use speedyspec_routing::{EndpointMask, PermastructArgs, Rule, RulePriority};
 use speedyspec_wp_rewrite::{
     AddExternalRule, AddPermastruct, AddRewriteEndpoint, AddRewriteRule, AddRewriteTag,
-    EndpointQueryVar, FlushRewriteRules, GenerateAllRewriteRules, GetIis7RewriteRules,
-    GetModRewriteRules, GetRewriteRules, InitRewrite, RemovePermastruct, RemoveRewriteTag,
-    RewriteError, RewriteService, RewriteStateSource, RuleQuery, SetCategoryBase,
-    SetPermalinkStructure, SetTagBase, WpOutcome, WpRouting,
+    EndpointQueryVar, FlushRewriteRules, GenerateAllRewriteRules, GenerateRandomRewriteRules,
+    GetIis7RewriteRules, GetModRewriteRules, GetRewriteRules, InitRewrite, RemovePermastruct,
+    RemoveRewriteTag, RewriteError, RewriteService, RewriteStateSource, RuleQuery, SetCategoryBase,
+    SetPermalinkStructure, SetRandomBase, SetTagBase, WpOutcome, WpRouting,
 };
 
 use crate::values::{arg, int, items, key_text, rules_value, text, truthy};
@@ -299,6 +299,15 @@ fn call_method(
             source,
             base: string(0)
         }),
+        "set_random_base" => command!(SetRandomBase {
+            source,
+            base: string(0)
+        }),
+        "random_rewrite_rules" => query!(GenerateRandomRewriteRules { source }).map(rules_or_empty),
+        "get_random_base" => direct!(|st| Value::Str(s.get_random_base(&st))),
+        "post_permalinks_share_random_base" => {
+            direct!(|st| Value::Bool(s.post_permalinks_share_random_base(&st)))
+        }
         "wp_rewrite_rules" => {
             let rules = query!(GetRewriteRules {
                 source: source.clone()

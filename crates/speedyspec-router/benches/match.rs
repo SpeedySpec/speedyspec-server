@@ -1,6 +1,6 @@
 //! Matching and compiling WordPress rule lists: the router's two dispatch strategies against one regex per rule
-//! (what WP::parse_request does in PHP), over WordPress 7.1.5's own `/%postname%/` rules (recorded in
-//! compat/rewrite) and a 500-rule list (those rules plus generated `add_rewrite_rule` ones).
+//! (what WP::parse_request does in PHP), over WordPress's own `/%postname%/` rules (recorded from the pinned release
+//! in compat/rewrite) and a 500-rule list (those rules plus generated `add_rewrite_rule` ones).
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use regex::Regex;

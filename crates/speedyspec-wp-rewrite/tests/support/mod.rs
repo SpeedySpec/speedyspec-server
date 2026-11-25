@@ -7,9 +7,12 @@ use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecat
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_rewrite::memory::{
     FixedUrls, FlagWpLoaded, MemoryPageUris, MemoryPostTypes, MemoryQueryVars,
-    MemoryRewriteOptions, MemoryRewriteStateSource, SingleSite,
+    MemoryRewriteOptions, MemoryRewriteStateSource, MemoryTaxonomies, MemoryViewablePosts,
+    SingleSite, UntranslatedSite,
 };
-use speedyspec_wp_rewrite::{RewriteDeps, RewriteService, RewriteState};
+use speedyspec_wp_rewrite::{
+    FilteredRandomContentRedirects, RewriteDeps, RewriteService, RewriteState,
+};
 
 pub type Log = Rc<RefCell<Vec<(String, Vec<HookValue>)>>>;
 
@@ -20,6 +23,9 @@ pub struct Fixture {
     pub loaded: Rc<FlagWpLoaded>,
     pub query_vars: Rc<MemoryQueryVars>,
     pub source: Rc<MemoryRewriteStateSource>,
+    pub post_types: Rc<MemoryPostTypes>,
+    pub taxonomies: Rc<MemoryTaxonomies>,
+    pub posts: Rc<MemoryViewablePosts>,
     pub log: Log,
 }
 
@@ -41,6 +47,9 @@ pub fn fixture_with(permalink_structure: &str, home: &str, site: &str) -> Fixtur
     let loaded = Rc::new(FlagWpLoaded::new(true));
     let query_vars = Rc::new(MemoryQueryVars::default());
     let source = Rc::new(MemoryRewriteStateSource::new(RewriteState::default()));
+    let post_types = Rc::new(MemoryPostTypes::default());
+    let taxonomies = Rc::new(MemoryTaxonomies::default());
+    let posts = Rc::new(MemoryViewablePosts::default());
     let deps = RewriteDeps {
         options: options.clone(),
         urls: Rc::new(FixedUrls {
@@ -50,7 +59,11 @@ pub fn fixture_with(permalink_structure: &str, home: &str, site: &str) -> Fixtur
         multisite: Rc::new(SingleSite),
         loaded: loaded.clone(),
         pages: Rc::new(MemoryPageUris::default()),
-        post_types: Rc::new(MemoryPostTypes::default()),
+        post_types: post_types.clone(),
+        taxonomies: taxonomies.clone(),
+        posts: posts.clone(),
+        random_content: Rc::new(FilteredRandomContentRedirects::new(hooks.clone())),
+        translations: Rc::new(UntranslatedSite),
         query_vars: query_vars.clone(),
         hooks: hooks.clone(),
         state: source.clone(),
@@ -63,6 +76,9 @@ pub fn fixture_with(permalink_structure: &str, home: &str, site: &str) -> Fixtur
         loaded,
         query_vars,
         source,
+        post_types,
+        taxonomies,
+        posts,
         log: Rc::default(),
     }
 }

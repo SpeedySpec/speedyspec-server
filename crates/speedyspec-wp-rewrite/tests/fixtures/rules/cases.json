@@ -11,6 +11,11 @@
         "top": [],
         "bottom": [],
         "external": [],
+        "randomable": [],
+        "taxonomies": [],
+        "permastructs": [],
+        "posts": [],
+        "random": true,
         "rules": [],
         "mod_rewrite": "",
         "iis7": "",
@@ -28,6 +33,11 @@
         "top": [],
         "bottom": [],
         "external": [],
+        "randomable": [],
+        "taxonomies": [],
+        "permastructs": [],
+        "posts": [],
+        "random": true,
         "rules": [
             [
                 "category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
@@ -112,6 +122,14 @@
             [
                 ".*wp-register.php$",
                 "index.php?register=true"
+            ],
+            [
+                "random/?$",
+                "index.php?random=1"
+            ],
+            [
+                "random/author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]&random=1"
             ],
             [
                 "feed/(feed|rdf|rss|rss2|atom)/?$",
@@ -386,6 +404,11 @@
         "top": [],
         "bottom": [],
         "external": [],
+        "randomable": [],
+        "taxonomies": [],
+        "permastructs": [],
+        "posts": [],
+        "random": true,
         "rules": [
             [
                 "archives/category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
@@ -470,6 +493,14 @@
             [
                 ".*wp-register.php$",
                 "index.php?register=true"
+            ],
+            [
+                "random/?$",
+                "index.php?random=1"
+            ],
+            [
+                "random/author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]&random=1"
             ],
             [
                 "feed/(feed|rdf|rss|rss2|atom)/?$",
@@ -747,6 +778,11 @@
         "top": [],
         "bottom": [],
         "external": [],
+        "randomable": [],
+        "taxonomies": [],
+        "permastructs": [],
+        "posts": [],
+        "random": true,
         "rules": [
             [
                 "topics/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
@@ -831,6 +867,14 @@
             [
                 ".*wp-register.php$",
                 "index.php?register=true"
+            ],
+            [
+                "random/?$",
+                "index.php?random=1"
+            ],
+            [
+                "random/author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]&random=1"
             ],
             [
                 "feed/(feed|rdf|rss|rss2|atom)/?$",
@@ -1121,6 +1165,11 @@
         "top": [],
         "bottom": [],
         "external": [],
+        "randomable": [],
+        "taxonomies": [],
+        "permastructs": [],
+        "posts": [],
+        "random": true,
         "rules": [
             [
                 "index.php/category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
@@ -1205,6 +1254,14 @@
             [
                 ".*wp-register.php$",
                 "index.php?register=true"
+            ],
+            [
+                "index.php/random/?$",
+                "index.php?random=1"
+            ],
+            [
+                "index.php/random/author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]&random=1"
             ],
             [
                 "index.php/feed/(feed|rdf|rss|rss2|atom)/?$",
@@ -1479,6 +1536,11 @@
         "top": [],
         "bottom": [],
         "external": [],
+        "randomable": [],
+        "taxonomies": [],
+        "permastructs": [],
+        "posts": [],
+        "random": true,
         "rules": [
             [
                 "category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
@@ -1551,6 +1613,14 @@
             [
                 ".*wp-register.php$",
                 "index.php?register=true"
+            ],
+            [
+                "random/?$",
+                "index.php?random=1"
+            ],
+            [
+                "random/author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]&random=1"
             ],
             [
                 "feed/(feed|rdf|rss|rss2|atom)/?$",
@@ -1846,6 +1916,11 @@
                 "legacy.php?path=$1"
             ]
         ],
+        "randomable": [],
+        "taxonomies": [],
+        "permastructs": [],
+        "posts": [],
+        "random": true,
         "rules": [
             [
                 "top/([^/]+)/?$",
@@ -1942,6 +2017,14 @@
             [
                 ".*wp-register.php$",
                 "index.php?register=true"
+            ],
+            [
+                "random/?$",
+                "index.php?random=1"
+            ],
+            [
+                "random/author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]&random=1"
             ],
             [
                 "feed/(feed|rdf|rss|rss2|atom)/?$",
@@ -2261,17 +2344,524 @@
         "iis7_parent": "<configuration>\n\t<system.webServer>\n\t\t<rewrite>\n\t\t\t<rules>\n\t\t\t<rule name=\"WordPress: https://example.test\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>\n\t\t\t</rules>\n\t\t</rewrite>\n\t</system.webServer>\n</configuration>"
     },
     {
-        "name": "verbose_rules",
+        "name": "random_content",
         "options": {
             "permalink_structure": "/%postname%/"
         },
-        "home": "https://example.test/blog",
+        "home": "https://example.test",
         "site": "https://example.test",
-        "verbose": true,
+        "verbose": false,
+        "endpoints": [],
+        "top": [
+            [
+                "random/books/?$",
+                "index.php?post_type=book&orderby=rand"
+            ]
+        ],
+        "bottom": [],
+        "external": [],
+        "randomable": [
+            {
+                "name": "post",
+                "has_archive": false,
+                "rewrite": false
+            },
+            {
+                "name": "book",
+                "has_archive": "books",
+                "rewrite": {
+                    "slug": "book"
+                }
+            },
+            {
+                "name": "movie",
+                "has_archive": true,
+                "rewrite": {
+                    "slug": "film"
+                }
+            },
+            {
+                "name": "quote",
+                "has_archive": true,
+                "rewrite": {
+                    "with_front": true
+                }
+            },
+            {
+                "name": "note",
+                "has_archive": "notes",
+                "rewrite": false
+            }
+        ],
+        "taxonomies": [
+            {
+                "name": "category",
+                "rewrite": {
+                    "slug": "category"
+                },
+                "object_type": [
+                    "post"
+                ]
+            },
+            {
+                "name": "post_tag",
+                "rewrite": {
+                    "slug": "tag"
+                },
+                "object_type": [
+                    "page"
+                ]
+            },
+            {
+                "name": "genre",
+                "rewrite": {
+                    "slug": "genre"
+                },
+                "object_type": [
+                    "book",
+                    "movie"
+                ]
+            },
+            {
+                "name": "unregistered",
+                "rewrite": {
+                    "slug": "nope"
+                },
+                "object_type": [
+                    "book"
+                ]
+            },
+            {
+                "name": "plain",
+                "rewrite": false,
+                "object_type": [
+                    "book"
+                ]
+            }
+        ],
+        "permastructs": [
+            [
+                "genre",
+                "genre/%genre%",
+                "([^/]+)",
+                "genre="
+            ]
+        ],
+        "posts": [],
+        "random": true,
+        "rules": [
+            [
+                "random/books/?$",
+                "index.php?post_type=book&orderby=rand"
+            ],
+            [
+                "category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?category_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "category/(.+?)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?category_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "category/(.+?)/embed/?$",
+                "index.php?category_name=$matches[1]&embed=true"
+            ],
+            [
+                "category/(.+?)/page/?([0-9]{1,})/?$",
+                "index.php?category_name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "category/(.+?)/?$",
+                "index.php?category_name=$matches[1]"
+            ],
+            [
+                "tag/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?tag=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?tag=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/embed/?$",
+                "index.php?tag=$matches[1]&embed=true"
+            ],
+            [
+                "tag/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?tag=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/?$",
+                "index.php?tag=$matches[1]"
+            ],
+            [
+                "type/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?post_format=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?post_format=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/embed/?$",
+                "index.php?post_format=$matches[1]&embed=true"
+            ],
+            [
+                "type/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?post_format=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/?$",
+                "index.php?post_format=$matches[1]"
+            ],
+            [
+                "genre/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?genre=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "genre/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?genre=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "genre/([^/]+)/embed/?$",
+                "index.php?genre=$matches[1]&embed=true"
+            ],
+            [
+                "genre/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?genre=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "genre/([^/]+)/?$",
+                "index.php?genre=$matches[1]"
+            ],
+            [
+                "robots\\.txt$",
+                "index.php?robots=1"
+            ],
+            [
+                "favicon\\.ico$",
+                "index.php?favicon=1"
+            ],
+            [
+                "sitemap\\.xml",
+                "index.php?sitemap=index"
+            ],
+            [
+                ".*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\\.php$",
+                "index.php?feed=old"
+            ],
+            [
+                ".*wp-app\\.php(/.*)?$",
+                "index.php?error=403"
+            ],
+            [
+                ".*wp-register.php$",
+                "index.php?register=true"
+            ],
+            [
+                "random/?$",
+                "index.php?random=1"
+            ],
+            [
+                "random/author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]&random=1"
+            ],
+            [
+                "random/category/(.+?)/?$",
+                "index.php?category_name=$matches[1]&random=1"
+            ],
+            [
+                "random/genre/([^/]+)/?$",
+                "index.php?genre=$matches[1]&random=1"
+            ],
+            [
+                "random/film/?$",
+                "index.php?post_type=movie&random=1"
+            ],
+            [
+                "feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "page/?([0-9]{1,})/?$",
+                "index.php?&paged=$matches[1]"
+            ],
+            [
+                "comments/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]&withcomments=1"
+            ],
+            [
+                "comments/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]&withcomments=1"
+            ],
+            [
+                "comments/embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "search/(.+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?s=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "search/(.+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?s=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "search/(.+)/embed/?$",
+                "index.php?s=$matches[1]&embed=true"
+            ],
+            [
+                "search/(.+)/page/?([0-9]{1,})/?$",
+                "index.php?s=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "search/(.+)/?$",
+                "index.php?s=$matches[1]"
+            ],
+            [
+                "author/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?author_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?author_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/embed/?$",
+                "index.php?author_name=$matches[1]&embed=true"
+            ],
+            [
+                "author/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?author_name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&paged=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&paged=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/embed/?$",
+                "index.php?year=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/?$",
+                "index.php?year=$matches[1]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "(.?.+?)/embed/?$",
+                "index.php?pagename=$matches[1]&embed=true"
+            ],
+            [
+                "(.?.+?)/trackback/?$",
+                "index.php?pagename=$matches[1]&tb=1"
+            ],
+            [
+                "(.?.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?pagename=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "(.?.+?)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?pagename=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "(.?.+?)/page/?([0-9]{1,})/?$",
+                "index.php?pagename=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "(.?.+?)/comment-page-([0-9]{1,})/?$",
+                "index.php?pagename=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "(.?.+?)(?:/([0-9]+))?/?$",
+                "index.php?pagename=$matches[1]&page=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([^/]+)/embed/?$",
+                "index.php?name=$matches[1]&embed=true"
+            ],
+            [
+                "([^/]+)/trackback/?$",
+                "index.php?name=$matches[1]&tb=1"
+            ],
+            [
+                "([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?name=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "([^/]+)(?:/([0-9]+))?/?$",
+                "index.php?name=$matches[1]&page=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[^/]+/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ]
+        ],
+        "mod_rewrite": "<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\nRewriteBase /\nRewriteRule ^index\\.php$ - [L]\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule . /index.php [L]\n</IfModule>\n",
+        "iis7": "\n\t\t\t<rule name=\"WordPress: https://example.test\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>",
+        "iis7_parent": "<configuration>\n\t<system.webServer>\n\t\t<rewrite>\n\t\t\t<rules>\n\t\t\t<rule name=\"WordPress: https://example.test\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>\n\t\t\t</rules>\n\t\t</rewrite>\n\t</system.webServer>\n</configuration>"
+    },
+    {
+        "name": "random_base_taken",
+        "options": {
+            "permalink_structure": "/%postname%/",
+            "wp_random_base": "surprise"
+        },
+        "home": "https://example.test",
+        "site": "https://example.test",
+        "verbose": false,
         "endpoints": [],
         "top": [],
         "bottom": [],
         "external": [],
+        "randomable": [],
+        "taxonomies": [],
+        "permastructs": [],
+        "posts": [
+            [
+                "surprise",
+                "post"
+            ]
+        ],
+        "random": true,
         "rules": [
             [
                 "category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
@@ -2332,6 +2922,1145 @@
             [
                 "type/([^/]+)/?$",
                 "index.php?post_format=$matches[1]"
+            ],
+            [
+                "robots\\.txt$",
+                "index.php?robots=1"
+            ],
+            [
+                "favicon\\.ico$",
+                "index.php?favicon=1"
+            ],
+            [
+                "sitemap\\.xml",
+                "index.php?sitemap=index"
+            ],
+            [
+                ".*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\\.php$",
+                "index.php?feed=old"
+            ],
+            [
+                ".*wp-app\\.php(/.*)?$",
+                "index.php?error=403"
+            ],
+            [
+                ".*wp-register.php$",
+                "index.php?register=true"
+            ],
+            [
+                "surprise/author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]&random=1"
+            ],
+            [
+                "feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "page/?([0-9]{1,})/?$",
+                "index.php?&paged=$matches[1]"
+            ],
+            [
+                "comments/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]&withcomments=1"
+            ],
+            [
+                "comments/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]&withcomments=1"
+            ],
+            [
+                "comments/embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "search/(.+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?s=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "search/(.+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?s=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "search/(.+)/embed/?$",
+                "index.php?s=$matches[1]&embed=true"
+            ],
+            [
+                "search/(.+)/page/?([0-9]{1,})/?$",
+                "index.php?s=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "search/(.+)/?$",
+                "index.php?s=$matches[1]"
+            ],
+            [
+                "author/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?author_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?author_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/embed/?$",
+                "index.php?author_name=$matches[1]&embed=true"
+            ],
+            [
+                "author/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?author_name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&paged=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&paged=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/embed/?$",
+                "index.php?year=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/?$",
+                "index.php?year=$matches[1]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "(.?.+?)/embed/?$",
+                "index.php?pagename=$matches[1]&embed=true"
+            ],
+            [
+                "(.?.+?)/trackback/?$",
+                "index.php?pagename=$matches[1]&tb=1"
+            ],
+            [
+                "(.?.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?pagename=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "(.?.+?)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?pagename=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "(.?.+?)/page/?([0-9]{1,})/?$",
+                "index.php?pagename=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "(.?.+?)/comment-page-([0-9]{1,})/?$",
+                "index.php?pagename=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "(.?.+?)(?:/([0-9]+))?/?$",
+                "index.php?pagename=$matches[1]&page=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([^/]+)/embed/?$",
+                "index.php?name=$matches[1]&embed=true"
+            ],
+            [
+                "([^/]+)/trackback/?$",
+                "index.php?name=$matches[1]&tb=1"
+            ],
+            [
+                "([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?name=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "([^/]+)(?:/([0-9]+))?/?$",
+                "index.php?name=$matches[1]&page=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[^/]+/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ]
+        ],
+        "mod_rewrite": "<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\nRewriteBase /\nRewriteRule ^index\\.php$ - [L]\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule . /index.php [L]\n</IfModule>\n",
+        "iis7": "\n\t\t\t<rule name=\"WordPress: https://example.test\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>",
+        "iis7_parent": "<configuration>\n\t<system.webServer>\n\t\t<rewrite>\n\t\t\t<rules>\n\t\t\t<rule name=\"WordPress: https://example.test\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>\n\t\t\t</rules>\n\t\t</rewrite>\n\t</system.webServer>\n</configuration>"
+    },
+    {
+        "name": "random_base_page_taken",
+        "options": {
+            "permalink_structure": "/%year%/%postname%/"
+        },
+        "home": "https://example.test",
+        "site": "https://example.test",
+        "verbose": false,
+        "endpoints": [],
+        "top": [],
+        "bottom": [],
+        "external": [],
+        "randomable": [],
+        "taxonomies": [],
+        "permastructs": [],
+        "posts": [
+            [
+                "random",
+                "page"
+            ],
+            [
+                "random",
+                "post"
+            ]
+        ],
+        "random": true,
+        "rules": [
+            [
+                "category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?category_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "category/(.+?)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?category_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "category/(.+?)/embed/?$",
+                "index.php?category_name=$matches[1]&embed=true"
+            ],
+            [
+                "category/(.+?)/page/?([0-9]{1,})/?$",
+                "index.php?category_name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "category/(.+?)/?$",
+                "index.php?category_name=$matches[1]"
+            ],
+            [
+                "tag/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?tag=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?tag=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/embed/?$",
+                "index.php?tag=$matches[1]&embed=true"
+            ],
+            [
+                "tag/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?tag=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/?$",
+                "index.php?tag=$matches[1]"
+            ],
+            [
+                "type/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?post_format=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?post_format=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/embed/?$",
+                "index.php?post_format=$matches[1]&embed=true"
+            ],
+            [
+                "type/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?post_format=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/?$",
+                "index.php?post_format=$matches[1]"
+            ],
+            [
+                "robots\\.txt$",
+                "index.php?robots=1"
+            ],
+            [
+                "favicon\\.ico$",
+                "index.php?favicon=1"
+            ],
+            [
+                "sitemap\\.xml",
+                "index.php?sitemap=index"
+            ],
+            [
+                ".*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\\.php$",
+                "index.php?feed=old"
+            ],
+            [
+                ".*wp-app\\.php(/.*)?$",
+                "index.php?error=403"
+            ],
+            [
+                ".*wp-register.php$",
+                "index.php?register=true"
+            ],
+            [
+                "random/author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]&random=1"
+            ],
+            [
+                "feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "page/?([0-9]{1,})/?$",
+                "index.php?&paged=$matches[1]"
+            ],
+            [
+                "comments/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]&withcomments=1"
+            ],
+            [
+                "comments/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]&withcomments=1"
+            ],
+            [
+                "comments/embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "search/(.+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?s=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "search/(.+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?s=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "search/(.+)/embed/?$",
+                "index.php?s=$matches[1]&embed=true"
+            ],
+            [
+                "search/(.+)/page/?([0-9]{1,})/?$",
+                "index.php?s=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "search/(.+)/?$",
+                "index.php?s=$matches[1]"
+            ],
+            [
+                "author/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?author_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?author_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/embed/?$",
+                "index.php?author_name=$matches[1]&embed=true"
+            ],
+            [
+                "author/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?author_name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&paged=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&paged=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/embed/?$",
+                "index.php?year=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/?$",
+                "index.php?year=$matches[1]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[0-9]{4}/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([^/]+)/embed/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([^/]+)/trackback/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&tb=1"
+            ],
+            [
+                "([0-9]{4})/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&paged=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&cpage=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([^/]+)(?:/([0-9]+))?/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&page=$matches[3]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[0-9]{4}/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/comment-page-([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "(.?.+?)/embed/?$",
+                "index.php?pagename=$matches[1]&embed=true"
+            ],
+            [
+                "(.?.+?)/trackback/?$",
+                "index.php?pagename=$matches[1]&tb=1"
+            ],
+            [
+                "(.?.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?pagename=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "(.?.+?)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?pagename=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "(.?.+?)/page/?([0-9]{1,})/?$",
+                "index.php?pagename=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "(.?.+?)/comment-page-([0-9]{1,})/?$",
+                "index.php?pagename=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "(.?.+?)(?:/([0-9]+))?/?$",
+                "index.php?pagename=$matches[1]&page=$matches[2]"
+            ]
+        ],
+        "mod_rewrite": "<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\nRewriteBase /\nRewriteRule ^index\\.php$ - [L]\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule . /index.php [L]\n</IfModule>\n",
+        "iis7": "\n\t\t\t<rule name=\"WordPress: https://example.test\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>",
+        "iis7_parent": "<configuration>\n\t<system.webServer>\n\t\t<rewrite>\n\t\t\t<rules>\n\t\t\t<rule name=\"WordPress: https://example.test\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>\n\t\t\t</rules>\n\t\t</rewrite>\n\t</system.webServer>\n</configuration>"
+    },
+    {
+        "name": "random_base_post_elsewhere",
+        "options": {
+            "permalink_structure": "/%year%/%postname%/"
+        },
+        "home": "https://example.test",
+        "site": "https://example.test",
+        "verbose": false,
+        "endpoints": [],
+        "top": [],
+        "bottom": [],
+        "external": [],
+        "randomable": [],
+        "taxonomies": [],
+        "permastructs": [],
+        "posts": [
+            [
+                "random",
+                "post"
+            ]
+        ],
+        "random": true,
+        "rules": [
+            [
+                "category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?category_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "category/(.+?)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?category_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "category/(.+?)/embed/?$",
+                "index.php?category_name=$matches[1]&embed=true"
+            ],
+            [
+                "category/(.+?)/page/?([0-9]{1,})/?$",
+                "index.php?category_name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "category/(.+?)/?$",
+                "index.php?category_name=$matches[1]"
+            ],
+            [
+                "tag/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?tag=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?tag=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/embed/?$",
+                "index.php?tag=$matches[1]&embed=true"
+            ],
+            [
+                "tag/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?tag=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/?$",
+                "index.php?tag=$matches[1]"
+            ],
+            [
+                "type/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?post_format=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?post_format=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/embed/?$",
+                "index.php?post_format=$matches[1]&embed=true"
+            ],
+            [
+                "type/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?post_format=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/?$",
+                "index.php?post_format=$matches[1]"
+            ],
+            [
+                "robots\\.txt$",
+                "index.php?robots=1"
+            ],
+            [
+                "favicon\\.ico$",
+                "index.php?favicon=1"
+            ],
+            [
+                "sitemap\\.xml",
+                "index.php?sitemap=index"
+            ],
+            [
+                ".*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\\.php$",
+                "index.php?feed=old"
+            ],
+            [
+                ".*wp-app\\.php(/.*)?$",
+                "index.php?error=403"
+            ],
+            [
+                ".*wp-register.php$",
+                "index.php?register=true"
+            ],
+            [
+                "random/?$",
+                "index.php?random=1"
+            ],
+            [
+                "random/author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]&random=1"
+            ],
+            [
+                "feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "page/?([0-9]{1,})/?$",
+                "index.php?&paged=$matches[1]"
+            ],
+            [
+                "comments/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]&withcomments=1"
+            ],
+            [
+                "comments/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]&withcomments=1"
+            ],
+            [
+                "comments/embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "search/(.+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?s=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "search/(.+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?s=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "search/(.+)/embed/?$",
+                "index.php?s=$matches[1]&embed=true"
+            ],
+            [
+                "search/(.+)/page/?([0-9]{1,})/?$",
+                "index.php?s=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "search/(.+)/?$",
+                "index.php?s=$matches[1]"
+            ],
+            [
+                "author/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?author_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?author_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/embed/?$",
+                "index.php?author_name=$matches[1]&embed=true"
+            ],
+            [
+                "author/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?author_name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&paged=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&paged=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/embed/?$",
+                "index.php?year=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/?$",
+                "index.php?year=$matches[1]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[0-9]{4}/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([^/]+)/embed/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([^/]+)/trackback/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&tb=1"
+            ],
+            [
+                "([0-9]{4})/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&paged=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&cpage=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([^/]+)(?:/([0-9]+))?/?$",
+                "index.php?year=$matches[1]&name=$matches[2]&page=$matches[3]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[0-9]{4}/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[0-9]{4}/[^/]+/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/comment-page-([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "(.?.+?)/embed/?$",
+                "index.php?pagename=$matches[1]&embed=true"
+            ],
+            [
+                "(.?.+?)/trackback/?$",
+                "index.php?pagename=$matches[1]&tb=1"
+            ],
+            [
+                "(.?.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?pagename=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "(.?.+?)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?pagename=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "(.?.+?)/page/?([0-9]{1,})/?$",
+                "index.php?pagename=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "(.?.+?)/comment-page-([0-9]{1,})/?$",
+                "index.php?pagename=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "(.?.+?)(?:/([0-9]+))?/?$",
+                "index.php?pagename=$matches[1]&page=$matches[2]"
+            ]
+        ],
+        "mod_rewrite": "<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\nRewriteBase /\nRewriteRule ^index\\.php$ - [L]\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule . /index.php [L]\n</IfModule>\n",
+        "iis7": "\n\t\t\t<rule name=\"WordPress: https://example.test\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>",
+        "iis7_parent": "<configuration>\n\t<system.webServer>\n\t\t<rewrite>\n\t\t\t<rules>\n\t\t\t<rule name=\"WordPress: https://example.test\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>\n\t\t\t</rules>\n\t\t</rewrite>\n\t</system.webServer>\n</configuration>"
+    },
+    {
+        "name": "random_disabled",
+        "options": {
+            "permalink_structure": "/%postname%/"
+        },
+        "home": "https://example.test",
+        "site": "https://example.test",
+        "verbose": false,
+        "endpoints": [],
+        "top": [],
+        "bottom": [],
+        "external": [],
+        "randomable": [],
+        "taxonomies": [],
+        "permastructs": [],
+        "posts": [],
+        "random": false,
+        "rules": [
+            [
+                "category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?category_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "category/(.+?)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?category_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "category/(.+?)/embed/?$",
+                "index.php?category_name=$matches[1]&embed=true"
+            ],
+            [
+                "category/(.+?)/page/?([0-9]{1,})/?$",
+                "index.php?category_name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "category/(.+?)/?$",
+                "index.php?category_name=$matches[1]"
+            ],
+            [
+                "tag/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?tag=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?tag=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/embed/?$",
+                "index.php?tag=$matches[1]&embed=true"
+            ],
+            [
+                "tag/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?tag=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/?$",
+                "index.php?tag=$matches[1]"
+            ],
+            [
+                "type/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?post_format=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?post_format=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/embed/?$",
+                "index.php?post_format=$matches[1]&embed=true"
+            ],
+            [
+                "type/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?post_format=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/?$",
+                "index.php?post_format=$matches[1]"
+            ],
+            [
+                "robots\\.txt$",
+                "index.php?robots=1"
+            ],
+            [
+                "favicon\\.ico$",
+                "index.php?favicon=1"
+            ],
+            [
+                "sitemap\\.xml",
+                "index.php?sitemap=index"
             ],
             [
                 ".*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\\.php$",
@@ -2602,7 +4331,366 @@
                 "index.php?attachment=$matches[1]&embed=true"
             ]
         ],
-        "mod_rewrite": "<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\nRewriteBase /blog/\nRewriteRule ^index\\.php$ - [L]\nRewriteCond %{REQUEST_FILENAME} -f [OR]\nRewriteCond %{REQUEST_FILENAME} -d\nRewriteRule ^.*$ - [S=82]\nRewriteRule ^category/(.+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?category_name=$1&feed=$2 [QSA,L]\nRewriteRule ^category/(.+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?category_name=$1&feed=$2 [QSA,L]\nRewriteRule ^category/(.+)/embed/?$ /blog/index.php?category_name=$1&embed=true [QSA,L]\nRewriteRule ^category/(.+)/page/?([0-9]{1,})/?$ /blog/index.php?category_name=$1&paged=$2 [QSA,L]\nRewriteRule ^category/(.+)/?$ /blog/index.php?category_name=$1 [QSA,L]\nRewriteRule ^tag/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?tag=$1&feed=$2 [QSA,L]\nRewriteRule ^tag/([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?tag=$1&feed=$2 [QSA,L]\nRewriteRule ^tag/([^/]+)/embed/?$ /blog/index.php?tag=$1&embed=true [QSA,L]\nRewriteRule ^tag/([^/]+)/page/?([0-9]{1,})/?$ /blog/index.php?tag=$1&paged=$2 [QSA,L]\nRewriteRule ^tag/([^/]+)/?$ /blog/index.php?tag=$1 [QSA,L]\nRewriteRule ^type/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?post_format=$1&feed=$2 [QSA,L]\nRewriteRule ^type/([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?post_format=$1&feed=$2 [QSA,L]\nRewriteRule ^type/([^/]+)/embed/?$ /blog/index.php?post_format=$1&embed=true [QSA,L]\nRewriteRule ^type/([^/]+)/page/?([0-9]{1,})/?$ /blog/index.php?post_format=$1&paged=$2 [QSA,L]\nRewriteRule ^type/([^/]+)/?$ /blog/index.php?post_format=$1 [QSA,L]\nRewriteRule ^.*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\\.php$ /blog/index.php?feed=old [QSA,L]\nRewriteRule ^.*wp-app\\.php(/.*)?$ /blog/index.php?error=403 [QSA,L]\nRewriteRule ^.*wp-register.php$ /blog/index.php?register=true [QSA,L]\nRewriteRule ^feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?&feed=$1 [QSA,L]\nRewriteRule ^(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?&feed=$1 [QSA,L]\nRewriteRule ^embed/?$ /blog/index.php?&embed=true [QSA,L]\nRewriteRule ^page/?([0-9]{1,})/?$ /blog/index.php?&paged=$1 [QSA,L]\nRewriteRule ^comments/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?&feed=$1&withcomments=1 [QSA,L]\nRewriteRule ^comments/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?&feed=$1&withcomments=1 [QSA,L]\nRewriteRule ^comments/embed/?$ /blog/index.php?&embed=true [QSA,L]\nRewriteRule ^search/(.+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?s=$1&feed=$2 [QSA,L]\nRewriteRule ^search/(.+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?s=$1&feed=$2 [QSA,L]\nRewriteRule ^search/(.+)/embed/?$ /blog/index.php?s=$1&embed=true [QSA,L]\nRewriteRule ^search/(.+)/page/?([0-9]{1,})/?$ /blog/index.php?s=$1&paged=$2 [QSA,L]\nRewriteRule ^search/(.+)/?$ /blog/index.php?s=$1 [QSA,L]\nRewriteRule ^author/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?author_name=$1&feed=$2 [QSA,L]\nRewriteRule ^author/([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?author_name=$1&feed=$2 [QSA,L]\nRewriteRule ^author/([^/]+)/embed/?$ /blog/index.php?author_name=$1&embed=true [QSA,L]\nRewriteRule ^author/([^/]+)/page/?([0-9]{1,})/?$ /blog/index.php?author_name=$1&paged=$2 [QSA,L]\nRewriteRule ^author/([^/]+)/?$ /blog/index.php?author_name=$1 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?year=$1&monthnum=$2&day=$3&feed=$4 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?year=$1&monthnum=$2&day=$3&feed=$4 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/embed/?$ /blog/index.php?year=$1&monthnum=$2&day=$3&embed=true [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/page/?([0-9]{1,})/?$ /blog/index.php?year=$1&monthnum=$2&day=$3&paged=$4 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/?$ /blog/index.php?year=$1&monthnum=$2&day=$3 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?year=$1&monthnum=$2&feed=$3 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?year=$1&monthnum=$2&feed=$3 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/embed/?$ /blog/index.php?year=$1&monthnum=$2&embed=true [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/page/?([0-9]{1,})/?$ /blog/index.php?year=$1&monthnum=$2&paged=$3 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/?$ /blog/index.php?year=$1&monthnum=$2 [QSA,L]\nRewriteRule ^([0-9]{4})/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?year=$1&feed=$2 [QSA,L]\nRewriteRule ^([0-9]{4})/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?year=$1&feed=$2 [QSA,L]\nRewriteRule ^([0-9]{4})/embed/?$ /blog/index.php?year=$1&embed=true [QSA,L]\nRewriteRule ^([0-9]{4})/page/?([0-9]{1,})/?$ /blog/index.php?year=$1&paged=$2 [QSA,L]\nRewriteRule ^([0-9]{4})/?$ /blog/index.php?year=$1 [QSA,L]\nRewriteRule ^.?.+/attachment/([^/]+)/?$ /blog/index.php?attachment=$1 [QSA,L]\nRewriteRule ^.?.+/attachment/([^/]+)/trackback/?$ /blog/index.php?attachment=$1&tb=1 [QSA,L]\nRewriteRule ^.?.+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?attachment=$1&feed=$2 [QSA,L]\nRewriteRule ^.?.+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?attachment=$1&feed=$2 [QSA,L]\nRewriteRule ^.?.+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$ /blog/index.php?attachment=$1&cpage=$2 [QSA,L]\nRewriteRule ^.?.+/attachment/([^/]+)/embed/?$ /blog/index.php?attachment=$1&embed=true [QSA,L]\nRewriteRule ^(.?.+)/embed/?$ /blog/index.php?pagename=$1&embed=true [QSA,L]\nRewriteRule ^(.?.+)/trackback/?$ /blog/index.php?pagename=$1&tb=1 [QSA,L]\nRewriteRule ^(.?.+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?pagename=$1&feed=$2 [QSA,L]\nRewriteRule ^(.?.+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?pagename=$1&feed=$2 [QSA,L]\nRewriteRule ^(.?.+)/page/?([0-9]{1,})/?$ /blog/index.php?pagename=$1&paged=$2 [QSA,L]\nRewriteRule ^(.?.+)/comment-page-([0-9]{1,})/?$ /blog/index.php?pagename=$1&cpage=$2 [QSA,L]\nRewriteRule ^(.?.+)(?:/([0-9]+))?/?$ /blog/index.php?pagename=$1&page=$2 [QSA,L]\nRewriteRule ^[^/]+/attachment/([^/]+)/?$ /blog/index.php?attachment=$1 [QSA,L]\nRewriteRule ^[^/]+/attachment/([^/]+)/trackback/?$ /blog/index.php?attachment=$1&tb=1 [QSA,L]\nRewriteRule ^[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?attachment=$1&feed=$2 [QSA,L]\nRewriteRule ^[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?attachment=$1&feed=$2 [QSA,L]\nRewriteRule ^[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$ /blog/index.php?attachment=$1&cpage=$2 [QSA,L]\nRewriteRule ^[^/]+/attachment/([^/]+)/embed/?$ /blog/index.php?attachment=$1&embed=true [QSA,L]\nRewriteRule ^([^/]+)/embed/?$ /blog/index.php?name=$1&embed=true [QSA,L]\nRewriteRule ^([^/]+)/trackback/?$ /blog/index.php?name=$1&tb=1 [QSA,L]\nRewriteRule ^([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?name=$1&feed=$2 [QSA,L]\nRewriteRule ^([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?name=$1&feed=$2 [QSA,L]\nRewriteRule ^([^/]+)/page/?([0-9]{1,})/?$ /blog/index.php?name=$1&paged=$2 [QSA,L]\nRewriteRule ^([^/]+)/comment-page-([0-9]{1,})/?$ /blog/index.php?name=$1&cpage=$2 [QSA,L]\nRewriteRule ^([^/]+)(?:/([0-9]+))?/?$ /blog/index.php?name=$1&page=$2 [QSA,L]\nRewriteRule ^[^/]+/([^/]+)/?$ /blog/index.php?attachment=$1 [QSA,L]\nRewriteRule ^[^/]+/([^/]+)/trackback/?$ /blog/index.php?attachment=$1&tb=1 [QSA,L]\nRewriteRule ^[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?attachment=$1&feed=$2 [QSA,L]\nRewriteRule ^[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?attachment=$1&feed=$2 [QSA,L]\nRewriteRule ^[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$ /blog/index.php?attachment=$1&cpage=$2 [QSA,L]\nRewriteRule ^[^/]+/([^/]+)/embed/?$ /blog/index.php?attachment=$1&embed=true [QSA,L]\n</IfModule>\n",
+        "mod_rewrite": "<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\nRewriteBase /\nRewriteRule ^index\\.php$ - [L]\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule . /index.php [L]\n</IfModule>\n",
+        "iis7": "\n\t\t\t<rule name=\"WordPress: https://example.test\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>",
+        "iis7_parent": "<configuration>\n\t<system.webServer>\n\t\t<rewrite>\n\t\t\t<rules>\n\t\t\t<rule name=\"WordPress: https://example.test\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>\n\t\t\t</rules>\n\t\t</rewrite>\n\t</system.webServer>\n</configuration>"
+    },
+    {
+        "name": "verbose_rules",
+        "options": {
+            "permalink_structure": "/%postname%/"
+        },
+        "home": "https://example.test/blog",
+        "site": "https://example.test",
+        "verbose": true,
+        "endpoints": [],
+        "top": [],
+        "bottom": [],
+        "external": [],
+        "randomable": [],
+        "taxonomies": [],
+        "permastructs": [],
+        "posts": [],
+        "random": true,
+        "rules": [
+            [
+                "category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?category_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "category/(.+?)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?category_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "category/(.+?)/embed/?$",
+                "index.php?category_name=$matches[1]&embed=true"
+            ],
+            [
+                "category/(.+?)/page/?([0-9]{1,})/?$",
+                "index.php?category_name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "category/(.+?)/?$",
+                "index.php?category_name=$matches[1]"
+            ],
+            [
+                "tag/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?tag=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?tag=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/embed/?$",
+                "index.php?tag=$matches[1]&embed=true"
+            ],
+            [
+                "tag/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?tag=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "tag/([^/]+)/?$",
+                "index.php?tag=$matches[1]"
+            ],
+            [
+                "type/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?post_format=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?post_format=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/embed/?$",
+                "index.php?post_format=$matches[1]&embed=true"
+            ],
+            [
+                "type/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?post_format=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "type/([^/]+)/?$",
+                "index.php?post_format=$matches[1]"
+            ],
+            [
+                ".*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\\.php$",
+                "index.php?feed=old"
+            ],
+            [
+                ".*wp-app\\.php(/.*)?$",
+                "index.php?error=403"
+            ],
+            [
+                ".*wp-register.php$",
+                "index.php?register=true"
+            ],
+            [
+                "random/?$",
+                "index.php?random=1"
+            ],
+            [
+                "random/author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]&random=1"
+            ],
+            [
+                "feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]"
+            ],
+            [
+                "embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "page/?([0-9]{1,})/?$",
+                "index.php?&paged=$matches[1]"
+            ],
+            [
+                "comments/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]&withcomments=1"
+            ],
+            [
+                "comments/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?&feed=$matches[1]&withcomments=1"
+            ],
+            [
+                "comments/embed/?$",
+                "index.php?&embed=true"
+            ],
+            [
+                "search/(.+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?s=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "search/(.+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?s=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "search/(.+)/embed/?$",
+                "index.php?s=$matches[1]&embed=true"
+            ],
+            [
+                "search/(.+)/page/?([0-9]{1,})/?$",
+                "index.php?s=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "search/(.+)/?$",
+                "index.php?s=$matches[1]"
+            ],
+            [
+                "author/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?author_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?author_name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/embed/?$",
+                "index.php?author_name=$matches[1]&embed=true"
+            ],
+            [
+                "author/([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?author_name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "author/([^/]+)/?$",
+                "index.php?author_name=$matches[1]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&feed=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]&paged=$matches[4]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&day=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&feed=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/embed/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&embed=true"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]&paged=$matches[3]"
+            ],
+            [
+                "([0-9]{4})/([0-9]{1,2})/?$",
+                "index.php?year=$matches[1]&monthnum=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?year=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/embed/?$",
+                "index.php?year=$matches[1]&embed=true"
+            ],
+            [
+                "([0-9]{4})/page/?([0-9]{1,})/?$",
+                "index.php?year=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([0-9]{4})/?$",
+                "index.php?year=$matches[1]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                ".?.+?/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "(.?.+?)/embed/?$",
+                "index.php?pagename=$matches[1]&embed=true"
+            ],
+            [
+                "(.?.+?)/trackback/?$",
+                "index.php?pagename=$matches[1]&tb=1"
+            ],
+            [
+                "(.?.+?)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?pagename=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "(.?.+?)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?pagename=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "(.?.+?)/page/?([0-9]{1,})/?$",
+                "index.php?pagename=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "(.?.+?)/comment-page-([0-9]{1,})/?$",
+                "index.php?pagename=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "(.?.+?)(?:/([0-9]+))?/?$",
+                "index.php?pagename=$matches[1]&page=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[^/]+/attachment/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ],
+            [
+                "([^/]+)/embed/?$",
+                "index.php?name=$matches[1]&embed=true"
+            ],
+            [
+                "([^/]+)/trackback/?$",
+                "index.php?name=$matches[1]&tb=1"
+            ],
+            [
+                "([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?name=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "([^/]+)/page/?([0-9]{1,})/?$",
+                "index.php?name=$matches[1]&paged=$matches[2]"
+            ],
+            [
+                "([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?name=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "([^/]+)(?:/([0-9]+))?/?$",
+                "index.php?name=$matches[1]&page=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/?$",
+                "index.php?attachment=$matches[1]"
+            ],
+            [
+                "[^/]+/([^/]+)/trackback/?$",
+                "index.php?attachment=$matches[1]&tb=1"
+            ],
+            [
+                "[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$",
+                "index.php?attachment=$matches[1]&feed=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$",
+                "index.php?attachment=$matches[1]&cpage=$matches[2]"
+            ],
+            [
+                "[^/]+/([^/]+)/embed/?$",
+                "index.php?attachment=$matches[1]&embed=true"
+            ]
+        ],
+        "mod_rewrite": "<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\nRewriteBase /blog/\nRewriteRule ^index\\.php$ - [L]\nRewriteCond %{REQUEST_FILENAME} -f [OR]\nRewriteCond %{REQUEST_FILENAME} -d\nRewriteRule ^.*$ - [S=84]\nRewriteRule ^category/(.+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?category_name=$1&feed=$2 [QSA,L]\nRewriteRule ^category/(.+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?category_name=$1&feed=$2 [QSA,L]\nRewriteRule ^category/(.+)/embed/?$ /blog/index.php?category_name=$1&embed=true [QSA,L]\nRewriteRule ^category/(.+)/page/?([0-9]{1,})/?$ /blog/index.php?category_name=$1&paged=$2 [QSA,L]\nRewriteRule ^category/(.+)/?$ /blog/index.php?category_name=$1 [QSA,L]\nRewriteRule ^tag/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?tag=$1&feed=$2 [QSA,L]\nRewriteRule ^tag/([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?tag=$1&feed=$2 [QSA,L]\nRewriteRule ^tag/([^/]+)/embed/?$ /blog/index.php?tag=$1&embed=true [QSA,L]\nRewriteRule ^tag/([^/]+)/page/?([0-9]{1,})/?$ /blog/index.php?tag=$1&paged=$2 [QSA,L]\nRewriteRule ^tag/([^/]+)/?$ /blog/index.php?tag=$1 [QSA,L]\nRewriteRule ^type/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?post_format=$1&feed=$2 [QSA,L]\nRewriteRule ^type/([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?post_format=$1&feed=$2 [QSA,L]\nRewriteRule ^type/([^/]+)/embed/?$ /blog/index.php?post_format=$1&embed=true [QSA,L]\nRewriteRule ^type/([^/]+)/page/?([0-9]{1,})/?$ /blog/index.php?post_format=$1&paged=$2 [QSA,L]\nRewriteRule ^type/([^/]+)/?$ /blog/index.php?post_format=$1 [QSA,L]\nRewriteRule ^.*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\\.php$ /blog/index.php?feed=old [QSA,L]\nRewriteRule ^.*wp-app\\.php(/.*)?$ /blog/index.php?error=403 [QSA,L]\nRewriteRule ^.*wp-register.php$ /blog/index.php?register=true [QSA,L]\nRewriteRule ^random/?$ /blog/index.php?random=1 [QSA,L]\nRewriteRule ^random/author/([^/]+)/?$ /blog/index.php?author_name=$1&random=1 [QSA,L]\nRewriteRule ^feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?&feed=$1 [QSA,L]\nRewriteRule ^(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?&feed=$1 [QSA,L]\nRewriteRule ^embed/?$ /blog/index.php?&embed=true [QSA,L]\nRewriteRule ^page/?([0-9]{1,})/?$ /blog/index.php?&paged=$1 [QSA,L]\nRewriteRule ^comments/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?&feed=$1&withcomments=1 [QSA,L]\nRewriteRule ^comments/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?&feed=$1&withcomments=1 [QSA,L]\nRewriteRule ^comments/embed/?$ /blog/index.php?&embed=true [QSA,L]\nRewriteRule ^search/(.+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?s=$1&feed=$2 [QSA,L]\nRewriteRule ^search/(.+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?s=$1&feed=$2 [QSA,L]\nRewriteRule ^search/(.+)/embed/?$ /blog/index.php?s=$1&embed=true [QSA,L]\nRewriteRule ^search/(.+)/page/?([0-9]{1,})/?$ /blog/index.php?s=$1&paged=$2 [QSA,L]\nRewriteRule ^search/(.+)/?$ /blog/index.php?s=$1 [QSA,L]\nRewriteRule ^author/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?author_name=$1&feed=$2 [QSA,L]\nRewriteRule ^author/([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?author_name=$1&feed=$2 [QSA,L]\nRewriteRule ^author/([^/]+)/embed/?$ /blog/index.php?author_name=$1&embed=true [QSA,L]\nRewriteRule ^author/([^/]+)/page/?([0-9]{1,})/?$ /blog/index.php?author_name=$1&paged=$2 [QSA,L]\nRewriteRule ^author/([^/]+)/?$ /blog/index.php?author_name=$1 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?year=$1&monthnum=$2&day=$3&feed=$4 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?year=$1&monthnum=$2&day=$3&feed=$4 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/embed/?$ /blog/index.php?year=$1&monthnum=$2&day=$3&embed=true [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/page/?([0-9]{1,})/?$ /blog/index.php?year=$1&monthnum=$2&day=$3&paged=$4 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})/?$ /blog/index.php?year=$1&monthnum=$2&day=$3 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?year=$1&monthnum=$2&feed=$3 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?year=$1&monthnum=$2&feed=$3 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/embed/?$ /blog/index.php?year=$1&monthnum=$2&embed=true [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/page/?([0-9]{1,})/?$ /blog/index.php?year=$1&monthnum=$2&paged=$3 [QSA,L]\nRewriteRule ^([0-9]{4})/([0-9]{1,2})/?$ /blog/index.php?year=$1&monthnum=$2 [QSA,L]\nRewriteRule ^([0-9]{4})/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?year=$1&feed=$2 [QSA,L]\nRewriteRule ^([0-9]{4})/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?year=$1&feed=$2 [QSA,L]\nRewriteRule ^([0-9]{4})/embed/?$ /blog/index.php?year=$1&embed=true [QSA,L]\nRewriteRule ^([0-9]{4})/page/?([0-9]{1,})/?$ /blog/index.php?year=$1&paged=$2 [QSA,L]\nRewriteRule ^([0-9]{4})/?$ /blog/index.php?year=$1 [QSA,L]\nRewriteRule ^.?.+/attachment/([^/]+)/?$ /blog/index.php?attachment=$1 [QSA,L]\nRewriteRule ^.?.+/attachment/([^/]+)/trackback/?$ /blog/index.php?attachment=$1&tb=1 [QSA,L]\nRewriteRule ^.?.+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?attachment=$1&feed=$2 [QSA,L]\nRewriteRule ^.?.+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?attachment=$1&feed=$2 [QSA,L]\nRewriteRule ^.?.+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$ /blog/index.php?attachment=$1&cpage=$2 [QSA,L]\nRewriteRule ^.?.+/attachment/([^/]+)/embed/?$ /blog/index.php?attachment=$1&embed=true [QSA,L]\nRewriteRule ^(.?.+)/embed/?$ /blog/index.php?pagename=$1&embed=true [QSA,L]\nRewriteRule ^(.?.+)/trackback/?$ /blog/index.php?pagename=$1&tb=1 [QSA,L]\nRewriteRule ^(.?.+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?pagename=$1&feed=$2 [QSA,L]\nRewriteRule ^(.?.+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?pagename=$1&feed=$2 [QSA,L]\nRewriteRule ^(.?.+)/page/?([0-9]{1,})/?$ /blog/index.php?pagename=$1&paged=$2 [QSA,L]\nRewriteRule ^(.?.+)/comment-page-([0-9]{1,})/?$ /blog/index.php?pagename=$1&cpage=$2 [QSA,L]\nRewriteRule ^(.?.+)(?:/([0-9]+))?/?$ /blog/index.php?pagename=$1&page=$2 [QSA,L]\nRewriteRule ^[^/]+/attachment/([^/]+)/?$ /blog/index.php?attachment=$1 [QSA,L]\nRewriteRule ^[^/]+/attachment/([^/]+)/trackback/?$ /blog/index.php?attachment=$1&tb=1 [QSA,L]\nRewriteRule ^[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?attachment=$1&feed=$2 [QSA,L]\nRewriteRule ^[^/]+/attachment/([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?attachment=$1&feed=$2 [QSA,L]\nRewriteRule ^[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$ /blog/index.php?attachment=$1&cpage=$2 [QSA,L]\nRewriteRule ^[^/]+/attachment/([^/]+)/embed/?$ /blog/index.php?attachment=$1&embed=true [QSA,L]\nRewriteRule ^([^/]+)/embed/?$ /blog/index.php?name=$1&embed=true [QSA,L]\nRewriteRule ^([^/]+)/trackback/?$ /blog/index.php?name=$1&tb=1 [QSA,L]\nRewriteRule ^([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?name=$1&feed=$2 [QSA,L]\nRewriteRule ^([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?name=$1&feed=$2 [QSA,L]\nRewriteRule ^([^/]+)/page/?([0-9]{1,})/?$ /blog/index.php?name=$1&paged=$2 [QSA,L]\nRewriteRule ^([^/]+)/comment-page-([0-9]{1,})/?$ /blog/index.php?name=$1&cpage=$2 [QSA,L]\nRewriteRule ^([^/]+)(?:/([0-9]+))?/?$ /blog/index.php?name=$1&page=$2 [QSA,L]\nRewriteRule ^[^/]+/([^/]+)/?$ /blog/index.php?attachment=$1 [QSA,L]\nRewriteRule ^[^/]+/([^/]+)/trackback/?$ /blog/index.php?attachment=$1&tb=1 [QSA,L]\nRewriteRule ^[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?attachment=$1&feed=$2 [QSA,L]\nRewriteRule ^[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$ /blog/index.php?attachment=$1&feed=$2 [QSA,L]\nRewriteRule ^[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$ /blog/index.php?attachment=$1&cpage=$2 [QSA,L]\nRewriteRule ^[^/]+/([^/]+)/embed/?$ /blog/index.php?attachment=$1&embed=true [QSA,L]\n</IfModule>\n",
         "iis7": "\n\t\t\t<rule name=\"WordPress: https://example.test/blog\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>",
         "iis7_parent": "<configuration>\n\t<system.webServer>\n\t\t<rewrite>\n\t\t\t<rules>\n\t\t\t<rule name=\"WordPress: https://example.test/blog\" patternSyntax=\"Wildcard\">\n\t\t\t\t<match url=\"*\" />\n\t\t\t\t\t<conditions>\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsFile\" negate=\"true\" />\n\t\t\t\t\t\t<add input=\"{REQUEST_FILENAME}\" matchType=\"IsDirectory\" negate=\"true\" />\n\t\t\t\t\t</conditions>\n\t\t\t\t<action type=\"Rewrite\" url=\"index.php\" />\n\t\t\t</rule>\n\t\t\t</rules>\n\t\t</rewrite>\n\t</system.webServer>\n</configuration>"
     }

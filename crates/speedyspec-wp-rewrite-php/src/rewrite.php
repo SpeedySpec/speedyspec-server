@@ -142,6 +142,14 @@ namespace
         public $feed_base = 'feed';
 
         /**
+         * The custom random content base, from the `wp_random_base` option; empty for the translated default.
+         *
+         * @since 7.2.0 WordPress
+         * @var string
+         */
+        public string $random_base = '';
+
+        /**
          * The comment feed structure.
          *
          * @var string
@@ -605,6 +613,38 @@ namespace
         {
             return N\call($this, __FUNCTION__, func_get_args());
         }
+
+        /**
+         * @since 7.2.0 WordPress
+         */
+        public function random_rewrite_rules(): array
+        {
+            return N\call($this, __FUNCTION__, func_get_args());
+        }
+
+        /**
+         * @since 7.2.0 WordPress
+         */
+        public function set_random_base(string $random_base): void
+        {
+            N\call($this, __FUNCTION__, func_get_args());
+        }
+
+        /**
+         * @since 7.2.0 WordPress
+         */
+        public function get_random_base(): string
+        {
+            return N\call($this, __FUNCTION__, func_get_args());
+        }
+
+        /**
+         * @since 7.2.0 WordPress
+         */
+        public function post_permalinks_share_random_base(): bool
+        {
+            return N\call($this, __FUNCTION__, func_get_args());
+        }
     }
 
     /**
@@ -796,6 +836,17 @@ namespace
             }
         }
         return array('matched_rule' => null, 'matched_query' => null, 'perma_query_vars' => null);
+    }
+
+    /**
+     * Clears the rewrite rules when the site language changes, so they are regenerated with the new language's
+     *  translated slugs, such as the default random content base. As WordPress has it.
+     *
+     * @since 7.2.0 WordPress
+     */
+    function wp_flush_rewrite_rules_on_site_language_change(): void
+    {
+        update_option('rewrite_rules', '');
     }
 
     function _wp_filter_taxonomy_base($base)

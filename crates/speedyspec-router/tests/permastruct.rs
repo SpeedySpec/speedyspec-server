@@ -1,4 +1,5 @@
-//! WordPress 7.1.5's generate_rewrite_rules() output, recorded by fixtures/permastruct/record.php, replayed.
+//! WordPress's generate_rewrite_rules() output, recorded from the rewrite area's pinned release by
+//! fixtures/permastruct/record.php, replayed.
 
 use serde_json::Value;
 use speedyspec_router::wordpress::{

@@ -36,11 +36,24 @@ function home_url() { return 'https://example.test'; }
 function site_url() { return 'https://example.test'; }
 function is_multisite() { return false; }
 function is_main_site() { return true; }
-function get_post_types($args = array()) { return array(); }
+function get_post_types($args = array(), $output = 'names') {
+    if (empty($args['randomable'])) { return array(); }
+    $book = (object) array('name' => 'book', 'has_archive' => 'books', 'rewrite' => array('slug' => 'book'));
+    return array('book' => 'objects' === $output ? $book : 'book');
+}
 function is_post_type_hierarchical($type) { return false; }
 function get_page_by_path($path) {
     return 'about' === $path ? (object) array('ID' => 2, 'post_status' => 'publish') : null;
 }
+function get_taxonomies($args = array(), $output = 'names') {
+    return array('genre' => (object) array('name' => 'genre', 'rewrite' => array('slug' => 'genre'), 'object_type' => array('book')));
+}
+define('OBJECT', 'OBJECT');
+function wp_is_random_content_redirect_enabled() { return (bool) apply_filters('wp_enable_random_content_redirect', true); }
+function get_locale() { return 'de_DE'; }
+function switch_to_locale($locale) { $GLOBALS['switched'][] = $locale; return true; }
+function restore_previous_locale() { $GLOBALS['switched'][] = 'restored'; return 'en_US'; }
+function _x($text, $context) { return 'random' === $text ? 'zufall' : $text; }
 function get_post_status_object($status) {
     return (object) array('public' => true, 'protected' => false, 'private' => false, 'exclude_from_search' => false);
 }
@@ -80,7 +93,8 @@ fn main() {
         &php,
         "functions_and_constants_exist",
         r#"foreach (['add_rewrite_rule', 'add_rewrite_tag', 'remove_rewrite_tag', 'add_permastruct', 'remove_permastruct',
-            'add_feed', 'flush_rewrite_rules', 'add_rewrite_endpoint', '_wp_filter_taxonomy_base'] as $f) {
+            'add_feed', 'flush_rewrite_rules', 'add_rewrite_endpoint', '_wp_filter_taxonomy_base',
+            'wp_flush_rewrite_rules_on_site_language_change'] as $f) {
             if (!function_exists($f)) { return $f; }
         }
         return EP_ALL === 8191 && EP_ALL_ARCHIVES === 3644 && EP_PAGES === 4096
@@ -124,6 +138,57 @@ fn main() {
         remove_permastruct('book');
         remove_rewrite_tag('%book%');
         return $ok && !isset($wp_rewrite->extra_permastructs['book']) && !in_array('%book%', $wp_rewrite->rewritecode, true);"#,
+    );
+    yes(
+        &php,
+        "random_base_is_translated_in_the_site_language",
+        r#"global $wp_rewrite;
+        $GLOBALS['switched'] = array();
+        return $wp_rewrite->random_base === '' && $wp_rewrite->get_random_base() === 'zufall'
+            && $GLOBALS['switched'] === array('de_DE', 'restored')
+            && $wp_rewrite->post_permalinks_share_random_base() === true;"#,
+    );
+    yes(
+        &php,
+        "random_rewrite_rules_cover_authors_taxonomies_and_post_types",
+        r#"global $wp_rewrite;
+        add_rewrite_tag('%genre%', '([^/]+)', 'genre=');
+        add_permastruct('genre', 'genre/%genre%');
+        $rules = $wp_rewrite->random_rewrite_rules();
+        $all = $wp_rewrite->rewrite_rules();
+        remove_permastruct('genre');
+        remove_rewrite_tag('%genre%');
+        return $rules === array(
+                'zufall/?$' => 'index.php?random=1',
+                'zufall/writer/([^/]+)/?$' => 'index.php?author_name=$1&random=1',
+                'zufall/genre/([^/]+)/?$' => 'index.php?genre=$1&random=1',
+                'zufall/books/?$' => 'index.php?post_type=book&random=1',
+            )
+            && array_search('zufall/?$', array_keys($all), true) < array_search('feed/(feed|rdf|rss|rss2|atom)/?$', array_keys($all), true);"#,
+    );
+    yes(
+        &php,
+        "set_random_base_stores_and_reinitialises",
+        r#"global $wp_rewrite;
+        $wp_rewrite->set_random_base('surprise');
+        $ok = $wp_rewrite->random_base === 'surprise' && $wp_rewrite->get_random_base() === 'surprise'
+            && isset($wp_rewrite->random_rewrite_rules()['surprise/?$']);
+        $wp_rewrite->set_random_base('');
+        return $ok && $wp_rewrite->random_base === '';"#,
+    );
+    yes(
+        &php,
+        "random_content_rules_follow_their_filters",
+        r#"global $wp_rewrite;
+        $no = static function () { return false; };
+        add_filter('wp_enable_random_content_redirect', $no);
+        $off = $wp_rewrite->random_rewrite_rules();
+        remove_filter('wp_enable_random_content_redirect', $no);
+        $drop = static function ($rules) { unset($rules['zufall/?$']); return $rules; };
+        add_filter('random_rewrite_rules', $drop);
+        $all = $wp_rewrite->rewrite_rules();
+        remove_filter('random_rewrite_rules', $drop);
+        return $off === array() && !isset($all['zufall/?$']) && isset($all['zufall/writer/([^/]+)/?$']);"#,
     );
     yes(
         &php,

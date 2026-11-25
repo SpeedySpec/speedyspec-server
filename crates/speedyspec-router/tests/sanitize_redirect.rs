@@ -1,6 +1,6 @@
 use speedyspec_router::wordpress::wp_sanitize_redirect;
 
-/// Expected values are WordPress 7.1.5's `wp_sanitize_redirect()` on the same input.
+/// Expected values are WordPress 7.2-RC2's `wp_sanitize_redirect()` on the same input.
 #[test]
 fn sanitizes_like_wordpress() {
     let cases = [

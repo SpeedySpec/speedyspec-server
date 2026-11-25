@@ -35,6 +35,8 @@ pub struct RewriteState {
     /// `rewritecode`, `rewritereplace` and `queryreplace`, as one list in their order.
     pub tags: Vec<RewriteTag>,
     pub feeds: Vec<String>,
+    /// The custom random content base, from the `wp_random_base` option; empty for the translated default.
+    pub random_base: String,
 }
 
 fn tag(tag: &str, regex: &str, query: &str) -> RewriteTag {
@@ -90,6 +92,7 @@ impl Default for RewriteState {
             feeds: ["feed", "rdf", "rss", "rss2", "atom"]
                 .map(String::from)
                 .to_vec(),
+            random_base: String::new(),
         }
     }
 }

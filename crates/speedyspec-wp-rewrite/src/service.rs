@@ -6,8 +6,8 @@ use std::rc::Rc;
 use speedyspec_wp_hooks::{HookApi, HookError};
 
 use crate::{
-    Multisite, PageUris, PostTypes, PublicQueryVars, RewriteOptions, RewriteStateSource, SiteUrls,
-    WpLoaded,
+    Multisite, PageUris, PostTypes, PublicQueryVars, RandomContentRedirects, RewriteOptions,
+    RewriteStateSource, SiteTranslations, SiteUrls, Taxonomies, ViewablePosts, WpLoaded,
 };
 
 /// Why a rewrite operation failed: an option or a hook callback failed.
@@ -73,6 +73,10 @@ pub struct RewriteDeps {
     pub loaded: Rc<dyn WpLoaded>,
     pub pages: Rc<dyn PageUris>,
     pub post_types: Rc<dyn PostTypes>,
+    pub taxonomies: Rc<dyn Taxonomies>,
+    pub posts: Rc<dyn ViewablePosts>,
+    pub random_content: Rc<dyn RandomContentRedirects>,
+    pub translations: Rc<dyn SiteTranslations>,
     pub query_vars: Rc<dyn PublicQueryVars>,
     pub hooks: Rc<HookApi>,
     /// The canonical state: in PHP, the `$wp_rewrite` global. Work deferred to `wp_loaded` uses it.

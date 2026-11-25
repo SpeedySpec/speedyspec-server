@@ -8,8 +8,9 @@ use speedyspec_routing::Rule;
 use speedyspec_wp_hooks::HookValue;
 
 use crate::{
-    Multisite, PageUris, PostTypes, PublicQueryVars, RewriteError, RewriteOptions, RewriteState,
-    RewriteStateSource, SiteUrls, UriIndex, WpLoaded,
+    Multisite, PageUris, PostTypes, PublicQueryVars, QueryableTaxonomy, RandomablePostType,
+    RewriteError, RewriteOptions, RewriteState, RewriteStateSource, SiteTranslations, SiteUrls,
+    Taxonomies, UriIndex, ViewablePosts, WpLoaded,
 };
 
 /// Options in a map; `rewrite_rules` kept as rules.
@@ -39,6 +40,11 @@ impl MemoryRewriteOptions {
 
 impl RewriteOptions for MemoryRewriteOptions {
     fn get(&self, name: &str) -> Result<Option<String>, RewriteError> {
+        Ok(MemoryRewriteOptions::get(self, name))
+    }
+
+    /// Every value held here is a string.
+    fn get_string(&self, name: &str) -> Result<Option<String>, RewriteError> {
         Ok(MemoryRewriteOptions::get(self, name))
     }
 
@@ -155,12 +161,52 @@ impl PageUris for MemoryPageUris {
     }
 }
 
+/// Registered post types: the custom ones with whether each is hierarchical, and the randomable ones.
 #[derive(Default)]
-pub struct MemoryPostTypes(pub Vec<(String, bool)>);
+pub struct MemoryPostTypes {
+    pub custom: RefCell<Vec<(String, bool)>>,
+    pub randomable: RefCell<Vec<RandomablePostType>>,
+}
 
 impl PostTypes for MemoryPostTypes {
     fn custom_post_types(&self) -> Vec<(String, bool)> {
-        self.0.clone()
+        self.custom.borrow().clone()
+    }
+
+    fn randomable_post_types(&self) -> Vec<RandomablePostType> {
+        self.randomable.borrow().clone()
+    }
+}
+
+/// Publicly queryable taxonomies, in registration order.
+#[derive(Default)]
+pub struct MemoryTaxonomies(pub RefCell<Vec<QueryableTaxonomy>>);
+
+impl Taxonomies for MemoryTaxonomies {
+    fn publicly_queryable(&self) -> Vec<QueryableTaxonomy> {
+        self.0.borrow().clone()
+    }
+}
+
+/// Published, publicly viewable posts, each as its path and post type.
+#[derive(Default)]
+pub struct MemoryViewablePosts(pub RefCell<Vec<(String, String)>>);
+
+impl ViewablePosts for MemoryViewablePosts {
+    fn viewable_at(&self, path: &str, post_type: &str) -> bool {
+        self.0
+            .borrow()
+            .iter()
+            .any(|(p, t)| p == path && t == post_type)
+    }
+}
+
+/// A site with no translations loaded: `_x()` answers its English text.
+pub struct UntranslatedSite;
+
+impl SiteTranslations for UntranslatedSite {
+    fn random_base(&self) -> String {
+        "random".into()
     }
 }
 

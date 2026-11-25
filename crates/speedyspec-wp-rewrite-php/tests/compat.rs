@@ -1,4 +1,4 @@
-//! WordPress's rewrite API, recorded from WordPress 7.1.5 (`compat/rewrite`), replayed exactly through the port.
+//! WordPress's rewrite API, recorded from the pinned release (`compat/rewrite`), replayed exactly through the port.
 //! PHP boots once per process (`harness = false`). No database is needed: options are stubbed the same on both sides.
 
 use std::rc::Rc;

@@ -26,7 +26,8 @@ use speedyspec_wp_rewrite::{
 
 pub use adapters::{
     HookWpLoaded, PhpMultisite, PhpPageByPath, PhpPageUris, PhpPostTypes, PhpQueryVars,
-    PhpRewriteOptions, PhpSiteUrls,
+    PhpRandomContentRedirects, PhpRewriteOptions, PhpSiteTranslations, PhpSiteUrls, PhpTaxonomies,
+    PhpViewablePosts,
 };
 pub use compat::rewrite_scenario_runner;
 pub use state::{PhpGlobalRewriteState, PhpRewriteState};
@@ -64,6 +65,10 @@ impl RewriteArea {
             loaded: Rc::new(HookWpLoaded::new(hooks.clone())),
             pages: Rc::new(PhpPageUris),
             post_types: Rc::new(PhpPostTypes),
+            taxonomies: Rc::new(PhpTaxonomies),
+            posts: Rc::new(PhpViewablePosts),
+            random_content: Rc::new(PhpRandomContentRedirects),
+            translations: Rc::new(PhpSiteTranslations),
             query_vars: Rc::new(PhpQueryVars),
             hooks,
             state: Rc::new(PhpGlobalRewriteState),

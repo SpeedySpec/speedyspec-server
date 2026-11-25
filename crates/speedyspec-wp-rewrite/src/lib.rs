@@ -19,8 +19,10 @@ mod structures;
 
 pub use messages::*;
 pub use ports::{
-    Multisite, OptionsRewriteOptions, PageUris, PostTypes, PublicQueryVars, RewriteOptions,
-    RewriteStateSource, SiteUrls, UriIndex, WpLoaded, rules_from_value, rules_to_value,
+    FilteredRandomContentRedirects, Multisite, OptionsRewriteOptions, PageUris, PostTypes,
+    PublicQueryVars, QueryableTaxonomy, RandomContentRedirects, RandomablePostType, RewriteOptions,
+    RewriteStateSource, SiteTranslations, SiteUrls, Taxonomies, UriIndex, ViewablePosts, WpLoaded,
+    rules_from_value, rules_to_value,
 };
 pub use registration::{EndpointQueryVar, RuleQuery};
 pub use routing::{WpOutcome, WpRouting};

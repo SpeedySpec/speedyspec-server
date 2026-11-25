@@ -2,8 +2,8 @@
 /**
  * Records WordPress's own WP_Rewrite::generate_rewrite_rules() output for the permastruct expansion tests.
  *
- * Run with the path to an unpacked WordPress release (the one `speedyspec_compat::wordpress_release("7.1.5")`
- * unpacks), writing cases.json beside this file:
+ * Run with the path to an unpacked WordPress release (the rewrite area's pinned release, as
+ * `speedyspec_compat::wordpress_release()` unpacks it), writing cases.json beside this file:
  *
  *     php record.php /path/to/wordpress > cases.json
  *
