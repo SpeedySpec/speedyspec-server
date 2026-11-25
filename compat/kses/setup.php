@@ -16,6 +16,8 @@ define('ABSPATH', SPEEDYSPEC_COMPAT_WP_ROOT);
 define('WPINC', 'wp-includes');
 define('WP_CONTENT_DIR', sys_get_temp_dir() . '/speedyspec-compat-kses-content');
 define('WP_CONTENT_URL', 'http://example.org/wp-content');
+// wp_initial_constants()'s default: _deprecated_function(), which wp_kses_html_error() calls, reads it.
+define('WP_DEBUG', false);
 
 if (!SPEEDYSPEC_COMPAT_PORT)
 {
@@ -76,6 +78,18 @@ foreach (
 require ABSPATH . WPINC . '/formatting.php';
 require ABSPATH . WPINC . '/functions.php';
 require ABSPATH . WPINC . '/kses.php';
+
+// WordPress 7.2 moved wp_kses_html_error() from kses.php to deprecated.php. Define that copy alone, on both sides, as
+// the kses testkit's oracle does: the rest of deprecated.php is not part of this area.
+if (!function_exists('wp_kses_html_error'))
+{
+    preg_match(
+        '/^function wp_kses_html_error\(.*?^}\n/ms',
+        (string) file_get_contents(ABSPATH . WPINC . '/deprecated.php'),
+        $speedyspec_function
+    ) || throw new RuntimeException('wp_kses_html_error() is not in deprecated.php');
+    eval($speedyspec_function[0]);
+}
 
 // Filters the scenarios add by name: each changes a result, and a recording fixture beside it counts the runs.
 

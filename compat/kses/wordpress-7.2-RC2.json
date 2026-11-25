@@ -62550,10 +62550,7 @@
         }
       },
       {
-        "returned": {
-          "message": "Call to undefined function wp_kses_html_error()",
-          "threw": "Error"
-        },
+        "returned": "c",
         "invocations": [],
         "globals": {
           "wp_filter": null,
@@ -62633,17 +62630,30 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
         }
       },
       {
-        "returned": {
-          "message": "Call to undefined function wp_kses_html_error()",
-          "threw": "Error"
-        },
+        "returned": "",
         "invocations": [],
         "globals": {
           "wp_filter": null,
@@ -62723,7 +62733,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -62845,7 +62871,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -62946,7 +62988,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -63116,7 +63174,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -63290,7 +63364,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -63460,7 +63550,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -63547,7 +63653,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -63634,7 +63756,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -63721,7 +63859,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -63808,7 +63962,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -63895,7 +64065,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -63982,7 +64168,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -64069,7 +64271,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -64156,7 +64374,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -64243,7 +64477,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -64348,7 +64598,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -64449,7 +64715,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -64543,7 +64825,23 @@
             [
               "actions",
               {
-                "array": []
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "deprecated_function_run"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ]
+                ]
               }
             ]
           ]
@@ -78787,11 +79085,46 @@
         }
       },
       {
-        "returned": {
-          "message": "Undefined constant \"WP_DEBUG\"",
-          "threw": "Error"
-        },
-        "invocations": [],
+        "returned": "color: red",
+        "invocations": [
+          {
+            "fixture": "rec:safe_style_css",
+            "args": {
+              "array": [
+                [
+                  0,
+                  {
+                    "array": [
+                      [
+                        "array of",
+                        203
+                      ],
+                      [
+                        "md5",
+                        "md5:89314fff720555db694de10ffa8a388d"
+                      ]
+                    ]
+                  }
+                ]
+              ]
+            }
+          },
+          {
+            "fixture": "rec:safecss_filter_attr_allow_css",
+            "args": {
+              "array": [
+                [
+                  0,
+                  true
+                ],
+                [
+                  1,
+                  "color: red"
+                ]
+              ]
+            }
+          }
+        ],
         "globals": {
           "wp_filter": null,
           "wp_actions": null,
@@ -78814,7 +79147,7 @@
                         ],
                         [
                           1,
-                          16
+                          17
                         ]
                       ]
                     }
@@ -78829,7 +79162,7 @@
                         ],
                         [
                           1,
-                          16
+                          17
                         ]
                       ]
                     }
@@ -78844,7 +79177,7 @@
                         ],
                         [
                           1,
-                          17
+                          18
                         ]
                       ]
                     }
