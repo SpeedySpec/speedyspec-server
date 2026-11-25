@@ -30,7 +30,9 @@ fn yes(php: &Php, name: &str, code: &str) {
     check(name, matches!(r, Ok(Value::Bool(true))), r);
 }
 
-/// The WordPress functions and the `$wp` object the rewrite API calls (WordPress itself is not loaded).
+/// The WordPress functions and the `$wp` object the rewrite API calls (WordPress itself is not loaded). Each lookup the
+/// random rules make runs a filter, as WordPress's does (`locale`, `$wpdb`'s `query`), or a stand-in for one, so a
+/// test can make it throw.
 const WORDPRESS: &str = r#"
 function home_url() { return 'https://example.test'; }
 function site_url() { return 'https://example.test'; }
@@ -39,18 +41,19 @@ function is_main_site() { return true; }
 function get_post_types($args = array(), $output = 'names') {
     if (empty($args['randomable'])) { return array(); }
     $book = (object) array('name' => 'book', 'has_archive' => 'books', 'rewrite' => array('slug' => 'book'));
-    return array('book' => 'objects' === $output ? $book : 'book');
+    return apply_filters('stub_randomable_post_types', array('book' => 'objects' === $output ? $book : 'book'));
 }
 function is_post_type_hierarchical($type) { return false; }
 function get_page_by_path($path) {
+    apply_filters('query', "SELECT ID FROM wp_posts WHERE post_name = '$path'");
     return 'about' === $path ? (object) array('ID' => 2, 'post_status' => 'publish') : null;
 }
 function get_taxonomies($args = array(), $output = 'names') {
-    return array('genre' => (object) array('name' => 'genre', 'rewrite' => array('slug' => 'genre'), 'object_type' => array('book')));
+    return apply_filters('stub_queryable_taxonomies', array('genre' => (object) array('name' => 'genre', 'rewrite' => array('slug' => 'genre'), 'object_type' => array('book'))));
 }
 define('OBJECT', 'OBJECT');
 function wp_is_random_content_redirect_enabled() { return (bool) apply_filters('wp_enable_random_content_redirect', true); }
-function get_locale() { return 'de_DE'; }
+function get_locale() { return apply_filters('locale', 'de_DE'); }
 function switch_to_locale($locale) { $GLOBALS['switched'][] = $locale; return true; }
 function restore_previous_locale() { $GLOBALS['switched'][] = 'restored'; return 'en_US'; }
 function _x($text, $context) { return 'random' === $text ? 'zufall' : $text; }
@@ -376,6 +379,33 @@ fn main() {
         remove_filter('wp_enable_random_content_redirect', $throw);
         return $caught === $thrown;"#,
     );
+    // And one thrown while the random rules read the post types, the taxonomies, the posts at the random base, or the
+    // random base's translation: each propagates out of rewrite_rules(), as it does in WordPress.
+    for (port, filter) in [
+        ("randomable_post_types", "stub_randomable_post_types"),
+        ("taxonomies", "stub_queryable_taxonomies"),
+        ("viewable_posts", "query"),
+        ("site_translations", "locale"),
+    ] {
+        yes(
+            &php,
+            &format!("{port}_exception_is_rethrown_unchanged"),
+            &format!(
+                r#"global $wp_rewrite;
+                $thrown = new DomainException('{port}');
+                $throw = function () use ($thrown) {{ throw $thrown; }};
+                add_filter('{filter}', $throw);
+                try {{
+                    $wp_rewrite->rewrite_rules();
+                    $caught = null;
+                }} catch (Throwable $e) {{
+                    $caught = $e;
+                }}
+                remove_filter('{filter}', $throw);
+                return $caught === $thrown;"#
+            ),
+        );
+    }
     let flushed = eval(
         &php,
         "do_action('wp_loaded'); flush_rewrite_rules(false); return true;",

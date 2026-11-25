@@ -93,15 +93,23 @@ impl PageUris for PhpPageUris {
     }
 }
 
-/// Runs `code`, which returns a static closure, with `args`; logs a failure and answers `null`.
-fn run(name: &str, code: &str, args: &[Value]) -> Value {
-    match speedyspec_php::eval(name, code).and_then(|f| speedyspec_php::call(&f, args)) {
-        Ok(value) => value,
-        Err(err) => {
-            eprintln!("speedyspec_wordpress: {name} failed: {err}");
-            Value::Null
-        }
+/// A failed PHP call as a [`RewriteError`]: the exception it threw is the error's cause, so the native functions
+/// rethrow it unchanged, as they do a hook callback's.
+fn caught(what: &str, failure: speedyspec_php::CallFailure) -> RewriteError {
+    RewriteError {
+        message: format!("{what} failed: {}", failure.error),
+        cause: failure
+            .exception
+            .map(|exception| Rc::new(exception) as Rc<dyn Any>),
     }
+}
+
+/// Runs `code`, which returns a static closure, with `args`. What it throws (WordPress's filters and functions it
+/// calls) propagates as the error's cause, as it does out of WordPress's `rewrite_rules()`.
+fn run(name: &str, code: &str, args: &[Value]) -> Result<Value, RewriteError> {
+    let callback = speedyspec_php::eval(name, code)
+        .map_err(|err| RewriteError::new(format!("{name} failed: {err}")))?;
+    speedyspec_php::call_catching(&callback, args).map_err(|failure| caught(name, failure))
 }
 
 /// A PHP string, or `null`, as an option.
@@ -131,7 +139,7 @@ impl PostTypes for PhpPostTypes {
             .collect()
     }
 
-    fn randomable_post_types(&self) -> Vec<RandomablePostType> {
+    fn randomable_post_types(&self) -> Result<Vec<RandomablePostType>, RewriteError> {
         let code = r#"return static function () {
             $types = array();
             foreach (get_post_types(array('randomable' => true), 'objects') as $type) {
@@ -145,7 +153,7 @@ impl PostTypes for PhpPostTypes {
             }
             return $types;
         };"#;
-        list(&run("speedyspec://wp-rewrite-randomable", code, &[]))
+        Ok(list(&run("speedyspec://wp-rewrite-randomable", code, &[])?)
             .iter()
             .map(|entry| {
                 let fields = list(entry);
@@ -157,7 +165,7 @@ impl PostTypes for PhpPostTypes {
                     rewrite_slug: optional_text(&at(3)),
                 }
             })
-            .collect()
+            .collect())
     }
 }
 
@@ -165,7 +173,7 @@ impl PostTypes for PhpPostTypes {
 pub struct PhpTaxonomies;
 
 impl Taxonomies for PhpTaxonomies {
-    fn publicly_queryable(&self) -> Vec<QueryableTaxonomy> {
+    fn publicly_queryable(&self) -> Result<Vec<QueryableTaxonomy>, RewriteError> {
         let code = r#"return static function () {
             $taxonomies = array();
             foreach (get_taxonomies(array('publicly_queryable' => true), 'objects') as $taxonomy) {
@@ -178,7 +186,7 @@ impl Taxonomies for PhpTaxonomies {
             }
             return $taxonomies;
         };"#;
-        list(&run("speedyspec://wp-rewrite-taxonomies", code, &[]))
+        Ok(list(&run("speedyspec://wp-rewrite-taxonomies", code, &[])?)
             .iter()
             .map(|entry| {
                 let fields = list(entry);
@@ -189,7 +197,7 @@ impl Taxonomies for PhpTaxonomies {
                     object_types: list(&at(2)).iter().map(text).collect(),
                 }
             })
-            .collect()
+            .collect())
     }
 }
 
@@ -198,16 +206,16 @@ impl Taxonomies for PhpTaxonomies {
 pub struct PhpViewablePosts;
 
 impl ViewablePosts for PhpViewablePosts {
-    fn viewable_at(&self, path: &str, post_type: &str) -> bool {
+    fn viewable_at(&self, path: &str, post_type: &str) -> Result<bool, RewriteError> {
         let code = r#"return static function ($path, $post_type) {
             $post = get_page_by_path($path, OBJECT, $post_type);
             return $post instanceof WP_Post && is_post_publicly_viewable($post);
         };"#;
-        truthy(&run(
+        Ok(truthy(&run(
             "speedyspec://wp-rewrite-viewable-post",
             code,
             &[Value::Str(path.into()), Value::Str(post_type.into())],
-        ))
+        )?))
     }
 }
 
@@ -222,15 +230,7 @@ impl RandomContentRedirects for PhpRandomContentRedirects {
             &[],
         )
         .map(|enabled| truthy(&enabled))
-        .map_err(|failure| RewriteError {
-            message: format!(
-                "wp_is_random_content_redirect_enabled() failed: {}",
-                failure.error
-            ),
-            cause: failure
-                .exception
-                .map(|exception| Rc::new(exception) as Rc<dyn Any>),
-        })
+        .map_err(|failure| caught("wp_is_random_content_redirect_enabled()", failure))
     }
 }
 
@@ -239,7 +239,7 @@ impl RandomContentRedirects for PhpRandomContentRedirects {
 pub struct PhpSiteTranslations;
 
 impl SiteTranslations for PhpSiteTranslations {
-    fn random_base(&self) -> String {
+    fn random_base(&self) -> Result<String, RewriteError> {
         let code = r#"return static function () {
             $switched_locale = switch_to_locale(get_locale());
             $random_base = _x('random', 'random content permalink base');
@@ -248,7 +248,11 @@ impl SiteTranslations for PhpSiteTranslations {
             }
             return $random_base;
         };"#;
-        text(&run("speedyspec://wp-rewrite-random-base", code, &[]))
+        Ok(text(&run(
+            "speedyspec://wp-rewrite-random-base",
+            code,
+            &[],
+        )?))
     }
 }
 

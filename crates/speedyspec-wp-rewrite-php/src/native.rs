@@ -304,7 +304,9 @@ fn call_method(
             base: string(0)
         }),
         "random_rewrite_rules" => query!(GenerateRandomRewriteRules { source }).map(rules_or_empty),
-        "get_random_base" => direct!(|st| Value::Str(s.get_random_base(&st))),
+        "get_random_base" => {
+            direct!(|st| Value::Str(s.get_random_base(&st).map_err(rewrite_error)?))
+        }
         "post_permalinks_share_random_base" => {
             direct!(|st| Value::Bool(s.post_permalinks_share_random_base(&st)))
         }

@@ -127,24 +127,24 @@ fn init_reads_the_random_base() {
     let mut state = RewriteState::default();
     f.service.init(&mut state).unwrap();
     assert_eq!(state.random_base, "surprise");
-    assert_eq!(f.service.get_random_base(&state), "surprise");
+    assert_eq!(f.service.get_random_base(&state).unwrap(), "surprise");
 }
 
 #[test]
 fn the_random_base_defaults_to_its_translation() {
     struct Translated(&'static str);
     impl speedyspec_wp_rewrite::SiteTranslations for Translated {
-        fn random_base(&self) -> String {
-            self.0.into()
+        fn random_base(&self) -> Result<String, speedyspec_wp_rewrite::RewriteError> {
+            Ok(self.0.into())
         }
     }
     let (f, state) = init("/%postname%/");
-    assert_eq!(f.service.get_random_base(&state), "random");
+    assert_eq!(f.service.get_random_base(&state).unwrap(), "random");
     for (translation, base) in [("zufall", "zufall"), ("", "random")] {
         let mut deps = f.service.deps().clone();
         deps.translations = std::rc::Rc::new(Translated(translation));
         let service = speedyspec_wp_rewrite::RewriteService::new(deps);
-        assert_eq!(service.get_random_base(&state), base);
+        assert_eq!(service.get_random_base(&state).unwrap(), base);
     }
 }
 

@@ -255,17 +255,17 @@ impl RewriteService {
     }
 
     /// `WP_Rewrite::get_random_base()`: the custom base, else the default translated into the site language, else
-    /// `random`.
-    pub fn get_random_base(&self, state: &RewriteState) -> String {
+    /// `random`. An error carries what translating threw.
+    pub fn get_random_base(&self, state: &RewriteState) -> Result<String, RewriteError> {
         if !state.random_base.is_empty() {
-            return state.random_base.clone();
+            return Ok(state.random_base.clone());
         }
-        let translated = self.deps.translations.random_base();
-        if translated.is_empty() {
+        let translated = self.deps.translations.random_base()?;
+        Ok(if translated.is_empty() {
             "random".into()
         } else {
             translated
-        }
+        })
     }
 
     /// `WP_Rewrite::post_permalinks_share_random_base()`: whether the permalink structure is only the post name at

@@ -49,8 +49,9 @@ pub trait PageUris {
 pub trait PostTypes {
     /// `get_post_types( array( '_builtin' => false ) )`, each with `is_post_type_hierarchical()`.
     fn custom_post_types(&self) -> Vec<(String, bool)>;
-    /// `get_post_types( array( 'randomable' => true ), 'objects' )`, in registration order.
-    fn randomable_post_types(&self) -> Vec<RandomablePostType>;
+    /// `get_post_types( array( 'randomable' => true ), 'objects' )`, in registration order; an error carries what
+    /// reading them threw.
+    fn randomable_post_types(&self) -> Result<Vec<RandomablePostType>, RewriteError>;
 }
 
 /// A post type registered as `randomable`, as `WP_Rewrite::random_rewrite_rules()` reads it from
@@ -78,15 +79,16 @@ pub struct QueryableTaxonomy {
 }
 
 /// `get_taxonomies( array( 'publicly_queryable' => true ), 'objects' )`. Reading taxonomies belongs to the taxonomy
-/// port; until it exists, PHP answers.
+/// port; until it exists, PHP answers. An error carries what reading them threw.
 pub trait Taxonomies {
-    fn publicly_queryable(&self) -> Vec<QueryableTaxonomy>;
+    fn publicly_queryable(&self) -> Result<Vec<QueryableTaxonomy>, RewriteError>;
 }
 
 /// Whether a published post sits at a path: `get_page_by_path( $path, OBJECT, $post_type )` is a `WP_Post` and
-/// `is_post_publicly_viewable()` says yes. Reading posts belongs to the posts port; until it exists, PHP answers.
+/// `is_post_publicly_viewable()` says yes. Reading posts belongs to the posts port; until it exists, PHP answers. An
+/// error carries what the lookup threw.
 pub trait ViewablePosts {
-    fn viewable_at(&self, path: &str, post_type: &str) -> bool;
+    fn viewable_at(&self, path: &str, post_type: &str) -> Result<bool, RewriteError>;
 }
 
 /// `wp_is_random_content_redirect_enabled()`, from query.php: the `wp_enable_random_content_redirect` filter.
@@ -98,8 +100,9 @@ pub trait RandomContentRedirects {
 /// Translations in the site language, which the i18n port will own; until it exists, PHP answers.
 pub trait SiteTranslations {
     /// `_x( 'random', 'random content permalink base' )` in the site language: `switch_to_locale( get_locale() )`
-    /// around it, and `restore_previous_locale()` after when the switch happened.
-    fn random_base(&self) -> String;
+    /// around it, and `restore_previous_locale()` after when the switch happened. An error carries what translating
+    /// threw.
+    fn random_base(&self) -> Result<String, RewriteError>;
 }
 
 /// `$wp->add_query_var()`, which `add_endpoint` calls.

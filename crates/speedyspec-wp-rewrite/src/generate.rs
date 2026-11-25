@@ -83,20 +83,20 @@ impl RewriteService {
         if !self.deps.random_content.enabled()? {
             return Ok(Vec::new());
         }
-        let slug = self.get_random_base(state);
+        let slug = self.get_random_base(state)?;
         let base = format!("{}{}", state.root, slug);
         let mut rules = PhpArray::new();
 
-        let page_taken = self.deps.posts.viewable_at(&slug, "page");
+        let page_taken = self.deps.posts.viewable_at(&slug, "page")?;
         let post_taken = self.post_permalinks_share_random_base(state)
-            && self.deps.posts.viewable_at(&slug, "post");
+            && self.deps.posts.viewable_at(&slug, "post")?;
         if !page_taken && !post_taken {
             rules.set(format!("{base}/?$"), format!("{}?random=1", state.index));
         }
 
         let mut structures = vec![format!("{base}/{}/%author%", state.author_base)];
-        let post_types = self.deps.post_types.randomable_post_types();
-        for taxonomy in self.deps.taxonomies.publicly_queryable() {
+        let post_types = self.deps.post_types.randomable_post_types()?;
+        for taxonomy in self.deps.taxonomies.publicly_queryable()? {
             // Only taxonomies with pretty permalinks have a registered rewrite tag.
             let Some(taxonomy_slug) = taxonomy.rewrite_slug.filter(|s| !s.is_empty()) else {
                 continue;

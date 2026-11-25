@@ -173,8 +173,8 @@ impl PostTypes for MemoryPostTypes {
         self.custom.borrow().clone()
     }
 
-    fn randomable_post_types(&self) -> Vec<RandomablePostType> {
-        self.randomable.borrow().clone()
+    fn randomable_post_types(&self) -> Result<Vec<RandomablePostType>, RewriteError> {
+        Ok(self.randomable.borrow().clone())
     }
 }
 
@@ -183,8 +183,8 @@ impl PostTypes for MemoryPostTypes {
 pub struct MemoryTaxonomies(pub RefCell<Vec<QueryableTaxonomy>>);
 
 impl Taxonomies for MemoryTaxonomies {
-    fn publicly_queryable(&self) -> Vec<QueryableTaxonomy> {
-        self.0.borrow().clone()
+    fn publicly_queryable(&self) -> Result<Vec<QueryableTaxonomy>, RewriteError> {
+        Ok(self.0.borrow().clone())
     }
 }
 
@@ -193,11 +193,12 @@ impl Taxonomies for MemoryTaxonomies {
 pub struct MemoryViewablePosts(pub RefCell<Vec<(String, String)>>);
 
 impl ViewablePosts for MemoryViewablePosts {
-    fn viewable_at(&self, path: &str, post_type: &str) -> bool {
-        self.0
+    fn viewable_at(&self, path: &str, post_type: &str) -> Result<bool, RewriteError> {
+        Ok(self
+            .0
             .borrow()
             .iter()
-            .any(|(p, t)| p == path && t == post_type)
+            .any(|(p, t)| p == path && t == post_type))
     }
 }
 
@@ -205,8 +206,8 @@ impl ViewablePosts for MemoryViewablePosts {
 pub struct UntranslatedSite;
 
 impl SiteTranslations for UntranslatedSite {
-    fn random_base(&self) -> String {
-        "random".into()
+    fn random_base(&self) -> Result<String, RewriteError> {
+        Ok("random".into())
     }
 }
 
