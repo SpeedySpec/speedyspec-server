@@ -7,9 +7,12 @@ use speedyspec_php_serialize::semantics::{key_to_string, to_array, to_array_key,
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::{
     NAME_LENGTH_VERSION, PostStatusRegistry, PostTypePorts, PostTypeRegistry, Untranslated,
-    check_post_type_name,
+    check_post_type_name, is_post_type_hierarchical, post_stati, post_status_name_viewable,
+    post_type_exists, post_type_name_viewable, post_types, post_types_by_support,
 };
-use speedyspec_wp_posts_contracts::{PostStatuses, PostTypeError, RewriteContext, TitleSanitizer};
+use speedyspec_wp_posts_contracts::{
+    PostStatuses, PostTypeError, PostTypes, RewriteContext, TitleSanitizer,
+};
 
 /// The recorded cases. The file is large: read it once per test.
 #[allow(dead_code)]
@@ -378,11 +381,119 @@ pub fn replay(scenario: &Value, mut each: impl FnMut(&Value, Replayed, &Registri
                     _ => PhpValue::Null,
                 };
             }
+            "get_post_types" => {
+                let (args, names, operator) = list_args(&args);
+                let found = post_types(&registries.post_types, &args, &operator);
+                replayed.result = keyed_list(
+                    found
+                        .into_iter()
+                        .map(|t| (t.name().as_str().to_owned(), t.to_php())),
+                    names,
+                );
+            }
+            "get_post_stati" => {
+                let (args, names, operator) = list_args(&args);
+                let found = post_stati(&registries.statuses, &args, &operator);
+                replayed.result = keyed_list(
+                    found
+                        .into_iter()
+                        .map(|s| (s.name().as_str().to_owned(), s.to_php())),
+                    names,
+                );
+            }
+            "get_post_types_by_support" => {
+                // `array_fill_keys( (array) $feature, true )`: each value becomes a key.
+                let features: Vec<String> = to_array(args[0].clone())
+                    .iter()
+                    .map(|(_, f)| key_text(f))
+                    .collect();
+                let features: Vec<&str> = features.iter().map(String::as_str).collect();
+                let operator = args.get(1).map_or_else(|| "and".to_owned(), text);
+                replayed.result = PhpValue::Array(
+                    post_types_by_support(&registries.post_types, &features, &operator)
+                        .into_iter()
+                        .zip(0..)
+                        .map(|(post_type, i)| {
+                            (PhpKey::Int(i), PhpValue::Str(post_type.into_bytes()))
+                        })
+                        .collect(),
+                );
+            }
+            "post_type_exists" => {
+                replayed.result = PhpValue::Bool(post_type_exists(
+                    &registries.post_types,
+                    &key_text(&args[0]),
+                ));
+            }
+            "is_post_type_hierarchical" => {
+                replayed.result = PhpValue::Bool(is_post_type_hierarchical(
+                    &registries.post_types,
+                    &key_text(&args[0]),
+                ));
+            }
+            "is_post_type_viewable" => {
+                replayed.result = PhpValue::Bool(post_type_name_viewable(
+                    &registries.post_types,
+                    &key_text(&args[0]),
+                ));
+            }
+            "is_post_status_viewable" => {
+                // A non-string scalar is false.
+                replayed.result = PhpValue::Bool(match &args[0] {
+                    PhpValue::Str(name) => post_status_name_viewable(
+                        &registries.statuses,
+                        &String::from_utf8_lossy(name),
+                    ),
+                    _ => false,
+                });
+            }
+            "get_post_type_object" => {
+                replayed.result = registries
+                    .post_types
+                    .post_type(&key_text(&args[0]))
+                    .map_or(PhpValue::Null, |t| t.to_php());
+            }
             other => panic!("unrecorded function {other}"),
         }
         each(call, replayed, &registries);
     }
     registries
+}
+
+/// A string argument as text.
+fn text(value: &PhpValue) -> String {
+    String::from_utf8(to_php_string(value)).unwrap()
+}
+
+/// `get_post_types()`' and `get_post_stati()`' `( $args = array(), $output = 'names', $operator = 'and' )`:
+/// the filter arguments, whether `'names' === $output`, and the operator.
+fn list_args(args: &[PhpValue]) -> (Vec<(PhpKey, PhpValue)>, bool, String) {
+    let filter = match args.first() {
+        Some(PhpValue::Array(items)) => items.clone(),
+        None => Vec::new(),
+        Some(other) => panic!("unrecorded args {other:?}"),
+    };
+    let names = args
+        .get(1)
+        .is_none_or(|output| matches!(output, PhpValue::Str(s) if s.as_slice() == b"names"));
+    let operator = args.get(2).map_or_else(|| "and".to_owned(), text);
+    (filter, names, operator)
+}
+
+/// PHP's keyed result: `name => name` for `names` (`pluck( 'name' )`), else `name => object`.
+fn keyed_list(found: impl Iterator<Item = (String, PhpValue)>, names: bool) -> PhpValue {
+    PhpValue::Array(
+        found
+            .map(|(name, object)| {
+                let value = if names {
+                    PhpValue::Str(name.as_bytes().to_vec())
+                } else {
+                    object
+                };
+                (PhpKey::Str(name.into_bytes()), value)
+            })
+            .collect(),
+    )
 }
 
 /// A recorded `[hook, callback, priority, accepted_args]` list.

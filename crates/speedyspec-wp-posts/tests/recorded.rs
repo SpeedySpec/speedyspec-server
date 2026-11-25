@@ -3,7 +3,9 @@
 //! capabilities it remembers; `new WP_Post_Type()`'s `set_props()`, under each recorded permalink structure;
 //! the `post_types` scenarios: register_post_type(), unregister_post_type() and the supports functions replayed on
 //! one `PostTypeRegistry` each; the `statuses` scenarios: register_post_status() and get_post_status_object()
-//! replayed on one `PostStatusRegistry` each; and get_post_statuses(), get_page_statuses() and
+//! replayed on one `PostStatusRegistry` each; the `lists` scenario: get_post_types(), get_post_stati(),
+//! get_post_types_by_support() and the exists, hierarchical and viewable predicates over registered types,
+//! statuses and features; and get_post_statuses(), get_page_statuses() and
 //! _wp_privacy_statuses() untranslated.
 
 mod support;
@@ -325,4 +327,41 @@ fn status_label_tables_match_wordpress() {
         recorded_table(support::decode(&tables["privacy"])),
         "_wp_privacy_statuses()"
     );
+}
+
+#[test]
+fn list_scenarios_match_wordpress() {
+    let cases = support::cases();
+    let scenarios = cases["lists"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 1);
+    let mut calls = 0;
+    for scenario in scenarios {
+        let scenario_name = scenario["name"].as_str().unwrap();
+        let registries = support::replay(scenario, |call, got, _| {
+            calls += 1;
+            let at = format!("{scenario_name}/{calls}/{}", call["fn"]);
+            assert_eq!(
+                support::normalize_keys(got.result),
+                support::normalize_keys(support::decode(&call["result"])),
+                "{at} result"
+            );
+            assert_eq!(
+                got.doing_it_wrong, call["doing_it_wrong"],
+                "{at} doing_it_wrong"
+            );
+            assert_eq!(
+                got.actions,
+                support::recorded_actions(&call["actions"]),
+                "{at} actions"
+            );
+            assert_eq!(
+                got.actions_removed,
+                support::recorded_actions(&call["actions_removed"]),
+                "{at} actions_removed"
+            );
+            assert_eq!(got.taxonomies, call["taxonomies"], "{at} taxonomies");
+        });
+        assert_scenario_state(scenario, &registries);
+    }
+    assert_eq!(calls, 87);
 }
