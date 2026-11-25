@@ -81,13 +81,26 @@ pub fn is_integer_key(bytes: &[u8]) -> bool {
             .is_some()
 }
 
-/// `(array) $value`: an array as it is, an object's properties, an enum's `name` (and `value`), null as `array()`,
-/// and any other value as `array( 0 => $value )`.
+/// `(array) $value`: an array as it is, an object's properties (integer-like names as int keys), an enum's
+/// `name` (and `value`), null as `array()`, and any other value as `array( 0 => $value )`.
 pub fn to_array(value: PhpValue) -> Vec<(PhpKey, PhpValue)> {
     match value {
         PhpValue::Null => Vec::new(),
         PhpValue::Array(items) => items,
-        PhpValue::Object { properties, .. } => properties,
+        // PHP 7.2+: canonical integer property names become int keys.
+        PhpValue::Object { properties, .. } => properties
+            .into_iter()
+            .map(|(key, value)| match key {
+                PhpKey::Str(name) if is_integer_key(&name) => {
+                    let int = std::str::from_utf8(&name)
+                        .ok()
+                        .and_then(|s| s.parse().ok())
+                        .expect("an integer key parses");
+                    (PhpKey::Int(int), value)
+                }
+                key => (key, value),
+            })
+            .collect(),
         PhpValue::Enum { case, .. } => vec![(
             PhpKey::Str(b"name".to_vec()),
             PhpValue::Str(case.into_bytes()),
@@ -312,12 +325,12 @@ pub fn loose_eq(a: &PhpValue, b: &PhpValue) -> bool {
         (Str(x), Str(y)) => strings_eq(x, y),
         (Str(s), n) | (n, Str(s)) if number(n).is_some() => {
             let n = number(n).expect("checked");
+            // NaN equals no string, numeric or not (PHP 8.5).
+            if matches!(n, Numeric::Float { value, .. } if value.is_nan()) {
+                return false;
+            }
+            // `compare_longs_to_string()` has no overflow rule: an overflowing integer string compares as a double.
             match numeric(s) {
-                Some(Numeric::Float { overflow, .. })
-                    if overflow != 0 && matches!(n, Numeric::Int(_)) =>
-                {
-                    false
-                }
                 Some(parsed) => numbers_eq(n, parsed),
                 None => {
                     to_php_string(&match n {
@@ -465,6 +478,13 @@ mod tests {
             (Int(1), Float(1.0), true),
             (Null, arr(vec![]), true),
             (t.clone(), arr(vec![]), false),
+            // Fix round 1: an int against an overflowing integer string compares as doubles; NaN equals no string.
+            (Int(i64::MAX), s("9223372036854775808"), true),
+            (Int(i64::MIN), s("-9223372036854775809"), true),
+            (Float(f64::NAN), s("NAN"), false),
+            (Float(f64::NAN), s("abc"), false),
+            (Float(f64::NAN), s("1"), false),
+            (Float(f64::NAN), s(""), false),
         ];
         for (a, b, want) in cases {
             assert_eq!(loose_eq(&a, &b), want, "{a:?} == {b:?}");
@@ -515,5 +535,24 @@ mod tests {
             properties: items.clone(),
         };
         assert_eq!(to_array(object), items);
+        // (array) on an object turns canonical integer property names into int keys, as PHP 7.2+ does.
+        let object = PhpValue::Object {
+            class: "stdClass".into(),
+            properties: vec![
+                (k("0"), s("a")),
+                (k("10"), s("b")),
+                (k("010"), s("c")),
+                (k("x"), s("d")),
+            ],
+        };
+        assert_eq!(
+            to_array(object),
+            vec![
+                (PhpKey::Int(0), s("a")),
+                (PhpKey::Int(10), s("b")),
+                (k("010"), s("c")),
+                (k("x"), s("d")),
+            ]
+        );
     }
 }
