@@ -1,4 +1,4 @@
-//! Each standalone lexical function against its WordPress 7.1.5 twin, over 500 random kses inputs.
+//! Each standalone lexical function against its twin in the pinned WordPress release, over 500 random kses inputs.
 
 use std::cell::RefCell;
 

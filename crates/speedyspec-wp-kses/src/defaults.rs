@@ -1,4 +1,4 @@
-//! WordPress 7.1.5's default allowlists, kept once per thread as the PHP-shaped values the filters receive, and the
+//! The pinned WordPress release's default allowlists, kept once per thread as the PHP-shaped values the filters receive, and the
 //! helpers kses.php builds them with.
 
 use serde_json::Value as Json;
@@ -8,7 +8,7 @@ use speedyspec_hooks::{Key, Value};
 /// macro is the one place the crate names the release; a test checks that `compat/kses/source.json` pins the same one.
 macro_rules! data_release {
     () => {
-        "7.1.5"
+        "7.2-RC2"
     };
 }
 
@@ -48,12 +48,12 @@ thread_local! {
     };
 }
 
-/// `$allowedposttags` as WordPress 7.1.5 sets it up.
+/// `$allowedposttags` as the pinned WordPress release sets it up.
 pub fn default_post_value() -> Value {
     DEFAULTS.with(|d| d.0.clone())
 }
 
-/// `$allowedtags` as WordPress 7.1.5 sets it up.
+/// `$allowedtags` as the pinned WordPress release sets it up.
 pub fn default_tags_value() -> Value {
     DEFAULTS.with(|d| d.1.clone())
 }

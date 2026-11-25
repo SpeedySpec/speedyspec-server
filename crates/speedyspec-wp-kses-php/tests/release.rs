@@ -19,6 +19,7 @@ fn kses_keeps_only_what_stays_php() {
     assert_eq!(
         declared(&stripped),
         vec![
+            "wp_sanitize_html_kses",
             "_wp_kses_sanitize_note_mention_classes",
             "wp_filter_global_styles_post"
         ]
@@ -29,6 +30,7 @@ fn kses_keeps_only_what_stays_php() {
     assert!(stripped.contains("$allowedentitynames = array("));
     for name in declared(&source) {
         let stays = [
+            "wp_sanitize_html_kses",
             "_wp_kses_sanitize_note_mention_classes",
             "wp_filter_global_styles_post",
         ]

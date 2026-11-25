@@ -1,5 +1,5 @@
 {
-  "wordpress": "7.1.5",
+  "wordpress": "7.2-RC2",
   "results": {
     "allow_css_filter_allows": [
       {
@@ -368,6 +368,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    6,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -662,6 +677,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -13199,6 +13229,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -13441,6 +13486,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -13805,6 +13865,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -13888,6 +13963,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -14007,6 +14097,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -29603,6 +29708,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -29671,6 +29791,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -29747,6 +29882,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -29815,6 +29965,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          4
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -29891,6 +30056,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          5
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -29959,6 +30139,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          6
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -30035,6 +30230,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          7
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -30103,6 +30313,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          8
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -30179,6 +30404,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          9
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -30251,6 +30491,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          10
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -30319,6 +30574,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          11
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -30396,6 +30666,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -32822,6 +33107,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    5,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -32935,6 +33235,21 @@
                   ],
                   [
                     5,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    6,
                     {
                       "array": [
                         [
@@ -33071,6 +33386,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    7,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -33153,6 +33483,21 @@
                         ]
                       ]
                     }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
                   ]
                 ]
               }
@@ -33222,6 +33567,21 @@
                         [
                           1,
                           2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
                         ]
                       ]
                     }
@@ -33300,6 +33660,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -33387,6 +33762,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -33478,6 +33868,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -33561,6 +33966,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -33652,6 +34072,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          4
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -33735,6 +34170,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          4
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -33826,6 +34276,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          5
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -33909,6 +34374,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          5
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -34000,6 +34480,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          5
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -34083,6 +34578,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          5
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -34174,6 +34684,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          5
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -34261,6 +34786,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          5
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -34344,6 +34884,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          6
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -34575,6 +35130,21 @@
                         ]
                       ]
                     }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
                   ]
                 ]
               }
@@ -34659,6 +35229,21 @@
                         [
                           1,
                           2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
                         ]
                       ]
                     }
@@ -34749,6 +35334,21 @@
                         ]
                       ]
                     }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
                   ]
                 ]
               }
@@ -34836,6 +35436,21 @@
                         ]
                       ]
                     }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
                   ]
                 ]
               }
@@ -34920,6 +35535,21 @@
                         [
                           1,
                           2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
                         ]
                       ]
                     }
@@ -35010,6 +35640,21 @@
                         ]
                       ]
                     }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
                   ]
                 ]
               }
@@ -35097,6 +35742,21 @@
                         ]
                       ]
                     }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
                   ]
                 ]
               }
@@ -35184,6 +35844,21 @@
                         ]
                       ]
                     }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
                   ]
                 ]
               }
@@ -35268,6 +35943,21 @@
                         [
                           1,
                           2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
                         ]
                       ]
                     }
@@ -35355,6 +36045,21 @@
                         [
                           1,
                           2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
                         ]
                       ]
                     }
@@ -36121,6 +36826,21 @@
                   ],
                   [
                     8,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
                     {
                       "array": [
                         [
@@ -38826,6 +39546,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          6
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -39381,6 +40116,21 @@
                   ],
                   [
                     8,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          9
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
                     {
                       "array": [
                         [
@@ -40102,6 +40852,21 @@
                   ],
                   [
                     8,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          12
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
                     {
                       "array": [
                         [
@@ -42951,6 +43716,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          15
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -45792,6 +46572,21 @@
                   ],
                   [
                     8,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          18
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
                     {
                       "array": [
                         [
@@ -48641,6 +49436,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          21
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -51338,6 +52148,21 @@
                   ],
                   [
                     8,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          24
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
                     {
                       "array": [
                         [
@@ -54043,6 +54868,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          27
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -56744,6 +57584,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          30
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -57047,6 +57902,21 @@
                   ],
                   [
                     8,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          33
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
                     {
                       "array": [
                         [
@@ -57756,6 +58626,21 @@
                   ],
                   [
                     8,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          36
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
                     {
                       "array": [
                         [
@@ -58481,6 +59366,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          39
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -58548,6 +59448,21 @@
                         ]
                       ]
                     }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
                   ]
                 ]
               }
@@ -58598,6 +59513,21 @@
                         [
                           0,
                           "pre_kses"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
                         ],
                         [
                           1,
@@ -58662,6 +59592,21 @@
                         ]
                       ]
                     }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
                   ]
                 ]
               }
@@ -58712,6 +59657,21 @@
                         [
                           0,
                           "pre_kses"
+                        ],
+                        [
+                          1,
+                          4
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
                         ],
                         [
                           1,
@@ -58776,6 +59736,21 @@
                         ]
                       ]
                     }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          5
+                        ]
+                      ]
+                    }
                   ]
                 ]
               }
@@ -58826,6 +59801,21 @@
                         [
                           0,
                           "pre_kses"
+                        ],
+                        [
+                          1,
+                          6
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
                         ],
                         [
                           1,
@@ -60566,6 +61556,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -60634,6 +61639,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -60710,6 +61730,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -60778,6 +61813,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -60854,6 +61904,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -60922,6 +61987,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -60998,6 +62078,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -61066,6 +62161,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -61142,6 +62252,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -61214,6 +62339,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -61282,6 +62422,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -61358,6 +62513,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -61380,7 +62550,10 @@
         }
       },
       {
-        "returned": "c",
+        "returned": {
+          "message": "Call to undefined function wp_kses_html_error()",
+          "threw": "Error"
+        },
         "invocations": [],
         "globals": {
           "wp_filter": null,
@@ -61430,6 +62603,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -61452,7 +62640,10 @@
         }
       },
       {
-        "returned": "",
+        "returned": {
+          "message": "Call to undefined function wp_kses_html_error()",
+          "threw": "Error"
+        },
         "invocations": [],
         "globals": {
           "wp_filter": null,
@@ -61498,6 +62689,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -61609,6 +62815,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -61691,6 +62912,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -61846,6 +63082,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -62009,6 +63260,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -62164,6 +63430,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -62236,49 +63517,7 @@
                       "array": [
                         [
                           0,
-                          "wp_kses_uri_attributes"
-                        ],
-                        [
-                          1,
-                          16
-                        ]
-                      ]
-                    }
-                  ]
-                ]
-              }
-            ],
-            [
-              "actions",
-              {
-                "array": []
-              }
-            ]
-          ]
-        }
-      },
-      {
-        "returned": false,
-        "invocations": [],
-        "globals": {
-          "wp_filter": null,
-          "wp_actions": null,
-          "wp_filters": null,
-          "wp_current_filter": null
-        },
-        "state": {
-          "array": [
-            [
-              "filters",
-              {
-                "array": [
-                  [
-                    0,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "pre_kses"
+                          "wp_kses_force_legacy_parser"
                         ],
                         [
                           1,
@@ -62288,166 +63527,7 @@
                     }
                   ],
                   [
-                    1,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "wp_kses_allowed_html"
-                        ],
-                        [
-                          1,
-                          9
-                        ]
-                      ]
-                    }
-                  ],
-                  [
-                    2,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "wp_kses_uri_attributes"
-                        ],
-                        [
-                          1,
-                          16
-                        ]
-                      ]
-                    }
-                  ]
-                ]
-              }
-            ],
-            [
-              "actions",
-              {
-                "array": []
-              }
-            ]
-          ]
-        }
-      },
-      {
-        "returned": false,
-        "invocations": [],
-        "globals": {
-          "wp_filter": null,
-          "wp_actions": null,
-          "wp_filters": null,
-          "wp_current_filter": null
-        },
-        "state": {
-          "array": [
-            [
-              "filters",
-              {
-                "array": [
-                  [
-                    0,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "pre_kses"
-                        ],
-                        [
-                          1,
-                          3
-                        ]
-                      ]
-                    }
-                  ],
-                  [
-                    1,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "wp_kses_allowed_html"
-                        ],
-                        [
-                          1,
-                          9
-                        ]
-                      ]
-                    }
-                  ],
-                  [
-                    2,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "wp_kses_uri_attributes"
-                        ],
-                        [
-                          1,
-                          16
-                        ]
-                      ]
-                    }
-                  ]
-                ]
-              }
-            ],
-            [
-              "actions",
-              {
-                "array": []
-              }
-            ]
-          ]
-        }
-      },
-      {
-        "returned": true,
-        "invocations": [],
-        "globals": {
-          "wp_filter": null,
-          "wp_actions": null,
-          "wp_filters": null,
-          "wp_current_filter": null
-        },
-        "state": {
-          "array": [
-            [
-              "filters",
-              {
-                "array": [
-                  [
-                    0,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "pre_kses"
-                        ],
-                        [
-                          1,
-                          3
-                        ]
-                      ]
-                    }
-                  ],
-                  [
-                    1,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "wp_kses_allowed_html"
-                        ],
-                        [
-                          1,
-                          9
-                        ]
-                      ]
-                    }
-                  ],
-                  [
-                    2,
+                    3,
                     {
                       "array": [
                         [
@@ -62524,49 +63604,7 @@
                       "array": [
                         [
                           0,
-                          "wp_kses_uri_attributes"
-                        ],
-                        [
-                          1,
-                          16
-                        ]
-                      ]
-                    }
-                  ]
-                ]
-              }
-            ],
-            [
-              "actions",
-              {
-                "array": []
-              }
-            ]
-          ]
-        }
-      },
-      {
-        "returned": true,
-        "invocations": [],
-        "globals": {
-          "wp_filter": null,
-          "wp_actions": null,
-          "wp_filters": null,
-          "wp_current_filter": null
-        },
-        "state": {
-          "array": [
-            [
-              "filters",
-              {
-                "array": [
-                  [
-                    0,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "pre_kses"
+                          "wp_kses_force_legacy_parser"
                         ],
                         [
                           1,
@@ -62576,166 +63614,7 @@
                     }
                   ],
                   [
-                    1,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "wp_kses_allowed_html"
-                        ],
-                        [
-                          1,
-                          9
-                        ]
-                      ]
-                    }
-                  ],
-                  [
-                    2,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "wp_kses_uri_attributes"
-                        ],
-                        [
-                          1,
-                          16
-                        ]
-                      ]
-                    }
-                  ]
-                ]
-              }
-            ],
-            [
-              "actions",
-              {
-                "array": []
-              }
-            ]
-          ]
-        }
-      },
-      {
-        "returned": true,
-        "invocations": [],
-        "globals": {
-          "wp_filter": null,
-          "wp_actions": null,
-          "wp_filters": null,
-          "wp_current_filter": null
-        },
-        "state": {
-          "array": [
-            [
-              "filters",
-              {
-                "array": [
-                  [
-                    0,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "pre_kses"
-                        ],
-                        [
-                          1,
-                          3
-                        ]
-                      ]
-                    }
-                  ],
-                  [
-                    1,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "wp_kses_allowed_html"
-                        ],
-                        [
-                          1,
-                          9
-                        ]
-                      ]
-                    }
-                  ],
-                  [
-                    2,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "wp_kses_uri_attributes"
-                        ],
-                        [
-                          1,
-                          16
-                        ]
-                      ]
-                    }
-                  ]
-                ]
-              }
-            ],
-            [
-              "actions",
-              {
-                "array": []
-              }
-            ]
-          ]
-        }
-      },
-      {
-        "returned": true,
-        "invocations": [],
-        "globals": {
-          "wp_filter": null,
-          "wp_actions": null,
-          "wp_filters": null,
-          "wp_current_filter": null
-        },
-        "state": {
-          "array": [
-            [
-              "filters",
-              {
-                "array": [
-                  [
-                    0,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "pre_kses"
-                        ],
-                        [
-                          1,
-                          3
-                        ]
-                      ]
-                    }
-                  ],
-                  [
-                    1,
-                    {
-                      "array": [
-                        [
-                          0,
-                          "wp_kses_allowed_html"
-                        ],
-                        [
-                          1,
-                          9
-                        ]
-                      ]
-                    }
-                  ],
-                  [
-                    2,
+                    3,
                     {
                       "array": [
                         [
@@ -62808,6 +63687,543 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_uri_attributes"
+                        ],
+                        [
+                          1,
+                          16
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "actions",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "filters",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "pre_kses"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_allowed_html"
+                        ],
+                        [
+                          1,
+                          9
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_uri_attributes"
+                        ],
+                        [
+                          1,
+                          16
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "actions",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "filters",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "pre_kses"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_allowed_html"
+                        ],
+                        [
+                          1,
+                          9
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_uri_attributes"
+                        ],
+                        [
+                          1,
+                          16
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "actions",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "filters",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "pre_kses"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_allowed_html"
+                        ],
+                        [
+                          1,
+                          9
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_uri_attributes"
+                        ],
+                        [
+                          1,
+                          16
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "actions",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "filters",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "pre_kses"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_allowed_html"
+                        ],
+                        [
+                          1,
+                          9
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_uri_attributes"
+                        ],
+                        [
+                          1,
+                          16
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "actions",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "filters",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "pre_kses"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_allowed_html"
+                        ],
+                        [
+                          1,
+                          9
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_uri_attributes"
+                        ],
+                        [
+                          1,
+                          16
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "actions",
+              {
+                "array": []
+              }
+            ]
+          ]
+        }
+      },
+      {
+        "returned": false,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "filters",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "pre_kses"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_allowed_html"
+                        ],
+                        [
+                          1,
+                          9
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [
@@ -62902,6 +64318,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -62988,6 +64419,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -63067,6 +64513,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -63127,6 +64588,21 @@
                         [
                           0,
                           "wp_kses_allowed_html"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
                         ],
                         [
                           1,
@@ -63203,6 +64679,21 @@
                         [
                           1,
                           1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
                         ]
                       ]
                     }
@@ -63313,6 +64804,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -63396,6 +64902,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -63615,6 +65136,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -68717,6 +70253,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -68875,6 +70426,21 @@
                   ],
                   [
                     8,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          6
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
                     {
                       "array": [
                         [
@@ -69041,6 +70607,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          7
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -69203,6 +70784,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          8
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -69361,6 +70957,21 @@
                   ],
                   [
                     8,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          9
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
                     {
                       "array": [
                         [
@@ -69557,6 +71168,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          14
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -69715,6 +71341,21 @@
                   ],
                   [
                     8,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          14
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
                     {
                       "array": [
                         [
@@ -69948,6 +71589,21 @@
                   ],
                   [
                     8,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          14
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
                     {
                       "array": [
                         [
@@ -70205,6 +71861,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          14
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    9,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -70407,6 +72078,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -70569,6 +72255,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -70717,6 +72418,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -70818,6 +72534,21 @@
                         [
                           0,
                           "pre_kses"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
                         ],
                         [
                           1,
@@ -71712,6 +73443,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -71795,6 +73541,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -71886,6 +73647,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          3
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -71973,6 +73749,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          4
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -72056,6 +73847,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          5
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -72147,6 +73953,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          6
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -72230,6 +74051,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          7
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -72321,6 +74157,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          8
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -72404,6 +74255,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          9
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -72495,6 +74361,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          10
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -72582,6 +74463,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          11
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -72665,6 +74561,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          12
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -72756,6 +74667,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          13
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -72839,6 +74765,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          14
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -72930,6 +74871,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          15
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -73013,6 +74969,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          16
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -73104,6 +75075,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          17
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -73187,6 +75173,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          18
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -73278,6 +75279,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          19
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -73361,6 +75377,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          20
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -73452,6 +75483,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          21
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -73535,6 +75581,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          22
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -73626,6 +75687,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          23
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -73713,6 +75789,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          24
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -73796,6 +75887,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          25
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -74032,6 +76138,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -74115,6 +76236,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -74218,6 +76354,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -74332,6 +76483,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -74431,6 +76597,21 @@
                   ],
                   [
                     3,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          2
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    4,
                     {
                       "array": [
                         [
@@ -74539,11 +76720,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -74634,11 +76815,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -74740,6 +76921,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    6,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -74828,11 +77024,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -74953,11 +77149,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -75063,11 +77259,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -75158,11 +77354,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -75268,11 +77464,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -75378,11 +77574,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -75488,11 +77684,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -75598,11 +77794,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -75723,11 +77919,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -75833,11 +78029,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -75943,11 +78139,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -76053,11 +78249,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -76163,11 +78359,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -76288,11 +78484,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -76383,11 +78579,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -76478,11 +78674,11 @@
                     "array": [
                       [
                         "array of",
-                        191
+                        203
                       ],
                       [
                         "md5",
-                        "md5:dd3b33482ebe17a999d02b1b3256bc92"
+                        "md5:89314fff720555db694de10ffa8a388d"
                       ]
                     ]
                   }
@@ -76809,6 +79005,21 @@
                       "array": [
                         [
                           0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
+                    {
+                      "array": [
+                        [
+                          0,
                           "wp_kses_uri_attributes"
                         ],
                         [
@@ -76975,6 +79186,21 @@
                   ],
                   [
                     2,
+                    {
+                      "array": [
+                        [
+                          0,
+                          "wp_kses_force_legacy_parser"
+                        ],
+                        [
+                          1,
+                          1
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    3,
                     {
                       "array": [
                         [

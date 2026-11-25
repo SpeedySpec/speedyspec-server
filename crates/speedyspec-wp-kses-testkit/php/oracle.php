@@ -32,6 +32,10 @@ foreach ( array( 'html5-named-character-references', 'class-wp-html-attribute-to
 	require "$wp/wp-includes/html-api/$html_api_file.php";
 }
 require "$wp/wp-includes/kses.php";
+// WordPress 7.2 moved wp_kses_html_error() from kses.php to deprecated.php; the lexical port still mirrors it.
+if ( ! function_exists( 'wp_kses_html_error' ) ) {
+	oracle_load_functions( "$wp/wp-includes/deprecated.php", array( 'wp_kses_html_error' ) );
+}
 
 function oracle_encode( $v ) {
 	if ( is_string( $v ) ) {

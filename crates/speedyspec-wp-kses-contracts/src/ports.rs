@@ -1,5 +1,6 @@
 //! The ports: what a kses implementation offers (inbound) and what it needs from code not yet ported (outbound).
 
+use std::any::Any;
 use std::borrow::Cow;
 use std::rc::Rc;
 
@@ -68,4 +69,33 @@ pub trait AttributeEscaper {
 /// `current_user_can( 'unfiltered_html' )`, owned by the identity port.
 pub trait UnfilteredHtmlPolicy {
     fn can_unfiltered_html(&self) -> Result<bool, KsesError>;
+}
+
+/// `wp_sanitize_html_kses()`: WordPress 7.2's HTML API implementation of `wp_kses()`, which `wp_kses()` hands its
+/// arguments to when the `wp_kses_force_legacy_parser` filter answers false (Strategy).
+pub trait HtmlApiSanitizer {
+    /// Sanitizes `content` as `wp_sanitize_html_kses( (string) $content, $allowed_html, $allowed_protocols )` does,
+    /// with the allowlist and protocols as the caller gave them.
+    ///
+    /// @return
+    ///     The sanitized content, or `None` where no implementation is at hand (the legacy parser then runs).
+    fn sanitize(
+        &self,
+        content: &[u8],
+        allowed: &AllowedSpec,
+        protocols: Option<&Protocols>,
+    ) -> Result<Option<Vec<u8>>, KsesError>;
+}
+
+/// The global `$wp_kses_operating_mode` (WordPress 7.2): which implementation of `wp_kses()` is running, which the
+/// legacy `pre_kses` filters read to decide whether to run.
+pub trait OperatingMode {
+    /// Sets the mode to `mode` (`legacy` or `html-api`).
+    ///
+    /// @return
+    ///     The previous value, for [`OperatingMode::restore`].
+    fn enter(&self, mode: &'static str) -> Box<dyn Any>;
+
+    /// Puts back the value [`OperatingMode::enter`] returned.
+    fn restore(&self, previous: Box<dyn Any>);
 }

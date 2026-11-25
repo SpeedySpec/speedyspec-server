@@ -1,4 +1,4 @@
-//! WordPress's kses functions, recorded from the 7.1.5 release (`compat/kses`), replayed exactly through the native
+//! WordPress's kses functions, recorded from the pinned release (`compat/kses`), replayed exactly through the native
 //! ones: every step's result, every recorded hook invocation and the hook globals (counts included).
 
 use std::rc::Rc;

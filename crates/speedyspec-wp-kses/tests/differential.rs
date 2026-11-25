@@ -1,5 +1,5 @@
-//! Every corpus input, under `post`, `data` and `strip`, against WordPress 7.1.5's kses. A difference passes only
-//! by the gate rule, and every security break must be listed in compat/kses/breaks.json.
+//! Every corpus input, under `post`, `data` and `strip`, against the pinned WordPress release's kses. A difference
+//! passes only by the gate rule, and every security break must be listed in compat/kses/breaks.json.
 
 mod common;
 

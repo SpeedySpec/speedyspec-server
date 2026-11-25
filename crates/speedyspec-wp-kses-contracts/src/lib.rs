@@ -17,7 +17,8 @@ pub use allowed::{
 pub use attr::Attr;
 pub use error::{KsesError, Payload};
 pub use ports::{
-    AllowedHtmlSource, AttributeEscaper, Kses, KsesLexical, SafeCss, UnfilteredHtmlPolicy,
+    AllowedHtmlSource, AttributeEscaper, HtmlApiSanitizer, Kses, KsesLexical, OperatingMode,
+    SafeCss, UnfilteredHtmlPolicy,
 };
 pub use rules::{AttrRule, AttrRules, RuleValue, ValueCallback};
 

@@ -25,7 +25,7 @@ pub trait AllowedGlobals {
     fn generation(&self) -> u64;
 }
 
-/// WordPress 7.1.5's defaults, never written.
+/// The pinned WordPress release's defaults, never written.
 pub struct DefaultGlobals {
     entity_names: Rc<EntityNames>,
     xml_entity_names: Rc<EntityNames>,

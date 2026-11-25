@@ -5,9 +5,10 @@ use std::path::{Path, PathBuf};
 
 use speedyspec_compat::ReleaseMirror;
 
-/// The functions the native area declares: every function of 7.1.5's `kses.php` but
-/// `_wp_kses_sanitize_note_mention_classes` (it needs the HTML API's tag processor) and
-/// `wp_filter_global_styles_post` (it needs the theme JSON port), plus `wp_allowed_protocols` from `functions.php`.
+/// The functions the native area declares: every function of the release's `kses.php` but
+/// `_wp_kses_sanitize_note_mention_classes` (it needs the HTML API's tag processor), `wp_sanitize_html_kses` (the
+/// HTML API implementation `wp_kses()` hands off to) and `wp_filter_global_styles_post` (it needs the theme JSON
+/// port), plus `wp_allowed_protocols` from `functions.php`.
 pub const PORTED_FUNCTIONS: &[&str] = &[
     "wp_kses",
     "wp_kses_one_attr",
@@ -29,7 +30,6 @@ pub const PORTED_FUNCTIONS: &[&str] = &[
     "wp_kses_no_null",
     "wp_kses_stripslashes",
     "wp_kses_array_lc",
-    "wp_kses_html_error",
     "wp_kses_bad_protocol_once",
     "wp_kses_bad_protocol_once2",
     "wp_kses_normalize_entities",

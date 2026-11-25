@@ -157,6 +157,8 @@ fn init_filters_prefer_the_bridges_named_functions() {
         globals: Rc::new(speedyspec_wp_kses::DefaultGlobals::default()),
         uploads: Rc::new(common::Uploads),
         callbacks: Rc::new(Named),
+        html_api: Rc::new(speedyspec_wp_kses::NoHtmlApiSanitizer),
+        mode: Rc::new(speedyspec_wp_kses::MemoryOperatingMode::default()),
     });
     api.kses_init_filters().unwrap();
     let out = hooks

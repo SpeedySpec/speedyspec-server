@@ -1,5 +1,5 @@
-//! The native `wp_kses_post()` against WordPress 7.1.5's own kses.php in the same embedded PHP (goal: at least 5x),
-//! on the benchmark corpus. Run on demand: `SPEEDYSPEC_KSES_BENCH=1 cargo test --release -p speedyspec-wp-kses-php
+//! The native `wp_kses_post()` against the pinned WordPress release's own kses.php in the same embedded PHP (goal: at
+//! least 5x), on the benchmark corpus. Run on demand: `SPEEDYSPEC_KSES_BENCH=1 cargo test --release -p speedyspec-wp-kses-php
 //! --test bench_php`.
 //!
 //! The release's kses.php is loaded a second time inside `namespace Legacy`, its string callbacks pointed at the

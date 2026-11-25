@@ -42,6 +42,8 @@ fn setup() -> (Rc<HookApi>, KsesApi) {
         globals: Rc::new(DefaultGlobals::default()),
         uploads: Rc::new(Uploads),
         callbacks: Rc::new(NoValueCallbacks),
+        html_api: Rc::new(speedyspec_wp_kses::NoHtmlApiSanitizer),
+        mode: Rc::new(speedyspec_wp_kses::MemoryOperatingMode::default()),
     });
     (hooks, api)
 }

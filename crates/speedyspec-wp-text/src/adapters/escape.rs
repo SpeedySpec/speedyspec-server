@@ -12,7 +12,10 @@ pub struct EscapeAttributes(pub Rc<EscapeApi>);
 
 impl AttributeEscaper for EscapeAttributes {
     fn esc_attr(&self, value: &[u8]) -> Result<Vec<u8>, KsesError> {
-        let escaped = self.0.esc_attr(value).map_err(|e| KsesError::Callback(e.message))?;
+        let escaped = self
+            .0
+            .esc_attr(value)
+            .map_err(|e| KsesError::Callback(e.message))?;
         // A filter may return a non-string; kses concatenates it, as PHP would.
         Ok(to_php_string(&escaped).unwrap_or_default())
     }
@@ -45,7 +48,10 @@ impl speedyspec_wp_kses::UploadsLocation for FixedUploads {
 ///     The escapers.
 /// @return
 ///     The facade.
-pub fn kses_for(hooks: Rc<speedyspec_wp_hooks::HookApi>, escape: Rc<EscapeApi>) -> Rc<speedyspec_wp_kses::KsesApi> {
+pub fn kses_for(
+    hooks: Rc<speedyspec_wp_hooks::HookApi>,
+    escape: Rc<EscapeApi>,
+) -> Rc<speedyspec_wp_kses::KsesApi> {
     speedyspec_wp_kses::KsesApi::shared(speedyspec_wp_kses::KsesDeps {
         hooks,
         escaper: Rc::new(EscapeAttributes(escape)),
@@ -53,5 +59,7 @@ pub fn kses_for(hooks: Rc<speedyspec_wp_hooks::HookApi>, escape: Rc<EscapeApi>) 
         globals: Rc::new(speedyspec_wp_kses::DefaultGlobals::default()),
         uploads: Rc::new(FixedUploads(Vec::new())),
         callbacks: Rc::new(speedyspec_wp_kses::NoValueCallbacks),
+        html_api: Rc::new(speedyspec_wp_kses::NoHtmlApiSanitizer),
+        mode: Rc::new(speedyspec_wp_kses::MemoryOperatingMode::default()),
     })
 }

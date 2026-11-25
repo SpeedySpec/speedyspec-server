@@ -110,6 +110,32 @@ fn main() {
         return $before === 'a' && $after === '<x-tag>a</x-tag>' && $nested === '<x-tag data-n="1">a</x-tag>';"#,
     );
     yes(
+        "pre_kses_sees_the_legacy_operating_mode",
+        r#"$seen = array();
+        $f = function ($content) use (&$seen) { $seen[] = $GLOBALS['wp_kses_operating_mode']; return $content; };
+        add_filter('pre_kses', $f);
+        $GLOBALS['wp_kses_operating_mode'] = 'html-api';
+        wp_kses_post('<b>a</b>');
+        $after = $GLOBALS['wp_kses_operating_mode'];
+        $GLOBALS['wp_kses_operating_mode'] = 'legacy';
+        remove_filter('pre_kses', $f);
+        return $seen === array('legacy') && 'html-api' === $after;"#,
+    );
+    yes(
+        "a_false_legacy_filter_calls_wp_sanitize_html_kses",
+        r#"add_filter('wp_kses_force_legacy_parser', '__return_false');
+        try {
+            wp_kses_post('<b>a</b>');
+            $reached = false;
+        } catch (Error $e) {
+            // This request loads no HTML API, so reaching WordPress's sanitizer fails on its tag processor.
+            $reached = str_contains($e->getMessage(), 'WP_HTML_Tag_Processor')
+                && in_array('wp_sanitize_html_kses', array_column($e->getTrace(), 'function'), true);
+        }
+        remove_filter('wp_kses_force_legacy_parser', '__return_false');
+        return $reached;"#,
+    );
+    yes(
         "value_callback_calls_php",
         r#"function test_ok($v) { return 'ok' === $v; }
         $GLOBALS['allowedposttags']['span']['data-v'] = array('value_callback' => 'test_ok');

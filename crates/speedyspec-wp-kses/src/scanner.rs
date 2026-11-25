@@ -20,7 +20,8 @@ use speedyspec_wp_kses_lexical::{
 
 use crate::KsesApi;
 use crate::api::{bytes_value, is_default_uri_attribute, php_string};
-use crate::convert::allowed_to_value;
+use crate::convert::allowed_spec_to_value;
+use crate::safecss::truthy;
 
 /// The most `wp_kses()` passes a comment or invalid-markup token gets to settle. Every corpus input settles within
 /// 2; a token still changing after this many is one PHP never finishes, and the port drops it.
@@ -212,6 +213,17 @@ impl KsesApi {
         allowed: &AllowedSpec,
         protocols: Option<&Protocols>,
     ) -> Result<Vec<u8>, KsesError> {
+        // WordPress 7.2 hands the call to `wp_sanitize_html_kses()` unless this filter keeps the legacy parser.
+        let legacy = self
+            .filter(
+                "wp_kses_force_legacy_parser",
+                || Value::Bool(true),
+                Vec::new,
+            )?
+            .is_none_or(|v| truthy(&v));
+        if !legacy && let Some(sanitized) = self.d.html_api.sanitize(content, allowed, protocols)? {
+            return Ok(sanitized);
+        }
         // The outermost call sets the budget for every nested pass beneath it.
         let outermost = self.nested_budget.get().is_none();
         if outermost {
@@ -254,8 +266,11 @@ impl KsesApi {
             Cow::Borrowed(_) => content,
             Cow::Owned(o) => Cow::Owned(o),
         };
-        let content = self.hook(content, allowed, protocols)?;
-        self.split(&content, allowed, protocols)
+        // The legacy `pre_kses` filters run only in the `legacy` operating mode, so `wp_kses()` sets it around them.
+        let previous = self.d.mode.enter("legacy");
+        let content = self.hook(content, allowed, protocols);
+        self.d.mode.restore(previous);
+        self.split(&content?, allowed, protocols)
     }
 
     /// `wp_kses_hook()`: the `pre_kses` filter.
@@ -276,15 +291,7 @@ impl KsesApi {
         allowed: &AllowedSpec,
         protocols: &Protocols,
     ) -> Result<Cow<'a, [u8]>, KsesError> {
-        let allowed_value = || match allowed {
-            AllowedSpec::Context(c) => bytes_value(c.as_bytes()),
-            AllowedSpec::Explicit(a) => allowed_to_value(a),
-            AllowedSpec::Foreign { html, source } => source
-                .0
-                .downcast_ref::<Value>()
-                .cloned()
-                .unwrap_or_else(|| allowed_to_value(html)),
-        };
+        let allowed_value = || allowed_spec_to_value(allowed);
         let protocols_value = || {
             Value::Array(
                 protocols
