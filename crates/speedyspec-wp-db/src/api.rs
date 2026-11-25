@@ -142,6 +142,7 @@ impl Settings {
                 "STRICT_ALL_TABLES",
                 "TRADITIONAL",
                 "ANSI",
+                "NO_BACKSLASH_ESCAPES",
             ]
             .iter()
             .map(|m| m.to_string())
