@@ -1,6 +1,6 @@
 //! The names of the hooks `meta.php` fires, for one meta type.
 //!
-//! Names are copied from WordPress 7.1.5's `wp-includes/meta.php`. A key is bytes, so the names that hold one are
+//! Names are copied from WordPress 7.2-RC2's `wp-includes/meta.php`. A key is bytes, so the names that hold one are
 //! bytes too.
 
 use speedyspec_wp_meta_contracts::{MetaKey, MetaType};
@@ -123,6 +123,49 @@ impl MetaHookNames {
     pub fn cache_pre(&self) -> String {
         self.named("update_", "_metadata_cache")
     }
+
+    /// `get_object_subtype()`: the filter `get_object_subtype_{type}`.
+    pub fn object_subtype(&self) -> String {
+        self.named("get_object_subtype_", "")
+    }
+
+    fn is_post(&self) -> bool {
+        self.meta_type == "post"
+    }
+
+    /// `update_metadata()` and `update_metadata_by_mid()`'s old-style `update_postmeta`, for posts only.
+    pub fn legacy_update(&self) -> Option<&'static str> {
+        self.is_post().then_some("update_postmeta")
+    }
+
+    /// `update_metadata()` and `update_metadata_by_mid()`'s old-style `updated_postmeta`, for posts only.
+    pub fn legacy_updated(&self) -> Option<&'static str> {
+        self.is_post().then_some("updated_postmeta")
+    }
+
+    /// `delete_metadata()`'s old-style `delete_postmeta`, for posts only.
+    pub fn legacy_delete(&self) -> Option<&'static str> {
+        self.is_post().then_some("delete_postmeta")
+    }
+
+    /// `delete_metadata()`'s old-style `deleted_postmeta`, for posts only.
+    pub fn legacy_deleted(&self) -> Option<&'static str> {
+        self.is_post().then_some("deleted_postmeta")
+    }
+
+    fn by_mid_legacy(&self, prefix: &str) -> Option<String> {
+        matches!(self.meta_type.as_str(), "post" | "comment").then(|| self.named(prefix, "meta"))
+    }
+
+    /// `delete_metadata_by_mid()`'s old-style `delete_{type}meta`, for posts and comments only.
+    pub fn legacy_delete_by_mid(&self) -> Option<String> {
+        self.by_mid_legacy("delete_")
+    }
+
+    /// `delete_metadata_by_mid()`'s old-style `deleted_{type}meta`, for posts and comments only.
+    pub fn legacy_deleted_by_mid(&self) -> Option<String> {
+        self.by_mid_legacy("deleted_")
+    }
 }
 
 #[cfg(test)]
@@ -160,6 +203,36 @@ mod tests {
         assert_eq!(n.updated(), "updated_user_meta");
         assert_eq!(n.delete_by_mid_pre(), "delete_user_metadata_by_mid");
         assert_eq!(n.cache_pre(), "update_user_metadata_cache");
+    }
+
+    #[test]
+    fn legacy_names_by_type() {
+        let post = names("post");
+        assert_eq!(post.object_subtype(), "get_object_subtype_post");
+        assert_eq!(post.legacy_update(), Some("update_postmeta"));
+        assert_eq!(post.legacy_updated(), Some("updated_postmeta"));
+        assert_eq!(post.legacy_delete(), Some("delete_postmeta"));
+        assert_eq!(post.legacy_deleted(), Some("deleted_postmeta"));
+        assert_eq!(
+            post.legacy_delete_by_mid().as_deref(),
+            Some("delete_postmeta")
+        );
+        assert_eq!(
+            post.legacy_deleted_by_mid().as_deref(),
+            Some("deleted_postmeta")
+        );
+        let comment = names("comment");
+        assert_eq!(comment.legacy_update(), None);
+        assert_eq!(comment.legacy_delete(), None);
+        assert_eq!(
+            comment.legacy_delete_by_mid().as_deref(),
+            Some("delete_commentmeta")
+        );
+        assert_eq!(
+            comment.legacy_deleted_by_mid().as_deref(),
+            Some("deleted_commentmeta")
+        );
+        assert_eq!(names("user").legacy_delete_by_mid(), None);
     }
 
     #[test]

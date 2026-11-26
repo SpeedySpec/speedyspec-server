@@ -6451,8 +6451,12 @@ dependencies = [
  "hex",
  "indexmap",
  "serde_json",
+ "speedyspec-container",
+ "speedyspec-cqrs",
  "speedyspec-php-serialize",
+ "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-meta-contracts",
+ "speedyspec-wp-object-cache-contracts",
 ]
 
 [[package]]
@@ -6489,6 +6493,23 @@ dependencies = [
  "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-meta-contracts",
+]
+
+[[package]]
+name = "speedyspec-wp-meta-tests"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-container",
+ "speedyspec-cqrs",
+ "speedyspec-php-serialize",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-contracts",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-meta",
+ "speedyspec-wp-meta-contracts",
+ "speedyspec-wp-meta-memory",
+ "speedyspec-wp-object-cache",
+ "speedyspec-wp-object-cache-contracts",
 ]
 
 [[package]]

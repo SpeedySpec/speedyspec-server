@@ -1,0 +1,25 @@
+[package]
+name = "speedyspec-wp-meta-tests"
+version = "0.1.0"
+publish = false
+description = "Integration tests of speedyspec-wp-meta's use cases with the Rust hook API, the object cache and the in-memory meta repositories. A crate of its own so speedyspec-wp-meta depends on contracts only and no crate has a dev-dependency on one that depends on it."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[package.metadata.speedyspec]
+seam = "meta"
+role = "test"
+
+[dev-dependencies]
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
+speedyspec-php-serialize.workspace = true
+speedyspec-wp-hooks.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
+speedyspec-wp-hooks-memory.workspace = true
+speedyspec-wp-meta = { path = "../speedyspec-wp-meta" }
+speedyspec-wp-meta-contracts.workspace = true
+speedyspec-wp-meta-memory = { path = "../speedyspec-wp-meta-memory" }
+speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
+speedyspec-wp-object-cache-contracts.workspace = true

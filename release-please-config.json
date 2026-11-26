@@ -364,6 +364,11 @@
       "skip-github-release": true,
       "skip-changelog": true
     },
+    "crates/speedyspec-wp-meta-tests": {
+      "component": "speedyspec-wp-meta-tests",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
     "crates/speedyspec-wp-posts": {
       "component": "speedyspec-wp-posts",
       "skip-github-release": true,
