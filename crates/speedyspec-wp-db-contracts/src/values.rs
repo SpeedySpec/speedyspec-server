@@ -3,7 +3,6 @@
 use std::rc::Rc;
 
 use speedyspec_data::Row;
-use speedyspec_hooks::Value;
 
 /// A PHP value, as the Hook API carries it.
 pub type WpValue = speedyspec_hooks::Value;
@@ -70,7 +69,7 @@ pub struct ColLength {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field {
     pub name: String,
-    pub value: Value,
+    pub value: WpValue,
     pub format: String,
     pub charset: Option<String>,
     pub length: Option<ColLength>,

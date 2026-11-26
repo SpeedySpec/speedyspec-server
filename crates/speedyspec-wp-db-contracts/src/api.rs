@@ -5,6 +5,9 @@ use speedyspec_data::Statement;
 use crate::{Field, QueryOutcome, WpDbError, WpValue};
 
 /// wpdb as other seams call it (Gateway; an API port). Each method is the wpdb method of the same name.
+///
+/// Implementations convert a hook failure with `From`/`?` and never construct [`WpDbError::Hook`] directly: the `From`
+/// conversion records the thread-local side channel ([`crate::take_hook_error`]) that the `-php` bridges rethrow from.
 pub trait Wpdb {
     /// `$wpdb->options`, `$wpdb->postmeta`: a logical table's prefixed name.
     fn table_name(&self, logical: &str) -> String;
