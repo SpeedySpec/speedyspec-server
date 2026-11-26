@@ -6605,6 +6605,8 @@ dependencies = [
  "serde_json",
  "speedyspec-php-serialize",
  "speedyspec-wp-posts-contracts",
+ "speedyspec-wp-posts-memory",
+ "speedyspec-wp-text",
 ]
 
 [[package]]

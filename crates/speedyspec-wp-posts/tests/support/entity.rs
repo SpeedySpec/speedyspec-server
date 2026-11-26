@@ -1,10 +1,18 @@
-//! Shared by the entity tests: finds `compat/posts-entity/cases.json` and replays a `dates` case's clock.
+//! Shared by the entity tests: finds `compat/posts-entity/cases.json`, replays a `dates` case's clock, and builds
+//! the slug and hierarchy scenarios' table, post types, truncation and statement log.
 
+use std::cell::RefCell;
 use std::path::PathBuf;
 
 use serde_json::Value;
-use speedyspec_php_serialize::PhpValue;
-use speedyspec_wp_posts_contracts::Clock;
+use speedyspec_php_serialize::semantics::to_php_int;
+use speedyspec_php_serialize::{PhpKey, PhpValue};
+use speedyspec_wp_posts::SlugContext;
+use speedyspec_wp_posts_contracts::{
+    Clock, CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
+    PostRepository, PostStatusName, PostType, PostTypeName, PostTypes, Slug, SlugTruncation,
+};
+use speedyspec_wp_posts_memory::MemoryPostRepository;
 
 use super::decode;
 
@@ -102,5 +110,268 @@ impl Clock for TableClock {
             "strtotime({:?}) is not recorded",
             String::from_utf8_lossy(datetime)
         )
+    }
+}
+
+/// The tests' `SlugTruncation`: the text seam's `wp_truncate_slug()`.
+#[allow(dead_code)]
+pub struct TextTruncation;
+
+impl SlugTruncation for TextTruncation {
+    fn truncate(&self, slug: &[u8], length: usize) -> Vec<u8> {
+        speedyspec_wp_text::helpers::wp_truncate_slug(
+            slug,
+            i64::try_from(length).unwrap_or(i64::MAX),
+        )
+    }
+}
+
+/// A scenario's `post_types`: each a name and whether it is hierarchical.
+#[allow(dead_code)]
+pub struct FakeTypes(Vec<PostType>);
+
+#[allow(dead_code)]
+impl FakeTypes {
+    /// The post types a scenario registered, `[[name, hierarchical]]`.
+    pub fn from_scenario(post_types: &Value) -> Self {
+        Self(
+            post_types
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|pair| fake_type(pair[0].as_str().unwrap(), pair[1].as_bool().unwrap()))
+                .collect(),
+        )
+    }
+
+    /// These post types.
+    pub fn new(types: &[(&str, bool)]) -> Self {
+        Self(types.iter().map(|(n, h)| fake_type(n, *h)).collect())
+    }
+}
+
+/// A post type with a `name` and `hierarchical`.
+#[allow(dead_code)]
+fn fake_type(name: &str, hierarchical: bool) -> PostType {
+    PostType::new(
+        PostTypeName::new(name),
+        vec![
+            (
+                PhpKey::Str(b"name".to_vec()),
+                PhpValue::Str(name.as_bytes().to_vec()),
+            ),
+            (
+                PhpKey::Str(b"hierarchical".to_vec()),
+                PhpValue::Bool(hierarchical),
+            ),
+        ],
+    )
+}
+
+impl PostTypes for FakeTypes {
+    fn post_type(&self, name: &str) -> Option<PostType> {
+        self.0.iter().find(|t| t.name().as_str() == name).cloned()
+    }
+
+    fn post_types(&self) -> Vec<PostType> {
+        self.0.clone()
+    }
+}
+
+/// A recorded row's columns (all strings, as `$wpdb` returns them) as a [`Post`].
+#[allow(dead_code)]
+pub fn row_post(row: &Value) -> Post {
+    let PhpValue::Array(columns) = super::decode(row) else {
+        panic!("a recorded row is an array");
+    };
+    let column = |name: &str| -> Vec<u8> {
+        columns
+            .iter()
+            .find(|(k, _)| matches!(k, PhpKey::Str(key) if key == name.as_bytes()))
+            .map(|(_, v)| match v {
+                PhpValue::Str(s) => s.clone(),
+                other => panic!("column {name} is a string, not {other:?}"),
+            })
+            .unwrap_or_else(|| panic!("the row has no {name}"))
+    };
+    let text = |name: &str| String::from_utf8_lossy(&column(name)).into_owned();
+    let int = |name: &str| to_php_int(&PhpValue::Str(column(name)));
+    let id = |name: &str| PostId(u64::try_from(int(name)).unwrap());
+    let date = |local: &str, gmt: &str| PostDate {
+        local: PostDateTime::new(text(local)),
+        gmt: PostDateTime::new(text(gmt)),
+    };
+    Post {
+        id: id("ID"),
+        author: u64::try_from(int("post_author")).unwrap(),
+        date: date("post_date", "post_date_gmt"),
+        content: column("post_content"),
+        title: column("post_title"),
+        excerpt: column("post_excerpt"),
+        status: PostStatusName::new(text("post_status")),
+        comment_status: CommentStatus::new(text("comment_status")),
+        ping_status: PingStatus::new(text("ping_status")),
+        password: column("post_password"),
+        name: Slug::new(column("post_name")),
+        to_ping: column("to_ping"),
+        pinged: column("pinged"),
+        modified: date("post_modified", "post_modified_gmt"),
+        content_filtered: column("post_content_filtered"),
+        parent: id("post_parent"),
+        guid: column("guid"),
+        menu_order: int("menu_order"),
+        post_type: PostTypeName::new(text("post_type")),
+        mime_type: MimeType::new(column("post_mime_type")),
+        comment_count: int("comment_count"),
+    }
+}
+
+/// A memory table holding a scenario's `rows`, each inserted with its ID.
+#[allow(dead_code)]
+pub fn seed(rows: &Value) -> MemoryPostRepository {
+    let repository = MemoryPostRepository::new();
+    for row in rows.as_array().unwrap() {
+        let post = row_post(row);
+        let id = post.id;
+        assert_eq!(
+            repository.insert(&post).unwrap(),
+            Some(id),
+            "seeding {id:?}"
+        );
+    }
+    repository
+}
+
+/// One logged repository call: the recorder's label and its arguments.
+#[allow(dead_code)]
+pub type Statement = (String, Vec<PhpValue>);
+
+/// A [`PostRepository`] decorator (Decorator) logging each read as the recorder logs `$wpdb` statements:
+/// `find`, `attachment_slug`, `hierarchical_slug` and `flat_slug`, with their arguments.
+#[allow(dead_code)]
+pub struct Recording<R> {
+    inner: R,
+    log: RefCell<Vec<Statement>>,
+}
+
+#[allow(dead_code)]
+impl<R: PostRepository> Recording<R> {
+    /// Logs reads of `inner`.
+    pub fn new(inner: R) -> Self {
+        Self {
+            inner,
+            log: RefCell::new(Vec::new()),
+        }
+    }
+
+    /// The statements logged since the last take, which clears them.
+    pub fn take(&self) -> Vec<Statement> {
+        std::mem::take(&mut self.log.borrow_mut())
+    }
+
+    fn record(&self, label: &str, args: Vec<PhpValue>) {
+        self.log.borrow_mut().push((label.to_owned(), args));
+    }
+}
+
+/// A [`PostId`] as the recorder's `%d` argument.
+#[allow(dead_code)]
+fn id_arg(id: PostId) -> PhpValue {
+    PhpValue::Int(i64::try_from(id.0).unwrap())
+}
+
+impl<R: PostRepository> PostRepository for Recording<R> {
+    fn engine(&self) -> String {
+        self.inner.engine()
+    }
+
+    fn find(&self, id: PostId) -> Result<Option<Post>, PostError> {
+        self.record("find", vec![id_arg(id)]);
+        self.inner.find(id)
+    }
+
+    fn insert(&self, post: &Post) -> Result<Option<PostId>, PostError> {
+        self.inner.insert(post)
+    }
+
+    fn attachment_slug_owner(
+        &self,
+        slug: &Slug,
+        except: PostId,
+    ) -> Result<Option<Slug>, PostError> {
+        self.record(
+            "attachment_slug",
+            vec![PhpValue::Str(slug.as_bytes().to_vec()), id_arg(except)],
+        );
+        self.inner.attachment_slug_owner(slug, except)
+    }
+
+    fn hierarchical_slug_owner(
+        &self,
+        slug: &Slug,
+        post_type: &PostTypeName,
+        except: PostId,
+        parent: PostId,
+    ) -> Result<Option<Slug>, PostError> {
+        self.record(
+            "hierarchical_slug",
+            vec![
+                PhpValue::Str(slug.as_bytes().to_vec()),
+                PhpValue::Str(post_type.as_str().as_bytes().to_vec()),
+                id_arg(except),
+                id_arg(parent),
+            ],
+        );
+        self.inner
+            .hierarchical_slug_owner(slug, post_type, except, parent)
+    }
+
+    fn flat_slug_owner(
+        &self,
+        slug: &Slug,
+        post_type: &PostTypeName,
+        except: PostId,
+    ) -> Result<Option<Slug>, PostError> {
+        self.record(
+            "flat_slug",
+            vec![
+                PhpValue::Str(slug.as_bytes().to_vec()),
+                PhpValue::Str(post_type.as_str().as_bytes().to_vec()),
+                id_arg(except),
+            ],
+        );
+        self.inner.flat_slug_owner(slug, post_type, except)
+    }
+}
+
+/// A recording's `statements`, decoded.
+#[allow(dead_code)]
+pub fn statements(recorded: &Value) -> Vec<Statement> {
+    recorded
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|statement| {
+            let args = statement[1]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(super::decode)
+                .collect();
+            (statement[0].as_str().unwrap().to_owned(), args)
+        })
+        .collect()
+}
+
+/// WordPress's default rewrite feeds and pagination base, with a scenario's permalink structure.
+#[allow(dead_code)]
+pub fn context(permalinks: &str) -> SlugContext {
+    SlugContext {
+        feeds: ["feed", "rdf", "rss", "rss2", "atom"]
+            .iter()
+            .map(|f| f.as_bytes().to_vec())
+            .collect(),
+        pagination_base: b"page".to_vec(),
+        permalink_structure: permalinks.as_bytes().to_vec(),
     }
 }

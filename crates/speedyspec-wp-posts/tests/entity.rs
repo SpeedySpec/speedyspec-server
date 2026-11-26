@@ -1,15 +1,19 @@
 //! Replays what `compat/posts-entity/record.php` recorded from WordPress 7.2-RC2: `wp_resolve_post_date()` with no
 //! `wp_checkdate` callback, its clock replayed from the recording, and the `get_gmt_from_date()` of each date it
 //! returned, which `wp_insert_post()` takes as the GMT date of a post with no GMT date and a status that does not
-//! float.
+//! float; and `wp_unique_post_slug()` with no filters, its result and its `$wpdb` statements in order.
 
 mod support;
 
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::{
-    InsertDateInput, PostStatusRegistry, insert_post_dates, resolve_post_date,
+    InsertDateInput, NoBadSlugs, PostStatusRegistry, SlugPorts, SlugRequest, Uncached,
+    insert_post_dates, resolve_post_date, slug_needs_no_check, unique_post_slug,
 };
-use support::entity::{TableClock, entity_cases};
+use speedyspec_wp_posts_contracts::PostId;
+use support::entity::{
+    FakeTypes, Recording, TableClock, TextTruncation, context, entity_cases, seed, statements,
+};
 
 fn statuses() -> PostStatusRegistry {
     let mut statuses = PostStatusRegistry::new();
@@ -81,4 +85,69 @@ fn clock_refuses_now_where_none_was_recorded() {
         .find(|case| case["name"] == "leap-day")
         .unwrap();
     TableClock::from_case(&leap_day["clock"]).now_local();
+}
+
+#[test]
+fn slug_scenarios_match_wordpress() {
+    let cases = entity_cases();
+    let scenarios = cases["slugs"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 8);
+    let mut calls = 0;
+    for scenario in scenarios {
+        let name = scenario["name"].as_str().unwrap();
+        let repository = Recording::new(seed(&scenario["rows"]));
+        let types = FakeTypes::from_scenario(&scenario["post_types"]);
+        let context = context(scenario["permalinks"].as_str().unwrap());
+        let reader = Uncached(&repository);
+        let ports = SlugPorts {
+            repository: &repository,
+            posts: &reader,
+            types: &types,
+            truncation: &TextTruncation,
+            bad: &NoBadSlugs,
+        };
+        for call in scenario["calls"].as_array().unwrap() {
+            calls += 1;
+            assert_eq!(call["fn"], "wp_unique_post_slug", "{name}");
+            let PhpValue::Array(args) = support::decode(&call["args"]) else {
+                panic!("{name}: the arguments are an array");
+            };
+            let arg = |i: usize| &args[i].1;
+            let bytes = |i: usize| match arg(i) {
+                PhpValue::Str(s) => s.clone(),
+                other => panic!("{name}: argument {i} is a string, not {other:?}"),
+            };
+            let id = |i: usize| match arg(i) {
+                PhpValue::Int(n) => PostId(u64::try_from(*n).unwrap()),
+                other => panic!("{name}: argument {i} is an int, not {other:?}"),
+            };
+            let (slug, status, post_type) = (bytes(0), bytes(2), bytes(3));
+            let status = String::from_utf8_lossy(&status);
+            let post_type = String::from_utf8_lossy(&post_type);
+            let request = SlugRequest {
+                slug: &slug,
+                post_id: id(1),
+                status: &status,
+                post_type: &post_type,
+                parent: id(4),
+            };
+            let label = format!("{name}: {:?}", String::from_utf8_lossy(&slug));
+            let result = if slug_needs_no_check(&status, &post_type) {
+                slug.clone()
+            } else {
+                unique_post_slug(&request, &context, &ports).unwrap()
+            };
+            assert_eq!(
+                PhpValue::Str(result),
+                support::decode(&call["result"]),
+                "{label}"
+            );
+            assert_eq!(
+                repository.take(),
+                statements(&call["statements"]),
+                "{label}: statements"
+            );
+        }
+    }
+    assert_eq!(calls, 40);
 }

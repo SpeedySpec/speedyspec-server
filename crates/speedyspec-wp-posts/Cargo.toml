@@ -17,5 +17,7 @@ speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
 indexmap = "2"
 
 [dev-dependencies]
+speedyspec-wp-posts-memory = { path = "../speedyspec-wp-posts-memory" }
+speedyspec-wp-text = { path = "../speedyspec-wp-text" }
 serde_json = "1"
 hex = "0.4"
