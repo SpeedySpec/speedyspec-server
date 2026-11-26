@@ -69,8 +69,15 @@ pub fn mysql(suffix: &str) -> Option<String> {
 /// Boots PHP with the twins, the container (with the meta repositories port), the Hook API, `wpdb`, the object cache
 /// and the meta area, over `url`.
 pub fn boot(url: &str) -> Booted {
+    boot_with(url, false)
+}
+
+/// As [`boot`], with the Hook API's testing class (`SpeedySpec\WpHooks\Testing`, the snapshots WordPress's test case
+/// stand-in takes) when `testing` is set.
+pub fn boot_with(url: &str, testing: bool) -> Booted {
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
+    let hooks = if testing { hooks.with_testing() } else { hooks };
     let registry = Rc::new(EngineRegistry::new());
     registry.register_factory(Rc::new(MySqlEngineFactory));
     registry

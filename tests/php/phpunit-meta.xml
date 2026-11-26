@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    bootstrap="meta-bootstrap.php"
+    colors="false"
+    cacheResult="false"
+    failOnWarning="false"
+    failOnDeprecation="false"
+    displayDetailsOnTestsThatTriggerDeprecations="true"
+    displayDetailsOnPhpunitDeprecations="false"
+>
+    <testsuites>
+        <testsuite name="wordpress-meta">
+            <directory suffix=".php">wordpress/meta</directory>
+        </testsuite>
+    </testsuites>
+    <groups>
+        <exclude>
+            <group>documented-break</group>
+        </exclude>
+    </groups>
+</phpunit>

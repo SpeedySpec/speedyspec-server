@@ -1,0 +1,6 @@
+Copied from WordPress/wordpress-develop at 7.2-RC2: commit a2c645986d9a662b5f595e604dca6f7b95d830db ("WordPress 7.2 RC 2.", trunk@65604).
+wordpress-develop has no 7.2-RC2 git tag; this is the commit whose src/wp-includes/version.php is '7.2-RC2-src'.
+
+tests/phpunit/tests/meta/{isProtectedMeta,deleteMetadata,updateMetadata,slashes,wpMetadataLazyloader}.php unchanged;
+meta/registerMeta.php as Tests_Meta_Register_Meta.php (PHPUnit 11 finds a test class by its file name);
+and tests/phpunit/tests/meta.php (Tests_Meta) as meta.php. meta/query.php (WP_Meta_Query, not ported) is left out.
