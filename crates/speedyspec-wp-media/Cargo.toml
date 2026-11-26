@@ -12,7 +12,7 @@ seam = "media"
 role = "implementation"
 
 [dependencies]
-speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
+speedyspec-wp-media-contracts.workspace = true
 
 [dev-dependencies]
 libc = "0.2"

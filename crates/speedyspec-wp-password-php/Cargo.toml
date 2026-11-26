@@ -12,27 +12,27 @@ seam = "password"
 role = "php"
 
 [dependencies]
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-container-php = { path = "../speedyspec-container-php" }
-speedyspec-hooks = { path = "../speedyspec-hooks" }
-speedyspec-php = { path = "../speedyspec-php" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-container.workspace = true
+speedyspec-container-php.workspace = true
+speedyspec-hooks.workspace = true
+speedyspec-php.workspace = true
+speedyspec-php-ext.workspace = true
 speedyspec-wp-crypto = { path = "../speedyspec-wp-crypto" }
-speedyspec-wp-crypto-contracts = { path = "../speedyspec-wp-crypto-contracts" }
+speedyspec-wp-crypto-contracts.workspace = true
 speedyspec-wp-crypto-sodium = { path = "../speedyspec-wp-crypto-sodium" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks.workspace = true
 speedyspec-wp-password = { path = "../speedyspec-wp-password" }
 speedyspec-wp-password-bcrypt = { path = "../speedyspec-wp-password-bcrypt" }
-speedyspec-wp-password-contracts = { path = "../speedyspec-wp-password-contracts" }
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-wp-password-contracts.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
 
 [dev-dependencies]
-speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-compat.workspace = true
 sha2 = "0.10"
 ureq = "3"
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
-speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+speedyspec-hooks-memory.workspace = true
+speedyspec-wp-hooks-memory.workspace = true
+speedyspec-wp-hooks-php.workspace = true
 serde_json = "1"
 
 [[test]]

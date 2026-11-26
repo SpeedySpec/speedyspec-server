@@ -13,7 +13,7 @@ role = "adapter"
 
 [dependencies]
 redis = { version = "0.32", default-features = false }
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 
 [dev-dependencies]
 redis = { version = "0.32", default-features = false }

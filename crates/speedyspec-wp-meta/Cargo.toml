@@ -12,8 +12,8 @@ seam = "meta"
 role = "implementation"
 
 [dependencies]
-speedyspec-wp-meta-contracts = { path = "../speedyspec-wp-meta-contracts" }
-speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+speedyspec-wp-meta-contracts.workspace = true
+speedyspec-php-serialize.workspace = true
 indexmap = "2"
 
 [dev-dependencies]

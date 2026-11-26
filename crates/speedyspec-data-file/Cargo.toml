@@ -13,7 +13,7 @@ role = "adapter"
 
 [dependencies]
 libc = "0.2"
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 
 [dev-dependencies]
 libc = "0.2"

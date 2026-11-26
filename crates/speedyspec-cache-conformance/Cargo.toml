@@ -12,4 +12,4 @@ seam = "cache"
 role = "test"
 
 [dependencies]
-speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache.workspace = true

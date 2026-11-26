@@ -26,18 +26,10 @@ name = "b-other"
 version = "0.0.0"
 dependencies = [
  "a-impl",
- "moved-no-meta",
 ]
 
 [[package]]
 name = "c-contracts"
-version = "0.0.0"
-dependencies = [
- "a-impl",
-]
-
-[[package]]
-name = "moved-no-meta"
 version = "0.0.0"
 dependencies = [
  "a-impl",
@@ -49,3 +41,191 @@ version = "0.0.0"
 dependencies = [
  "a-impl",
 ]
+
+[[patch.unused]]
+name = "speedyspec-abilities-contracts"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-cache"
+version = "0.3.0"
+
+[[patch.unused]]
+name = "speedyspec-compat"
+version = "0.10.0"
+
+[[patch.unused]]
+name = "speedyspec-container"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-container-php"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-cqrs"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-data"
+version = "0.3.0"
+
+[[patch.unused]]
+name = "speedyspec-fastcgi"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-hooks"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-hooks-memory"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-http"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-native-stage"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-operation-contracts"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-php"
+version = "0.8.0"
+
+[[patch.unused]]
+name = "speedyspec-php-ext"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-php-port-macros"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-php-serialize"
+version = "0.3.0"
+
+[[patch.unused]]
+name = "speedyspec-port-macros"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-rest-contracts"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-routing"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-runtime-contract"
+version = "0.6.0"
+
+[[patch.unused]]
+name = "speedyspec-transport-contracts"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-cron-contracts"
+version = "0.5.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-crypto-contracts"
+version = "0.6.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-db-contracts"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-hooks"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-hooks-contracts"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-hooks-memory"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-hooks-php"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-html-split"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-html-syntax"
+version = "0.6.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-i18n-contracts"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-kses-contracts"
+version = "0.6.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-kses-lexical"
+version = "0.6.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-media-contracts"
+version = "0.5.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-meta-contracts"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-object-cache-contracts"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-password-contracts"
+version = "0.4.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-posts-contracts"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-shortcode-contracts"
+version = "0.6.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-text-contracts"
+version = "0.6.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-text-diff"
+version = "0.3.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-text-diff-contracts"
+version = "0.3.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-theme-json-contracts"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-token-map"
+version = "0.6.0"
+
+[[patch.unused]]
+name = "speedyspec-wp-utf8"
+version = "0.6.0"
+
+[[patch.unused]]
+name = "speedyspec-xmlrpc-contracts"
+version = "0.2.0"

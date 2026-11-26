@@ -2,7 +2,7 @@
 /**
  * Prints the Rust table of non-ASCII code points that `\w` matches under `/u`, from this PHP's own PCRE.
  *
- * Usage: php word-table.php > crates/speedyspec-wp-text-diff/src/words/table.rs
+ * Usage: php word-table.php > <speedyspec-platform>/crates/speedyspec-wp-text-diff/src/words/table.rs
  *
  * Run it with the static PHP the port embeds, so the table is that PCRE's (PCRE2 10.44, Unicode 15.0.0).
  */

@@ -21,28 +21,28 @@ libc = "0.2"
 semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-speedyspec-runtime-contract = { path = "../speedyspec-runtime-contract" }
-speedyspec-fastcgi = { path = "../speedyspec-fastcgi" }
-speedyspec-php = { path = "../speedyspec-php" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext" }
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-container-php = { path = "../speedyspec-container-php" }
-speedyspec-hooks = { path = "../speedyspec-hooks" }
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
-speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
-speedyspec-wp-crypto-contracts = { path = "../speedyspec-wp-crypto-contracts" }
+speedyspec-runtime-contract.workspace = true
+speedyspec-fastcgi.workspace = true
+speedyspec-php.workspace = true
+speedyspec-php-ext.workspace = true
+speedyspec-container.workspace = true
+speedyspec-container-php.workspace = true
+speedyspec-hooks.workspace = true
+speedyspec-hooks-memory.workspace = true
+speedyspec-wp-hooks.workspace = true
+speedyspec-wp-hooks-memory.workspace = true
+speedyspec-wp-hooks-php.workspace = true
+speedyspec-wp-crypto-contracts.workspace = true
 speedyspec-wp-crypto-php = { path = "../speedyspec-wp-crypto-php" }
 speedyspec-wp-crypto-sodium = { path = "../speedyspec-wp-crypto-sodium" }
 # The pinned FFmpeg, reported in the manifest; plan 2 adds the media adapter over it.
 speedyspec-ffmpeg-sys = { path = "../speedyspec-ffmpeg-sys" }
-speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache.workspace = true
 speedyspec-cache-file = { path = "../speedyspec-cache-file" }
 speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 speedyspec-data-file = { path = "../speedyspec-data-file" }
-speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
+speedyspec-wp-media-contracts.workspace = true
 speedyspec-wp-media-isolate = { path = "../speedyspec-wp-media-isolate" }
 speedyspec-wp-media-php = { path = "../speedyspec-wp-media-php" }
 speedyspec-wp-db = { path = "../speedyspec-wp-db" }
@@ -52,10 +52,10 @@ speedyspec-data-query = { path = "../speedyspec-data-query" }
 speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
 speedyspec-wp-options-php = { path = "../speedyspec-wp-options-php" }
 speedyspec-wp-cron-php = { path = "../speedyspec-wp-cron-php" }
-speedyspec-wp-cron-contracts = { path = "../speedyspec-wp-cron-contracts" }
-speedyspec-wp-password-contracts = { path = "../speedyspec-wp-password-contracts" }
+speedyspec-wp-cron-contracts.workspace = true
+speedyspec-wp-password-contracts.workspace = true
 speedyspec-wp-password-php = { path = "../speedyspec-wp-password-php" }
-speedyspec-wp-text-diff-contracts = { path = "../speedyspec-wp-text-diff-contracts" }
+speedyspec-wp-text-diff-contracts.workspace = true
 speedyspec-wp-text-diff-php = { path = "../speedyspec-wp-text-diff-php" }
 
 [dev-dependencies]

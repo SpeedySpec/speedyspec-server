@@ -12,7 +12,7 @@ cargo-fuzz = true
 [dependencies]
 libc = "0.2"
 libfuzzer-sys = "0.4"
-speedyspec-wp-media-contracts = { path = "../crates/speedyspec-wp-media-contracts" }
+speedyspec-wp-media-contracts = "0.5.0"
 speedyspec-wp-media-ffmpeg = { path = "../crates/speedyspec-wp-media-ffmpeg" }
 speedyspec-wp-media-midi = { path = "../crates/speedyspec-wp-media-midi" }
 

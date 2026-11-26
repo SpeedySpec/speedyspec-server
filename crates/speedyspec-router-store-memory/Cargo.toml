@@ -12,4 +12,4 @@ seam = "http"
 role = "adapter"
 
 [dependencies]
-speedyspec-routing = { path = "../speedyspec-routing" }
+speedyspec-routing.workspace = true

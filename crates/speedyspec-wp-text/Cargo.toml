@@ -12,29 +12,29 @@ seam = "text"
 role = "implementation"
 
 [dependencies]
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
 aho-corasick = "1"
 memchr = "2.8"
 pcre2 = "0.2"
-speedyspec-hooks = { path = "../speedyspec-hooks" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
-speedyspec-wp-html-split = { path = "../speedyspec-wp-html-split" }
+speedyspec-hooks.workspace = true
+speedyspec-wp-hooks.workspace = true
+speedyspec-wp-html-split.workspace = true
 speedyspec-wp-kses = { path = "../speedyspec-wp-kses" }
-speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
-speedyspec-wp-kses-lexical = { path = "../speedyspec-wp-kses-lexical" }
-speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contracts" }
-speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
+speedyspec-wp-kses-contracts.workspace = true
+speedyspec-wp-kses-lexical.workspace = true
+speedyspec-wp-shortcode-contracts.workspace = true
+speedyspec-wp-text-contracts.workspace = true
 speedyspec-wp-text-escape = { path = "../speedyspec-wp-text-escape" }
-speedyspec-wp-utf8 = { path = "../speedyspec-wp-utf8" }
+speedyspec-wp-utf8.workspace = true
 unicode-normalization = "0.1"
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-wp-hooks-contracts.workspace = true
 
 [dev-dependencies]
 criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
 proptest = "1"
 libc = "0.2"
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-text-memory = { path = "../speedyspec-wp-text-memory" }
 speedyspec-wp-text-corpus = { path = "../speedyspec-wp-text-corpus", features = ["values"] }
 

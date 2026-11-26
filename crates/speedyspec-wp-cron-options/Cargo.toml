@@ -12,18 +12,18 @@ seam = "cron"
 role = "adapter"
 
 [dependencies]
-speedyspec-wp-cron-contracts = { path = "../speedyspec-wp-cron-contracts" }
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-wp-cron-contracts.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 
 [dev-dependencies]
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
 speedyspec-data-query = { path = "../speedyspec-data-query" }
 speedyspec-wp-cron = { path = "../speedyspec-wp-cron" }
 speedyspec-wp-db = { path = "../speedyspec-wp-db" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks.workspace = true
+speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
 speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }
 speedyspec-wp-options-sql = { path = "../speedyspec-wp-options-sql" }

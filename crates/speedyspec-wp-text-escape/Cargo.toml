@@ -12,23 +12,23 @@ seam = "text"
 role = "implementation"
 
 [dependencies]
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
 aho-corasick = "1"
 memchr = "2.8"
-speedyspec-hooks = { path = "../speedyspec-hooks" }
-speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
-speedyspec-wp-kses-lexical = { path = "../speedyspec-wp-kses-lexical" }
-speedyspec-wp-utf8 = { path = "../speedyspec-wp-utf8" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
-speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-hooks.workspace = true
+speedyspec-wp-kses-contracts.workspace = true
+speedyspec-wp-kses-lexical.workspace = true
+speedyspec-wp-utf8.workspace = true
+speedyspec-wp-hooks.workspace = true
+speedyspec-wp-text-contracts.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
 
 [dev-dependencies]
 proptest = "1"
 criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
 libc = "0.2"
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-text-memory = { path = "../speedyspec-wp-text-memory" }
 speedyspec-wp-text-corpus = { path = "../speedyspec-wp-text-corpus", features = ["values"] }
 

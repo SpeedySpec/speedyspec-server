@@ -12,15 +12,15 @@ seam = "options"
 role = "test"
 
 [dev-dependencies]
-speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache.workspace = true
 speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-cqrs = { path = "../speedyspec-cqrs" }
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
+speedyspec-data.workspace = true
 speedyspec-data-uow = { path = "../speedyspec-data-uow" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks.workspace = true
+speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-wp-hooks-contracts.workspace = true

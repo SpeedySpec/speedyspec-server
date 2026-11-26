@@ -12,22 +12,22 @@ seam = "media"
 role = "php"
 
 [dependencies]
-speedyspec-compat = { path = "../speedyspec-compat" }
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-container-php = { path = "../speedyspec-container-php" }
-speedyspec-hooks = { path = "../speedyspec-hooks" }
-speedyspec-php = { path = "../speedyspec-php" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-compat.workspace = true
+speedyspec-container.workspace = true
+speedyspec-container-php.workspace = true
+speedyspec-hooks.workspace = true
+speedyspec-php.workspace = true
+speedyspec-php-ext.workspace = true
+speedyspec-wp-hooks.workspace = true
 speedyspec-wp-media = { path = "../speedyspec-wp-media" }
-speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-wp-media-contracts.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
 
 [dev-dependencies]
 tempfile = "3"
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
-speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+speedyspec-hooks-memory.workspace = true
+speedyspec-wp-hooks-memory.workspace = true
+speedyspec-wp-hooks-php.workspace = true
 speedyspec-wp-media = { path = "../speedyspec-wp-media" }
 speedyspec-wp-media-ffmpeg = { path = "../speedyspec-wp-media-ffmpeg" }
 speedyspec-wp-media-midi = { path = "../speedyspec-wp-media-midi" }

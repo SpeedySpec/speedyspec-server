@@ -13,9 +13,9 @@ seam = "text"
 role = "test"
 
 [dev-dependencies]
-speedyspec-hooks = { path = "../speedyspec-hooks" }
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
-speedyspec-php = { path = "../speedyspec-php" }
+speedyspec-hooks.workspace = true
+speedyspec-hooks-memory.workspace = true
+speedyspec-php.workspace = true
 speedyspec-wp-text = { path = "../speedyspec-wp-text" }
 
 [[test]]

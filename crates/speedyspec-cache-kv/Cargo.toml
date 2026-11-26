@@ -12,8 +12,8 @@ seam = "cache"
 role = "adapter"
 
 [dependencies]
-speedyspec-cache = { path = "../speedyspec-cache" }
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-cache.workspace = true
+speedyspec-data.workspace = true
 speedyspec-data-counter = { path = "../speedyspec-data-counter" }
 
 [dev-dependencies]

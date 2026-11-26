@@ -12,8 +12,8 @@ seam = "http"
 role = "implementation"
 
 [dependencies]
-speedyspec-http = { path = "../speedyspec-http" }
-speedyspec-routing = { path = "../speedyspec-routing" }
+speedyspec-http.workspace = true
+speedyspec-routing.workspace = true
 regex = "1"
 fancy-regex = "0.20.2"
 sha2 = "0.10"

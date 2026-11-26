@@ -13,8 +13,8 @@ role = "adapter"
 
 [dependencies]
 foldhash = "0.2"
-speedyspec-wp-i18n-contracts = { path = "../speedyspec-wp-i18n-contracts" }
-speedyspec-wp-utf8 = { path = "../speedyspec-wp-utf8" }
+speedyspec-wp-i18n-contracts.workspace = true
+speedyspec-wp-utf8.workspace = true
 
 [dev-dependencies]
 md5 = { package = "md-5", version = "0.11.0" }

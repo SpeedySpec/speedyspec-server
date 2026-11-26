@@ -12,16 +12,16 @@ seam = "http"
 role = "php"
 
 [dependencies]
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-container-php = { path = "../speedyspec-container-php" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext" }
-speedyspec-routing = { path = "../speedyspec-routing" }
+speedyspec-container.workspace = true
+speedyspec-container-php.workspace = true
+speedyspec-php-ext.workspace = true
+speedyspec-routing.workspace = true
 speedyspec-router-store-memory = { path = "../speedyspec-router-store-memory" }
 
 [dev-dependencies]
-speedyspec-php = { path = "../speedyspec-php" }
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
-speedyspec-http = { path = "../speedyspec-http" }
+speedyspec-php.workspace = true
+speedyspec-hooks-memory.workspace = true
+speedyspec-http.workspace = true
 
 [[test]]
 name = "php"

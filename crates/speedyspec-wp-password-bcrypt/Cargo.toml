@@ -12,7 +12,7 @@ seam = "password"
 role = "adapter"
 
 [dependencies]
-speedyspec-wp-password-contracts = { path = "../speedyspec-wp-password-contracts" }
+speedyspec-wp-password-contracts.workspace = true
 bcrypt = "0.19"
 
 [dev-dependencies]

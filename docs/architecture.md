@@ -135,7 +135,8 @@ WordPress's behaviour is not reimplemented from reading its code alone; it is re
 1. **A catalogue** (`compat/<area>/scenarios.json`): scenarios of calls, with callback fixtures ("append `-a`",
    "remove myself"), covering every function and method and the edge cases (priorities, recursion, changing a hook
    while it runs, the globals).
-2. **The recorder** (`cargo run -p speedyspec-compat -- record <area> --wordpress <version>`) fetches WordPress
+2. **The recorder** (`speedyspec-compat record <area> --wordpress <version>`, run from the repository root; install it
+   with `cargo install speedyspec-compat --version <the version in Cargo.toml>`) fetches WordPress
    `<version>` from the release table (`compat/wordpress.json`, checked by SHA-256), runs every scenario against its
    original code in the embedded PHP, and writes `compat/<area>/wordpress-<version>.json`: every return value, every
    callback invocation, and the globals after each step.
@@ -158,7 +159,7 @@ the pin, and the replayer reads that release's fixture.
 Moving to a new release:
 
 1. Add its entry (URL and SHA-256) to `releases` in `compat/wordpress.json` and change `wordpress` to it.
-2. Re-record each area (`cargo run -p speedyspec-compat -- record <area> --wordpress <version>`; posts and meta with
+2. Re-record each area (`speedyspec-compat record <area> --wordpress <version>`; posts and meta with
    their `record.php`), and regenerate the data two crates embed at compile time. `include_str!` and
    `include_bytes!` take only literals, so each names the release in a `data_release!` macro, and a test fails until
    the macro equals the area's release: `speedyspec-wp-kses` (`data/allowed-<release>.json`, from

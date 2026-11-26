@@ -3,8 +3,7 @@
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 fixture="$here/check-seams"
-out=$("$here/../check-seams.sh" --manifest-path "$fixture/Cargo.toml" --allowlist "$fixture/allowlist.txt" \
-    --platform-paths "$fixture/platform-paths.txt" 2>&1)
+out=$("$here/../check-seams.sh" --manifest-path "$fixture/Cargo.toml" --allowlist "$fixture/allowlist.txt" 2>&1)
 code=$?
 fail=0
 expect() {
@@ -27,27 +26,18 @@ refuse "b-impl -> a-contracts"
 refuse "a-impl -> a-contracts"
 refuse "seams: R2: b-other -> a-impl"
 refuse "seams: R2: c-contracts -> a-impl"
-# A crate listed in platform-paths.txt moved to speedyspec-platform: it needs no metadata here, and edges to it are
-# out of scope. A crate not listed still fails R1.
-refuse "moved-no-meta"
-unlisted=$("$here/../check-seams.sh" --manifest-path "$fixture/Cargo.toml" --allowlist "$fixture/allowlist.txt" \
-    --platform-paths /dev/null 2>&1)
-grep -qxF "seams: R1: moved-no-meta has no [package.metadata.speedyspec] seam and role" <<<"$unlisted" \
-    || { echo "missing: R1 for moved-no-meta when platform-paths.txt does not list it" >&2; fail=1; }
 if [[ $code -ne 1 ]]; then
     echo "exit code $code, expected 1" >&2
     fail=1
 fi
 # --write-allowlist writes today's violations and then the check passes R2/R3/R4.
 tmp=$(mktemp)
-"$here/../check-seams.sh" --manifest-path "$fixture/Cargo.toml" --allowlist "$tmp" \
-    --platform-paths "$fixture/platform-paths.txt" --write-allowlist >/dev/null 2>&1
+"$here/../check-seams.sh" --manifest-path "$fixture/Cargo.toml" --allowlist "$tmp" --write-allowlist >/dev/null 2>&1
 written=$(cat "$tmp")
 for line in "b-impl -> a-impl" "b-other -> a-impl" "c-contracts -> a-impl"; do
     grep -qxF -- "$line" <<<"$written" || { echo "allowlist lacks: $line" >&2; fail=1; }
 done
-after=$("$here/../check-seams.sh" --manifest-path "$fixture/Cargo.toml" --allowlist "$tmp" \
-    --platform-paths "$fixture/platform-paths.txt" 2>&1)
+after=$("$here/../check-seams.sh" --manifest-path "$fixture/Cargo.toml" --allowlist "$tmp" 2>&1)
 grep -qE "R2|R3|R4" <<<"$after" && { echo "violations after --write-allowlist: $after" >&2; fail=1; }
 rm -f "$tmp"
 if [[ $fail -ne 0 ]]; then

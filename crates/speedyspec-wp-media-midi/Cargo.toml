@@ -12,7 +12,7 @@ seam = "media"
 role = "adapter"
 
 [dependencies]
-speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
+speedyspec-wp-media-contracts.workspace = true
 
 [dev-dependencies]
 speedyspec-wp-media-testkit = { path = "../speedyspec-wp-media-testkit" }

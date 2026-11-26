@@ -15,12 +15,16 @@ role = "test"
 base64 = "0.22"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory", optional = true }
-speedyspec-php = { path = "../speedyspec-php", optional = true }
-speedyspec-hooks = { path = "../speedyspec-hooks", optional = true }
-speedyspec-compat = { path = "../speedyspec-compat", optional = true }
+speedyspec-hooks-memory = { workspace = true, optional = true }
+speedyspec-php = { workspace = true, optional = true }
+speedyspec-hooks = { workspace = true, optional = true }
+speedyspec-compat = { workspace = true, optional = true }
 speedyspec-wp-text-memory = { path = "../speedyspec-wp-text-memory", optional = true }
-speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts", optional = true }
+speedyspec-wp-text-contracts = { workspace = true, optional = true }
+
+[dev-dependencies]
+criterion = "0.5"
+speedyspec-wp-html-split.workspace = true
 
 [features]
 # Converting recorded values to and from the Hook API's, and recorded diagnostics, for crates that test PHP-shaped
@@ -40,3 +44,7 @@ required-features = ["php"]
 [[bin]]
 name = "php-tables"
 required-features = ["php"]
+
+[[bench]]
+name = "html_split"
+harness = false

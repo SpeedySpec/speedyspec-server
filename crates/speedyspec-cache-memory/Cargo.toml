@@ -12,7 +12,7 @@ seam = "cache"
 role = "adapter"
 
 [dependencies]
-speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache.workspace = true
 
 [dev-dependencies]
 speedyspec-cache-conformance = { path = "../speedyspec-cache-conformance" }

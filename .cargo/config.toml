@@ -15,3 +15,6 @@ SODIUM_LIB_DIR = { value = ".php-build/buildroot/lib", relative = true }
 # speedyspec-ffmpeg-sys links the static FFmpeg scripts/build-ffmpeg.sh builds (build-php.sh runs it), with the static
 # PHP's own libz.a, so PHP and FFmpeg share one zlib. Move it together with the variables above.
 FFMPEG_PREFIX = { value = ".php-build/ffmpeg/prefix", relative = true }
+# The compatibility catalogues and fixtures (compat/): speedyspec-compat, from crates.io, has no fallback and reads
+# them only from here.
+SPEEDYSPEC_COMPAT_DIR = { value = "compat", relative = true }

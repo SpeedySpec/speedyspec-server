@@ -12,9 +12,9 @@ seam = "query"
 role = "adapter"
 
 [dependencies]
-speedyspec-data = { path = "../speedyspec-data" }
-speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
-speedyspec-wp-posts-contracts = { path = "../speedyspec-wp-posts-contracts" }
+speedyspec-data.workspace = true
+speedyspec-php-serialize.workspace = true
+speedyspec-wp-posts-contracts.workspace = true
 
 [dev-dependencies]
 serde_json = "1"

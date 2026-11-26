@@ -12,5 +12,5 @@ seam = "data"
 role = "implementation"
 
 [dependencies]
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 

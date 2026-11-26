@@ -12,11 +12,11 @@ seam = "cache"
 role = "implementation"
 
 [dependencies]
-speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache.workspace = true
 speedyspec-cache-file = { path = "../speedyspec-cache-file" }
 speedyspec-cache-kv = { path = "../speedyspec-cache-kv" }
 speedyspec-cache-sql = { path = "../speedyspec-cache-sql" }
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 speedyspec-data-query = { path = "../speedyspec-data-query" }
 
 [dev-dependencies]

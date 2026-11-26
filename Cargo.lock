@@ -4928,7 +4928,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-abilities-contracts"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d432b2117d78a3dc9849938a6be2cd759438038abe2a96dfb1629ad03866c1ef"
 dependencies = [
  "speedyspec-operation-contracts",
 ]
@@ -4961,7 +4963,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-cache"
-version = "0.2.0"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84132e59b1c77f583b54c0126e1592a544f4b46de5c017d611974362c9e09e58"
 
 [[package]]
 name = "speedyspec-cache-conformance"
@@ -5037,7 +5041,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-compat"
-version = "0.9.0"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "124449a1a1246a8cfb61e57b40197e52de9e8f6ac901a908a0a7f38b21cdee5a"
 dependencies = [
  "flate2",
  "serde",
@@ -5053,28 +5059,33 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-container"
-version = "0.1.4"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdb0ca81472b9950fe07e619b819ccda27a7a7d73abb06681ba249374cee309c"
 dependencies = [
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "speedyspec-container-php"
-version = "0.1.6"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6a47a35e7091710d3290511a0587c7347bce475a470d9d6e732d0156c5753b0"
 dependencies = [
  "speedyspec-container",
- "speedyspec-hooks-memory",
  "speedyspec-php",
  "speedyspec-php-ext",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "speedyspec-cqrs"
-version = "0.1.4"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f573a325ba27587806d7fbce368d3ec4920efa21848f7c98aff0d099710301d"
 dependencies = [
  "speedyspec-container",
  "thiserror 2.0.21",
- "trybuild",
 ]
 
 [[package]]
@@ -5091,7 +5102,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-data"
-version = "0.2.0"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6e7a64bd5f306bd08ada78041791c23d1fd8e63efe7090239fbf6470aa6f768"
 dependencies = [
  "sqlparser",
 ]
@@ -5241,7 +5254,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-fastcgi"
-version = "0.1.4"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e35c4b76bdcf2e94eac8850904c57632e48357d4fb152ddeea2df1f0779e3632"
 dependencies = [
  "bytes",
  "futures-util",
@@ -5317,22 +5332,27 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-hooks"
-version = "0.1.4"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "907582d5abbf9daa6cad7439e3faf944d6cc1053dbbc97f891b2eff0f8015041"
 dependencies = [
  "serde",
- "serde_json",
 ]
 
 [[package]]
 name = "speedyspec-hooks-memory"
-version = "0.1.4"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d35daedabaab053a1c6add308c2e8977a0515544531283c56dab296eb0cc89f"
 dependencies = [
  "speedyspec-hooks",
 ]
 
 [[package]]
 name = "speedyspec-http"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7862ce87c58507951f03e63eab2963de218c60be347077a64160e5374fbd762c"
 
 [[package]]
 name = "speedyspec-http-fastcgi"
@@ -5360,7 +5380,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-native-stage"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0a55658179cf365928949d156b6aa14e14250f34e41952f46a582136757408d"
 
 [[package]]
 name = "speedyspec-operation"
@@ -5376,7 +5398,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-operation-contracts"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "761f9bfe1b8e236ee28788a77f66e7123b79abc66f9e92a9304831b9fcb4e7c4"
 dependencies = [
  "chrono",
  "indexmap",
@@ -5421,29 +5445,31 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-php"
-version = "0.7.0"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7b4a547e881474535f2a6b9536835666384b8171a4c3a16062e11fa3de521fa"
 dependencies = [
  "ext-php-rs",
- "libc",
  "speedyspec-hooks",
- "speedyspec-hooks-memory",
- "tempfile",
 ]
 
 [[package]]
 name = "speedyspec-php-ext"
-version = "0.1.6"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e62a580534ef65d1f363d19087510728faa708f706f4fb351bde522d01a7e5f"
 dependencies = [
  "inventory",
  "speedyspec-hooks",
- "speedyspec-hooks-memory",
  "speedyspec-php",
  "speedyspec-php-port-macros",
 ]
 
 [[package]]
 name = "speedyspec-php-port-macros"
-version = "0.1.4"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "348818030c09a4ea670b14baa3db11184c2fe4d241039668edbf814d920ae1fe"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5502,7 +5528,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-php-serialize"
-version = "0.2.0"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "244c825b40f821546a67d9b58a053d22c6d85ed778e149673bb5ada2ed719a3d"
 dependencies = [
  "speedyspec-hooks",
 ]
@@ -5527,7 +5555,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-rest-contracts"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d34789b7f3a3319409f37a713953a849cc232d701fcf3754caad5711047e622"
 dependencies = [
  "indexmap",
  "speedyspec-operation-contracts",
@@ -5616,18 +5646,21 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-routing"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb8f1c67b9f050bf3b15ebe45e3130e52e0226eb7e9ff3e4ddd6f29cb1ddfd8f"
 dependencies = [
  "speedyspec-http",
 ]
 
 [[package]]
 name = "speedyspec-runtime-contract"
-version = "0.5.0"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1164c6be3a3d1f85a3171397b3a65386b3a82f2c011f95d4d16f9c90f20c1913"
 dependencies = [
  "semver",
  "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -5674,7 +5707,7 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
- "toml 0.9.12+spec-1.1.0",
+ "toml",
  "tracing",
  "tracing-subscriber",
 ]
@@ -5851,7 +5884,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-transport-contracts"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a70a40b450bc77da99e6bae6a97653ded2a1ad127fdac196cd44304ce996ed3"
 dependencies = [
  "speedyspec-operation-contracts",
  "thiserror 2.0.21",
@@ -5883,7 +5918,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-cron-contracts"
-version = "0.4.0"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68cdf54327720e1b945fc541eb669acbf25aaba2c4fef41ebd833a0c2488fde9"
 dependencies = [
  "speedyspec-hooks",
 ]
@@ -5949,7 +5986,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-crypto-contracts"
-version = "0.5.0"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b8707255ea528b010182789d5388c40e0eba1659821a7708f1dea056e1b2059"
 
 [[package]]
 name = "speedyspec-wp-crypto-php"
@@ -6012,7 +6051,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-db-contracts"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30f7dd850aea62b6cc07e529ed792ffa9f4134829ca852dba97baf6b6888667e"
 dependencies = [
  "speedyspec-data",
  "speedyspec-hooks",
@@ -6049,7 +6090,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-hooks"
-version = "0.1.4"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98c4ee860900c50459a895ba4e48b21759e474e9bb9bb09ba5d182665d78c9fa"
 dependencies = [
  "indexmap",
  "speedyspec-container",
@@ -6060,58 +6103,55 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-hooks-contracts"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1d56574747b801542b497f76c821d362a68abb466d36ff77901fe1704c73c74"
 dependencies = [
  "speedyspec-hooks",
 ]
 
 [[package]]
 name = "speedyspec-wp-hooks-memory"
-version = "0.1.4"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4076d6b281941cff3518f970b1d69f824048728a56d38f4737aa5ef5f263a0fc"
 dependencies = [
  "indexmap",
- "serde_json",
- "speedyspec-container",
- "speedyspec-cqrs",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-contracts",
 ]
 
 [[package]]
 name = "speedyspec-wp-hooks-php"
-version = "0.1.10"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a60c91ee06bb141736e0964acc3793a6691b0132147ae6a1c0c0f8fabfb730ca"
 dependencies = [
- "serde_json",
- "sha2 0.10.9",
- "speedyspec-compat",
  "speedyspec-container",
- "speedyspec-container-php",
  "speedyspec-cqrs",
- "speedyspec-hooks-memory",
  "speedyspec-php",
  "speedyspec-php-ext",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-hooks-memory",
- "ureq",
 ]
 
 [[package]]
 name = "speedyspec-wp-html-split"
-version = "0.1.9"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7ab5eda226061267c663c40598caf56b5ee9c0c889ca2f4bf87cfa726490239"
 dependencies = [
- "criterion 0.5.1",
  "memchr",
- "speedyspec-wp-text-corpus",
 ]
 
 [[package]]
 name = "speedyspec-wp-html-syntax"
-version = "0.5.0"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebe5eb30b11ca5692656447ef4e5be1a0e2d24bc62cd504341b58ee17d39fe2a"
 dependencies = [
  "memchr",
- "serde_json",
- "speedyspec-wp-kses-testkit",
  "speedyspec-wp-token-map",
 ]
 
@@ -6132,7 +6172,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-i18n-contracts"
-version = "0.1.4"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "921b98533635ab9833f366e7d9a92fdefc6fb9f180943f37c7fd56769520fe9c"
 dependencies = [
  "speedyspec-hooks",
 ]
@@ -6223,22 +6265,23 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-kses-contracts"
-version = "0.5.0"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d0e8f1e3df08cdca0a42bb09f8bb5db8ea7f82b6495fd7db20f1ab2518d5290"
 dependencies = [
  "indexmap",
 ]
 
 [[package]]
 name = "speedyspec-wp-kses-lexical"
-version = "0.5.0"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0a44a8fc6f2a2ce24966102a11c0156d0f63e746e1c3a088be59ab9dbac2b4d"
 dependencies = [
  "indexmap",
  "memchr",
- "proptest",
- "serde_json",
  "speedyspec-wp-html-syntax",
  "speedyspec-wp-kses-contracts",
- "speedyspec-wp-kses-testkit",
 ]
 
 [[package]]
@@ -6291,7 +6334,9 @@ dependencies = [
  "proptest",
  "serde_json",
  "sha2 0.10.9",
+ "speedyspec-wp-html-syntax",
  "speedyspec-wp-kses-contracts",
+ "speedyspec-wp-kses-lexical",
  "tar",
  "tempfile",
  "ureq",
@@ -6309,7 +6354,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-media-contracts"
-version = "0.4.0"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c29e98c1d36694d436f8e6e9c84120acd81ff7ec93555f7e5869e14af01a4f3"
 
 [[package]]
 name = "speedyspec-wp-media-corpus"
@@ -6410,7 +6457,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-meta-contracts"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6f5e4fcf2f68679db5b944c3997ac25d28383348a5b39bc326525773ffe9fdc"
 dependencies = [
  "speedyspec-php-serialize",
 ]
@@ -6446,7 +6495,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-object-cache-contracts"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4800ce458187b32061d8bae08a40de9df8f42a68de0e68bde43ae052348d758"
 dependencies = [
  "speedyspec-hooks",
 ]
@@ -6618,7 +6669,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-password-contracts"
-version = "0.3.0"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6be2526b02b89152d45c4abb257ef9629987cc354fb9d2bab53ad787e11e2644"
 dependencies = [
  "speedyspec-hooks",
 ]
@@ -6664,7 +6717,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-posts-contracts"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff5a07ba214a314e6ab4d75cdca2ccb0980896f8a6becb92dbc018334b1e4810"
 dependencies = [
  "speedyspec-php-serialize",
 ]
@@ -6752,7 +6807,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-shortcode-contracts"
-version = "0.5.0"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b319fc934b12c22210732f5e4f336b2f60302c04b5cd5e2bb20e3c7d256affc"
 dependencies = [
  "speedyspec-hooks",
 ]
@@ -6814,34 +6871,36 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-text-contracts"
-version = "0.5.0"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4282f1fe84e452793f052ea8f3b97032d53180a2cbe80e6e14004bdf793e6c20"
 
 [[package]]
 name = "speedyspec-wp-text-corpus"
 version = "0.6.0"
 dependencies = [
  "base64 0.22.1",
+ "criterion 0.5.1",
  "serde",
  "serde_json",
  "speedyspec-compat",
  "speedyspec-hooks",
  "speedyspec-hooks-memory",
  "speedyspec-php",
+ "speedyspec-wp-html-split",
  "speedyspec-wp-text-contracts",
  "speedyspec-wp-text-memory",
 ]
 
 [[package]]
 name = "speedyspec-wp-text-diff"
-version = "0.2.0"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc19c6573cb56bc3e74f90df1674799a652d80e0d9cab7eae03ece5ea8dcdeda"
 dependencies = [
- "base64 0.22.1",
- "criterion 0.8.2",
  "foldhash",
  "hashbrown 0.17.1",
  "memchr",
- "proptest",
- "serde_json",
  "simdutf8",
  "speedyspec-hooks",
  "speedyspec-wp-text-diff-contracts",
@@ -6849,7 +6908,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-text-diff-contracts"
-version = "0.2.0"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41d5dd029126deb14f26b8bb21efb255b7d8337277de3433a7d0210647f3c551"
 dependencies = [
  "speedyspec-hooks",
 ]
@@ -6858,6 +6919,8 @@ dependencies = [
 name = "speedyspec-wp-text-diff-php"
 version = "0.3.0"
 dependencies = [
+ "base64 0.22.1",
+ "criterion 0.8.2",
  "serde_json",
  "sha2 0.10.9",
  "speedyspec-compat",
@@ -6960,10 +7023,11 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-theme-json-contracts"
-version = "0.1.3"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5d31e75ea736025020f2b4a96e8c2f48ce5074546ae49358a9fdbcfd45db52c"
 dependencies = [
  "indexmap",
- "serde_json",
  "speedyspec-hooks",
  "speedyspec-php-serialize",
  "speedyspec-wp-kses-contracts",
@@ -6994,10 +7058,11 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-token-map"
-version = "0.5.0"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e0676db1d89024fd95a48e4e35d81c410eab8b9b9978c0bba66dc7d89919942"
 dependencies = [
  "memchr",
- "serde_json",
 ]
 
 [[package]]
@@ -7021,7 +7086,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-utf8"
-version = "0.5.0"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48dd0c5573cb0d6e76fda263cb97bb08fddada41bed630202cc2a5bc986846ea"
 dependencies = [
  "simdutf8",
 ]
@@ -7066,7 +7133,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-xmlrpc-contracts"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d559ee84f2e516ae7b7ff5f56e4981bd30452445646395e58129105fbb37f2fe"
 dependencies = [
  "speedyspec-operation-contracts",
 ]
@@ -7321,12 +7390,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "target-tuple"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "876fef147edbcbddc8ac5cbbba92c7b86519e314e86638596c09673b2ed01e7f"
-
-[[package]]
 name = "tempfile"
 version = "3.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7346,15 +7409,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fed54709c5b3a53d09bb1c113ea4f5ceafd1e772ddcb0030a82e1d56c087b08"
 dependencies = [
  "new_debug_unreachable",
-]
-
-[[package]]
-name = "termcolor"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
-dependencies = [
- "winapi-util",
 ]
 
 [[package]]
@@ -7557,21 +7611,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "toml"
-version = "1.2.1+spec-1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5755c51863cdac711f1956baf8eb9588e060755f7d3c4c979e70ea1e1f32cd7"
-dependencies = [
- "indexmap",
- "serde_core",
- "serde_spanned",
- "toml_datetime 1.1.3+spec-1.1.0",
- "toml_parser",
- "toml_writer",
- "winnow 1.0.5",
-]
-
-[[package]]
 name = "toml_datetime"
 version = "0.7.5+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7759,21 +7798,6 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
-
-[[package]]
-name = "trybuild"
-version = "1.0.125"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9838b494ee14d28f1eeea490e8f4f10248fa6dd371d4bc874b635de499408245"
-dependencies = [
- "glob",
- "serde",
- "serde_derive",
- "serde_json",
- "target-tuple",
- "termcolor",
- "toml 1.2.1+spec-1.1.0",
-]
 
 [[package]]
 name = "twox-hash"

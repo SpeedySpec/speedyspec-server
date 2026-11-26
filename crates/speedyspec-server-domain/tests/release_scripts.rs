@@ -518,20 +518,6 @@ fn read_json(path: &Path) -> serde_json::Value {
 struct Workspace {
     crates: Vec<(String, String, String)>,
     depends_on: Vec<(String, String)>,
-    /// The crate directories frozen in `scripts/platform-paths.txt`: they moved to speedyspec-platform, which
-    /// releases them, so the server's release config must not name them.
-    frozen: Vec<String>,
-}
-
-/// The `crates/<name>` directories that `scripts/platform-paths.txt` freezes.
-fn frozen_crate_dirs() -> Vec<String> {
-    let path = repo_root().join("scripts/platform-paths.txt");
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|err| panic!("{}: {err}", path.display()))
-        .lines()
-        .filter_map(|line| line.strip_prefix("crates/")?.strip_suffix('/'))
-        .map(|name| format!("crates/{name}"))
-        .collect()
 }
 
 fn workspace() -> Workspace {
@@ -573,30 +559,15 @@ fn workspace() -> Workspace {
                 .map(move |dep| (name.clone(), dep["name"].as_str().unwrap().to_string()))
         })
         .collect();
-    Workspace {
-        crates,
-        depends_on,
-        frozen: frozen_crate_dirs(),
-    }
+    Workspace { crates, depends_on }
 }
 
 const COMPONENTS: [&str; 2] = ["speedyspec-server", "speedyspec-php-runtime"];
 
 /// Unpublished test crates that need not be release-please packages, although components reach them through
-/// dev-dependencies. Frozen crates dev-depend on them, and release-please's `cargo-workspace` plugin bumps every
-/// workspace crate that depends on a released one, by any kind of dependency, configured or not. If these crates
-/// were packages, a release of one would rewrite a frozen crate's Cargo.toml and changelog.
+/// dev-dependencies: they hold only test support (a PHP oracle, corpora), which ships in no binary.
 const UNRELEASED_TEST_CRATES: [&str; 2] =
     ["speedyspec-wp-kses-testkit", "speedyspec-wp-text-corpus"];
-
-/// Chains of dependencies from a frozen crate to a release-please package that are known and accepted for now,
-/// as `frozen -> ... -> package`. Each must still exist, so a stale entry fails too.
-/// - `speedyspec-wp-html-split` dev-depends on `speedyspec-wp-text-corpus` for its corpus test and bench, and
-///   `text-corpus`'s `values` feature uses `speedyspec-wp-text-memory`. A release of `wp-text-memory` would
-///   therefore bump `html-split`. The edge goes when that test and bench move into the server (platform migration,
-///   Task 6), and the frozen crate leaves the server at its switch (Task 12).
-const KNOWN_FROZEN_CHAINS: [&str; 1] =
-    ["speedyspec-wp-html-split -> speedyspec-wp-text-corpus -> speedyspec-wp-text-memory"];
 
 impl Workspace {
     /// The crates a component depends on, directly or not: a release of one of them is a release of that component.
@@ -626,19 +597,6 @@ fn release_config_errors(
     let packages = config["packages"].as_object().cloned().unwrap_or_default();
     let released = workspace.released_with_a_component();
     for (dir, name, version) in &workspace.crates {
-        if workspace.frozen.contains(dir) {
-            if packages.contains_key(dir) {
-                errors.push(format!(
-                    "{dir} moved to speedyspec-platform but is still a release-please package"
-                ));
-            }
-            if !manifest[dir].is_null() {
-                errors.push(format!(
-                    "{dir} moved to speedyspec-platform but is still in the manifest"
-                ));
-            }
-            continue;
-        }
         let is_component = COMPONENTS.contains(&name.as_str());
         let Some(entry) = packages.get(dir) else {
             if is_component
@@ -775,126 +733,6 @@ fn release_config_refuses_what_would_stall_a_release() {
             .iter()
             .any(|e| e.contains("speedyspec-server-gate is not a release-please package")),
         "a crate the server is built from"
-    );
-    let mut moved = config.clone();
-    moved["packages"]["crates/speedyspec-hooks"] = serde_json::json!({"component": "speedyspec-hooks", "skip-github-release": true, "skip-changelog": true});
-    let mut moved_manifest = manifest.clone();
-    moved_manifest["crates/speedyspec-hooks"] = "0.1.4".into();
-    let errors = release_config_errors(&workspace, &moved, &moved_manifest);
-    assert!(
-        errors.iter().any(|e| e.contains(
-            "speedyspec-hooks moved to speedyspec-platform but is still a release-please package"
-        )),
-        "a crate frozen in scripts/platform-paths.txt: {errors:?}"
-    );
-    assert!(
-        errors.iter().any(|e| e.contains(
-            "speedyspec-hooks moved to speedyspec-platform but is still in the manifest"
-        )),
-        "a crate frozen in scripts/platform-paths.txt: {errors:?}"
-    );
-}
-
-/// Every crate frozen in `scripts/platform-paths.txt` is a workspace crate, and the release config names none of
-/// them: speedyspec-platform releases them now.
-#[test]
-fn release_config_names_no_frozen_crate() {
-    let workspace = workspace();
-    assert!(!workspace.frozen.is_empty());
-    for dir in &workspace.frozen {
-        assert!(
-            workspace.crates.iter().any(|(d, _, _)| d == dir),
-            "{dir} is frozen but not a workspace crate"
-        );
-    }
-    let (config, manifest) = release_config();
-    for dir in &workspace.frozen {
-        assert!(config["packages"][dir].is_null(), "{dir} is still released");
-        assert!(manifest[dir].is_null(), "{dir} is still in the manifest");
-    }
-}
-
-/// Every chain of workspace dependencies, of any kind, from a frozen crate to a release-please package, written
-/// `frozen -> ... -> package`. release-please's `cargo-workspace` plugin bumps every workspace crate that depends on
-/// a bumped one, transitively and whether or not it is configured, so each chain is a way for a server release to
-/// rewrite a frozen crate. The walk stops at the first package on a chain.
-fn frozen_chains_to_packages(workspace: &Workspace, config: &serde_json::Value) -> Vec<String> {
-    let packages = config["packages"].as_object().cloned().unwrap_or_default();
-    let name_of = |dir: &str| {
-        workspace
-            .crates
-            .iter()
-            .find(|(d, _, _)| d == dir)
-            .map(|(_, n, _)| n.clone())
-    };
-    let configured: std::collections::BTreeSet<String> =
-        packages.keys().filter_map(|dir| name_of(dir)).collect();
-    let mut chains = Vec::new();
-    for dir in &workspace.frozen {
-        let Some(start) = name_of(dir) else { continue };
-        let mut seen = std::collections::BTreeSet::from([start.clone()]);
-        let mut todo = vec![vec![start]];
-        while let Some(path) = todo.pop() {
-            let last = path.last().unwrap();
-            for (from, to) in &workspace.depends_on {
-                if from != last || !seen.insert(to.clone()) {
-                    continue;
-                }
-                let mut next = path.clone();
-                next.push(to.clone());
-                if configured.contains(to) {
-                    chains.push(next.join(" -> "));
-                } else {
-                    todo.push(next);
-                }
-            }
-        }
-    }
-    chains.sort();
-    chains
-}
-
-/// No frozen crate depends, by any kind of dependency and through any workspace crate, on a crate that is still a
-/// release-please package, apart from the known chains, each of which must still exist.
-#[test]
-fn no_frozen_crate_depends_on_a_release_please_package() {
-    let workspace = workspace();
-    let (config, _) = release_config();
-    let chains = frozen_chains_to_packages(&workspace, &config);
-    let unexpected: Vec<&String> = chains
-        .iter()
-        .filter(|c| !KNOWN_FROZEN_CHAINS.contains(&c.as_str()))
-        .collect();
-    assert!(
-        unexpected.is_empty(),
-        "a server release would bump these frozen crates: {unexpected:?}"
-    );
-    for known in KNOWN_FROZEN_CHAINS {
-        assert!(
-            chains.iter().any(|c| c == known),
-            "{known} no longer exists: remove it from KNOWN_FROZEN_CHAINS"
-        );
-    }
-    for name in UNRELEASED_TEST_CRATES {
-        let dir = format!("crates/{name}");
-        assert!(
-            config["packages"][&dir].is_null(),
-            "{dir} is a release-please package"
-        );
-    }
-}
-
-#[test]
-fn frozen_chains_find_a_dependency_on_a_package() {
-    let workspace = workspace();
-    let (mut config, _) = release_config();
-    config["packages"]["crates/speedyspec-wp-kses-testkit"] = serde_json::json!({"component": "speedyspec-wp-kses-testkit", "skip-github-release": true, "skip-changelog": true});
-    let chains = frozen_chains_to_packages(&workspace, &config);
-    assert!(
-        chains
-            .iter()
-            .any(|c| c == "speedyspec-wp-html-syntax -> speedyspec-wp-kses-testkit"),
-        "{chains:?}"
     );
 }
 
@@ -1101,14 +939,20 @@ fn test_packages_leave_out_crates_neither_component_is_built_from() {
         server.iter().any(|p| p == "speedyspec-server-domain"),
         "{server:?}"
     );
-    assert!(server.iter().all(|p| p != "speedyspec-php"), "{server:?}");
+    assert!(
+        server.iter().all(|p| p != "speedyspec-wp-db-php"),
+        "{server:?}"
+    );
     assert!(
         server.iter().all(|p| p != "speedyspec-data-sqlite"),
         "{server:?}"
     );
 
     let runtime = test_packages("speedyspec-php-runtime", &metadata);
-    assert!(runtime.iter().any(|p| p == "speedyspec-php"), "{runtime:?}");
+    assert!(
+        runtime.iter().any(|p| p == "speedyspec-wp-db-php"),
+        "{runtime:?}"
+    );
     assert!(
         runtime.iter().all(|p| p != "speedyspec-server"),
         "{runtime:?}"
@@ -1116,292 +960,5 @@ fn test_packages_leave_out_crates_neither_component_is_built_from() {
     assert!(
         runtime.iter().all(|p| p != "speedyspec-data-sqlite"),
         "{runtime:?}"
-    );
-}
-
-/// A crate in `cargo metadata` output for `release-crates.sh`: its `publish` (`None` publishes anywhere, `Some([])`
-/// is `publish = false`) and its path dependencies with their version requirements.
-struct Crate<'a> {
-    name: &'a str,
-    publish: Option<&'a [&'a str]>,
-    deps: &'a [(&'a str, &'a str)],
-}
-
-/// A repository root with `scripts/publish-crates.txt` listing `listed`, and `metadata.json` holding `crates`.
-fn crates_fixture(listed: &[&str], crates: &[Crate]) -> tempfile::TempDir {
-    let dir = tempfile::tempdir().unwrap();
-    std::fs::create_dir(dir.path().join("scripts")).unwrap();
-    let mut list = String::new();
-    for name in listed {
-        list.push_str(name);
-        list.push('\n');
-    }
-    std::fs::write(dir.path().join("scripts/publish-crates.txt"), list).unwrap();
-    let packages: Vec<_> = crates
-        .iter()
-        .map(|c| {
-            serde_json::json!({
-                "name": c.name,
-                "version": "0.1.1",
-                "publish": c.publish,
-                "dependencies": c.deps.iter().map(|(dep, req)| serde_json::json!({
-                    "name": dep,
-                    "kind": null,
-                    "req": req,
-                    "path": format!("/w/crates/{dep}"),
-                })).collect::<Vec<_>>(),
-            })
-        })
-        .collect();
-    std::fs::write(
-        dir.path().join("metadata.json"),
-        serde_json::json!({ "packages": packages }).to_string(),
-    )
-    .unwrap();
-    dir
-}
-
-fn crates_run(dir: &Path, args: &[&str], env: &[(&str, &Path)]) -> Output {
-    let metadata = dir.join("metadata.json");
-    let mut all: Vec<&str> = args.to_vec();
-    all.push(metadata.to_str().unwrap());
-    let mut env = env.to_vec();
-    env.push(("SPEEDYSPEC_REPO", dir));
-    run("release-crates.sh", &all, &env)
-}
-
-fn crates_check_stderr(listed: &[&str], crates: &[Crate]) -> String {
-    let dir = crates_fixture(listed, crates);
-    let output = crates_run(dir.path(), &["check"], &[]);
-    assert!(!output.status.success(), "{output:?}");
-    String::from_utf8_lossy(&output.stderr).into_owned()
-}
-
-const PRIVATE: Option<&[&str]> = Some(&[]);
-
-#[test]
-fn crates_check_passes_for_a_clean_workspace() {
-    let dir = crates_fixture(
-        &["b", "a"],
-        &[
-            Crate {
-                name: "a",
-                publish: None,
-                deps: &[("b", "^0.1")],
-            },
-            Crate {
-                name: "b",
-                publish: None,
-                deps: &[],
-            },
-            Crate {
-                name: "s",
-                publish: PRIVATE,
-                deps: &[("a", "*")],
-            },
-        ],
-    );
-    let output = crates_run(dir.path(), &["check"], &[]);
-    assert!(output.status.success(), "{output:?}");
-}
-
-#[test]
-fn crates_check_fails_for_an_unlisted_crate_without_publish_false() {
-    let stderr = crates_check_stderr(
-        &["a"],
-        &[
-            Crate {
-                name: "a",
-                publish: None,
-                deps: &[],
-            },
-            Crate {
-                name: "s",
-                publish: None,
-                deps: &[],
-            },
-        ],
-    );
-    assert!(stderr.contains("s must set publish = false"), "{stderr}");
-}
-
-#[test]
-fn crates_check_fails_for_a_dependency_on_a_private_crate() {
-    let stderr = crates_check_stderr(
-        &["a"],
-        &[
-            Crate {
-                name: "a",
-                publish: None,
-                deps: &[("s", "^0.1")],
-            },
-            Crate {
-                name: "s",
-                publish: PRIVATE,
-                deps: &[],
-            },
-        ],
-    );
-    assert!(stderr.contains("a depends on unpublished s"), "{stderr}");
-}
-
-#[test]
-fn crates_check_fails_for_a_path_dependency_without_a_version() {
-    let stderr = crates_check_stderr(
-        &["b", "a"],
-        &[
-            Crate {
-                name: "a",
-                publish: None,
-                deps: &[("b", "*")],
-            },
-            Crate {
-                name: "b",
-                publish: None,
-                deps: &[],
-            },
-        ],
-    );
-    assert!(
-        stderr.contains("a depends on b without a version"),
-        "{stderr}"
-    );
-}
-
-#[test]
-fn crates_check_fails_for_a_listed_crate_marked_private() {
-    let stderr = crates_check_stderr(
-        &["b"],
-        &[Crate {
-            name: "b",
-            publish: PRIVATE,
-            deps: &[],
-        }],
-    );
-    assert!(
-        stderr.contains("b is listed but publish = false"),
-        "{stderr}"
-    );
-}
-
-#[test]
-fn crates_check_fails_for_a_listed_name_that_is_not_a_crate() {
-    let stderr = crates_check_stderr(&["x"], &[]);
-    assert!(stderr.contains("x is not a workspace crate"), "{stderr}");
-}
-
-#[test]
-fn crates_check_passes_for_this_workspace() {
-    let output = Command::new(env!("CARGO"))
-        .args(["metadata", "--format-version", "1", "--no-deps"])
-        .current_dir(repo_root())
-        .output()
-        .unwrap();
-    assert!(output.status.success(), "{output:?}");
-    let dir = tempfile::tempdir().unwrap();
-    let metadata = dir.path().join("metadata.json");
-    std::fs::write(&metadata, &output.stdout).unwrap();
-    let check = run(
-        "release-crates.sh",
-        &["check", metadata.to_str().unwrap()],
-        &[],
-    );
-    assert!(check.status.success(), "{check:?}");
-}
-
-/// A sparse-index file for `name` (the crates.io layout) listing `versions`.
-fn index_entry(index: &Path, name: &str, versions: &[&str]) {
-    let path = match name.len() {
-        1 => index.join("1").join(name),
-        2 => index.join("2").join(name),
-        3 => index.join("3").join(&name[..1]).join(name),
-        _ => index.join(&name[..2]).join(&name[2..4]).join(name),
-    };
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    let lines: Vec<String> = versions
-        .iter()
-        .map(|v| serde_json::json!({ "name": name, "vers": v }).to_string())
-        .collect();
-    std::fs::write(path, lines.join("\n") + "\n").unwrap();
-}
-
-/// Runs `release-crates.sh pending` with the index at `index` (a `file://` URL) and returns its stdout.
-fn crates_pending(dir: &Path, index: &Path) -> String {
-    let url = PathBuf::from(format!("file://{}", index.display()));
-    let output = crates_run(dir, &["pending"], &[("SPEEDYSPEC_CRATES_INDEX", &url)]);
-    assert!(output.status.success(), "{output:?}");
-    stdout(&output)
-}
-
-#[test]
-fn crates_pending_lists_versions_not_in_the_index() {
-    let dir = crates_fixture(
-        &["a", "bb", "cccc"],
-        &[
-            Crate {
-                name: "a",
-                publish: None,
-                deps: &[],
-            },
-            Crate {
-                name: "bb",
-                publish: None,
-                deps: &[],
-            },
-            Crate {
-                name: "cccc",
-                publish: None,
-                deps: &[],
-            },
-            Crate {
-                name: "s",
-                publish: PRIVATE,
-                deps: &[],
-            },
-        ],
-    );
-    let index = dir.path().join("index");
-    index_entry(&index, "a", &["0.1.0"]);
-    index_entry(&index, "cccc", &["0.1.0", "0.1.10"]);
-    assert_eq!(crates_pending(dir.path(), &index), "a\nbb\ncccc\n");
-}
-
-#[test]
-fn crates_pending_skips_published_versions() {
-    let dir = crates_fixture(
-        &["a", "bb", "ccc"],
-        &[
-            Crate {
-                name: "a",
-                publish: None,
-                deps: &[],
-            },
-            Crate {
-                name: "bb",
-                publish: None,
-                deps: &[],
-            },
-            Crate {
-                name: "ccc",
-                publish: None,
-                deps: &[],
-            },
-        ],
-    );
-    let index = dir.path().join("index");
-    index_entry(&index, "a", &["0.1.0", "0.1.1"]);
-    index_entry(&index, "ccc", &["0.1.1"]);
-    assert_eq!(crates_pending(dir.path(), &index), "bb\n");
-}
-
-#[test]
-fn crates_check_fails_for_metadata_without_crates() {
-    let dir = crates_fixture(&["a"], &[]);
-    std::fs::write(dir.path().join("metadata.json"), "").unwrap();
-    let output = crates_run(dir.path(), &["check"], &[]);
-    assert!(!output.status.success(), "{output:?}");
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("is not cargo metadata"),
-        "{output:?}"
     );
 }

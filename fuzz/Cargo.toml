@@ -11,10 +11,10 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-speedyspec-wp-hooks = { path = "../crates/speedyspec-wp-hooks" }
-speedyspec-wp-hooks-memory = { path = "../crates/speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks = "0.2.0"
+speedyspec-wp-hooks-memory = "0.2.0"
 speedyspec-wp-kses = { path = "../crates/speedyspec-wp-kses" }
-speedyspec-wp-kses-contracts = { path = "../crates/speedyspec-wp-kses-contracts" }
+speedyspec-wp-kses-contracts = "0.6.0"
 speedyspec-wp-kses-security = { path = "../crates/speedyspec-wp-kses-security" }
 
 [[bin]]

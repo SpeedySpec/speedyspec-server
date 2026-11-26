@@ -235,17 +235,16 @@ grep ' speedyspec-server-x86_64-unknown-linux-musl$' SHA256SUMS | sha256sum -c
 release-please keeps one release pull request open on `main`. Every crate is a release-please package, so a change in
 any of them is seen; the `cargo-workspace` plugin then bumps the server or the runtime whenever a crate it is built from
 is bumped. Only the server and the runtime get GitHub releases: after a release, the workflow tags each library crate at
-its new version (`<crate>-v<version>`, a plain tag) so release-please counts its commits from there. The PHP version is
-pinned in `crates/speedyspec-php/php-version`, so a PHP update is a change to `speedyspec-php` (say which PHP it embeds
-in the commit message); `scripts/build-php.sh` is outside the crates and releases nothing by itself.
+its new version (`<crate>-v<version>`, a plain tag) so release-please counts its commits from there.
 
-The crates listed in `scripts/publish-crates.txt` (the PHP runtime crates other repositories build on) are also
-published to crates.io from the release commit, each version once; every other crate sets `publish = false`, and CI
-fails a pull request that adds a crate without it. A crate re-exports types of some it depends on (`speedyspec-php-ext`
-re-exports `speedyspec-php`'s, `speedyspec-wp-hooks-php` exposes `speedyspec-php`'s and `speedyspec-compat`'s), so a
-breaking change to one of them is breaking for those too: mark it (`feat!`/`fix!`) in a commit that touches each crate
-that re-exports the type as well, or release-please gives them only a patch release and consumers end up with two
-incompatible copies.
+The platform crates (the Hook API, the Container, the embedded PHP, the contracts and the rest of what other
+repositories build on) live in [SpeedySpec/speedyspec-platform](https://github.com/SpeedySpec/speedyspec-platform) and
+come from crates.io, at the versions in the root `Cargo.toml`'s `[workspace.dependencies]`; Dependabot proposes their
+bumps as one pull request. Nothing is published to crates.io from here. The PHP version is the one the resolved
+`speedyspec-php` pins (`scripts/php-version.sh` prints it), so a PHP update is a `speedyspec-php` release and its bump
+here. To work across both repositories, `scripts/platform-local.sh <platform-checkout>` writes a git-ignored
+`platform.local.toml` that patches every platform crate to the checkout (`cargo --config platform.local.toml ...`);
+CI fails a committed patch (`scripts/check-no-platform-patch.sh`).
 
 Merging the release pull request builds each bumped component for every target at the merge commit and runs the
 tests of the crates it is built from there (`scripts/release-test-packages.sh`; CI tests the whole workspace, so a

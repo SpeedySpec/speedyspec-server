@@ -12,6 +12,6 @@ seam = "operation"
 role = "implementation"
 
 [dependencies]
-speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-container.workspace = true
 speedyspec-operation = { path = "../speedyspec-operation" }
-speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
+speedyspec-operation-contracts.workspace = true

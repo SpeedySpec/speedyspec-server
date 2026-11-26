@@ -13,10 +13,10 @@ role = "implementation"
 
 [dependencies]
 speedyspec-operation-dispatch = { path = "../speedyspec-operation-dispatch" }
-speedyspec-abilities-contracts = { path = "../speedyspec-abilities-contracts" }
-speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
-speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }
+speedyspec-abilities-contracts.workspace = true
+speedyspec-operation-contracts.workspace = true
+speedyspec-transport-contracts.workspace = true
 
 [dev-dependencies]
-speedyspec-container = { path = "../speedyspec-container" }
+speedyspec-container.workspace = true
 speedyspec-operation = { path = "../speedyspec-operation" }

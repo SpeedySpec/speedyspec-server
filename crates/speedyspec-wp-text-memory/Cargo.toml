@@ -12,5 +12,5 @@ seam = "text"
 role = "adapter"
 
 [dependencies]
-speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
-speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contracts" }
+speedyspec-wp-text-contracts.workspace = true
+speedyspec-wp-shortcode-contracts.workspace = true

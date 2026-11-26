@@ -12,7 +12,7 @@ seam = "firewall"
 role = "adapter"
 
 [dependencies]
-speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache.workspace = true
 speedyspec-firewall = { path = "../speedyspec-firewall" }
 
 [dev-dependencies]
@@ -21,6 +21,6 @@ speedyspec-cache-kv = { path = "../speedyspec-cache-kv" }
 speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
 speedyspec-data-memory = { path = "../speedyspec-data-memory" }
 speedyspec-data-valkey = { path = "../speedyspec-data-valkey" }
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 speedyspec-data-file = { path = "../speedyspec-data-file" }
 tempfile = "3"

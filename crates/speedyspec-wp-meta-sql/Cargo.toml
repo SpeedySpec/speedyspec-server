@@ -12,5 +12,5 @@ seam = "meta"
 role = "adapter"
 
 [dependencies]
-speedyspec-data = { path = "../speedyspec-data" }
-speedyspec-wp-meta-contracts = { path = "../speedyspec-wp-meta-contracts" }
+speedyspec-data.workspace = true
+speedyspec-wp-meta-contracts.workspace = true

@@ -1,2 +1,0 @@
-# Crates that moved to speedyspec-platform: check-seams leaves them out of scope.
-crates/moved-no-meta/

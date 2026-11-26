@@ -1,0 +1,18 @@
+# The platform crates (SpeedySpec/speedyspec-platform) release together, so their bumps come as one pull request.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: daily
+    groups:
+      speedyspec:
+        patterns: ["speedyspec-*"]
+  # The fuzz workspaces have their own lock files.
+  - package-ecosystem: cargo
+    directories: ["/fuzz", "/fuzz-media"]
+    schedule:
+      interval: daily
+    groups:
+      speedyspec:
+        patterns: ["speedyspec-*"]

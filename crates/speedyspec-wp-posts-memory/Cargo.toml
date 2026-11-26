@@ -12,7 +12,7 @@ seam = "query"
 role = "adapter"
 
 [dependencies]
-speedyspec-wp-posts-contracts = { path = "../speedyspec-wp-posts-contracts" }
+speedyspec-wp-posts-contracts.workspace = true
 
 [dev-dependencies]
-speedyspec-wp-posts-contracts = { path = "../speedyspec-wp-posts-contracts", features = ["conformance"] }
+speedyspec-wp-posts-contracts = { workspace = true, features = ["conformance"] }

@@ -12,5 +12,5 @@ seam = "http"
 role = "implementation"
 
 [dependencies]
-speedyspec-http = { path = "../speedyspec-http" }
+speedyspec-http.workspace = true
 speedyspec-http-message = { path = "../speedyspec-http-message" }

@@ -12,32 +12,32 @@ seam = "options"
 role = "php"
 
 [dependencies]
-speedyspec-data = { path = "../speedyspec-data" }
-speedyspec-compat = { path = "../speedyspec-compat" }
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-cqrs = { path = "../speedyspec-cqrs" }
-speedyspec-php = { path = "../speedyspec-php" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext" }
-speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+speedyspec-data.workspace = true
+speedyspec-compat.workspace = true
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
+speedyspec-php.workspace = true
+speedyspec-php-ext.workspace = true
+speedyspec-php-serialize.workspace = true
 speedyspec-wp-db = { path = "../speedyspec-wp-db" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks.workspace = true
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 speedyspec-wp-options-sql = { path = "../speedyspec-wp-options-sql" }
-speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+speedyspec-wp-hooks-php.workspace = true
 indexmap = "2"
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-wp-hooks-contracts.workspace = true
 
 [dev-dependencies]
-speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache.workspace = true
 speedyspec-cache-routing = { path = "../speedyspec-cache-routing" }
-speedyspec-container-php = { path = "../speedyspec-container-php" }
+speedyspec-container-php.workspace = true
 speedyspec-data-file = { path = "../speedyspec-data-file" }
 speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
 speedyspec-data-query = { path = "../speedyspec-data-query" }
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-hooks-memory.workspace = true
 speedyspec-wp-db-php = { path = "../speedyspec-wp-db-php" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
 serde_json = "1"
 sha2 = "0.10"

@@ -14,7 +14,7 @@ role = "adapter"
 [dependencies]
 libc = "0.2"
 speedyspec-ffmpeg-sys = { path = "../speedyspec-ffmpeg-sys" }
-speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
+speedyspec-wp-media-contracts.workspace = true
 
 [build-dependencies]
 cc = "1"
