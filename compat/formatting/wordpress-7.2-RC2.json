@@ -41391,6 +41391,21 @@
         }
       }
     ],
+    "wp_truncate_slug/literal/truncate_ascii_hex": [
+      {
+        "returned": "a%2Fb%2F",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
     "wp_truncate_slug/literal/truncate_cut_dash": [
       {
         "returned": "a",
@@ -41511,6 +41526,81 @@
         }
       }
     ],
+    "wp_truncate_slug/literal/truncate_invalid_utf8_cut": [
+      {
+        "returned": "abc",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_invalid_utf8_dropped": [
+      {
+        "returned": "abcdefghijkl",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_negative_below_zero": [
+      {
+        "returned": "",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_negative_encoded": [
+      {
+        "returned": "",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_negative_unchanged": [
+      {
+        "returned": "abcd",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
     "wp_truncate_slug/literal/truncate_over": [
       {
         "returned": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -41544,6 +41634,21 @@
     "wp_truncate_slug/literal/truncate_short": [
       {
         "returned": "abcdefghij",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_uppercase_hex": [
+      {
+        "returned": "%e2%82%ac%e2%82%ac",
         "invocations": [],
         "globals": {
           "wp_filter": null,

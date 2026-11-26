@@ -23192,6 +23192,90 @@
           "call": "wp_truncate_slug"
         }
       ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_negative_unchanged",
+      "steps": [
+        {
+          "args": [
+            "abcd-ef",
+            -2
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_negative_below_zero",
+      "steps": [
+        {
+          "args": [
+            "abc",
+            -10
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_negative_encoded",
+      "steps": [
+        {
+          "args": [
+            "a%20b",
+            -1
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_uppercase_hex",
+      "steps": [
+        {
+          "args": [
+            "%E2%82%AC%E2%82%AC%E2%82%AC",
+            20
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_ascii_hex",
+      "steps": [
+        {
+          "args": [
+            "a%2fb%2fc",
+            8
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_invalid_utf8_cut",
+      "steps": [
+        {
+          "args": [
+            "abc%ff%ffdef",
+            10
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_invalid_utf8_dropped",
+      "steps": [
+        {
+          "args": [
+            "%ffabcdefghijkl",
+            14
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
     }
   ]
 }

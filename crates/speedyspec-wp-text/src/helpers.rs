@@ -223,9 +223,14 @@ pub fn utf8_uri_encode(text: &[u8], length: usize, encode_ascii: bool) -> Vec<u8
 /// WordPress's `wp_truncate_slug()` (7.2): cuts a slug to `length` bytes without splitting a percent-encoded
 /// character, then removes trailing `-`, whether or not it was cut.
 ///
-/// A slug longer than `length` that `urldecode()` leaves as it is is cut at `length` bytes. One that it changes
-/// (a `%XX` sequence, or a `+`, which decodes to a space) is re-encoded by `utf8_uri_encode( $decoded, $length,
-/// true )`: ASCII `rawurlencode`d (uppercase hex), multibyte characters in lowercase hex, whole characters only.
+/// A slug longer than `length` that `urldecode()` leaves as it is is cut at `length` raw bytes. That is safe only
+/// because such a slug has no valid `%XX` sequence (and no `+`) for the cut to split. One that `urldecode()` changes
+/// is re-encoded by `utf8_uri_encode( $decoded, $length, true )`: ASCII `rawurlencode`d (uppercase hex), multibyte
+/// characters in lowercase hex, whole characters only.
+///
+/// A negative `length` is PHP's: `substr()` then drops that many bytes from the end (nothing left if it reaches past
+/// the start), and `utf8_uri_encode()`, for which any non-zero length is a limit, stops at the first character, so
+/// a slug that decodes differently comes back empty.
 ///
 /// @param slug
 ///     The slug.
@@ -233,14 +238,18 @@ pub fn utf8_uri_encode(text: &[u8], length: usize, encode_ascii: bool) -> Vec<u8
 ///     The longest slug in bytes; WordPress's default is 200.
 /// @return
 ///     The truncated slug.
-pub fn wp_truncate_slug(slug: &[u8], length: usize) -> Vec<u8> {
+pub fn wp_truncate_slug(slug: &[u8], length: i64) -> Vec<u8> {
     let mut slug = slug.to_vec();
-    if slug.len() > length {
+    let slug_length = i64::try_from(slug.len()).unwrap_or(i64::MAX);
+    if slug_length > length {
         let decoded = urldecode(&slug);
         if decoded == slug {
-            slug.truncate(length);
+            let keep = if length < 0 { slug_length.saturating_add(length) } else { length };
+            slug.truncate(usize::try_from(keep).unwrap_or(0));
+        } else if length < 0 {
+            slug.clear();
         } else {
-            slug = utf8_uri_encode(&decoded, length, true);
+            slug = utf8_uri_encode(&decoded, usize::try_from(length).unwrap_or(usize::MAX), true);
         }
     }
     let end = slug.iter().rposition(|&b| b != b'-').map_or(0, |i| i + 1);

@@ -83,8 +83,7 @@ fn utf8_uri_encode_cuts_whole_characters() {
 #[test]
 fn wp_truncate_slug_corpus() {
     assert_corpus("wp_truncate_slug", |args| {
-        let length = args.get(1).map_or(200, php_int).max(0) as usize;
-        Php::Str(wp_truncate_slug(text(&args[0]), length))
+        Php::Str(wp_truncate_slug(text(&args[0]), args.get(1).map_or(200, php_int)))
     });
 }
 
@@ -110,6 +109,15 @@ fn wp_truncate_slug_plus_reencodes() {
     // Not longer than the limit: kept as it is, `+` and all.
     assert_eq!(wp_truncate_slug(b"a+%E2%82%AC/", 12), b"a+%E2%82%AC/");
     assert_eq!(wp_truncate_slug(b"abcdef%e2%82%ac", 10), b"abcdef");
+}
+
+#[test]
+fn wp_truncate_slug_negative_length() {
+    // PHP's `substr( $slug, 0, $length )` cuts from the end, then the dashes go.
+    assert_eq!(wp_truncate_slug(b"abcd-ef", -2), b"abcd");
+    assert_eq!(wp_truncate_slug(b"abc", -10), b"");
+    // `utf8_uri_encode()` with a negative (truthy) length stops at the first character.
+    assert_eq!(wp_truncate_slug(b"a%20b", -1), b"");
 }
 
 #[test]

@@ -477,9 +477,7 @@ fn utf8_uri_encode(a: &[Value]) -> R {
 }
 
 fn wp_truncate_slug(a: &[Value]) -> R {
-    // A negative length (PHP would cut from the end) is taken as 0.
-    let length = usize::try_from(int_or(a, 1, 200)).unwrap_or(0);
-    bytes(helpers::wp_truncate_slug(&string(a, 0)?, length))
+    bytes(helpers::wp_truncate_slug(&string(a, 0)?, int_or(a, 1, 200)))
 }
 
 fn sanitize_file_name(a: &[Value]) -> R {

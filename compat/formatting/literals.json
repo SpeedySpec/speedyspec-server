@@ -2689,5 +2689,61 @@
     "args": [
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa--"
     ]
+  },
+  {
+    "name": "truncate_negative_unchanged",
+    "function": "wp_truncate_slug",
+    "args": [
+      "abcd-ef",
+      -2
+    ]
+  },
+  {
+    "name": "truncate_negative_below_zero",
+    "function": "wp_truncate_slug",
+    "args": [
+      "abc",
+      -10
+    ]
+  },
+  {
+    "name": "truncate_negative_encoded",
+    "function": "wp_truncate_slug",
+    "args": [
+      "a%20b",
+      -1
+    ]
+  },
+  {
+    "name": "truncate_uppercase_hex",
+    "function": "wp_truncate_slug",
+    "args": [
+      "%E2%82%AC%E2%82%AC%E2%82%AC",
+      20
+    ]
+  },
+  {
+    "name": "truncate_ascii_hex",
+    "function": "wp_truncate_slug",
+    "args": [
+      "a%2fb%2fc",
+      8
+    ]
+  },
+  {
+    "name": "truncate_invalid_utf8_cut",
+    "function": "wp_truncate_slug",
+    "args": [
+      "abc%ff%ffdef",
+      10
+    ]
+  },
+  {
+    "name": "truncate_invalid_utf8_dropped",
+    "function": "wp_truncate_slug",
+    "args": [
+      "%ffabcdefghijkl",
+      14
+    ]
   }
 ]
