@@ -17,7 +17,6 @@ speedyspec-wp-token-map = { path = "../speedyspec-wp-token-map" }
 speedyspec-container = { path = "../speedyspec-container" }
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
 speedyspec-php-ext = { path = "../speedyspec-php-ext" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
 speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
 serde_json = "1"
