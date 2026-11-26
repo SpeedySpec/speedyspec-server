@@ -13,6 +13,12 @@ if [ -z "$manifest" ]; then
     echo "php-version.sh: speedyspec-php is not in the dependency graph" >&2
     exit 1
 fi
+# Two versions of speedyspec-php in the graph would mean two PHP pins; refuse rather than pick one.
+if [ "$(printf '%s\n' "$manifest" | wc -l)" -ne 1 ]; then
+    echo "php-version.sh: more than one speedyspec-php in the dependency graph:" >&2
+    printf '%s\n' "$manifest" >&2
+    exit 1
+fi
 php_version="$(tr -d '[:space:]' < "$(dirname "$manifest")/php-version")"
 if [ -z "$php_version" ]; then
     echo "php-version.sh: speedyspec-php's php-version is empty" >&2

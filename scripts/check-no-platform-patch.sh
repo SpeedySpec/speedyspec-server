@@ -11,7 +11,7 @@
 set -euo pipefail
 
 # Table headers and keys that could name a platform crate, as `HEAD:<file>:<line>`.
-lines="$(git grep -E '^[[:space:]]*(\[|"?speedyspec-)' HEAD -- Cargo.toml .cargo/config.toml || true)"
+lines="$(git grep -E '^[[:space:]]*(\[|["'"'"']?speedyspec-)' HEAD -- Cargo.toml .cargo/config.toml || true)"
 
 found="$(printf '%s\n' "$lines" | awk '
     $0 == "" { next }
@@ -26,7 +26,7 @@ found="$(printf '%s\n' "$lines" | awk '
         header = line
         sub(/\].*/, "", header)
         sub(/^\[+/, "", header)
-        gsub(/[[:space:]"]/, "", header)
+        gsub(/[[:space:]"\047]/, "", header)
         patch = (header ~ /^patch\./)
         # [patch.<registry>.speedyspec-x]: the table is the patch.
         if (patch && match(header, /\.speedyspec-[A-Za-z0-9_-]+$/)) {
@@ -38,7 +38,7 @@ found="$(printf '%s\n' "$lines" | awk '
     patch {
         key = line
         sub(/[[:space:]]*[=.].*/, "", key)
-        gsub(/"/, "", key)
+        gsub(/["\047]/, "", key)
         if (key ~ /^speedyspec-/) print file ": patches " key
     }
 ')"

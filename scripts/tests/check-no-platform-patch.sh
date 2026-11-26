@@ -67,6 +67,14 @@ git -C "$repo" commit -qam patch
 expect dotted 1 "Cargo.toml: patches speedyspec-hooks
 Cargo.toml: patches speedyspec-cache"
 
+# Single-quoted keys and tables are TOML literal strings, and patches too.
+repo="$(new_repo single-quoted)"
+printf '%s\n' '' "[patch.'crates-io'.'speedyspec-hooks']" 'path = "x"' '' '[patch.crates-io]' \
+    "'speedyspec-cache' = { path = \"y\" }" >>"$repo/Cargo.toml"
+git -C "$repo" commit -qam patch
+expect single-quoted 1 "Cargo.toml: patches speedyspec-hooks
+Cargo.toml: patches speedyspec-cache"
+
 # Appended to .cargo/config.toml but not committed (scripts/platform-local.sh in CI, or local work): only HEAD counts.
 repo="$(new_repo uncommitted)"
 printf '%s\n' '' '[patch.crates-io]' 'speedyspec-hooks = { path = "x" }' >>"$repo/.cargo/config.toml"

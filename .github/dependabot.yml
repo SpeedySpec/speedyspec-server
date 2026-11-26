@@ -8,3 +8,11 @@ updates:
     groups:
       speedyspec:
         patterns: ["speedyspec-*"]
+  # The fuzz workspaces have their own lock files.
+  - package-ecosystem: cargo
+    directories: ["/fuzz", "/fuzz-media"]
+    schedule:
+      interval: daily
+    groups:
+      speedyspec:
+        patterns: ["speedyspec-*"]

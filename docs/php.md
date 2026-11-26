@@ -38,8 +38,9 @@ bcmath ctype curl dom exif fileinfo filter gd iconv imagick intl mbstring mysqli
 pdo_mysql pdo_sqlite phar session simplexml sodium sqlite3 tokenizer xml xmlreader xmlwriter zip zlib
 ```
 
-with gd's JPEG, PNG, WebP, AVIF and FreeType support. `cargo test -p speedyspec-php --test extensions` checks that
-every one loads.
+with gd's JPEG, PNG, WebP, AVIF and FreeType support. The `extensions` test of `speedyspec-php`, in
+[speedyspec-platform](https://github.com/SpeedySpec/speedyspec-platform), checks that every one loads against the
+same pinned build.
 
 **ext-sodium is guaranteed.** WordPress needs libsodium, and loads the `sodium_compat` polyfill when ext-sodium is
 missing. The runtime never needs that polyfill, because it never runs without ext-sodium:
