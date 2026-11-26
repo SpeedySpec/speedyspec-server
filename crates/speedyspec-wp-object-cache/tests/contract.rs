@@ -91,6 +91,41 @@ fn current_forwards_to_the_selected_cache() {
 }
 
 #[test]
+fn current_forwards_reads_and_deletes_to_the_selected_cache() {
+    let current = CurrentObjectCache::new(ObjectCachePorts::rust(), None);
+    let cache: &dyn ObjectCache = &current;
+    let g = s("g");
+    let first = current.current();
+    first.set(&s("k"), s("v"), &g, 0).unwrap();
+    let second = current.create();
+    second.set(&s("k"), s("w"), &g, 0).unwrap();
+    current.select(second.clone());
+
+    // `read_with`, through `get_with`, reads the selected cache.
+    assert_eq!(
+        get_with(cache, &s("k"), &g, false, |v| v.cloned()),
+        Ok(Some(s("w")))
+    );
+
+    let keys = [s("k"), s("x")];
+    let many = cache.get_multiple(&keys, &g, false);
+    assert_eq!(
+        many,
+        Ok(vec![(k("k"), s("w")), (k("x"), Value::Bool(false))])
+    );
+    assert_eq!(many, second.get_multiple(&keys, &g, false));
+
+    // `delete` removes from the selected cache only.
+    assert_eq!(cache.delete(&s("k"), &g), Ok(true));
+    assert_eq!(second.get(&s("k"), &g, false), Ok(None));
+    assert_eq!(first.get(&s("k"), &g, false), Ok(Some(s("v"))));
+    assert_eq!(
+        get_with(cache, &s("k"), &g, false, |v| v.cloned()),
+        Ok(None)
+    );
+}
+
+#[test]
 fn get_with_on_the_real_cache() {
     let concrete = WpObjectCache::new(ObjectCachePorts::rust(), None);
     let cache: &dyn ObjectCache = &concrete;
