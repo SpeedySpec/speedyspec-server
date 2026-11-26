@@ -20,7 +20,7 @@ libc = "0.2"
 lru = "0.18"
 postcard = { version = "1", default-features = false, features = ["use-std"] }
 serde = { version = "1", features = ["derive"] }
-sha2 = "0.10"
+sha2 = "0.11"
 speedyspec-cache.workspace = true
 speedyspec-wp-media = { path = "../speedyspec-wp-media" }
 speedyspec-wp-media-contracts.workspace = true
@@ -31,7 +31,7 @@ speedyspec-wp-media-midi = { path = "../speedyspec-wp-media-midi" }
 seccompiler = "0.5"
 
 [dev-dependencies]
-criterion = { version = "0.5", default-features = false }
+criterion = { version = "0.8", default-features = false }
 speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
 speedyspec-wp-media-testkit = { path = "../speedyspec-wp-media-testkit" }
 tempfile = "3"

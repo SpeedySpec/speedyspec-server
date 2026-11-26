@@ -58,7 +58,10 @@ fn phpunit() -> PathBuf {
             path.display()
         )
     });
-    let digest = format!("{:x}", Sha256::digest(bytes));
+    let digest = Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
     assert_eq!(
         digest,
         sha256,

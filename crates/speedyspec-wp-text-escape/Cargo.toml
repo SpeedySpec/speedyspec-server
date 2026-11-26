@@ -26,7 +26,7 @@ speedyspec-wp-hooks-contracts.workspace = true
 
 [dev-dependencies]
 proptest = "1"
-criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 libc = "0.2"
 speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-text-memory = { path = "../speedyspec-wp-text-memory" }

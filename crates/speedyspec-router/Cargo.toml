@@ -16,7 +16,7 @@ speedyspec-http.workspace = true
 speedyspec-routing.workspace = true
 regex = "1"
 fancy-regex = "0.20.2"
-sha2 = "0.10"
+sha2 = "0.11"
 
 [dev-dependencies]
 criterion = "0.8.2"

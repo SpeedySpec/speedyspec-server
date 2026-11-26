@@ -80,7 +80,10 @@ pub fn wordpress_release() -> Result<PathBuf, String> {
         .limit(LIMIT)
         .read_to_vec()
         .map_err(|e| format!("{url}: {e}"))?;
-    let digest = format!("{:x}", Sha256::digest(&tarball));
+    let digest = Sha256::digest(&tarball)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
     if digest != sha256 {
         return Err(format!("{url}: SHA-256 {digest}, pinned {sha256}"));
     }

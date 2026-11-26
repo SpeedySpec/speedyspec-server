@@ -191,3 +191,21 @@ fn least_recently_used_table_is_dropped() {
     assert!(Rc::ptr_eq(&a, &get(&routers[0])));
     assert!(!Rc::ptr_eq(&b, &get(&routers[1])));
 }
+
+#[test]
+fn fingerprint_is_sha256_of_route_bytes() {
+    let mut r: Router<&str> = Router::new();
+    r.get("/p/{x}", "h");
+    r.get("/static", "s");
+    let data = r.data().unwrap();
+    let hex: String = fingerprint_of(&data)
+        .0
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    // `shasum -a 256` over `data.to_bytes()`; a change to the route data's byte form changes this pin too.
+    assert_eq!(
+        hex,
+        "dfce5b88602e8edb6bdcc1617407bc9129b8412b6b3ebf34b0a7a38899713828"
+    );
+}

@@ -28,7 +28,7 @@ speedyspec-wp-hooks-contracts.workspace = true
 [dev-dependencies]
 libc = "0.2"
 proptest = "1"
-sha2 = "0.10"
+sha2 = "0.11"
 speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-kses-security = { path = "../speedyspec-wp-kses-security" }
 speedyspec-wp-kses-testkit = { path = "../speedyspec-wp-kses-testkit" }

@@ -43,7 +43,16 @@ fn save(input: &[u8]) {
         env!("CARGO_MANIFEST_DIR"),
         "/../speedyspec-wp-kses-testkit/corpus/fuzz-found"
     );
-    let _ = std::fs::write(format!("{dir}/{:x}.bin", Sha256::digest(input)), input);
+    let _ = std::fs::write(
+        format!(
+            "{dir}/{}.bin",
+            Sha256::digest(input)
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>()
+        ),
+        input,
+    );
 }
 
 #[test]

@@ -19,7 +19,10 @@ fn manifest_matches_files() {
         let bytes = std::fs::read(corpus().join(file))
             .unwrap_or_else(|_| panic!("{file} is listed but missing"));
         assert_eq!(
-            format!("{:x}", Sha256::digest(&bytes)),
+            Sha256::digest(&bytes)
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>(),
             e["sha256"].as_str().unwrap(),
             "{file}"
         );
