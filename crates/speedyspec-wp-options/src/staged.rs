@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use speedyspec_data::{ChangeKind, DbError, EngineHandle, Identified, PendingChange, UnitOfWork};
 use speedyspec_data_uow::DefaultUnitOfWork;
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 use crate::api::OptionsApi;
 use crate::write::{PlannedWrite, Staging, write_planned};

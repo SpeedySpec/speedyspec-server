@@ -146,7 +146,7 @@ fn deep_invalid_closers_on_a_small_stack() {
 
 #[test]
 fn required_attribute_drops_the_tag() {
-    use speedyspec_wp_hooks::{HookValue, Key};
+    use speedyspec_wp_hooks_contracts::{HookValue, Key};
     use speedyspec_wp_kses::allowed_from_value;
     use std::rc::Rc;
     let allowed = HookValue::Array(vec![(
@@ -198,7 +198,7 @@ fn comment_that_never_settles_is_dropped() {
 /// with its value callbacks), not as one rebuilt from [`AllowedHtml`].
 #[test]
 fn pre_kses_sees_the_callers_own_allowlist() {
-    use speedyspec_wp_hooks::{Callback, HookName, HookValue, Key};
+    use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
     use speedyspec_wp_kses_contracts::Payload;
     let (hooks, api) = common::setup();
     let source = HookValue::Array(vec![(
@@ -234,7 +234,7 @@ fn pre_kses_sees_the_callers_own_allowlist() {
 /// `values` rule that is not a list, or a `value_callback` nothing can call, rejects the attribute.
 #[test]
 fn malformed_rules_reject_the_attribute() {
-    use speedyspec_wp_hooks::{HookValue, Key};
+    use speedyspec_wp_hooks_contracts::{HookValue, Key};
     let rule = |name: &str, value: HookValue| {
         HookValue::Array(vec![(
             Key::Str("a".into()),
@@ -266,7 +266,7 @@ fn malformed_rules_reject_the_attribute() {
 /// none (PHP stops with a TypeError).
 #[test]
 fn uri_attributes_filter_returning_no_array_keeps_the_defaults() {
-    use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+    use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
     let (hooks, api) = common::setup();
     hooks
         .add_filter(

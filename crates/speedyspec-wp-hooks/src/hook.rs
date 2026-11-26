@@ -20,7 +20,8 @@ use std::rc::Rc;
 
 use indexmap::IndexMap;
 
-use crate::{ArrayKey, Callback, HookError, HookValue, PriorityOrder};
+use crate::PriorityOrder;
+use speedyspec_wp_hooks_contracts::{ArrayKey, Callback, HasFilterResult, HookError, HookValue};
 
 /// Which partition of a store a callback belongs to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -111,14 +112,6 @@ pub struct HookState {
     current_priority: BTreeMap<i64, Option<ArrayKey>>,
     nesting_level: i64,
     doing_action: bool,
-}
-
-/// What `has_filter()` answers: `false`, `true`, or the priority a callback is registered at.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum HasFilterResult {
-    No,
-    Any,
-    At(ArrayKey),
 }
 
 /// WordPress's iterator rules when the running hook changes (`resort_active_iterations()`).

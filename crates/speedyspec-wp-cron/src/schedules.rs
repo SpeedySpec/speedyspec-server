@@ -1,7 +1,7 @@
 //! `wp_get_schedules()`: data, not a Strategy (every recurrence is computed the same way from its interval).
 
 use speedyspec_wp_cron_contracts::CronError;
-use speedyspec_wp_hooks::{HookValue, Key};
+use speedyspec_wp_hooks_contracts::{HookValue, Key};
 
 use crate::CronApi;
 

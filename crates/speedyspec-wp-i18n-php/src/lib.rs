@@ -38,7 +38,7 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
-use speedyspec_wp_hooks::{HookApi, HookStore};
+use speedyspec_wp_hooks::{HookStore, WpHookApi};
 use speedyspec_wp_hooks_php::HOOK_STORE;
 use speedyspec_wp_i18n::I18nApi;
 
@@ -56,7 +56,7 @@ pub struct I18nArea {
 impl I18nArea {
     /// The area over `hooks` (whose store is bound in `container`, as `WpHooksArea` binds it), with a translation
     /// file cache that lives as long as the worker.
-    pub fn new(container: Rc<Container>, hooks: Rc<HookApi>) -> I18nArea {
+    pub fn new(container: Rc<Container>, hooks: Rc<WpHookApi>) -> I18nArea {
         let shared = Rc::new(state::Shared::new(hooks));
         state::install(shared.clone());
         I18nArea { shared, container }

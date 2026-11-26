@@ -3,9 +3,10 @@ use std::time::Duration;
 
 use speedyspec_cache::{CacheError, CachingStore};
 use speedyspec_cache_memory::MemoryCache;
-use speedyspec_wp_hooks::{HookApi, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
-use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache, ObjectCachePorts};
+use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts, WpObjectCache};
 use speedyspec_wp_options::Option as OptionEntity;
 use speedyspec_wp_options::{
     Autoload, ExternalObjectCache, ObjectCachePersistence, OptionName, OptionRepository,
@@ -62,7 +63,7 @@ fn s(v: &str) -> HookValue {
 
 #[test]
 fn get_option_survives_failing_second_level() {
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
@@ -83,9 +84,9 @@ fn get_option_survives_failing_second_level() {
 
 #[test]
 fn external_cache_reports_persistence() {
-    let bare = Rc::new(ObjectCache::new(ObjectCachePorts::rust(), None));
+    let bare = Rc::new(WpObjectCache::new(ObjectCachePorts::rust(), None));
     assert!(!ObjectCachePersistence(bare).using());
-    let persistent = Rc::new(ObjectCache::new(
+    let persistent = Rc::new(WpObjectCache::new(
         ObjectCachePorts::rust(),
         Some(Rc::new(MemoryCache::new())),
     ));

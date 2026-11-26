@@ -1,7 +1,8 @@
 //! Conversions at the PHP boundary.
 
 use speedyspec_php_ext::{Key, Value};
-use speedyspec_wp_db::{ColLength, Field, LengthKind, OutputShape, WpRow};
+use speedyspec_wp_db::OutputShape;
+use speedyspec_wp_db_contracts::{ColLength, Field, LengthKind, WpRow};
 
 pub(crate) fn bytes_value(b: Vec<u8>) -> Value {
     match String::from_utf8(b) {

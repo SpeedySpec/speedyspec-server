@@ -3,7 +3,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_rewrite::memory::{
     FixedUrls, FlagWpLoaded, MemoryPageUris, MemoryPostTypes, MemoryQueryVars,
@@ -19,7 +20,7 @@ pub type Log = Rc<RefCell<Vec<(String, Vec<HookValue>)>>>;
 pub struct Fixture {
     pub service: RewriteService,
     pub options: Rc<MemoryRewriteOptions>,
-    pub hooks: Rc<HookApi>,
+    pub hooks: Rc<WpHookApi>,
     pub loaded: Rc<FlagWpLoaded>,
     pub query_vars: Rc<MemoryQueryVars>,
     pub source: Rc<MemoryRewriteStateSource>,
@@ -38,7 +39,7 @@ pub fn fixture(permalink_structure: &str) -> Fixture {
 }
 
 pub fn fixture_with(permalink_structure: &str, home: &str, site: &str) -> Fixture {
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

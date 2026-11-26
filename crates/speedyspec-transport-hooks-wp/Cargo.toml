@@ -12,6 +12,7 @@ chrono = { version = "0.4", default-features = false, features = ["std"] }
 speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
 speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }

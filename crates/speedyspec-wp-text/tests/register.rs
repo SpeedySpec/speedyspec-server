@@ -2,7 +2,8 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{ArrayKey, CallbackId, HasFilterResult, HookApi, HookName, HookValue};
+use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_hooks_contracts::{ArrayKey, CallbackId, HasFilterResult, HookName, HookValue};
 use speedyspec_wp_text::{FilterContext, register_text_filters};
 
 #[path = "common/api.rs"]
@@ -158,7 +159,7 @@ const EXPECTED: &[(&str, &str, i64, i64, bool)] = &[
 ];
 
 /// `has_filter( $hook, $function )`: the priority, or `None` for false.
-fn registered_priority(hooks: &HookApi, hook: &str, function: &str) -> Option<i64> {
+fn registered_priority(hooks: &WpHookApi, hook: &str, function: &str) -> Option<i64> {
     match hooks.has_filter(&HookName::from(hook), Some(&CallbackId(Some(function.into()))), None).unwrap() {
         HasFilterResult::At(ArrayKey::Int(p)) => Some(p),
         HasFilterResult::No => None,
@@ -225,7 +226,7 @@ fn registers_plan_4_rows() {
 
 #[test]
 fn callback_errors_keep_their_payload() {
-    use speedyspec_wp_hooks::{Callback, HookError};
+    use speedyspec_wp_hooks_contracts::{Callback, HookError};
     let h = api::harness();
     register_text_filters(&h.api, &h.hooks, FilterContext { admin: false }).unwrap();
     let boom = Callback::rust("boom", |_: &[HookValue]| -> Result<HookValue, HookError> {

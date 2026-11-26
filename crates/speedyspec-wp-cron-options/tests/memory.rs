@@ -4,7 +4,8 @@ use std::rc::Rc;
 
 use speedyspec_wp_cron_contracts::{CronStore, SaveOutcome, Version};
 use speedyspec_wp_cron_options::OptionCronStore;
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations, Key};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
 use speedyspec_wp_options::{
@@ -14,12 +15,12 @@ use speedyspec_wp_options_memory::MemoryOptionRepository;
 
 struct Rig {
     store: OptionCronStore,
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     repo: Rc<MemoryOptionRepository>,
 }
 
 fn rig_over(repo: Rc<MemoryOptionRepository>) -> Rig {
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

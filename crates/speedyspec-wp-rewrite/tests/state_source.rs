@@ -4,7 +4,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use speedyspec_cqrs::CommandHandler;
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_rewrite::{AddRewriteTag, RewriteError, RewriteState, RewriteStateSource};
 use support::fixture;
 

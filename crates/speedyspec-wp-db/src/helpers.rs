@@ -3,9 +3,10 @@
 use speedyspec_hooks::Key;
 
 use crate::{
-    CharsetRules, Field, FieldFormats, OutputShape, Prepare, QueryOutcome, Shaped, WpDb, WpDbError,
-    WpRow, WpValue, delete_sql, insert_sql, update_sql, var,
+    CharsetRules, FieldFormats, OutputShape, Prepare, Shaped, NativeWpdb, delete_sql, insert_sql,
+    update_sql, var,
 };
+use speedyspec_wp_db_contracts::{Field, QueryOutcome, WpDbError, WpRow, WpValue};
 
 /// mysqli's numeric code for a field type, from the name `ColumnInfo::sql_type` carries.
 pub(crate) fn type_code(name: &str) -> i64 {
@@ -52,7 +53,7 @@ fn int_value(n: u64) -> WpValue {
     WpValue::Int(i64::try_from(n).unwrap_or(i64::MAX))
 }
 
-impl WpDb {
+impl NativeWpdb {
     /// `wpdb::prepare`; each notice goes to the host's `_doing_it_wrong`.
     pub fn prepare(&self, query: Option<&[u8]>, args: &[WpValue]) -> Option<Vec<u8>> {
         let allow = self.settings.borrow().allow_unsafe_unquoted_parameters;
@@ -410,7 +411,7 @@ impl WpDb {
     }
 }
 
-impl WpDb {
+impl NativeWpdb {
     /// The current `last_result`, read.
     pub fn with_last_result<T>(&self, f: impl FnOnce(&[WpRow]) -> T) -> T {
         let rows = self.rows();

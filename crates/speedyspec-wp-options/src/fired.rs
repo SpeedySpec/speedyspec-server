@@ -1,7 +1,7 @@
 //! The hooks a `get_option()` would fire now, listed without firing any (for callers deciding whether a read can
 //! stay in Rust).
 
-use speedyspec_wp_hooks::{HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{HookName, HookValue};
 
 use crate::OptionName;
 use crate::api::{OptionsApi, isset};

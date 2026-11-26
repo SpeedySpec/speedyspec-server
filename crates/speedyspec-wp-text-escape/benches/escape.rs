@@ -8,7 +8,7 @@ use std::time::Duration;
 use criterion::measurement::{Measurement, ValueFormatter, WallTime};
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use speedyspec_hooks::Value;
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_text_corpus::{cases, from_value, page, short_inputs};
 use speedyspec_wp_text_escape::EscapeApi;
@@ -58,7 +58,7 @@ impl Measurement for CpuTime {
 
 fn escape(c: &mut Criterion<CpuTime>) {
     let api = EscapeApi::new(
-        Rc::new(HookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations))),
+        Rc::new(WpHookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations))),
         Rc::new(FixedSiteSettings::default()),
         Rc::new(RecordingDiagnostics::default()),
     );

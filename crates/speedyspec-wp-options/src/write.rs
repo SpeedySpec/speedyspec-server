@@ -4,7 +4,7 @@
 //! write and says what to write ([`PlannedWrite`]); [`OptionsApi::finish`] runs the cache updates and actions after
 //! it. The unit-of-work path (Task 8) runs the plan, commits, then finishes.
 
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 use crate::Option as OptionEntity;
 use crate::api::{OptionsApi, isset, set_key, unset_key};

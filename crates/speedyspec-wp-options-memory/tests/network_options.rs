@@ -2,7 +2,8 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use speedyspec_data::DbError;
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations, Key};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
 use speedyspec_wp_options::Option as OptionEntity;
@@ -113,7 +114,7 @@ struct Rig {
     api: NetworkOptionsApi,
     options: Rc<OptionsApi>,
     current: Rc<CurrentObjectCache>,
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     repo: Rc<MemoryOptionRepository>,
     sitemeta: Rc<Counting>,
     protect: Rc<Protect>,
@@ -121,7 +122,7 @@ struct Rig {
 }
 
 fn rig(multisite: bool) -> Rig {
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

@@ -8,7 +8,7 @@ use std::rc::Rc;
 use md5::Digest;
 use speedyspec_data::{DbValue, Statement};
 use speedyspec_data_query::{Partial, Query};
-use speedyspec_wp_db::{QueryOutcome, WpDb, WpDbError, WpRow, WpValue};
+use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue, Wpdb};
 use speedyspec_wp_options::Option as OptionEntity;
 use speedyspec_wp_options::{
     Autoload, OptionName, OptionRepository, OptionsError, SerializedValue,
@@ -17,7 +17,7 @@ use speedyspec_wp_options::{
 use crate::mapper::value;
 
 pub struct SqlOptionRepository {
-    wpdb: Rc<WpDb>,
+    wpdb: Rc<dyn Wpdb>,
     engine: String,
 }
 
@@ -44,7 +44,7 @@ fn names(names: &[String]) -> Vec<DbValue> {
 }
 
 impl SqlOptionRepository {
-    pub fn new(wpdb: Rc<WpDb>, engine: String) -> SqlOptionRepository {
+    pub fn new(wpdb: Rc<dyn Wpdb>, engine: String) -> SqlOptionRepository {
         SqlOptionRepository { wpdb, engine }
     }
 
@@ -64,10 +64,10 @@ impl SqlOptionRepository {
     fn send_with(
         &self,
         quiet: bool,
-        query: impl FnOnce(&WpDb) -> Result<QueryOutcome, WpDbError>,
+        query: impl FnOnce(&dyn Wpdb) -> Result<QueryOutcome, WpDbError>,
     ) -> Result<Outcome, OptionsError> {
         let previous = quiet.then(|| self.wpdb.suppress_errors(true));
-        let result = query(&self.wpdb);
+        let result = query(&*self.wpdb);
         if let Some(previous) = previous {
             self.wpdb.suppress_errors(previous);
         }

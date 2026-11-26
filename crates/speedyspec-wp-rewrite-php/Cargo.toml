@@ -19,6 +19,7 @@ speedyspec-router-php = { path = "../speedyspec-router-php" }
 speedyspec-routing = { path = "../speedyspec-routing" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-rewrite = { path = "../speedyspec-wp-rewrite" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 sha2 = "0.10"

@@ -6,7 +6,7 @@ use speedyspec_wp_cron_contracts::{
     ArgsKeyer, Clock, CronError, CronResult, CronStep, DoingCron, ErrorReporter, EventKey,
     NetworkSites, PhpObjects, SiteRef, SiteSwitcher, Translator,
 };
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 fn call(function: &str, args: &[HookValue]) -> Option<HookValue> {
     speedyspec_php::call(&HookValue::Str(function.into()), args).ok()

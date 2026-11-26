@@ -4,9 +4,8 @@ use std::rc::Rc;
 
 use speedyspec_php::{CallFailure, Callable, PhpError};
 use speedyspec_php_ext::{Key, Value};
-use speedyspec_wp_hooks::{
-    Callback, CallbackId, CallbackIdentity, CallbackShape, HookCallback, HookError,
-};
+use speedyspec_wp_hooks::{CallbackIdentity, CallbackShape};
+use speedyspec_wp_hooks_contracts::{Callback, CallbackId, HookCallback, HookError};
 
 /// Marks a [`HookError`] raised because PHP is unwinding (a fatal error or `exit()`): nothing is thrown.
 pub struct Unwinding;

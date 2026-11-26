@@ -10,7 +10,8 @@ use speedyspec_wp_crypto::{
 };
 use speedyspec_wp_crypto_contracts::{CryptoLibrary, FileHasher, TrustedKeysFilter};
 use speedyspec_wp_crypto_sodium::Sodium;
-use speedyspec_wp_hooks::{HookApi, HookValue};
+use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_text_escape::EscapeApi;
 
 use crate::adapters::{
@@ -27,7 +28,7 @@ pub(crate) struct Natives {
 }
 
 impl Natives {
-    pub(crate) fn new(hooks: Rc<HookApi>, sodium: Sodium) -> Natives {
+    pub(crate) fn new(hooks: Rc<WpHookApi>, sodium: Sodium) -> Natives {
         Natives {
             sodium,
             keys: HookTrustedKeysFilter::new(hooks.clone()),

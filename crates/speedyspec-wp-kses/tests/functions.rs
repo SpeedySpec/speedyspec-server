@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use serde_json::Value as Json;
-use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_kses::{KsesApi, allow_note_mention_span};
 use speedyspec_wp_kses_testkit::{PhpOracle, bytes, from_bytes};
 
@@ -151,7 +151,7 @@ fn version_is_kses_0_2_2() {
 /// bridge can rethrow it unchanged.
 #[test]
 fn a_hook_failure_keeps_its_payload() {
-    use speedyspec_wp_hooks::{Callback, HookError, HookName, HookValue};
+    use speedyspec_wp_hooks_contracts::{Callback, HookError, HookName, HookValue};
     let (hooks, api) = common::setup();
     hooks
         .add_filter(

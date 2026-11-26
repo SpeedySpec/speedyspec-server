@@ -5,9 +5,10 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations, Key};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
-use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache, ObjectCachePorts};
+use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts, WpObjectCache};
 use speedyspec_wp_options::Option as OptionEntity;
 use speedyspec_wp_options::{
     Autoload, Deprecations, InstallingFlag, OptionName, OptionRepository, OptionsApi, OptionsDeps,
@@ -49,8 +50,8 @@ impl Deprecations for RecordedDeprecations {
 
 pub struct Fixture {
     pub api: OptionsApi,
-    pub hooks: Rc<HookApi>,
-    pub cache: Rc<ObjectCache>,
+    pub hooks: Rc<WpHookApi>,
+    pub cache: Rc<WpObjectCache>,
     pub current: Rc<CurrentObjectCache>,
     pub repo: Rc<MemoryOptionRepository>,
     pub installing: Rc<InstallingFlag>,
@@ -59,7 +60,7 @@ pub struct Fixture {
 }
 
 pub fn fixture() -> Fixture {
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

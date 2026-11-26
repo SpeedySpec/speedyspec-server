@@ -2,7 +2,7 @@ mod rig;
 
 use rig::*;
 use speedyspec_native_stage::{NativeResponse, StageOutcome};
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 fn headers(pairs: &[(&str, &str)]) -> Vec<(String, String)> {
     pairs

@@ -9,7 +9,7 @@ use speedyspec_container_php::ContainerArea;
 use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, NativeArea, Php, PhpError};
 use speedyspec_php_ext::{Value, boundary_crossings, twins_area};
-use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::{WpHooksArea, hooks_scenario_runner};
 

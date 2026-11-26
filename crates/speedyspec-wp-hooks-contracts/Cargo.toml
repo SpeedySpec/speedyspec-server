@@ -1,0 +1,15 @@
+[package]
+name = "speedyspec-wp-hooks-contracts"
+version = "0.1.0"
+description = "The Hook API port (plugin.php, as other seams call it) and the values passed through it."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.speedyspec]
+seam = "hooks"
+role = "contracts"
+
+[dependencies]
+speedyspec-hooks = { path = "../speedyspec-hooks", version = "0.1.4" }

@@ -4,7 +4,8 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use speedyspec_hooks::Value as HookValue;
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
+use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName};
 use speedyspec_wp_text_contracts::{Diagnostics, SiteSettings, TextError};
 
 use crate::charset::Charset;
@@ -44,7 +45,7 @@ struct Names {
 /// Functions with none of those (`wp_specialchars_decode`, `htmlentities2`, `backslashit`, the slashing functions)
 /// have no method; call their cores directly.
 pub struct EscapeApi {
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     settings: Rc<dyn SiteSettings>,
     diagnostics: Rc<dyn Diagnostics>,
     /// `wp_check_invalid_utf8()`'s `static $is_utf8`: read once, never refreshed.
@@ -69,7 +70,7 @@ impl EscapeApi {
     ///     Where deprecations are reported.
     /// @return
     ///     The facade.
-    pub fn new(hooks: Rc<HookApi>, settings: Rc<dyn SiteSettings>, diagnostics: Rc<dyn Diagnostics>) -> EscapeApi {
+    pub fn new(hooks: Rc<WpHookApi>, settings: Rc<dyn SiteSettings>, diagnostics: Rc<dyn Diagnostics>) -> EscapeApi {
         EscapeApi {
             hooks,
             settings,

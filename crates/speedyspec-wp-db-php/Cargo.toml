@@ -18,6 +18,7 @@ speedyspec-php = { path = "../speedyspec-php" }
 speedyspec-php-ext = { path = "../speedyspec-php-ext" }
 speedyspec-wp-db = { path = "../speedyspec-wp-db" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-db-contracts = { path = "../speedyspec-wp-db-contracts" }
 
 [dev-dependencies]
 speedyspec-container-php = { path = "../speedyspec-container-php" }

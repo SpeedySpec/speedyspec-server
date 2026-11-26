@@ -4,7 +4,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use speedyspec_hooks::{Key, Value};
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
+use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName};
 use speedyspec_wp_kses_contracts::{
     AllowedHtml, AttributeEscaper, Context, HtmlApiSanitizer, KsesError, OperatingMode, Payload,
     Protocols, UnfilteredHtmlPolicy, UriAttributes, ValueCallback,
@@ -23,7 +24,7 @@ type AllowedCache = RefCell<Vec<(Vec<u8>, u64, Rc<AllowedHtml>, bool)>>;
 
 /// What kses needs from outside: the Hook API and the ports to code not yet ported.
 pub struct KsesDeps {
-    pub hooks: Rc<HookApi>,
+    pub hooks: Rc<WpHookApi>,
     pub escaper: Rc<dyn AttributeEscaper>,
     pub policy: Rc<dyn UnfilteredHtmlPolicy>,
     pub globals: Rc<dyn AllowedGlobals>,

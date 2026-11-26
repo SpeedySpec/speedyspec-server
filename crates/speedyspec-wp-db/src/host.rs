@@ -3,7 +3,8 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use crate::{DoingItWrong, WpValue};
+use crate::DoingItWrong;
+use speedyspec_wp_db_contracts::WpValue;
 
 /// `_doing_it_wrong`, `_deprecated_function`, `__()`, `defined`/`constant`, `is_multisite()`, `error_log()`, output,
 /// `wp_die()`, `dead_db()`, `$EZSQL_ERROR[]` and `wp_debug_backtrace_summary('wpdb')`.

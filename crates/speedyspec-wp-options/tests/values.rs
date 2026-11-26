@@ -1,4 +1,4 @@
-use speedyspec_wp_hooks::{HookValue, Key};
+use speedyspec_wp_hooks_contracts::{HookValue, Key};
 use speedyspec_wp_options::{
     Autoload, AutoloadRequest, OptionName, SerializedValue, php_empty, php_string,
 };

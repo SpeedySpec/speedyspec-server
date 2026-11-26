@@ -6,12 +6,14 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_cqrs::{CommandBus, QueryBus};
 use speedyspec_wp_hooks::{
-    AddAction, AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray, ArrayKey,
-    Callback, CallbackId, CallbackIdentity, CallbackShape, Count, CurrentAction, CurrentFilter,
-    CurrentPriority, DeprecatedHooks, DidAction, DidFilter, DoAction, DoActionDeprecated,
-    DoActionRefArray, DoingAction, DoingFilter, HasAction, HasFilter, HasFilterResult, HookApi,
-    HookError, HookKey, HookName, HookStore, HookValue, RemoveAction, RemoveAllActions,
-    RemoveAllFilters, RemoveFilter, register_hook_handlers,
+    AddAction, AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray,
+    CallbackIdentity, CallbackShape, CurrentAction, CurrentFilter, CurrentPriority,
+    DeprecatedHooks, DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray,
+    DoingAction, DoingFilter, HasAction, HasFilter, HookStore, RemoveAction, RemoveAllActions,
+    RemoveAllFilters, RemoveFilter, WpHookApi, register_hook_handlers,
+};
+use speedyspec_wp_hooks_contracts::{
+    ArrayKey, Callback, CallbackId, Count, HasFilterResult, HookError, HookKey, HookName, HookValue,
 };
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 
@@ -21,7 +23,7 @@ struct World {
     commands: CommandBus,
     queries: QueryBus,
     store: Rc<MemoryHookStore>,
-    api: Rc<HookApi>,
+    api: Rc<WpHookApi>,
     log: Log,
     deprecated: Log,
 }
@@ -45,7 +47,7 @@ fn world() -> World {
     let container = Rc::new(Container::new());
     let store = Rc::new(MemoryHookStore::new());
     let deprecated: Log = Rc::default();
-    let api = Rc::new(HookApi::new(
+    let api = Rc::new(WpHookApi::new(
         store.clone(),
         Rc::new(Notes(deprecated.clone())),
     ));
@@ -106,7 +108,7 @@ impl World {
             .unwrap()
     }
 
-    fn api(&self) -> Rc<HookApi> {
+    fn api(&self) -> Rc<WpHookApi> {
         self.api.clone()
     }
 }

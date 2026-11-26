@@ -6,7 +6,7 @@ use speedyspec_container::Container;
 use speedyspec_cqrs::{
     Command, CommandHandler, Query, QueryHandler, bind_command_handler, bind_query_handler,
 };
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 use crate::{
     AutoloadRequest, OptionsApi, OptionsError, filter_default_autoload_value_via_option_size,
@@ -64,7 +64,7 @@ message!(query DetermineOptionAutoloadValue { name: String, value: HookValue, se
         .map(|decided| HookValue::Str(decided.as_str().to_string())));
 message!(query FilterDefaultAutoloadValueViaOptionSize { autoload: HookValue, name: String, value: HookValue,
     serialized: HookValue } -> R<HookValue>,
-    |a, m| filter_default_autoload_value_via_option_size(&a.d.hooks, m.autoload, &m.name, &m.serialized));
+    |a, m| filter_default_autoload_value_via_option_size(&*a.d.hooks, m.autoload, &m.name, &m.serialized));
 message!(query AutoloadValuesToAutoload {} -> R<HookValue>, |a, m| a.d.autoload.values_to_autoload());
 message!(command AddOption { name: String, value: HookValue, deprecated: HookValue, autoload: HookValue } -> R<bool>,
     |a, m| a.add_option(&m.name, m.value, m.deprecated, m.autoload));

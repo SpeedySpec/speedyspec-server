@@ -2,6 +2,7 @@
 # the workspace sets `publish = false`; scripts/release-crates.sh checks both.
 speedyspec-hooks
 speedyspec-hooks-memory
+speedyspec-wp-hooks-contracts
 speedyspec-container
 speedyspec-cqrs
 speedyspec-wp-hooks

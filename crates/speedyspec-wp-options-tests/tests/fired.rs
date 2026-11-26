@@ -1,6 +1,6 @@
 mod support;
 
-use speedyspec_wp_hooks::{HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{HookName, HookValue};
 use speedyspec_wp_options::{Autoload, OptionName, Options};
 use support::*;
 

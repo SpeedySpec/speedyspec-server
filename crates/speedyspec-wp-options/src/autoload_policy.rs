@@ -2,7 +2,7 @@
 
 use std::rc::{Rc, Weak};
 
-use speedyspec_wp_hooks::{Callback, Count, HookApi, HookName, HookValue, Key};
+use speedyspec_wp_hooks_contracts::{Callback, Count, HookApi, HookName, HookValue, Key};
 
 use crate::{
     Autoload, AutoloadRequest, DEFAULT_AUTOLOAD_VALUES, OptionsError, php_empty, php_string,
@@ -25,17 +25,17 @@ pub trait AutoloadPolicy {
 
 /// WordPress's policy, with its two filters.
 pub struct WordPressAutoloadPolicy {
-    hooks: Rc<HookApi>,
+    hooks: Rc<dyn HookApi>,
 }
 
 impl WordPressAutoloadPolicy {
-    pub fn new(hooks: Rc<HookApi>) -> WordPressAutoloadPolicy {
+    pub fn new(hooks: Rc<dyn HookApi>) -> WordPressAutoloadPolicy {
         WordPressAutoloadPolicy { hooks }
     }
 }
 
 fn filter(
-    hooks: &HookApi,
+    hooks: &dyn HookApi,
     name: &str,
     value: HookValue,
     args: Vec<HookValue>,
@@ -63,7 +63,7 @@ impl AutoloadPolicy for WordPressAutoloadPolicy {
             _ => {}
         }
         let answer = filter(
-            &self.hooks,
+            &*self.hooks,
             "wp_default_autoload_value",
             HookValue::Null,
             vec![
@@ -88,7 +88,7 @@ impl AutoloadPolicy for WordPressAutoloadPolicy {
                 .collect(),
         );
         let filtered = filter(
-            &self.hooks,
+            &*self.hooks,
             "wp_autoload_values_to_autoload",
             defaults,
             Vec::new(),
@@ -192,7 +192,7 @@ fn php_int(value: &HookValue) -> i64 {
 /// `wp_filter_default_autoload_value_via_option_size()`: a value larger than `wp_max_autoloaded_option_size`
 /// (150000 bytes by default) is not autoloaded by default.
 pub fn filter_default_autoload_value_via_option_size(
-    hooks: &HookApi,
+    hooks: &dyn HookApi,
     autoload: HookValue,
     name: &str,
     serialized: &HookValue,
@@ -217,8 +217,8 @@ pub fn filter_default_autoload_value_via_option_size(
 
 /// The filter `default-filters.php` adds, for hosts with no PHP: the same id, so a PHP host's own `add_filter`
 /// replaces it. The callback holds the Hook API weakly: the store that holds the callback must not keep the API.
-pub fn register_default_filters(hooks: &Rc<HookApi>) -> Result<(), OptionsError> {
-    let api: Weak<HookApi> = Rc::downgrade(hooks);
+pub fn register_default_filters(hooks: &Rc<dyn HookApi>) -> Result<(), OptionsError> {
+    let api: Weak<dyn HookApi> = Rc::downgrade(hooks);
     let id = "wp_filter_default_autoload_value_via_option_size";
     let callback = Callback::rust(id, move |args: &[HookValue]| {
         let autoload = args.first().cloned().unwrap_or(HookValue::Null);
@@ -228,14 +228,14 @@ pub fn register_default_filters(hooks: &Rc<HookApi>) -> Result<(), OptionsError>
         let name = args.get(1).and_then(php_string).unwrap_or_default();
         let serialized = args.get(3).cloned().unwrap_or(HookValue::Null);
         filter_default_autoload_value_via_option_size(
-            &api,
+            &*api,
             autoload,
             &String::from_utf8_lossy(&name),
             &serialized,
         )
         .map_err(|e| match e {
             OptionsError::Hook(h) => h,
-            other => speedyspec_wp_hooks::HookError::message(other.to_string()),
+            other => speedyspec_wp_hooks_contracts::HookError::message(other.to_string()),
         })
     });
     hooks.add_filter(

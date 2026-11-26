@@ -1,5 +1,5 @@
-//! The option repository over `wp_options`, through the `wpdb` port: every statement goes through
-//! `WpDb::query_statement`, so the `query` filter fires and `$wpdb->num_queries` counts it, as WordPress's own calls
+//! The option repository over `wp_options`, through the `Wpdb` port: every statement goes through
+//! `Wpdb::query_statement`, so the `query` filter fires and `$wpdb->num_queries` counts it, as WordPress's own calls
 //! do.
 
 mod expired;

@@ -3,7 +3,7 @@
 mod common;
 
 use common::text;
-use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_text::links::split_str_by_whitespace;
 use speedyspec_wp_text_corpus::{Php, assert_corpus, assert_corpus_reporting, diagnostics};
 

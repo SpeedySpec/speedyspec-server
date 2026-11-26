@@ -181,7 +181,7 @@ fn translated_wptexturize() {
 
 #[test]
 fn wptexturize_with_no_texturize_shortcodes_filter() {
-    use speedyspec_wp_hooks::{Callback, HookName, HookValue, Key};
+    use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
     let h = api::harness();
     h.hooks
         .add_filter(
@@ -203,7 +203,7 @@ fn wptexturize_with_no_texturize_shortcodes_filter() {
 
 #[test]
 fn capital_p_dangit_inside_a_title_filter() {
-    use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+    use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
     let h = api::harness();
     for hook in ["the_title", "wp_title"] {
         let api = h.api.clone();

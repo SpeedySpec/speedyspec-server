@@ -3,7 +3,7 @@
 use md5::{Digest, Md5};
 use speedyspec_php_serialize::{from_hook_value, serialize};
 use speedyspec_wp_cron_contracts::{ArgsKeyer, CronError, EventKey};
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 /// The bytes' MD5 as 32 lowercase hexadecimal characters.
 pub fn md5_hex(bytes: &[u8]) -> String {

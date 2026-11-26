@@ -6,7 +6,8 @@ use regex::bytes::Regex;
 use speedyspec_hooks::Value;
 
 use crate::escape::{PlaceholderEscape, string_value};
-use crate::{ColLength, Field, LengthKind, Prepare, ServerCaps, WpDbError};
+use crate::{Prepare, ServerCaps};
+use speedyspec_wp_db_contracts::{ColLength, Field, LengthKind, WpDbError};
 
 /// What `strip_invalid_text` needs beyond the fields: the escape `prepare()` uses and the connection's charset.
 pub struct StripContext<'a> {

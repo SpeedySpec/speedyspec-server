@@ -20,6 +20,7 @@ use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_wp_object_cache::*;
+use speedyspec_wp_object_cache_contracts::ObjectCacheError;
 
 pub use ports::{PhpAdditionSuspension, PhpCacheNotices, PhpSerializeCodec, PhpSiteContext};
 
@@ -51,7 +52,7 @@ struct Handlers {
 struct State {
     current: Rc<CurrentObjectCache>,
     handlers: Handlers,
-    registry: RefCell<HashMap<u64, Rc<ObjectCache>>>,
+    registry: RefCell<HashMap<u64, Rc<WpObjectCache>>>,
     found: Cell<bool>,
 }
 
@@ -203,7 +204,7 @@ fn keyed(v: Vec<(Key, Value)>) -> Value {
 }
 
 /// The object's Rust cache; `None` for an object the registry does not know (a cleared request).
-fn cache_of(s: &State, object: &Value) -> Option<Rc<ObjectCache>> {
+fn cache_of(s: &State, object: &Value) -> Option<Rc<WpObjectCache>> {
     // The facade passes `spl_object_id()`: an object handle would be released through PHP on every call.
     let id = match object {
         Value::Int(i) => u64::try_from(*i).ok()?,

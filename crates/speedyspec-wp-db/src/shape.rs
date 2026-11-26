@@ -4,36 +4,12 @@ use std::ops::ControlFlow;
 use std::rc::Rc;
 
 use speedyspec_data::ast::{Value, VisitMut, VisitorMut};
-use speedyspec_data::{DbValue, Row, Statement};
+use speedyspec_data::{DbValue, Statement};
 use speedyspec_data_query::mysql_text;
+use speedyspec_wp_db_contracts::WpRow;
 
 use crate::escape::real_escape;
 use crate::php::float_to_string;
-
-/// One row as `mysqli_fetch_object` then `get_object_vars` give it: each column name once, at its first position,
-/// holding its last value; values are MySQL's text bytes or null.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct WpRow {
-    pub fields: Vec<(String, Option<Vec<u8>>)>,
-}
-
-impl WpRow {
-    pub fn from_row(row: &Row) -> WpRow {
-        let mut fields: Vec<(String, Option<Vec<u8>>)> = Vec::with_capacity(row.columns().len());
-        for (name, value) in row.columns().iter().zip(row.values()) {
-            let text = value.to_mysql_text();
-            match fields.iter_mut().find(|(n, _)| n == name) {
-                Some(existing) => existing.1 = text,
-                None => fields.push((name.clone(), text)),
-            }
-        }
-        WpRow { fields }
-    }
-
-    pub fn get(&self, name: &str) -> Option<&Option<Vec<u8>>> {
-        self.fields.iter().find(|(n, _)| n == name).map(|(_, v)| v)
-    }
-}
 
 /// `get_results`' and `get_row`'s output types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

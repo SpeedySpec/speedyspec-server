@@ -1,7 +1,8 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations, Key};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::{Callback, HookApi, HookName, HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_options::{
     Autoload, AutoloadPolicy, AutoloadRequest, WordPressAutoloadPolicy, autoload_values,
@@ -12,14 +13,14 @@ fn s(v: &str) -> HookValue {
     HookValue::Str(v.into())
 }
 
-fn hooks() -> Rc<HookApi> {
-    Rc::new(HookApi::new(
+fn hooks() -> Rc<WpHookApi> {
+    Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ))
 }
 
-fn filter(hooks: &HookApi, name: &str, run: impl Fn(&[HookValue]) -> HookValue + 'static) {
+fn filter(hooks: &WpHookApi, name: &str, run: impl Fn(&[HookValue]) -> HookValue + 'static) {
     hooks
         .add_filter(
             &HookName::from(name),
@@ -107,7 +108,8 @@ fn filter_bool_gives_auto_on_off() {
 #[test]
 fn size_rule() {
     let hooks = hooks();
-    register_default_filters(&hooks).unwrap();
+    let api: Rc<dyn HookApi> = hooks.clone();
+    register_default_filters(&api).unwrap();
     let p = WordPressAutoloadPolicy::new(hooks.clone());
     let at = s(&"x".repeat(150000));
     let over = s(&"x".repeat(150001));

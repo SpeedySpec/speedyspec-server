@@ -2,14 +2,15 @@ use std::rc::Rc;
 
 use speedyspec_firewall::FirewallLog;
 use speedyspec_firewall_app::FirewallCache;
-use speedyspec_wp_hooks::{Callback, HookApi, HookError, HookName, HookValue};
+use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_hooks_contracts::{Callback, HookError, HookName, HookValue};
 
 use crate::stage::CurrentClient;
 
 /// Registers the firewall's Rust callbacks (Observer): `wp_login_failed` counts a failed sign-in for the current
 /// client, and `xmlrpc_enabled` turns XML-RPC off when the settings say so.
 pub fn register_hooks(
-    hooks: &HookApi,
+    hooks: &WpHookApi,
     cache: Rc<FirewallCache>,
     current: CurrentClient,
     log: Rc<dyn FirewallLog>,

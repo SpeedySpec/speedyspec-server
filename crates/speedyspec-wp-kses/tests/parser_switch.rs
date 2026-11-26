@@ -7,7 +7,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use common::{Escaper, Policy, Uploads, filter};
-use speedyspec_wp_hooks::{HookApi, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_kses::{
     DefaultGlobals, KsesApi, KsesDeps, MemoryOperatingMode, NoHtmlApiSanitizer, NoValueCallbacks,
@@ -35,8 +36,8 @@ impl HtmlApiSanitizer for Marker {
     }
 }
 
-fn api(html_api: Rc<dyn HtmlApiSanitizer>, mode: Rc<dyn OperatingMode>) -> (Rc<HookApi>, KsesApi) {
-    let hooks = Rc::new(HookApi::new(
+fn api(html_api: Rc<dyn HtmlApiSanitizer>, mode: Rc<dyn OperatingMode>) -> (Rc<WpHookApi>, KsesApi) {
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

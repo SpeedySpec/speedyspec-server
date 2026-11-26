@@ -7,7 +7,8 @@ use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName, HookStore, HookValue};
+use speedyspec_wp_hooks::{HookStore, WpHookApi};
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName, HookValue};
 
 use crate::controller::TranslationController;
 use crate::plural::PluralError;
@@ -75,7 +76,7 @@ pub fn bytes_value(b: &[u8]) -> HookValue {
 
 /// WordPress's translation functions over the controller and the Hook API.
 pub struct I18nApi {
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     controller: Rc<RefCell<TranslationController>>,
     gettext: HookName,
     gettext_with_context: HookName,
@@ -88,7 +89,7 @@ pub struct I18nApi {
 }
 
 impl I18nApi {
-    pub fn new(hooks: Rc<HookApi>, controller: Rc<RefCell<TranslationController>>) -> I18nApi {
+    pub fn new(hooks: Rc<WpHookApi>, controller: Rc<RefCell<TranslationController>>) -> I18nApi {
         I18nApi {
             hooks,
             controller,
@@ -106,7 +107,7 @@ impl I18nApi {
         &self.controller
     }
 
-    pub fn hooks(&self) -> &Rc<HookApi> {
+    pub fn hooks(&self) -> &Rc<WpHookApi> {
         &self.hooks
     }
 

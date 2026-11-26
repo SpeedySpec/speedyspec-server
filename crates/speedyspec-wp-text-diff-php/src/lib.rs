@@ -26,7 +26,7 @@ use speedyspec_container_php::ContainerArea;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_text_diff::WordPressTextDiffer;
 use speedyspec_wp_text_diff::contracts::{TEXT_DIFFER, TextDiffer, TextDifferError};
 
@@ -38,13 +38,13 @@ const FACADE: &str = include_str!("text-diff.php");
 
 /// The native area of `wp_text_diff()`.
 pub struct TextDiffArea {
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     container: Rc<Container>,
 }
 
 impl TextDiffArea {
     /// The area, filtering rows through `hooks` and resolving the port from `container`.
-    pub fn new(hooks: Rc<HookApi>, container: Rc<Container>) -> TextDiffArea {
+    pub fn new(hooks: Rc<WpHookApi>, container: Rc<Container>) -> TextDiffArea {
         TextDiffArea { hooks, container }
     }
 

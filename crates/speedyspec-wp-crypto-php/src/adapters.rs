@@ -5,7 +5,8 @@ use std::rc::Rc;
 use base64::Engine as _;
 use speedyspec_php::native::NativeError;
 use speedyspec_wp_crypto_contracts::{Clock, FileHasher, Translator, TrustedKeysFilter};
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName, HookValue};
+use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName, HookValue};
 use speedyspec_wp_text_contracts::{
     Diagnostics, ErrorLevel, SiteSettings, TextError, WordCountType,
 };
@@ -15,13 +16,13 @@ use speedyspec_wp_text_contracts::{
 /// With no callback the run is only counted (`did_filter()` stays WordPress's) and PHP is not entered. The filtered
 /// value comes back as the filter returned it; a callback's exception is the call's failure.
 pub struct HookTrustedKeysFilter {
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     name: HookName,
 }
 
 impl HookTrustedKeysFilter {
     /// The filter over `hooks`.
-    pub fn new(hooks: Rc<HookApi>) -> HookTrustedKeysFilter {
+    pub fn new(hooks: Rc<WpHookApi>) -> HookTrustedKeysFilter {
         HookTrustedKeysFilter {
             hooks,
             name: HookName::from("wp_trusted_keys"),

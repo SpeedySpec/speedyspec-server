@@ -1,13 +1,11 @@
 //! WordPress's `wpdb`, in Rust.
 //!
-//! [`WpDb`] is the port's API (Gateway) and the handler of every command and query. Pure domain services hold
+//! [`NativeWpdb`] is the port's API (Gateway) and the handler of every command and query. Pure domain services hold
 //! WordPress's rules; `WpdbState` and `WpdbHost` are its outbound ports.
 
 mod config;
-mod error;
 
 pub use config::{DbHost, WpDbConfig};
-pub use error::{WpDbError, take_hook_error};
 
 mod escape;
 mod php;
@@ -17,9 +15,6 @@ pub use escape::{PlaceholderEscape, esc_like, escape, quote_identifier, real_esc
 pub use php::float_to_string;
 pub use prepare::{DoingItWrong, Prepare, PrepareOutcome};
 
-/// A PHP value, as the Hook API carries it.
-pub type WpValue = speedyspec_hooks::Value;
-
 mod tables;
 
 pub use tables::{TableEnv, TableNames, TableScope};
@@ -27,7 +22,7 @@ pub use tables::{TableEnv, TableNames, TableScope};
 mod fields;
 mod query_text;
 
-pub use fields::{ColLength, Field, FieldFormats, LengthKind, delete_sql, insert_sql, update_sql};
+pub use fields::{FieldFormats, delete_sql, insert_sql, update_sql};
 pub use query_text::{QueryClass, get_table_from_query};
 
 mod caps;
@@ -41,18 +36,19 @@ mod shape;
 mod state;
 
 pub use host::{HostCall, MemoryWpdbHost, WpdbHost};
-pub use shape::{LastQuery, OutputShape, Shaped, WpRow, keyed_rows, var};
+pub use shape::{LastQuery, OutputShape, Shaped, keyed_rows, var};
 pub use state::{ColumnMeta, LoggedQuery, MemoryWpdbState, RequestState, WPDB_STATE, WpdbState};
 
 mod api;
 mod binary;
 mod connection;
+mod contract;
 mod helpers;
 mod log;
 mod lookups;
 mod timed;
 
-pub use api::{QueryOutcome, WpDb, WpDbParts};
+pub use api::{NativeWpdb, WpDbParts};
 pub use timed::{TimedSqlStore, Timing, microtime};
 
 mod messages;

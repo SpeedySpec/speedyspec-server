@@ -19,6 +19,7 @@ speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
 speedyspec-wp-kses = { path = "../speedyspec-wp-kses" }
 speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
 speedyspec-wp-kses-lexical = { path = "../speedyspec-wp-kses-lexical" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-container-php = { path = "../speedyspec-container-php" }

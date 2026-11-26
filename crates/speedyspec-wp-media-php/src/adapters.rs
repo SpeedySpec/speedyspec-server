@@ -9,7 +9,7 @@ use std::rc::Rc;
 use speedyspec_hooks::Key;
 use speedyspec_php::{CallFailure, PhpError};
 use speedyspec_php_ext::PhpObject;
-use speedyspec_wp_hooks::HookValue as Value;
+use speedyspec_wp_hooks_contracts::HookValue as Value;
 use speedyspec_wp_media::neutral::from_neutral;
 use speedyspec_wp_media_contracts::{
     ContentSniffer, MediaInfo, MediaReader, MediaSource, ProbeLimits, ReadError, TagSanitizer,

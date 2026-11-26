@@ -17,6 +17,7 @@ speedyspec-php = { path = "../speedyspec-php" }
 speedyspec-php-ext = { path = "../speedyspec-php-ext" }
 speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
+speedyspec-wp-object-cache-contracts = { path = "../speedyspec-wp-object-cache-contracts" }
 
 [dev-dependencies]
 serde_json = "1"

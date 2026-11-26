@@ -2,7 +2,7 @@
 //! integer keys, as PHP itself stores them.
 
 use speedyspec_hooks::Key;
-use speedyspec_wp_hooks::HookValue as Value;
+use speedyspec_wp_hooks_contracts::HookValue as Value;
 use speedyspec_wp_media_contracts::Tree;
 
 fn key(name: &str) -> Key {

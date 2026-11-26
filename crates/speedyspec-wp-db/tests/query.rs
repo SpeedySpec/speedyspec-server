@@ -4,8 +4,9 @@ use std::rc::Rc;
 
 use speedyspec_data::{DbError, ExecResult, StatementKind};
 use speedyspec_data_query::parse_one;
-use speedyspec_wp_db::{HostCall, QueryOutcome, WpDbError, WpValue, WpdbState};
-use speedyspec_wp_hooks::HookName;
+use speedyspec_wp_db::{HostCall, WpdbState};
+use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpValue};
+use speedyspec_wp_hooks_contracts::HookName;
 use support::{Answer, filter, rig, rows};
 
 fn read<T>(state: &dyn WpdbState, f: impl Fn(&speedyspec_wp_db::RequestState) -> T) -> T {
@@ -322,7 +323,7 @@ fn connection_error_does_not_resend_blindly() {
 fn hook_exceptions_reach_the_caller() {
     let r = rig();
     filter(&r.hooks, "query", "throws", |_| {
-        Err(speedyspec_wp_hooks::HookError::message("boom"))
+        Err(speedyspec_wp_hooks_contracts::HookError::message("boom"))
     });
     assert!(matches!(r.db.query("SELECT 1"), Err(WpDbError::Hook(e)) if e.message == "boom"));
 }

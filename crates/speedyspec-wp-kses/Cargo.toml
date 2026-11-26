@@ -19,6 +19,7 @@ speedyspec-wp-html-syntax = { path = "../speedyspec-wp-html-syntax" }
 speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
 speedyspec-wp-kses-lexical = { path = "../speedyspec-wp-kses-lexical" }
 stacker = "0.1"
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 libc = "0.2"

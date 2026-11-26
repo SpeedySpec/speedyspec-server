@@ -11,8 +11,9 @@ use speedyspec_wp_cron::memory::{CollectingErrors, MemoryDoingCron, RecordingWak
 use speedyspec_wp_cron::{CronApi, CronParts, RustArgsKeyer};
 use speedyspec_wp_cron_contracts::{Clock, CronResult, PhpObjects, Translator};
 use speedyspec_wp_cron_options::OptionCronStore;
-use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts};
-use speedyspec_wp_hooks::{HookApi, HookValue, IgnoreDeprecations, Key};
+use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, NativeWpdb, WpDbConfig, WpDbParts};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::{HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
 use speedyspec_wp_options::{OptionsApi, OptionsDeps};
@@ -58,7 +59,7 @@ impl PhpObjects for Arrays {
     }
 }
 
-fn db(prefix: &str) -> Option<Rc<WpDb>> {
+fn db(prefix: &str) -> Option<Rc<NativeWpdb>> {
     let url = std::env::var("SPEEDYSPEC_TEST_MYSQL_URL").ok()?;
     let name = url.rsplit('/').next().unwrap_or_default().to_string();
     let registry = EngineRegistry::new();
@@ -70,9 +71,9 @@ fn db(prefix: &str) -> Option<Rc<WpDb>> {
             options: BTreeMap::new(),
         })
         .unwrap();
-    let db = Rc::new(WpDb::new(WpDbParts {
+    let db = Rc::new(NativeWpdb::new(WpDbParts {
         store: registry.sql("default").unwrap(),
-        hooks: Rc::new(HookApi::new(
+        hooks: Rc::new(WpHookApi::new(
             Rc::new(MemoryHookStore::new()),
             Rc::new(IgnoreDeprecations),
         )),
@@ -94,8 +95,8 @@ fn db(prefix: &str) -> Option<Rc<WpDb>> {
 }
 
 /// A process's cron API over its own options API and object cache.
-fn cron_api(db: Rc<WpDb>) -> CronApi {
-    let hooks = Rc::new(HookApi::new(
+fn cron_api(db: Rc<NativeWpdb>) -> CronApi {
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
@@ -121,7 +122,7 @@ fn cron_api(db: Rc<WpDb>) -> CronApi {
     })
 }
 
-fn fresh_table(db: &WpDb, prefix: &str) {
+fn fresh_table(db: &NativeWpdb, prefix: &str) {
     db.query(&format!("DROP TABLE IF EXISTS {prefix}options"))
         .unwrap();
     db.query(&format!(

@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 use speedyspec_router::wordpress::preg_index;
-use speedyspec_wp_hooks::{HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{HookName, HookValue};
 
 use crate::{RewriteError, RewriteService, RewriteState};
 

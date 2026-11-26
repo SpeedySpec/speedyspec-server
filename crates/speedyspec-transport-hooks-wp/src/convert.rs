@@ -1,7 +1,7 @@
 //! Neutral values to and from PHP-shaped hook values.
 
 use speedyspec_operation_contracts::{Category, OperationError, Value};
-use speedyspec_wp_hooks::{HookValue, Key};
+use speedyspec_wp_hooks_contracts::{HookValue, Key};
 
 /// The hook value for `value`. Dates become WordPress's MySQL format (`Y-m-d H:i:s`), lists become arrays keyed
 /// `0..n`, maps arrays keyed by string.

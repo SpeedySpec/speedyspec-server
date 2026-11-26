@@ -13,7 +13,7 @@ that call. The firewall work changed nothing in the runtime. Line numbers below 
 The firewall needs two things that `run_worker` does not have yet. The database port's wiring notes already ask
 for both:
 
-- **The worker's options API.** An `Rc<OptionsApi>` built from the worker's `WpDb`, object cache and `HookApi`
+- **The worker's options API.** An `Rc<OptionsApi>` built from the worker's `NativeWpdb`, object cache and `HookApi`
   (`OptionsArea::api()` in `speedyspec-wp-options-php`).
 - **A `Rc<dyn CachingStore>` for the firewall's counters and bans.** The spec ("Shared state") makes the database
   the default store for these. Use `PersistentCacheSelector` to pick the routed engine:

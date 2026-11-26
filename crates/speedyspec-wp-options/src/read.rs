@@ -1,7 +1,7 @@
 //! The read path: `get_option`, `wp_load_alloptions`, `wp_prime_option_caches`, `wp_prime_option_caches_by_group`,
 //! `get_options` and `wp_protect_special_option`, in `option.php`'s order of checks, hooks, queries and cache calls.
 
-use speedyspec_wp_hooks::{Count, HookName, HookValue, Key};
+use speedyspec_wp_hooks_contracts::{Count, HookName, HookValue, Key};
 
 use crate::api::{OptionsApi, isset, key_of, set_key, truthy};
 use crate::{OptionName, OptionsError, autoload_values, php_string};
@@ -135,9 +135,13 @@ impl OptionsApi {
         let (key, group) = (Self::alloptions_key(), Self::group());
         if self.caches_alloptions() {
             // `Some(found)` when the cache holds a truthy alloptions, with the name's value in it.
-            let probe = self.cache().get_with(&key, &group, false, |v| {
-                v.filter(|v| truthy(v)).map(|v| isset(v, n))
-            })?;
+            let probe = speedyspec_wp_object_cache_contracts::get_with(
+                &*self.cache(),
+                &key,
+                &group,
+                false,
+                |v| v.filter(|v| truthy(v)).map(|v| isset(v, n)),
+            )?;
             if let Some(found) = probe {
                 let hook = HookName::from("alloptions");
                 if self.d.hooks.skip_if_empty(&hook, Count::Filters)? {

@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use speedyspec_container::Container;
 use speedyspec_cqrs::{Command, CommandBus, Query, QueryBus};
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_options::{
     AddOption, AutoloadValuesToAutoload, DeleteOption, DetermineOptionAutoloadValue,
     FilterDefaultAutoloadValueViaOptionSize, GetOption, GetOptions, LoadAlloptions,

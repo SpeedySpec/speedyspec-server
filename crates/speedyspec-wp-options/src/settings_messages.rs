@@ -7,7 +7,7 @@ use speedyspec_container::Container;
 use speedyspec_cqrs::{
     Command, CommandHandler, Query, QueryHandler, bind_command_handler, bind_query_handler,
 };
-use speedyspec_wp_hooks::{Callback, HookValue};
+use speedyspec_wp_hooks_contracts::{Callback, HookValue};
 
 use crate::{OptionsError, SettingArgsInput, SettingsRegistry};
 

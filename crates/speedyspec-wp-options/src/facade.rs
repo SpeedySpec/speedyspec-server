@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 use crate::{OptionsApi, OptionsError, php_empty, php_string};
 

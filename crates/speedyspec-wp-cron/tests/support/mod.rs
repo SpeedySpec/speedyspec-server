@@ -9,7 +9,8 @@ use speedyspec_wp_cron::memory::{
 };
 use speedyspec_wp_cron::{CronApi, CronParts, RustArgsKeyer};
 use speedyspec_wp_cron_contracts::{Clock, PhpObjects, Translator};
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations, Key};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 
 pub const NOW: i64 = 1_700_000_000;
@@ -80,7 +81,7 @@ pub struct Fixture {
     pub wake: Rc<RecordingWake>,
     pub doing: Rc<MemoryDoingCron>,
     pub errors: Rc<CollectingErrors>,
-    pub hooks: Rc<HookApi>,
+    pub hooks: Rc<WpHookApi>,
     pub clock: Rc<FixedClock>,
     pub log: Log,
 }
@@ -91,7 +92,7 @@ pub fn fixture() -> Fixture {
 
 /// A fixture over `store`: two fixtures over one store are two processes sharing one `cron` option.
 pub fn fixture_over(store: Rc<MemoryCronStore>) -> Fixture {
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

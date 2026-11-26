@@ -6,7 +6,8 @@ use speedyspec_container::Container;
 use speedyspec_hooks::{Key, Value};
 use speedyspec_php::PhpError;
 use speedyspec_php_ext::PhpObject;
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
+use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName};
 use speedyspec_wp_password::{php_long, php_truthy};
 use speedyspec_wp_password_contracts::{
     CostLimits, PASSWORD_COST_LIMITS, PasswordChecker, PasswordCostLimits, PasswordError,
@@ -65,12 +66,12 @@ fn call_method(target: &Value, method: &str, args: &[Value]) -> Result<Value, Pa
 /// store → Container). Whoever built the filters keeps the Hook API alive ([`crate::PasswordArea`] does, for the
 /// worker).
 pub struct HookPasswordFilters {
-    hooks: Weak<HookApi>,
+    hooks: Weak<WpHookApi>,
 }
 
 impl HookPasswordFilters {
     /// Filters through `hooks`, without keeping it alive.
-    pub fn new(hooks: &Rc<HookApi>) -> HookPasswordFilters {
+    pub fn new(hooks: &Rc<WpHookApi>) -> HookPasswordFilters {
         HookPasswordFilters {
             hooks: Rc::downgrade(hooks),
         }

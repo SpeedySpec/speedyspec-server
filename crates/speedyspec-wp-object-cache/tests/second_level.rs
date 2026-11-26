@@ -31,14 +31,14 @@ fn s(v: &str) -> Value {
     Value::Str(v.into())
 }
 
-fn cache_over(store: Rc<dyn CachingStore>) -> (ObjectCache, Rc<Misses>) {
+fn cache_over(store: Rc<dyn CachingStore>) -> (WpObjectCache, Rc<Misses>) {
     let misses = Rc::new(Misses::default());
     let mut ports = ObjectCachePorts::rust();
     ports.notices = misses.clone();
-    (ObjectCache::new(ports, Some(store)), misses)
+    (WpObjectCache::new(ports, Some(store)), misses)
 }
 
-fn rig() -> (ObjectCache, Rc<MemoryCache>, Rc<Misses>) {
+fn rig() -> (WpObjectCache, Rc<MemoryCache>, Rc<Misses>) {
     let store = Rc::new(MemoryCache::new());
     let (cache, misses) = cache_over(store.clone());
     (cache, store, misses)
@@ -106,7 +106,7 @@ fn blog_prefix_in_second_level_key() {
     let store = Rc::new(MemoryCache::new());
     let mut ports = ObjectCachePorts::rust();
     ports.site = Rc::new(Multisite);
-    let c = ObjectCache::new(ports, Some(store.clone()));
+    let c = WpObjectCache::new(ports, Some(store.clone()));
     c.set(&s("k"), Value::Int(1), &s("posts"), 0).unwrap();
     assert_eq!(store.get("posts", "2:k").unwrap(), Some(b"i:1;".to_vec()));
 }

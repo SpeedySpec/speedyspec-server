@@ -1,14 +1,17 @@
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Callback, CallbackId, Count, HasFilterResult, HookApi, HookError, HookName, HookValue};
+use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_hooks_contracts::{
+    Callback, CallbackId, Count, HasFilterResult, HookError, HookName, HookValue,
+};
 use speedyspec_wp_shortcode_contracts::{ContextGuard, PhpValue, ShortcodeError, ShortcodeFilters, Thrown, php_bytes};
 
 /// The filters through the Rust Hook API, so PHP plugins' filters keep working (an Adapter).
 ///
-/// Every filter goes through [`HookApi::skip_if_empty`], as the options port does: when nothing listens no hook
+/// Every filter goes through [`WpHookApi::skip_if_empty`], as the options port does: when nothing listens no hook
 /// values are built, yet `did_filter()` still counts and `all` callbacks still run.
 pub struct HookApiFilters {
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
 }
 
 /// WordPress's callback name, so PHP's `has_filter()` and `remove_filter()` find the same callback.
@@ -24,7 +27,7 @@ fn error(e: HookError) -> ShortcodeError {
 
 impl HookApiFilters {
     /// Filters over `hooks`.
-    pub fn new(hooks: Rc<HookApi>) -> Self {
+    pub fn new(hooks: Rc<WpHookApi>) -> Self {
         Self { hooks }
     }
 

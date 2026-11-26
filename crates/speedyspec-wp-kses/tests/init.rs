@@ -4,14 +4,15 @@ use std::rc::Rc;
 
 use speedyspec_container::Container;
 use speedyspec_cqrs::{Command, CommandBus, Query, QueryBus};
-use speedyspec_wp_hooks::{CallbackId, HasFilterResult, HookApi, HookName};
+use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_hooks_contracts::{CallbackId, HasFilterResult, HookName};
 use speedyspec_wp_kses::{
     AllowedFrom, AllowedHtmlExplicitValue, AllowedHtmlQuery, AllowedHtmlValue, KsesAttr,
     KsesAttrCheck, KsesHook, KsesInit, KsesInitFilters, KsesPost, KsesQuery, KsesRemoveFilters,
     KsesSplit, KsesSplit2, OneAttr, SafecssFilterAttr, register_kses_handlers,
 };
 
-fn has(hooks: &HookApi, hook: &str, f: &str) -> bool {
+fn has(hooks: &WpHookApi, hook: &str, f: &str) -> bool {
     hooks
         .has_filter(
             &HookName::from(hook),
@@ -78,11 +79,14 @@ fn registered_filter_sanitizes() {
     let out = hooks
         .apply_filters(
             &HookName::from("content_save_pre"),
-            speedyspec_wp_hooks::HookValue::Str("<p onclick=x>a</p>".into()),
+            speedyspec_wp_hooks_contracts::HookValue::Str("<p onclick=x>a</p>".into()),
             vec![],
         )
         .unwrap();
-    assert_eq!(out, speedyspec_wp_hooks::HookValue::Str("<p>a</p>".into()));
+    assert_eq!(
+        out,
+        speedyspec_wp_hooks_contracts::HookValue::Str("<p>a</p>".into())
+    );
 }
 
 #[test]
@@ -132,7 +136,7 @@ fn handlers_are_bound() {
 /// as WordPress registers the function by name.
 #[test]
 fn init_filters_prefer_the_bridges_named_functions() {
-    use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+    use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
     use speedyspec_wp_kses::ValueCallbacks;
     struct Named;
     impl ValueCallbacks for Named {
@@ -146,7 +150,7 @@ fn init_filters_prefer_the_bridges_named_functions() {
             }))
         }
     }
-    let hooks = Rc::new(speedyspec_wp_hooks::HookApi::new(
+    let hooks = Rc::new(speedyspec_wp_hooks::WpHookApi::new(
         Rc::new(speedyspec_wp_hooks_memory::MemoryHookStore::new()),
         Rc::new(speedyspec_wp_hooks::IgnoreDeprecations),
     ));

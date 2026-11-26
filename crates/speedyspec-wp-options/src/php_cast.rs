@@ -1,6 +1,6 @@
 //! PHP's `(int)` cast.
 
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 /// The longest leading number in `s` (after leading whitespace), as PHP reads a numeric prefix.
 fn leading_number(s: &str) -> Option<f64> {

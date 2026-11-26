@@ -6,9 +6,10 @@ use std::rc::Rc;
 use indexmap::{IndexMap, IndexSet};
 use speedyspec_cache::CachingStore;
 use speedyspec_hooks::{Key, Value};
+use speedyspec_wp_object_cache_contracts::{ObjectCache, ObjectCacheError};
 
 use crate::keys::{array_key, gettype, key_text};
-use crate::{ObjectCacheError, ObjectCachePorts, numeric};
+use crate::{ObjectCachePorts, numeric};
 
 /// A first-level entry: a PHP-shaped value, or second-level bytes not decoded yet.
 #[derive(Debug, Clone, PartialEq)]
@@ -20,7 +21,7 @@ pub enum CacheValue {
 type Groups = IndexMap<Key, IndexMap<Key, CacheValue>>;
 
 /// WordPress's object cache for one `WP_Object_Cache` instance.
-pub struct ObjectCache {
+pub struct WpObjectCache {
     pub(crate) ports: ObjectCachePorts,
     pub(crate) persistent: Option<Rc<dyn CachingStore>>,
     pub(crate) cache: RefCell<Groups>,
@@ -57,16 +58,16 @@ fn php_trim_empty(s: &str) -> bool {
         .is_empty()
 }
 
-impl ObjectCache {
+impl WpObjectCache {
     /// Reads the site once: on multisite the blog prefix is `"<id>:"`.
-    pub fn new(ports: ObjectCachePorts, persistent: Option<Rc<dyn CachingStore>>) -> ObjectCache {
+    pub fn new(ports: ObjectCachePorts, persistent: Option<Rc<dyn CachingStore>>) -> WpObjectCache {
         let multisite = ports.site.is_multisite();
         let prefix = if multisite {
             format!("{}:", ports.site.current_blog_id())
         } else {
             String::new()
         };
-        ObjectCache {
+        WpObjectCache {
             ports,
             persistent,
             cache: RefCell::new(IndexMap::new()),
@@ -81,7 +82,7 @@ impl ObjectCache {
     }
 
     /// The same cache with `store` as its second level.
-    pub fn with_persistent(mut self, store: Rc<dyn CachingStore>) -> ObjectCache {
+    pub fn with_persistent(mut self, store: Rc<dyn CachingStore>) -> WpObjectCache {
         self.persistent = Some(store);
         self
     }
@@ -147,7 +148,7 @@ impl ObjectCache {
             .is_some_and(|(id, g)| self.has_entry(&id, &g))
     }
 
-    /// The first level's value for `key`, as [`ObjectCache::exists`] looks: no count, no notice. Bytes from the
+    /// The first level's value for `key`, as [`WpObjectCache::exists`] looks: no count, no notice. Bytes from the
     /// second level not yet read are `None`.
     pub fn peek(&self, key: &Value, group: &Value) -> Option<Value> {
         let (id, g) = self.quiet_id(key, group)?;
@@ -605,5 +606,98 @@ pub(crate) fn key_value(k: &Key) -> Value {
     match k {
         Key::Int(i) => Value::Int(*i),
         Key::Str(s) => Value::Str(s.clone()),
+    }
+}
+
+/// The `wp_cache_*` port, answered by this cache's own methods (named in full, so none calls itself).
+impl ObjectCache for WpObjectCache {
+    fn get(
+        &self,
+        key: &Value,
+        group: &Value,
+        force: bool,
+    ) -> Result<Option<Value>, ObjectCacheError> {
+        WpObjectCache::get(self, key, group, force)
+    }
+
+    fn read_with(
+        &self,
+        key: &Value,
+        group: &Value,
+        force: bool,
+        reader: &mut dyn FnMut(Option<&Value>),
+    ) -> Result<(), ObjectCacheError> {
+        WpObjectCache::get_with(self, key, group, force, reader)
+    }
+
+    fn get_multiple(
+        &self,
+        keys: &[Value],
+        group: &Value,
+        force: bool,
+    ) -> Result<Vec<(Key, Value)>, ObjectCacheError> {
+        WpObjectCache::get_multiple(self, keys, group, force)
+    }
+
+    fn peek(&self, key: &Value, group: &Value) -> Option<Value> {
+        WpObjectCache::peek(self, key, group)
+    }
+
+    fn add(
+        &self,
+        key: &Value,
+        data: Value,
+        group: &Value,
+        expire: i64,
+    ) -> Result<bool, ObjectCacheError> {
+        WpObjectCache::add(self, key, data, group, expire)
+    }
+
+    fn add_multiple(
+        &self,
+        data: Vec<(Key, Value)>,
+        group: &Value,
+        expire: i64,
+    ) -> Result<Vec<(Key, bool)>, ObjectCacheError> {
+        WpObjectCache::add_multiple(self, data, group, expire)
+    }
+
+    fn set(
+        &self,
+        key: &Value,
+        data: Value,
+        group: &Value,
+        expire: i64,
+    ) -> Result<bool, ObjectCacheError> {
+        WpObjectCache::set(self, key, data, group, expire)
+    }
+
+    fn set_multiple(
+        &self,
+        data: Vec<(Key, Value)>,
+        group: &Value,
+        expire: i64,
+    ) -> Result<Vec<(Key, bool)>, ObjectCacheError> {
+        WpObjectCache::set_multiple(self, data, group, expire)
+    }
+
+    fn delete(&self, key: &Value, group: &Value) -> Result<bool, ObjectCacheError> {
+        WpObjectCache::delete(self, key, group)
+    }
+
+    fn delete_multiple(
+        &self,
+        keys: &[Value],
+        group: &Value,
+    ) -> Result<Vec<(Key, bool)>, ObjectCacheError> {
+        WpObjectCache::delete_multiple(self, keys, group)
+    }
+
+    fn add_global_groups(&self, groups: &[Value]) {
+        WpObjectCache::add_global_groups(self, groups)
+    }
+
+    fn is_persistent(&self) -> bool {
+        WpObjectCache::is_persistent(self)
     }
 }

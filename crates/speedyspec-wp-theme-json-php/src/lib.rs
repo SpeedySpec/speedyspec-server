@@ -16,7 +16,7 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_theme_json::filters::HookApiFilters;
 use speedyspec_wp_theme_json::global_styles::{GlobalStylesApi, ResolverGlobalSettings};
 use speedyspec_wp_theme_json::resolver::{ResolverDeps, ThemeJsonResolver};
@@ -66,7 +66,7 @@ pub struct ThemeJsonArea {
 
 impl ThemeJsonArea {
     /// The area, with every port adapted onto WordPress's PHP.
-    pub fn new(container: Rc<Container>, hooks: Rc<HookApi>) -> Self {
+    pub fn new(container: Rc<Container>, hooks: Rc<WpHookApi>) -> Self {
         let blocks = Rc::new(PhpBlockRegistry::default());
         let global = Rc::new(ResolverGlobalSettings::default());
         let deps = ThemeJsonDeps::new(

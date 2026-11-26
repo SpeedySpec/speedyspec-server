@@ -5,7 +5,8 @@ use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_i18n::{
     I18nApi, I18nError, Relative, ScriptFiles, TranslationController, json_filename, relative_path,
@@ -258,8 +259,8 @@ impl FileProbe for Counting {
 
 type Log = Rc<RefCell<Vec<(String, Vec<HookValue>)>>>;
 
-fn api() -> (I18nApi, Rc<HookApi>, Log) {
-    let hooks = Rc::new(HookApi::new(
+fn api() -> (I18nApi, Rc<WpHookApi>, Log) {
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

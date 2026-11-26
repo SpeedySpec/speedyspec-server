@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use criterion::measurement::{Measurement, ValueFormatter, WallTime};
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_shortcode_contracts::TagName;
 use speedyspec_wp_text::{TextApi, TextDeps, adapters};
@@ -62,7 +62,7 @@ pub fn api() -> TextApi {
         .iter()
         .map(|t| TagName::new(t.as_bytes()).unwrap())
         .collect();
-    let hooks = Rc::new(HookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)));
+    let hooks = Rc::new(WpHookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)));
     let settings = Rc::new(FixedSiteSettings::default());
     let diagnostics = Rc::new(RecordingDiagnostics::default());
     let escape = Rc::new(speedyspec_wp_text_escape::EscapeApi::new(hooks.clone(), settings.clone(), diagnostics.clone()));

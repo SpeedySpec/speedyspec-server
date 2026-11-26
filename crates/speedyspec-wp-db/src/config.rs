@@ -7,7 +7,7 @@ use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use regex::Regex;
 use speedyspec_data::EngineConfig;
 
-use crate::WpDbError;
+use speedyspec_wp_db_contracts::WpDbError;
 
 /// A parsed `DB_HOST` (Value Object), as `wpdb::parse_db_host` gives it.
 #[derive(Debug, Clone, PartialEq, Eq)]

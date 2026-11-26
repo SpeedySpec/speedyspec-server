@@ -5,7 +5,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_i18n::{
     FileHandle, I18nApi, LocaleSwitcher, ScriptFiles, TranslationController, TranslationFile,
 };
@@ -54,7 +54,7 @@ pub(crate) fn shared() -> Option<Rc<Shared>> {
 }
 
 impl Shared {
-    pub fn new(hooks: Rc<HookApi>) -> Shared {
+    pub fn new(hooks: Rc<WpHookApi>) -> Shared {
         let reader = Rc::new(PhpFallbackReader::default());
         let probe = Rc::new(StdFileProbe);
         let cache: Rc<dyn TranslationFileCache<TranslationFile>> =

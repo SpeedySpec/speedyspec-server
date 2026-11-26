@@ -307,7 +307,7 @@ impl speedyspec_wp_kses::UploadsLocation for Uploads {
 /// kses's `safecss_filter_attr()`, the Rust port, over an empty Hook API (no `safe_style_css` filters).
 pub fn safe_css() -> std::rc::Rc<dyn speedyspec_wp_kses_contracts::SafeCss> {
     use std::rc::Rc;
-    let hooks = Rc::new(speedyspec_wp_hooks::HookApi::new(
+    let hooks = Rc::new(speedyspec_wp_hooks::WpHookApi::new(
         Rc::new(speedyspec_wp_hooks_memory::MemoryHookStore::new()),
         Rc::new(speedyspec_wp_hooks::IgnoreDeprecations),
     ));

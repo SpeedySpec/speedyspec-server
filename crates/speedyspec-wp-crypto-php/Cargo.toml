@@ -18,6 +18,7 @@ speedyspec-wp-crypto-sodium = { path = "../speedyspec-wp-crypto-sodium" }
 speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
 speedyspec-wp-text-escape = { path = "../speedyspec-wp-text-escape" }
 base64 = "0.22"
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-container = { path = "../speedyspec-container" }

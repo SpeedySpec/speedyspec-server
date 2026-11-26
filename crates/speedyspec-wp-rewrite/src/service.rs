@@ -3,7 +3,8 @@ use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{HookApi, HookError};
+use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_hooks_contracts::HookError;
 
 use crate::{
     Multisite, PageUris, PostTypes, PublicQueryVars, RandomContentRedirects, RewriteOptions,
@@ -78,7 +79,7 @@ pub struct RewriteDeps {
     pub random_content: Rc<dyn RandomContentRedirects>,
     pub translations: Rc<dyn SiteTranslations>,
     pub query_vars: Rc<dyn PublicQueryVars>,
-    pub hooks: Rc<HookApi>,
+    pub hooks: Rc<WpHookApi>,
     /// The canonical state: in PHP, the `$wp_rewrite` global. Work deferred to `wp_loaded` uses it.
     pub state: Rc<dyn RewriteStateSource>,
 }

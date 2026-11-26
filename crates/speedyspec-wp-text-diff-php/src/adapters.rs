@@ -4,7 +4,8 @@ use std::rc::Rc;
 
 use speedyspec_php::{CallFailure, PhpError};
 use speedyspec_php_ext::PhpObject;
-use speedyspec_wp_hooks::{HookApi, HookValue as Value, Key};
+use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_hooks_contracts::{HookValue as Value, Key};
 use speedyspec_wp_text_diff::contracts::{
     CheckedLineFilter, RowLabels, TextDiffHost, TextDiffer, TextDifferError,
 };
@@ -49,12 +50,12 @@ fn bytes(value: &Value) -> Option<Vec<u8>> {
 /// [`TextDiffHost::parse_args`] answers `null`, which no parse gives, so the call takes the fallback; the fallback then
 /// renders with the array the facade kept, instead of parsing the arguments (and running `wp_parse_str`) twice.
 pub struct PhpTextDiffHost {
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
 }
 
 impl PhpTextDiffHost {
     /// The host, filtering rows through `hooks`.
-    pub fn new(hooks: Rc<HookApi>) -> PhpTextDiffHost {
+    pub fn new(hooks: Rc<WpHookApi>) -> PhpTextDiffHost {
         PhpTextDiffHost { hooks }
     }
 }

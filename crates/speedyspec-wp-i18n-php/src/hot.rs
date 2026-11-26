@@ -12,7 +12,7 @@ use speedyspec_php::ext_php_rs::ffi::{zend_call_known_function, zval};
 use speedyspec_php::ext_php_rs::flags::DataType;
 use speedyspec_php::ext_php_rs::types::{ZendStr, Zval};
 use speedyspec_php::ext_php_rs::zend::ExecuteData;
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_i18n::Translated;
 
 use crate::state::shared;

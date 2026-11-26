@@ -1,10 +1,11 @@
 //! The `SAVEQUERIES` query log and `log_query_custom_data` (a Decorator step after each statement runs).
 
 use speedyspec_data::Statement;
-use speedyspec_wp_hooks::{Count, HookName};
+use speedyspec_wp_hooks_contracts::{Count, HookName};
 
 use crate::php::to_bytes;
-use crate::{LoggedQuery, WpDb, WpDbError, WpValue};
+use crate::{LoggedQuery, NativeWpdb};
+use speedyspec_wp_db_contracts::{WpDbError, WpValue};
 
 fn truthy(v: &WpValue) -> bool {
     match v {
@@ -15,7 +16,7 @@ fn truthy(v: &WpValue) -> bool {
     }
 }
 
-impl WpDb {
+impl NativeWpdb {
     /// `defined('SAVEQUERIES') && SAVEQUERIES`.
     pub(crate) fn save_queries(&self) -> bool {
         self.host

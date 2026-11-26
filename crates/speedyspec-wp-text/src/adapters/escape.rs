@@ -49,7 +49,7 @@ impl speedyspec_wp_kses::UploadsLocation for FixedUploads {
 /// @return
 ///     The facade.
 pub fn kses_for(
-    hooks: Rc<speedyspec_wp_hooks::HookApi>,
+    hooks: Rc<speedyspec_wp_hooks::WpHookApi>,
     escape: Rc<EscapeApi>,
 ) -> Rc<speedyspec_wp_kses::KsesApi> {
     speedyspec_wp_kses::KsesApi::shared(speedyspec_wp_kses::KsesDeps {

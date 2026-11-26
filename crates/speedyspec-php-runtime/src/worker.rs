@@ -12,7 +12,7 @@ use speedyspec_php::{BootOptions, NativeArea, Php, WebRequest};
 use speedyspec_runtime_contract::{WorkerReport, WorkerSpec};
 use speedyspec_wp_crypto_php::CryptoArea;
 use speedyspec_wp_crypto_sodium::Sodium;
-use speedyspec_wp_hooks::{HookApi, HookStore};
+use speedyspec_wp_hooks::{HookStore, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::{HOOK_STORE, PhpHookStore, WpHooksArea};
 use speedyspec_wp_media_php::MediaArea;
@@ -20,7 +20,7 @@ use speedyspec_wp_password_php::PasswordArea;
 use speedyspec_wp_text_diff_php::TextDiffArea;
 
 /// WordPress's password functions, with WordPress's rules bound in `container` under their pluggable ports.
-fn password_area(hooks: Rc<HookApi>, container: &Rc<Container>, sodium: Sodium) -> PasswordArea {
+fn password_area(hooks: Rc<WpHookApi>, container: &Rc<Container>, sodium: Sodium) -> PasswordArea {
     let area = PasswordArea::new(hooks, container.clone(), Rc::new(sodium));
     area.bind_defaults();
     area
@@ -62,7 +62,7 @@ fn media_store(spec: &WorkerSpec) -> Rc<dyn speedyspec_cache::CachingStore> {
 
 /// WordPress's media functions over the isolated, cached reader: each uncached read runs in a `media-probe` child
 /// of this binary.
-fn media_area(hooks: Rc<HookApi>, container: &Rc<Container>, spec: &WorkerSpec) -> MediaArea {
+fn media_area(hooks: Rc<WpHookApi>, container: &Rc<Container>, spec: &WorkerSpec) -> MediaArea {
     use speedyspec_wp_media_isolate::{CachedReader, IsolatedReader, ProbeCommand};
     let limits = speedyspec_wp_media_contracts::ProbeLimits::default();
     let area = MediaArea::new(hooks, container.clone(), limits);
@@ -95,7 +95,7 @@ fn media_area(hooks: Rc<HookApi>, container: &Rc<Container>, spec: &WorkerSpec) 
     area
 }
 
-fn text_diff_area(hooks: Rc<HookApi>, container: &Rc<Container>) -> TextDiffArea {
+fn text_diff_area(hooks: Rc<WpHookApi>, container: &Rc<Container>) -> TextDiffArea {
     let area = TextDiffArea::new(hooks, container.clone());
     area.bind_defaults();
     area

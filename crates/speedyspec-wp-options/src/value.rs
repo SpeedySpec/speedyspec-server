@@ -1,6 +1,6 @@
 //! Option values as the `option_value` column holds them (Serialized LOB), and the PHP casts that decide them.
 
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 use crate::OptionsError;
 

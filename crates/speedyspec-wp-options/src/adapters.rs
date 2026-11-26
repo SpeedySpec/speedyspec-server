@@ -6,7 +6,7 @@ use std::rc::Rc;
 use speedyspec_php_serialize::{
     from_hook_value, maybe_serialize, maybe_unserialize, to_hook_value,
 };
-use speedyspec_wp_hooks::{Count, HookApi, HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{Count, HookApi, HookName, HookValue};
 
 use crate::{
     Deprecations, Installing, Multisite, OptionGroups, OptionName, OptionsError, ProtectedOptions,
@@ -157,11 +157,11 @@ impl Multisite for SiteConfiguration {
 
 /// `sanitize_option()` for options core does not sanitize itself: the `sanitize_option_{$option}` filter alone.
 pub struct HookSanitizing {
-    hooks: Rc<HookApi>,
+    hooks: Rc<dyn HookApi>,
 }
 
 impl HookSanitizing {
-    pub fn new(hooks: Rc<HookApi>) -> HookSanitizing {
+    pub fn new(hooks: Rc<dyn HookApi>) -> HookSanitizing {
         HookSanitizing { hooks }
     }
 }

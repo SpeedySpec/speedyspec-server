@@ -2,14 +2,15 @@ use std::rc::Rc;
 
 use speedyspec_firewall::{RawSettings, SettingsSource};
 use speedyspec_firewall_infra_options::OptionsSettingsSource;
-use speedyspec_wp_hooks::{HookApi, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
 use speedyspec_wp_options::{Options, OptionsApi, OptionsDeps};
 use speedyspec_wp_options_memory::MemoryOptionRepository;
 
 fn api() -> Rc<OptionsApi> {
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

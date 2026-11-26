@@ -1,4 +1,5 @@
-use speedyspec_wp_db::{TableEnv, TableNames, TableScope, WpDbError};
+use speedyspec_wp_db::{TableEnv, TableNames, TableScope};
+use speedyspec_wp_db_contracts::WpDbError;
 
 fn single() -> TableEnv {
     TableEnv {

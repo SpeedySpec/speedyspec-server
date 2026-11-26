@@ -9,7 +9,7 @@ use std::any::Any;
 use std::rc::Rc;
 
 use speedyspec_wp_cron_contracts::{CronError, CronStore, SaveOutcome, Version};
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_options::{ConditionalWrite, OptionsApi, OptionsError};
 
 const CRON: &str = "cron";

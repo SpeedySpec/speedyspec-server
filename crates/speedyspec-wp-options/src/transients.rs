@@ -4,8 +4,8 @@
 use std::rc::Rc;
 
 use speedyspec_data::DbError;
-use speedyspec_wp_hooks::{HookApi, HookName, HookValue};
-use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache};
+use speedyspec_wp_hooks_contracts::{HookApi, HookName, HookValue};
+use speedyspec_wp_object_cache_contracts::ObjectCache;
 
 use crate::api::{isset, truthy};
 use crate::php_cast::less_than;
@@ -66,8 +66,8 @@ fn is_false(v: &HookValue) -> bool {
 pub struct TransientsApi {
     options: Rc<OptionsApi>,
     network: Rc<NetworkOptionsApi>,
-    cache: Rc<CurrentObjectCache>,
-    hooks: Rc<HookApi>,
+    cache: Rc<dyn ObjectCache>,
+    hooks: Rc<dyn HookApi>,
     ports: TransientPorts,
 }
 
@@ -75,8 +75,8 @@ impl TransientsApi {
     pub fn new(
         options: Rc<OptionsApi>,
         network: Rc<NetworkOptionsApi>,
-        cache: Rc<CurrentObjectCache>,
-        hooks: Rc<HookApi>,
+        cache: Rc<dyn ObjectCache>,
+        hooks: Rc<dyn HookApi>,
         ports: TransientPorts,
     ) -> TransientsApi {
         TransientsApi {
@@ -89,8 +89,8 @@ impl TransientsApi {
     }
 
     /// The current object cache, `site-transient` (and `site-options`) global.
-    fn cache(&self) -> Rc<ObjectCache> {
-        let cache = self.cache.current();
+    fn cache(&self) -> Rc<dyn ObjectCache> {
+        let cache = self.cache.clone();
         cache.add_global_groups(&[s("site-options"), s("site-transient")]);
         cache
     }

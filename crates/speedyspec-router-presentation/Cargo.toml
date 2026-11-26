@@ -16,6 +16,7 @@ speedyspec-router = { path = "../speedyspec-router" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-rewrite = { path = "../speedyspec-wp-rewrite" }
 regex = "1"
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-router-store-memory = { path = "../speedyspec-router-store-memory" }

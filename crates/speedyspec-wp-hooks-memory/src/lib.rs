@@ -10,9 +10,8 @@
 use std::cell::{Cell, RefCell};
 
 use indexmap::IndexMap;
-use speedyspec_wp_hooks::{
-    ArrayKey, Count, HookKey, HookStore, HookValue, Partition, Prehashed, WpHook,
-};
+use speedyspec_wp_hooks::{HookStore, Partition, WpHook};
+use speedyspec_wp_hooks_contracts::{ArrayKey, Count, HookKey, HookValue, Prehashed};
 
 /// A table keyed by hook name, by the hash the name carries (PHP's own for a name from PHP): a lookup never
 /// hashes the name again.

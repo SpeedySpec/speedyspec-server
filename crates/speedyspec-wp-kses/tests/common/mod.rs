@@ -3,7 +3,8 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_kses::{DefaultGlobals, KsesApi, KsesDeps, NoValueCallbacks, UploadsLocation};
 use speedyspec_wp_kses_contracts::{AttributeEscaper, KsesError, UnfilteredHtmlPolicy};
@@ -51,8 +52,8 @@ impl UploadsLocation for Uploads {
     }
 }
 
-pub fn setup_shared(unfiltered: bool) -> (Rc<HookApi>, Rc<KsesApi>) {
-    let hooks = Rc::new(HookApi::new(
+pub fn setup_shared(unfiltered: bool) -> (Rc<WpHookApi>, Rc<KsesApi>) {
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
@@ -72,7 +73,7 @@ pub fn setup_shared(unfiltered: bool) -> (Rc<HookApi>, Rc<KsesApi>) {
 /// An oracle value as a hook value.
 pub fn hook_value(v: &serde_json::Value) -> HookValue {
     use serde_json::Value as Json;
-    use speedyspec_wp_hooks::Key;
+    use speedyspec_wp_hooks_contracts::Key;
     match v {
         Json::Null => HookValue::Null,
         Json::Bool(b) => HookValue::Bool(*b),
@@ -103,8 +104,8 @@ pub fn hook_value(v: &serde_json::Value) -> HookValue {
     }
 }
 
-pub fn setup() -> (Rc<HookApi>, KsesApi) {
-    let hooks = Rc::new(HookApi::new(
+pub fn setup() -> (Rc<WpHookApi>, KsesApi) {
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
@@ -121,11 +122,11 @@ pub fn setup() -> (Rc<HookApi>, KsesApi) {
     (hooks, api)
 }
 
-pub fn did_filter(hooks: &HookApi, name: &str) -> i64 {
+pub fn did_filter(hooks: &WpHookApi, name: &str) -> i64 {
     hooks.did_filter(&HookName::from(name)).unwrap()
 }
 
-pub fn filter(hooks: &HookApi, name: &str, run: impl Fn(&[HookValue]) -> HookValue + 'static) {
+pub fn filter(hooks: &WpHookApi, name: &str, run: impl Fn(&[HookValue]) -> HookValue + 'static) {
     hooks
         .add_filter(
             &HookName::from(name),

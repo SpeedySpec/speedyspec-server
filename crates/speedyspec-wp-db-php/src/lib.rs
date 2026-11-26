@@ -4,7 +4,7 @@
 //! `wpdb` class with every method of WordPress's, each one line calling a native function under
 //! `SpeedySpec\WpDb\Native\` with the instance's handle. Handle 0 is the global `$wpdb`, made at request start over
 //! the worker's `default` engine; its calls go through the handlers bound in the container (resolved once), so PHP
-//! may override one. Another `new wpdb(...)` gets its own `WpDb` and request state on an engine configured once per
+//! may override one. Another `new wpdb(...)` gets its own `NativeWpdb` and request state on an engine configured once per
 //! worker for its credentials.
 //!
 //! The facade converts and holds no rules: rows come back as arrays and PHP turns them into `stdClass` objects,
@@ -31,10 +31,10 @@ use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php_ext::Value;
 use speedyspec_wp_db::{
-    MemoryWpdbState, WPDB_STATE, WpDb, WpDbConfig, WpDbError, WpDbParts, WpdbState,
-    register_wpdb_handlers,
+    MemoryWpdbState, WPDB_STATE, NativeWpdb, WpDbConfig, WpDbParts, WpdbState, register_wpdb_handlers,
 };
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_db_contracts::WpDbError;
+use speedyspec_wp_hooks::WpHookApi;
 
 pub use host::PhpWpdbHost;
 pub use state::{PhpWpdbState, ResolvedWpdbState};
@@ -42,13 +42,13 @@ pub use state::{PhpWpdbState, ResolvedWpdbState};
 const FACADE: &str = include_str!("wpdb.php");
 
 pub(crate) struct Instances {
-    pub extra: Vec<Option<Rc<WpDb>>>,
+    pub extra: Vec<Option<Rc<NativeWpdb>>>,
 }
 
 pub(crate) struct Shared {
-    pub hooks: Rc<HookApi>,
+    pub hooks: Rc<WpHookApi>,
     pub registry: Rc<EngineRegistry>,
-    pub global: Rc<WpDb>,
+    pub global: Rc<NativeWpdb>,
     pub memory: Rc<MemoryWpdbState>,
     pub handlers: natives::Handlers,
 }
@@ -65,11 +65,11 @@ pub struct WpDbArea {
 }
 
 impl WpDbArea {
-    /// The global `WpDb` over `registry.sql("default")`, its request state bound under [`WPDB_STATE`] (the worker's
+    /// The global `NativeWpdb` over `registry.sql("default")`, its request state bound under [`WPDB_STATE`] (the worker's
     /// memory state, which PHP may replace), the PHP host, and every handler registered in `container`.
     pub fn new(
         container: Rc<Container>,
-        hooks: Rc<HookApi>,
+        hooks: Rc<WpHookApi>,
         registry: Rc<EngineRegistry>,
         config: WpDbConfig,
     ) -> WpDbArea {
@@ -82,7 +82,7 @@ impl WpDbArea {
         container.singleton_port::<dyn WpdbState>(WPDB_STATE, move |_, _| Ok(bound.clone()));
         let state: Rc<dyn WpdbState> =
             Rc::new(ResolvedWpdbState::new(container.clone(), memory.clone()));
-        let global = Rc::new(WpDb::new(WpDbParts {
+        let global = Rc::new(NativeWpdb::new(WpDbParts {
             store,
             hooks: hooks.clone(),
             state,
@@ -112,7 +112,7 @@ impl WpDbArea {
     }
 
     /// The global `wpdb` for Rust callers.
-    pub fn api(&self) -> Rc<WpDb> {
+    pub fn api(&self) -> Rc<NativeWpdb> {
         self.shared.global.clone()
     }
 
@@ -128,7 +128,7 @@ impl WpDbArea {
     }
 }
 
-/// A `new wpdb(...)` other than the global: its own `WpDb` and state on an engine for its credentials.
+/// A `new wpdb(...)` other than the global: its own `NativeWpdb` and state on an engine for its credentials.
 pub(crate) fn open(user: &str, password: &str, name: &str, host: &str) -> Result<i64, WpDbError> {
     let shared = SHARED
         .with(|s| s.borrow().clone())
@@ -161,7 +161,7 @@ pub(crate) fn open(user: &str, password: &str, name: &str, host: &str) -> Result
         .as_sql()
         .cloned()
         .ok_or_else(|| WpDbError::Config(format!("engine `{engine}` is not a SQL store")))?;
-    let db = Rc::new(WpDb::new(WpDbParts {
+    let db = Rc::new(NativeWpdb::new(WpDbParts {
         store,
         hooks: shared.hooks.clone(),
         state: Rc::new(MemoryWpdbState::new()),
@@ -176,7 +176,7 @@ pub(crate) fn open(user: &str, password: &str, name: &str, host: &str) -> Result
 }
 
 /// The instance behind a handle (0 is the global).
-pub(crate) fn instance(handle: i64) -> Option<(Rc<WpDb>, bool)> {
+pub(crate) fn instance(handle: i64) -> Option<(Rc<NativeWpdb>, bool)> {
     if handle == 0 {
         return SHARED.with(|s| s.borrow().as_ref().map(|s| (s.global.clone(), true)));
     }
@@ -197,7 +197,7 @@ impl NativeArea for WpDbArea {
 
     fn request_start(&self) {
         let _ = host::take_pending();
-        let _ = speedyspec_wp_db::take_hook_error();
+        let _ = speedyspec_wp_db_contracts::take_hook_error();
         self.shared.global.reset_request();
         self.shared.memory.reset();
         self.shared.global.state().reset();
@@ -229,7 +229,7 @@ impl NativeArea for WpDbArea {
     fn request_end(&self) {
         // An exception parked by a call from Rust must not outlive its request.
         let _ = host::take_pending();
-        let _ = speedyspec_wp_db::take_hook_error();
+        let _ = speedyspec_wp_db_contracts::take_hook_error();
         INSTANCES.with(|i| i.borrow_mut().extra.clear());
     }
 }

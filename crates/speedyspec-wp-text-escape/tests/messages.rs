@@ -4,7 +4,8 @@ use std::rc::Rc;
 
 use speedyspec_container::Container;
 use speedyspec_cqrs::{Query, QueryHandler, QueryRef, bind_query_handler};
-use speedyspec_wp_hooks::{HookApi, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_text_contracts::TextError;
 use speedyspec_wp_text_escape::messages::*;
@@ -12,7 +13,7 @@ use speedyspec_wp_text_escape::{EscapeApi, QuoteStyle, register_escape_handlers}
 use speedyspec_wp_text_memory::{FixedSiteSettings, RecordingDiagnostics};
 
 fn bound() -> Rc<Container> {
-    let hooks = Rc::new(HookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)));
+    let hooks = Rc::new(WpHookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)));
     let api = Rc::new(EscapeApi::new(hooks, Rc::new(FixedSiteSettings::default()), Rc::new(RecordingDiagnostics::default())));
     let container = Rc::new(Container::new());
     register_escape_handlers(&container, api);

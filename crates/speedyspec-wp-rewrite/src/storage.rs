@@ -1,7 +1,7 @@
 //! `WP_Rewrite::wp_rewrite_rules()`, `refresh_rewrite_rules()` and `flush_rules()`.
 
 use speedyspec_routing::Rule;
-use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 
 use crate::{RewriteError, RewriteService, RewriteState, RewriteStateSource};
 
@@ -10,8 +10,8 @@ use crate::{RewriteError, RewriteService, RewriteState, RewriteStateSource};
 const DEFERRED_FLUSH: &str = "speedyspec_wp_rewrite_flush_rules";
 
 /// A rewrite failure inside a hook callback, keeping its cause for the caller of `do_action`.
-fn hook_error(err: RewriteError) -> speedyspec_wp_hooks::HookError {
-    speedyspec_wp_hooks::HookError {
+fn hook_error(err: RewriteError) -> speedyspec_wp_hooks_contracts::HookError {
+    speedyspec_wp_hooks_contracts::HookError {
         message: err.message,
         payload: err.cause,
     }

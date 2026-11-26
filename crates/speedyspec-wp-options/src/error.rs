@@ -3,8 +3,8 @@
 use std::fmt;
 
 use speedyspec_data::CommitError;
-use speedyspec_wp_hooks::{HookError, HookValue};
-use speedyspec_wp_object_cache::ObjectCacheError;
+use speedyspec_wp_hooks_contracts::{HookError, HookValue};
+use speedyspec_wp_object_cache_contracts::ObjectCacheError;
 
 #[derive(Debug)]
 pub enum OptionsError {

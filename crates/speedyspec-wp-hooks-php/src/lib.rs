@@ -43,11 +43,13 @@ use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, Args, NativeError};
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_wp_hooks::{
-    AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray, ArrayKey, Count,
-    CurrentFilter, DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray,
-    DoingFilter, Entry, HasFilter, HasFilterResult, HookApi, HookError, HookKey, HookName,
-    HookStore, Partition, PrioritySlice, RemoveAllFilters, RemoveFilter, WpHook,
-    register_hook_handlers,
+    AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray, CurrentFilter,
+    DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray, DoingFilter, Entry,
+    HasFilter, HookStore, Partition, PrioritySlice, RemoveAllFilters, RemoveFilter, WpHook,
+    WpHookApi, register_hook_handlers,
+};
+use speedyspec_wp_hooks_contracts::{
+    ArrayKey, Count, HasFilterResult, HookError, HookKey, HookName,
 };
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 
@@ -94,7 +96,7 @@ struct Handlers {
 }
 
 struct State {
-    api: Rc<HookApi>,
+    api: Rc<WpHookApi>,
     memory: Rc<MemoryHookStore>,
     handlers: Handlers,
 }
@@ -123,7 +125,7 @@ impl WpHooksArea {
         let bound = worker.clone();
         container.singleton_port::<dyn HookStore>(HOOK_STORE, move |_, _| Ok(bound.clone()));
         let store = Rc::new(ResolvedHookStore::new(&container, worker));
-        let api = Rc::new(HookApi::new(store, Rc::new(stores::PhpDeprecations)));
+        let api = Rc::new(WpHookApi::new(store, Rc::new(stores::PhpDeprecations)));
         register_hook_handlers(&container, api.clone());
         let handlers = Handlers {
             add_filter: HandlerRef::new(container.clone()),
@@ -171,7 +173,7 @@ impl WpHooksArea {
     }
 
     /// The Hook API (`plugin.php`) for Rust callers.
-    pub fn api(&self) -> Rc<HookApi> {
+    pub fn api(&self) -> Rc<WpHookApi> {
         self.state.api.clone()
     }
 }
@@ -334,10 +336,10 @@ fn hook_name(args: &Args<'_>, i: usize) -> Result<HookName, NativeError> {
 }
 
 /// True while `handler` is the Hook API itself (PHP did not bind its own), so its fast path may skip it.
-fn is_default<C>(handler: &HandlerRef<C>, api: &Rc<HookApi>) -> bool
+fn is_default<C>(handler: &HandlerRef<C>, api: &Rc<WpHookApi>) -> bool
 where
     C: Command,
-    HookApi: CommandHandler<C>,
+    WpHookApi: CommandHandler<C>,
 {
     handler
         .handler()
@@ -408,7 +410,13 @@ fn has_filter_value(result: HasFilterResult) -> Value {
 fn has_filter_args(
     args: &Args<'_>,
     first: usize,
-) -> Result<(Option<speedyspec_wp_hooks::CallbackId>, Option<i64>), NativeError> {
+) -> Result<
+    (
+        Option<speedyspec_wp_hooks_contracts::CallbackId>,
+        Option<i64>,
+    ),
+    NativeError,
+> {
     let callback = if args.is_false(first) {
         None
     } else {

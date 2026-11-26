@@ -17,8 +17,9 @@ use speedyspec_data_file::FileStore;
 use speedyspec_data_mysql::MySqlEngineFactory;
 use speedyspec_data_query::EngineRegistry;
 use speedyspec_data_valkey::{ValkeyStore, driver_url};
-use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts};
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations, Key};
+use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, NativeWpdb, WpDbConfig, WpDbParts};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
 use speedyspec_wp_options::{
@@ -69,12 +70,12 @@ fn rig(backend: &str, dir: &Path, fresh: bool) -> Rig {
             options: BTreeMap::new(),
         })
         .unwrap();
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
     let sql = registry.sql("default").unwrap();
-    let db = Rc::new(WpDb::new(WpDbParts {
+    let db = Rc::new(NativeWpdb::new(WpDbParts {
         store: sql.clone(),
         hooks: hooks.clone(),
         state: Rc::new(MemoryWpdbState::new()),

@@ -1,15 +1,15 @@
 //! `SqlExpiredTransients`: `delete_expired_transients()`'s multi-table `DELETE`s, WordPress's text with its three
-//! values bound, sent through `WpDb` so the `query` filter fires.
+//! values bound, sent through the wpdb port so the `query` filter fires.
 
 use std::rc::Rc;
 
 use speedyspec_data::{DbError, DbValue, Statement};
 use speedyspec_data_query::parse_one;
-use speedyspec_wp_db::{QueryOutcome, WpDb, WpDbError};
+use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, Wpdb};
 use speedyspec_wp_options::{ExpiredTransients, TransientPrefix};
 
 pub struct SqlExpiredTransients {
-    wpdb: Rc<WpDb>,
+    wpdb: Rc<dyn Wpdb>,
 }
 
 /// `$wpdb->esc_like( $text ) . '%'`.
@@ -26,7 +26,7 @@ fn like_prefix(text: &str) -> String {
 }
 
 impl SqlExpiredTransients {
-    pub fn new(wpdb: Rc<WpDb>) -> SqlExpiredTransients {
+    pub fn new(wpdb: Rc<dyn Wpdb>) -> SqlExpiredTransients {
         SqlExpiredTransients { wpdb }
     }
 

@@ -2,7 +2,8 @@ use std::rc::Rc;
 
 use speedyspec_data::{DbValue, Row, Statement};
 use speedyspec_data_query::parse_one;
-use speedyspec_wp_db::{LastQuery, MemoryWpdbState, OutputShape, Shaped, WpRow, WpdbState, var};
+use speedyspec_wp_db::{LastQuery, MemoryWpdbState, OutputShape, Shaped, WpdbState, var};
+use speedyspec_wp_db_contracts::WpRow;
 
 fn row(columns: &[&str], values: Vec<DbValue>) -> WpRow {
     let columns: Rc<[String]> = columns.iter().map(|c| c.to_string()).collect();

@@ -4,7 +4,8 @@ use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_i18n::{I18nApi, Translated, TranslationController};
 use speedyspec_wp_i18n_files::{ByExtension, StdFileProbe};
@@ -22,8 +23,8 @@ fn s(v: &str) -> HookValue {
 
 type Log = Rc<RefCell<Vec<(String, Vec<HookValue>)>>>;
 
-fn api() -> (I18nApi, Rc<HookApi>) {
-    let hooks = Rc::new(HookApi::new(
+fn api() -> (I18nApi, Rc<WpHookApi>) {
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
@@ -211,9 +212,9 @@ fn filter_may_translate_again() {
                 }
                 depth.set(1);
                 let api = inner.upgrade().unwrap();
-                let nested = api
-                    .translate(b"baba", None, "dom", owned)
-                    .map_err(|e| speedyspec_wp_hooks::HookError::message(e.to_string()))?;
+                let nested = api.translate(b"baba", None, "dom", owned).map_err(|e| {
+                    speedyspec_wp_hooks_contracts::HookError::message(e.to_string())
+                })?;
                 Ok(HookValue::Str(format!("{:?}|{:?}", args[0], nested)))
             }),
             &HookValue::Int(10),

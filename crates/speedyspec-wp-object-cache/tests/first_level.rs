@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_object_cache::*;
+use speedyspec_wp_object_cache_contracts::ObjectCacheError;
 
 #[derive(Default)]
 struct Notices {
@@ -44,7 +45,7 @@ impl AdditionSuspension for Suspended {
 }
 
 struct Rig {
-    cache: ObjectCache,
+    cache: WpObjectCache,
     notices: Rc<Notices>,
     suspended: Rc<Suspended>,
 }
@@ -57,7 +58,7 @@ fn rig_with(multisite: bool) -> Rig {
     ports.site = Rc::new(Site { multisite, blog: 1 });
     ports.suspension = suspended.clone();
     Rig {
-        cache: ObjectCache::new(ports, None),
+        cache: WpObjectCache::new(ports, None),
         notices,
         suspended,
     }
@@ -343,15 +344,15 @@ fn supports_exact_list() {
         "flush_runtime",
         "flush_group",
     ] {
-        assert!(ObjectCache::supports(f), "{f}");
+        assert!(WpObjectCache::supports(f), "{f}");
     }
-    assert!(!ObjectCache::supports("ADD_MULTIPLE"));
-    assert!(!ObjectCache::supports("incr"));
+    assert!(!WpObjectCache::supports("ADD_MULTIPLE"));
+    assert!(!WpObjectCache::supports("incr"));
 }
 
 #[test]
 fn exists_and_peek_count_nothing() {
-    let c = ObjectCache::new(ObjectCachePorts::rust(), None);
+    let c = WpObjectCache::new(ObjectCachePorts::rust(), None);
     c.set(
         &Value::Str("k".into()),
         Value::Int(1),

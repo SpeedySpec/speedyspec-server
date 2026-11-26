@@ -5,9 +5,8 @@ use std::rc::{Rc, Weak};
 
 use speedyspec_container::Container;
 use speedyspec_php_ext::{Key, PhpObject, Value, php_port};
-use speedyspec_wp_hooks::{
-    ArrayKey, Count, DeprecatedHooks, HookError, HookKey, HookStore, HookValue, Partition, WpHook,
-};
+use speedyspec_wp_hooks::{DeprecatedHooks, HookStore, Partition, WpHook};
+use speedyspec_wp_hooks_contracts::{ArrayKey, Count, HookError, HookKey, HookValue};
 
 use crate::registry;
 

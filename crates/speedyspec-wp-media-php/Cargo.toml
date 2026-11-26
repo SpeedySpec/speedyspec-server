@@ -17,6 +17,7 @@ speedyspec-php-ext = { path = "../speedyspec-php-ext" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-media = { path = "../speedyspec-wp-media" }
 speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 tempfile = "3"

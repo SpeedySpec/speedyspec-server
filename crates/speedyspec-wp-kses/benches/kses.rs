@@ -4,7 +4,7 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_kses::{DefaultGlobals, KsesApi, KsesDeps, NoValueCallbacks, UploadsLocation};
 use speedyspec_wp_kses_contracts::{
@@ -87,7 +87,7 @@ fn main() {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(200);
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

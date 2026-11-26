@@ -31,7 +31,7 @@ use speedyspec_container::Container;
 use speedyspec_container_php::ContainerArea;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_media_contracts::{MEDIA_READER, MediaReader, ProbeLimits};
 
 pub use adapters::{
@@ -50,7 +50,7 @@ pub struct MediaArea {
 
 impl MediaArea {
     /// The area, filtering through `hooks`, resolving the reader from `container`, reading within `limits`.
-    pub fn new(hooks: Rc<HookApi>, container: Rc<Container>, limits: ProbeLimits) -> MediaArea {
+    pub fn new(hooks: Rc<WpHookApi>, container: Rc<Container>, limits: ProbeLimits) -> MediaArea {
         MediaArea {
             natives: Rc::new(natives::Natives {
                 hooks,

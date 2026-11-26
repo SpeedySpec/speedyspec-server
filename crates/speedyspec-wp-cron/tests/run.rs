@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use speedyspec_wp_cron::memory::MemoryCronStore;
 use speedyspec_wp_cron_contracts::{CronStep, RunSummary};
-use speedyspec_wp_hooks::{Callback, HookName, HookValue, Key};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
 use support::*;
 
 fn budget() -> Duration {

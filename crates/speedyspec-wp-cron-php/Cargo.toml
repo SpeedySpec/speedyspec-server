@@ -17,6 +17,7 @@ speedyspec-wp-cron-options = { path = "../speedyspec-wp-cron-options" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 speedyspec-wp-options-php = { path = "../speedyspec-wp-options-php" }
 speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-container = { path = "../speedyspec-container" }

@@ -10,7 +10,7 @@ use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, NativeArea, Php, PhpError};
 use speedyspec_wp_crypto_php::CryptoArea;
 use speedyspec_wp_crypto_sodium::Sodium;
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::WpHooksArea;
 

@@ -30,7 +30,7 @@ use speedyspec_container_php::ContainerArea;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_wp_crypto_sodium::Sodium;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_password::{
     DefaultPasswordChecker, DefaultPasswordGenerator, DefaultPasswordHasher, DefaultRandomNumber,
     DefaultRehashPolicy, FixedCostLimits, PasswordPorts,
@@ -55,13 +55,13 @@ const FACADE: &str = include_str!("password.php");
 /// The native area of WordPress's password functions.
 pub struct PasswordArea {
     natives: Rc<natives::Natives>,
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
 }
 
 impl PasswordArea {
     /// The area, filtering through `hooks`, resolving ports from `container`, hashing argon2 and drawing random bytes
     /// with `sodium`.
-    pub fn new(hooks: Rc<HookApi>, container: Rc<Container>, sodium: Rc<Sodium>) -> PasswordArea {
+    pub fn new(hooks: Rc<WpHookApi>, container: Rc<Container>, sodium: Rc<Sodium>) -> PasswordArea {
         PasswordArea {
             natives: Rc::new(natives::Natives { container, sodium }),
             hooks,

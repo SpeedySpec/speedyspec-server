@@ -4,7 +4,7 @@ mod support;
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_text_corpus::{Php, assert_corpus_reporting, diagnostics, from_value};
 use speedyspec_wp_text_escape::EscapeApi;
@@ -18,7 +18,7 @@ struct Harness {
 fn harness() -> Harness {
     let diagnostics = Rc::new(RecordingDiagnostics::default());
     let api = EscapeApi::new(
-        Rc::new(HookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations))),
+        Rc::new(WpHookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations))),
         Rc::new(FixedSiteSettings::default()),
         diagnostics.clone(),
     );

@@ -1,11 +1,12 @@
-//! `WpDb`: the port's API (Gateway), and the query path.
+//! `NativeWpdb`: the port's API (Gateway), and the query path.
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use indexmap::IndexMap;
 use speedyspec_data::{DbError, SqlStore, Statement, StatementKind};
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
+use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName};
 
 use crate::binary::parse_bytes;
 use crate::escape::string_value;
@@ -13,35 +14,17 @@ use crate::php::to_bytes;
 use crate::timed::microtime;
 use crate::{
     LastQuery, PlaceholderEscape, QueryClass, RequestState, ServerCaps, TableEnv, TableNames,
-    TimedSqlStore, WpDbConfig, WpDbError, WpRow, WpValue, WpdbHost, WpdbState,
+    TimedSqlStore, WpDbConfig, WpdbHost, WpdbState,
 };
+use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue};
 
-/// What `WpDb` is made from.
+/// What `NativeWpdb` is made from.
 pub struct WpDbParts {
     pub store: Rc<dyn SqlStore>,
-    pub hooks: Rc<HookApi>,
+    pub hooks: Rc<WpHookApi>,
     pub state: Rc<dyn WpdbState>,
     pub host: Rc<dyn WpdbHost>,
     pub config: WpDbConfig,
-}
-
-/// What `query()` returns: rows for a read, counts for a write, `true` for DDL.
-#[derive(Debug, Clone, PartialEq)]
-pub enum QueryOutcome {
-    Rows(Rc<Vec<WpRow>>),
-    Affected { rows: u64, insert_id: u64 },
-    Done,
-}
-
-impl QueryOutcome {
-    /// `query()`'s PHP return value.
-    pub fn to_wp(&self) -> WpValue {
-        match self {
-            QueryOutcome::Rows(rows) => WpValue::Int(rows.len() as i64),
-            QueryOutcome::Affected { rows, .. } => WpValue::Int(*rows as i64),
-            QueryOutcome::Done => WpValue::Bool(true),
-        }
-    }
 }
 
 /// `wpdb`'s settings that outlive a request.
@@ -59,9 +42,9 @@ pub(crate) struct Settings {
 }
 
 /// WordPress's `wpdb`.
-pub struct WpDb {
+pub struct NativeWpdb {
     pub(crate) store: Rc<TimedSqlStore>,
-    pub(crate) hooks: Rc<HookApi>,
+    pub(crate) hooks: Rc<WpHookApi>,
     pub(crate) state: Rc<dyn WpdbState>,
     pub(crate) host: Rc<dyn WpdbHost>,
     pub(crate) config: WpDbConfig,
@@ -94,8 +77,8 @@ fn falsy(bytes: &[u8]) -> bool {
     bytes.is_empty() || bytes == b"0"
 }
 
-impl WpDb {
-    pub fn new(parts: WpDbParts) -> WpDb {
+impl NativeWpdb {
+    pub fn new(parts: WpDbParts) -> NativeWpdb {
         let salt = parts
             .host
             .constant("AUTH_SALT")
@@ -106,7 +89,7 @@ impl WpDb {
             s.ready = true;
             s.dbh_present = true;
         });
-        WpDb {
+        NativeWpdb {
             store: Rc::new(TimedSqlStore::new(parts.store)),
             hooks: parts.hooks,
             state: parts.state,
@@ -151,7 +134,7 @@ impl Settings {
     }
 }
 
-impl WpDb {
+impl NativeWpdb {
     /// Starts a request as a new `wpdb` object would: table names, prefixes, field types and the charset settings
     /// back to their defaults. The server's capabilities, read once, are kept.
     pub fn reset_request(&self) {
@@ -181,7 +164,7 @@ impl WpDb {
         &self.host
     }
 
-    pub fn hooks(&self) -> &Rc<HookApi> {
+    pub fn hooks(&self) -> &Rc<WpHookApi> {
         &self.hooks
     }
 
@@ -541,6 +524,11 @@ impl WpDb {
 
     pub fn hide_errors(&self) -> bool {
         self.show_errors(false)
+    }
+
+    /// `$wpdb->insert_id`: the id the last insert generated, as `property("insert_id")` reads it.
+    pub fn insert_id(&self) -> u64 {
+        self.read(|s| s.insert_id)
     }
 
     pub fn suppress_errors(&self, suppress: bool) -> bool {
