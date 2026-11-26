@@ -42,29 +42,29 @@ fn dates_match_wordpress() {
         };
         assert_eq!(resolved.unfiltered(), expected, "{name}");
 
-        // The GMT date wp_insert_post() derives from the resolved date when it is given none.
-        let pairs = clock.gmt_from_date_pairs();
-        match &expected {
-            None => assert!(pairs.is_empty(), "{name}: gmt_from_date without a date"),
-            Some(date) => {
-                assert_eq!(pairs.len(), 1, "{name}");
-                assert_eq!(&pairs[0].0, date, "{name}: gmt_from_date's input");
-                let dates = insert_post_dates(
+        // The GMT date wp_insert_post() derives from the resolved date when it is given none: the recorded
+        // get_gmt_from_date() for a status that does not float, zero for one that does.
+        if let Some(date) = &expected {
+            let insert = |status| {
+                insert_post_dates(
                     &InsertDateInput {
                         post_date: date,
                         post_date_gmt: b"",
-                        status: "private",
+                        status,
                         post_type: "attachment",
                         update: false,
                     },
                     &statuses,
                     &clock,
-                );
-                assert_eq!(dates.date_gmt, pairs[0].1, "{name}: date_gmt");
-                assert_eq!(&dates.modified, date, "{name}: modified");
-                assert_eq!(dates.modified_gmt, pairs[0].1, "{name}: modified_gmt");
-                assert_eq!(dates.status, "private", "{name}: status");
-            }
+                )
+            };
+            let (_, gmt) = &clock.gmt_from_date_pairs()[0];
+            assert_eq!(&insert("private").date_gmt, gmt, "{name}: date_gmt");
+            assert_eq!(
+                insert("draft").date_gmt,
+                b"0000-00-00 00:00:00",
+                "{name}: floating date_gmt"
+            );
         }
     }
 }

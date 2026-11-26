@@ -1,5 +1,5 @@
 //! WordPress's post date rules: `wp_resolve_post_date()` (post.php, 7.2-RC2 lines 5761-5784) up to the
-//! `wp_checkdate` filter, and the dates and status `wp_insert_post()` derives from the resolved date (5019-5050).
+//! `wp_checkdate` filter, and the dates and status `wp_insert_post()` derives from the resolved date (5020-5050).
 //!
 //! The time functions are a port ([`Clock`], Strategy), so the rules read no global clock or timezone. PHP strings
 //! are bytes: the dates are `&[u8]`, and only the status and post type names are text.
@@ -139,7 +139,7 @@ pub struct InsertDates {
     pub status: String,
 }
 
-/// `wp_insert_post()` lines 5019-5050, after `wp_resolve_post_date()`: the GMT date (given, else derived from the
+/// `wp_insert_post()` lines 5020-5050, after `wp_resolve_post_date()`: the GMT date (given, else derived from the
 /// local date unless the status floats, then zero), the modified dates (now on update or for a zero date, else the
 /// post's), and `publish` scheduled as `future` a minute or more ahead, `future` published when less than a minute
 /// ahead, except for attachments. A date `strtotime()` cannot read counts as 0, as PHP's `false` does.
@@ -215,7 +215,11 @@ mod tests {
     impl Fixed {
         fn new() -> Self {
             Self {
-                to_gmt: HashMap::from([("2024-03-01 06:00:00", "2024-03-01 12:00:00")]),
+                to_gmt: HashMap::from([
+                    ("2024-03-01 06:00:00", "2024-03-01 12:00:00"),
+                    ("2026-11-25 19:19:50", "2026-11-26 01:19:50"),
+                    ("2026-11-25 19:17:50", "2026-11-26 01:17:50"),
+                ]),
                 timestamps: HashMap::from([
                     (NOW_GMT, NOW_TS),
                     ("2026-11-26 01:19:50", NOW_TS + 60),
@@ -258,6 +262,7 @@ mod tests {
         statuses.register(b"pending", floating());
         statuses.register(b"publish", Vec::new());
         statuses.register(b"future", Vec::new());
+        statuses.register(b"private", Vec::new());
         statuses
     }
 
@@ -431,6 +436,31 @@ mod tests {
             false,
         );
         assert_eq!(dates.status, "future");
+    }
+
+    #[test]
+    fn swap_uses_the_derived_gmt() {
+        // No GMT given: get_gmt_from_date() of the local date decides.
+        let dates = insert("2026-11-25 19:19:50", "", "publish", "post", false);
+        assert_eq!(dates.date_gmt, b"2026-11-26 01:19:50");
+        assert_eq!(dates.status, "future");
+        let dates = insert("2026-11-25 19:17:50", "", "future", "post", false);
+        assert_eq!(dates.date_gmt, b"2026-11-26 01:17:50");
+        assert_eq!(dates.status, "publish");
+    }
+
+    #[test]
+    fn other_statuses_are_not_swapped() {
+        for status in ["draft", "private"] {
+            let dates = insert(
+                "2026-11-25 19:19:50",
+                "2026-11-26 01:19:50",
+                status,
+                "post",
+                false,
+            );
+            assert_eq!(dates.status, status);
+        }
     }
 
     #[test]
