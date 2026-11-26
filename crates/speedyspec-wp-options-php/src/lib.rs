@@ -25,7 +25,7 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
-use speedyspec_wp_db::WpDb;
+use speedyspec_wp_db::NativeWpdb;
 use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_object_cache::CurrentObjectCache;
 use speedyspec_wp_options::{
@@ -99,7 +99,7 @@ impl OptionsArea {
         container: Rc<Container>,
         hooks: Rc<WpHookApi>,
         cache: Rc<CurrentObjectCache>,
-        wpdb: Rc<WpDb>,
+        wpdb: Rc<NativeWpdb>,
     ) -> OptionsArea {
         let snapshot = Rc::new(Snapshot::default());
         let repository = Rc::new(SqlOptionRepository::new(wpdb.clone(), "default".into()));

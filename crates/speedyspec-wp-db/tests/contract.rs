@@ -1,11 +1,11 @@
-//! `WpDb` implements the `Wpdb` port: every method reaches `wpdb` through `&dyn Wpdb`, so none of them calls
+//! `NativeWpdb` implements the `Wpdb` port: every method reaches `wpdb` through `&dyn Wpdb`, so none of them calls
 //! itself.
 
 mod support;
 
 use speedyspec_data::ExecResult;
 use speedyspec_data_query::parse_one;
-use speedyspec_wp_db::{RequestState, WpDb, WpdbState};
+use speedyspec_wp_db::{RequestState, NativeWpdb, WpdbState};
 use speedyspec_wp_db_contracts::{WpDbError, WpValue, Wpdb, take_hook_error};
 use speedyspec_wp_hooks_contracts::HookError;
 use support::{Answer, Rig, filter, rig, rows};
@@ -57,7 +57,7 @@ fn every_method_reaches_wpdb_through_dyn() {
     options_columns(&r);
     let db: &dyn Wpdb = &r.db;
 
-    assert_eq!(db.table_name("options"), WpDb::table_name(&r.db, "options"));
+    assert_eq!(db.table_name("options"), NativeWpdb::table_name(&r.db, "options"));
 
     let before = read(&*r.state, |s| s.suppress_errors);
     assert_eq!(db.suppress_errors(true), before);
@@ -90,7 +90,7 @@ fn every_method_reaches_wpdb_through_dyn() {
 
     assert!(db.prepare(Some(b"SELECT %d"), &[WpValue::Int(1)]).is_some());
     assert!(db.process_fields("wp_options", &data, None).is_ok());
-    assert_eq!(db.charset(), WpDb::charset(&r.db));
+    assert_eq!(db.charset(), NativeWpdb::charset(&r.db));
 }
 
 #[test]

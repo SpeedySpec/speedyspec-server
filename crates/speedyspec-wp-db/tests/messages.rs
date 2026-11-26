@@ -24,7 +24,7 @@ macro_rules! queries {
     )*};
 }
 
-fn bound() -> (Rc<Container>, Rc<WpDb>, Rc<support::FakeStore>) {
+fn bound() -> (Rc<Container>, Rc<NativeWpdb>, Rc<support::FakeStore>) {
     let r = rig();
     let container = Rc::new(Container::new());
     let store = r.store.clone();

@@ -1,25 +1,25 @@
-//! `WpDb` implements the `Wpdb` port. Each method names `WpDb`'s own method in full, so none of them calls itself.
+//! `NativeWpdb` implements the `Wpdb` port. Each method names `NativeWpdb`'s own method in full, so none of them calls itself.
 
 use speedyspec_data::Statement;
 use speedyspec_wp_db_contracts::{Field, QueryOutcome, WpDbError, WpValue, Wpdb};
 
-use crate::WpDb;
+use crate::NativeWpdb;
 
-impl Wpdb for WpDb {
+impl Wpdb for NativeWpdb {
     fn table_name(&self, logical: &str) -> String {
-        WpDb::table_name(self, logical)
+        NativeWpdb::table_name(self, logical)
     }
 
     fn query_statement(&self, stmt: Statement) -> Result<QueryOutcome, WpDbError> {
-        WpDb::query_statement(self, stmt)
+        NativeWpdb::query_statement(self, stmt)
     }
 
     fn query_bytes(&self, sql: &[u8]) -> Result<QueryOutcome, WpDbError> {
-        WpDb::query_bytes(self, sql)
+        NativeWpdb::query_bytes(self, sql)
     }
 
     fn prepare(&self, query: Option<&[u8]>, args: &[WpValue]) -> Option<Vec<u8>> {
-        WpDb::prepare(self, query, args)
+        NativeWpdb::prepare(self, query, args)
     }
 
     fn process_fields(
@@ -28,7 +28,7 @@ impl Wpdb for WpDb {
         data: &[(String, WpValue)],
         format: Option<&[String]>,
     ) -> Result<Vec<Field>, WpDbError> {
-        WpDb::process_fields(self, table, data, format)
+        NativeWpdb::process_fields(self, table, data, format)
     }
 
     fn insert(
@@ -37,7 +37,7 @@ impl Wpdb for WpDb {
         data: &[(String, WpValue)],
         format: Option<&[String]>,
     ) -> Result<u64, WpDbError> {
-        WpDb::insert(self, table, data, format)
+        NativeWpdb::insert(self, table, data, format)
     }
 
     fn update(
@@ -48,7 +48,7 @@ impl Wpdb for WpDb {
         format: Option<&[String]>,
         where_format: Option<&[String]>,
     ) -> Result<u64, WpDbError> {
-        WpDb::update(self, table, data, conditions, format, where_format)
+        NativeWpdb::update(self, table, data, conditions, format, where_format)
     }
 
     fn delete(
@@ -57,18 +57,18 @@ impl Wpdb for WpDb {
         conditions: &[(String, WpValue)],
         where_format: Option<&[String]>,
     ) -> Result<u64, WpDbError> {
-        WpDb::delete(self, table, conditions, where_format)
+        NativeWpdb::delete(self, table, conditions, where_format)
     }
 
     fn insert_id(&self) -> u64 {
-        WpDb::insert_id(self)
+        NativeWpdb::insert_id(self)
     }
 
     fn suppress_errors(&self, suppress: bool) -> bool {
-        WpDb::suppress_errors(self, suppress)
+        NativeWpdb::suppress_errors(self, suppress)
     }
 
     fn charset(&self) -> String {
-        WpDb::charset(self)
+        NativeWpdb::charset(self)
     }
 }

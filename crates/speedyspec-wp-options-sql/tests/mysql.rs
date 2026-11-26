@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use speedyspec_data::EngineConfig;
 use speedyspec_data_mysql::MySqlEngineFactory;
 use speedyspec_data_query::EngineRegistry;
-use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts};
+use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, NativeWpdb, WpDbConfig, WpDbParts};
 use speedyspec_wp_db_contracts::WpValue;
 use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
@@ -28,7 +28,7 @@ const SCHEMA: &str = "CREATE TABLE wp_options (option_id bigint(20) unsigned NOT
     KEY autoload (autoload)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
 struct Rig {
-    db: Rc<WpDb>,
+    db: Rc<NativeWpdb>,
     hooks: Rc<WpHookApi>,
     host: Rc<MemoryWpdbHost>,
     repo: Rc<SqlOptionRepository>,
@@ -50,7 +50,7 @@ fn rig() -> Rig {
         Rc::new(IgnoreDeprecations),
     ));
     let host = Rc::new(MemoryWpdbHost::new());
-    let db = Rc::new(WpDb::new(WpDbParts {
+    let db = Rc::new(NativeWpdb::new(WpDbParts {
         store: registry.sql("default").unwrap(),
         hooks: hooks.clone(),
         state: Rc::new(MemoryWpdbState::new()),
@@ -79,7 +79,7 @@ fn rig() -> Rig {
     }
 }
 
-fn num_queries(db: &WpDb) -> i64 {
+fn num_queries(db: &NativeWpdb) -> i64 {
     match db.property("num_queries") {
         Some(WpValue::Int(n)) => n,
         other => panic!("{other:?}"),

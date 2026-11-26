@@ -6,13 +6,13 @@ use speedyspec_data_mysql::MySqlEngineFactory;
 use speedyspec_data_query::EngineRegistry;
 use speedyspec_hooks::Key;
 use speedyspec_wp_db::{
-    MemoryWpdbHost, MemoryWpdbState, OutputShape, Shaped, WpDb, WpDbConfig, WpDbParts,
+    MemoryWpdbHost, MemoryWpdbState, OutputShape, Shaped, NativeWpdb, WpDbConfig, WpDbParts,
 };
 use speedyspec_wp_db_contracts::WpValue;
 use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 
-fn wpdb() -> WpDb {
+fn wpdb() -> NativeWpdb {
     let url = std::env::var("SPEEDYSPEC_TEST_MYSQL_URL").expect("set SPEEDYSPEC_TEST_MYSQL_URL");
     let registry = EngineRegistry::new();
     registry.register_factory(Rc::new(MySqlEngineFactory));
@@ -23,7 +23,7 @@ fn wpdb() -> WpDb {
             options: BTreeMap::new(),
         })
         .unwrap();
-    let db = WpDb::new(WpDbParts {
+    let db = NativeWpdb::new(WpDbParts {
         store: registry.sql("default").unwrap(),
         hooks: Rc::new(WpHookApi::new(
             Rc::new(MemoryHookStore::new()),

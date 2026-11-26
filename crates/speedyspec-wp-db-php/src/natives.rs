@@ -91,9 +91,9 @@ impl Handlers {
 
 type R = Result<Value, NativeError>;
 
-/// One call's instance: its `WpDb` and whether it is the global (which dispatches through the handlers).
+/// One call's instance: its `NativeWpdb` and whether it is the global (which dispatches through the handlers).
 struct Ctx {
-    db: Rc<WpDb>,
+    db: Rc<NativeWpdb>,
     global: bool,
     shared: Option<Rc<crate::Shared>>,
 }
@@ -105,7 +105,7 @@ impl Ctx {
         m: C,
     ) -> Result<C::Result, NativeError>
     where
-        WpDb: CommandHandler<C>,
+        NativeWpdb: CommandHandler<C>,
     {
         match (&self.shared, self.global) {
             (Some(s), true) => pick(&s.handlers)
@@ -121,7 +121,7 @@ impl Ctx {
         m: Q,
     ) -> Result<Q::Result, NativeError>
     where
-        WpDb: QueryHandler<Q>,
+        NativeWpdb: QueryHandler<Q>,
     {
         match (&self.shared, self.global) {
             (Some(s), true) => pick(&s.handlers)

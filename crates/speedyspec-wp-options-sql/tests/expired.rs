@@ -8,7 +8,7 @@ use speedyspec_data_mysql::MySqlEngineFactory;
 use speedyspec_data_postgres::PostgresEngineFactory;
 use speedyspec_data_query::EngineRegistry;
 use speedyspec_data_sqlite::SqliteEngineFactory;
-use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts};
+use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, NativeWpdb, WpDbConfig, WpDbParts};
 use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_options::{ExpiredTransients, TransientPrefix};
@@ -37,7 +37,7 @@ enum Engine {
 /// The PostgreSQL schema these tests own, dropped and made afresh for each test.
 const PG_SCHEMA: &str = "t_expired_transients";
 
-fn rig(engine: Engine) -> Rc<WpDb> {
+fn rig(engine: Engine) -> Rc<NativeWpdb> {
     let (factory, url, options): (Rc<dyn EngineFactory>, String, BTreeMap<String, String>) =
         match engine {
             Engine::MySql => (
@@ -80,7 +80,7 @@ fn rig(engine: Engine) -> Rc<WpDb> {
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
-    let db = Rc::new(WpDb::new(WpDbParts {
+    let db = Rc::new(NativeWpdb::new(WpDbParts {
         store: registry.sql("default").unwrap(),
         hooks: hooks.clone(),
         state: Rc::new(MemoryWpdbState::new()),
@@ -115,7 +115,7 @@ const ROWS: [(&str, &str); 7] = [
     ("_site_transient_timeout_d", "999"),
 ];
 
-fn names(db: &WpDb, sql: &str) -> Vec<String> {
+fn names(db: &NativeWpdb, sql: &str) -> Vec<String> {
     db.query(sql).unwrap();
     db.get_col(0)
         .into_iter()

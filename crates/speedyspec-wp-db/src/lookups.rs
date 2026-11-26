@@ -9,7 +9,7 @@ use speedyspec_wp_hooks_contracts::{Count, HookName};
 
 use crate::escape::string_value;
 use crate::php::to_bytes;
-use crate::{CharsetRules, ColumnMeta, OutputShape, StripContext, WpDb, get_table_from_query};
+use crate::{CharsetRules, ColumnMeta, OutputShape, StripContext, NativeWpdb, get_table_from_query};
 use speedyspec_wp_db_contracts::{ColLength, WpDbError, WpValue};
 
 thread_local! {
@@ -41,7 +41,7 @@ fn charset_answer(v: &WpValue) -> Option<Option<String>> {
     }
 }
 
-impl WpDb {
+impl NativeWpdb {
     pub(crate) fn connection_charset(&self) -> String {
         let charset = self.settings.borrow().charset.clone();
         if charset.is_empty() {

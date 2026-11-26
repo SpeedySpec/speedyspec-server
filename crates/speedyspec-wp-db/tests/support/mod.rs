@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use speedyspec_data::*;
 use speedyspec_data_query::mysql_text;
-use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts};
+use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, NativeWpdb, WpDbConfig, WpDbParts};
 use speedyspec_wp_db_contracts::WpValue;
 use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_contracts::{Callback, HookError, HookName};
@@ -183,7 +183,7 @@ pub fn rows(columns: &[&str], values: &[&[Option<&str>]]) -> Rows {
 }
 
 pub struct Rig {
-    pub db: WpDb,
+    pub db: NativeWpdb,
     pub store: Rc<FakeStore>,
     pub hooks: Rc<WpHookApi>,
     pub host: Rc<MemoryWpdbHost>,
@@ -214,7 +214,7 @@ pub fn rig_with(host: MemoryWpdbHost) -> Rig {
     ));
     let host = Rc::new(host);
     let state = Rc::new(MemoryWpdbState::new());
-    let db = WpDb::new(WpDbParts {
+    let db = NativeWpdb::new(WpDbParts {
         store: store.clone(),
         hooks: hooks.clone(),
         state: state.clone(),

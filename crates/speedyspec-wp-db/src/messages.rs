@@ -1,6 +1,6 @@
-//! Every `wpdb` method as a use case: a command or a query handled by [`WpDb`] (Command / CQRS).
+//! Every `wpdb` method as a use case: a command or a query handled by [`NativeWpdb`] (Command / CQRS).
 //!
-//! [`register_wpdb_handlers`] binds [`WpDb`] under each message's `KEY`; PHP overrides one by binding the same key.
+//! [`register_wpdb_handlers`] binds [`NativeWpdb`] under each message's `KEY`; PHP overrides one by binding the same key.
 //! The readers take no SQL: a `get_*` call with SQL is the `Query` command followed by the reader.
 
 use std::rc::Rc;
@@ -11,7 +11,7 @@ use speedyspec_cqrs::{
     bind_query_handler,
 };
 
-use crate::{OutputShape, Shaped, TableScope, WpDb};
+use crate::{OutputShape, Shaped, TableScope, NativeWpdb};
 use speedyspec_wp_db_contracts::{ColLength, QueryOutcome, WpDbError, WpRow, WpValue};
 
 macro_rules! message {
@@ -22,7 +22,7 @@ macro_rules! message {
             type Result = $result;
             const KEY: &'static str = concat!("SpeedySpec\\WpDb\\", stringify!($name), "Handler");
         }
-        impl CommandHandler<$name> for WpDb {
+        impl CommandHandler<$name> for NativeWpdb {
             #[allow(unused_variables)]
             fn handle(&self, $m: $name) -> $result {
                 let $db = self;
@@ -37,7 +37,7 @@ macro_rules! message {
             type Result = $result;
             const KEY: &'static str = concat!("SpeedySpec\\WpDb\\", stringify!($name), "Handler");
         }
-        impl QueryHandler<$name> for WpDb {
+        impl QueryHandler<$name> for NativeWpdb {
             #[allow(unused_variables)]
             fn handle(&self, $m: $name) -> $result {
                 let $db = self;
@@ -93,7 +93,7 @@ message!(query DbServerInfo {} -> Result<String, WpDbError>, |db, m| db.db_serve
 message!(query SupportsCollation {} -> bool, |db, m| db.supports_collation());
 message!(query GetCharsetCollate {} -> String, |db, m| db.get_charset_collate());
 
-impl WpDb {
+impl NativeWpdb {
     /// `wpdb::set_prefix`.
     pub fn set_prefix(&self, prefix: &str, set_table_names: bool) -> Result<String, WpDbError> {
         let env = self.table_env();
@@ -130,7 +130,7 @@ macro_rules! bind_all {
 }
 
 /// Binds `api` as the handler of every `wpdb` message.
-pub fn register_wpdb_handlers(container: &Container, api: Rc<WpDb>) {
+pub fn register_wpdb_handlers(container: &Container, api: Rc<NativeWpdb>) {
     bind_all!(container, api;
         commands: Query, Insert, Replace, Update, Delete, SetPrefix, SetBlogId, SetCharset, SetSqlMode, Select, Flush,
             Close, CheckConnection;

@@ -1,4 +1,4 @@
-//! `WpDb`: the port's API (Gateway), and the query path.
+//! `NativeWpdb`: the port's API (Gateway), and the query path.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -18,7 +18,7 @@ use crate::{
 };
 use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue};
 
-/// What `WpDb` is made from.
+/// What `NativeWpdb` is made from.
 pub struct WpDbParts {
     pub store: Rc<dyn SqlStore>,
     pub hooks: Rc<WpHookApi>,
@@ -42,7 +42,7 @@ pub(crate) struct Settings {
 }
 
 /// WordPress's `wpdb`.
-pub struct WpDb {
+pub struct NativeWpdb {
     pub(crate) store: Rc<TimedSqlStore>,
     pub(crate) hooks: Rc<WpHookApi>,
     pub(crate) state: Rc<dyn WpdbState>,
@@ -77,8 +77,8 @@ fn falsy(bytes: &[u8]) -> bool {
     bytes.is_empty() || bytes == b"0"
 }
 
-impl WpDb {
-    pub fn new(parts: WpDbParts) -> WpDb {
+impl NativeWpdb {
+    pub fn new(parts: WpDbParts) -> NativeWpdb {
         let salt = parts
             .host
             .constant("AUTH_SALT")
@@ -89,7 +89,7 @@ impl WpDb {
             s.ready = true;
             s.dbh_present = true;
         });
-        WpDb {
+        NativeWpdb {
             store: Rc::new(TimedSqlStore::new(parts.store)),
             hooks: parts.hooks,
             state: parts.state,
@@ -134,7 +134,7 @@ impl Settings {
     }
 }
 
-impl WpDb {
+impl NativeWpdb {
     /// Starts a request as a new `wpdb` object would: table names, prefixes, field types and the charset settings
     /// back to their defaults. The server's capabilities, read once, are kept.
     pub fn reset_request(&self) {

@@ -52,7 +52,7 @@ pub struct PhpWpdbState {
 }
 
 impl PhpWpdbState {
-    /// A state bound while `wpdb` is connected starts ready, as `WpDb::new` leaves the worker's state.
+    /// A state bound while `wpdb` is connected starts ready, as `NativeWpdb::new` leaves the worker's state.
     pub fn new(object: PhpObject) -> PhpWpdbState {
         let state = RequestState {
             ready: true,

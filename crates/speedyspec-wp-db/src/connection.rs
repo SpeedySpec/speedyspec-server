@@ -13,14 +13,14 @@ use crate::api::html_escape;
 use crate::caps::version_compare;
 use crate::escape::real_escape;
 use crate::php::to_bytes;
-use crate::{CharsetRules, DbHost, ServerCaps, WpDb};
+use crate::{CharsetRules, DbHost, ServerCaps, NativeWpdb};
 use speedyspec_wp_db_contracts::{WpDbError, WpValue};
 
 fn literal(s: &str) -> String {
     format!("'{}'", String::from_utf8_lossy(&real_escape(s.as_bytes())))
 }
 
-impl WpDb {
+impl NativeWpdb {
     fn constant_text(&self, name: &str) -> Option<String> {
         self.host
             .constant(name)
@@ -279,7 +279,7 @@ impl WpDb {
 
     /// `wpdb::check_connection`.
     pub fn check_connection(&self, allow_bail: bool) -> Result<bool, WpDbError> {
-        let alive = |db: &WpDb| match db.session("SELECT 1") {
+        let alive = |db: &NativeWpdb| match db.session("SELECT 1") {
             Ok(_) => Ok(true),
             Err(WpDbError::Db(DbError::Connection { .. })) => Ok(false),
             Err(e) => Err(e),

@@ -1,6 +1,6 @@
 //! WordPress's `wpdb`, in Rust.
 //!
-//! [`WpDb`] is the port's API (Gateway) and the handler of every command and query. Pure domain services hold
+//! [`NativeWpdb`] is the port's API (Gateway) and the handler of every command and query. Pure domain services hold
 //! WordPress's rules; `WpdbState` and `WpdbHost` are its outbound ports.
 
 mod config;
@@ -48,7 +48,7 @@ mod log;
 mod lookups;
 mod timed;
 
-pub use api::{WpDb, WpDbParts};
+pub use api::{NativeWpdb, WpDbParts};
 pub use timed::{TimedSqlStore, Timing, microtime};
 
 mod messages;

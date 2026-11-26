@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use speedyspec_data::EngineConfig;
 use speedyspec_data_mysql::MySqlEngineFactory;
 use speedyspec_data_query::EngineRegistry;
-use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts};
+use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, NativeWpdb, WpDbConfig, WpDbParts};
 use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
@@ -37,7 +37,7 @@ fn rig() -> (SqlSitemetaRepository, Rc<WpHookApi>) {
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
-    let db = Rc::new(WpDb::new(WpDbParts {
+    let db = Rc::new(NativeWpdb::new(WpDbParts {
         store: registry.sql("default").unwrap(),
         hooks: hooks.clone(),
         state: Rc::new(MemoryWpdbState::new()),
