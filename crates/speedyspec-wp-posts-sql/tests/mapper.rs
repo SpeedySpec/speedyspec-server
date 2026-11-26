@@ -254,6 +254,104 @@ fn missing_or_bad_id_is_db_error() {
 }
 
 #[test]
+fn negative_or_null_numbers_in_a_row_are_db_errors() {
+    for column in ["post_author", "post_parent"] {
+        for bad in [DbValue::Text("-1".into()), DbValue::Int(-1), DbValue::Null] {
+            let r = row(&["ID", column], vec![DbValue::UInt(1), bad.clone()]);
+            assert!(
+                matches!(PostMapper::to_entity(&r), Err(PostError::Db(_))),
+                "{column} {bad:?}"
+            );
+        }
+    }
+    let r = row(&["ID", "menu_order"], vec![DbValue::UInt(1), DbValue::Null]);
+    assert!(matches!(PostMapper::to_entity(&r), Err(PostError::Db(_))));
+}
+
+#[test]
+fn unsigned_columns_above_i64_max_parse() {
+    let big = u64::MAX;
+    let r = row(
+        &["ID", "post_author", "post_parent"],
+        vec![
+            DbValue::Text(big.to_string()),
+            DbValue::UInt(big),
+            DbValue::Text((i64::MAX as u64 + 1).to_string()),
+        ],
+    );
+    let post = PostMapper::to_entity(&r).unwrap();
+    assert_eq!(post.id, PostId(big));
+    assert_eq!(post.author, big);
+    assert_eq!(post.parent, PostId(i64::MAX as u64 + 1));
+    // `(int)` saturates the decimal string, as sanitize_post() does; the author stays a string.
+    let cached = PostMapper::to_cache(&post);
+    let PhpValue::Object { properties, .. } = &cached else {
+        panic!("an object");
+    };
+    assert_eq!(get(properties, "ID"), Some(&PhpValue::Int(i64::MAX)));
+    assert_eq!(
+        get(properties, "post_parent"),
+        Some(&PhpValue::Int(i64::MAX))
+    );
+    assert_eq!(
+        get(properties, "post_author"),
+        Some(&PhpValue::Str(big.to_string().into_bytes()))
+    );
+}
+
+#[test]
+fn null_text_names_and_dates_in_a_row_are_empty_and_missing_ones_default() {
+    let null_columns = [
+        "ID",
+        "post_title",
+        "post_status",
+        "comment_status",
+        "ping_status",
+        "post_type",
+        "post_date",
+        "post_modified_gmt",
+    ];
+    let mut values = vec![DbValue::UInt(1)];
+    values.resize(null_columns.len(), DbValue::Null);
+    let post = PostMapper::to_entity(&row(&null_columns, values)).unwrap();
+    assert_eq!(post.title, Vec::<u8>::new());
+    assert_eq!(post.status, PostStatusName::new(""));
+    assert_eq!(post.comment_status, CommentStatus::new(""));
+    assert_eq!(post.ping_status, PingStatus::new(""));
+    assert_eq!(post.post_type, PostTypeName::new(""));
+    assert_eq!(post.date.local, PostDateTime::new(""));
+    assert_eq!(post.modified.gmt, PostDateTime::new(""));
+    // Missing columns take WP_Post's property defaults.
+    assert_eq!(post.date.gmt, PostDateTime::ZERO);
+    assert_eq!(post.modified.local, PostDateTime::ZERO);
+
+    let missing = PostMapper::to_entity(&row(&["ID"], vec![DbValue::UInt(1)])).unwrap();
+    assert_eq!(
+        missing,
+        Post {
+            id: PostId(1),
+            ..Post::default()
+        }
+    );
+}
+
+#[test]
+fn cache_clamps_negative_unsigned_columns() {
+    let k = |v: &str| PhpKey::Str(v.as_bytes().to_vec());
+    let entry = PhpValue::Object {
+        class: "stdClass".into(),
+        properties: vec![
+            (k("ID"), PhpValue::Int(3)),
+            (k("post_author"), PhpValue::Str(b"-1".to_vec())),
+            (k("post_parent"), PhpValue::Int(-2)),
+        ],
+    };
+    let post = PostMapper::from_cache(&entry).unwrap();
+    assert_eq!(post.author, 0);
+    assert_eq!(post.parent, PostId(0));
+}
+
+#[test]
 fn non_utf8_text_is_bytes() {
     let mut post = sample(0);
     post.title = vec![0xFF, 0xFE];

@@ -30,36 +30,46 @@ fn lossy(raw: &[u8]) -> String {
     String::from_utf8_lossy(raw).into_owned()
 }
 
-/// A non-negative PHP int as an ID or user ID. A negative one (which no `wp_posts` column holds) is 0.
-fn unsigned(int: i64) -> u64 {
-    u64::try_from(int).unwrap_or(0)
-}
-
 /// One column's value, whatever its source: the row's or the cache entry's.
 trait Columns {
-    /// The column's bytes, or `None` when it is missing (or `NULL` in a row).
+    /// The column's bytes, or `None` when it is missing.
     fn text(&self, column: &str) -> Option<Vec<u8>>;
-    /// The column as an int, or `None` when it is missing; `Err` when it cannot be one.
+    /// An unsigned column (`post_author`, `post_parent`) as a `u64`, or `None` when it is missing.
+    fn uint(&self, column: &str) -> Result<Option<u64>, PostError>;
+    /// A signed column (`menu_order`, `comment_count`) as an `i64`, or `None` when it is missing.
     fn int(&self, column: &str) -> Result<Option<i64>, PostError>;
 }
 
-/// A `SELECT *` row: every column text, numbers parsed strictly.
+/// A `SELECT *` row: `NULL` text is `""`, as PHP's `(string) null` is; numbers parse strictly.
 struct RowColumns<'a>(&'a Row);
+
+impl RowColumns<'_> {
+    /// A number column's text, parsed; a `NULL`, non-numeric or out-of-range value is corruption.
+    fn number<T: std::str::FromStr>(&self, column: &str) -> Result<Option<T>, PostError> {
+        let Some(value) = self.0.get(column) else {
+            return Ok(None);
+        };
+        bytes(Some(value))
+            .and_then(|b| String::from_utf8(b).ok())
+            .and_then(|s| s.parse::<T>().ok())
+            .map(Some)
+            .ok_or_else(|| PostError::Db(format!("a post row has no usable {column}")))
+    }
+}
 
 impl Columns for RowColumns<'_> {
     fn text(&self, column: &str) -> Option<Vec<u8>> {
-        bytes(self.0.get(column))
+        self.0
+            .get(column)
+            .map(|v| v.to_mysql_text().unwrap_or_default())
+    }
+
+    fn uint(&self, column: &str) -> Result<Option<u64>, PostError> {
+        self.number(column)
     }
 
     fn int(&self, column: &str) -> Result<Option<i64>, PostError> {
-        self.text(column)
-            .map(|b| {
-                String::from_utf8(b)
-                    .ok()
-                    .and_then(|s| s.parse::<i64>().ok())
-                    .ok_or_else(|| PostError::Db(format!("a post row has a non-numeric {column}")))
-            })
-            .transpose()
+        self.number(column)
     }
 }
 
@@ -69,6 +79,11 @@ struct CacheColumns<'a>(&'a [(PhpKey, PhpValue)]);
 impl Columns for CacheColumns<'_> {
     fn text(&self, column: &str) -> Option<Vec<u8>> {
         get(self.0, column).map(to_php_string)
+    }
+
+    /// `(int)`, with a negative value clamped to 0: the entity's unsigned fields cannot hold it.
+    fn uint(&self, column: &str) -> Result<Option<u64>, PostError> {
+        Ok(get(self.0, column).map(|v| u64::try_from(to_php_int(v)).unwrap_or(0)))
     }
 
     fn int(&self, column: &str) -> Result<Option<i64>, PostError> {
@@ -92,9 +107,7 @@ fn entity(columns: &impl Columns, id: PostId) -> Result<Post, PostError> {
     };
     Ok(Post {
         id,
-        author: columns
-            .int("post_author")?
-            .map_or(defaults.author, unsigned),
+        author: columns.uint("post_author")?.unwrap_or(defaults.author),
         date: PostDate {
             local: datetime("post_date", defaults.date.local),
             gmt: datetime("post_date_gmt", defaults.date.gmt),
@@ -117,9 +130,7 @@ fn entity(columns: &impl Columns, id: PostId) -> Result<Post, PostError> {
             gmt: datetime("post_modified_gmt", defaults.modified.gmt),
         },
         content_filtered: text("post_content_filtered", defaults.content_filtered),
-        parent: columns
-            .int("post_parent")?
-            .map_or(defaults.parent, |p| PostId(unsigned(p))),
+        parent: columns.uint("post_parent")?.map_or(defaults.parent, PostId),
         guid: text("guid", defaults.guid),
         menu_order: columns.int("menu_order")?.unwrap_or(defaults.menu_order),
         post_type: PostTypeName::new(name("post_type", defaults.post_type.as_str())),
@@ -135,9 +146,11 @@ fn entity(columns: &impl Columns, id: PostId) -> Result<Post, PostError> {
 
 impl PostMapper {
     /// A `SELECT *` row. `ID` parses as `MetaMapper`'s ids do: a [`PostError::Db`] when it is missing, `NULL` or
-    /// not a non-negative number. The other number columns are a `Db` error when present and not a number. Text
-    /// columns are bytes; a `NULL` or missing text column is empty, and any other missing column takes
-    /// [`Post::default()`]'s value.
+    /// not a non-negative number. `ID`, `post_author` and `post_parent` are `u64`, and `menu_order` and
+    /// `comment_count` `i64`; when present, a `NULL`, non-numeric, negative (for the unsigned three) or
+    /// out-of-range number is a `Db` error, as the columns are `NOT NULL` and unsigned. A `NULL` text, name or
+    /// date column is `""`, as PHP's `(string) null` is. A missing column takes [`Post::default()`]'s value,
+    /// `WP_Post`'s property default.
     pub fn to_entity(row: &Row) -> Result<Post, PostError> {
         let id = bytes(row.get("ID"))
             .and_then(|b| String::from_utf8(b).ok())
@@ -192,13 +205,17 @@ impl PostMapper {
 
     /// A `posts` cache group entry as `WP_Post::get_instance()` (class-wp-post.php 279-306) reads it.
     ///
-    /// `None` is a miss, which WordPress answers by querying: an entry that is neither a `stdClass` nor a
-    /// `WP_Post` object, or whose `ID` is not set (missing or null). Otherwise `ID`, `post_parent` and
-    /// `menu_order` go through [`to_php_int`], as `sanitize_post( …, 'raw' )` casts them for an entry whose
-    /// `filter` is not `raw`. `post_author` and `comment_count` go through it too: a documented approximation,
-    /// since WordPress keeps their strings. Other columns go through [`to_php_string`]; a missing one takes
-    /// [`Post::default()`]'s value, as `WP_Post`'s property defaults do; any other property is ignored. A
-    /// negative ID, parent or author is 0.
+    /// `None` is a miss, which WordPress answers by querying: an entry that is not a `stdClass` or `WP_Post`
+    /// object, or whose `ID` is not set (missing or null). A subclass of `stdClass` also counts as a miss, an
+    /// approximation: [`PhpValue`] carries a class name but no class hierarchy, so `instanceof` cannot be told.
+    ///
+    /// Otherwise the numbers go through [`to_php_int`] and the text through [`to_php_string`]. For an entry whose
+    /// `filter` is not `raw`, `sanitize_post( …, 'raw' )` casts `ID`, `post_parent` and `menu_order` exactly so.
+    /// The rest are approximations, because WordPress keeps the value as cached: a `raw` entry's non-int `ID`,
+    /// `post_parent` or `menu_order`, and every entry's `post_author` and `comment_count`, which WordPress keeps
+    /// as strings. A negative `ID`, `post_parent` or `post_author` is clamped to 0, since the entity's fields are
+    /// unsigned; only this cache path clamps (a row reports it as [`PostError::Db`]). A missing column takes
+    /// [`Post::default()`]'s value, as `WP_Post`'s property defaults do; any other property is ignored.
     pub fn from_cache(value: &PhpValue) -> Option<Post> {
         let PhpValue::Object { class, properties } = value else {
             return None;
@@ -206,14 +223,18 @@ impl PostMapper {
         if !class.eq_ignore_ascii_case("stdClass") && !class.eq_ignore_ascii_case("WP_Post") {
             return None;
         }
-        let id = get(properties, "ID").filter(|v| !matches!(v, PhpValue::Null))?;
-        let id = PostId(unsigned(to_php_int(id)));
-        Some(entity(&CacheColumns(properties), id).expect("cache columns always cast"))
+        let columns = CacheColumns(properties);
+        get(properties, "ID").filter(|v| !matches!(v, PhpValue::Null))?;
+        let id = columns.uint("ID").ok().flatten()?;
+        Some(entity(&columns, PostId(id)).expect("cache columns always cast"))
     }
 
     /// The `stdClass` `get_instance()` caches after a miss: the 23 columns in table order, `ID`, `post_parent`
     /// and `menu_order` as ints, every other column a string (`post_author` and `comment_count` in decimal), then
     /// `filter` `raw`.
+    ///
+    /// An `ID` or `post_parent` above `i64::MAX` is `i64::MAX`. That is faithful: mysqli hands PHP the decimal
+    /// string, and `sanitize_post()`'s `(int)` cast saturates it to `PHP_INT_MAX`.
     pub fn to_cache(post: &Post) -> PhpValue {
         let s = |b: &[u8]| PhpValue::Str(b.to_vec());
         let int = |i: u64| PhpValue::Int(i64::try_from(i).unwrap_or(i64::MAX));

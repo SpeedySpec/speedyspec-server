@@ -169,6 +169,7 @@ pub fn to_php_string(value: &PhpValue) -> Vec<u8> {
 }
 
 /// `(int) $value` (PHP 8.5, 64-bit): null and false 0, true 1; arrays 0 when empty, else 1; objects 1.
+/// A [`PhpValue::Ref`] is an unresolved back-reference and reads as null, 0; an object reference is 1.
 ///
 /// A float truncates toward zero; NaN and the infinities are 0, and a finite float outside the int range wraps
 /// modulo 2^64 (`zend_dval_to_lval()`). A string reads its leading numeric prefix after leading whitespace (space,
