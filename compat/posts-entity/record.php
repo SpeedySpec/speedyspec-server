@@ -22,7 +22,10 @@
  *   `wp_timezone_string()`; `clock` holds the answers of the time functions while the call ran: `now_local` and
  *   `now_gmt` (`current_time( 'mysql' )` and `current_time( 'mysql', true )`, read before and after the call, which
  *   is retried until both reads agree), and `date_from_gmt` and `gmt_from_date`, `[[in, out]]` pairs of
- *   `get_date_from_gmt()` and `get_gmt_from_date()` for the inputs the case gives.
+ *   `get_date_from_gmt()` and `get_gmt_from_date()` for the inputs the case gives. `now_local` and `now_gmt` are
+ *   written only when both dates are empty, the one case that reads the clock, and are null otherwise, so the other
+ *   cases stay the same from run to run; a replay's clock must fail when it is asked for now in a case that
+ *   recorded null. `gmt_from_date` holds the local date and the result only when the result is a date.
  * - `slugs` and `hierarchy`: scenarios `{name, permalinks, post_types, rows, calls}`. `post_types` are `[name,
  *   hierarchical]`; `rows` are the scenario's `wp_posts` rows; each call is `{fn, args, result, statements}`, where
  *   `statements` are the `$wpdb` reads it made, in order, each `[label, [args]]` with the prepared arguments.
@@ -471,14 +474,14 @@ foreach ($cache_reads as $name => $cached) {
     $encoded = enc($cached);
     $wpdb->statements = [];
     $recorder_cached = $cached;
-    $post = get_post(3);
+    $read = get_post(3);
     $recorder_cached = false;
     check_warnings("cache_reads/$name");
     $cases['cache_reads'][] = [
         'name'    => $name,
         'cached'  => $encoded,
         'queried' => in_array('find', array_column($wpdb->statements, 0), true),
-        'post'    => null === $post ? enc(null) : enc(get_object_vars($post)),
+        'post'    => null === $read ? enc(null) : enc(get_object_vars($read)),
     ];
 }
 
@@ -510,12 +513,13 @@ foreach ($dates as $case) {
         $now_gmt = current_time('mysql', true);
         $result = wp_resolve_post_date($post_date, $post_date_gmt);
     } while ($now_local !== current_time('mysql') || $now_gmt !== current_time('mysql', true));
+    $reads_now = $is_empty_date($post_date) && $is_empty_date($post_date_gmt);
     $date_from_gmt = [];
     if (!$is_empty_date($post_date_gmt)) {
         $date_from_gmt[] = [enc($post_date_gmt), enc(get_date_from_gmt($post_date_gmt))];
     }
     $gmt_from_date = [];
-    foreach (array_unique([$post_date, is_string($result) ? $result : '']) as $local) {
+    foreach (is_string($result) ? array_unique([$post_date, $result]) : [] as $local) {
         if (!$is_empty_date($local)) {
             $gmt_from_date[] = [enc($local), enc(get_gmt_from_date($local))];
         }
@@ -528,8 +532,8 @@ foreach ($dates as $case) {
         'timezone'      => wp_timezone_string(),
         'result'        => enc($result),
         'clock'         => [
-            'now_local'     => $now_local,
-            'now_gmt'       => $now_gmt,
+            'now_local'     => $reads_now ? $now_local : null,
+            'now_gmt'       => $reads_now ? $now_gmt : null,
             'date_from_gmt' => $date_from_gmt,
             'gmt_from_date' => $gmt_from_date,
         ],
@@ -539,6 +543,9 @@ $recorder_options['timezone_string'] = 'America/Chicago';
 $recorder_options['gmt_offset'] = '0';
 
 // wp_unique_post_slug().
+if (isset($GLOBALS['post'])) {
+    throw new RuntimeException('a global $post would answer get_post( 0 )');
+}
 $slug = static fn (string $slug, int $id = 0, string $type = 'post', int $parent = 0, string $status = 'publish')
     => ['wp_unique_post_slug', [$slug, $id, $status, $type, $parent]];
 $long_a = str_repeat('a', 200);
