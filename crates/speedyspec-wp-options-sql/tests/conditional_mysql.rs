@@ -7,7 +7,7 @@ use speedyspec_data::EngineConfig;
 use speedyspec_data_mysql::MySqlEngineFactory;
 use speedyspec_data_query::EngineRegistry;
 use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts};
-use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_options::Option as OptionEntity;
 use speedyspec_wp_options::{Autoload, OptionName, OptionRepository, SerializedValue};

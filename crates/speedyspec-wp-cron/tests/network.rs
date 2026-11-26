@@ -6,7 +6,7 @@ mod support;
 use speedyspec_wp_cron::memory::{CollectingErrors, MemoryDoingCron, MemoryNetwork, RecordingWake};
 use speedyspec_wp_cron::{CronApi, CronParts, RustArgsKeyer};
 use speedyspec_wp_cron_contracts::{CronError, NetworkSites, SiteRef, SiteSwitcher};
-use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use std::cell::Cell;

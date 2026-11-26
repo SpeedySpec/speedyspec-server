@@ -7,7 +7,7 @@ use speedyspec_cache_memory::MemoryCache;
 use speedyspec_firewall::FirewallLog;
 use speedyspec_firewall_presentation::{FirewallComposition, FirewallScope, FirewallStage};
 use speedyspec_native_stage::{NativeStage, StageOutcome, StageRequest};
-use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};

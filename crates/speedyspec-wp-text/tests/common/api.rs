@@ -4,7 +4,7 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_shortcode_contracts::{ShortcodeTagNames, TagName};
 use speedyspec_wp_kses::KsesApi;

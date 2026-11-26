@@ -5,7 +5,7 @@ use std::rc::Rc;
 use speedyspec_operation_contracts::*;
 use speedyspec_transport_contracts::TransportHooks;
 use speedyspec_transport_hooks_wp::*;
-use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 

@@ -12,7 +12,7 @@ use speedyspec_php::{BootOptions, NativeArea, Php, WebRequest};
 use speedyspec_runtime_contract::{WorkerReport, WorkerSpec};
 use speedyspec_wp_crypto_php::CryptoArea;
 use speedyspec_wp_crypto_sodium::Sodium;
-use speedyspec_wp_hooks::{WpHookApi, HookStore};
+use speedyspec_wp_hooks::{HookStore, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::{HOOK_STORE, PhpHookStore, WpHooksArea};
 use speedyspec_wp_media_php::MediaArea;

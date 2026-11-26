@@ -8,7 +8,7 @@ use speedyspec_hooks::Key;
 use speedyspec_wp_db::{
     MemoryWpdbHost, MemoryWpdbState, OutputShape, Shaped, WpDb, WpDbConfig, WpDbParts, WpValue,
 };
-use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 
 fn wpdb() -> WpDb {

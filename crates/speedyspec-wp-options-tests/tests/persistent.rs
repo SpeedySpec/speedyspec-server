@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use speedyspec_cache::{CacheError, CachingStore};
 use speedyspec_cache_memory::MemoryCache;
-use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache, ObjectCachePorts};

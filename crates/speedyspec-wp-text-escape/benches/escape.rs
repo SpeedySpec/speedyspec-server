@@ -8,7 +8,7 @@ use std::time::Duration;
 use criterion::measurement::{Measurement, ValueFormatter, WallTime};
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use speedyspec_hooks::Value;
-use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_text_corpus::{cases, from_value, page, short_inputs};
 use speedyspec_wp_text_escape::EscapeApi;

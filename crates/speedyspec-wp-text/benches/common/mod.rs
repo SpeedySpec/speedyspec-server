@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use criterion::measurement::{Measurement, ValueFormatter, WallTime};
-use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_shortcode_contracts::TagName;
 use speedyspec_wp_text::{TextApi, TextDeps, adapters};

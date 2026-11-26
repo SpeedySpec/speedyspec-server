@@ -5,7 +5,7 @@
 use std::rc::Rc;
 
 use libfuzzer_sys::fuzz_target;
-use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_kses::{DefaultGlobals, KsesApi, KsesDeps, NoValueCallbacks, UploadsLocation};
 use speedyspec_wp_kses_contracts::{

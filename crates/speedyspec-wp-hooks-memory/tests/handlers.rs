@@ -7,10 +7,10 @@ use speedyspec_container::Container;
 use speedyspec_cqrs::{CommandBus, QueryBus};
 use speedyspec_wp_hooks::{
     AddAction, AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray,
-    CallbackIdentity, CallbackShape, CurrentAction, CurrentFilter, CurrentPriority, DeprecatedHooks,
-    DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray, DoingAction, DoingFilter,
-    HasAction, HasFilter, WpHookApi, HookStore, RemoveAction, RemoveAllActions, RemoveAllFilters,
-    RemoveFilter, register_hook_handlers,
+    CallbackIdentity, CallbackShape, CurrentAction, CurrentFilter, CurrentPriority,
+    DeprecatedHooks, DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray,
+    DoingAction, DoingFilter, HasAction, HasFilter, HookStore, RemoveAction, RemoveAllActions,
+    RemoveAllFilters, RemoveFilter, WpHookApi, register_hook_handlers,
 };
 use speedyspec_wp_hooks_contracts::{
     ArrayKey, Callback, CallbackId, Count, HasFilterResult, HookError, HookKey, HookName, HookValue,

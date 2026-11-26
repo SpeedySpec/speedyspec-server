@@ -38,7 +38,7 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
-use speedyspec_wp_hooks::{WpHookApi, HookStore};
+use speedyspec_wp_hooks::{HookStore, WpHookApi};
 use speedyspec_wp_hooks_php::HOOK_STORE;
 use speedyspec_wp_i18n::I18nApi;
 

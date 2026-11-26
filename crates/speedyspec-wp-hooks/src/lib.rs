@@ -16,7 +16,7 @@ mod key;
 mod messages;
 mod store;
 
-pub use api::{DeprecatedHooks, WpHookApi, IgnoreDeprecations};
+pub use api::{DeprecatedHooks, IgnoreDeprecations, WpHookApi};
 pub use callback::{CallbackIdentity, CallbackShape};
 pub use hook::{Entry, HookIteration, HookState, Partition, PrioritySlice, WpHook};
 pub use key::PriorityOrder;

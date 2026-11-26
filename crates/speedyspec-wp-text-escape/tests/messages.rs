@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use speedyspec_container::Container;
 use speedyspec_cqrs::{Query, QueryHandler, QueryRef, bind_query_handler};
-use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_text_contracts::TextError;

@@ -45,8 +45,8 @@ use speedyspec_php_ext::{Key, Value};
 use speedyspec_wp_hooks::{
     AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray, CurrentFilter,
     DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray, DoingFilter, Entry,
-    HasFilter, WpHookApi, HookStore, Partition, PrioritySlice, RemoveAllFilters, RemoveFilter,
-    WpHook, register_hook_handlers,
+    HasFilter, HookStore, Partition, PrioritySlice, RemoveAllFilters, RemoveFilter, WpHook,
+    WpHookApi, register_hook_handlers,
 };
 use speedyspec_wp_hooks_contracts::{
     ArrayKey, Count, HasFilterResult, HookError, HookKey, HookName,
