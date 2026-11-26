@@ -15,6 +15,11 @@ class WP_Error {
 }
 class WP_Term {}
 function get_term($term) { return null; }
+function is_wp_error($thing) { return $thing instanceof WP_Error; }
+function rest_validate_value_from_schema($value, $args) {
+    if (isset($GLOBALS['speedyspec_schema_throw'])) { throw $GLOBALS['speedyspec_schema_throw']; }
+    return true;
+}
 global $wpdb;
 $wpdb->query('DROP TABLE IF EXISTS wp_termmeta');
 $wpdb->query("CREATE TABLE wp_termmeta (meta_id bigint(20) unsigned NOT NULL auto_increment, term_id bigint(20) unsigned NOT NULL default '0', meta_key varchar(255) default NULL, meta_value longtext, PRIMARY KEY (meta_id), KEY term_id (term_id)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci");
@@ -147,6 +152,69 @@ fn main() {
         catch (UnexpectedValueException $e) { $caught = $e; }
         remove_action('metadata_lazyloader_queued_objects', $cb);
         return $caught === $thrown;"#,
+    );
+    // A port that cannot report a failure (get_object_subtype()'s switch) stops the use case where WordPress stops:
+    // no subtype filter, no sanitize filter, no add_{type}_metadata, no INSERT, no added_post_meta.
+    yes(
+        "subtype_exception_stops_add",
+        r#"global $wpdb;
+        $thrown = new RuntimeException('from get_post_type');
+        $GLOBALS['speedyspec_throw'] = $thrown;
+        $stop_runs = [];
+        foreach (['get_object_subtype_post', 'sanitize_post_meta_stop', 'add_post_metadata', 'add_post_meta', 'added_post_meta'] as $hook) {
+            add_filter($hook, function ($v = null) use ($hook, &$stop_runs) { $stop_runs[] = $hook; return $v; });
+        }
+        try { add_metadata('post', 8, 'stop', 'v'); $caught = null; } catch (RuntimeException $e) { $caught = $e; }
+        unset($GLOBALS['speedyspec_throw']);
+        $rows = (int) $wpdb->get_var("SELECT COUNT(*) FROM wp_postmeta WHERE meta_key = 'stop'");
+        return $caught === $thrown && 0 === $rows && [] === $stop_runs ? true : [$caught, $rows, $stop_runs];"#,
+    );
+    yes(
+        "subtype_filter_exception_stops_add",
+        r#"global $wpdb;
+        $thrown = new RuntimeException('from get_object_subtype_post');
+        $cb = function () use ($thrown) { throw $thrown; };
+        add_filter('get_object_subtype_post', $cb, 1);
+        $added = 0;
+        $count = function () use (&$added) { $added++; };
+        add_action('added_post_meta', $count);
+        try { add_metadata('post', 8, 'stop2', 'v'); $caught = null; } catch (RuntimeException $e) { $caught = $e; }
+        remove_filter('get_object_subtype_post', $cb, 1);
+        remove_action('added_post_meta', $count);
+        $rows = (int) $wpdb->get_var("SELECT COUNT(*) FROM wp_postmeta WHERE meta_key = 'stop2'");
+        return $caught === $thrown && 0 === $rows && 0 === $added;"#,
+    );
+    yes(
+        "update_stops_on_a_subtype_exception",
+        r#"global $wpdb;
+        add_metadata('post', 9, 'kept', 'old');
+        $thrown = new RuntimeException('again');
+        $GLOBALS['speedyspec_throw'] = $thrown;
+        try { update_metadata('post', 9, 'kept', 'new'); $caught = null; } catch (RuntimeException $e) { $caught = $e; }
+        unset($GLOBALS['speedyspec_throw']);
+        return $caught === $thrown
+            && 'old' === $wpdb->get_var("SELECT meta_value FROM wp_postmeta WHERE meta_key = 'kept'");"#,
+    );
+    // register_meta(): the schema check's exception stops it before _doing_it_wrong, the filters and the registry.
+    yes(
+        "schema_exception_stops_register_meta",
+        r#"$thrown = new RuntimeException('schema');
+        $GLOBALS['speedyspec_schema_throw'] = $thrown;
+        $wrong_runs = 0;
+        $count_wrong = function () use (&$wrong_runs) { $wrong_runs = $wrong_runs + 1; };
+        add_action('doing_it_wrong_run', $count_wrong);
+        $cb = function ($v) { return $v; };
+        try { register_meta('post', 'dflt', ['default' => 'x', 'sanitize_callback' => $cb]); $caught = null; }
+        catch (RuntimeException $e) { $caught = $e; }
+        unset($GLOBALS['speedyspec_schema_throw']);
+        remove_action('doing_it_wrong_run', $count_wrong);
+        $out = [$caught === $thrown, $wrong_runs, registered_meta_key_exists('post', 'dflt'), has_filter('sanitize_post_meta_dflt')];
+        return $out === [true, 0, false, false] ? true : $out;"#,
+    );
+    // After a stopped call, the next one runs normally.
+    yes(
+        "the_next_call_runs",
+        "return is_int(add_metadata('post', 8, 'after', 'v'));",
     );
     check("done", true, ());
 }

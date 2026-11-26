@@ -149,7 +149,7 @@ function _doing_it_wrong($function_name, $message, $version) {
     do_action('doing_it_wrong_run', $function_name, $message, $version);
 }
 function _deprecated_function($function_name, $version, $replacement = '') {}
-function get_post_type($post = null) { return 'post'; }
+function get_post_type($post = null) { if (isset($GLOBALS['speedyspec_throw'])) { throw $GLOBALS['speedyspec_throw']; } return 'post'; }
 function wp_unslash($value) { return $value; }
 global $wpdb;
 $wpdb->set_prefix('wp_');

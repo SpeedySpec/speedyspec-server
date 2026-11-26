@@ -89,7 +89,11 @@ fn lazy_load(x: &[Value]) -> R {
     let Some(meta_type) = MetaType::new(&text(&a(x, 1))) else {
         return Ok(Value::Null);
     };
-    let object = u64::try_from(int(&a(x, 2))).ok().map(ObjectId);
+    // `if ( $object_id && ... )`: 0 (the deprecated wrappers pass it) adds nothing.
+    let object = u64::try_from(int(&a(x, 2)))
+        .ok()
+        .filter(|id| *id != 0)
+        .map(ObjectId);
     loader(x)?
         .load_for_object(&meta_type, PhpValue::Null, object)
         .map_err(lazy_error)?;

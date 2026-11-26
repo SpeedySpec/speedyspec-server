@@ -1,8 +1,13 @@
 //! The metadata API's outbound ports over PHP's WordPress functions (Adapter), kept until the seams that own posts,
 //! terms, comments, users and sites bind Rust ones.
 //!
-//! A port whose contract cannot fail (it answers `bool` or `String`) parks the exception a PHP function threw in
-//! [`park`]; the native function that is running rethrows it once the use case returns ([`take_parked`]).
+//! A port whose contract cannot fail (it answers `bool`, `String` or `Option`) parks the failure it met ([`park`],
+//! [`park_failure`]). From then on the use case stops where WordPress would have: [`PhpValueHooks`] refuses every
+//! hook while something is parked, and `register_meta()` checks after each step that asks a port, so nothing is
+//! filtered, fired or written after the failure. The native function that is running then rethrows what was parked
+//! ([`take_parked`]).
+//!
+//! [`PhpValueHooks`]: crate::PhpValueHooks
 
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
@@ -21,26 +26,57 @@ use speedyspec_wp_meta_contracts::{
 
 use crate::codec::{Thrown, from_php_live, php, string, to_php};
 
+/// What a port met that its contract cannot report.
+pub(crate) enum Parked {
+    /// A PHP exception, rethrown as the same object.
+    Exception(Value),
+    /// A failure with no PHP exception behind it (a container binding that did not resolve), thrown as `class`.
+    Failure {
+        class: &'static str,
+        message: String,
+    },
+}
+
 thread_local! {
-    static PARKED: RefCell<Option<Value>> = const { RefCell::new(None) };
+    static PARKED: RefCell<Option<Parked>> = const { RefCell::new(None) };
+}
+
+/// Parks `parked` unless something is parked already (the first failure wins).
+pub(crate) fn keep(parked: Parked) {
+    PARKED.with(|p| {
+        p.borrow_mut().get_or_insert(parked);
+    });
 }
 
 /// Keeps the first exception a port met while a native function runs.
 pub(crate) fn park(thrown: Thrown) {
     if let Some(exception) = thrown.0 {
-        PARKED.with(|p| {
-            p.borrow_mut().get_or_insert(exception);
-        });
+        keep(Parked::Exception(exception));
     }
 }
 
-/// The exception a port parked, taken once.
-pub(crate) fn take_parked() -> Option<Value> {
+/// Keeps a failure that has no PHP exception behind it.
+pub(crate) fn park_failure(class: &'static str, message: String) {
+    keep(Parked::Failure { class, message });
+}
+
+/// Whether a port has parked a failure the running native function has not rethrown yet.
+pub(crate) fn is_parked() -> bool {
+    PARKED.with(|p| p.borrow().is_some())
+}
+
+/// What a port parked, taken once.
+pub(crate) fn take_parked() -> Option<Parked> {
     PARKED.with(|p| p.borrow_mut().take())
 }
 
 /// Calls a PHP function; an exception is parked and the answer is `None`.
+///
+/// Once something is parked, no more PHP runs: the answer is `None` at once, as WordPress would not have got here.
 pub(crate) fn ask(name: &str, args: &[Value]) -> Option<Value> {
+    if is_parked() {
+        return None;
+    }
     match php(name, args) {
         Ok(v) => Some(v),
         Err(thrown) => {
@@ -52,10 +88,11 @@ pub(crate) fn ask(name: &str, args: &[Value]) -> Option<Value> {
 
 /// `function_exists( $name )`.
 pub(crate) fn exists(name: &str) -> bool {
-    matches!(
-        php("function_exists", &[Value::Str(name.into())]),
-        Ok(Value::Bool(true))
-    )
+    !is_parked()
+        && matches!(
+            php("function_exists", &[Value::Str(name.into())]),
+            Ok(Value::Bool(true))
+        )
 }
 
 /// PHP's truthiness of a PHP value.
@@ -273,7 +310,11 @@ impl Wpdb for PhpTableNames {
         }
         match php(&format!("{HELPERS}table"), &[Value::Str(logical.into())]) {
             Ok(Value::Str(s)) => s,
-            _ => String::new(),
+            Ok(_) => String::new(),
+            Err(thrown) => {
+                park(thrown);
+                String::new()
+            }
         }
     }
 
@@ -367,13 +408,17 @@ impl ResolvedRepositories {
 
 impl MetaRepositories for ResolvedRepositories {
     fn for_type(&self, meta_type: &MetaType) -> Option<Rc<dyn MetaRepository>> {
-        let bound = self
-            .container
-            .upgrade()
-            .and_then(|c| c.make_port::<dyn MetaRepositories>(META_REPOSITORIES).ok());
-        match bound {
-            Some(repositories) => repositories.for_type(meta_type),
-            None => self.fallback.for_type(meta_type),
+        // Only a container that is gone falls back to the SQL tables: the default binding always resolves, so a
+        // failure is a PHP binding that threw or does not implement the twin, and it must reach the caller.
+        let Some(container) = self.container.upgrade() else {
+            return self.fallback.for_type(meta_type);
+        };
+        match container.make_port::<dyn MetaRepositories>(META_REPOSITORIES) {
+            Ok(repositories) => repositories.for_type(meta_type),
+            Err(err) => {
+                park_failure("SpeedySpec\\Container\\ContainerException", err.to_string());
+                None
+            }
         }
     }
 }

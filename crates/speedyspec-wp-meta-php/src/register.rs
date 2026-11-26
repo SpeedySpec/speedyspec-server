@@ -22,7 +22,7 @@ use crate::args::{a, key, text};
 use crate::codec::{from_php_live, php, to_php};
 use crate::native::{
     Native, R, doing_it_wrong, get_metadata, hook_error, hook_name, meta_error, object_subtype,
-    thrown,
+    stop_if_parked, thrown,
 };
 
 const HELPERS: &str = "SpeedySpec\\WpMeta\\Php\\";
@@ -104,6 +104,8 @@ fn register_meta(x: &[Value]) -> R {
         .map(from_php_live)
         .filter(|d| !matches!(d, PhpValue::Null));
     let mut prepared = prepare_registration(from_php_live(&a(x, 2)), deprecated, &PhpCallables);
+    // An `is_callable()` that threw stops register_meta() here, as it does WordPress's.
+    stop_if_parked()?;
     let filter = HookName::from("register_meta_args");
     if !shared
         .raw_hooks
@@ -132,6 +134,8 @@ fn register_meta(x: &[Value]) -> R {
             &PhpCallables,
         )
         .map_err(meta_error)?;
+    // So does a port that threw while the registration was resolved (`post_type_supports()`, the schema check).
+    stop_if_parked()?;
     match registration {
         Registration::Registered {
             key,

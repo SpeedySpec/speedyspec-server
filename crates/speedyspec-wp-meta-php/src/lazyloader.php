@@ -22,6 +22,15 @@ namespace
         protected $settings = array();
 
         /**
+         * Pending objects by type, keyed by id, as WordPress's class keeps them for code that reads the property.
+         *
+         *  The queue that loads is the native one; this mirror follows it.
+         *
+         * @var array<string, array<int, int>>
+         */
+        protected $pending_objects;
+
+        /**
          * The number of this instance's native loader.
          *
          * @var int
@@ -63,6 +72,11 @@ namespace
                 return new WP_Error('invalid_object_type', __('Invalid object type.'));
             }
             $type_settings = $this->settings[$object_type];
+            $this->pending_objects[$object_type] ??= array();
+            foreach ($object_ids as $object_id)
+            {
+                $this->pending_objects[$object_type][$object_id] ??= 1;
+            }
             add_filter($type_settings['filter'], $type_settings['callback'], 10, 5);
             N\lazy_queue($this->speedyspec_loader, $object_type, $object_ids, $this);
         }
@@ -80,6 +94,7 @@ namespace
                 return new WP_Error('invalid_object_type', __('Invalid object type.'));
             }
             $type_settings = $this->settings[$object_type];
+            $this->pending_objects[$object_type] = array();
             N\lazy_reset($this->speedyspec_loader, $object_type);
             remove_filter($type_settings['filter'], $type_settings['callback']);
         }

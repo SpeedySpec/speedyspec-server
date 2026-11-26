@@ -9,7 +9,7 @@ fn main() {
     let Some(url) = support::mysql("metadata_php") else {
         return;
     };
-    let _booted = support::boot(&url);
+    let booted = support::boot(&url);
     eval(support::WORDPRESS).unwrap();
     eval(
         r#"
@@ -47,5 +47,25 @@ fn main() {
         wp_cache_flush();
         return $mid === 1 && 0 === $rows && $mine[1]['meta_value'] === 'v'
             && get_metadata('post', 1, 'k', true) === 'v' && add_metadata('comment', 1, 'k', 'v') === false;"#,
+    );
+    // A binding that fails reaches the caller; nothing falls back to the SQL tables.
+    yes(
+        "failed_binding_is_surfaced",
+        r#"global $wpdb;
+        SpeedySpec\Container\Container::getInstance()->bind('SpeedySpec\WpMeta\MetaRepositories', function () { throw new RuntimeException('no repositories'); });
+        try { add_metadata('post', 2, 'k', 'v'); $caught = null; } catch (Throwable $e) { $caught = $e; }
+        $rows = (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_postmeta');
+        return $caught instanceof SpeedySpec\Container\ContainerException
+            && str_contains($caught->getMessage(), 'no repositories') && 0 === $rows ? true : [$caught, $rows];"#,
+    );
+    // A PHP binding lasts for its request: the next request writes to the SQL tables again.
+    booted.php.restart_request().expect("a new request");
+    eval(support::WORDPRESS).unwrap();
+    yes(
+        "binding_ends_with_the_request",
+        r#"global $wpdb;
+        $mid = add_metadata('post', 1, 'k', 'v');
+        return is_int($mid) && 1 === (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_postmeta')
+            && !class_exists('MemoryMetaRepositories', false);"#,
     );
 }

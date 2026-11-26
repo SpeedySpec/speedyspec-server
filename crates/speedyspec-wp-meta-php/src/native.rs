@@ -22,9 +22,14 @@ use speedyspec_wp_meta::{
 };
 use speedyspec_wp_meta_contracts::{MetaId, MetadataError, ObjectId, UpdateOutcome};
 
-use crate::adapters::{exists, table_or_false, take_parked};
+use crate::adapters::{Parked, exists, is_parked, keep, table_or_false, take_parked};
 use crate::args::{a, absint, bytes, int, key, meta_id, meta_type, numeric, text, truthy};
 use crate::codec::{Thrown, from_php, string, to_php};
+
+thread_local! {
+    /// How many native meta functions are running, one inside another.
+    static DEPTH: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
 
 pub(crate) const NATIVE: &str = "SpeedySpec\\WpMeta\\Native\\";
 
@@ -345,9 +350,33 @@ fn update_metadata_by_mid(x: &[Value]) -> R {
     let key = match x.get(3).map(|v| v.read().into_owned()) {
         None | Some(Value::Bool(false)) => None,
         Some(v @ (Value::Str(_) | Value::Bytes(_))) => Some(key(&v)),
-        // WordPress reads the row, then returns false for a key that is neither false nor a string. (The
-        // `update_{$meta_type}_metadata_by_mid` filter it runs first is not run here.)
-        Some(_) => {
+        // WordPress runs the short-circuit filter, reads the row, then returns false for a key that is neither
+        // false nor a string.
+        Some(other) => {
+            let hooks = crate::SHARED
+                .with(|s| s.borrow().as_ref().map(|s| s.raw_hooks.clone()))
+                .ok_or_else(|| NativeError::throw("Error", "the metadata API is not available"))?;
+            let name =
+                HookName::from(format!("update_{}_metadata_by_mid", meta_type.name()).as_str());
+            if !hooks
+                .skip_if_empty(&name, speedyspec_wp_hooks_contracts::Count::Filters)
+                .map_err(hook_error)?
+            {
+                let check = hooks
+                    .apply_filters(
+                        &name,
+                        HookValue::Null,
+                        vec![
+                            Value::Int(i64::try_from(mid).unwrap_or(i64::MAX)),
+                            a(x, 2),
+                            other,
+                        ],
+                    )
+                    .map_err(hook_error)?;
+                if !matches!(&*check.read(), Value::Null) {
+                    return Ok(Value::Bool(truthy(&check)));
+                }
+            }
             let m = GetMetadataByMid {
                 meta_type,
                 mid: MetaId(mid),
@@ -542,22 +571,45 @@ pub(crate) fn hook_name(bytes: Vec<u8>) -> HookName {
     }
 }
 
-/// Clears what a call from Rust may have left, runs `f`, then rethrows the first PHP exception the work met.
+/// Clears what a call from Rust may have left, runs `f`, then rethrows the first failure the work met.
+///
+/// A native function PHP calls while another one runs (from a hook callback) keeps the outer call's parked failure
+/// for it; the outermost call starts clean.
 fn guarded(f: Native, args: &[Value]) -> R {
+    let depth = DEPTH.with(|d| {
+        d.set(d.get() + 1);
+        d.get()
+    });
     let _ = speedyspec_wp_db_contracts::take_hook_error();
-    let _ = take_parked();
+    let outer = take_parked().filter(|_| depth > 1);
     let result = f(args);
     let parked = take_parked();
+    if let Some(outer) = outer {
+        keep(outer);
+    }
+    DEPTH.with(|d| d.set(d.get() - 1));
     let hidden = speedyspec_wp_db_contracts::take_hook_error();
     match result {
         Err(NativeError::Rethrow(exception)) => Err(NativeError::Rethrow(exception)),
         other => match (parked, hidden) {
-            (Some(exception), _) => Err(NativeError::Rethrow(exception)),
+            // A port's failure stopped the use case: it is what PHP sees.
+            (Some(Parked::Exception(exception)), _) => Err(NativeError::Rethrow(exception)),
+            (Some(Parked::Failure { class, message }), _) => {
+                Err(NativeError::throw(class, message))
+            }
             // `wpdb` answered false or 0 where a `query` callback threw: the exception still reaches PHP.
             (None, Some(hook)) => Err(hook_error(hook)),
             (None, None) => other,
         },
     }
+}
+
+/// Stops a native function once a port has parked a failure; [`guarded`] rethrows what was parked.
+pub(crate) fn stop_if_parked() -> Result<(), NativeError> {
+    if is_parked() {
+        return Err(NativeError::Silent);
+    }
+    Ok(())
 }
 
 pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
