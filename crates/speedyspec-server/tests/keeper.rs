@@ -393,7 +393,14 @@ fn newer_running_binary_is_adopted_at_start() {
     kill("TERM", first.child.id());
     let _ = first.child.wait();
 
-    let upgraded = dir.path().join("pkg/0.3.0/speedyspec-server");
+    // One major version above this build, so the copy is always newer however far the crate's version moves.
+    let major: u64 = env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap();
+    let newer = format!("{}.0.0", major + 1);
+    let upgraded = dir
+        .path()
+        .join("pkg")
+        .join(&newer)
+        .join("speedyspec-server");
     std::fs::create_dir_all(upgraded.parent().unwrap()).unwrap();
     std::fs::copy(BIN, &upgraded).unwrap();
     let mut second = support::run::start_binary(
@@ -403,14 +410,14 @@ fn newer_running_binary_is_adopted_at_start() {
     );
     second.address();
     assert!(
-        wait_for(Duration::from_secs(10), || confirmed("0.3.0")),
+        wait_for(Duration::from_secs(10), || confirmed(&newer)),
         "the newer binary was not adopted; log: {:?}",
         second.log()
     );
     // The state file is written before the keeper serves keeper.sock, so `status` may not answer at once.
     assert!(
         wait_for(Duration::from_secs(10), || try_status(&config)
-            .is_ok_and(|out| out.contains("\t0.3.0\tconfirmed"))),
+            .is_ok_and(|out| out.contains(&format!("\t{newer}\tconfirmed")))),
         "{:?}",
         try_status(&config)
     );
