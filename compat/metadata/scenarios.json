@@ -1,0 +1,9571 @@
+{
+  "area": "metadata",
+  "scenarios": [
+    {
+      "name": "add-unique-post",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a",
+            true
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-non-unique-post",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a",
+            false
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-unique-comment",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_comment_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_comment_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "a",
+            true
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "b",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-non-unique-comment",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_comment_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_comment_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "a",
+            false
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-unique-term",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_term_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_term_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "a",
+            true
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "b",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-non-unique-term",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_term_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_term_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "a",
+            false
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-unique-user",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_user_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_user_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "a",
+            true
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "b",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-non-unique-user",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_user_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_user_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "a",
+            false
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-unique-thing",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_thing_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_thing_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "a",
+            true
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "b",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-non-unique-thing",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_thing_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_thing_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "a",
+            false
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-empty-key",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "0",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            null,
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "",
+            1,
+            "k",
+            "v"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-object-id",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            0,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            -1,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            "-3",
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            "1abc",
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            "2",
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            {
+              "float": 1.7
+            },
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            0,
+            "k",
+            "v"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-unknown-type",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "nope",
+            1,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "blog",
+            1,
+            "k",
+            "v"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-slashed",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "it\\'s",
+            "a\\\\b \\\"q\\\""
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "arr",
+            [
+              "x\\'y",
+              {
+                "array": [
+                  [
+                    "k\\'",
+                    "v\\\\w"
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "it's",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "arr",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-serialized-array",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "arr",
+            {
+              "array": [
+                [
+                  "a",
+                  1
+                ],
+                [
+                  "b",
+                  [
+                    true,
+                    null,
+                    {
+                      "float": 1.5
+                    }
+                  ]
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "ser",
+            "a:1:{i:0;s:1:\"x\";}"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "int",
+            5
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "bool",
+            false
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "true",
+            true
+          ]
+        },
+        {
+          "call": "speedyspec_compat_add_object_meta",
+          "args": [
+            1,
+            "obj"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "arr",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "ser",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "int",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "bool",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "true",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "obj",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-short-circuit",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_metadata",
+            "__return_false",
+            20
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "add_post_metadata",
+            "__return_false",
+            20
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_metadata",
+            "__return_zero",
+            20
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "add_post_metadata",
+            "__return_zero",
+            20
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_metadata",
+            {
+              "callback": "append",
+              "label": "short",
+              "with": {
+                "suffix": "-x"
+              }
+            },
+            20
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "v"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-order-of-actions",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "add_post_meta",
+            {
+              "callback": "record_current_filter",
+              "label": "seen:add"
+            },
+            5
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            2,
+            "k",
+            [
+              "a"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-invalid-utf8",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            {
+              "bytes": "a/8="
+            },
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            {
+              "bytes": "dsMo"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-clears-cache",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-missing-adds-post",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-changes-post",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-missing-adds-comment",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "update_comment_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_comment_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_comment_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_comment_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-changes-comment",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_comment_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_comment_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-missing-adds-term",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "update_term_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_term_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_term_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_term_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-changes-term",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_term_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_term_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-missing-adds-user",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "update_user_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_user_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_user_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_user_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-changes-user",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_user_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_user_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-missing-adds-thing",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "update_thing_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_thing_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_thing_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_thing_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-changes-thing",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_thing_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_thing_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-same-value",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "arr",
+            [
+              "x"
+            ]
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "arr",
+            [
+              "x"
+            ]
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a",
+            "a"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-int-for-stored-string",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "5"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            5
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "6"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-prev-value",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "c",
+            "a"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "d",
+            "zzz"
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "e",
+            [
+              "no"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-several-rows",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            2,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "z"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            2,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-legacy-postmeta",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_commentmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_commentmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_commentmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_commentmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            [
+              "arr"
+            ]
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "b"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-short-circuit",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata",
+            "__return_zero",
+            20
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "update_post_metadata",
+            "__return_zero",
+            20
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata",
+            "__return_empty_array",
+            20
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "update_post_metadata",
+            "__return_empty_array",
+            20
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata",
+            {
+              "callback": "append",
+              "label": "short",
+              "with": {
+                "suffix": "-x"
+              }
+            },
+            20
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-invalid",
+      "steps": [
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            0,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "",
+            "v"
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "nope",
+            1,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "",
+            1,
+            "k",
+            "v"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update-slashed",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "it's",
+            "a"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "add_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "it\\'s",
+            "b\\\\c"
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "new\\'one",
+            "d\\'e"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-key-post",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "other",
+            "x"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-key-comment",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "other",
+            "x"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_comment_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_comment_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "comment",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "comment",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-key-term",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "other",
+            "x"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_term_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_term_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "term",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "term",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-key-user",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "other",
+            "x"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_user_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_user_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "user",
+            7,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "user",
+            7,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-key-thing",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "other",
+            "x"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_thing_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_thing_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "thing",
+            3,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "thing",
+            3,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-by-value",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "arr",
+            [
+              "x"
+            ]
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "zzz"
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            "arr",
+            [
+              "x"
+            ]
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            null
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-all",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            2,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            3,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            3,
+            "keep",
+            "a"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            2
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            3
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            0,
+            "k",
+            "a",
+            true
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            "x",
+            "k",
+            "",
+            true
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-all-users",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            8,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            8
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_user_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_user_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "user",
+            0,
+            "k",
+            "",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-legacy-postmeta",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_commentmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_commentmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_commentmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_commentmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "comment",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-short-circuit",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_metadata",
+            "__return_zero",
+            20
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "delete_post_metadata",
+            "__return_zero",
+            20
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_metadata",
+            "__return_true",
+            20
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-invalid",
+      "steps": [
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            0,
+            "k"
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            "x",
+            "k"
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            ""
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "nope",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-slashed",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "it's",
+            "a'b"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            "it\\'s",
+            "a\\'b"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-single-and-multiple-post",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            [
+              "b"
+            ]
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "j",
+            "c"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "default_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:default_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            false
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "post",
+            1,
+            "missing"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "post",
+            1,
+            "missing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-single-and-multiple-comment",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            [
+              "b"
+            ]
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "j",
+            "c"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_comment_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_comment_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "default_comment_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:default_comment_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            false
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1,
+            "",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "comment",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "comment",
+            1,
+            "missing"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "comment",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "comment",
+            1,
+            "missing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-single-and-multiple-term",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            [
+              "b"
+            ]
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "j",
+            "c"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_term_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_term_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "default_term_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:default_term_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            false
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1,
+            "",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "term",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "term",
+            1,
+            "missing"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "term",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "term",
+            1,
+            "missing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-single-and-multiple-user",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            [
+              "b"
+            ]
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "j",
+            "c"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_user_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_user_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "default_user_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:default_user_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            false
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7,
+            "",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "user",
+            7,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "user",
+            7,
+            "missing"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "user",
+            7,
+            "k"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "user",
+            7,
+            "missing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-single-and-multiple-thing",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            [
+              "b"
+            ]
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "j",
+            "c"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_thing_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_thing_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "default_thing_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:default_thing_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            false
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3,
+            "",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "thing",
+            3,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "thing",
+            3,
+            "missing"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "thing",
+            3,
+            "k"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "thing",
+            3,
+            "missing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-missing-key",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "default_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:default_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "nope",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "nope"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "post",
+            1,
+            "nope",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_default",
+          "args": [
+            "post",
+            1,
+            "nope",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_default",
+          "args": [
+            "post",
+            1,
+            "nope"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            99,
+            "nope",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-invalid",
+      "steps": [
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            0,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            -1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            "x",
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "nope",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "nope",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "post",
+            0,
+            "k"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "post",
+            0,
+            "k"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "nope",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-registered-default",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "default_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:default_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "register_meta",
+          "args": [
+            "post",
+            "dk",
+            {
+              "array": [
+                [
+                  "type",
+                  "string"
+                ],
+                [
+                  "single",
+                  true
+                ],
+                [
+                  "default",
+                  "dflt"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "register_meta",
+          "args": [
+            "post",
+            "dn",
+            {
+              "array": [
+                [
+                  "type",
+                  "integer"
+                ],
+                [
+                  "default",
+                  7
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "register_meta",
+          "args": [
+            "post",
+            "dp",
+            {
+              "array": [
+                [
+                  "type",
+                  "string"
+                ],
+                [
+                  "single",
+                  true
+                ],
+                [
+                  "default",
+                  "page-only"
+                ],
+                [
+                  "object_subtype",
+                  "page"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "dk",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "dk"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "dn",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "dn"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "dp",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            2,
+            "dp",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            2,
+            "dp"
+          ]
+        },
+        {
+          "call": "get_metadata_default",
+          "args": [
+            "post",
+            2,
+            "dp",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "post",
+            1,
+            "dk",
+            true
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "dk",
+            "stored"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "dk",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-registered-default-thing",
+      "steps": [
+        {
+          "call": "register_meta",
+          "args": [
+            "thing",
+            "dk",
+            {
+              "array": [
+                [
+                  "single",
+                  true
+                ],
+                [
+                  "default",
+                  "thing-default"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3,
+            "dk",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3,
+            "dk"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-default-filter",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "default_post_metadata",
+            {
+              "callback": "append",
+              "label": "dflt",
+              "with": {
+                "suffix": "-d"
+              }
+            },
+            10,
+            5
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "nope",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "nope"
+          ]
+        },
+        {
+          "call": "get_metadata_default",
+          "args": [
+            "post",
+            1,
+            "nope",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-default-while-installing",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "default_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:default_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "register_meta",
+          "args": [
+            "post",
+            "dk",
+            {
+              "array": [
+                [
+                  "type",
+                  "string"
+                ],
+                [
+                  "single",
+                  true
+                ],
+                [
+                  "default",
+                  "dflt"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "dk",
+            true
+          ]
+        },
+        {
+          "call": "wp_installing",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "dk",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "dk"
+          ]
+        },
+        {
+          "call": "get_metadata_default",
+          "args": [
+            "post",
+            1,
+            "dk",
+            true
+          ]
+        },
+        {
+          "call": "filter_default_metadata",
+          "args": [
+            "x",
+            1,
+            "dk",
+            true,
+            "post"
+          ]
+        },
+        {
+          "call": "wp_installing",
+          "args": [
+            false
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "dk",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-short-circuit-single",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "stored"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata",
+            "speedyspec_compat_meta_list"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "get_post_metadata",
+            "speedyspec_compat_meta_list"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata",
+            "speedyspec_compat_meta_string"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "get_post_metadata",
+            "speedyspec_compat_meta_string"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata",
+            "speedyspec_compat_meta_assoc"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "get_post_metadata",
+            "speedyspec_compat_meta_assoc"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata",
+            "__return_false"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "get_post_metadata",
+            "__return_false"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata",
+            "__return_empty_array"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-short-circuit-array",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "stored"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_post_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata",
+            "speedyspec_compat_meta_list",
+            20
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "",
+            true
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "get_post_metadata",
+            "speedyspec_compat_meta_list",
+            20
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata",
+            "speedyspec_compat_meta_string",
+            20
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "get_post_metadata",
+            "speedyspec_compat_meta_string",
+            20
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata",
+            "__return_empty_array",
+            20
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-cache-miss-string",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "stored"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            1,
+            "garbage",
+            "post_meta"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            1,
+            "post_meta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-cache-miss-int",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "stored"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            1,
+            5,
+            "post_meta"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            1,
+            "post_meta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-cache-miss-true",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "stored"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            1,
+            true,
+            "post_meta"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            1,
+            "post_meta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-cache-miss-empty-array",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "stored"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            1,
+            [],
+            "post_meta"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            1,
+            "post_meta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-cache-miss-object",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "stored"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "speedyspec_compat_object_meta_cache",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "wp_cache_get",
+          "args": [
+            1,
+            "post_meta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-cache-miss-exists-and-all",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "stored"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            1,
+            "garbage",
+            "post_meta"
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            1,
+            "garbage",
+            "post_meta"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            1,
+            0,
+            "post_meta"
+          ]
+        },
+        {
+          "call": "get_metadata_raw",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            1,
+            "garbage",
+            "post_meta"
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "stored"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-reads-cache-entry",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            1,
+            {
+              "array": [
+                [
+                  "k",
+                  [
+                    "a:1:{i:0;s:1:\"x\";}",
+                    "plain"
+                  ]
+                ],
+                [
+                  "j",
+                  [
+                    "1"
+                  ]
+                ]
+              ]
+            },
+            "post_meta"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "nope",
+            true
+          ]
+        },
+        {
+          "call": "metadata_exists",
+          "args": [
+            "post",
+            1,
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-key-zero-and-numeric",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "12",
+            "n"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "12",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            12,
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "0",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            0
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            "1",
+            "12"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mid-post",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ],
+          "as": "mid"
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "arr",
+            [
+              "x"
+            ]
+          ],
+          "as": "mid2"
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_post_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_post_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_postmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "post",
+            {
+              "var": "mid"
+            }
+          ],
+          "as": "row"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "row"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "post",
+            {
+              "var": "mid2"
+            }
+          ],
+          "as": "row2"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "row2"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "post",
+            {
+              "var": "mid"
+            },
+            "b"
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "post",
+            {
+              "var": "mid"
+            },
+            "b"
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "post",
+            {
+              "var": "mid"
+            },
+            [
+              "c"
+            ],
+            "renamed"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "post",
+            {
+              "var": "mid"
+            }
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "post",
+            {
+              "var": "mid"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mid-comment",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "a"
+          ],
+          "as": "mid"
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "arr",
+            [
+              "x"
+            ]
+          ],
+          "as": "mid2"
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_comment_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_comment_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_comment_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_comment_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_comment_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_comment_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_comment_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_comment_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_commentmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_commentmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_commentmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_commentmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_commentmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_commentmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_commentmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_commentmeta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "comment",
+            {
+              "var": "mid"
+            }
+          ],
+          "as": "row"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "row"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "comment",
+            {
+              "var": "mid2"
+            }
+          ],
+          "as": "row2"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "row2"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "comment",
+            {
+              "var": "mid"
+            },
+            "b"
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "comment",
+            {
+              "var": "mid"
+            },
+            "b"
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "comment",
+            {
+              "var": "mid"
+            },
+            [
+              "c"
+            ],
+            "renamed"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "comment",
+            {
+              "var": "mid"
+            }
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "comment",
+            {
+              "var": "mid"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mid-term",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "a"
+          ],
+          "as": "mid"
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "arr",
+            [
+              "x"
+            ]
+          ],
+          "as": "mid2"
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_term_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_term_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_term_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_term_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_term_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_term_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_term_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_term_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "term",
+            {
+              "var": "mid"
+            }
+          ],
+          "as": "row"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "row"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "term",
+            {
+              "var": "mid2"
+            }
+          ],
+          "as": "row2"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "row2"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "term",
+            {
+              "var": "mid"
+            },
+            "b"
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "term",
+            {
+              "var": "mid"
+            },
+            "b"
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "term",
+            {
+              "var": "mid"
+            },
+            [
+              "c"
+            ],
+            "renamed"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "term",
+            {
+              "var": "mid"
+            }
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "term",
+            {
+              "var": "mid"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mid-user",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "a"
+          ],
+          "as": "mid"
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "arr",
+            [
+              "x"
+            ]
+          ],
+          "as": "mid2"
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_user_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_user_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_user_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_user_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_user_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_user_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_user_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_user_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "user",
+            {
+              "var": "mid"
+            }
+          ],
+          "as": "row"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "row"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "user",
+            {
+              "var": "mid2"
+            }
+          ],
+          "as": "row2"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "row2"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "user",
+            {
+              "var": "mid"
+            },
+            "b"
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "user",
+            {
+              "var": "mid"
+            },
+            "b"
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "user",
+            {
+              "var": "mid"
+            },
+            [
+              "c"
+            ],
+            "renamed"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "user",
+            {
+              "var": "mid"
+            }
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "user",
+            {
+              "var": "mid"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mid-thing",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "a"
+          ],
+          "as": "mid"
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "arr",
+            [
+              "x"
+            ]
+          ],
+          "as": "mid2"
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_thing_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_thing_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_thing_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_thing_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_thing_metadata_by_mid",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_thing_metadata_by_mid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "updated_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:updated_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "deleted_thing_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_thing_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "thing",
+            {
+              "var": "mid"
+            }
+          ],
+          "as": "row"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "row"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "thing",
+            {
+              "var": "mid2"
+            }
+          ],
+          "as": "row2"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "row2"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "thing",
+            {
+              "var": "mid"
+            },
+            "b"
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "thing",
+            {
+              "var": "mid"
+            },
+            "b"
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "thing",
+            {
+              "var": "mid"
+            },
+            [
+              "c"
+            ],
+            "renamed"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "thing",
+            {
+              "var": "mid"
+            }
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "thing",
+            {
+              "var": "mid"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mid-invalid",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "post",
+            0
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "post",
+            -1
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "post",
+            "x"
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "post",
+            {
+              "float": 1.5
+            }
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "post",
+            "1"
+          ],
+          "as": "row"
+        },
+        {
+          "call": "speedyspec_compat_props",
+          "args": [
+            {
+              "var": "row"
+            }
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "post",
+            99
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "nope",
+            1
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "",
+            1
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "post",
+            99,
+            "v"
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "post",
+            1,
+            "v",
+            5
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "post",
+            0,
+            "v"
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "post",
+            99
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "post",
+            "x"
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "nope",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mid-short-circuit",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_metadata_by_mid",
+            "speedyspec_compat_meta_string"
+          ]
+        },
+        {
+          "call": "get_metadata_by_mid",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata_by_mid",
+            "__return_zero"
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "post",
+            1,
+            "b"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "delete_post_metadata_by_mid",
+            "__return_true"
+          ]
+        },
+        {
+          "call": "delete_metadata_by_mid",
+          "args": [
+            "post",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mid-update-slashed-and-sanitized",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ],
+          "as": "mid"
+        },
+        {
+          "call": "register_meta",
+          "args": [
+            "post",
+            "k",
+            {
+              "array": [
+                [
+                  "sanitize_callback",
+                  "speedyspec_compat_upper"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "update_metadata_by_mid",
+          "args": [
+            "post",
+            {
+              "var": "mid"
+            },
+            "b\\'c"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-several-ids",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            2,
+            "j",
+            [
+              "x"
+            ]
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_metadata_cache"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "post",
+            [
+              1,
+              2,
+              3
+            ]
+          ]
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "post",
+            [
+              1,
+              2,
+              3
+            ]
+          ]
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "post",
+            "1, 2,x4"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-partly-cached",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            2,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            2,
+            "garbage",
+            "post_meta"
+          ]
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "post",
+            [
+              1,
+              2
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-invalid",
+      "steps": [
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "",
+            [
+              1
+            ]
+          ]
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "post",
+            []
+          ]
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "post",
+            ""
+          ]
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "nope",
+            [
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-short-circuit",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:update_post_metadata_cache"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata_cache",
+            "__return_empty_array",
+            20
+          ]
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "post",
+            [
+              1
+            ]
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "update_post_metadata_cache",
+            "__return_empty_array",
+            20
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "update_post_metadata_cache",
+            "speedyspec_compat_meta_string",
+            20
+          ]
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "post",
+            [
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-post",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            2,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "post",
+            [
+              1,
+              2
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-comment",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            2,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "comment",
+            [
+              1,
+              2
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-term",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            2,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "term",
+            [
+              1,
+              2
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-user",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            8,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "user",
+            [
+              7,
+              8
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-thing",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            4,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "update_meta_cache",
+          "args": [
+            "thing",
+            [
+              3,
+              4
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-unregistered",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "sanitize_post_meta_k",
+            {
+              "callback": "return_arg",
+              "label": "rec:sanitize_post_meta_k"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "sanitize_post_meta_k_for_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:sanitize_post_meta_k_for_post"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "sanitize_meta",
+          "args": [
+            "k",
+            " v ",
+            "post"
+          ]
+        },
+        {
+          "call": "sanitize_meta",
+          "args": [
+            "k",
+            " v ",
+            "post",
+            "post"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-registered",
+      "steps": [
+        {
+          "call": "register_meta",
+          "args": [
+            "post",
+            "k",
+            {
+              "array": [
+                [
+                  "sanitize_callback",
+                  "speedyspec_compat_upper"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "sanitize_post_meta_k",
+            {
+              "callback": "return_arg",
+              "label": "rec:sanitize_post_meta_k"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "sanitize_meta",
+          "args": [
+            "k",
+            "low",
+            "post"
+          ]
+        },
+        {
+          "call": "sanitize_meta",
+          "args": [
+            "k",
+            "low",
+            "post",
+            "post"
+          ]
+        },
+        {
+          "call": "sanitize_meta",
+          "args": [
+            "k",
+            "low",
+            "post",
+            "page"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "stored"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            2,
+            "k",
+            "paged"
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "updated"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            2,
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-by-subtype",
+      "steps": [
+        {
+          "call": "register_meta",
+          "args": [
+            "post",
+            "k",
+            {
+              "array": [
+                [
+                  "object_subtype",
+                  "page"
+                ],
+                [
+                  "sanitize_callback",
+                  "speedyspec_compat_upper"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "sanitize_post_meta_k",
+            {
+              "callback": "return_arg",
+              "label": "rec:sanitize_post_meta_k"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "sanitize_post_meta_k_for_page",
+            {
+              "callback": "return_arg",
+              "label": "rec:sanitize_post_meta_k_for_page"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "sanitize_post_meta_k_for_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:sanitize_post_meta_k_for_post"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "sanitize_meta",
+          "args": [
+            "k",
+            "low",
+            "post"
+          ]
+        },
+        {
+          "call": "sanitize_meta",
+          "args": [
+            "k",
+            "low",
+            "post",
+            "post"
+          ]
+        },
+        {
+          "call": "sanitize_meta",
+          "args": [
+            "k",
+            "low",
+            "post",
+            "page"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "post-value"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            2,
+            "k",
+            "page-value"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            2,
+            "k",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-filter-fixture",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "sanitize_thing_meta_k",
+            {
+              "callback": "append",
+              "label": "s",
+              "with": {
+                "suffix": "-s"
+              }
+            },
+            10,
+            4
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "sanitize_term_meta_k_for_category",
+            {
+              "callback": "append",
+              "label": "cat",
+              "with": {
+                "suffix": "-c"
+              }
+            },
+            10,
+            4
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            2,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "sanitize_meta",
+          "args": [
+            "k",
+            [
+              "arr"
+            ],
+            "thing"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "thing",
+            3,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            2,
+            "k",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "protected-rule",
+      "steps": [
+        {
+          "call": "is_protected_meta",
+          "args": [
+            "_k"
+          ]
+        },
+        {
+          "call": "is_protected_meta",
+          "args": [
+            "k"
+          ]
+        },
+        {
+          "call": "is_protected_meta",
+          "args": [
+            "_k",
+            "post"
+          ]
+        },
+        {
+          "call": "is_protected_meta",
+          "args": [
+            " _k"
+          ]
+        },
+        {
+          "call": "is_protected_meta",
+          "args": [
+            ""
+          ]
+        },
+        {
+          "call": "is_protected_meta",
+          "args": [
+            "_"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "protected-filter",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "is_protected_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:is_protected_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "is_protected_meta",
+          "args": [
+            "_k",
+            "post"
+          ]
+        },
+        {
+          "call": "is_protected_meta",
+          "args": [
+            "k",
+            "user"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "is_protected_meta",
+            "__return_true",
+            20
+          ]
+        },
+        {
+          "call": "is_protected_meta",
+          "args": [
+            "k",
+            "post"
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "is_protected_meta",
+            "__return_true",
+            20
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "is_protected_meta",
+            "__return_false",
+            20
+          ]
+        },
+        {
+          "call": "is_protected_meta",
+          "args": [
+            "_k",
+            "post"
+          ]
+        },
+        {
+          "call": "remove_filter",
+          "args": [
+            "is_protected_meta",
+            "__return_false",
+            20
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "is_protected_meta",
+            "speedyspec_compat_meta_string",
+            20
+          ]
+        },
+        {
+          "call": "is_protected_meta",
+          "args": [
+            "k"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "subtype-each-type",
+      "steps": [
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "post",
+            2
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "post",
+            99
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "post",
+            "1"
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "comment",
+            1
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "comment",
+            99
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "term",
+            1
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "term",
+            2
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "term",
+            99
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "user",
+            99
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "thing",
+            1
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "nope",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "subtype-user",
+      "steps": [
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "user",
+            1
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "user",
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "subtype-blog",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "get_object_subtype_blog",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_object_subtype_blog"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "blog",
+            1
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "blog",
+            0
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "blog",
+            -1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "subtype-filter",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "get_object_subtype_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_object_subtype_post"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_object_subtype_thing",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_object_subtype_thing"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_object_subtype_thing",
+            {
+              "callback": "append",
+              "label": "sub",
+              "with": {
+                "suffix": "widget"
+              }
+            }
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "thing",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "lazy-term",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            2,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "metadata_lazyloader_queued_objects",
+            {
+              "callback": "return_arg",
+              "label": "rec:metadata_lazyloader_queued_objects"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "wp_metadata_lazyloader",
+          "args": [],
+          "as": "lazy"
+        },
+        {
+          "call": "$lazy->queue_objects",
+          "args": [
+            "term",
+            [
+              1,
+              2,
+              3
+            ]
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            2,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            3,
+            "k",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "lazy-comment",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "comment",
+            2,
+            "k",
+            "b"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "metadata_lazyloader_queued_objects",
+            {
+              "callback": "return_arg",
+              "label": "rec:metadata_lazyloader_queued_objects"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "wp_lazyload_comment_meta",
+          "args": [
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            5,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "comment",
+            2,
+            "k",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "lazy-term-wrapper-and-twice",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "wp_lazyload_term_meta",
+          "args": [
+            [
+              1
+            ]
+          ]
+        },
+        {
+          "call": "wp_lazyload_term_meta",
+          "args": [
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            2,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "wp_lazyload_term_meta",
+          "args": [
+            [
+              3
+            ]
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            4,
+            "k",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "lazy-reset-and-invalid",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "term",
+            1,
+            "k",
+            "a"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "wp_metadata_lazyloader",
+          "args": [],
+          "as": "lazy"
+        },
+        {
+          "call": "$lazy->queue_objects",
+          "args": [
+            "term",
+            [
+              1
+            ]
+          ]
+        },
+        {
+          "call": "$lazy->reset_queue",
+          "args": [
+            "term"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "term",
+            2,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "$lazy->queue_objects",
+          "args": [
+            "post",
+            [
+              1
+            ]
+          ],
+          "as": "err"
+        },
+        {
+          "call": "$err->get_error_code",
+          "args": []
+        },
+        {
+          "call": "$err->get_error_message",
+          "args": []
+        },
+        {
+          "call": "$lazy->reset_queue",
+          "args": [
+            "user"
+          ],
+          "as": "err2"
+        },
+        {
+          "call": "$err2->get_error_code",
+          "args": []
+        },
+        {
+          "call": "$lazy->queue_objects",
+          "args": [
+            "blog",
+            [
+              1
+            ]
+          ]
+        },
+        {
+          "call": "$lazy->lazyload_meta_callback",
+          "args": [
+            null,
+            0,
+            "",
+            false,
+            "thing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-switch-to-blog-multisite",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "blog-1"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "switch_to_blog",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "post",
+            1
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "blog-2"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "post",
+            1,
+            "k",
+            "blog-2b"
+          ]
+        },
+        {
+          "call": "restore_current_blog",
+          "args": []
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "switch_to_blog",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "restore_current_blog",
+          "args": []
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "post",
+            1,
+            "k"
+          ]
+        }
+      ],
+      "multisite": true
+    },
+    {
+      "name": "cache-user-meta-global-multisite",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "user",
+            7,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7,
+            "k"
+          ]
+        },
+        {
+          "call": "switch_to_blog",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "user",
+            7,
+            "k"
+          ]
+        },
+        {
+          "call": "restore_current_blog",
+          "args": []
+        }
+      ],
+      "multisite": true
+    },
+    {
+      "name": "subtype-blog-multisite",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "get_object_subtype_blog",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_object_subtype_blog"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "blog",
+            1
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "blog",
+            2
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "blog",
+            99
+          ]
+        },
+        {
+          "call": "get_object_subtype",
+          "args": [
+            "blog",
+            0
+          ]
+        }
+      ],
+      "multisite": true
+    },
+    {
+      "name": "add-blog-meta-multisite",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "add_blog_metadata",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_blog_metadata"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "added_blog_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_blog_meta"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "blog",
+            1,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "blog",
+            2,
+            "k",
+            "w"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "blog",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "update_metadata",
+          "args": [
+            "blog",
+            2,
+            "k",
+            "x"
+          ]
+        },
+        {
+          "call": "delete_metadata",
+          "args": [
+            "blog",
+            1,
+            "k"
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "blog",
+            2
+          ]
+        }
+      ],
+      "multisite": true
+    },
+    {
+      "name": "lazy-blog-multisite",
+      "steps": [
+        {
+          "call": "add_metadata",
+          "args": [
+            "blog",
+            1,
+            "k",
+            "v"
+          ]
+        },
+        {
+          "call": "add_metadata",
+          "args": [
+            "blog",
+            2,
+            "k",
+            "w"
+          ]
+        },
+        {
+          "call": "wp_cache_flush",
+          "args": []
+        },
+        {
+          "call": "wp_lazyload_site_meta",
+          "args": [
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "blog",
+            1,
+            "k",
+            true
+          ]
+        },
+        {
+          "call": "get_metadata",
+          "args": [
+            "blog",
+            2,
+            "k",
+            true
+          ]
+        }
+      ],
+      "multisite": true
+    }
+  ]
+}
