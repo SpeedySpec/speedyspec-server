@@ -27,7 +27,8 @@ fn named(name: &str, kind: &str, parent: u64) -> Post {
     }
 }
 
-/// Runs every check against `repo`, which must start with an empty table. Panics naming the failing check.
+/// Runs every check against `repo`, which must start with an empty table and a fresh auto-increment
+/// (`insert_with_id_is_honoured` expects 101 after an explicit 100). Panics naming the failing check.
 pub fn post_repository_suite(repo: &dyn PostRepository) {
     let insert = |post: &Post| {
         repo.insert(post)
@@ -148,7 +149,7 @@ pub fn post_repository_suite(repo: &dyn PostRepository) {
         .attachment_slug_owner(&slug("unshared"), PostId(0))
         .expect("attachment_slug_owner");
     ensure(
-        "attachment_owner_spans_types_and_skips_except",
+        "attachment_owner_spans_types",
         any == Some(slug("shared")) && past_one == Some(slug("shared")) && nobody.is_none(),
         || format!("{any:?} {past_one:?} {nobody:?}"),
     );
@@ -157,7 +158,7 @@ pub fn post_repository_suite(repo: &dyn PostRepository) {
         .attachment_slug_owner(&slug("lonely"), only)
         .expect("attachment_slug_owner");
     ensure(
-        "attachment_owner_spans_types_and_skips_except",
+        "attachment_owner_skips_except",
         only_except.is_none(),
         || format!("{only_except:?}"),
     );
@@ -193,18 +194,23 @@ pub fn post_repository_suite(repo: &dyn PostRepository) {
     let story = insert(&named("story", "book", 60));
     insert(&named("cover", "attachment", 0));
     let same_type = flat("story", "book", PostId(0));
-    let any_parent = flat("story", "book", PostId(0));
     let wrong_type = flat("story", "post", PostId(0));
     let not_attachment = flat("cover", "book", PostId(0));
     let skipped = flat("story", "book", story);
+    insert(&named("story", "magazine", 60));
+    let other_type_same_parent = flat("story", "book", story);
     ensure(
         "flat_owner_matches_the_type_only",
         same_type == Some(slug("story"))
-            && any_parent == Some(slug("story"))
             && wrong_type.is_none()
             && not_attachment.is_none()
-            && skipped.is_none(),
-        || format!("{same_type:?} {wrong_type:?} {not_attachment:?} {skipped:?}"),
+            && skipped.is_none()
+            && other_type_same_parent.is_none(),
+        || {
+            format!(
+                "{same_type:?} {wrong_type:?} {not_attachment:?} {skipped:?} {other_type_same_parent:?}"
+            )
+        },
     );
 
     // owner_returns_the_stored_name: PHP truth is the rule's to test, so "0" and "" come back as stored.

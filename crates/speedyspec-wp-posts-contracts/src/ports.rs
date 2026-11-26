@@ -16,7 +16,10 @@ pub trait PostRepository {
     fn find(&self, id: PostId) -> Result<Option<Post>, PostError>;
     /// `wp_insert_post()`'s `$wpdb->insert( $wpdb->posts, $data )`: the 21 columns it writes, plus `ID` when
     /// `post.id` is non-zero (the `import_id` case); `comment_count` is not written (the column default, 0). The
-    /// new id; `None` when `$wpdb` returns false (a taken ID).
+    /// new id; `None` when `$wpdb->insert` returns false (for example a duplicate ID).
+    ///
+    /// `wp_insert_post()` first runs a separate `SELECT ID FROM {posts} WHERE ID = %d` (post.php 5251-5256,
+    /// WordPress 7.2-RC2) and drops a taken `import_id`; that pre-check is a later phase's own repository method.
     fn insert(&self, post: &Post) -> Result<Option<PostId>, PostError>;
     /// `wp_unique_post_slug()`, attachments:
     /// `SELECT post_name FROM {posts} WHERE post_name = %s AND ID != %d LIMIT 1`.
