@@ -12,7 +12,7 @@ seam = "cache"
 role = "adapter"
 
 [dependencies]
-sha2 = "0.10"
+sha2 = "0.11"
 speedyspec-cache.workspace = true
 speedyspec-data.workspace = true
 speedyspec-data-query = { path = "../speedyspec-data-query" }
