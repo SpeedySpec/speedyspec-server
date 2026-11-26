@@ -4,6 +4,7 @@
 //! viewable predicates, and `create_initial_post_types()`.
 
 mod caps;
+mod dates;
 mod initial;
 mod key;
 mod labels;
@@ -14,6 +15,10 @@ mod registry;
 mod status;
 
 pub use caps::{meta_capabilities, post_type_capabilities};
+pub use dates::{
+    InsertDateInput, InsertDates, ResolvedPostDate, gregorian_date_valid, insert_post_dates,
+    resolve_post_date,
+};
 pub use initial::{InitialOptions, create_initial_post_types};
 
 pub use key::{NAME_LENGTH_VERSION, check_post_type_name, sanitize_key};

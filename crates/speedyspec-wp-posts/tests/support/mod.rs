@@ -1,5 +1,7 @@
 //! Shared by the recorded tests: finds `compat/posts/cases.json` and decodes its `{"t","v"}` values.
 
+pub mod entity;
+
 use std::path::PathBuf;
 
 use serde_json::{Value, json};
