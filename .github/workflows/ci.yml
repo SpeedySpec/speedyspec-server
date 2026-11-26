@@ -18,6 +18,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      # Proof (revert before merge): build against speedyspec-platform 212663d, the release commit, patched in.
+      - uses: actions/checkout@v4
+        with:
+          repository: SpeedySpec/speedyspec-platform
+          ref: 212663daf196c0b927631595d801c04ccc3d52cc
+          path: platform
+      # The patch paths are absolute, so a job that builds in scripts/linux-php.sh's container writes them there (/work).
+      - run: scripts/platform-local.sh platform && cat platform.local.toml >> .cargo/config.toml
       # The platform crates come from crates.io: nothing committed patches them (scripts/platform-local.sh is for local
       # work only).
       - run: bash scripts/tests/check-no-platform-patch.sh && scripts/check-no-platform-patch.sh
@@ -82,6 +90,14 @@ jobs:
       SPEEDYSPEC_LINUX_PLATFORM: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+      # Proof (revert before merge): build against speedyspec-platform 212663d, the release commit, patched in.
+      - uses: actions/checkout@v4
+        with:
+          repository: SpeedySpec/speedyspec-platform
+          ref: 212663daf196c0b927631595d801c04ccc3d52cc
+          path: platform
+      # The patch paths are absolute, so a job that builds in scripts/linux-php.sh's container writes them there (/work).
+      - run: ${{ matrix.run }} scripts/platform-local.sh platform && cat platform.local.toml >> .cargo/config.toml
       - uses: dtolnay/rust-toolchain@master
         if: matrix.run == ''
         with:
@@ -144,6 +160,14 @@ jobs:
       SPEEDYSPEC_TEST_MYSQL_URL: mysql://root:password@127.0.0.1:33306/speedyspec_test
     steps:
       - uses: actions/checkout@v4
+      # Proof (revert before merge): build against speedyspec-platform 212663d, the release commit, patched in.
+      - uses: actions/checkout@v4
+        with:
+          repository: SpeedySpec/speedyspec-platform
+          ref: 212663daf196c0b927631595d801c04ccc3d52cc
+          path: platform
+      # The patch paths are absolute, so a job that builds in scripts/linux-php.sh's container writes them there (/work).
+      - run: scripts/linux-php.sh scripts/platform-local.sh platform && cat platform.local.toml >> .cargo/config.toml
       - name: PHP version
         id: phpver
         run: |
@@ -177,6 +201,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Proof (revert before merge): build against speedyspec-platform 212663d, the release commit, patched in.
+      - uses: actions/checkout@v4
+        with:
+          repository: SpeedySpec/speedyspec-platform
+          ref: 212663daf196c0b927631595d801c04ccc3d52cc
+          path: platform
+      # The patch paths are absolute, so a job that builds in scripts/linux-php.sh's container writes them there (/work).
+      - run: scripts/platform-local.sh platform && cat platform.local.toml >> .cargo/config.toml
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.99"
