@@ -5,8 +5,7 @@
 use std::rc::Rc;
 
 use indexmap::IndexMap;
-use speedyspec_wp_hooks::WpHookApi;
-use speedyspec_wp_hooks_contracts::{Callback, CallbackId, HookName, HookValue, Key};
+use speedyspec_wp_hooks_contracts::{Callback, CallbackId, HookApi, HookName, HookValue, Key};
 
 use crate::{Deprecations, OptionsError, php_empty};
 
@@ -136,7 +135,7 @@ fn filter_default(
 
 pub struct SettingsRegistry {
     store: Rc<dyn SettingsStore>,
-    hooks: Rc<WpHookApi>,
+    hooks: Rc<dyn HookApi>,
     deprecations: Rc<dyn Deprecations>,
     parsing: Rc<dyn ArgsParsing>,
 }
@@ -144,7 +143,7 @@ pub struct SettingsRegistry {
 impl SettingsRegistry {
     pub fn new(
         store: Rc<dyn SettingsStore>,
-        hooks: Rc<WpHookApi>,
+        hooks: Rc<dyn HookApi>,
         deprecations: Rc<dyn Deprecations>,
     ) -> SettingsRegistry {
         SettingsRegistry {

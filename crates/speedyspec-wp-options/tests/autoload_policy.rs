@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
-use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
+use speedyspec_wp_hooks_contracts::{Callback, HookApi, HookName, HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_options::{
     Autoload, AutoloadPolicy, AutoloadRequest, WordPressAutoloadPolicy, autoload_values,
@@ -108,7 +108,8 @@ fn filter_bool_gives_auto_on_off() {
 #[test]
 fn size_rule() {
     let hooks = hooks();
-    register_default_filters(&hooks).unwrap();
+    let api: Rc<dyn HookApi> = hooks.clone();
+    register_default_filters(&api).unwrap();
     let p = WordPressAutoloadPolicy::new(hooks.clone());
     let at = s(&"x".repeat(150000));
     let over = s(&"x".repeat(150001));

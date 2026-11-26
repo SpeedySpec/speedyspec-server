@@ -3,9 +3,8 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::WpHookApi;
-use speedyspec_wp_hooks_contracts::{HookValue, Key};
-use speedyspec_wp_object_cache::{CurrentObjectCache, WpObjectCache};
+use speedyspec_wp_hooks_contracts::{HookApi, HookValue, Key};
+use speedyspec_wp_object_cache_contracts::ObjectCache;
 
 use crate::api::{isset, set_key, truthy, unset_key};
 use crate::{
@@ -72,8 +71,8 @@ pub struct NetworkPorts {
 pub struct NetworkOptionsApi {
     options: Rc<OptionsApi>,
     sitemeta: Rc<dyn SitemetaRepository>,
-    cache: Rc<CurrentObjectCache>,
-    hooks: Rc<WpHookApi>,
+    cache: Rc<dyn ObjectCache>,
+    hooks: Rc<dyn HookApi>,
     ports: NetworkPorts,
 }
 
@@ -93,8 +92,8 @@ impl NetworkOptionsApi {
     pub fn new(
         options: Rc<OptionsApi>,
         sitemeta: Rc<dyn SitemetaRepository>,
-        cache: Rc<CurrentObjectCache>,
-        hooks: Rc<WpHookApi>,
+        cache: Rc<dyn ObjectCache>,
+        hooks: Rc<dyn HookApi>,
         ports: NetworkPorts,
     ) -> NetworkOptionsApi {
         let api = NetworkOptionsApi {
@@ -108,14 +107,14 @@ impl NetworkOptionsApi {
         api
     }
 
-    pub fn hooks(&self) -> &Rc<WpHookApi> {
+    pub fn hooks(&self) -> &Rc<dyn HookApi> {
         &self.hooks
     }
 
     /// The current object cache, with `site-options` and `site-transient` global, as `wp_start_object_cache()`
     /// makes them on every request.
-    fn cache(&self) -> Rc<WpObjectCache> {
-        let cache = self.cache.current();
+    fn cache(&self) -> Rc<dyn ObjectCache> {
+        let cache = self.cache.clone();
         cache.add_global_groups(&[s(GROUP), s("site-transient")]);
         cache
     }

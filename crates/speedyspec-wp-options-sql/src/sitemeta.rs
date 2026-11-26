@@ -6,8 +6,7 @@ use std::rc::Rc;
 
 use speedyspec_data::{DbError, Statement};
 use speedyspec_data_query::Query;
-use speedyspec_wp_db::WpDb;
-use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue};
+use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue, Wpdb};
 use speedyspec_wp_options::{NetworkMeta, SerializedValue, SitemetaRepository};
 
 /// A `wp_sitemeta` row to a `NetworkMeta` and back; `meta_id` stays the table's.
@@ -43,7 +42,7 @@ impl SitemetaMapper {
 }
 
 pub struct SqlSitemetaRepository {
-    wpdb: Rc<WpDb>,
+    wpdb: Rc<dyn Wpdb>,
 }
 
 /// A failure `wpdb` hides is the empty answer (as `$wpdb` returns null or false); a hook's failure is not.
@@ -63,7 +62,7 @@ fn formats(n: usize) -> Vec<String> {
 }
 
 impl SqlSitemetaRepository {
-    pub fn new(wpdb: Rc<WpDb>) -> SqlSitemetaRepository {
+    pub fn new(wpdb: Rc<dyn Wpdb>) -> SqlSitemetaRepository {
         SqlSitemetaRepository { wpdb }
     }
 

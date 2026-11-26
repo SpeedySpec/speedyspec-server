@@ -10,12 +10,12 @@ license.workspace = true
 [dependencies]
 speedyspec-data = { path = "../speedyspec-data" }
 speedyspec-data-query = { path = "../speedyspec-data-query" }
-speedyspec-wp-db = { path = "../speedyspec-wp-db" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 md5 = { package = "md-5", version = "0.11.0" }
 speedyspec-wp-db-contracts = { path = "../speedyspec-wp-db-contracts" }
 
 [dev-dependencies]
+speedyspec-wp-db = { path = "../speedyspec-wp-db" }
 speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }
 speedyspec-cache = { path = "../speedyspec-cache" }
 speedyspec-cache-file = { path = "../speedyspec-cache-file" }

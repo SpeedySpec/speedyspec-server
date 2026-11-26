@@ -1,6 +1,8 @@
 mod support;
 
-use speedyspec_wp_hooks_contracts::{HookValue, Key};
+use std::rc::Rc;
+
+use speedyspec_wp_hooks_contracts::{HookApi, HookValue, Key};
 use speedyspec_wp_options::{
     Autoload, OptionName, OptionRepository, OptionsError, register_default_filters,
 };
@@ -125,7 +127,8 @@ fn update_missing_adds() {
 #[test]
 fn update_reevaluates_auto_only() {
     let f = fixture();
-    register_default_filters(&f.hooks).unwrap();
+    let hooks: Rc<dyn HookApi> = f.hooks.clone();
+    register_default_filters(&hooks).unwrap();
     seed(&f, "b", "small", Autoload::Auto);
     seed(&f, "k", "small", Autoload::On);
     let big = "x".repeat(150001);
