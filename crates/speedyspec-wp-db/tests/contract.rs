@@ -58,6 +58,10 @@ fn every_method_reaches_wpdb_through_dyn() {
     let db: &dyn Wpdb = &r.db;
 
     assert_eq!(db.table_name("options"), NativeWpdb::table_name(&r.db, "options"));
+    // An undeclared property (`$wpdb->thingmeta`) is empty until it is set.
+    assert_eq!(db.table_name("thingmeta"), "");
+    r.db.with_tables_mut(|t| t.set("thingmeta", "wp_thingmeta".into()));
+    assert_eq!(db.table_name("thingmeta"), "wp_thingmeta");
 
     let before = read(&*r.state, |s| s.suppress_errors);
     assert_eq!(db.suppress_errors(true), before);

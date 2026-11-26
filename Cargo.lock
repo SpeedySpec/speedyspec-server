@@ -6475,7 +6475,17 @@ dependencies = [
 name = "speedyspec-wp-meta-sql"
 version = "0.1.0"
 dependencies = [
+ "postgres",
  "speedyspec-data",
+ "speedyspec-data-mysql",
+ "speedyspec-data-postgres",
+ "speedyspec-data-query",
+ "speedyspec-data-sqlite",
+ "speedyspec-wp-db",
+ "speedyspec-wp-db-contracts",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-contracts",
+ "speedyspec-wp-hooks-memory",
  "speedyspec-wp-meta-contracts",
 ]
 
