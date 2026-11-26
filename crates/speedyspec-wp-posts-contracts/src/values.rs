@@ -1,5 +1,7 @@
-//! The post type and post status names, and the resolved objects WordPress keeps for them.
+//! The post type and post status names, the resolved objects WordPress keeps for them, and the values a post's
+//! columns hold.
 
+use std::borrow::Cow;
 use std::fmt;
 
 use speedyspec_php_serialize::semantics::{get, set, unset};
@@ -38,6 +40,114 @@ name!(
 name!(
     /// A post status' name (`publish`, `draft`).
     PostStatusName
+);
+name!(
+    /// A post's `comment_status` column: any string it holds (`open`, `closed`).
+    CommentStatus
+);
+name!(
+    /// A post's `ping_status` column: any string it holds (`open`, `closed`).
+    PingStatus
+);
+
+impl CommentStatus {
+    /// Whether the status is exactly `open`, as `comments_open()` compares it.
+    pub fn is_open(&self) -> bool {
+        self.0 == "open"
+    }
+}
+
+impl PingStatus {
+    /// Whether the status is exactly `open`, as `pings_open()` compares it.
+    pub fn is_open(&self) -> bool {
+        self.0 == "open"
+    }
+}
+
+/// A post's ID. `0` is "no post": a new post, or `post_parent` for a top-level post.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct PostId(pub u64);
+
+/// A `datetime` column as WordPress keeps it (`Y-m-d H:i:s`), unchecked: the date rules validate it.
+///
+/// It holds a `Cow` so that [`Self::ZERO`] can be a constant; it otherwise behaves as an owned string.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct PostDateTime(Cow<'static, str>);
+
+impl PostDateTime {
+    /// `0000-00-00 00:00:00`: the columns' default, and WordPress's "no date".
+    pub const ZERO: Self = Self(Cow::Borrowed("0000-00-00 00:00:00"));
+
+    /// Wraps a datetime unchecked.
+    pub fn new(datetime: impl Into<String>) -> Self {
+        Self(Cow::Owned(datetime.into()))
+    }
+
+    /// The datetime.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Whether it is exactly [`Self::ZERO`].
+    pub fn is_zero(&self) -> bool {
+        self.0 == Self::ZERO.0
+    }
+}
+
+impl Default for PostDateTime {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+
+impl fmt::Display for PostDateTime {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+/// A local and GMT datetime pair: `post_date`/`post_date_gmt`, or `post_modified`/`post_modified_gmt`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct PostDate {
+    /// The site's local time.
+    pub local: PostDateTime,
+    /// The same moment in GMT, or [`PostDateTime::ZERO`] when not yet set (a draft).
+    pub gmt: PostDateTime,
+}
+
+macro_rules! bytes {
+    ($(#[$doc:meta])* $ty:ident) => {
+        $(#[$doc])*
+        #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        pub struct $ty(Vec<u8>);
+
+        impl $ty {
+            /// Wraps the bytes unchecked.
+            pub fn new(bytes: impl Into<Vec<u8>>) -> Self {
+                Self(bytes.into())
+            }
+
+            /// The bytes.
+            pub fn as_bytes(&self) -> &[u8] {
+                &self.0
+            }
+        }
+
+        impl From<&str> for $ty {
+            fn from(s: &str) -> Self {
+                Self(s.as_bytes().to_vec())
+            }
+        }
+    };
+}
+
+bytes!(
+    /// A post's `post_name`: its slug, as bytes (PHP strings are bytes; a slug may be percent-encoded or not).
+    Slug
+);
+bytes!(
+    /// A post's `post_mime_type` (`image/png`; empty for most post types).
+    MimeType
 );
 
 macro_rules! object {

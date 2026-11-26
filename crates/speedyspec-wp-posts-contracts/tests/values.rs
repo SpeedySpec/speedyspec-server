@@ -2,7 +2,8 @@
 
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts_contracts::{
-    PostStatusName, PostStatusObject, PostType, PostTypeError, PostTypeName,
+    CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
+    PostStatusName, PostStatusObject, PostType, PostTypeError, PostTypeName, Slug,
 };
 
 fn key(s: &str) -> PhpKey {
@@ -116,4 +117,74 @@ fn errors_carry_wordpress_codes_and_messages() {
     );
     assert_eq!(PostTypeError::Invalid.to_string(), "Invalid post type.");
     let _: &dyn std::error::Error = &PostTypeError::Builtin;
+}
+
+#[test]
+fn post_default_is_wp_posts_defaults() {
+    // schema.php 159-182 and WP_Post's property defaults (7.2-RC2).
+    let p = Post::default();
+    let zero = PostDate {
+        local: PostDateTime::ZERO,
+        gmt: PostDateTime::ZERO,
+    };
+    assert_eq!(p.id, PostId(0));
+    assert_eq!(p.author, 0);
+    assert_eq!(p.date, zero);
+    assert!(p.content.is_empty());
+    assert!(p.title.is_empty());
+    assert!(p.excerpt.is_empty());
+    assert_eq!(p.status, PostStatusName::new("publish"));
+    assert_eq!(p.comment_status, CommentStatus::new("open"));
+    assert_eq!(p.ping_status, PingStatus::new("open"));
+    assert!(p.password.is_empty());
+    assert_eq!(p.name, Slug::new(Vec::new()));
+    assert!(p.to_ping.is_empty());
+    assert!(p.pinged.is_empty());
+    assert_eq!(p.modified, zero);
+    assert!(p.content_filtered.is_empty());
+    assert_eq!(p.parent, PostId(0));
+    assert!(p.guid.is_empty());
+    assert_eq!(p.menu_order, 0);
+    assert_eq!(p.post_type, PostTypeName::new("post"));
+    assert_eq!(p.mime_type, MimeType::from(""));
+    assert_eq!(p.comment_count, 0);
+}
+
+#[test]
+fn zero_datetime_is_zero() {
+    assert!(PostDateTime::ZERO.is_zero());
+    assert_eq!(PostDateTime::ZERO.as_str(), "0000-00-00 00:00:00");
+    assert!(PostDateTime::new("0000-00-00 00:00:00").is_zero());
+    assert!(!PostDateTime::new("2024-01-01 00:00:00").is_zero());
+    assert_eq!(
+        PostDateTime::new("2024-01-01 00:00:00").as_str(),
+        "2024-01-01 00:00:00"
+    );
+}
+
+#[test]
+fn comment_status_open_is_exact() {
+    assert!(CommentStatus::new("open").is_open());
+    assert!(!CommentStatus::new("Open").is_open());
+    assert!(!CommentStatus::new("closed").is_open());
+    assert!(PingStatus::new("open").is_open());
+    assert!(!PingStatus::new("Open").is_open());
+    assert!(!PingStatus::new("closed").is_open());
+}
+
+#[test]
+fn slug_keeps_bytes() {
+    assert_eq!(Slug::new(vec![0xFF]).as_bytes(), &[0xFF]);
+    assert_eq!(Slug::from("hello-world").as_bytes(), b"hello-world");
+    assert_eq!(
+        MimeType::new(b"image/png".to_vec()).as_bytes(),
+        b"image/png"
+    );
+}
+
+#[test]
+fn post_error_displays_the_cause() {
+    let e = PostError::Db("table missing".to_string());
+    assert_eq!(e.to_string(), "the database failed: table missing");
+    let _: &dyn std::error::Error = &e;
 }

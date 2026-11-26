@@ -1,11 +1,17 @@
-//! WordPress's post type and post status contracts: the names, the resolved values, the errors and the ports.
+//! WordPress's post contracts: the post entity and its values, the post type and post status names and resolved
+//! values, the errors and the ports.
 
+mod entity;
 mod error;
 mod ports;
 mod values;
 
-pub use error::PostTypeError;
+pub use entity::Post;
+pub use error::{PostError, PostTypeError};
 pub use ports::{
     PostStatuses, PostTypeSupports, PostTypes, RewriteContext, TitleSanitizer, Translator,
 };
-pub use values::{PostStatusName, PostStatusObject, PostType, PostTypeName};
+pub use values::{
+    CommentStatus, MimeType, PingStatus, PostDate, PostDateTime, PostId, PostStatusName,
+    PostStatusObject, PostType, PostTypeName, Slug,
+};

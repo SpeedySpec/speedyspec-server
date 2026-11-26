@@ -1,4 +1,4 @@
-//! What the post type API reports when it cannot do as WordPress does.
+//! What the post type and post APIs report when they cannot do as WordPress does.
 
 use std::fmt;
 
@@ -42,3 +42,20 @@ impl fmt::Display for PostTypeError {
 }
 
 impl std::error::Error for PostTypeError {}
+
+/// A post read or write that failed where `$wpdb` would not hide it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PostError {
+    /// The database reported a failure.
+    Db(String),
+}
+
+impl fmt::Display for PostError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PostError::Db(e) => write!(f, "the database failed: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for PostError {}
