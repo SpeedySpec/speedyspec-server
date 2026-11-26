@@ -359,6 +359,11 @@
       "skip-github-release": true,
       "skip-changelog": true
     },
+    "crates/speedyspec-wp-meta-php": {
+      "component": "speedyspec-wp-meta-php",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
     "crates/speedyspec-wp-meta-sql": {
       "component": "speedyspec-wp-meta-sql",
       "skip-github-release": true,

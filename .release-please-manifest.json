@@ -65,6 +65,7 @@
   "crates/speedyspec-wp-options-memory": "0.2.0",
   "crates/speedyspec-wp-meta": "0.1.0",
   "crates/speedyspec-wp-meta-memory": "0.1.0",
+  "crates/speedyspec-wp-meta-php": "0.1.0",
   "crates/speedyspec-wp-meta-sql": "0.1.0",
   "crates/speedyspec-wp-meta-tests": "0.1.0",
   "crates/speedyspec-wp-posts": "0.1.0",

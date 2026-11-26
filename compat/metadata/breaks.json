@@ -1,3 +1,12 @@
 {
-  "breaks": []
+  "breaks": [
+    {
+      "scenario": "add-slashed",
+      "why": "Not a meta difference: native wpdb cannot write a value holding a backslash followed by a quote. speedyspec-data-query's mysql_text re-escapes the backslash, then sqlparser's Display leaves a quote after a backslash undoubled, so `k\\'` reaches MySQL as `'k\\''` and the INSERT fails (add_metadata() returns false). To be fixed in the data layer; then this break goes."
+    },
+    {
+      "scenario": "mid-update-slashed-and-sanitized",
+      "why": "The same wpdb escaping fault as add-slashed: the sanitized value `B\\'C` holds a backslash before a quote, so the UPDATE fails and update_metadata_by_mid() returns false."
+    }
+  ]
 }

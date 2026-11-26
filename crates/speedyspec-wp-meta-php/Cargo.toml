@@ -1,0 +1,52 @@
+[package]
+name = "speedyspec-wp-meta-php"
+version = "0.1.0"
+publish = false
+description = "WordPress's meta.php functions (add_metadata and the rest) and WP_Metadata_Lazyloader as native PHP over the Rust metadata API."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[package.metadata.speedyspec]
+seam = "meta"
+role = "php"
+
+[dependencies]
+speedyspec-compat.workspace = true
+speedyspec-container.workspace = true
+speedyspec-container-php.workspace = true
+speedyspec-cqrs.workspace = true
+speedyspec-data.workspace = true
+speedyspec-php.workspace = true
+speedyspec-php-ext.workspace = true
+speedyspec-php-serialize.workspace = true
+speedyspec-wp-db-contracts.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
+speedyspec-wp-hooks-php.workspace = true
+speedyspec-wp-meta = { path = "../speedyspec-wp-meta" }
+speedyspec-wp-meta-contracts.workspace = true
+speedyspec-wp-meta-sql = { path = "../speedyspec-wp-meta-sql" }
+speedyspec-wp-object-cache-contracts.workspace = true
+
+[dev-dependencies]
+speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+speedyspec-hooks-memory.workspace = true
+speedyspec-wp-db = { path = "../speedyspec-wp-db" }
+speedyspec-wp-db-php = { path = "../speedyspec-wp-db-php" }
+speedyspec-wp-hooks-memory.workspace = true
+speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
+serde_json = "1"
+tempfile = "3"
+
+[[test]]
+name = "compat"
+harness = false
+
+[[test]]
+name = "errors"
+harness = false
+
+[[test]]
+name = "replacement"
+harness = false

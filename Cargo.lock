@@ -5461,6 +5461,7 @@ dependencies = [
  "speedyspec-wp-media-contracts",
  "speedyspec-wp-media-isolate",
  "speedyspec-wp-media-php",
+ "speedyspec-wp-meta-php",
  "speedyspec-wp-object-cache-php",
  "speedyspec-wp-options-php",
  "speedyspec-wp-password-contracts",
@@ -6420,6 +6421,36 @@ name = "speedyspec-wp-meta-memory"
 version = "0.1.0"
 dependencies = [
  "speedyspec-wp-meta-contracts",
+]
+
+[[package]]
+name = "speedyspec-wp-meta-php"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "speedyspec-compat",
+ "speedyspec-container",
+ "speedyspec-container-php",
+ "speedyspec-cqrs",
+ "speedyspec-data",
+ "speedyspec-data-mysql",
+ "speedyspec-data-query",
+ "speedyspec-hooks-memory",
+ "speedyspec-php",
+ "speedyspec-php-ext",
+ "speedyspec-php-serialize",
+ "speedyspec-wp-db",
+ "speedyspec-wp-db-contracts",
+ "speedyspec-wp-db-php",
+ "speedyspec-wp-hooks-contracts",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-hooks-php",
+ "speedyspec-wp-meta",
+ "speedyspec-wp-meta-contracts",
+ "speedyspec-wp-meta-sql",
+ "speedyspec-wp-object-cache-contracts",
+ "speedyspec-wp-object-cache-php",
+ "tempfile",
 ]
 
 [[package]]
