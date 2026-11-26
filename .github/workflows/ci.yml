@@ -18,6 +18,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The freeze check diffs against the base branch.
+          fetch-depth: 0
+      # The paths in scripts/platform-paths.txt moved to speedyspec-platform: a pull request may not change them.
+      - if: github.event_name == 'pull_request'
+        run: |
+          bash scripts/tests/check-platform-freeze.sh
+          scripts/check-platform-freeze.sh "origin/${{ github.base_ref }}"
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.99"

@@ -518,6 +518,20 @@ fn read_json(path: &Path) -> serde_json::Value {
 struct Workspace {
     crates: Vec<(String, String, String)>,
     depends_on: Vec<(String, String)>,
+    /// The crate directories frozen in `scripts/platform-paths.txt`: they moved to speedyspec-platform, which
+    /// releases them, so the server's release config must not name them.
+    frozen: Vec<String>,
+}
+
+/// The `crates/<name>` directories that `scripts/platform-paths.txt` freezes.
+fn frozen_crate_dirs() -> Vec<String> {
+    let path = repo_root().join("scripts/platform-paths.txt");
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|err| panic!("{}: {err}", path.display()))
+        .lines()
+        .filter_map(|line| line.strip_prefix("crates/")?.strip_suffix('/'))
+        .map(|name| format!("crates/{name}"))
+        .collect()
 }
 
 fn workspace() -> Workspace {
@@ -559,7 +573,11 @@ fn workspace() -> Workspace {
                 .map(move |dep| (name.clone(), dep["name"].as_str().unwrap().to_string()))
         })
         .collect();
-    Workspace { crates, depends_on }
+    Workspace {
+        crates,
+        depends_on,
+        frozen: frozen_crate_dirs(),
+    }
 }
 
 const COMPONENTS: [&str; 2] = ["speedyspec-server", "speedyspec-php-runtime"];
@@ -592,6 +610,19 @@ fn release_config_errors(
     let packages = config["packages"].as_object().cloned().unwrap_or_default();
     let released = workspace.released_with_a_component();
     for (dir, name, version) in &workspace.crates {
+        if workspace.frozen.contains(dir) {
+            if packages.contains_key(dir) {
+                errors.push(format!(
+                    "{dir} moved to speedyspec-platform but is still a release-please package"
+                ));
+            }
+            if !manifest[dir].is_null() {
+                errors.push(format!(
+                    "{dir} moved to speedyspec-platform but is still in the manifest"
+                ));
+            }
+            continue;
+        }
         let is_component = COMPONENTS.contains(&name.as_str());
         let Some(entry) = packages.get(dir) else {
             if is_component || released.contains(name) {
@@ -727,6 +758,42 @@ fn release_config_refuses_what_would_stall_a_release() {
             .any(|e| e.contains("speedyspec-server-gate is not a release-please package")),
         "a crate the server is built from"
     );
+    let mut moved = config.clone();
+    moved["packages"]["crates/speedyspec-hooks"] = serde_json::json!({"component": "speedyspec-hooks", "skip-github-release": true, "skip-changelog": true});
+    let mut moved_manifest = manifest.clone();
+    moved_manifest["crates/speedyspec-hooks"] = "0.1.4".into();
+    let errors = release_config_errors(&workspace, &moved, &moved_manifest);
+    assert!(
+        errors.iter().any(|e| e.contains(
+            "speedyspec-hooks moved to speedyspec-platform but is still a release-please package"
+        )),
+        "a crate frozen in scripts/platform-paths.txt: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|e| e.contains(
+            "speedyspec-hooks moved to speedyspec-platform but is still in the manifest"
+        )),
+        "a crate frozen in scripts/platform-paths.txt: {errors:?}"
+    );
+}
+
+/// Every crate frozen in `scripts/platform-paths.txt` is a workspace crate, and the release config names none of
+/// them: speedyspec-platform releases them now.
+#[test]
+fn release_config_names_no_frozen_crate() {
+    let workspace = workspace();
+    assert!(!workspace.frozen.is_empty());
+    for dir in &workspace.frozen {
+        assert!(
+            workspace.crates.iter().any(|(d, _, _)| d == dir),
+            "{dir} is frozen but not a workspace crate"
+        );
+    }
+    let (config, manifest) = release_config();
+    for dir in &workspace.frozen {
+        assert!(config["packages"][dir].is_null(), "{dir} is still released");
+        assert!(manifest[dir].is_null(), "{dir} is still in the manifest");
+    }
 }
 
 /// A repository with this release-please manifest and these tags.
