@@ -85,7 +85,10 @@ fn phpunit() -> PathBuf {
             .expect("PHPUnit downloads");
         std::fs::write(&path, bytes).unwrap();
     }
-    let digest = format!("{:x}", Sha256::digest(std::fs::read(&path).unwrap()));
+    let digest = Sha256::digest(std::fs::read(&path).unwrap())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
     if digest != sha256 {
         std::fs::remove_file(&path).ok();
         panic!("{}: SHA-256 {digest}, pinned {sha256}", path.display());

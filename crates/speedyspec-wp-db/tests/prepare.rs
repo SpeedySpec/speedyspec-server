@@ -84,6 +84,23 @@ fn prepare_percent_is_escaped() {
 }
 
 #[test]
+fn placeholder_is_a_braced_hmac_sha256_hex() {
+    // `'{' . hash_hmac( 'sha256', uniqid( $salt, true ), $salt ) . '}'`: 32 bytes as 64 lowercase hex digits.
+    for salt in [Some("salt"), None] {
+        let p = PlaceholderEscape::new(salt).placeholder().to_string();
+        let hex = p
+            .strip_prefix('{')
+            .and_then(|p| p.strip_suffix('}'))
+            .expect(&p);
+        assert_eq!(hex.len(), 64, "{p}");
+        assert!(
+            hex.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')),
+            "{p}"
+        );
+    }
+}
+
+#[test]
 fn prepare_incorrect_arg_count_cases() {
     let e = PlaceholderEscape::new(Some("salt"));
     let p = e.placeholder();

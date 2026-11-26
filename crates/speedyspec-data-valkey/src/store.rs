@@ -64,7 +64,7 @@ impl ValkeyStore {
         let client =
             Client::open(url).map_err(|e| DbError::Config(format!("engine `{engine}`: {e}")))?;
         let info = client.get_connection_info();
-        let host = format!("{}", info.addr);
+        let host = format!("{}", info.addr());
         Ok(ValkeyStore {
             engine: engine.to_string(),
             client,
