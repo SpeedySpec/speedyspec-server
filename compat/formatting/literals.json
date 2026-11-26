@@ -2602,5 +2602,148 @@
     "args": [
       "a[9223372036854775807]=1&a[]=2&b=3"
     ]
+  },
+  {
+    "name": "truncate_short",
+    "function": "wp_truncate_slug",
+    "args": [
+      "abcdefghij",
+      200
+    ]
+  },
+  {
+    "name": "truncate_exact",
+    "function": "wp_truncate_slug",
+    "args": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      200
+    ]
+  },
+  {
+    "name": "truncate_over",
+    "function": "wp_truncate_slug",
+    "args": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      200
+    ]
+  },
+  {
+    "name": "truncate_dash",
+    "function": "wp_truncate_slug",
+    "args": [
+      "abc-",
+      200
+    ]
+  },
+  {
+    "name": "truncate_dashes",
+    "function": "wp_truncate_slug",
+    "args": [
+      "abc---",
+      200
+    ]
+  },
+  {
+    "name": "truncate_cut_dash",
+    "function": "wp_truncate_slug",
+    "args": [
+      "a-b",
+      2
+    ]
+  },
+  {
+    "name": "truncate_encoded_197",
+    "function": "wp_truncate_slug",
+    "args": [
+      "%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac",
+      197
+    ]
+  },
+  {
+    "name": "truncate_encoded_198",
+    "function": "wp_truncate_slug",
+    "args": [
+      "%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac",
+      198
+    ]
+  },
+  {
+    "name": "truncate_plus",
+    "function": "wp_truncate_slug",
+    "args": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      198
+    ]
+  },
+  {
+    "name": "truncate_cut_sequence",
+    "function": "wp_truncate_slug",
+    "args": [
+      "abcdef%e2%82%ac",
+      10
+    ]
+  },
+  {
+    "name": "truncate_default_length",
+    "function": "wp_truncate_slug",
+    "args": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa--"
+    ]
+  },
+  {
+    "name": "truncate_negative_unchanged",
+    "function": "wp_truncate_slug",
+    "args": [
+      "abcd-ef",
+      -2
+    ]
+  },
+  {
+    "name": "truncate_negative_below_zero",
+    "function": "wp_truncate_slug",
+    "args": [
+      "abc",
+      -10
+    ]
+  },
+  {
+    "name": "truncate_negative_encoded",
+    "function": "wp_truncate_slug",
+    "args": [
+      "a%20b",
+      -1
+    ]
+  },
+  {
+    "name": "truncate_uppercase_hex",
+    "function": "wp_truncate_slug",
+    "args": [
+      "%E2%82%AC%E2%82%AC%E2%82%AC",
+      20
+    ]
+  },
+  {
+    "name": "truncate_ascii_hex",
+    "function": "wp_truncate_slug",
+    "args": [
+      "a%2fb%2fc",
+      8
+    ]
+  },
+  {
+    "name": "truncate_invalid_utf8_cut",
+    "function": "wp_truncate_slug",
+    "args": [
+      "abc%ff%ffdef",
+      10
+    ]
+  },
+  {
+    "name": "truncate_invalid_utf8_dropped",
+    "function": "wp_truncate_slug",
+    "args": [
+      "%ffabcdefghijkl",
+      14
+    ]
   }
 ]

@@ -1,0 +1,18 @@
+[package]
+name = "speedyspec-wp-posts-memory"
+version = "0.1.0"
+publish = false
+description = "An in-memory post repository, for tests and for callers with no database."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[package.metadata.speedyspec]
+seam = "query"
+role = "adapter"
+
+[dependencies]
+speedyspec-wp-posts-contracts = { path = "../speedyspec-wp-posts-contracts" }
+
+[dev-dependencies]
+speedyspec-wp-posts-contracts = { path = "../speedyspec-wp-posts-contracts", features = ["conformance"] }

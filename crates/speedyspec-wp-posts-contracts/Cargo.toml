@@ -2,7 +2,7 @@
 name = "speedyspec-wp-posts-contracts"
 version = "0.1.0"
 publish = false
-description = "WordPress's post type and post status contracts: the names, the resolved values, the errors and the ports."
+description = "WordPress's post contracts: the post entity and its values, post type and status names and values, the errors and the ports."
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -13,3 +13,6 @@ role = "contracts"
 
 [dependencies]
 speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+
+[features]
+conformance = []

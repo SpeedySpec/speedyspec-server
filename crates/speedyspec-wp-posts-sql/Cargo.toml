@@ -1,0 +1,21 @@
+[package]
+name = "speedyspec-wp-posts-sql"
+version = "0.1.0"
+publish = false
+description = "The post row mapper: a wp_posts row and a posts cache entry to the post entity and back."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[package.metadata.speedyspec]
+seam = "query"
+role = "adapter"
+
+[dependencies]
+speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+speedyspec-wp-posts-contracts = { path = "../speedyspec-wp-posts-contracts" }
+
+[dev-dependencies]
+serde_json = "1"
+hex = "0.4"

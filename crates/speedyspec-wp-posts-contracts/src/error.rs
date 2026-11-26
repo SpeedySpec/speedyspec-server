@@ -1,8 +1,8 @@
-//! What the post type API reports when it cannot do as WordPress does.
+//! What the post type and post APIs report when they cannot do as WordPress does.
 
 use std::fmt;
 
-/// A `WP_Error` the post type functions return, with WordPress 7.1.5's code and English message.
+/// A `WP_Error` the post type functions return, with WordPress 7.2-RC2's code and English message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PostTypeError {
     /// `register_post_type()`: the name is empty or over 20 characters.
@@ -29,7 +29,7 @@ impl PostTypeError {
                 "Post type names must be between 1 and 20 characters in length."
             }
             PostTypeError::Invalid => "Invalid post type.",
-            // No full stop: as in 7.1.5.
+            // No full stop: as in 7.2-RC2.
             PostTypeError::Builtin => "Unregistering a built-in post type is not allowed",
         }
     }
@@ -42,3 +42,20 @@ impl fmt::Display for PostTypeError {
 }
 
 impl std::error::Error for PostTypeError {}
+
+/// A post read or write that failed where `$wpdb` would not hide it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PostError {
+    /// The database reported a failure.
+    Db(String),
+}
+
+impl fmt::Display for PostError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PostError::Db(e) => write!(f, "the database failed: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for PostError {}

@@ -476,6 +476,10 @@ fn utf8_uri_encode(a: &[Value]) -> R {
     bytes(helpers::utf8_uri_encode(&string(a, 0)?, length, bool_or(a, 2, false)))
 }
 
+fn wp_truncate_slug(a: &[Value]) -> R {
+    bytes(helpers::wp_truncate_slug(&string(a, 0)?, int_or(a, 1, 200)))
+}
+
 fn sanitize_file_name(a: &[Value]) -> R {
     ask(SanitizeFileName { filename: string(a, 0)? })
 }
@@ -657,6 +661,7 @@ pub(crate) fn entries() -> Vec<(&'static str, usize, usize, Native)> {
         ("sanitize_title_with_dashes", 1, 3, sanitize_title_with_dashes_native),
         ("remove_accents", 1, 2, remove_accents),
         ("utf8_uri_encode", 1, 3, utf8_uri_encode),
+        ("wp_truncate_slug", 1, 2, wp_truncate_slug),
         ("sanitize_file_name", 1, 1, sanitize_file_name),
         ("sanitize_user", 1, 2, sanitize_user),
         ("sanitize_key", 1, 1, sanitize_key),

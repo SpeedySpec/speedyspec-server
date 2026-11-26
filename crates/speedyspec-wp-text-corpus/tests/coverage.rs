@@ -29,7 +29,7 @@ fn escaping_is_covered() {
     for function in ESCAPING {
         assert!(!report.skipped.contains_key(*function), "{function} has corpus cases but isn't ported");
         assert!(
-            speedyspec_wp_text_corpus::cases(function).len() > 0,
+            !speedyspec_wp_text_corpus::cases(function).is_empty(),
             "{function} has no corpus cases: the name is misspelt or the corpus lost them"
         );
     }

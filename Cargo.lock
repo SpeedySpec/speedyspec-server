@@ -6605,6 +6605,8 @@ dependencies = [
  "serde_json",
  "speedyspec-php-serialize",
  "speedyspec-wp-posts-contracts",
+ "speedyspec-wp-posts-memory",
+ "speedyspec-wp-text",
 ]
 
 [[package]]
@@ -6612,6 +6614,24 @@ name = "speedyspec-wp-posts-contracts"
 version = "0.1.0"
 dependencies = [
  "speedyspec-php-serialize",
+]
+
+[[package]]
+name = "speedyspec-wp-posts-memory"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-wp-posts-contracts",
+]
+
+[[package]]
+name = "speedyspec-wp-posts-sql"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde_json",
+ "speedyspec-data",
+ "speedyspec-php-serialize",
+ "speedyspec-wp-posts-contracts",
 ]
 
 [[package]]

@@ -57,6 +57,7 @@ pub const PORTED_FUNCTIONS: &[&str] = &[
     "sanitize_title_with_dashes",
     "remove_accents",
     "utf8_uri_encode",
+    "wp_truncate_slug",
     "sanitize_file_name",
     "sanitize_user",
     "sanitize_key",
