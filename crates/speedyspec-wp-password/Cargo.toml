@@ -17,7 +17,7 @@ speedyspec-wp-crypto = { path = "../speedyspec-wp-crypto" }
 speedyspec-wp-crypto-contracts.workspace = true
 speedyspec-wp-password-contracts.workspace = true
 base64 = "0.22"
-hmac = "0.12"
+hmac = "0.13"
 sha2 = "0.10"
 subtle = "2"
 
