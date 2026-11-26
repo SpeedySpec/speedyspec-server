@@ -1,0 +1,2979 @@
+{
+  "wordpress": "7.2-RC2",
+  "results": {
+    "add-blog-meta-multisite": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": 1,
+        "invocations": [
+          {
+            "fixture": "rec:add_blog_metadata",
+            "args": {
+              "array": [
+                [
+                  0,
+                  null
+                ],
+                [
+                  1,
+                  1
+                ],
+                [
+                  2,
+                  "k"
+                ],
+                [
+                  3,
+                  "v"
+                ],
+                [
+                  4,
+                  false
+                ]
+              ]
+            }
+          },
+          {
+            "fixture": "rec:added_blog_meta",
+            "args": {
+              "array": [
+                [
+                  0,
+                  1
+                ],
+                [
+                  1,
+                  1
+                ],
+                [
+                  2,
+                  "k"
+                ],
+                [
+                  3,
+                  "v"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              3
+            ],
+            [
+              "rows:blog",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "blog_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": 2,
+        "invocations": [
+          {
+            "fixture": "rec:add_blog_metadata",
+            "args": {
+              "array": [
+                [
+                  0,
+                  null
+                ],
+                [
+                  1,
+                  2
+                ],
+                [
+                  2,
+                  "k"
+                ],
+                [
+                  3,
+                  "w"
+                ],
+                [
+                  4,
+                  false
+                ]
+              ]
+            }
+          },
+          {
+            "fixture": "rec:added_blog_meta",
+            "args": {
+              "array": [
+                [
+                  0,
+                  2
+                ],
+                [
+                  1,
+                  2
+                ],
+                [
+                  2,
+                  "k"
+                ],
+                [
+                  3,
+                  "w"
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              2
+            ],
+            [
+              "rows:blog",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "blog_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "2"
+                        ],
+                        [
+                          "blog_id",
+                          "2"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "w"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              1
+            ],
+            [
+              "rows:blog",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "blog_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "2"
+                        ],
+                        [
+                          "blog_id",
+                          "2"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "w"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:blog_meta",
+              {
+                "array": [
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "v"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              3
+            ],
+            [
+              "rows:blog",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "blog_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "2"
+                        ],
+                        [
+                          "blog_id",
+                          "2"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "x"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:blog_meta",
+              {
+                "array": [
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "v"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              2
+            ],
+            [
+              "rows:blog",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "2"
+                        ],
+                        [
+                          "blog_id",
+                          "2"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "x"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              "k",
+              {
+                "array": [
+                  [
+                    0,
+                    "x"
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              1
+            ],
+            [
+              "rows:blog",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "2"
+                        ],
+                        [
+                          "blog_id",
+                          "2"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "x"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:blog_meta",
+              {
+                "array": [
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "x"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      }
+    ],
+    "cache-switch-to-blog-multisite": [
+      {
+        "returned": 1,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              3
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              "blog-1"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              1
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              2
+            ]
+          ]
+        }
+      },
+      {
+        "returned": "page",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              1
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              2
+            ]
+          ]
+        }
+      },
+      {
+        "returned": {
+          "array": []
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              1
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "2:1",
+                    {
+                      "array": []
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              2
+            ]
+          ]
+        }
+      },
+      {
+        "returned": 1,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              2
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "rows:post@2",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-2"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              2
+            ]
+          ]
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              "blog-2"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              1
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "rows:post@2",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-2"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    "2:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-2"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              2
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              2
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "rows:post@2",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-2b"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              2
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "rows:post@2",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-2b"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              "blog-1"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "rows:post@2",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-2b"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "rows:post@2",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-2b"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              2
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              2
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              2
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              "blog-1"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "rows:post",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "post_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "blog-1"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:post_meta",
+              {
+                "array": [
+                  [
+                    "1:1",
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "blog-1"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      }
+    ],
+    "cache-user-meta-global-multisite": [
+      {
+        "returned": 1,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              3
+            ],
+            [
+              "rows:user",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "umeta_id",
+                          "1"
+                        ],
+                        [
+                          "user_id",
+                          "7"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              "v"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              1
+            ],
+            [
+              "rows:user",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "umeta_id",
+                          "1"
+                        ],
+                        [
+                          "user_id",
+                          "7"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:user_meta",
+              {
+                "array": [
+                  [
+                    7,
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "v"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "rows:user",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "umeta_id",
+                          "1"
+                        ],
+                        [
+                          "user_id",
+                          "7"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:user_meta",
+              {
+                "array": [
+                  [
+                    7,
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "v"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              2
+            ]
+          ]
+        }
+      },
+      {
+        "returned": {
+          "array": [
+            [
+              0,
+              "v"
+            ]
+          ]
+        },
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "rows:user",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "umeta_id",
+                          "1"
+                        ],
+                        [
+                          "user_id",
+                          "7"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:user_meta",
+              {
+                "array": [
+                  [
+                    7,
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "v"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              2
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "rows:user",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "umeta_id",
+                          "1"
+                        ],
+                        [
+                          "user_id",
+                          "7"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:user_meta",
+              {
+                "array": [
+                  [
+                    7,
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "v"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      }
+    ],
+    "lazy-blog-multisite": [
+      {
+        "returned": 1,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              3
+            ],
+            [
+              "rows:blog",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "blog_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": 2,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              2
+            ],
+            [
+              "rows:blog",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "blog_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "2"
+                        ],
+                        [
+                          "blog_id",
+                          "2"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "w"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "rows:blog",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "blog_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "2"
+                        ],
+                        [
+                          "blog_id",
+                          "2"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "w"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": null,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "rows:blog",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "blog_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "2"
+                        ],
+                        [
+                          "blog_id",
+                          "2"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "w"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": "v",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              1
+            ],
+            [
+              "rows:blog",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "blog_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "2"
+                        ],
+                        [
+                          "blog_id",
+                          "2"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "w"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:blog_meta",
+              {
+                "array": [
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "v"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "w"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": "w",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "rows:blog",
+              {
+                "array": [
+                  [
+                    0,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "1"
+                        ],
+                        [
+                          "blog_id",
+                          "1"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "v"
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          "meta_id",
+                          "2"
+                        ],
+                        [
+                          "blog_id",
+                          "2"
+                        ],
+                        [
+                          "meta_key",
+                          "k"
+                        ],
+                        [
+                          "meta_value",
+                          "w"
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "cache:blog_meta",
+              {
+                "array": [
+                  [
+                    1,
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "v"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ],
+                  [
+                    2,
+                    {
+                      "array": [
+                        [
+                          "k",
+                          {
+                            "array": [
+                              [
+                                0,
+                                "w"
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      }
+    ],
+    "subtype-blog-multisite": [
+      {
+        "returned": true,
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": "blog",
+        "invocations": [
+          {
+            "fixture": "rec:get_object_subtype_blog",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "blog"
+                ],
+                [
+                  1,
+                  1
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              1
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": "blog",
+        "invocations": [
+          {
+            "fixture": "rec:get_object_subtype_blog",
+            "args": {
+              "array": [
+                [
+                  0,
+                  "blog"
+                ],
+                [
+                  1,
+                  2
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              1
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": "",
+        "invocations": [
+          {
+            "fixture": "rec:get_object_subtype_blog",
+            "args": {
+              "array": [
+                [
+                  0,
+                  ""
+                ],
+                [
+                  1,
+                  99
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              1
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      },
+      {
+        "returned": "",
+        "invocations": [
+          {
+            "fixture": "rec:get_object_subtype_blog",
+            "args": {
+              "array": [
+                [
+                  0,
+                  ""
+                ],
+                [
+                  1,
+                  0
+                ]
+              ]
+            }
+          }
+        ],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": [
+            [
+              "queries",
+              0
+            ],
+            [
+              "blog_id",
+              1
+            ]
+          ]
+        }
+      }
+    ]
+  }
+}
