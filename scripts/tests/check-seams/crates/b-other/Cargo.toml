@@ -10,3 +10,4 @@ role = "implementation"
 
 [dependencies]
 a-impl = { path = "../a-impl" }
+moved-no-meta = { path = "../moved-no-meta" }

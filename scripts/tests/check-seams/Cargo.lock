@@ -26,10 +26,18 @@ name = "b-other"
 version = "0.0.0"
 dependencies = [
  "a-impl",
+ "moved-no-meta",
 ]
 
 [[package]]
 name = "c-contracts"
+version = "0.0.0"
+dependencies = [
+ "a-impl",
+]
+
+[[package]]
+name = "moved-no-meta"
 version = "0.0.0"
 dependencies = [
  "a-impl",

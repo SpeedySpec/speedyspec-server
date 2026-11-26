@@ -11,22 +11,40 @@
 #
 # R2 and R3 edges listed in the allowlist (one "from -> to" per line) are tolerated while the migration runs.
 #
-# Usage: scripts/check-seams.sh [--manifest-path Cargo.toml] [--allowlist file] [--write-allowlist]
+# Crates whose directory is listed in scripts/platform-paths.txt moved to speedyspec-platform, which checks their seam
+# and role. They are out of scope here: no rule applies to them, and an edge to or from one is never a violation.
+#
+# Usage: scripts/check-seams.sh [--manifest-path Cargo.toml] [--allowlist file] [--platform-paths file]
+#                               [--write-allowlist]
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 manifest="$root/Cargo.toml"
 allowlist="$root/scripts/seam-allowlist.txt"
+platform_paths="$root/scripts/platform-paths.txt"
 write=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --manifest-path) manifest="$2"; shift 2 ;;
         --allowlist) allowlist="$2"; shift 2 ;;
+        --platform-paths) platform_paths="$2"; shift 2 ;;
         --write-allowlist) write=1; shift ;;
         *) echo "check-seams: unknown argument $1" >&2; exit 2 ;;
     esac
 done
 
 metadata=$(cargo metadata --format-version 1 --no-deps --manifest-path "$manifest")
+
+# The crate directories (relative to the workspace root, without the trailing /) that moved to speedyspec-platform.
+moved="[]"
+if [[ -f $platform_paths ]]; then
+    moved=$(grep -E '^crates/[^/]+/$' "$platform_paths" | sed 's#/$##' | jq -R . | jq -s .)
+fi
+# Drop the moved crates, so that no rule sees them, either as members or as edge endpoints.
+metadata=$(jq --argjson moved "$moved" '
+    .workspace_root as $root
+    | .packages |= map(select((.manifest_path | ltrimstr($root + "/") | rtrimstr("/Cargo.toml")) as $dir
+        | ($moved | index($dir)) == null))
+' <<<"$metadata")
 
 # One line per member: name seam role (seam and role "-" when missing).
 members=$(jq -r '.packages[] | [.name, (.metadata.speedyspec.seam // "-"), (.metadata.speedyspec.role // "-")] | @tsv' <<<"$metadata")
