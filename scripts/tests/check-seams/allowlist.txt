@@ -1,0 +1,2 @@
+b-other -> a-impl
+b-impl -> c-gone

@@ -7,6 +7,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "operation"
+role = "implementation"
+
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 indexmap = "2"

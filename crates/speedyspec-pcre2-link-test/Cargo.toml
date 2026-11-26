@@ -8,6 +8,10 @@ license.workspace = true
 publish = false
 
 # Nothing depends on this crate, so the embedded PHP stays out of every released crate's dependency graph.
+[package.metadata.speedyspec]
+seam = "text"
+role = "test"
+
 [dev-dependencies]
 speedyspec-hooks = { path = "../speedyspec-hooks" }
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }

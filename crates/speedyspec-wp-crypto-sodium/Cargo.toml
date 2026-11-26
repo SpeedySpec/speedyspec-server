@@ -7,6 +7,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "password"
+role = "adapter"
+
 [dependencies]
 speedyspec-wp-crypto-contracts = { path = "../speedyspec-wp-crypto-contracts" }
 # Linked to the static PHP's own libsodium.a through SODIUM_LIB_DIR (.cargo/config.toml), never a copy of its own.

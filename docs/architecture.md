@@ -82,6 +82,52 @@ PHP**; every area has a test that counts PHP-boundary crossings and asserts zero
 (`StatefulPorts`, such as the hook store) can only be overridden before their first use, or for every request in
 `app.<id>.php.bindings`.
 
+## Seams meet only through the Container
+
+A **seam** is one area (hooks, options, the database, kses, …). Its crates reach another seam only through that seam's
+**contracts** (port traits, keys, value types) and resolve the implementation from the container, so any dependency
+can be replaced: by another Rust implementation in configuration, or, for an edge port, by PHP.
+
+**Roles.** Every crate declares `[package.metadata.speedyspec] seam = "…"` and `role = "…"`: `contracts`,
+`implementation`, `adapter`, `php` (a seam's native area and provider), `platform` (the kernel every seam may use:
+the container, the PHP engine bindings, the macros), `test`, or `root` (the server and the PHP runtime, the only
+crates that name implementations of several seams). `scripts/check-seams.sh` fails CI when a crate depends on another
+seam's crate that is neither contracts nor platform, when a contracts crate depends on an implementation or links
+PHP, or when a crate has no metadata. `scripts/seam-allowlist.txt` lists the edges that predate the rule; each seam's
+migration deletes its own lines, and an entry that is no longer a real edge fails the check.
+
+**Ports and proxies.** A contracts crate declares each port with `#[port]` (from the PHP-free `speedyspec-port-macros`):
+
+```rust
+#[port(key = "SpeedySpec\\WpOptions\\OptionRepository", edge)]
+pub trait OptionRepository {
+    fn load(&self, name: String) -> Option<String>;
+}
+// Generated: OPTION_REPOSITORY_KEY, and ProxyOptionRepository, which forwards each call to whatever the container
+// binds under the key now.
+```
+
+A provider hands other seams `Rc::new(ProxyOptionRepository::new(&container))` as their `Rc<dyn OptionRepository>`;
+domain code never sees the container. A proxy forwards through a `PortCell`, which caches the resolved port against
+the container's **epoch**, a counter that moves on any binding change and at every request start and end. A call with
+nothing rebound costs one compare; the first call of each request resolves through the container (so a stateful
+port's use is recorded and ADR-017's refusal to rebind it holds); transient bindings are built on every call.
+
+**Edge ports and PHP.** An *edge* port's types convert to PHP (storage, engines, readers, policies). Its `-php` crate
+generates the twin and the PHP adapter, and registers the adapter, with one line:
+
+```rust
+speedyspec_wp_options_contracts::__speedyspec_port_OptionRepository!(::speedyspec_php_port_macros::php_twin);
+```
+
+PHP then replaces it with `Container::getInstance()->bind(OptionRepository::class, …)`. *API* ports, whose types are
+Rust-only (callbacks, rich domain values), are replaced from Rust only; PHP replaces the edge ports behind them.
+
+**Providers.** Each seam's `-php` crate implements `speedyspec_container_php::Provider`: `register` binds the seam's
+implementations (binding only, so order does not matter), `stateful` names its stateful ports, and `area` builds its
+native area from proxies. `speedyspec-php-runtime`'s worker lists providers and calls `compose`; a seam that cannot run
+in the configuration (`ProviderError::Unavailable`) is left out and logged, and one that fails stops the worker.
+
 ## Recorded compatibility
 
 WordPress's behaviour is not reimplemented from reading its code alone; it is recorded and replayed.

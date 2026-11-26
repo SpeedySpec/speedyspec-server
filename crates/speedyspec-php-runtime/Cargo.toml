@@ -11,6 +11,10 @@ license.workspace = true
 name = "speedyspec-php-runtime"
 path = "src/main.rs"
 
+[package.metadata.speedyspec]
+seam = "server"
+role = "root"
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 libc = "0.2"

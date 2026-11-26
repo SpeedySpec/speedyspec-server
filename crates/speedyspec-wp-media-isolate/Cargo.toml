@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[package.metadata.speedyspec]
+seam = "media"
+role = "adapter"
+
 [features]
 # Test only: the probe child can simulate a hang, runaway allocation, a crash or garbage output.
 test-modes = []

@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[package.metadata.speedyspec]
+seam = "media"
+role = "test"
+
 [dev-dependencies]
 serde_json = "1"
 sha2 = "0.10"

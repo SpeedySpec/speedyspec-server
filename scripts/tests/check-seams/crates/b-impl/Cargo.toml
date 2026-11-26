@@ -1,0 +1,13 @@
+[package]
+name = "b-impl"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata.speedyspec]
+seam = "b"
+role = "implementation"
+
+[dependencies]
+a-impl = { path = "../a-impl" }
+a-contracts = { path = "../a-contracts" }

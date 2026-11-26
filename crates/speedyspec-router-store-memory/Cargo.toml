@@ -7,5 +7,9 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "http"
+role = "adapter"
+
 [dependencies]
 speedyspec-routing = { path = "../speedyspec-routing" }

@@ -7,6 +7,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "server"
+role = "root"
+
 [features]
 # Hooks for tests only: files next to the executable override its version or make a generation misbehave.
 test-hooks = []

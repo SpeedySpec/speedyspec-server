@@ -7,6 +7,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "text"
+role = "adapter"
+
 [dependencies]
 speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
 speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contracts" }

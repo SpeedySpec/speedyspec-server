@@ -7,6 +7,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "cache"
+role = "adapter"
+
 [dependencies]
 sha2 = "0.10"
 speedyspec-cache = { path = "../speedyspec-cache" }

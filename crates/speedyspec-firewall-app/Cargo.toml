@@ -7,5 +7,9 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "firewall"
+role = "implementation"
+
 [dependencies]
 speedyspec-firewall = { path = "../speedyspec-firewall" }

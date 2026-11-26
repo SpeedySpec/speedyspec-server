@@ -9,6 +9,10 @@ rust-version.workspace = true
 license = "Unlicense OR MIT"
 publish = false
 
+[package.metadata.speedyspec]
+seam = "container"
+role = "platform"
+
 [lib]
 name = "pcre2_sys"
 path = "src/lib.rs"
