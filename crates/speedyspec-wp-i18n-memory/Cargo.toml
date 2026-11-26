@@ -12,4 +12,4 @@ seam = "i18n"
 role = "adapter"
 
 [dependencies]
-speedyspec-wp-i18n-contracts = { path = "../speedyspec-wp-i18n-contracts" }
+speedyspec-wp-i18n-contracts.workspace = true

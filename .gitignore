@@ -10,3 +10,6 @@ target-linux/
 
 # Language packs the i18n request benchmark downloads (benches/fetch-packs.sh).
 /crates/speedyspec-wp-i18n-php/benches/packs/
+
+# scripts/platform-local.sh: a local speedyspec-platform patch, never committed.
+/platform.local.toml

@@ -12,20 +12,20 @@ seam = "options"
 role = "implementation"
 
 [dependencies]
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-cqrs = { path = "../speedyspec-cqrs" }
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
 indexmap = "2"
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 speedyspec-data-uow = { path = "../speedyspec-data-uow" }
-speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+speedyspec-php-serialize.workspace = true
 tracing = "0.1"
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
-speedyspec-wp-object-cache-contracts = { path = "../speedyspec-wp-object-cache-contracts" }
+speedyspec-wp-hooks-contracts.workspace = true
+speedyspec-wp-object-cache-contracts.workspace = true
 
 [dev-dependencies]
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks.workspace = true
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-memory.workspace = true
 
 [features]
 # The option repository suite every repository must pass.

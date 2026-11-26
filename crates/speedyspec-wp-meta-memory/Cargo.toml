@@ -12,7 +12,7 @@ seam = "meta"
 role = "adapter"
 
 [dependencies]
-speedyspec-wp-meta-contracts = { path = "../speedyspec-wp-meta-contracts" }
+speedyspec-wp-meta-contracts.workspace = true
 
 [dev-dependencies]
-speedyspec-wp-meta-contracts = { path = "../speedyspec-wp-meta-contracts", features = ["conformance"] }
+speedyspec-wp-meta-contracts = { workspace = true, features = ["conformance"] }

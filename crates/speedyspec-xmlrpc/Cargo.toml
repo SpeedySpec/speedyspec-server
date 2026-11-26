@@ -12,18 +12,18 @@ seam = "xmlrpc"
 role = "implementation"
 
 [dependencies]
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-http = { path = "../speedyspec-http" }
+speedyspec-container.workspace = true
+speedyspec-http.workspace = true
 speedyspec-http-message = { path = "../speedyspec-http-message" }
 speedyspec-operation = { path = "../speedyspec-operation" }
 speedyspec-operation-dispatch = { path = "../speedyspec-operation-dispatch" }
-speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
-speedyspec-xmlrpc-contracts = { path = "../speedyspec-xmlrpc-contracts" }
+speedyspec-operation-contracts.workspace = true
+speedyspec-xmlrpc-contracts.workspace = true
 base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 indexmap = "2"
 quick-xml = "0.42.0"
 speedyspec-transport = { path = "../speedyspec-transport" }
-speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }
+speedyspec-transport-contracts.workspace = true
 
 [dev-dependencies]

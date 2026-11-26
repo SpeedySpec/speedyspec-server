@@ -21,9 +21,9 @@ lru = "0.18"
 postcard = { version = "1", default-features = false, features = ["use-std"] }
 serde = { version = "1", features = ["derive"] }
 sha2 = "0.10"
-speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache.workspace = true
 speedyspec-wp-media = { path = "../speedyspec-wp-media" }
-speedyspec-wp-media-contracts = { path = "../speedyspec-wp-media-contracts" }
+speedyspec-wp-media-contracts.workspace = true
 speedyspec-wp-media-ffmpeg = { path = "../speedyspec-wp-media-ffmpeg" }
 speedyspec-wp-media-midi = { path = "../speedyspec-wp-media-midi" }
 

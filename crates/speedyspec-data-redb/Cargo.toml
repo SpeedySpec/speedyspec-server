@@ -17,7 +17,7 @@ postcard = { version = "1", features = ["use-std"] }
 redb = "4"
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 speedyspec-data-counter = { path = "../speedyspec-data-counter" }
 
 [dev-dependencies]

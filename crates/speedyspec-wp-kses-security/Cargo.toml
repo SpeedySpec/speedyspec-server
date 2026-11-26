@@ -16,8 +16,8 @@ html5ever = "0.40.1"
 markup5ever_rcdom = "0.40.1"
 memchr = "2.8.3"
 quick-xml = "0.42.0"
-speedyspec-wp-html-syntax = { path = "../speedyspec-wp-html-syntax" }
-speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
+speedyspec-wp-html-syntax.workspace = true
+speedyspec-wp-kses-contracts.workspace = true
 
 [dev-dependencies]
 indexmap = "2.14.2"

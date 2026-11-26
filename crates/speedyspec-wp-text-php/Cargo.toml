@@ -13,27 +13,27 @@ role = "php"
 
 [dependencies]
 memchr = "2.8"
-speedyspec-compat = { path = "../speedyspec-compat" }
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-cqrs = { path = "../speedyspec-cqrs" }
-speedyspec-php = { path = "../speedyspec-php" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
-speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
-speedyspec-wp-html-split = { path = "../speedyspec-wp-html-split" }
+speedyspec-compat.workspace = true
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
+speedyspec-php.workspace = true
+speedyspec-php-ext.workspace = true
+speedyspec-wp-hooks.workspace = true
+speedyspec-wp-hooks-php.workspace = true
+speedyspec-wp-html-split.workspace = true
 speedyspec-wp-kses = { path = "../speedyspec-wp-kses" }
-speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
+speedyspec-wp-kses-contracts.workspace = true
 speedyspec-wp-kses-php = { path = "../speedyspec-wp-kses-php" }
-speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contracts" }
+speedyspec-wp-shortcode-contracts.workspace = true
 speedyspec-wp-text = { path = "../speedyspec-wp-text" }
-speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
+speedyspec-wp-text-contracts.workspace = true
 speedyspec-wp-text-escape = { path = "../speedyspec-wp-text-escape" }
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-wp-hooks-contracts.workspace = true
 
 [dev-dependencies]
-speedyspec-container-php = { path = "../speedyspec-container-php" }
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-container-php.workspace = true
+speedyspec-hooks-memory.workspace = true
+speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-text-corpus = { path = "../speedyspec-wp-text-corpus", features = ["values"] }
 serde_json = "1"
 sha2 = "0.10"

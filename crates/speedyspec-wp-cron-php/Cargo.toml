@@ -12,29 +12,29 @@ seam = "cron"
 role = "php"
 
 [dependencies]
-speedyspec-php = { path = "../speedyspec-php" }
-speedyspec-hooks = { path = "../speedyspec-hooks" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-php.workspace = true
+speedyspec-hooks.workspace = true
+speedyspec-wp-hooks.workspace = true
 speedyspec-wp-cron = { path = "../speedyspec-wp-cron" }
-speedyspec-wp-cron-contracts = { path = "../speedyspec-wp-cron-contracts" }
+speedyspec-wp-cron-contracts.workspace = true
 speedyspec-wp-cron-options = { path = "../speedyspec-wp-cron-options" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 speedyspec-wp-options-php = { path = "../speedyspec-wp-options-php" }
-speedyspec-compat = { path = "../speedyspec-compat" }
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-compat.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
 
 [dev-dependencies]
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-container-php = { path = "../speedyspec-container-php" }
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-container.workspace = true
+speedyspec-container-php.workspace = true
+speedyspec-data.workspace = true
 speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
 speedyspec-data-query = { path = "../speedyspec-data-query" }
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-hooks-memory.workspace = true
+speedyspec-php-ext.workspace = true
 speedyspec-wp-db = { path = "../speedyspec-wp-db" }
 speedyspec-wp-db-php = { path = "../speedyspec-wp-db-php" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
-speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+speedyspec-wp-hooks-memory.workspace = true
+speedyspec-wp-hooks-php.workspace = true
 speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
 serde_json = "1"
 sha2 = "0.10"

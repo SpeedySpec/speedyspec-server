@@ -66,18 +66,29 @@ jobs:
         with:
           toolchain: "1.99"
           targets: ${{ matrix.triple }}
+      # The PHP version speedyspec-php pins, from the crate Cargo resolved: the caches are keyed on it, as in ci.yml.
+      # A `ref` from before the platform crates came from crates.io still holds the crate, and its php-version file.
+      - name: PHP version
+        id: phpver
+        run: |
+          if [ -f scripts/php-version.sh ]; then
+              v="$(${{ matrix.run }} scripts/php-version.sh)"
+          else
+              v="$(tr -d '[:space:]' < crates/speedyspec-php/php-version)"
+          fi
+          echo "v=$v" >> "$GITHUB_OUTPUT"
       - name: Cache static PHP
         uses: actions/cache@v4
         with:
           path: |
             ${{ matrix.php-build }}/spc
             ${{ matrix.php-build }}/buildroot
-          key: php-${{ matrix.name }}-${{ hashFiles('crates/speedyspec-php/php-version', 'scripts/build-php.sh') }}
+          key: php-${{ matrix.name }}-${{ steps.phpver.outputs.v }}-${{ hashFiles('scripts/build-php.sh') }}
       - name: Cache static FFmpeg
         uses: actions/cache@v4
         with:
           path: ${{ matrix.php-build }}/ffmpeg/prefix
-          key: ffmpeg-${{ matrix.name }}-${{ hashFiles('scripts/build-ffmpeg.sh', 'scripts/build-php.sh', 'crates/speedyspec-php/php-version') }}
+          key: ffmpeg-${{ matrix.name }}-${{ steps.phpver.outputs.v }}-${{ hashFiles('scripts/build-ffmpeg.sh', 'scripts/build-php.sh') }}
       - name: Build static PHP
         env:
           SPEEDYSPEC_ALLOW_HOST_INSTALL: "1"

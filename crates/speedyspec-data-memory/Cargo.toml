@@ -12,7 +12,7 @@ seam = "data"
 role = "adapter"
 
 [dependencies]
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 speedyspec-data-counter = { path = "../speedyspec-data-counter" }
 
 [dev-dependencies]

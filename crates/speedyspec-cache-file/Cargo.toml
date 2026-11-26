@@ -13,8 +13,8 @@ role = "adapter"
 
 [dependencies]
 sha2 = "0.10"
-speedyspec-cache = { path = "../speedyspec-cache" }
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-cache.workspace = true
+speedyspec-data.workspace = true
 speedyspec-data-file = { path = "../speedyspec-data-file" }
 
 [dev-dependencies]

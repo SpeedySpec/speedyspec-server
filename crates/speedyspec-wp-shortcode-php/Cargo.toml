@@ -12,27 +12,27 @@ seam = "shortcode"
 role = "php"
 
 [dependencies]
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-cqrs = { path = "../speedyspec-cqrs" }
-speedyspec-hooks = { path = "../speedyspec-hooks" }
-speedyspec-php = { path = "../speedyspec-php" }
-speedyspec-compat = { path = "../speedyspec-compat" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
+speedyspec-hooks.workspace = true
+speedyspec-php.workspace = true
+speedyspec-compat.workspace = true
+speedyspec-wp-hooks.workspace = true
 speedyspec-wp-shortcode = { path = "../speedyspec-wp-shortcode" }
-speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contracts" }
-speedyspec-wp-html-split = { path = "../speedyspec-wp-html-split" }
-speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
-speedyspec-wp-kses-lexical = { path = "../speedyspec-wp-kses-lexical" }
+speedyspec-wp-shortcode-contracts.workspace = true
+speedyspec-wp-html-split.workspace = true
+speedyspec-wp-kses-contracts.workspace = true
+speedyspec-wp-kses-lexical.workspace = true
 
 [dev-dependencies]
 serde_json = "1"
 sha2 = "0.10"
-speedyspec-container-php = { path = "../speedyspec-container-php" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-container-php.workspace = true
+speedyspec-php-ext.workspace = true
 ureq = "3"
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
-speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+speedyspec-hooks-memory.workspace = true
+speedyspec-wp-hooks-memory.workspace = true
+speedyspec-wp-hooks-php.workspace = true
 speedyspec-wp-kses-php = { path = "../speedyspec-wp-kses-php" }
 
 [[test]]

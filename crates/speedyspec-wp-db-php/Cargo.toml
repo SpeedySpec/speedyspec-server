@@ -14,22 +14,22 @@ role = "php"
 [dependencies]
 indexmap = "2"
 sha2 = "0.10"
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-cqrs = { path = "../speedyspec-cqrs" }
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
+speedyspec-data.workspace = true
 speedyspec-data-query = { path = "../speedyspec-data-query" }
-speedyspec-php = { path = "../speedyspec-php" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-php.workspace = true
+speedyspec-php-ext.workspace = true
 speedyspec-wp-db = { path = "../speedyspec-wp-db" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
-speedyspec-wp-db-contracts = { path = "../speedyspec-wp-db-contracts" }
+speedyspec-wp-hooks.workspace = true
+speedyspec-wp-db-contracts.workspace = true
 
 [dev-dependencies]
-speedyspec-container-php = { path = "../speedyspec-container-php" }
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
-speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
-speedyspec-compat = { path = "../speedyspec-compat" }
+speedyspec-container-php.workspace = true
+speedyspec-hooks-memory.workspace = true
+speedyspec-wp-hooks-memory.workspace = true
+speedyspec-wp-hooks-php.workspace = true
+speedyspec-compat.workspace = true
 speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
 speedyspec-data-sqlite = { path = "../speedyspec-data-sqlite" }
 speedyspec-data-postgres = { path = "../speedyspec-data-postgres" }

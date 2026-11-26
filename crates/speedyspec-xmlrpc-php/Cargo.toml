@@ -14,30 +14,30 @@ role = "php"
 [dependencies]
 base64 = "0.22"
 indexmap = "2"
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-http = { path = "../speedyspec-http" }
+speedyspec-container.workspace = true
+speedyspec-http.workspace = true
 speedyspec-http-message = { path = "../speedyspec-http-message" }
 speedyspec-operation = { path = "../speedyspec-operation" }
-speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }
+speedyspec-operation-contracts.workspace = true
 speedyspec-operation-dispatch = { path = "../speedyspec-operation-dispatch" }
 speedyspec-operation-php = { path = "../speedyspec-operation-php" }
-speedyspec-php = { path = "../speedyspec-php" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-php.workspace = true
+speedyspec-php-ext.workspace = true
 speedyspec-transport = { path = "../speedyspec-transport" }
-speedyspec-transport-contracts = { path = "../speedyspec-transport-contracts" }
+speedyspec-transport-contracts.workspace = true
 speedyspec-xmlrpc = { path = "../speedyspec-xmlrpc" }
-speedyspec-xmlrpc-contracts = { path = "../speedyspec-xmlrpc-contracts" }
+speedyspec-xmlrpc-contracts.workspace = true
 
 [dev-dependencies]
 serde_json = "1"
 sha2 = "0.10"
 ureq = "3"
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
-speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
+speedyspec-wp-hooks-memory.workspace = true
+speedyspec-wp-hooks-php.workspace = true
 chrono = { version = "0.4", default-features = false, features = ["std"] }
-speedyspec-compat = { path = "../speedyspec-compat" }
-speedyspec-container-php = { path = "../speedyspec-container-php" }
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-compat.workspace = true
+speedyspec-container-php.workspace = true
+speedyspec-hooks-memory.workspace = true
 
 [[test]]
 name = "hooks"

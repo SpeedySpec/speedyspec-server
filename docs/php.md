@@ -29,7 +29,7 @@ its `source` is `https://releases.speedyspec.com/php-runtime/index.json`, for an
 
 ## The PHP build
 
-`scripts/build-php.sh` builds a static, non-thread-safe PHP (the version in `crates/speedyspec-php/php-version`) with static-php-cli, into
+`scripts/build-php.sh` builds a static, non-thread-safe PHP (the version the resolved `speedyspec-php` pins, which `scripts/php-version.sh` prints) with static-php-cli, into
 `.php-build/` (`scripts/linux-php.sh scripts/build-php.sh` for Linux musl, into `.php-build-linux*/`). The extension
 list is every extension WordPress's Site Health checks for, plus what WordPress otherwise relies on:
 
@@ -222,7 +222,7 @@ replaced; a request past `request_timeout` is a 504 and its worker is killed.
 `isset`, iterating, counting and appending work as in WordPress, but passing one to an array function
 (`array_keys($wp_filter)`, `in_array(…, $wp_actions)`) throws a `TypeError`, and replacing one wholesale is not seen
 by the store. `$wp_current_filter` is a real array, kept equal to the store wherever PHP can see it. These are listed
-in `compat/hooks/breaks.json`.
+in speedyspec-platform's `compat/hooks/breaks.json`.
 
 ## Pool settings
 

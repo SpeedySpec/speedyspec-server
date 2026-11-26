@@ -16,8 +16,8 @@ speedyspec-firewall = { path = "../speedyspec-firewall" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 
 [dev-dependencies]
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks.workspace = true
+speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
 speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-wp-hooks-contracts.workspace = true

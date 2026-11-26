@@ -12,16 +12,16 @@ seam = "options"
 role = "adapter"
 
 [dependencies]
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 speedyspec-data-query = { path = "../speedyspec-data-query" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 md5 = { package = "md-5", version = "0.11.0" }
-speedyspec-wp-db-contracts = { path = "../speedyspec-wp-db-contracts" }
+speedyspec-wp-db-contracts.workspace = true
 
 [dev-dependencies]
 speedyspec-wp-db = { path = "../speedyspec-wp-db" }
 speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }
-speedyspec-cache = { path = "../speedyspec-cache" }
+speedyspec-cache.workspace = true
 speedyspec-cache-file = { path = "../speedyspec-cache-file" }
 speedyspec-cache-kv = { path = "../speedyspec-cache-kv" }
 speedyspec-cache-sql = { path = "../speedyspec-cache-sql" }
@@ -32,9 +32,9 @@ speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
 speedyspec-data-postgres = { path = "../speedyspec-data-postgres" }
 speedyspec-data-sqlite = { path = "../speedyspec-data-sqlite" }
 postgres = "0.19"
-speedyspec-hooks = { path = "../speedyspec-hooks" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-hooks.workspace = true
+speedyspec-wp-hooks.workspace = true
+speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options", features = ["conformance"] }
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-wp-hooks-contracts.workspace = true

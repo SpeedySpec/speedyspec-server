@@ -12,5 +12,5 @@ seam = "data"
 role = "test"
 
 [dependencies]
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 speedyspec-data-query = { path = "../speedyspec-data-query" }

@@ -12,11 +12,11 @@ seam = "cron"
 role = "implementation"
 
 [dependencies]
-speedyspec-wp-cron-contracts = { path = "../speedyspec-wp-cron-contracts" }
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
-speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+speedyspec-wp-cron-contracts.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
+speedyspec-php-serialize.workspace = true
 md5 = { package = "md-5", version = "0.11.0" }
 
 [dev-dependencies]
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks.workspace = true
+speedyspec-wp-hooks-memory.workspace = true

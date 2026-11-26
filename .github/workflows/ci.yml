@@ -18,14 +18,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          # The freeze check diffs against the base branch.
-          fetch-depth: 0
-      # The paths in scripts/platform-paths.txt moved to speedyspec-platform: a pull request may not change them.
-      - if: github.event_name == 'pull_request'
-        run: |
-          bash scripts/tests/check-platform-freeze.sh
-          scripts/check-platform-freeze.sh "origin/${{ github.base_ref }}"
+      # The platform crates come from crates.io: nothing committed patches them (scripts/platform-local.sh is for local
+      # work only).
+      - run: bash scripts/tests/check-no-platform-patch.sh && scripts/check-no-platform-patch.sh
+      - run: bash scripts/tests/platform-local.sh
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.99"
@@ -42,16 +38,15 @@ jobs:
       - run: >-
           cargo test --workspace --target ${{ matrix.target }}
           --exclude speedyspec-server --exclude speedyspec-php-runtime
-          --exclude speedyspec-php --exclude speedyspec-php-ext --exclude speedyspec-container-php
-          --exclude speedyspec-cqrs-php --exclude speedyspec-compat --exclude speedyspec-wp-hooks-php
+          --exclude speedyspec-cqrs-php
           --exclude speedyspec-wp-db-php --exclude speedyspec-wp-object-cache-php --exclude speedyspec-wp-options-php
           --exclude speedyspec-wp-cron-php
           --exclude speedyspec-wp-text-diff-php --exclude speedyspec-wp-shortcode-php
           --exclude speedyspec-data-corpus --exclude speedyspec-data-sqlite --exclude speedyspec-data-postgres
           --exclude speedyspec-wp-utf8-php --exclude speedyspec-wp-i18n-php --exclude speedyspec-wp-token-map-php
           --exclude speedyspec-router-php --exclude speedyspec-wp-rewrite-php
-          --exclude speedyspec-wp-kses-php --exclude speedyspec-wp-text-php --exclude speedyspec-wp-kses --exclude speedyspec-wp-kses-lexical
-          --exclude speedyspec-wp-kses-testkit --exclude speedyspec-wp-html-syntax
+          --exclude speedyspec-wp-kses-php --exclude speedyspec-wp-text-php --exclude speedyspec-wp-kses
+          --exclude speedyspec-wp-kses-testkit
           --exclude speedyspec-wp-crypto-sodium --exclude speedyspec-wp-crypto-php --exclude speedyspec-wp-password-php
           --exclude speedyspec-operation-php --exclude speedyspec-rest-php --exclude speedyspec-xmlrpc-php --exclude speedyspec-abilities-php --exclude speedyspec-wp-theme-json-php
           --exclude speedyspec-pcre2-link-test --exclude speedyspec-ffmpeg-sys
@@ -91,18 +86,24 @@ jobs:
         if: matrix.run == ''
         with:
           toolchain: "1.99"
+      # The PHP version speedyspec-php pins, from the crate Cargo resolved: the caches are keyed on it.
+      - name: PHP version
+        id: phpver
+        run: |
+          v="$(${{ matrix.run }} scripts/php-version.sh)"
+          echo "v=$v" >> "$GITHUB_OUTPUT"
       - name: Cache static PHP
         uses: actions/cache@v4
         with:
           path: |
             ${{ matrix.php-build }}/spc
             ${{ matrix.php-build }}/buildroot
-          key: php-${{ matrix.name }}-${{ hashFiles('crates/speedyspec-php/php-version', 'scripts/build-php.sh') }}
+          key: php-${{ matrix.name }}-${{ steps.phpver.outputs.v }}-${{ hashFiles('scripts/build-php.sh') }}
       - name: Cache static FFmpeg
         uses: actions/cache@v4
         with:
           path: ${{ matrix.php-build }}/ffmpeg/prefix
-          key: ffmpeg-${{ matrix.name }}-${{ hashFiles('scripts/build-ffmpeg.sh', 'scripts/build-php.sh', 'crates/speedyspec-php/php-version') }}
+          key: ffmpeg-${{ matrix.name }}-${{ steps.phpver.outputs.v }}-${{ hashFiles('scripts/build-ffmpeg.sh', 'scripts/build-php.sh') }}
       - name: Build static PHP
         env:
           # Runners are throwaway, so spc may install missing build tools.
@@ -110,9 +111,6 @@ jobs:
           # spc looks up source releases through the GitHub API; the read-only token avoids rate limits.
           GITHUB_TOKEN: ${{ github.token }}
         run: ${{ matrix.run }} scripts/build-php.sh
-      # Every extension WordPress needs: a missing one fails here, by name.
-      - name: Extensions
-        run: ${{ matrix.run }} cargo test -p speedyspec-php --test extensions
       # The pinned, LGPL-only FFmpeg: licence, formats, no protocols, the pinned version.
       - name: FFmpeg
         run: ${{ matrix.run }} cargo test -p speedyspec-ffmpeg-sys
@@ -146,18 +144,23 @@ jobs:
       SPEEDYSPEC_TEST_MYSQL_URL: mysql://root:password@127.0.0.1:33306/speedyspec_test
     steps:
       - uses: actions/checkout@v4
+      - name: PHP version
+        id: phpver
+        run: |
+          v="$(scripts/linux-php.sh scripts/php-version.sh)"
+          echo "v=$v" >> "$GITHUB_OUTPUT"
       - name: Cache static PHP
         uses: actions/cache@v4
         with:
           path: |
             .php-build-linux/spc
             .php-build-linux/buildroot
-          key: php-linux-x86_64-${{ hashFiles('crates/speedyspec-php/php-version', 'scripts/build-php.sh') }}
+          key: php-linux-x86_64-${{ steps.phpver.outputs.v }}-${{ hashFiles('scripts/build-php.sh') }}
       - name: Cache static FFmpeg
         uses: actions/cache@v4
         with:
           path: .php-build-linux/ffmpeg/prefix
-          key: ffmpeg-linux-x86_64-${{ hashFiles('scripts/build-ffmpeg.sh', 'scripts/build-php.sh', 'crates/speedyspec-php/php-version') }}
+          key: ffmpeg-linux-x86_64-${{ steps.phpver.outputs.v }}-${{ hashFiles('scripts/build-ffmpeg.sh', 'scripts/build-php.sh') }}
       - name: Build static PHP
         env:
           SPEEDYSPEC_ALLOW_HOST_INSTALL: "1"
@@ -169,25 +172,6 @@ jobs:
           scripts/linux-php.sh cargo test -p speedyspec-wp-options-sql --test conditional_mysql
           scripts/linux-php.sh cargo test -p speedyspec-wp-options-tests --test conditional
           scripts/linux-php.sh cargo test -p speedyspec-wp-cron -p speedyspec-wp-cron-options -p speedyspec-wp-cron-php
-
-  # The crates published to crates.io (scripts/publish-crates.txt): the list is consistent with the workspace, and
-  # every one of them packages. No static PHP: packaging does not build them (the php job does).
-  crates:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.99"
-      - name: Check the list
-        run: |
-          cargo metadata --format-version 1 --no-deps > "$RUNNER_TEMP/metadata.json"
-          scripts/release-crates.sh check "$RUNNER_TEMP/metadata.json"
-      - name: Package them
-        run: |
-          args=()
-          for name in $(grep -v -e '^[[:space:]]*$' -e '^[[:space:]]*#' scripts/publish-crates.txt); do args+=(-p "$name"); done
-          cargo publish --dry-run --no-verify --locked "${args[@]}"
 
   kubernetes:
     runs-on: ubuntu-latest

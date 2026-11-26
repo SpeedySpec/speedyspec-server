@@ -12,8 +12,8 @@ seam = "query"
 role = "implementation"
 
 [dependencies]
-speedyspec-wp-posts-contracts = { path = "../speedyspec-wp-posts-contracts" }
-speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+speedyspec-wp-posts-contracts.workspace = true
+speedyspec-php-serialize.workspace = true
 indexmap = "2"
 
 [dev-dependencies]

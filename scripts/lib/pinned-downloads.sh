@@ -1,5 +1,5 @@
 # Pinned downloads for scripts/build-php.sh: fetched, checked against a pinned sha256, and kept only on a match.
-# Sourced, not run; crates/speedyspec-php/tests/build_script.rs tests each function.
+# Sourced, not run; speedyspec-platform's crates/speedyspec-php/tests/build_script.rs tests each function.
 
 # Prints the sha256 of file $1.
 sha256_of() {

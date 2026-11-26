@@ -12,7 +12,7 @@ seam = "data"
 role = "implementation"
 
 [dependencies]
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 speedyspec-data-query = { path = "../speedyspec-data-query" }
 sqlparser = { version = "0.64", features = ["visitor"] }
 

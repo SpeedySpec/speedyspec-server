@@ -12,5 +12,5 @@ seam = "password"
 role = "implementation"
 
 [dependencies]
-speedyspec-wp-crypto-contracts = { path = "../speedyspec-wp-crypto-contracts" }
+speedyspec-wp-crypto-contracts.workspace = true
 sha2 = "0.10"

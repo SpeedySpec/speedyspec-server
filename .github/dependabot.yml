@@ -1,0 +1,10 @@
+# The platform crates (SpeedySpec/speedyspec-platform) release together, so their bumps come as one pull request.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: daily
+    groups:
+      speedyspec:
+        patterns: ["speedyspec-*"]

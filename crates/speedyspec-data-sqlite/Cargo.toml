@@ -16,7 +16,7 @@ chrono = { version = "0.4.45", default-features = false, features = ["std", "clo
 md-5 = "0.11.0"
 regex = "1.13.2"
 rusqlite = { version = "0.43.0", features = ["bundled", "functions", "collation", "column_metadata"] }
-speedyspec-data = { path = "../speedyspec-data" }
+speedyspec-data.workspace = true
 speedyspec-data-query = { path = "../speedyspec-data-query" }
 speedyspec-data-translate = { path = "../speedyspec-data-translate" }
 sqlparser = { version = "0.64", features = ["visitor"] }

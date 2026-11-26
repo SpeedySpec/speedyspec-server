@@ -13,12 +13,12 @@ role = "implementation"
 
 [dependencies]
 indexmap = "2"
-speedyspec-cache = { path = "../speedyspec-cache" }
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-cqrs = { path = "../speedyspec-cqrs" }
-speedyspec-hooks = { path = "../speedyspec-hooks" }
-speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
-speedyspec-wp-object-cache-contracts = { path = "../speedyspec-wp-object-cache-contracts" }
+speedyspec-cache.workspace = true
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
+speedyspec-hooks.workspace = true
+speedyspec-php-serialize.workspace = true
+speedyspec-wp-object-cache-contracts.workspace = true
 
 [dev-dependencies]
 speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }

@@ -4,9 +4,8 @@ name: Release
 # .release-please-manifest.json) to one with no tag yet. This workflow then builds that component's three binaries at
 # that commit first, and only when every build passes lets release-please tag and publish the release. The binaries
 # are then signed and uploaded, and both release indexes are rebuilt from the GitHub releases and deployed to Pages.
-# No library crate is published to crates.io from here: the crates in scripts/publish-crates.txt moved to
-# speedyspec-platform, which publishes them, and the crates job below is off (see its Frozen comment). A failed build
-# publishes nothing; the next push to main tries again.
+# No crate is published to crates.io from here: the platform crates the server builds on publish from
+# SpeedySpec/speedyspec-platform. A failed build publishes nothing; the next push to main tries again.
 #
 # Run it by hand with a tag to finish a release whose publishing failed part-way (a complete release is never
 # changed), or with no tag to rebuild and redeploy the indexes only.
@@ -301,47 +300,6 @@ jobs:
               echo "::error::$TAG lacks FFmpeg's LGPL attachments:$missing" >&2
               exit 1
           fi
-
-  # Off. The crates in scripts/publish-crates.txt moved to speedyspec-platform and publish from there; this job goes
-  # when the server drops the moved crates. While it ran, it published their versions crates.io did not have yet, at
-  # the release commit, after the release builds passed.
-  crates:
-    needs: [pending, build-server, build-runtime, release-please]
-    # Frozen: the moved crates publish from speedyspec-platform (removed with the moved crates).
-    if: false
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.pending.outputs.ref }}
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.99"
-      - name: Check the list
-        run: |
-          cargo metadata --format-version 1 --no-deps > "$RUNNER_TEMP/metadata.json"
-          scripts/release-crates.sh check "$RUNNER_TEMP/metadata.json"
-      - name: Publish
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          pending="$(scripts/release-crates.sh pending "$RUNNER_TEMP/metadata.json")"
-          if [ -z "$pending" ]; then
-              echo "every listed crate's version is already on crates.io"
-              exit 0
-          fi
-          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
-              echo "::error::the CARGO_REGISTRY_TOKEN secret is not set: nothing is published" >&2
-              exit 1
-          fi
-          echo "publishing:" $pending
-          args=()
-          for name in $pending; do args+=(-p "$name"); done
-          # Cargo publishes them in dependency order and waits for each to be in the index before the next. Not
-          # --locked: a lock file release-please left behind must not stop a release part-way (CI checks it on PRs).
-          cargo publish --no-verify "${args[@]}"
 
   pages:
     needs: [publish]

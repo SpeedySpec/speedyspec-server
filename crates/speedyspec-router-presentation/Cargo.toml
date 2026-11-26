@@ -12,16 +12,16 @@ seam = "http"
 role = "adapter"
 
 [dependencies]
-speedyspec-http = { path = "../speedyspec-http" }
+speedyspec-http.workspace = true
 speedyspec-http-message = { path = "../speedyspec-http-message" }
 speedyspec-http-pipeline = { path = "../speedyspec-http-pipeline" }
-speedyspec-routing = { path = "../speedyspec-routing" }
+speedyspec-routing.workspace = true
 speedyspec-router = { path = "../speedyspec-router" }
-speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
+speedyspec-wp-hooks.workspace = true
 speedyspec-wp-rewrite = { path = "../speedyspec-wp-rewrite" }
 regex = "1"
-speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-wp-hooks-contracts.workspace = true
 
 [dev-dependencies]
 speedyspec-router-store-memory = { path = "../speedyspec-router-store-memory" }
-speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
+speedyspec-wp-hooks-memory.workspace = true

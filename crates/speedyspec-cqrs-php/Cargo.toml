@@ -12,14 +12,14 @@ seam = "container"
 role = "platform"
 
 [dependencies]
-speedyspec-container-php = { path = "../speedyspec-container-php" }
-speedyspec-cqrs = { path = "../speedyspec-cqrs" }
-speedyspec-php = { path = "../speedyspec-php" }
-speedyspec-php-ext = { path = "../speedyspec-php-ext" }
+speedyspec-container-php.workspace = true
+speedyspec-cqrs.workspace = true
+speedyspec-php.workspace = true
+speedyspec-php-ext.workspace = true
 
 [dev-dependencies]
-speedyspec-container = { path = "../speedyspec-container" }
-speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }
+speedyspec-container.workspace = true
+speedyspec-hooks-memory.workspace = true
 
 [[test]]
 name = "php"
