@@ -14,6 +14,7 @@ speedyspec-container = { path = "../speedyspec-container" }
 speedyspec-cqrs = { path = "../speedyspec-cqrs" }
 speedyspec-hooks = { path = "../speedyspec-hooks" }
 speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+speedyspec-wp-object-cache-contracts = { path = "../speedyspec-wp-object-cache-contracts" }
 
 [dev-dependencies]
 speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }

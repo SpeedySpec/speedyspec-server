@@ -7,8 +7,9 @@ use speedyspec_cqrs::{
     Command, CommandHandler, Query, QueryHandler, bind_command_handler, bind_query_handler,
 };
 use speedyspec_hooks::{Key, Value};
+use speedyspec_wp_object_cache_contracts::ObjectCacheError;
 
-use crate::{CurrentObjectCache, ObjectCache, ObjectCacheError};
+use crate::{CurrentObjectCache, WpObjectCache};
 
 macro_rules! message {
     ($kind:ident $name:ident { $($field:ident : $ty:ty),* } -> $result:ty, |$c:ident, $m:ident| $body:expr) => {
@@ -33,7 +34,7 @@ macro_rules! message {
         impl CommandHandler<$name> for CurrentObjectCache {
             #[allow(unused_variables)]
             fn handle(&self, $m: $name) -> $result {
-                let $c: Rc<ObjectCache> = self.current();
+                let $c: Rc<WpObjectCache> = self.current();
                 $body
             }
         }
@@ -42,7 +43,7 @@ macro_rules! message {
         impl QueryHandler<$name> for CurrentObjectCache {
             #[allow(unused_variables)]
             fn handle(&self, $m: $name) -> $result {
-                let $c: Rc<ObjectCache> = self.current();
+                let $c: Rc<WpObjectCache> = self.current();
                 $body
             }
         }
@@ -69,7 +70,7 @@ message!(command CacheSwitchToBlog { blog_id: i64 } -> (), |c, m| c.switch_to_bl
 message!(command CacheReset {} -> (), |c, m| c.reset());
 message!(query CacheGet { key: Value, group: Value, force: bool } -> R<Option<Value>>, |c, m| c.get(&m.key, &m.group, m.force));
 message!(query CacheGetMultiple { keys: Vec<Value>, group: Value, force: bool } -> R<Vec<(Key, Value)>>, |c, m| c.get_multiple(&m.keys, &m.group, m.force));
-message!(query CacheSupports { feature: String } -> bool, |c, m| ObjectCache::supports(&m.feature));
+message!(query CacheSupports { feature: String } -> bool, |c, m| WpObjectCache::supports(&m.feature));
 
 macro_rules! bind_all {
     ($container:expr, $api:expr; commands: $($c:ty),*; queries: $($q:ty),*) => {

@@ -6,7 +6,7 @@ use std::rc::Rc;
 use speedyspec_data::DbError;
 use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{HookName, HookValue};
-use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache};
+use speedyspec_wp_object_cache::{CurrentObjectCache, WpObjectCache};
 
 use crate::api::{isset, truthy};
 use crate::php_cast::less_than;
@@ -90,7 +90,7 @@ impl TransientsApi {
     }
 
     /// The current object cache, `site-transient` (and `site-options`) global.
-    fn cache(&self) -> Rc<ObjectCache> {
+    fn cache(&self) -> Rc<WpObjectCache> {
         let cache = self.cache.current();
         cache.add_global_groups(&[s("site-options"), s("site-transient")]);
         cache

@@ -1,8 +1,7 @@
 //! PHP's array-key cast, which the object cache's keys and groups go through.
 
 use speedyspec_hooks::{Key, Value};
-
-use crate::ObjectCacheError;
+use speedyspec_wp_object_cache_contracts::ObjectCacheError;
 
 /// PHP's symbol-table rule: a canonical decimal `i64` string is an integer key.
 pub(crate) fn canonical_int(text: &str) -> Option<i64> {

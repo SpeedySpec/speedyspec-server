@@ -6430,6 +6430,14 @@ dependencies = [
  "speedyspec-cqrs",
  "speedyspec-hooks",
  "speedyspec-php-serialize",
+ "speedyspec-wp-object-cache-contracts",
+]
+
+[[package]]
+name = "speedyspec-wp-object-cache-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-hooks",
 ]
 
 [[package]]
@@ -6452,6 +6460,7 @@ dependencies = [
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
  "speedyspec-wp-object-cache",
+ "speedyspec-wp-object-cache-contracts",
  "tempfile",
  "ureq",
 ]
@@ -6470,6 +6479,7 @@ dependencies = [
  "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-object-cache",
+ "speedyspec-wp-object-cache-contracts",
  "tracing",
 ]
 

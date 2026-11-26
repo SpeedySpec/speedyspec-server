@@ -13,7 +13,7 @@ fn s(v: &str) -> Value {
 
 #[test]
 fn persistent_iff_second_level() {
-    let bare = ObjectCache::new(ObjectCachePorts::rust(), None);
+    let bare = WpObjectCache::new(ObjectCachePorts::rust(), None);
     assert!(!bare.is_persistent());
     let cache = bare.with_persistent(Rc::new(MemoryCache::new()));
     assert!(cache.is_persistent());
@@ -22,8 +22,8 @@ fn persistent_iff_second_level() {
 #[test]
 fn second_level_shared_between_instances() {
     let store: Rc<dyn CachingStore> = Rc::new(MemoryCache::new());
-    let a = ObjectCache::new(ObjectCachePorts::rust(), Some(store.clone()));
-    let b = ObjectCache::new(ObjectCachePorts::rust(), Some(store));
+    let a = WpObjectCache::new(ObjectCachePorts::rust(), Some(store.clone()));
+    let b = WpObjectCache::new(ObjectCachePorts::rust(), Some(store));
     assert!(a.set(&s("k"), s("v"), &s("g"), 0).unwrap());
     assert_eq!(b.get(&s("k"), &s("g"), false).unwrap(), Some(s("v")));
 }
@@ -31,8 +31,8 @@ fn second_level_shared_between_instances() {
 #[test]
 fn non_persistent_group_stays_local() {
     let store: Rc<dyn CachingStore> = Rc::new(MemoryCache::new());
-    let a = ObjectCache::new(ObjectCachePorts::rust(), Some(store.clone()));
-    let b = ObjectCache::new(ObjectCachePorts::rust(), Some(store));
+    let a = WpObjectCache::new(ObjectCachePorts::rust(), Some(store.clone()));
+    let b = WpObjectCache::new(ObjectCachePorts::rust(), Some(store));
     a.add_non_persistent_groups(&[s("np")]);
     assert!(a.set(&s("k"), s("v"), &s("np"), 0).unwrap());
     assert_eq!(a.get(&s("k"), &s("np"), false).unwrap(), Some(s("v")));
@@ -98,7 +98,7 @@ fn failing_second_level_logged_once() {
     let misses = Rc::new(Misses::default());
     let mut ports = ObjectCachePorts::rust();
     ports.notices = misses.clone();
-    let cache = ObjectCache::new(ports, Some(Rc::new(Down)));
+    let cache = WpObjectCache::new(ports, Some(Rc::new(Down)));
     for i in 0..5 {
         let k = s(&format!("k{i}"));
         assert_eq!(cache.get(&k, &s("g"), false).unwrap(), None);
@@ -157,7 +157,7 @@ impl CachingStore for Unreachable {
 #[test]
 fn unreachable_second_level_is_skipped_for_the_rest_of_the_request() {
     let store = Rc::new(Unreachable::default());
-    let cache = ObjectCache::new(ObjectCachePorts::rust(), Some(store.clone()));
+    let cache = WpObjectCache::new(ObjectCachePorts::rust(), Some(store.clone()));
     for i in 0..50 {
         let k = s(&format!("k{i}"));
         assert_eq!(cache.get(&k, &s("g"), false).unwrap(), None);
@@ -176,7 +176,7 @@ fn unreachable_second_level_is_skipped_for_the_rest_of_the_request() {
         "only the first call waits on the unreachable host"
     );
     // The next request tries the second level again.
-    let next = ObjectCache::new(ObjectCachePorts::rust(), Some(store.clone()));
+    let next = WpObjectCache::new(ObjectCachePorts::rust(), Some(store.clone()));
     assert_eq!(next.get(&s("k0"), &s("g"), false).unwrap(), None);
     assert_eq!(store.0.get(), 2);
 }

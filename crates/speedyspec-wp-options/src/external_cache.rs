@@ -3,7 +3,7 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_object_cache::ObjectCache;
+use speedyspec_wp_object_cache::WpObjectCache;
 
 /// Whether an external (persistent) object cache is in use.
 pub trait ExternalObjectCache {
@@ -11,7 +11,7 @@ pub trait ExternalObjectCache {
 }
 
 /// The Rust adapter: persistent exactly when the object cache has a second level.
-pub struct ObjectCachePersistence(pub Rc<ObjectCache>);
+pub struct ObjectCachePersistence(pub Rc<WpObjectCache>);
 
 impl ExternalObjectCache for ObjectCachePersistence {
     fn using(&self) -> bool {

@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{Count, HookName, HookValue, Key};
-use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache};
+use speedyspec_wp_object_cache::{CurrentObjectCache, WpObjectCache};
 
 use crate::{
     AutoloadPolicy, Deprecations, FixedProtectedOptions, HookSanitizing, Installing,
@@ -100,7 +100,7 @@ impl OptionsApi {
     }
 
     /// The object cache current now.
-    pub(crate) fn cache(&self) -> Rc<ObjectCache> {
+    pub(crate) fn cache(&self) -> Rc<WpObjectCache> {
         self.d.cache.current()
     }
 

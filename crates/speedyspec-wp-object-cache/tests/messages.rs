@@ -4,6 +4,7 @@ use speedyspec_container::Container;
 use speedyspec_cqrs::{CommandBus, CommandHandler, QueryBus, bind_command_handler};
 use speedyspec_hooks::Value;
 use speedyspec_wp_object_cache::*;
+use speedyspec_wp_object_cache_contracts::ObjectCacheError;
 
 fn s(v: &str) -> Value {
     Value::Str(v.into())

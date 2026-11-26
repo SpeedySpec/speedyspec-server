@@ -7,15 +7,16 @@ use std::time::Duration;
 
 use speedyspec_cache::{CacheError, CachingStore};
 use speedyspec_hooks::{Key, Value};
+use speedyspec_wp_object_cache_contracts::ObjectCacheError;
 
 use crate::keys::{array_key, key_text};
-use crate::{CacheValue, CodecError, ObjectCache, ObjectCacheError};
+use crate::{CacheValue, CodecError, WpObjectCache};
 
 fn expiry(expire: i64) -> Option<Duration> {
     (expire > 0).then(|| Duration::from_secs(expire as u64))
 }
 
-impl ObjectCache {
+impl WpObjectCache {
     /// The second level, unless it already failed in this request.
     fn reachable(&self) -> Option<&Rc<dyn CachingStore>> {
         self.persistent.as_ref().filter(|_| !self.second_down.get())
