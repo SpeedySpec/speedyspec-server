@@ -8,7 +8,7 @@ mod support;
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::{
     InsertDateInput, NoBadSlugs, PostStatusRegistry, SlugPorts, SlugRequest, Uncached,
-    insert_post_dates, resolve_post_date, slug_needs_no_check, unique_post_slug,
+    insert_post_dates, resolve_post_date, unique_post_slug,
 };
 use speedyspec_wp_posts_contracts::PostId;
 use support::entity::{
@@ -132,11 +132,8 @@ fn slug_scenarios_match_wordpress() {
                 parent: id(4),
             };
             let label = format!("{name}: {:?}", String::from_utf8_lossy(&slug));
-            let result = if slug_needs_no_check(&status, &post_type) {
-                slug.clone()
-            } else {
-                unique_post_slug(&request, &context, &ports).unwrap()
-            };
+            // The skip scenario proves the no-check guard runs before any query: its calls record no statements.
+            let result = unique_post_slug(&request, &context, &ports).unwrap();
             assert_eq!(
                 PhpValue::Str(result),
                 support::decode(&call["result"]),

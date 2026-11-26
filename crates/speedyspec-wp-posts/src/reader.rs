@@ -4,6 +4,9 @@ use speedyspec_wp_posts_contracts::{Post, PostError, PostId, PostReader, PostRep
 
 /// `get_post( $id )` with no cache: a zero id is `None` with no statement (`WP_Post::get_instance()` returns false
 /// before it queries), otherwise the repository's [`PostRepository::find`] (Adapter from repository to reader).
+///
+/// `get_post()` given 0 falls back to the global `$post` when one is set. That fallback is not modelled here; phase
+/// 5 decides where it lives.
 pub struct Uncached<'a>(pub &'a dyn PostRepository);
 
 impl PostReader for Uncached<'_> {

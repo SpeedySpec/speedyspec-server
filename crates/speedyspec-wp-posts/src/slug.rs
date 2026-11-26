@@ -1,10 +1,11 @@
-//! `wp_unique_post_slug()` (post.php, 7.2-RC2 lines 5801-5984) between its two filters: the attachment, hierarchical
+//! `wp_unique_post_slug()` (post.php, 7.2-RC2 lines 5801-5972) between its two filters: the attachment, hierarchical
 //! and flat branches, each one owner query (Repository) then the `wp_unique_post_slug_is_bad_*` filter (Strategy,
 //! [`BadSlugs`]), and the numbered suffix loop, which cuts the slug through [`SlugTruncation`] (the text seam's
 //! `wp_truncate_slug()`).
 //!
 //! `pre_wp_unique_post_slug` and `wp_unique_post_slug` are phase 4's: [`slug_needs_no_check`] is the test before the
-//! first, and [`unique_post_slug`] the value passed to the second.
+//! first (public so phase 4 can place the filter after it; [`unique_post_slug`] also applies it), and
+//! [`unique_post_slug`] the value passed to the second.
 
 use speedyspec_php_serialize::PhpValue;
 use speedyspec_php_serialize::semantics::to_php_int;
@@ -42,7 +43,9 @@ pub struct SlugRequest<'a> {
 pub struct SlugContext {
     /// `$wp_rewrite->feeds`: `feed`, `rdf`, `rss`, `rss2` and `atom` by default.
     pub feeds: Vec<Vec<u8>>,
-    /// `$wp_rewrite->pagination_base`: `page` by default.
+    /// `$wp_rewrite->pagination_base`: `page` by default. Matched literally: PHP puts it into the pattern unescaped,
+    /// so a base with PCRE metacharacters acts as a pattern there, and one with `@` makes `preg_match` fail on the
+    /// delimiter, warn and return false (no conflict). This port diverges for such bases.
     pub pagination_base: Vec<u8>,
     /// `get_option( 'permalink_structure' )`.
     pub permalink_structure: Vec<u8>,
@@ -139,6 +142,10 @@ fn is_number(slug: &[u8]) -> bool {
 }
 
 /// `preg_match( "@^($wp_rewrite->pagination_base)?\d+$@", $slug )`, the base matched literally.
+///
+/// A divergence for unusual bases: PHP interpolates the base unescaped, so PCRE metacharacters in it act as a
+/// pattern, and an `@` ends the pattern early, so `preg_match` warns and returns false (no conflict). Here every
+/// base is matched as bytes.
 fn is_pagination(slug: &[u8], base: &[u8]) -> bool {
     dollar_bodies(slug)
         .any(|body| all_digits(body) || body.strip_prefix(base).is_some_and(all_digits))
@@ -149,7 +156,7 @@ fn reserved(slug: &[u8], context: &SlugContext) -> bool {
     context.feeds.iter().any(|feed| feed.as_slice() == slug) || slug == b"embed"
 }
 
-/// The flat branch's date-archive test (post.php 5917-5938): a number that would read as a year, a month or a day
+/// The flat branch's date-archive test (post.php 5908-5931): a number that would read as a year, a month or a day
 /// after the `%postname%` segment of the permalink structure.
 fn conflicts_with_date_archive(
     request: &SlugRequest<'_>,
@@ -185,14 +192,18 @@ fn conflicts_with_date_archive(
 }
 
 /// `wp_unique_post_slug()` between its two filters: the slug unchanged when it is free, else the first free
-/// `<slug>-<n>` from 2, the slug cut so the whole stays within 200 bytes. Callers test [`slug_needs_no_check`]
-/// first; this function makes the owner queries regardless.
+/// `<slug>-<n>` from 2, the slug cut so the whole stays within 200 bytes. When [`slug_needs_no_check`] holds for
+/// the request's status and type, the slug comes back unchanged before any query, as WordPress returns it before
+/// `pre_wp_unique_post_slug`.
 pub fn unique_post_slug(
     request: &SlugRequest<'_>,
     context: &SlugContext,
     ports: &SlugPorts<'_>,
 ) -> Result<Vec<u8>, PostError> {
     let slug = request.slug;
+    if slug_needs_no_check(request.status, request.post_type) {
+        return Ok(slug.to_vec());
+    }
     let post_type = PostTypeName::new(request.post_type);
     let (query, conflict) = if "attachment" == request.post_type {
         let query = OwnerQuery::Attachment;
@@ -267,7 +278,10 @@ mod tests {
 
     impl SlugTruncation for Truncation {
         fn truncate(&self, slug: &[u8], length: usize) -> Vec<u8> {
-            speedyspec_wp_text::helpers::wp_truncate_slug(slug, i64::try_from(length).unwrap())
+            speedyspec_wp_text::helpers::wp_truncate_slug(
+                slug,
+                i64::try_from(length).unwrap_or(i64::MAX),
+            )
         }
     }
 
