@@ -582,6 +582,22 @@ fn workspace() -> Workspace {
 
 const COMPONENTS: [&str; 2] = ["speedyspec-server", "speedyspec-php-runtime"];
 
+/// Unpublished test crates that need not be release-please packages, although components reach them through
+/// dev-dependencies. Frozen crates dev-depend on them, and release-please's `cargo-workspace` plugin bumps every
+/// workspace crate that depends on a released one, by any kind of dependency, configured or not. If these crates
+/// were packages, a release of one would rewrite a frozen crate's Cargo.toml and changelog.
+const UNRELEASED_TEST_CRATES: [&str; 2] =
+    ["speedyspec-wp-kses-testkit", "speedyspec-wp-text-corpus"];
+
+/// Chains of dependencies from a frozen crate to a release-please package that are known and accepted for now,
+/// as `frozen -> ... -> package`. Each must still exist, so a stale entry fails too.
+/// - `speedyspec-wp-html-split` dev-depends on `speedyspec-wp-text-corpus` for its corpus test and bench, and
+///   `text-corpus`'s `values` feature uses `speedyspec-wp-text-memory`. A release of `wp-text-memory` would
+///   therefore bump `html-split`. The edge goes when that test and bench move into the server (platform migration,
+///   Task 6), and the frozen crate leaves the server at its switch (Task 12).
+const KNOWN_FROZEN_CHAINS: [&str; 1] =
+    ["speedyspec-wp-html-split -> speedyspec-wp-text-corpus -> speedyspec-wp-text-memory"];
+
 impl Workspace {
     /// The crates a component depends on, directly or not: a release of one of them is a release of that component.
     fn released_with_a_component(&self) -> std::collections::BTreeSet<String> {
@@ -625,7 +641,9 @@ fn release_config_errors(
         }
         let is_component = COMPONENTS.contains(&name.as_str());
         let Some(entry) = packages.get(dir) else {
-            if is_component || released.contains(name) {
+            if is_component
+                || (released.contains(name) && !UNRELEASED_TEST_CRATES.contains(&name.as_str()))
+            {
                 errors.push(format!("{dir} is not a release-please package"));
             }
             continue;
@@ -794,6 +812,90 @@ fn release_config_names_no_frozen_crate() {
         assert!(config["packages"][dir].is_null(), "{dir} is still released");
         assert!(manifest[dir].is_null(), "{dir} is still in the manifest");
     }
+}
+
+/// Every chain of workspace dependencies, of any kind, from a frozen crate to a release-please package, written
+/// `frozen -> ... -> package`. release-please's `cargo-workspace` plugin bumps every workspace crate that depends on
+/// a bumped one, transitively and whether or not it is configured, so each chain is a way for a server release to
+/// rewrite a frozen crate. The walk stops at the first package on a chain.
+fn frozen_chains_to_packages(workspace: &Workspace, config: &serde_json::Value) -> Vec<String> {
+    let packages = config["packages"].as_object().cloned().unwrap_or_default();
+    let name_of = |dir: &str| {
+        workspace
+            .crates
+            .iter()
+            .find(|(d, _, _)| d == dir)
+            .map(|(_, n, _)| n.clone())
+    };
+    let configured: std::collections::BTreeSet<String> =
+        packages.keys().filter_map(|dir| name_of(dir)).collect();
+    let mut chains = Vec::new();
+    for dir in &workspace.frozen {
+        let Some(start) = name_of(dir) else { continue };
+        let mut seen = std::collections::BTreeSet::from([start.clone()]);
+        let mut todo = vec![vec![start]];
+        while let Some(path) = todo.pop() {
+            let last = path.last().unwrap();
+            for (from, to) in &workspace.depends_on {
+                if from != last || !seen.insert(to.clone()) {
+                    continue;
+                }
+                let mut next = path.clone();
+                next.push(to.clone());
+                if configured.contains(to) {
+                    chains.push(next.join(" -> "));
+                } else {
+                    todo.push(next);
+                }
+            }
+        }
+    }
+    chains.sort();
+    chains
+}
+
+/// No frozen crate depends, by any kind of dependency and through any workspace crate, on a crate that is still a
+/// release-please package, apart from the known chains, each of which must still exist.
+#[test]
+fn no_frozen_crate_depends_on_a_release_please_package() {
+    let workspace = workspace();
+    let (config, _) = release_config();
+    let chains = frozen_chains_to_packages(&workspace, &config);
+    let unexpected: Vec<&String> = chains
+        .iter()
+        .filter(|c| !KNOWN_FROZEN_CHAINS.contains(&c.as_str()))
+        .collect();
+    assert!(
+        unexpected.is_empty(),
+        "a server release would bump these frozen crates: {unexpected:?}"
+    );
+    for known in KNOWN_FROZEN_CHAINS {
+        assert!(
+            chains.iter().any(|c| c == known),
+            "{known} no longer exists: remove it from KNOWN_FROZEN_CHAINS"
+        );
+    }
+    for name in UNRELEASED_TEST_CRATES {
+        let dir = format!("crates/{name}");
+        assert!(
+            config["packages"][&dir].is_null(),
+            "{dir} is a release-please package"
+        );
+    }
+}
+
+#[test]
+fn frozen_chains_find_a_dependency_on_a_package() {
+    let workspace = workspace();
+    let (mut config, _) = release_config();
+    config["packages"]["crates/speedyspec-wp-kses-testkit"] = serde_json::json!({"component": "speedyspec-wp-kses-testkit", "skip-github-release": true, "skip-changelog": true});
+    let chains = frozen_chains_to_packages(&workspace, &config);
+    assert!(
+        chains
+            .iter()
+            .any(|c| c == "speedyspec-wp-html-syntax -> speedyspec-wp-kses-testkit"),
+        "{chains:?}"
+    );
 }
 
 /// A repository with this release-please manifest and these tags.

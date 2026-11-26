@@ -4,8 +4,9 @@ name: Release
 # .release-please-manifest.json) to one with no tag yet. This workflow then builds that component's three binaries at
 # that commit first, and only when every build passes lets release-please tag and publish the release. The binaries
 # are then signed and uploaded, and both release indexes are rebuilt from the GitHub releases and deployed to Pages.
-# The library crates named in scripts/publish-crates.txt are published to crates.io from the same commit, each
-# version once. A failed build publishes nothing; the next push to main tries again.
+# No library crate is published to crates.io from here: the crates in scripts/publish-crates.txt moved to
+# speedyspec-platform, which publishes them, and the crates job below is off (see its Frozen comment). A failed build
+# publishes nothing; the next push to main tries again.
 #
 # Run it by hand with a tag to finish a release whose publishing failed part-way (a complete release is never
 # changed), or with no tag to rebuild and redeploy the indexes only.
@@ -301,13 +302,9 @@ jobs:
               exit 1
           fi
 
-  # The runtime crates other repositories build on (scripts/publish-crates.txt) go to crates.io at the release commit,
-  # after its builds passed. Only versions crates.io does not have yet are published (a version is permanent), so a
-  # dispatch with the release tag finishes a publish that failed part-way. No verification build: it would need the
-  # static PHP, the release builds just built and tested this commit, and every pull request dry-runs the packaging.
-  #
-  # Only with a runtime release: every listed crate is part of the runtime, so a bump to one releases the runtime too.
-  # Never when pending failed (its outputs are empty then, and the checkout would fall back to main's head).
+  # Off. The crates in scripts/publish-crates.txt moved to speedyspec-platform and publish from there; this job goes
+  # when the server drops the moved crates. While it ran, it published their versions crates.io did not have yet, at
+  # the release commit, after the release builds passed.
   crates:
     needs: [pending, build-server, build-runtime, release-please]
     # Frozen: the moved crates publish from speedyspec-platform (removed with the moved crates).

@@ -6,6 +6,9 @@
 # frozen entry, and exits 1 if there is any. An entry ending in `/` matches as a directory prefix; any other entry
 # matches one file exactly. Renames count as a deletion plus an addition, so moving a file out of a frozen directory
 # is a change too.
+#
+# The list is read from <base-ref>, not from the working tree, so a pull request cannot drop an entry and change
+# that path together.
 set -euo pipefail
 
 if [ "$#" -ne 1 ]; then
@@ -14,9 +17,9 @@ if [ "$#" -ne 1 ]; then
 fi
 base="$1"
 root="$(git rev-parse --show-toplevel)"
-paths_file="$root/scripts/platform-paths.txt"
-if [ ! -f "$paths_file" ]; then
-    echo "$paths_file: not found" >&2
+
+if ! list="$(git -C "$root" show "$base:scripts/platform-paths.txt" 2>/dev/null)"; then
+    echo "$base has no scripts/platform-paths.txt (or $base is not a commit)" >&2
     exit 2
 fi
 
@@ -26,15 +29,17 @@ while IFS= read -r line || [ -n "$line" ]; do
     '' | '#'*) continue ;;
     esac
     entries+=("$line")
-done <"$paths_file"
+done <<<"$list"
 
-# Fails the script (set -e) on an unknown base ref, rather than passing with no changes.
-changes="$(git -C "$root" diff --name-only --no-renames "$base"...HEAD)"
+# NUL-delimited, so a path git would C-quote (non-ASCII, a newline, a quote) is compared as it is. Written to a file
+# first so that a failing diff fails the script (set -e) instead of looking like no changes.
+changes="$(mktemp)"
+trap 'rm -f "$changes"' EXIT
+git -C "$root" diff -z --name-only --no-renames "$base"...HEAD >"$changes"
 
 frozen=0
-while IFS= read -r changed; do
-    [ -n "$changed" ] || continue
-    for entry in "${entries[@]}"; do
+while IFS= read -r -d '' changed; do
+    for entry in ${entries[@]+"${entries[@]}"}; do
         if [ "${entry%/}" != "$entry" ]; then
             [ "${changed#"$entry"}" != "$changed" ] || continue
         else
@@ -44,6 +49,6 @@ while IFS= read -r changed; do
         frozen=1
         break
     done
-done <<<"$changes"
+done <"$changes"
 
 exit "$frozen"
