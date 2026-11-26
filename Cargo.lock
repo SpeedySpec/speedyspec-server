@@ -6004,9 +6004,19 @@ dependencies = [
  "speedyspec-data-mysql",
  "speedyspec-data-query",
  "speedyspec-hooks",
+ "speedyspec-wp-db-contracts",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-hooks-memory",
+]
+
+[[package]]
+name = "speedyspec-wp-db-contracts"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-data",
+ "speedyspec-hooks",
+ "speedyspec-wp-hooks-contracts",
 ]
 
 [[package]]
@@ -6030,6 +6040,7 @@ dependencies = [
  "speedyspec-php",
  "speedyspec-php-ext",
  "speedyspec-wp-db",
+ "speedyspec-wp-db-contracts",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
@@ -6552,6 +6563,7 @@ dependencies = [
  "speedyspec-data-valkey",
  "speedyspec-hooks",
  "speedyspec-wp-db",
+ "speedyspec-wp-db-contracts",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-hooks-memory",

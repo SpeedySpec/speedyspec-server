@@ -31,9 +31,9 @@ use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php_ext::Value;
 use speedyspec_wp_db::{
-    MemoryWpdbState, WPDB_STATE, WpDb, WpDbConfig, WpDbError, WpDbParts, WpdbState,
-    register_wpdb_handlers,
+    MemoryWpdbState, WPDB_STATE, WpDb, WpDbConfig, WpDbParts, WpdbState, register_wpdb_handlers,
 };
+use speedyspec_wp_db_contracts::WpDbError;
 use speedyspec_wp_hooks::WpHookApi;
 
 pub use host::PhpWpdbHost;
@@ -197,7 +197,7 @@ impl NativeArea for WpDbArea {
 
     fn request_start(&self) {
         let _ = host::take_pending();
-        let _ = speedyspec_wp_db::take_hook_error();
+        let _ = speedyspec_wp_db_contracts::take_hook_error();
         self.shared.global.reset_request();
         self.shared.memory.reset();
         self.shared.global.state().reset();
@@ -229,7 +229,7 @@ impl NativeArea for WpDbArea {
     fn request_end(&self) {
         // An exception parked by a call from Rust must not outlive its request.
         let _ = host::take_pending();
-        let _ = speedyspec_wp_db::take_hook_error();
+        let _ = speedyspec_wp_db_contracts::take_hook_error();
         INSTANCES.with(|i| i.borrow_mut().extra.clear());
     }
 }

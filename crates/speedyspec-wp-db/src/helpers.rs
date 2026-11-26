@@ -3,9 +3,10 @@
 use speedyspec_hooks::Key;
 
 use crate::{
-    CharsetRules, Field, FieldFormats, OutputShape, Prepare, QueryOutcome, Shaped, WpDb, WpDbError,
-    WpRow, WpValue, delete_sql, insert_sql, update_sql, var,
+    CharsetRules, FieldFormats, OutputShape, Prepare, Shaped, WpDb, delete_sql, insert_sql,
+    update_sql, var,
 };
+use speedyspec_wp_db_contracts::{Field, QueryOutcome, WpDbError, WpRow, WpValue};
 
 /// mysqli's numeric code for a field type, from the name `ColumnInfo::sql_type` carries.
 pub(crate) fn type_code(name: &str) -> i64 {

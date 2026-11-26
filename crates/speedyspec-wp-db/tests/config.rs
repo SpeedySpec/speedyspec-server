@@ -1,5 +1,6 @@
 use speedyspec_data::{DbError, DialectKind};
-use speedyspec_wp_db::{DbHost, WpDbConfig, WpDbError};
+use speedyspec_wp_db::{DbHost, WpDbConfig};
+use speedyspec_wp_db_contracts::WpDbError;
 
 fn host(input: &str) -> Option<(String, Option<u16>, Option<String>, bool)> {
     DbHost::parse(input).map(|h| (h.host, h.port, h.socket, h.is_ipv6))

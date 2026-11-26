@@ -5,7 +5,8 @@ use std::rc::Rc;
 
 use speedyspec_data::{DbError, DbValue, Statement};
 use speedyspec_data_query::parse_one;
-use speedyspec_wp_db::{QueryOutcome, WpDb, WpDbError};
+use speedyspec_wp_db::WpDb;
+use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError};
 use speedyspec_wp_options::{ExpiredTransients, TransientPrefix};
 
 pub struct SqlExpiredTransients {

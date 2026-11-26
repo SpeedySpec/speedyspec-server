@@ -8,6 +8,7 @@ use speedyspec_cqrs::{
     Command, CommandBus, CommandHandler, HandlerRef, Query as CqrsQuery, QueryBus, QueryHandler,
 };
 use speedyspec_wp_db::*;
+use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError};
 use support::{Answer, rig, rows};
 
 macro_rules! commands {

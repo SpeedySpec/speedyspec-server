@@ -10,6 +10,7 @@ use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_wp_db::*;
+use speedyspec_wp_db_contracts::{WpDbError, WpRow};
 
 use crate::convert::*;
 
@@ -1020,14 +1021,14 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
             native::function(&format!("{NATIVE}{name}"), move |args: &[Value]| {
                 // Nothing left over from a call that did not come from PHP.
                 let _ = crate::host::take_pending();
-                let _ = speedyspec_wp_db::take_hook_error();
+                let _ = speedyspec_wp_db_contracts::take_hook_error();
                 let result = f(args);
                 // An exception a WordPress function (`wp_die()`) or a hook callback threw during the call reaches
                 // PHP, where wpdb's own result would have hidden it behind `false`.
                 if let Some(exception) = crate::host::take_pending() {
                     return Err(NativeError::Rethrow(exception));
                 }
-                if let Some(hook) = speedyspec_wp_db::take_hook_error() {
+                if let Some(hook) = speedyspec_wp_db_contracts::take_hook_error() {
                     return Err(
                         match hook
                             .payload

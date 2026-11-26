@@ -4,7 +4,8 @@ use speedyspec_data::Statement;
 use speedyspec_wp_hooks_contracts::{Count, HookName};
 
 use crate::php::to_bytes;
-use crate::{LoggedQuery, WpDb, WpDbError, WpValue};
+use crate::{LoggedQuery, WpDb};
+use speedyspec_wp_db_contracts::{WpDbError, WpValue};
 
 fn truthy(v: &WpValue) -> bool {
     match v {

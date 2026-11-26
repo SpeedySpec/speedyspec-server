@@ -2,30 +2,7 @@
 
 use indexmap::IndexMap;
 use speedyspec_hooks::Value;
-
-/// How a column's length is counted.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LengthKind {
-    Byte,
-    Char,
-}
-
-/// A column's maximum length.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ColLength {
-    pub kind: LengthKind,
-    pub length: u64,
-}
-
-/// One field of a helper's data, as `process_fields` builds it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Field {
-    pub name: String,
-    pub value: Value,
-    pub format: String,
-    pub charset: Option<String>,
-    pub length: Option<ColLength>,
-}
+use speedyspec_wp_db_contracts::Field;
 
 /// `wpdb::process_field_formats` over `$wpdb->field_types`.
 pub struct FieldFormats<'a> {

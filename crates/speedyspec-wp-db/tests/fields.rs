@@ -1,8 +1,9 @@
 use indexmap::IndexMap;
 use speedyspec_hooks::Value;
 use speedyspec_wp_db::{
-    Field, FieldFormats, QueryClass, delete_sql, get_table_from_query, insert_sql, update_sql,
+    FieldFormats, QueryClass, delete_sql, get_table_from_query, insert_sql, update_sql,
 };
+use speedyspec_wp_db_contracts::Field;
 
 fn s(v: &str) -> Value {
     Value::Str(v.into())

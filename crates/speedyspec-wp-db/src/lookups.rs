@@ -9,10 +9,8 @@ use speedyspec_wp_hooks_contracts::{Count, HookName};
 
 use crate::escape::string_value;
 use crate::php::to_bytes;
-use crate::{
-    CharsetRules, ColLength, ColumnMeta, OutputShape, StripContext, WpDb, WpDbError, WpValue,
-    get_table_from_query,
-};
+use crate::{CharsetRules, ColumnMeta, OutputShape, StripContext, WpDb, get_table_from_query};
+use speedyspec_wp_db_contracts::{ColLength, WpDbError, WpValue};
 
 thread_local! {
     static CHECKING_COLLATION: Cell<bool> = const { Cell::new(false) };
@@ -267,7 +265,7 @@ impl WpDb {
             return Ok(value.to_vec());
         };
         let length = self.get_col_length(table, column)?;
-        let mut fields = vec![crate::Field {
+        let mut fields = vec![speedyspec_wp_db_contracts::Field {
             name: column.into(),
             value: string_value(value.to_vec()),
             format: "%s".into(),

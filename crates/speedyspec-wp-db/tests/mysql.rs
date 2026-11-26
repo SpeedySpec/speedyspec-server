@@ -6,8 +6,9 @@ use speedyspec_data_mysql::MySqlEngineFactory;
 use speedyspec_data_query::EngineRegistry;
 use speedyspec_hooks::Key;
 use speedyspec_wp_db::{
-    MemoryWpdbHost, MemoryWpdbState, OutputShape, Shaped, WpDb, WpDbConfig, WpDbParts, WpValue,
+    MemoryWpdbHost, MemoryWpdbState, OutputShape, Shaped, WpDb, WpDbConfig, WpDbParts,
 };
+use speedyspec_wp_db_contracts::WpValue;
 use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 

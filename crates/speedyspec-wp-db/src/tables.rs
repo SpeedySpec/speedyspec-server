@@ -2,7 +2,7 @@
 
 use indexmap::IndexMap;
 
-use crate::WpDbError;
+use speedyspec_wp_db_contracts::WpDbError;
 
 /// What table naming depends on outside `wpdb`: `is_multisite()`, `defined('MULTISITE')`, `CUSTOM_USER_TABLE`,
 /// `CUSTOM_USER_META_TABLE`.

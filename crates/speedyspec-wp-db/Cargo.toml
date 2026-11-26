@@ -20,6 +20,7 @@ regex = "1"
 hmac = "0.12"
 sha2 = "0.10"
 speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
+speedyspec-wp-db-contracts = { path = "../speedyspec-wp-db-contracts" }
 
 [dev-dependencies]
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }

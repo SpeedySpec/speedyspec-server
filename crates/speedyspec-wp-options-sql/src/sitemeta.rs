@@ -6,7 +6,8 @@ use std::rc::Rc;
 
 use speedyspec_data::{DbError, Statement};
 use speedyspec_data_query::Query;
-use speedyspec_wp_db::{QueryOutcome, WpDb, WpDbError, WpRow, WpValue};
+use speedyspec_wp_db::WpDb;
+use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue};
 use speedyspec_wp_options::{NetworkMeta, SerializedValue, SitemetaRepository};
 
 /// A `wp_sitemeta` row to a `NetworkMeta` and back; `meta_id` stays the table's.

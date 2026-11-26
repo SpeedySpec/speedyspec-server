@@ -6,7 +6,8 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 use speedyspec_data::ColumnInfo;
 
-use crate::{LastQuery, WpRow, WpValue};
+use crate::LastQuery;
+use speedyspec_wp_db_contracts::{WpRow, WpValue};
 
 /// One `$wpdb->queries` entry, with the engine's view (`emitted`, `engine`) beside WordPress's five elements.
 #[derive(Debug, Clone, PartialEq)]

@@ -13,6 +13,7 @@ speedyspec-data-query = { path = "../speedyspec-data-query" }
 speedyspec-wp-db = { path = "../speedyspec-wp-db" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 md5 = { package = "md-5", version = "0.11.0" }
+speedyspec-wp-db-contracts = { path = "../speedyspec-wp-db-contracts" }
 
 [dev-dependencies]
 speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }

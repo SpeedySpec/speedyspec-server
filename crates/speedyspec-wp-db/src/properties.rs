@@ -7,7 +7,8 @@ use speedyspec_hooks::Key;
 
 use crate::escape::string_value;
 use crate::php::{to_bytes, to_int};
-use crate::{LastQuery, WpDb, WpValue};
+use crate::{LastQuery, WpDb};
+use speedyspec_wp_db_contracts::WpValue;
 
 fn list(items: impl IntoIterator<Item = WpValue>) -> WpValue {
     WpValue::Array(
@@ -327,10 +328,10 @@ impl WpDb {
             }
             "last_result" => {
                 // Rows as arrays (the facade turns objects into their properties first).
-                let rows: Vec<crate::WpRow> = match value {
+                let rows: Vec<speedyspec_wp_db_contracts::WpRow> = match value {
                     WpValue::Array(rows) => rows
                         .iter()
-                        .map(|(_, row)| crate::WpRow {
+                        .map(|(_, row)| speedyspec_wp_db_contracts::WpRow {
                             fields: match row {
                                 WpValue::Array(fields) => fields
                                     .iter()
@@ -422,7 +423,7 @@ fn key_text(k: &Key) -> String {
     }
 }
 
-fn row_assoc(row: &crate::WpRow) -> WpValue {
+fn row_assoc(row: &speedyspec_wp_db_contracts::WpRow) -> WpValue {
     WpValue::Array(
         row.fields
             .iter()

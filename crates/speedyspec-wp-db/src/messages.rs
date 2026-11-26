@@ -11,9 +11,8 @@ use speedyspec_cqrs::{
     bind_query_handler,
 };
 
-use crate::{
-    ColLength, OutputShape, QueryOutcome, Shaped, TableScope, WpDb, WpDbError, WpRow, WpValue,
-};
+use crate::{OutputShape, Shaped, TableScope, WpDb};
+use speedyspec_wp_db_contracts::{ColLength, QueryOutcome, WpDbError, WpRow, WpValue};
 
 macro_rules! message {
     (command $name:ident { $($field:ident : $ty:ty),* $(,)? } -> $result:ty, |$db:ident, $m:ident| $body:expr) => {

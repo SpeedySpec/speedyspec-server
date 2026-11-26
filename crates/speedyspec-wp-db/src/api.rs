@@ -14,8 +14,9 @@ use crate::php::to_bytes;
 use crate::timed::microtime;
 use crate::{
     LastQuery, PlaceholderEscape, QueryClass, RequestState, ServerCaps, TableEnv, TableNames,
-    TimedSqlStore, WpDbConfig, WpDbError, WpRow, WpValue, WpdbHost, WpdbState,
+    TimedSqlStore, WpDbConfig, WpdbHost, WpdbState,
 };
+use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue};
 
 /// What `WpDb` is made from.
 pub struct WpDbParts {
@@ -24,25 +25,6 @@ pub struct WpDbParts {
     pub state: Rc<dyn WpdbState>,
     pub host: Rc<dyn WpdbHost>,
     pub config: WpDbConfig,
-}
-
-/// What `query()` returns: rows for a read, counts for a write, `true` for DDL.
-#[derive(Debug, Clone, PartialEq)]
-pub enum QueryOutcome {
-    Rows(Rc<Vec<WpRow>>),
-    Affected { rows: u64, insert_id: u64 },
-    Done,
-}
-
-impl QueryOutcome {
-    /// `query()`'s PHP return value.
-    pub fn to_wp(&self) -> WpValue {
-        match self {
-            QueryOutcome::Rows(rows) => WpValue::Int(rows.len() as i64),
-            QueryOutcome::Affected { rows, .. } => WpValue::Int(*rows as i64),
-            QueryOutcome::Done => WpValue::Bool(true),
-        }
-    }
 }
 
 /// `wpdb`'s settings that outlive a request.
@@ -542,6 +524,11 @@ impl WpDb {
 
     pub fn hide_errors(&self) -> bool {
         self.show_errors(false)
+    }
+
+    /// `$wpdb->insert_id`: the id the last insert generated, as `property("insert_id")` reads it.
+    pub fn insert_id(&self) -> u64 {
+        self.read(|s| s.insert_id)
     }
 
     pub fn suppress_errors(&self, suppress: bool) -> bool {

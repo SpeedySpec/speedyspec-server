@@ -38,7 +38,8 @@ impl WpdbState for ResolvedWpdbState {
 use std::cell::RefCell;
 
 use speedyspec_php_ext::{Key, PhpObject, Value};
-use speedyspec_wp_db::{LastQuery, WpRow};
+use speedyspec_wp_db::LastQuery;
+use speedyspec_wp_db_contracts::WpRow;
 
 use crate::convert::{bytes, bytes_value, int, key_string, list, opt_bytes, string, truthy};
 

@@ -4,7 +4,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use speedyspec_hooks::Key;
-use speedyspec_wp_db::{MemoryWpdbHost, WpValue};
+use speedyspec_wp_db::MemoryWpdbHost;
+use speedyspec_wp_db_contracts::WpValue;
 use support::{filter, rig, rig_with};
 
 fn saving() -> MemoryWpdbHost {

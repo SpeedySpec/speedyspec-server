@@ -3,7 +3,8 @@ mod support;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use speedyspec_wp_db::{HostCall, OutputShape, Shaped, WpDbError, WpValue, WpdbState};
+use speedyspec_wp_db::{HostCall, OutputShape, Shaped, WpdbState};
+use speedyspec_wp_db_contracts::{WpDbError, WpValue};
 use support::{Rig, filter, rig, rows};
 
 fn s(v: &str) -> WpValue {

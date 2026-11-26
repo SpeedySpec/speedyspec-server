@@ -1,7 +1,6 @@
 use speedyspec_hooks::Value;
-use speedyspec_wp_db::{
-    CharsetRules, ColLength, Field, LengthKind, PlaceholderEscape, ServerCaps, StripContext,
-};
+use speedyspec_wp_db::{CharsetRules, PlaceholderEscape, ServerCaps, StripContext};
+use speedyspec_wp_db_contracts::{ColLength, Field, LengthKind};
 
 #[test]
 fn caps_from_server_info() {
@@ -228,9 +227,10 @@ fn strip_from_query() {
         escape: &escape,
         connection_charset: "utf8mb4",
     };
-    let none = &mut |_: &[u8]| -> Result<Vec<Option<Vec<u8>>>, speedyspec_wp_db::WpDbError> {
-        panic!("no lookup")
-    };
+    let none =
+        &mut |_: &[u8]| -> Result<Vec<Option<Vec<u8>>>, speedyspec_wp_db_contracts::WpDbError> {
+            panic!("no lookup")
+        };
     assert_eq!(
         CharsetRules::strip_invalid_text_from_query(b"SHOW TABLES \xff", "latin1", &cx, none)
             .unwrap(),

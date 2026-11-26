@@ -13,7 +13,8 @@ use crate::api::html_escape;
 use crate::caps::version_compare;
 use crate::escape::real_escape;
 use crate::php::to_bytes;
-use crate::{CharsetRules, DbHost, ServerCaps, WpDb, WpDbError, WpValue};
+use crate::{CharsetRules, DbHost, ServerCaps, WpDb};
+use speedyspec_wp_db_contracts::{WpDbError, WpValue};
 
 fn literal(s: &str) -> String {
     format!("'{}'", String::from_utf8_lossy(&real_escape(s.as_bytes())))
