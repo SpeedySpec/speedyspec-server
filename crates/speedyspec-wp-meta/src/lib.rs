@@ -12,4 +12,4 @@ pub use register::{
     FilterToAdd, PreparedArgs, RegisterPorts, Registration, allowed_args, prepare_registration,
     resolve_registration,
 };
-pub use registry::{MetaKeyRegistry, default_for, filters_to_remove};
+pub use registry::{MetaKeyIndex, MetaKeyRegistry, default_for, filters_to_remove};

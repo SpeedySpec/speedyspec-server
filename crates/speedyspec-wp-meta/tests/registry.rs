@@ -109,3 +109,85 @@ fn insert_same_key_replaces_in_place() {
     assert_eq!(keys[0], entry("post", "", "color", "b"));
     assert_eq!(keys[1], entry("post", "", "size", "a"));
 }
+
+mod defaults {
+    use std::cell::Cell;
+
+    use speedyspec_php_serialize::{PhpKey, PhpValue};
+    use speedyspec_wp_meta::{MetaKeyRegistry, default_for};
+    use speedyspec_wp_meta_contracts::{MetaKey, MetaType, RegisteredMetaKey};
+
+    fn with_args(subtype: &str, key: &str, args: Vec<(PhpKey, PhpValue)>) -> RegisteredMetaKey {
+        RegisteredMetaKey {
+            object_type: "post".to_owned(),
+            subtype: subtype.to_owned(),
+            key: MetaKey::from(key),
+            args,
+        }
+    }
+
+    fn default(value: PhpValue) -> Vec<(PhpKey, PhpValue)> {
+        vec![(PhpKey::Str(b"default".to_vec()), value)]
+    }
+
+    /// Runs `default_for` for `key` on a post, counting the subtype lookups (which answer `page`).
+    fn lookup(registry: &MetaKeyRegistry, key: &str, single: bool) -> (Option<PhpValue>, usize) {
+        let asked = Cell::new(0);
+        let got = default_for(
+            registry,
+            &MetaType::new("post").unwrap(),
+            &MetaKey::from(key),
+            single,
+            || {
+                asked.set(asked.get() + 1);
+                Ok::<_, ()>("page".to_owned())
+            },
+        )
+        .unwrap();
+        (got, asked.get())
+    }
+
+    #[test]
+    fn unregistered_key_never_asks_for_the_subtype() {
+        let mut registry = MetaKeyRegistry::new();
+        registry.insert(with_args("page", "other", default(PhpValue::Int(1))));
+        assert_eq!(lookup(&registry, "missing", true), (None, 0));
+        assert_eq!(lookup(&MetaKeyRegistry::new(), "missing", true), (None, 0));
+    }
+
+    #[test]
+    fn key_without_a_default_never_asks_for_the_subtype() {
+        let mut registry = MetaKeyRegistry::new();
+        registry.insert(with_args("", "k", Vec::new()));
+        registry.insert(with_args("page", "k", Vec::new()));
+        assert_eq!(lookup(&registry, "k", true), (None, 0));
+    }
+
+    #[test]
+    fn empty_subtype_default_wins_without_a_lookup() {
+        let mut registry = MetaKeyRegistry::new();
+        registry.insert(with_args("page", "k", default(PhpValue::Int(2))));
+        registry.insert(with_args("", "k", default(PhpValue::Int(1))));
+        assert_eq!(lookup(&registry, "k", true), (Some(PhpValue::Int(1)), 0));
+    }
+
+    #[test]
+    fn subtype_default_is_asked_once() {
+        let mut registry = MetaKeyRegistry::new();
+        registry.insert(with_args("page", "k", default(PhpValue::Int(2))));
+        let list = PhpValue::Array(vec![(PhpKey::Int(0), PhpValue::Int(2))]);
+        assert_eq!(lookup(&registry, "k", false), (Some(list), 1));
+        let mut other = MetaKeyRegistry::new();
+        other.insert(with_args("book", "k", default(PhpValue::Int(2))));
+        assert_eq!(lookup(&other, "k", true), (None, 1));
+    }
+
+    /// `array_key_exists( 'default', $args )` gathers it and `isset( $defaults[''] )` tests the args array, so a
+    /// `null` default is returned as `null` (WordPress 7.2-RC2's `filter_default_metadata()`).
+    #[test]
+    fn null_default_is_a_default() {
+        let mut registry = MetaKeyRegistry::new();
+        registry.insert(with_args("", "k", default(PhpValue::Null)));
+        assert_eq!(lookup(&registry, "k", true), (Some(PhpValue::Null), 0));
+    }
+}

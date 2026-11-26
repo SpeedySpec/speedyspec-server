@@ -467,11 +467,11 @@ fn defaults_match_wordpress() {
         let got = default_for(
             &replay.registry,
             &meta_type,
-            object,
             &key,
             case["single"].as_bool().unwrap(),
-            &Subtypes,
+            || Ok::<_, ()>(Subtypes.subtype_of(&meta_type, object)),
         )
+        .unwrap()
         .unwrap_or(value);
         assert_eq!(got, support::decode(&case["result"]), "{name}");
     }
