@@ -168,6 +168,98 @@ pub fn to_php_string(value: &PhpValue) -> Vec<u8> {
     }
 }
 
+/// `(int) $value` (PHP 8.5, 64-bit): null and false 0, true 1; arrays 0 when empty, else 1; objects 1.
+///
+/// A float truncates toward zero; NaN and the infinities are 0, and a finite float outside the int range wraps
+/// modulo 2^64 (`zend_dval_to_lval()`). A string reads its leading numeric prefix after leading whitespace (space,
+/// `\t`, `\n`, `\r`, `\v`, `\f`): a sign, digits, a fraction and an exponent (`"12abc"` 12, `"1e3"` 1000,
+/// `"abc"` 0). An integer prefix outside the range saturates; a float prefix truncates and saturates, except an
+/// infinite one (`"1e999"`), which is 0.
+pub fn to_php_int(value: &PhpValue) -> i64 {
+    match value {
+        PhpValue::Null | PhpValue::Bool(false) => 0,
+        PhpValue::Bool(true) => 1,
+        PhpValue::Int(i) => *i,
+        PhpValue::Float(f) => float_to_int(*f),
+        PhpValue::Str(s) => string_to_int(s),
+        PhpValue::Array(items) => i64::from(!items.is_empty()),
+        PhpValue::Object { .. }
+        | PhpValue::Custom { .. }
+        | PhpValue::Enum { .. }
+        | PhpValue::ObjectRef(_) => 1,
+        PhpValue::Ref(_) => 0,
+    }
+}
+
+/// `zend_dval_to_lval()`: truncation, NaN and infinities 0, out of range modulo 2^64.
+fn float_to_int(f: f64) -> i64 {
+    const TWO_63: f64 = 9_223_372_036_854_775_808.0;
+    if !f.is_finite() {
+        return 0;
+    }
+    if (-TWO_63..TWO_63).contains(&f) {
+        return f as i64;
+    }
+    const TWO_64: f64 = 18_446_744_073_709_551_616.0;
+    let mut m = f.trunc() % TWO_64;
+    if m < 0.0 {
+        m += TWO_64;
+    }
+    // `m` is in [0, 2^64): as a u64, reinterpreted as two's complement.
+    (m as u64) as i64
+}
+
+/// `(int) "…"`: the leading numeric prefix, saturating (`ZEND_STRTOL` and `zend_dval_to_lval_cap()`).
+fn string_to_int(bytes: &[u8]) -> i64 {
+    let ws = |b: &u8| matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b'\x0b' | b'\x0c');
+    let start = bytes.iter().position(|b| !ws(b)).unwrap_or(bytes.len());
+    let s = &bytes[start..];
+    let mut i = 0;
+    if matches!(s.first(), Some(b'+' | b'-')) {
+        i += 1;
+    }
+    let int_digits = s[i..].iter().take_while(|b| b.is_ascii_digit()).count();
+    i += int_digits;
+    let mut is_float = false;
+    let mut frac_digits = 0;
+    if s.get(i) == Some(&b'.') {
+        frac_digits = s[i + 1..].iter().take_while(|b| b.is_ascii_digit()).count();
+        if int_digits + frac_digits > 0 {
+            is_float = true;
+            i += 1 + frac_digits;
+        }
+    }
+    if int_digits + frac_digits == 0 {
+        return 0;
+    }
+    if matches!(s.get(i), Some(b'e' | b'E')) {
+        let mut j = i + 1;
+        if matches!(s.get(j), Some(b'+' | b'-')) {
+            j += 1;
+        }
+        let exp_digits = s[j..].iter().take_while(|b| b.is_ascii_digit()).count();
+        if exp_digits > 0 {
+            is_float = true;
+            i = j + exp_digits;
+        }
+    }
+    let text = std::str::from_utf8(&s[..i]).expect("ASCII");
+    if !is_float {
+        return text.parse::<i64>().unwrap_or(if text.starts_with('-') {
+            i64::MIN
+        } else {
+            i64::MAX
+        });
+    }
+    let f: f64 = text.parse().expect("a float literal");
+    if !f.is_finite() {
+        0
+    } else {
+        // `as` saturates.
+        f as i64
+    }
+}
+
 /// A float as `(string)` and `echo` write it: `%.14G` with PHP's `1.0E+25` exponent form.
 fn float_to_string(f: f64) -> String {
     const PRECISION: i32 = 14;
@@ -628,5 +720,61 @@ mod tests {
                 (k("x"), s("d")),
             ]
         );
+    }
+
+    #[test]
+    fn to_php_int_follows_php8() {
+        // Each value against PHP 8.5's `(int)`.
+        let cases = [
+            (PhpValue::Null, 0),
+            (PhpValue::Bool(false), 0),
+            (PhpValue::Bool(true), 1),
+            (PhpValue::Int(-7), -7),
+            (PhpValue::Float(1.9), 1),
+            (PhpValue::Float(-1.9), -1),
+            (PhpValue::Float(f64::NAN), 0),
+            (PhpValue::Float(f64::INFINITY), 0),
+            (PhpValue::Float(f64::NEG_INFINITY), 0),
+            (PhpValue::Float(1e30), 5_076_964_154_930_102_272),
+            (PhpValue::Float(-1e30), -5_076_964_154_930_102_272),
+            (PhpValue::Float(1e19), -8_446_744_073_709_551_616),
+            (PhpValue::Float(-9.3e18), 9_146_744_073_709_551_616),
+            (s("12abc"), 12),
+            (s("1e3"), 1000),
+            (s(" 7"), 7),
+            (s("abc"), 0),
+            (s(""), 0),
+            (s("  "), 0),
+            (s(" \n\t-4.7x"), -4),
+            (s("\x0b3"), 3),
+            (s("\x0c3"), 3),
+            (s("+5"), 5),
+            (s("-0"), 0),
+            (s(".5"), 0),
+            (s("5."), 5),
+            (s("1.e2"), 100),
+            (s("-.5e1"), -5),
+            (s("1.5e3"), 1500),
+            (s("1e"), 1),
+            (s("0x1A"), 0),
+            (s("9999999999999999999"), i64::MAX),
+            (s("-9999999999999999999"), i64::MIN),
+            (s("1e30"), i64::MAX),
+            (s("-1e30"), i64::MIN),
+            (s("1e999"), 0),
+            (s("-1e999"), 0),
+            (PhpValue::Array(vec![]), 0),
+            (PhpValue::Array(vec![(PhpKey::Int(0), PhpValue::Int(1))]), 1),
+            (
+                PhpValue::Object {
+                    class: "stdClass".into(),
+                    properties: vec![],
+                },
+                1,
+            ),
+        ];
+        for (value, int) in cases {
+            assert_eq!(to_php_int(&value), int, "(int) {value:?}");
+        }
     }
 }
