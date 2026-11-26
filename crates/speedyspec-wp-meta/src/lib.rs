@@ -32,7 +32,7 @@ pub use register::{
     resolve_registration,
 };
 pub use registry::{MetaKeyIndex, MetaKeyRegistry, default_for, filters_to_remove};
-pub use sanitize::{FilteredProtection, sanitize_meta};
+pub use sanitize::{FilteredProtection, is_protected_meta, sanitize_meta};
 pub use subtype::{BlogSubtypes, Sites, SubtypesByType, object_subtype};
 pub use unslash::{stripslashes, wp_unslash};
 pub use write::AddOutcome;

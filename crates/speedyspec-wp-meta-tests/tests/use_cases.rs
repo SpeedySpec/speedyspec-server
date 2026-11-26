@@ -1139,3 +1139,112 @@ fn non_utf8_key_round_trips_through_an_opaque_entry() {
     assert!(matches!(cached(&f, &post(), 1), Some(HookValue::Opaque(_))));
     assert!(f.api.metadata_exists(&post(), ObjectId(1), &key).unwrap());
 }
+
+// ---- is_protected_meta: one filter run, and its failures reach the caller ----
+
+struct NoRevisions;
+impl speedyspec_wp_meta_contracts::RevisionSupport for NoRevisions {
+    fn supports_revisions(&self, _: &str) -> bool {
+        false
+    }
+}
+
+struct AnySchema;
+impl speedyspec_wp_meta_contracts::DefaultSchemaCheck for AnySchema {
+    fn default_matches(&self, _: &PhpValue, _: &PhpValue) -> bool {
+        true
+    }
+}
+
+struct NothingCallable;
+impl speedyspec_wp_meta_contracts::Callables for NothingCallable {
+    fn is_callable(&self, _: &PhpValue) -> bool {
+        false
+    }
+}
+
+/// `register_meta( 'post', $key, array() )`'s second half through the use case: no `auth_callback`, so it asks
+/// `is_protected_meta()`.
+fn register(f: &Fixture, key: &str) -> Result<speedyspec_wp_meta::Registration, MetadataError> {
+    let prepared = speedyspec_wp_meta::prepare_registration(
+        PhpValue::Array(Vec::new()),
+        None,
+        &NothingCallable,
+    );
+    f.api.resolve_registration(
+        "post",
+        &k(key),
+        prepared,
+        &NoRevisions,
+        &AnySchema,
+        &NothingCallable,
+    )
+}
+
+fn runs(f: &Fixture, hook: &str) -> usize {
+    fired(f).iter().filter(|h| *h == hook).count()
+}
+
+#[test]
+fn is_protected_meta_filter_runs_once_per_path() {
+    let f = fixture();
+    record(&f, "is_protected_meta");
+    // The IsProtectedMeta message.
+    let container = Rc::new(Container::new());
+    register_meta_handlers(&container, f.api.clone());
+    let protected = QueryBus::new(container)
+        .ask(IsProtectedMeta {
+            key: k("_secret"),
+            meta_type: "post".into(),
+        })
+        .unwrap()
+        .unwrap();
+    assert!(protected);
+    assert_eq!(runs(&f, "is_protected_meta"), 1);
+    // The auth fallback of register_meta().
+    f.log.borrow_mut().clear();
+    let registered = register(&f, "_secret").unwrap();
+    assert!(matches!(
+        registered,
+        speedyspec_wp_meta::Registration::Registered { .. }
+    ));
+    assert_eq!(runs(&f, "is_protected_meta"), 1);
+    assert_eq!(
+        args_of(&f, "is_protected_meta"),
+        [HookValue::Bool(true), hs("_secret"), hs("post")]
+    );
+}
+
+#[test]
+fn is_protected_meta_error_reaches_the_caller() {
+    let f = fixture();
+    let thrown: Rc<dyn std::any::Any> = Rc::new("the PHP exception".to_string());
+    let payload = thrown.clone();
+    f.hooks
+        .add_filter(
+            &HookName::from("is_protected_meta"),
+            Callback::rust("throws", move |_: &[HookValue]| {
+                Err(HookError {
+                    message: "thrown".into(),
+                    payload: Some(payload.clone()),
+                })
+            }),
+            &HookValue::Int(10),
+            3,
+        )
+        .unwrap();
+    let same_payload = |e: MetadataError| match e {
+        MetadataError::Hook(h) => {
+            let got = h.payload.expect("the payload is kept");
+            assert!(Rc::ptr_eq(&got, &thrown), "the same exception object");
+        }
+        other => panic!("a hook error, not {other:?}"),
+    };
+    same_payload(f.api.is_protected_meta(&k("_x"), "post").unwrap_err());
+    same_payload(register(&f, "_x").unwrap_err());
+    // The port keeps the error for one call only.
+    let port = FilteredProtection::new(f.hooks.clone(), Rc::new(UnfilteredProtection));
+    assert!(port.is_protected(&k("_x"), "post"));
+    assert!(port.take_hook_error().is_some());
+    assert!(port.take_hook_error().is_none());
+}

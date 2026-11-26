@@ -46,40 +46,63 @@ pub fn sanitize_meta(
     pv(&out)
 }
 
-/// `is_protected_meta()`: `inner`'s rule (usually [`UnfilteredProtection`](crate::UnfilteredProtection)), then the
-/// `is_protected_meta` filter with `( $protected, $meta_key, $meta_type )`, read for truth (Decorator).
+/// `is_protected_meta( $meta_key, $meta_type )`: `rule`'s answer (the unfiltered rule, usually
+/// [`UnfilteredProtection`](crate::UnfilteredProtection)), then the `is_protected_meta` filter, run once, with
+/// `( $protected, $meta_key, $meta_type )`, read for truth.
+pub fn is_protected_meta(
+    hooks: &dyn HookApi,
+    rule: &dyn ProtectedMeta,
+    key: &MetaKey,
+    meta_type: &str,
+) -> Result<bool, MetadataError> {
+    let protected = rule.is_protected(key, meta_type);
+    let out = filter(
+        hooks,
+        HookName::from("is_protected_meta"),
+        HookValue::Bool(protected),
+        || vec![key_value(key), HookValue::Str(meta_type.to_owned())],
+    )?;
+    Ok(crate::api::truthy(&pv(&out)?))
+}
+
+/// [`is_protected_meta`] as a [`ProtectedMeta`] port, for code that asks the port (`register_meta()`'s
+/// [`RegisterPorts`](crate::RegisterPorts)) (Decorator over the unfiltered rule).
 ///
 /// [`ProtectedMeta`] answers a bool and cannot fail, so a failing callback leaves the rule's answer and keeps its
-/// error for [`take_hook_error`](Self::take_hook_error), as `Wpdb::take_hook_error` does. Callers that can carry
-/// the error use [`try_is_protected`](Self::try_is_protected).
+/// error. Each call clears what the previous one kept. Run the port's caller through [`checked`](Self::checked),
+/// which turns a kept error into [`MetadataError::Hook`], payload intact.
 pub struct FilteredProtection {
     hooks: Rc<dyn HookApi>,
-    inner: Rc<dyn ProtectedMeta>,
+    rule: Rc<dyn ProtectedMeta>,
     error: RefCell<Option<HookError>>,
 }
 
 impl FilteredProtection {
-    pub fn new(hooks: Rc<dyn HookApi>, inner: Rc<dyn ProtectedMeta>) -> FilteredProtection {
+    /// `rule` is the unfiltered rule; the filter runs here, so `rule` must not apply it too.
+    pub fn new(hooks: Rc<dyn HookApi>, rule: Rc<dyn ProtectedMeta>) -> FilteredProtection {
         FilteredProtection {
             hooks,
-            inner,
+            rule,
             error: RefCell::new(None),
         }
     }
 
     /// `is_protected_meta()`, with a callback's failure as an error.
     pub fn try_is_protected(&self, key: &MetaKey, meta_type: &str) -> Result<bool, MetadataError> {
-        let protected = self.inner.is_protected(key, meta_type);
-        let out = filter(
-            &*self.hooks,
-            HookName::from("is_protected_meta"),
-            HookValue::Bool(protected),
-            || vec![key_value(key), HookValue::Str(meta_type.to_owned())],
-        )?;
-        Ok(crate::api::truthy(&pv(&out)?))
+        is_protected_meta(&*self.hooks, &*self.rule, key, meta_type)
     }
 
-    /// The failure of the last callback [`ProtectedMeta::is_protected`] met, once.
+    /// Runs `f` with this port, then reports the error a callback raised during it, if any.
+    pub fn checked<T>(&self, f: impl FnOnce(&dyn ProtectedMeta) -> T) -> Result<T, MetadataError> {
+        self.error.borrow_mut().take();
+        let out = f(self);
+        match self.error.borrow_mut().take() {
+            Some(e) => Err(MetadataError::Hook(e)),
+            None => Ok(out),
+        }
+    }
+
+    /// The failure the last [`ProtectedMeta::is_protected`] call met, once.
     pub fn take_hook_error(&self) -> Option<HookError> {
         self.error.borrow_mut().take()
     }
@@ -87,6 +110,7 @@ impl FilteredProtection {
 
 impl ProtectedMeta for FilteredProtection {
     fn is_protected(&self, key: &MetaKey, meta_type: &str) -> bool {
+        self.error.borrow_mut().take();
         match self.try_is_protected(key, meta_type) {
             Ok(protected) => protected,
             Err(e) => {
@@ -95,7 +119,7 @@ impl ProtectedMeta for FilteredProtection {
                     other => HookError::message(other.to_string()),
                 };
                 *self.error.borrow_mut() = Some(hook);
-                self.inner.is_protected(key, meta_type)
+                self.rule.is_protected(key, meta_type)
             }
         }
     }

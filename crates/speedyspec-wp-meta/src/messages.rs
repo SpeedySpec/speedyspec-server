@@ -11,9 +11,7 @@ use speedyspec_wp_meta_contracts::{
     MetaId, MetaKey, MetaType, MetadataError, ObjectId, UpdateOutcome,
 };
 
-use crate::{
-    AddOutcome, ByMidOutcome, FilteredProtection, MetadataApi, object_subtype, sanitize_meta,
-};
+use crate::{AddOutcome, ByMidOutcome, MetadataApi, object_subtype, sanitize_meta};
 
 macro_rules! message {
     ($kind:ident $name:ident { $($field:ident : $ty:ty),* } -> $result:ty, |$a:ident, $m:ident| $body:expr) => {
@@ -83,7 +81,7 @@ message!(command UpdateMetaCache { meta_type: MetaType, objects: Vec<ObjectId> }
 message!(query SanitizeMeta { key: MetaKey, value: PhpValue, object_type: String, subtype: String } -> R<PhpValue>,
     |a, m| sanitize_meta(&*a.d.hooks, &m.key, m.value, &m.object_type, &m.subtype));
 message!(query IsProtectedMeta { key: MetaKey, meta_type: String } -> R<bool>,
-    |a, m| FilteredProtection::new(a.d.hooks.clone(), a.d.protection.clone()).try_is_protected(&m.key, &m.meta_type));
+    |a, m| a.is_protected_meta(&m.key, &m.meta_type));
 message!(query GetObjectSubtype { meta_type: MetaType, object: ObjectId } -> R<String>,
     |a, m| object_subtype(&*a.d.hooks, &*a.d.subtypes, &m.meta_type, m.object));
 message!(query FilterDefaultMetadata { value: PhpValue, object: ObjectId, key: MetaKey, single: bool,

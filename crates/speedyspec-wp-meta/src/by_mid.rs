@@ -14,7 +14,8 @@ use crate::{MetaHookNames, sanitize_meta};
 /// What `get_metadata_by_mid()` returns.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ByMidOutcome {
-    /// The row; its `meta_value` is still serialized (the caller runs `maybe_unserialize()`).
+    /// The row. Its `meta_value` is the stored, still-serialized bytes: WordPress returns it unserialized, so the PHP
+    /// adapter runs `maybe_unserialize()` on it before handing the row to PHP.
     Found(Meta),
     /// `false`: an invalid id, no table, or no row.
     NotFound,

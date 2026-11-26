@@ -31,7 +31,9 @@ pub struct MetaDeps {
     pub keys: Rc<dyn MetaKeyIndex>,
     /// `get_object_subtype()`'s switch, before its filter.
     pub subtypes: Rc<dyn ObjectSubtypes>,
-    /// `is_protected_meta()`.
+    /// `is_protected_meta()`'s unfiltered rule ([`UnfilteredProtection`](crate::UnfilteredProtection) or a PHP
+    /// twin of it). The use cases apply the `is_protected_meta` filter once over it, so never bind a filtered
+    /// port ([`FilteredProtection`](crate::FilteredProtection)) here.
     pub protection: Rc<dyn ProtectedMeta>,
     /// `wp_installing()`.
     pub installing: Rc<dyn Installing>,
@@ -86,6 +88,40 @@ impl MetadataApi {
             Some(hook) => self.action(hook, args),
             None => Ok(()),
         }
+    }
+
+    /// `is_protected_meta()`: the rule, then the filter, once. A callback's failure is [`MetadataError::Hook`].
+    pub fn is_protected_meta(&self, key: &MetaKey, meta_type: &str) -> Result<bool, MetadataError> {
+        crate::is_protected_meta(&*self.d.hooks, &*self.d.protection, key, meta_type)
+    }
+
+    /// `register_meta()`'s second half ([`resolve_registration`](crate::resolve_registration)), asking
+    /// `is_protected_meta()` (filtered once) when no `auth_callback` was given. A failing `is_protected_meta`
+    /// callback is [`MetadataError::Hook`], payload intact, and nothing is registered.
+    pub fn resolve_registration(
+        &self,
+        object_type: &str,
+        key: &MetaKey,
+        prepared: crate::PreparedArgs,
+        revisions: &dyn speedyspec_wp_meta_contracts::RevisionSupport,
+        schema: &dyn speedyspec_wp_meta_contracts::DefaultSchemaCheck,
+        callables: &dyn speedyspec_wp_meta_contracts::Callables,
+    ) -> Result<crate::Registration, MetadataError> {
+        let protection =
+            crate::FilteredProtection::new(self.d.hooks.clone(), self.d.protection.clone());
+        protection.checked(|protected| {
+            crate::resolve_registration(
+                object_type,
+                key,
+                prepared,
+                &crate::RegisterPorts {
+                    revisions,
+                    schema,
+                    callables,
+                    protected,
+                },
+            )
+        })
     }
 
     /// `get_object_subtype()`: the port's answer through the `get_object_subtype_{type}` filter.
