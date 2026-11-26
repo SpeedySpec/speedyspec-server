@@ -158,6 +158,7 @@ function _doing_it_wrong($function_name, $message, $version) {
 function _deprecated_function($function_name, $version, $replacement = '') {}
 function get_post_type($post = null) { if (isset($GLOBALS['speedyspec_throw'])) { throw $GLOBALS['speedyspec_throw']; } return 'post'; }
 function wp_unslash($value) { return $value; }
+if (!defined('ARRAY_A')) { define('ARRAY_A', 'ARRAY_A'); }
 global $wpdb;
 $wpdb->set_prefix('wp_');
 wp_cache_init();

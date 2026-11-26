@@ -216,5 +216,75 @@ fn main() {
         "the_next_call_runs",
         "return is_int(add_metadata('post', 8, 'after', 'v'));",
     );
+    // A truthy get_{type}_metadata_by_mid answer is the row meta.php goes on with, as in WordPress 7.2: its
+    // meta_key, object column and meta_value are read where meta.php reads them.
+    yes(
+        "update_by_mid_goes_on_with_a_short_circuit_row",
+        r#"global $wpdb;
+        $mid = add_metadata('post', 12, 'stored_key', 'stored');
+        $row = function () use ($mid) {
+            return (object) ['meta_id' => (string) $mid, 'post_id' => '12', 'meta_key' => 'sc', 'meta_value' => 'old'];
+        };
+        add_filter('get_post_metadata_by_mid', $row);
+        $seen = [];
+        $log = function (...$args) use (&$seen) { $seen[] = $args; };
+        add_action('update_post_meta', $log, 10, 4);
+        add_action('updated_post_meta', $log, 10, 4);
+        $ok = update_metadata_by_mid('post', $mid, 'new');
+        remove_filter('get_post_metadata_by_mid', $row);
+        remove_action('update_post_meta', $log, 10);
+        remove_action('updated_post_meta', $log, 10);
+        $stored = $wpdb->get_row($wpdb->prepare('SELECT meta_key, meta_value FROM wp_postmeta WHERE meta_id = %d', $mid), ARRAY_A);
+        $out = [$ok, $stored, $seen];
+        $want = [true, ['meta_key' => 'sc', 'meta_value' => 'new'],
+            [[$mid, '12', 'sc', 'new'], [$mid, '12', 'sc', 'new']]];
+        return $out === $want ? true : $out;"#,
+    );
+    yes(
+        "delete_by_mid_goes_on_with_a_short_circuit_row",
+        r#"global $wpdb;
+        $mid = add_metadata('post', 13, 'stored_key', 'stored');
+        $row = function () use ($mid) {
+            return (object) ['meta_id' => (string) $mid, 'post_id' => '13', 'meta_key' => 'sc', 'meta_value' => ['a' => 1]];
+        };
+        add_filter('get_post_metadata_by_mid', $row);
+        $seen = [];
+        $log = function (...$args) use (&$seen) { $seen[] = $args; };
+        add_action('delete_post_meta', $log, 10, 4);
+        add_action('deleted_post_meta', $log, 10, 4);
+        $ok = delete_metadata_by_mid('post', $mid);
+        remove_filter('get_post_metadata_by_mid', $row);
+        remove_action('delete_post_meta', $log, 10);
+        remove_action('deleted_post_meta', $log, 10);
+        $left = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM wp_postmeta WHERE meta_id = %d', $mid));
+        $out = [$ok, $left, $seen];
+        $want = [true, 0, [[[$mid], 13, 'sc', ['a' => 1]], [[$mid], 13, 'sc', ['a' => 1]]]];
+        return $out === $want ? true : $out;"#,
+    );
+    // A query callback that throws during $wpdb->delete()'s charset lookup: wpdb hides it behind 0, but
+    // delete_metadata_by_mid() stops there, fires no deleted_* action, and the exception reaches the caller.
+    // (Native wpdb still runs the DELETE after its failed lookup, and its hidden path hands over an exception of the
+    // same class and message rather than the same object: both are wpdb's, outside meta.)
+    yes(
+        "hidden_delete_failure_is_rethrown",
+        r#"global $wpdb;
+        $wpdb->widgetmeta = 'wp_widgetmeta';
+        $wpdb->query('DROP TABLE IF EXISTS wp_widgetmeta');
+        $wpdb->query("CREATE TABLE wp_widgetmeta (meta_id bigint(20) unsigned NOT NULL auto_increment, widget_id bigint(20) unsigned NOT NULL default '0', meta_key varchar(255) default NULL, meta_value longtext, PRIMARY KEY (meta_id)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci");
+        $wpdb->query("INSERT INTO wp_widgetmeta (widget_id, meta_key, meta_value) VALUES (1, 'k', 'v')");
+        $thrown = new RuntimeException('charset lookup');
+        $sqls = [];
+        $cb = function ($sql) use ($thrown, &$sqls) { $sqls[] = $sql; if (str_starts_with($sql, 'SHOW FULL COLUMNS')) { throw $thrown; } return $sql; };
+        $fired = [];
+        foreach (['delete_widget_meta', 'deleted_widget_meta'] as $hook) {
+            add_action($hook, function () use ($hook, &$fired) { $fired[] = $hook; });
+        }
+        add_filter('query', $cb);
+        try { $r = delete_metadata_by_mid('widget', 1); $caught = $r; } catch (RuntimeException $e) { $caught = $e; }
+        remove_filter('query', $cb);
+        $left = (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_widgetmeta');
+        $out = [$caught instanceof RuntimeException ? $caught->getMessage() : $caught, $fired];
+        return $out === ['charset lookup', ['delete_widget_meta']] ? true : [$out, $left, $sqls];"#,
+    );
     check("done", true, ());
 }

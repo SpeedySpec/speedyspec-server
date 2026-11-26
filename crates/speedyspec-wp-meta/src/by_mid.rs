@@ -2,6 +2,7 @@
 //!
 //! These take no slashed input: `meta.php` runs no `wp_unslash()` here.
 
+use speedyspec_php_serialize::semantics::{get, to_php_int, to_php_string};
 use speedyspec_php_serialize::{PhpValue, maybe_unserialize};
 use speedyspec_wp_hooks_contracts::{HookName, HookValue, Key};
 use speedyspec_wp_meta_contracts::{Meta, MetaId, MetaKey, MetaType, MetadataError, ObjectId};
@@ -10,6 +11,29 @@ use crate::api::{
     MetadataApi, col, column, group, hv, int, key_value, pv, serialize_for_db, truthy,
 };
 use crate::{MetaHookNames, sanitize_meta};
+
+/// The fields of a meta row as `meta.php` reads them off `$meta`.
+struct Row {
+    /// `$meta->{$column}`, as given (a string from the database).
+    object: HookValue,
+    /// `$meta->meta_key`.
+    key: PhpValue,
+    /// `$meta->meta_value`, already unserialized.
+    value: PhpValue,
+}
+
+impl Row {
+    /// `(int) $meta->{$column}`, as an object id (a negative one reads as 0).
+    fn object_id(&self) -> ObjectId {
+        let id = pv(&self.object).map_or(0, |v| to_php_int(&v));
+        ObjectId(u64::try_from(id).unwrap_or(0))
+    }
+
+    /// `$meta->meta_key` as the key bytes (`null` is the empty key).
+    fn meta_key(&self) -> MetaKey {
+        MetaKey::new(to_php_string(&self.key))
+    }
+}
 
 /// What `get_metadata_by_mid()` returns.
 #[derive(Clone, Debug, PartialEq)]
@@ -53,11 +77,31 @@ impl MetadataApi {
 
     /// The row `update_metadata_by_mid()` and `delete_metadata_by_mid()` go on with: `if ( $meta )`.
     ///
-    /// A short-circuit answer from `get_{type}_metadata_by_mid` that is not a row object makes WordPress read
-    /// properties off a non-object (warnings, then null columns); the native path takes that as no row.
-    fn row(&self, meta_type: &MetaType, mid: MetaId) -> Result<Option<Meta>, MetadataError> {
+    /// A truthy `get_{type}_metadata_by_mid` answer is a row too, as in WordPress 7.2: a plugin serving meta from its
+    /// own storage returns a `stdClass` row, and `meta.php` reads `$meta->{$column}`, `$meta->meta_key` and
+    /// `$meta->meta_value` off it. An object or array answer gives those fields (a missing one is `null`); any other
+    /// truthy answer gives all three as `null`, as PHP reads properties off a non-object (with warnings).
+    fn row(&self, meta_type: &MetaType, mid: MetaId) -> Result<Option<Row>, MetadataError> {
         Ok(match self.get_metadata_by_mid(meta_type, mid)? {
-            ByMidOutcome::Found(meta) => Some(meta),
+            ByMidOutcome::Found(meta) => Some(Row {
+                object: col(meta.object_id.0),
+                key: PhpValue::Str(meta.key.as_bytes().to_vec()),
+                // get_metadata_by_mid() unserializes the column it read.
+                value: maybe_unserialize(&column(&meta.value)),
+            }),
+            ByMidOutcome::Filtered(answer) if truthy(&answer) => {
+                let fields = match &answer {
+                    PhpValue::Object { properties, .. } => properties.as_slice(),
+                    PhpValue::Array(items) => items.as_slice(),
+                    _ => &[],
+                };
+                let field = |name: &str| get(fields, name).cloned().unwrap_or(PhpValue::Null);
+                Some(Row {
+                    object: hv(&field(&meta_type.object_column())),
+                    key: field("meta_key"),
+                    value: field("meta_value"),
+                })
+            }
             _ => None,
         })
     }
@@ -95,29 +139,31 @@ impl MetadataApi {
         let Some(meta) = self.row(meta_type, mid)? else {
             return Ok(false);
         };
-        // `$meta->{$column}` is the column's string.
-        let object = meta.object_id;
-        let key = key.cloned().unwrap_or(meta.key);
-        let subtype = self.subtype(meta_type, object)?;
+        // `$object_id = $meta->{$column}`, as read: the column's string, or what a short-circuit row holds.
+        let object = meta.object.clone();
+        let key = key.cloned().unwrap_or_else(|| meta.meta_key());
+        let subtype = self.subtype(meta_type, meta.object_id())?;
         // `$_meta_value` is taken before `sanitize_meta()` here, unlike in update_metadata().
         let passed = value.clone();
         let sanitized = sanitize_meta(&*self.d.hooks, &key, value, meta_type.name(), &subtype)?;
         let (serialized, bytes) = serialize_for_db(&sanitized);
         self.action(names.update().as_str(), || {
-            vec![int(mid.0), col(object.0), key_value(&key), hv(&passed)]
+            vec![int(mid.0), object.clone(), key_value(&key), hv(&passed)]
         })?;
         self.legacy_action(names.legacy_update(), || {
-            vec![int(mid.0), col(object.0), key_value(&key), hv(&serialized)]
+            vec![int(mid.0), object.clone(), key_value(&key), hv(&serialized)]
         })?;
         if repository.update_by_mid(mid, &key, bytes.as_ref())? == 0 {
             return Ok(false);
         }
-        self.d.cache.delete(&int(object.0), &group(meta_type))?;
+        // `wp_cache_delete( $object_id, ... )` answers false for a key it rejects (a short-circuit row without the
+        // object column); it never stops the update.
+        let _ = self.d.cache.delete(&object, &group(meta_type));
         self.action(names.updated().as_str(), || {
-            vec![int(mid.0), col(object.0), key_value(&key), hv(&passed)]
+            vec![int(mid.0), object.clone(), key_value(&key), hv(&passed)]
         })?;
         self.legacy_action(names.legacy_updated(), || {
-            vec![int(mid.0), col(object.0), key_value(&key), hv(&serialized)]
+            vec![int(mid.0), object.clone(), key_value(&key), hv(&serialized)]
         })?;
         Ok(true)
     }
@@ -146,10 +192,10 @@ impl MetadataApi {
         let Some(meta) = self.row(meta_type, mid)? else {
             return Ok(false);
         };
-        let object: ObjectId = meta.object_id;
-        let value = maybe_unserialize(&column(&meta.value));
+        // `(int) $meta->{$column}`, `$meta->meta_key` and `$meta->meta_value`, as read off the row.
+        let object = meta.object_id();
         let ids = || HookValue::Array(vec![(Key::Int(0), int(mid.0))]);
-        let args = || vec![ids(), int(object.0), key_value(&meta.key), hv(&value)];
+        let args = || vec![ids(), int(object.0), hv(&meta.key), hv(&meta.value)];
         self.action(names.delete().as_str(), args)?;
         self.legacy_action(names.legacy_delete_by_mid().as_deref(), || vec![int(mid.0)])?;
         let result = repository.delete_by_mid(mid)? > 0;
