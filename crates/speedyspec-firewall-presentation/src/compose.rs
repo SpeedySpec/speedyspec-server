@@ -5,7 +5,8 @@ use speedyspec_firewall::FirewallLog;
 use speedyspec_firewall_app::{FirewallCache, FirewallScope};
 use speedyspec_firewall_infra_cache::{CacheBanStore, CacheCounterStore, SystemClock};
 use speedyspec_firewall_infra_options::OptionsSettingsSource;
-use speedyspec_wp_hooks::{HookApi, HookError};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::HookError;
 use speedyspec_wp_options::Options;
 
 use crate::hooks::register_hooks;

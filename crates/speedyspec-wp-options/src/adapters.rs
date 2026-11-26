@@ -6,7 +6,8 @@ use std::rc::Rc;
 use speedyspec_php_serialize::{
     from_hook_value, maybe_serialize, maybe_unserialize, to_hook_value,
 };
-use speedyspec_wp_hooks::{Count, HookApi, HookName, HookValue};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookName, HookValue};
 
 use crate::{
     Deprecations, Installing, Multisite, OptionGroups, OptionName, OptionsError, ProtectedOptions,

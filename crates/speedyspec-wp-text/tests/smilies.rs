@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use common::text;
 use proptest::prelude::*;
-use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_text::adapters::{FixedSmilies, NoSmilies};
 use speedyspec_wp_text::smilies::{SmileyEngine, convert_smilies_core, convert_smilies_reference};
 use speedyspec_wp_text_contracts::Smilies;

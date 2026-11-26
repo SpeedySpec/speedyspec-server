@@ -1,7 +1,7 @@
 //! `update_option` with a compare-and-swap write, for writers that read, change and write back an option that other
 //! processes change too (cron's `cron` option). Optimistic Offline Lock: the version is the stored bytes as read.
 
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 use crate::api::{OptionsApi, isset, unset_key};
 use crate::write::PlannedWrite;

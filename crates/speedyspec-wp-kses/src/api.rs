@@ -4,7 +4,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use speedyspec_hooks::{Key, Value};
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName};
 use speedyspec_wp_kses_contracts::{
     AllowedHtml, AttributeEscaper, Context, HtmlApiSanitizer, KsesError, OperatingMode, Payload,
     Protocols, UnfilteredHtmlPolicy, UriAttributes, ValueCallback,

@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 
 use indexmap::IndexMap;
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_options::{OptionGroups, OptionsError, SettingsStore};
 
 /// A group's allowed names: PHP's next free index, and each entry with its index.

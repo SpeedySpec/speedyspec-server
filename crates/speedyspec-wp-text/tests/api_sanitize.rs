@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use common::{php_int, text};
-use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_text::adapters::PhpMtRand;
 use speedyspec_wp_text::title::{SanitizeContext, sanitize_title_with_dashes};
 use speedyspec_wp_text_corpus::{Php, assert_corpus, from_value, to_value};
@@ -115,7 +115,7 @@ fn sanitize_key_non_scalar_is_empty() {
         *log.borrow_mut() = Some(args[1].clone());
         args[0].clone()
     });
-    let array = HookValue::Array(vec![(speedyspec_wp_hooks::Key::Int(0), HookValue::Str("Key".into()))]);
+    let array = HookValue::Array(vec![(speedyspec_wp_hooks_contracts::Key::Int(0), HookValue::Str("Key".into()))]);
     assert_eq!(bytes_of(&h.api.sanitize_key(&array).unwrap()), b"");
     assert_eq!(seen.borrow().clone(), Some(array));
     assert_eq!(bytes_of(&h.api.sanitize_key(&HookValue::Null).unwrap()), b"");

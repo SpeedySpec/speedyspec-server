@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
 use speedyspec_routing::Rule;
-use speedyspec_wp_hooks::{HookApi, HookName, HookValue, Key};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{HookName, HookValue, Key};
 use speedyspec_wp_options::OptionsApi;
 
 use crate::{RewriteError, RewriteState};

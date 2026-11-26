@@ -11,6 +11,7 @@ license.workspace = true
 speedyspec-wp-cron-contracts = { path = "../speedyspec-wp-cron-contracts" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-data = { path = "../speedyspec-data" }

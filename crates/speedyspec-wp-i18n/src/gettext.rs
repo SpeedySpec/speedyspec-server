@@ -7,7 +7,8 @@ use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName, HookStore, HookValue};
+use speedyspec_wp_hooks::{HookApi, HookStore};
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName, HookValue};
 
 use crate::controller::TranslationController;
 use crate::plural::PluralError;

@@ -1,6 +1,6 @@
 //! `wp_set_option_autoload_values`, `wp_set_options_autoload` and `wp_set_option_autoload`.
 
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 use crate::api::{OptionsApi, key_of, unset_key};
 use crate::{Autoload, OptionsError};

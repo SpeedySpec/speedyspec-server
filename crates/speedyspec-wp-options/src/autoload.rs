@@ -1,6 +1,6 @@
 //! The `autoload` column's values, and what a caller asked for.
 
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 /// The values `wp_autoload_values_to_autoload()` treats as autoloaded by default.
 pub const DEFAULT_AUTOLOAD_VALUES: [&str; 4] = ["yes", "on", "auto-on", "auto"];

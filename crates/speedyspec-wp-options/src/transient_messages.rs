@@ -6,7 +6,7 @@ use speedyspec_container::Container;
 use speedyspec_cqrs::{
     Command, CommandHandler, Query, QueryHandler, bind_command_handler, bind_query_handler,
 };
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 use crate::{OptionsError, TransientsApi};
 

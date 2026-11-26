@@ -1,7 +1,7 @@
 //! The `SAVEQUERIES` query log and `log_query_custom_data` (a Decorator step after each statement runs).
 
 use speedyspec_data::Statement;
-use speedyspec_wp_hooks::{Count, HookName};
+use speedyspec_wp_hooks_contracts::{Count, HookName};
 
 use crate::php::to_bytes;
 use crate::{LoggedQuery, WpDb, WpDbError, WpValue};

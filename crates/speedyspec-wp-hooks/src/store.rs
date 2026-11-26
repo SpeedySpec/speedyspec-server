@@ -1,13 +1,7 @@
 //! The outbound port: where hooks, the run counts and the current-hook stack live.
 
-use crate::{ArrayKey, HookKey, HookValue, Partition, PrioritySlice, WpHook};
-
-/// Which run count: `$wp_actions` or `$wp_filters`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Count {
-    Actions,
-    Filters,
-}
+use crate::{Partition, PrioritySlice, WpHook};
+use speedyspec_wp_hooks_contracts::{ArrayKey, Count, HookKey, HookValue};
 
 /// `$wp_filter`, `$wp_actions`, `$wp_filters` and `$wp_current_filter`. Hooks and counts are looked up by
 /// [`HookKey`], whose hash is PHP's own: a store keeps it rather than hashing the name again.

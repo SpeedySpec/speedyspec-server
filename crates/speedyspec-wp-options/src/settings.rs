@@ -5,7 +5,8 @@
 use std::rc::Rc;
 
 use indexmap::IndexMap;
-use speedyspec_wp_hooks::{Callback, CallbackId, HookApi, HookName, HookValue, Key};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Callback, CallbackId, HookName, HookValue, Key};
 
 use crate::{Deprecations, OptionsError, php_empty};
 

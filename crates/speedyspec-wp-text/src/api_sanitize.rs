@@ -176,7 +176,7 @@ impl TextApi {
         let raw = || bytes_value(filename.to_vec());
         let special_hook = self.hook("sanitize_file_name_chars");
         let filtered;
-        let special = if self.d.hooks.skip_if_empty(&special_hook, speedyspec_wp_hooks::Count::Filters).map_err(crate::api::text_error)? {
+        let special = if self.d.hooks.skip_if_empty(&special_hook, speedyspec_wp_hooks_contracts::Count::Filters).map_err(crate::api::text_error)? {
             default_special_chars_replace()
         } else {
             let list: Vec<Vec<u8>> = match self.filter(&special_hook, bytes_list(default_special_chars()), || vec![raw()])? {

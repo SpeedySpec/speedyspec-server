@@ -2,7 +2,8 @@
 
 use std::rc::{Rc, Weak};
 
-use speedyspec_wp_hooks::{Callback, Count, HookApi, HookName, HookValue, Key};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Callback, Count, HookName, HookValue, Key};
 
 use crate::{
     Autoload, AutoloadRequest, DEFAULT_AUTOLOAD_VALUES, OptionsError, php_empty, php_string,
@@ -235,7 +236,7 @@ pub fn register_default_filters(hooks: &Rc<HookApi>) -> Result<(), OptionsError>
         )
         .map_err(|e| match e {
             OptionsError::Hook(h) => h,
-            other => speedyspec_wp_hooks::HookError::message(other.to_string()),
+            other => speedyspec_wp_hooks_contracts::HookError::message(other.to_string()),
         })
     });
     hooks.add_filter(

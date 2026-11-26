@@ -14,7 +14,7 @@ pub trait ValueCallbacks {
     fn resolve(&self, callable: &HookValue) -> Option<ValueCallback>;
     /// A PHP function as a filter callback; `None` where there is no PHP (Rust callers), and kses then registers
     /// nothing for it.
-    fn named_filter(&self, _name: &str) -> Option<speedyspec_wp_hooks::Callback> {
+    fn named_filter(&self, _name: &str) -> Option<speedyspec_wp_hooks_contracts::Callback> {
         None
     }
 }

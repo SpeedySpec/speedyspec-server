@@ -7,7 +7,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use common::{Escaper, Policy, Uploads, filter};
-use speedyspec_wp_hooks::{HookApi, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_kses::{
     DefaultGlobals, KsesApi, KsesDeps, MemoryOperatingMode, NoHtmlApiSanitizer, NoValueCallbacks,

@@ -1,7 +1,7 @@
 //! The read path: `get_option`, `wp_load_alloptions`, `wp_prime_option_caches`, `wp_prime_option_caches_by_group`,
 //! `get_options` and `wp_protect_special_option`, in `option.php`'s order of checks, hooks, queries and cache calls.
 
-use speedyspec_wp_hooks::{Count, HookName, HookValue, Key};
+use speedyspec_wp_hooks_contracts::{Count, HookName, HookValue, Key};
 
 use crate::api::{OptionsApi, isset, key_of, set_key, truthy};
 use crate::{OptionName, OptionsError, autoload_values, php_string};

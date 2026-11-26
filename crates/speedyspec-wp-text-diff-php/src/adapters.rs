@@ -4,7 +4,8 @@ use std::rc::Rc;
 
 use speedyspec_php::{CallFailure, PhpError};
 use speedyspec_php_ext::PhpObject;
-use speedyspec_wp_hooks::{HookApi, HookValue as Value, Key};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{HookValue as Value, Key};
 use speedyspec_wp_text_diff::contracts::{
     CheckedLineFilter, RowLabels, TextDiffHost, TextDiffer, TextDifferError,
 };

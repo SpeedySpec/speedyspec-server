@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use speedyspec_routing::Rule;
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 use crate::{
     Multisite, PageUris, PostTypes, PublicQueryVars, QueryableTaxonomy, RandomablePostType,

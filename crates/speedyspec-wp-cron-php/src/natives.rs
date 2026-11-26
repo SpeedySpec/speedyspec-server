@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use speedyspec_wp_cron::{CronApi, SpawnOutcome, truthy};
 use speedyspec_wp_cron_contracts::{CronError, CronResult, SiteRef};
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 fn arg(args: &[HookValue], i: usize) -> HookValue {
     args.get(i).cloned().unwrap_or(HookValue::Null)

@@ -3,7 +3,8 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{HookApi, HookValue, Key};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{HookValue, Key};
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache};
 
 use crate::api::{isset, set_key, truthy, unset_key};

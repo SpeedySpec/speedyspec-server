@@ -3,7 +3,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName, HookValue};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName, HookValue};
 use speedyspec_wp_text_diff::contracts::{
     CheckedLineFilter, LineHtmlFilter, RowKind, TextDifferError,
 };

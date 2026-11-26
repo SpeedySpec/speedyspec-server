@@ -3,7 +3,7 @@
 
 mod support;
 
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_options::{
     Autoload, ConditionalWrite, OptionName, OptionRepository, SerializedValue,
 };
@@ -85,7 +85,7 @@ fn absent_expected_inserts_once() {
     let mut notoptions = HookValue::Array(vec![]);
     if let HookValue::Array(items) = &mut notoptions {
         items.push((
-            speedyspec_wp_hooks::Key::Str("x".into()),
+            speedyspec_wp_hooks_contracts::Key::Str("x".into()),
             HookValue::Bool(true),
         ));
     }

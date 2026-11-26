@@ -20,6 +20,7 @@ speedyspec-wp-i18n-files = { path = "../speedyspec-wp-i18n-files" }
 speedyspec-wp-i18n-memory = { path = "../speedyspec-wp-i18n-memory" }
 speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
 speedyspec-wp-utf8-php = { path = "../speedyspec-wp-utf8-php" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-hooks-memory = { path = "../speedyspec-hooks-memory" }

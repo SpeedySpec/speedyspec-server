@@ -2,7 +2,7 @@ mod rig;
 
 use rig::*;
 use speedyspec_native_stage::StageOutcome;
-use speedyspec_wp_hooks::{HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{HookName, HookValue};
 
 fn failed_login(rig: &Rig) {
     rig.hooks

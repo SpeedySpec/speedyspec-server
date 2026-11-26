@@ -1,7 +1,7 @@
 //! PHP's value semantics the cron functions rely on.
 
 use speedyspec_wp_cron_contracts::key_for;
-use speedyspec_wp_hooks::{HookValue, Key};
+use speedyspec_wp_hooks_contracts::{HookValue, Key};
 
 /// PHP's conversion to `bool`.
 pub fn truthy(value: &HookValue) -> bool {

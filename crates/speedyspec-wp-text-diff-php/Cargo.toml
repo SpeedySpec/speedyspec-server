@@ -15,6 +15,7 @@ speedyspec-php-ext = { path = "../speedyspec-php-ext" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-text-diff = { path = "../speedyspec-wp-text-diff" }
 speedyspec-wp-text-diff-contracts = { path = "../speedyspec-wp-text-diff-contracts" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-compat = { path = "../speedyspec-compat" }

@@ -5,7 +5,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use speedyspec_hooks::{Key, Value as HookValue};
-use speedyspec_wp_hooks::{Count, HookApi, HookName};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookName};
 use speedyspec_wp_shortcode_contracts::ShortcodeTagNames;
 use speedyspec_wp_kses::KsesApi;
 use speedyspec_wp_text_contracts::{

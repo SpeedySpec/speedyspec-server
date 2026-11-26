@@ -5,7 +5,7 @@ mod support;
 
 use serde_json::Value;
 use speedyspec_routing::{Endpoint, EndpointMask, PermastructArgs, Rule, RulePriority};
-use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_rewrite::{
     QueryableTaxonomy, RandomablePostType, RewriteState, RewriteStateSource, RuleQuery,
 };
@@ -312,7 +312,7 @@ fn rewrite_rules_array_filter_changes_result() {
             &HookName::from("rewrite_rules_array"),
             Callback::rust("only_one", |_: &[HookValue]| {
                 Ok(HookValue::Array(vec![(
-                    speedyspec_wp_hooks::Key::Str("x/?$".into()),
+                    speedyspec_wp_hooks_contracts::Key::Str("x/?$".into()),
                     HookValue::Str("index.php?x=1".into()),
                 )]))
             }),

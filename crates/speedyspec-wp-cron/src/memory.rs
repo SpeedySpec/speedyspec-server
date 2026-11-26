@@ -8,8 +8,8 @@ use speedyspec_wp_cron_contracts::{
     CronError, CronResult, CronStep, CronStore, DoingCron, ErrorReporter, NetworkSites,
     SaveOutcome, SiteRef, SiteSwitcher, Version, WakeReporter,
 };
-use speedyspec_wp_hooks::HookValue;
-use speedyspec_wp_hooks::Key;
+use speedyspec_wp_hooks_contracts::HookValue;
+use speedyspec_wp_hooks_contracts::Key;
 
 type BeforeSave = Box<dyn FnOnce(&MemoryCronStore)>;
 

@@ -12,7 +12,7 @@ use std::cell::Cell;
 use std::time::Duration;
 
 use speedyspec_wp_cron_contracts::{CronError, CronResult, CronStep, RunSummary};
-use speedyspec_wp_hooks::{HookName, HookValue, Key};
+use speedyspec_wp_hooks_contracts::{HookName, HookValue, Key};
 
 use crate::CronApi;
 use crate::api::hook_error;

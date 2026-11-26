@@ -4,9 +4,9 @@ use std::rc::Rc;
 
 use std::sync::LazyLock;
 
-use crate::{
-    ArrayKey, Callback, CallbackId, Count, HasFilterResult, HookError, HookKey, HookName,
-    HookStore, HookValue, WpHook,
+use crate::{HookStore, WpHook};
+use speedyspec_wp_hooks_contracts::{
+    ArrayKey, Callback, CallbackId, Count, HasFilterResult, HookError, HookKey, HookName, HookValue,
 };
 
 /// WordPress's `_deprecated_hook()` (it stays outside the Hook API).

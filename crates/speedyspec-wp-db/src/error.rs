@@ -3,7 +3,7 @@
 use std::fmt;
 
 use speedyspec_data::DbError;
-use speedyspec_wp_hooks::HookError;
+use speedyspec_wp_hooks_contracts::HookError;
 
 /// Every failure of a `wpdb` method.
 #[derive(Debug, Clone)]

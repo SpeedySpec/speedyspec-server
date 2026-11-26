@@ -5,7 +5,8 @@ use std::rc::Rc;
 
 use indexmap::IndexMap;
 use speedyspec_data::{DbError, SqlStore, Statement, StatementKind};
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName};
 
 use crate::binary::parse_bytes;
 use crate::escape::string_value;

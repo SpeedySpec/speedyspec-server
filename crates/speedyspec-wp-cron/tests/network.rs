@@ -6,7 +6,8 @@ mod support;
 use speedyspec_wp_cron::memory::{CollectingErrors, MemoryDoingCron, MemoryNetwork, RecordingWake};
 use speedyspec_wp_cron::{CronApi, CronParts, RustArgsKeyer};
 use speedyspec_wp_cron_contracts::{CronError, NetworkSites, SiteRef, SiteSwitcher};
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use std::cell::Cell;
 use std::rc::Rc;
@@ -193,11 +194,11 @@ fn legacy_option_is_upgraded_in_its_own_site() {
     let n = net(&[1, 2]);
     // A version-less (pre-2.1) option: `_get_cron_array()` upgrades and saves it.
     let legacy = HookValue::Array(vec![(
-        speedyspec_wp_hooks::Key::Int(NOW - 10),
+        speedyspec_wp_hooks_contracts::Key::Int(NOW - 10),
         HookValue::Array(vec![(
-            speedyspec_wp_hooks::Key::Str("legacy".into()),
+            speedyspec_wp_hooks_contracts::Key::Str("legacy".into()),
             HookValue::Array(vec![(
-                speedyspec_wp_hooks::Key::Str("args".into()),
+                speedyspec_wp_hooks_contracts::Key::Str("args".into()),
                 HookValue::Array(vec![]),
             )]),
         )]),
@@ -217,7 +218,7 @@ fn legacy_option_is_upgraded_in_its_own_site() {
     assert!(
         items
             .iter()
-            .any(|(k, _)| *k == speedyspec_wp_hooks::Key::Str("version".into())),
+            .any(|(k, _)| *k == speedyspec_wp_hooks_contracts::Key::Str("version".into())),
         "upgraded in site 2's own store"
     );
 }

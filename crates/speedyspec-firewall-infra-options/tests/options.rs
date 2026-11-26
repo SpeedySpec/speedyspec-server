@@ -2,7 +2,8 @@ use std::rc::Rc;
 
 use speedyspec_firewall::{RawSettings, SettingsSource};
 use speedyspec_firewall_infra_options::OptionsSettingsSource;
-use speedyspec_wp_hooks::{HookApi, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
 use speedyspec_wp_options::{Options, OptionsApi, OptionsDeps};

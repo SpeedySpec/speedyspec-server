@@ -12,6 +12,7 @@ speedyspec-wp-cron-contracts = { path = "../speedyspec-wp-cron-contracts" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
 md5 = { package = "md-5", version = "0.11.0" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }

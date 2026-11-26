@@ -2,7 +2,7 @@
 
 use speedyspec_router::wordpress::{ExpandContext, PhpArray, generate_rewrite_rules};
 use speedyspec_routing::{EndpointMask, PermastructArgs, Rule};
-use speedyspec_wp_hooks::{HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{HookName, HookValue};
 
 use crate::ports::{rules_from_value, rules_to_value};
 use crate::{RewriteError, RewriteService, RewriteState, RewriteStateSource, UriIndex};

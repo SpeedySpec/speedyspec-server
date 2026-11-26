@@ -10,8 +10,9 @@ use speedyspec_cqrs::{
     Command, CommandHandler, Query, QueryHandler, bind_command_handler, bind_query_handler,
 };
 
-use crate::{
-    ArrayKey, Callback, CallbackId, HasFilterResult, HookApi, HookError, HookName, HookValue,
+use crate::HookApi;
+use speedyspec_wp_hooks_contracts::{
+    ArrayKey, Callback, CallbackId, HasFilterResult, HookError, HookName, HookValue,
 };
 
 /// `add_filter()`: always true.

@@ -10,7 +10,7 @@ use speedyspec_php::ext_php_rs::ffi::{
     zend_array_destroy, zend_hash_str_find, zval,
 };
 use speedyspec_php_ext::Value;
-use speedyspec_wp_hooks::Callback;
+use speedyspec_wp_hooks_contracts::Callback;
 use speedyspec_wp_hooks_php::php_callback;
 use speedyspec_wp_kses::{
     AllowedGlobals, DefaultGlobals, UploadsLocation, ValueCallbacks, allowed_spec_to_value,

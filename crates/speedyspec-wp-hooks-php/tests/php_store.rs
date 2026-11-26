@@ -8,7 +8,8 @@ use speedyspec_container_php::ContainerArea;
 use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, NativeArea, Php};
 use speedyspec_php_ext::{Key, Value, twins_area};
-use speedyspec_wp_hooks::{Callback, HookName, HookStore, HookValue};
+use speedyspec_wp_hooks::HookStore;
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::{HOOK_STORE, PhpHookStore, WpHooksArea};
 

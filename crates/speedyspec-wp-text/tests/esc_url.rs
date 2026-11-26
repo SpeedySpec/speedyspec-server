@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use common::text;
 use proptest::prelude::*;
-use speedyspec_wp_hooks::{Callback, HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_kses_contracts::Protocols;
 use speedyspec_wp_text::esc_url::esc_url_characters;
 use speedyspec_wp_text::preg::{Pattern, preg_replace};
@@ -85,7 +85,7 @@ fn allowed_protocols_filter_before_wp_loaded() {
     let h = api::harness();
     assert_eq!(h.api.esc_url(b"ftp://a", None, b"display").unwrap(), HookValue::Str("ftp://a".into()));
     add(&h, "kses_allowed_protocols", |_| {
-        HookValue::Array(vec![(speedyspec_wp_hooks::Key::Int(0), HookValue::Str("http".into()))])
+        HookValue::Array(vec![(speedyspec_wp_hooks_contracts::Key::Int(0), HookValue::Str("http".into()))])
     });
     assert_eq!(h.api.esc_url(b"ftp://a", None, b"display").unwrap(), HookValue::Str(String::new()));
 }

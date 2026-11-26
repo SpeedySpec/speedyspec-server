@@ -13,7 +13,8 @@ use speedyspec_router_presentation::{
 };
 use speedyspec_router_store_memory::MemoryRouteTableStore;
 use speedyspec_routing::{Resolution, RouteMatch, Rule};
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_rewrite::memory::MemoryRewriteOptions;
 use speedyspec_wp_rewrite::{RewriteOptions, WpRouting};

@@ -2,7 +2,7 @@
 //! `wp_next_scheduled()`, `wp_get_schedule()` and `wp_get_ready_cron_jobs()`.
 
 use speedyspec_wp_cron_contracts::{CronArray, CronError};
-use speedyspec_wp_hooks::{HookValue, Key};
+use speedyspec_wp_hooks_contracts::{HookValue, Key};
 
 use crate::CronApi;
 use crate::php::{

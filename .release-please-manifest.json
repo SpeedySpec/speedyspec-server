@@ -26,6 +26,7 @@
   "crates/speedyspec-server-presentation": "0.1.7",
   "crates/speedyspec-server-static": "0.1.7",
   "crates/speedyspec-wp-hooks": "0.1.4",
+  "crates/speedyspec-wp-hooks-contracts": "0.1.0",
   "crates/speedyspec-wp-hooks-memory": "0.1.4",
   "crates/speedyspec-wp-hooks-php": "0.1.10",
   "crates/speedyspec-data-corpus": "0.3.0",

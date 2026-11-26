@@ -7,7 +7,8 @@ use std::rc::Rc;
 
 use speedyspec_container::Container;
 use speedyspec_cqrs::{CommandBus, QueryBus};
-use speedyspec_wp_hooks::{Callback, CallbackId, HasFilterResult, HookApi, HookName, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks_contracts::{Callback, CallbackId, HasFilterResult, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_shortcode::{AddShortcode, DoShortcode, HookApiFilters, ShortcodeExists, register_shortcode_handlers};
 use speedyspec_wp_shortcode_contracts::{PhpValue, ShortcodeError};
@@ -136,7 +137,7 @@ fn a_throwing_filter_keeps_its_payload() {
         .add_filter(
             &HookName::from("do_shortcode_tag"),
             Callback::rust("throw", |_: &[HookValue]| {
-                Err(speedyspec_wp_hooks::HookError { message: "boom".into(), payload: Some(Rc::new(42_u8)) })
+                Err(speedyspec_wp_hooks_contracts::HookError { message: "boom".into(), payload: Some(Rc::new(42_u8)) })
             }),
             &HookValue::Int(10),
             1,

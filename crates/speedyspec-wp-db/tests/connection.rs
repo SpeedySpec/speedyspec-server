@@ -2,7 +2,7 @@ mod support;
 
 use speedyspec_data::DbError;
 use speedyspec_wp_db::{HostCall, WpValue, WpdbState};
-use speedyspec_wp_hooks::HookName;
+use speedyspec_wp_hooks_contracts::HookName;
 use support::{Answer, filter, rig, rows};
 
 #[test]

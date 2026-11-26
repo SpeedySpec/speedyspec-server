@@ -53,7 +53,10 @@ fn refresh_before_wp_loaded_defers_save() {
     assert_eq!(f.options.stored_rules(), None);
     f.loaded.set(true);
     f.hooks
-        .do_action(&speedyspec_wp_hooks::HookName::from("wp_loaded"), vec![])
+        .do_action(
+            &speedyspec_wp_hooks_contracts::HookName::from("wp_loaded"),
+            vec![],
+        )
         .unwrap();
     assert_eq!(f.options.stored_rules(), Some(rules));
 }
@@ -90,7 +93,10 @@ fn flush_before_wp_loaded_runs_on_wp_loaded_once_with_hard_kept() {
     assert_eq!(f.options.stored_rules(), None);
     f.loaded.set(true);
     f.hooks
-        .do_action(&speedyspec_wp_hooks::HookName::from("wp_loaded"), vec![])
+        .do_action(
+            &speedyspec_wp_hooks_contracts::HookName::from("wp_loaded"),
+            vec![],
+        )
         .unwrap();
     assert!(f.options.stored_rules().is_some());
     assert_eq!(support::hooks_run(&f), vec!["flush_rewrite_rules_hard"]);
@@ -124,7 +130,10 @@ fn flush_deferred_by_refresh_is_soft() {
         .unwrap();
     f.loaded.set(true);
     f.hooks
-        .do_action(&speedyspec_wp_hooks::HookName::from("wp_loaded"), vec![])
+        .do_action(
+            &speedyspec_wp_hooks_contracts::HookName::from("wp_loaded"),
+            vec![],
+        )
         .unwrap();
     assert!(f.options.stored_rules().is_some());
     assert!(support::hooks_run(&f).is_empty());
@@ -143,7 +152,10 @@ fn deferred_hard_decides_later_flushes_too() {
         .unwrap();
     f.loaded.set(true);
     f.hooks
-        .do_action(&speedyspec_wp_hooks::HookName::from("wp_loaded"), vec![])
+        .do_action(
+            &speedyspec_wp_hooks_contracts::HookName::from("wp_loaded"),
+            vec![],
+        )
         .unwrap();
     let mut s = f.source.load().unwrap();
     f.service

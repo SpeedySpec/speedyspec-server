@@ -16,6 +16,7 @@ speedyspec-wp-theme-json-contracts = { path = "../speedyspec-wp-theme-json-contr
 indexmap = "2"
 fancy-regex = "0.20"
 speedyspec-wp-i18n = { path = "../speedyspec-wp-i18n" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }

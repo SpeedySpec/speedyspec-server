@@ -1,7 +1,8 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations, Key};
+use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_options::{
     Autoload, AutoloadPolicy, AutoloadRequest, WordPressAutoloadPolicy, autoload_values,

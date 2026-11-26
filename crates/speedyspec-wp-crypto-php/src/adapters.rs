@@ -5,7 +5,8 @@ use std::rc::Rc;
 use base64::Engine as _;
 use speedyspec_php::native::NativeError;
 use speedyspec_wp_crypto_contracts::{Clock, FileHasher, Translator, TrustedKeysFilter};
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName, HookValue};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName, HookValue};
 use speedyspec_wp_text_contracts::{
     Diagnostics, ErrorLevel, SiteSettings, TextError, WordCountType,
 };

@@ -10,7 +10,8 @@ use speedyspec_wp_crypto::{
 };
 use speedyspec_wp_crypto_contracts::{CryptoLibrary, FileHasher, TrustedKeysFilter};
 use speedyspec_wp_crypto_sodium::Sodium;
-use speedyspec_wp_hooks::{HookApi, HookValue};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_text_escape::EscapeApi;
 
 use crate::adapters::{

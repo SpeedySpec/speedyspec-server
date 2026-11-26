@@ -14,3 +14,4 @@ indexmap = "2"
 speedyspec-container = { path = "../speedyspec-container", version = "0.1.4" }
 speedyspec-cqrs = { path = "../speedyspec-cqrs", version = "0.1.4" }
 speedyspec-hooks = { path = "../speedyspec-hooks", version = "0.1.4" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts", version = "0.1.0" }

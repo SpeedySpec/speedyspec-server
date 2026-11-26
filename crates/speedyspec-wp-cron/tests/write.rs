@@ -1,7 +1,7 @@
 mod support;
 
 use speedyspec_wp_cron_contracts::{CronResult, EventKey};
-use speedyspec_wp_hooks::{HookValue, Key};
+use speedyspec_wp_hooks_contracts::{HookValue, Key};
 use support::*;
 
 fn t() -> bool {

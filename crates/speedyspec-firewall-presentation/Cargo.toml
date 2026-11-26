@@ -16,6 +16,7 @@ speedyspec-firewall-infra-options = { path = "../speedyspec-firewall-infra-optio
 speedyspec-native-stage = { path = "../speedyspec-native-stage" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }

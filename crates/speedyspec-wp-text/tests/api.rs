@@ -5,7 +5,7 @@ mod common;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Callback, HookName, HookValue, Key};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
 use speedyspec_wp_shortcode_contracts::{ShortcodeTagNames, TagName};
 use speedyspec_wp_text_memory::FixedSiteSettings;
 
@@ -168,7 +168,7 @@ fn strip_all_tags_reports_objects_and_arrays() {
 
 #[test]
 fn hook_error_payload_survives() {
-    use speedyspec_wp_hooks::HookError;
+    use speedyspec_wp_hooks_contracts::HookError;
     let h = api::harness();
     h.hooks
         .add_filter(

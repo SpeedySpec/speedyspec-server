@@ -5,7 +5,7 @@
 //! the registry adds it as a filter.
 
 use speedyspec_php_ext::{Key, Value};
-use speedyspec_wp_hooks::Callback;
+use speedyspec_wp_hooks_contracts::Callback;
 use speedyspec_wp_hooks_php::php_callback;
 use speedyspec_wp_options::{
     ArgsParsing, FilterDefaultOption, GetRegisteredSettings, RegisterSetting, SettingArgsInput,

@@ -2,7 +2,8 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{ArrayKey, CallbackId, HasFilterResult, HookApi, HookName, HookValue};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{ArrayKey, CallbackId, HasFilterResult, HookName, HookValue};
 use speedyspec_wp_text::{FilterContext, register_text_filters};
 
 #[path = "common/api.rs"]
@@ -225,7 +226,7 @@ fn registers_plan_4_rows() {
 
 #[test]
 fn callback_errors_keep_their_payload() {
-    use speedyspec_wp_hooks::{Callback, HookError};
+    use speedyspec_wp_hooks_contracts::{Callback, HookError};
     let h = api::harness();
     register_text_filters(&h.api, &h.hooks, FilterContext { admin: false }).unwrap();
     let boom = Callback::rust("boom", |_: &[HookValue]| -> Result<HookValue, HookError> {

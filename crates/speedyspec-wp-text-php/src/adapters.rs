@@ -8,7 +8,8 @@ use std::rc::Rc;
 
 use speedyspec_php::{CallFailure, PhpError};
 use speedyspec_php_ext::{Key, Value};
-use speedyspec_wp_hooks::{HasFilterResult, HookApi, HookName};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{HasFilterResult, HookName};
 use speedyspec_wp_shortcode_contracts::{ShortcodeTagNames, TagName};
 use speedyspec_wp_text::strings::to_php_string;
 use speedyspec_wp_text_contracts::{

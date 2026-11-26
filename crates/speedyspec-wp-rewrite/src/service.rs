@@ -3,7 +3,8 @@ use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{HookApi, HookError};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::HookError;
 
 use crate::{
     Multisite, PageUris, PostTypes, PublicQueryVars, RandomContentRedirects, RewriteOptions,

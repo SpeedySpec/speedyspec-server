@@ -6,7 +6,8 @@ use speedyspec_container::Container;
 use speedyspec_hooks::{Key, Value};
 use speedyspec_php::PhpError;
 use speedyspec_php_ext::PhpObject;
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName};
 use speedyspec_wp_password::{php_long, php_truthy};
 use speedyspec_wp_password_contracts::{
     CostLimits, PASSWORD_COST_LIMITS, PasswordChecker, PasswordCostLimits, PasswordError,

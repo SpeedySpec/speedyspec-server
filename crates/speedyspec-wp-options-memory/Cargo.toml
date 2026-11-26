@@ -12,6 +12,7 @@ indexmap = "2"
 speedyspec-data = { path = "../speedyspec-data" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-options = { path = "../speedyspec-wp-options" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-cache = { path = "../speedyspec-cache" }

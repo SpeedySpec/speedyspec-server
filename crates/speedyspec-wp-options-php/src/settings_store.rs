@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use indexmap::IndexMap;
 use speedyspec_php_ext::{Key, Value};
-use speedyspec_wp_hooks::Callback;
+use speedyspec_wp_hooks_contracts::Callback;
 use speedyspec_wp_hooks_php::php_callback;
 use speedyspec_wp_options::{OptionsError, SettingsStore, php_empty};
 

@@ -1,7 +1,7 @@
 //! `WP_Rewrite::mod_rewrite_rules()` and `iis7_url_rewrite_rules()`. SpeedySpec writes neither file; plugins that
 //! read the text still get WordPress's.
 
-use speedyspec_wp_hooks::{HookName, HookValue};
+use speedyspec_wp_hooks_contracts::{HookName, HookValue};
 
 use crate::generate::url_path;
 use crate::{RewriteError, RewriteService, RewriteState, RewriteStateSource};

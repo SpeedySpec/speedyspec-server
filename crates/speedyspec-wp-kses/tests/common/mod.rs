@@ -3,7 +3,8 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Callback, HookApi, HookName, HookValue, IgnoreDeprecations};
+use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_kses::{DefaultGlobals, KsesApi, KsesDeps, NoValueCallbacks, UploadsLocation};
 use speedyspec_wp_kses_contracts::{AttributeEscaper, KsesError, UnfilteredHtmlPolicy};
@@ -72,7 +73,7 @@ pub fn setup_shared(unfiltered: bool) -> (Rc<HookApi>, Rc<KsesApi>) {
 /// An oracle value as a hook value.
 pub fn hook_value(v: &serde_json::Value) -> HookValue {
     use serde_json::Value as Json;
-    use speedyspec_wp_hooks::Key;
+    use speedyspec_wp_hooks_contracts::Key;
     match v {
         Json::Null => HookValue::Null,
         Json::Bool(b) => HookValue::Bool(*b),

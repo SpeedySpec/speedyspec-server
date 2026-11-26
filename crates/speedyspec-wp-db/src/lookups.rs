@@ -5,7 +5,7 @@ use std::cell::Cell;
 use std::sync::OnceLock;
 
 use regex::bytes::Regex;
-use speedyspec_wp_hooks::{Count, HookName};
+use speedyspec_wp_hooks_contracts::{Count, HookName};
 
 use crate::escape::string_value;
 use crate::php::to_bytes;

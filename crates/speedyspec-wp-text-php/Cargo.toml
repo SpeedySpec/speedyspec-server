@@ -24,6 +24,7 @@ speedyspec-wp-shortcode-contracts = { path = "../speedyspec-wp-shortcode-contrac
 speedyspec-wp-text = { path = "../speedyspec-wp-text" }
 speedyspec-wp-text-contracts = { path = "../speedyspec-wp-text-contracts" }
 speedyspec-wp-text-escape = { path = "../speedyspec-wp-text-escape" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-container-php = { path = "../speedyspec-container-php" }

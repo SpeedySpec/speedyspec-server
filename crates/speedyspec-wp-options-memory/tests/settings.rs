@@ -1,8 +1,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{
-    Callback, CallbackId, HasFilterResult, HookApi, HookName, HookValue, IgnoreDeprecations, Key,
+use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks_contracts::{
+    Callback, CallbackId, HasFilterResult, HookName, HookValue, Key,
 };
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
@@ -176,7 +177,7 @@ fn default_filter_registered() {
         format!("{found:?}"),
         format!(
             "{:?}",
-            HasFilterResult::At(speedyspec_wp_hooks::ArrayKey::Int(10))
+            HasFilterResult::At(speedyspec_wp_hooks_contracts::ArrayKey::Int(10))
         )
     );
 }

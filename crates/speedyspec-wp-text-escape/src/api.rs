@@ -4,7 +4,8 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use speedyspec_hooks::Value as HookValue;
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName};
 use speedyspec_wp_text_contracts::{Diagnostics, SiteSettings, TextError};
 
 use crate::charset::Charset;

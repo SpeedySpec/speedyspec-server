@@ -312,7 +312,7 @@ fn review_fixes(php: &Php, container: &Rc<Container>) {
 
 /// Whether the callback `id` at `priority` on `hook` is stored as a Rust callback.
 fn is_rust(hooks: &speedyspec_wp_hooks::HookApi, hook: &str, id: &str, priority: i64) -> bool {
-    use speedyspec_wp_hooks::{ArrayKey, Callback, HookName};
+    use speedyspec_wp_hooks_contracts::{ArrayKey, Callback, HookName};
     let name = HookName::from(hook);
     let Some(found) = name.key().ok().and_then(|k| hooks.store().hook(k)) else {
         return false;

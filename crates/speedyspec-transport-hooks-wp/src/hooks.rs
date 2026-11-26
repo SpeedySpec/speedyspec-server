@@ -4,7 +4,8 @@ use std::rc::Rc;
 
 use speedyspec_operation_contracts::{Category, OperationError, Value};
 use speedyspec_transport_contracts::TransportHooks;
-use speedyspec_wp_hooks::{HookApi, HookError, HookName, HookValue};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{HookError, HookName, HookValue};
 
 use crate::{from_hook, to_hook};
 

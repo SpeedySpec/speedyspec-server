@@ -16,3 +16,4 @@ speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks" }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory" }
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
 speedyspec-wp-options-memory = { path = "../speedyspec-wp-options-memory" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }

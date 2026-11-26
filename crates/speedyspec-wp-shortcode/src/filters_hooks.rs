@@ -1,6 +1,9 @@
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{Callback, CallbackId, Count, HasFilterResult, HookApi, HookError, HookName, HookValue};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{
+    Callback, CallbackId, Count, HasFilterResult, HookError, HookName, HookValue,
+};
 use speedyspec_wp_shortcode_contracts::{ContextGuard, PhpValue, ShortcodeError, ShortcodeFilters, Thrown, php_bytes};
 
 /// The filters through the Rust Hook API, so PHP plugins' filters keep working (an Adapter).

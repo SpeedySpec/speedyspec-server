@@ -18,7 +18,7 @@ impl ExternalObjectCache for PhpExternalObjectCache {
 /// `$value` as PHP holds it: a `Callback` carried opaquely becomes its PHP callable again.
 pub(crate) fn plain(value: Value) -> Value {
     match value {
-        Value::Opaque(any) => match any.downcast_ref::<speedyspec_wp_hooks::Callback>() {
+        Value::Opaque(any) => match any.downcast_ref::<speedyspec_wp_hooks_contracts::Callback>() {
             Some(cb) => cb.value(),
             None => Value::Opaque(any),
         },

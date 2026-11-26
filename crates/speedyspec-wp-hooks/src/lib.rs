@@ -16,18 +16,8 @@ mod messages;
 mod store;
 
 pub use api::{DeprecatedHooks, HookApi, IgnoreDeprecations};
-pub use callback::{
-    Callback, CallbackId, CallbackIdentity, CallbackShape, HookCallback, HookError,
-};
-pub use hook::{
-    Entry, HasFilterResult, HookIteration, HookState, Partition, PrioritySlice, WpHook,
-};
-pub use key::{
-    ArrayKey, HookKey, HookName, Prehashed, PrehashedHasher, PriorityOrder, php_string_hash,
-};
+pub use callback::{CallbackIdentity, CallbackShape};
+pub use hook::{Entry, HookIteration, HookState, Partition, PrioritySlice, WpHook};
+pub use key::PriorityOrder;
 pub use messages::*;
-pub use store::{Count, HookStore};
-
-/// A value passed through hooks, shaped like a PHP value.
-pub type HookValue = speedyspec_hooks::Value;
-pub use speedyspec_hooks::Key;
+pub use store::HookStore;

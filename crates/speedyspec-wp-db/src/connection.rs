@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 use speedyspec_data::{DbError, SqlStore};
 use speedyspec_data_query::parse_one;
 use speedyspec_hooks::Key;
-use speedyspec_wp_hooks::{Count, HookName};
+use speedyspec_wp_hooks_contracts::{Count, HookName};
 
 use crate::api::html_escape;
 use crate::caps::version_compare;

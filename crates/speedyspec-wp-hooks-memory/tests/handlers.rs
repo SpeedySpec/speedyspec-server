@@ -6,12 +6,14 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_cqrs::{CommandBus, QueryBus};
 use speedyspec_wp_hooks::{
-    AddAction, AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray, ArrayKey,
-    Callback, CallbackId, CallbackIdentity, CallbackShape, Count, CurrentAction, CurrentFilter,
-    CurrentPriority, DeprecatedHooks, DidAction, DidFilter, DoAction, DoActionDeprecated,
-    DoActionRefArray, DoingAction, DoingFilter, HasAction, HasFilter, HasFilterResult, HookApi,
-    HookError, HookKey, HookName, HookStore, HookValue, RemoveAction, RemoveAllActions,
-    RemoveAllFilters, RemoveFilter, register_hook_handlers,
+    AddAction, AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray,
+    CallbackIdentity, CallbackShape, CurrentAction, CurrentFilter, CurrentPriority, DeprecatedHooks,
+    DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray, DoingAction, DoingFilter,
+    HasAction, HasFilter, HookApi, HookStore, RemoveAction, RemoveAllActions, RemoveAllFilters,
+    RemoveFilter, register_hook_handlers,
+};
+use speedyspec_wp_hooks_contracts::{
+    ArrayKey, Callback, CallbackId, Count, HasFilterResult, HookError, HookKey, HookName, HookValue,
 };
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 

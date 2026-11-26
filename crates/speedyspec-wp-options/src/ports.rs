@@ -1,7 +1,7 @@
 //! The options API's ports: the repository (one method per `$wpdb` call `option.php` makes, so query counts
 //! match), the value codec, and the ports to WordPress code not yet ported.
 
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 
 use crate::Option as OptionEntity;
 use crate::{Autoload, OptionName, OptionsError, SerializedValue};

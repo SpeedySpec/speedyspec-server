@@ -6,7 +6,8 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
-use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName, HookValue as Value};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookError, HookName, HookValue as Value};
 use speedyspec_wp_media::functions::{
     Outcome, add_id3_tag_data, media_creation_timestamp, read_audio_metadata, read_video_metadata,
 };

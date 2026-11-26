@@ -2,7 +2,8 @@ use std::rc::Rc;
 
 use speedyspec_firewall::FirewallLog;
 use speedyspec_firewall_app::FirewallCache;
-use speedyspec_wp_hooks::{Callback, HookApi, HookError, HookName, HookValue};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Callback, HookError, HookName, HookValue};
 
 use crate::stage::CurrentClient;
 

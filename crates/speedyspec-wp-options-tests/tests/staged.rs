@@ -7,7 +7,7 @@ use speedyspec_data::{
     ChangeKind, DbError, DirectStore, EngineHandle, EngineLookup, Health, PendingChange, UnitOfWork,
 };
 use speedyspec_data_uow::DefaultUnitOfWork;
-use speedyspec_wp_hooks::HookValue;
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_options::{Autoload, Staged};
 use support::*;
 

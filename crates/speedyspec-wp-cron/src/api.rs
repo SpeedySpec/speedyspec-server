@@ -6,7 +6,8 @@ use speedyspec_wp_cron_contracts::{
     ArgsKeyer, Clock, CronError, CronStore, DoingCron, ErrorReporter, NetworkSites, PhpObjects,
     SiteSwitcher, Translator, WakeReporter,
 };
-use speedyspec_wp_hooks::{HookApi, HookError, HookName, HookValue};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{HookError, HookName, HookValue};
 
 /// What [`CronApi`] is built from: the Hook API and the ports.
 pub struct CronParts {

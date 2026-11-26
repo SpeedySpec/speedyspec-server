@@ -4,7 +4,8 @@
 use std::rc::Rc;
 
 use speedyspec_data::DbError;
-use speedyspec_wp_hooks::{HookApi, HookName, HookValue};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{HookName, HookValue};
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache};
 
 use crate::api::{isset, truthy};

@@ -3,7 +3,7 @@
 use std::fmt;
 
 use speedyspec_data::CommitError;
-use speedyspec_wp_hooks::{HookError, HookValue};
+use speedyspec_wp_hooks_contracts::{HookError, HookValue};
 use speedyspec_wp_object_cache::ObjectCacheError;
 
 #[derive(Debug)]

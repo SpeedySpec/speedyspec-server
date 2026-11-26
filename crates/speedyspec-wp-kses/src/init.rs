@@ -3,7 +3,7 @@
 use std::rc::Rc;
 
 use speedyspec_hooks::Value;
-use speedyspec_wp_hooks::{Callback, CallbackId, HookName};
+use speedyspec_wp_hooks_contracts::{Callback, CallbackId, HookName};
 use speedyspec_wp_kses_contracts::KsesError;
 
 use crate::KsesApi;
@@ -37,14 +37,14 @@ impl KsesApi {
         Ok(Callback::rust(name, move |args: &[Value]| {
             let api = me
                 .upgrade()
-                .ok_or_else(|| speedyspec_wp_hooks::HookError::message("kses is gone"))?;
+                .ok_or_else(|| speedyspec_wp_hooks_contracts::HookError::message("kses is gone"))?;
             let data = args
                 .first()
                 .and_then(|v| php_string(&v.read()))
                 .unwrap_or_default();
             run(&api, &data)
                 .map(|out| bytes_value(&out))
-                .map_err(|e| speedyspec_wp_hooks::HookError::message(e.to_string()))
+                .map_err(|e| speedyspec_wp_hooks_contracts::HookError::message(e.to_string()))
         }))
     }
 

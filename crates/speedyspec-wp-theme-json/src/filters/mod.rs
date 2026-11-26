@@ -3,7 +3,8 @@
 use std::rc::Rc;
 
 use speedyspec_hooks::Value;
-use speedyspec_wp_hooks::{Count, HookApi, HookName};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::{Count, HookName};
 use speedyspec_wp_theme_json_contracts::ThemeJsonError;
 use speedyspec_wp_theme_json_contracts::ports::ThemeJsonFilters;
 
@@ -22,7 +23,8 @@ impl HookApiFilters {
 
     fn filter(&self, hook: &str, value: Value) -> Result<Value, ThemeJsonError> {
         let hook = HookName::from(hook);
-        let error = |e: speedyspec_wp_hooks::HookError| ThemeJsonError::Callback(e.message);
+        let error =
+            |e: speedyspec_wp_hooks_contracts::HookError| ThemeJsonError::Callback(e.message);
         if self
             .hooks
             .skip_if_empty(&hook, Count::Filters)

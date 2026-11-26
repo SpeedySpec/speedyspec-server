@@ -184,6 +184,11 @@
       "skip-github-release": true,
       "skip-changelog": true
     },
+    "crates/speedyspec-wp-hooks-contracts": {
+      "component": "speedyspec-wp-hooks-contracts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
     "crates/speedyspec-wp-hooks-memory": {
       "component": "speedyspec-wp-hooks-memory",
       "skip-github-release": true,

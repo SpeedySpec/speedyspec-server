@@ -43,11 +43,13 @@ use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, Args, NativeError};
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_wp_hooks::{
-    AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray, ArrayKey, Count,
-    CurrentFilter, DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray,
-    DoingFilter, Entry, HasFilter, HasFilterResult, HookApi, HookError, HookKey, HookName,
-    HookStore, Partition, PrioritySlice, RemoveAllFilters, RemoveFilter, WpHook,
-    register_hook_handlers,
+    AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray, CurrentFilter,
+    DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray, DoingFilter, Entry,
+    HasFilter, HookApi, HookStore, Partition, PrioritySlice, RemoveAllFilters, RemoveFilter,
+    WpHook, register_hook_handlers,
+};
+use speedyspec_wp_hooks_contracts::{
+    ArrayKey, Count, HasFilterResult, HookError, HookKey, HookName,
 };
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 
@@ -408,7 +410,13 @@ fn has_filter_value(result: HasFilterResult) -> Value {
 fn has_filter_args(
     args: &Args<'_>,
     first: usize,
-) -> Result<(Option<speedyspec_wp_hooks::CallbackId>, Option<i64>), NativeError> {
+) -> Result<
+    (
+        Option<speedyspec_wp_hooks_contracts::CallbackId>,
+        Option<i64>,
+    ),
+    NativeError,
+> {
     let callback = if args.is_false(first) {
         None
     } else {

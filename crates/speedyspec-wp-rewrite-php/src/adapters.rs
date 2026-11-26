@@ -5,7 +5,8 @@ use std::rc::Rc;
 
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_routing::{GuardAnswer, Rule, RuleGuard};
-use speedyspec_wp_hooks::{HookApi, HookName};
+use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks_contracts::HookName;
 use speedyspec_wp_rewrite::{
     Multisite, PageUris, PostTypes, PublicQueryVars, QueryableTaxonomy, RandomContentRedirects,
     RandomablePostType, RewriteError, SiteTranslations, SiteUrls, Taxonomies, UriIndex,

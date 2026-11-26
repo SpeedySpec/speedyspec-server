@@ -79,7 +79,7 @@ fn php_url_test_string(item: &[u8], value: &[u8]) -> Vec<u8> {
 #[test]
 fn url_test_string_matches_php_str_replace() {
     use proptest::prelude::*;
-    use speedyspec_wp_hooks::HookValue;
+    use speedyspec_wp_hooks_contracts::HookValue;
     use std::cell::RefCell;
     use std::rc::Rc;
     let pieces = prop::sample::select(vec![

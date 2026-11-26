@@ -22,6 +22,7 @@ speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 speedyspec-wp-options-sql = { path = "../speedyspec-wp-options-sql" }
 speedyspec-wp-hooks-php = { path = "../speedyspec-wp-hooks-php" }
 indexmap = "2"
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts" }
 
 [dev-dependencies]
 speedyspec-cache = { path = "../speedyspec-cache" }

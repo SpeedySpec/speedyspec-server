@@ -17,6 +17,7 @@ speedyspec-php = { path = "../speedyspec-php", version = "0.7.0" }
 speedyspec-php-ext = { path = "../speedyspec-php-ext", version = "0.1.6" }
 speedyspec-wp-hooks = { path = "../speedyspec-wp-hooks", version = "0.1.4" }
 speedyspec-wp-hooks-memory = { path = "../speedyspec-wp-hooks-memory", version = "0.1.4" }
+speedyspec-wp-hooks-contracts = { path = "../speedyspec-wp-hooks-contracts", version = "0.1.0" }
 
 [dev-dependencies]
 serde_json = "1"
