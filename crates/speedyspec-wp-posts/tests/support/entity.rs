@@ -1,5 +1,5 @@
 //! Shared by the entity tests: finds `compat/posts-entity/cases.json`, replays a `dates` case's clock, and builds
-//! the slug and hierarchy scenarios' table, post types, truncation and statement log.
+//! the slug and hierarchy scenarios' table, the pages' posts, post types, truncation and statement log.
 
 use std::cell::RefCell;
 use std::path::PathBuf;
@@ -178,11 +178,14 @@ impl PostTypes for FakeTypes {
     }
 }
 
-/// A recorded row's columns (all strings, as `$wpdb` returns them) as a [`Post`].
+/// A recorded row's columns (all strings, as `$wpdb` returns them) as a [`Post`]; also a recorded `WP_Post`, whose
+/// `ID`, `post_parent` and `menu_order` `get_instance()` cast to int.
 #[allow(dead_code)]
 pub fn row_post(row: &Value) -> Post {
-    let PhpValue::Array(columns) = super::decode(row) else {
-        panic!("a recorded row is an array");
+    let columns = match super::decode(row) {
+        PhpValue::Array(columns) => columns,
+        PhpValue::Object { class, properties } if class == "WP_Post" => properties,
+        other => panic!("a recorded row is an array or a WP_Post, not {other:?}"),
     };
     let column = |name: &str| -> Vec<u8> {
         columns
@@ -190,7 +193,8 @@ pub fn row_post(row: &Value) -> Post {
             .find(|(k, _)| matches!(k, PhpKey::Str(key) if key == name.as_bytes()))
             .map(|(_, v)| match v {
                 PhpValue::Str(s) => s.clone(),
-                other => panic!("column {name} is a string, not {other:?}"),
+                PhpValue::Int(n) => n.to_string().into_bytes(),
+                other => panic!("column {name} is a string or an int, not {other:?}"),
             })
             .unwrap_or_else(|| panic!("the row has no {name}"))
     };

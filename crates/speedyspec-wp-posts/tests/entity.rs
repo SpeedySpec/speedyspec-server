@@ -1,18 +1,23 @@
 //! Replays what `compat/posts-entity/record.php` recorded from WordPress 7.2-RC2: `wp_resolve_post_date()` with no
 //! `wp_checkdate` callback, its clock replayed from the recording, and the `get_gmt_from_date()` of each date it
 //! returned, which `wp_insert_post()` takes as the GMT date of a post with no GMT date and a status that does not
-//! float; and `wp_unique_post_slug()` with no filters, its result and its `$wpdb` statements in order.
+//! float; `wp_unique_post_slug()` with no filters, its result and its `$wpdb` statements in order; the hierarchy
+//! functions (`wp_get_post_parent_id()`, `get_post_ancestors()`, `get_page_uri()` before its filter,
+//! `wp_check_post_hierarchy_for_loops()` and `wp_find_hierarchy_loop()`) with no object cache, their results and
+//! statements; and `get_page_hierarchy()` and `get_page_children()` over lists of posts, with no database.
 
 mod support;
 
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::{
     InsertDateInput, NoBadSlugs, PostStatusRegistry, SlugPorts, SlugRequest, Uncached,
-    insert_post_dates, resolve_post_date, unique_post_slug,
+    check_post_hierarchy_for_loops, find_hierarchy_loop, insert_post_dates, page_children,
+    page_hierarchy, page_uri, post_ancestors, post_parent_id, resolve_post_date, unique_post_slug,
 };
-use speedyspec_wp_posts_contracts::PostId;
+use speedyspec_wp_posts_contracts::{PostId, PostReader};
 use support::entity::{
-    FakeTypes, Recording, TableClock, TextTruncation, context, entity_cases, seed, statements,
+    FakeTypes, Recording, TableClock, TextTruncation, context, entity_cases, row_post, seed,
+    statements,
 };
 
 fn statuses() -> PostStatusRegistry {
@@ -147,4 +152,159 @@ fn slug_scenarios_match_wordpress() {
         }
     }
     assert_eq!(calls, 40);
+}
+
+/// A recorded call's arguments, decoded.
+fn call_args(call: &serde_json::Value) -> Vec<PhpValue> {
+    let PhpValue::Array(args) = support::decode(&call["args"]) else {
+        panic!("the arguments are an array");
+    };
+    args.into_iter().map(|(_, v)| v).collect()
+}
+
+/// An int argument as a post ID.
+fn id_of(value: &PhpValue) -> PostId {
+    match value {
+        PhpValue::Int(n) => PostId(u64::try_from(*n).unwrap()),
+        other => panic!("an ID is an int, not {other:?}"),
+    }
+}
+
+/// A PHP list of IDs (`array( 0 => 4, 1 => 3 )`).
+fn id_list(ids: &[PostId]) -> PhpValue {
+    PhpValue::Array(
+        ids.iter()
+            .enumerate()
+            .map(|(i, id)| {
+                (
+                    PhpKey::Int(i64::try_from(i).unwrap()),
+                    PhpValue::Int(i64::try_from(id.0).unwrap()),
+                )
+            })
+            .collect(),
+    )
+}
+
+/// An ID, or false for `None`.
+fn id_or_false(id: Option<PostId>) -> PhpValue {
+    id.map_or(PhpValue::Bool(false), |id| {
+        PhpValue::Int(i64::try_from(id.0).unwrap())
+    })
+}
+
+#[test]
+fn hierarchy_matches_wordpress() {
+    let cases = entity_cases();
+    let scenarios = cases["hierarchy"].as_array().unwrap();
+    assert_eq!(scenarios.len(), 1);
+    let mut calls = 0;
+    for scenario in scenarios {
+        let repository = Recording::new(seed(&scenario["rows"]));
+        let reader = Uncached(&repository);
+        for call in scenario["calls"].as_array().unwrap() {
+            calls += 1;
+            let function = call["fn"].as_str().unwrap();
+            let args = call_args(call);
+            let label = format!("{function}{args:?}");
+            let result = match function {
+                "wp_get_post_parent_id" => {
+                    id_or_false(post_parent_id(&reader, id_of(&args[0])).unwrap())
+                }
+                "get_post_ancestors" => match reader.post(id_of(&args[0])).unwrap() {
+                    Some(post) => id_list(&post_ancestors(&reader, &post).unwrap()),
+                    None => id_list(&[]),
+                },
+                "get_page_uri" => match reader.post(id_of(&args[0])).unwrap() {
+                    Some(page) => PhpValue::Str(page_uri(&reader, &page).unwrap()),
+                    None => PhpValue::Bool(false),
+                },
+                "wp_check_post_hierarchy_for_loops" => {
+                    let check =
+                        check_post_hierarchy_for_loops(id_of(&args[0]), id_of(&args[1]), &reader)
+                            .unwrap();
+                    // No recorded call meets a loop without the post: WordPress would have updated the table.
+                    assert!(check.break_loop.is_empty(), "{label}: break_loop");
+                    PhpValue::Int(i64::try_from(check.parent.0).unwrap())
+                }
+                "wp_find_hierarchy_loop" => {
+                    assert_eq!(args[0], PhpValue::Str(b"wp_get_post_parent_id".to_vec()));
+                    let start_parent = match &args[2] {
+                        PhpValue::Null => None,
+                        parent => Some(id_of(parent)),
+                    };
+                    let members =
+                        find_hierarchy_loop(&reader, id_of(&args[1]), start_parent).unwrap();
+                    PhpValue::Array(
+                        members
+                            .iter()
+                            .map(|id| {
+                                (
+                                    PhpKey::Int(i64::try_from(id.0).unwrap()),
+                                    PhpValue::Bool(true),
+                                )
+                            })
+                            .collect(),
+                    )
+                }
+                other => panic!("unrecorded function {other}"),
+            };
+            assert_eq!(result, support::decode(&call["result"]), "{label}");
+            assert_eq!(
+                repository.take(),
+                statements(&call["statements"]),
+                "{label}: statements"
+            );
+        }
+    }
+    assert_eq!(calls, 21);
+}
+
+#[test]
+fn pages_match_wordpress() {
+    let cases = entity_cases();
+    let entries = cases["pages"].as_array().unwrap();
+    assert_eq!(entries.len(), 4);
+    let mut calls = 0;
+    for entry in entries {
+        let name = entry["name"].as_str().unwrap();
+        let pages: Vec<_> = entry["pages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(row_post)
+            .collect();
+        for call in entry["calls"].as_array().unwrap() {
+            calls += 1;
+            let function = call["fn"].as_str().unwrap();
+            let page_id = id_of(&call_args(call)[0]);
+            let label = format!("{name}: {function}({})", page_id.0);
+            match function {
+                "get_page_hierarchy" => {
+                    let result = PhpValue::Array(
+                        page_hierarchy(&pages, page_id)
+                            .into_iter()
+                            .map(|(id, slug)| {
+                                (
+                                    PhpKey::Int(i64::try_from(id.0).unwrap()),
+                                    PhpValue::Str(slug.as_bytes().to_vec()),
+                                )
+                            })
+                            .collect(),
+                    );
+                    assert_eq!(result, support::decode(&call["result"]), "{label}");
+                }
+                "get_page_children" => {
+                    let expected: Vec<_> = call["result"]["v"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|pair| row_post(&pair[1]))
+                        .collect();
+                    assert_eq!(page_children(page_id, &pages), expected, "{label}");
+                }
+                other => panic!("{name}: unrecorded function {other}"),
+            }
+        }
+    }
+    assert_eq!(calls, 16);
 }

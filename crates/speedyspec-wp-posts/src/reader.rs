@@ -17,3 +17,65 @@ impl PostReader for Uncached<'_> {
         self.0.find(id)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use speedyspec_wp_posts_contracts::{PostTypeName, Slug};
+
+    use super::*;
+
+    /// A repository that answers nothing: any statement panics.
+    struct Silent;
+
+    impl PostRepository for Silent {
+        fn engine(&self) -> String {
+            "silent".to_owned()
+        }
+
+        fn find(&self, id: PostId) -> Result<Option<Post>, PostError> {
+            panic!("find({})", id.0)
+        }
+
+        fn insert(&self, _post: &Post) -> Result<Option<PostId>, PostError> {
+            panic!("insert")
+        }
+
+        fn attachment_slug_owner(
+            &self,
+            _slug: &Slug,
+            _except: PostId,
+        ) -> Result<Option<Slug>, PostError> {
+            panic!("attachment_slug_owner")
+        }
+
+        fn hierarchical_slug_owner(
+            &self,
+            _slug: &Slug,
+            _post_type: &PostTypeName,
+            _except: PostId,
+            _parent: PostId,
+        ) -> Result<Option<Slug>, PostError> {
+            panic!("hierarchical_slug_owner")
+        }
+
+        fn flat_slug_owner(
+            &self,
+            _slug: &Slug,
+            _post_type: &PostTypeName,
+            _except: PostId,
+        ) -> Result<Option<Slug>, PostError> {
+            panic!("flat_slug_owner")
+        }
+    }
+
+    #[test]
+    fn uncached_zero_is_none_without_a_statement() {
+        assert_eq!(Uncached(&Silent).post(PostId(0)).unwrap(), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "find(3)")]
+    fn uncached_reads_through_find() {
+        let _ = Uncached(&Silent).post(PostId(3));
+    }
+}
