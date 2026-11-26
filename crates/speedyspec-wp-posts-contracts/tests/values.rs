@@ -1,4 +1,4 @@
-//! The post type and status values and errors, as WordPress 7.1.5 defines them.
+//! The post type and status values and errors, as WordPress 7.2-RC2 defines them.
 
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts_contracts::{

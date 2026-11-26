@@ -13,3 +13,6 @@ role = "contracts"
 
 [dependencies]
 speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+
+[features]
+conformance = []

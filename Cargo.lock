@@ -6615,6 +6615,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "speedyspec-wp-posts-memory"
+version = "0.1.0"
+dependencies = [
+ "speedyspec-wp-posts-contracts",
+]
+
+[[package]]
 name = "speedyspec-wp-rewrite"
 version = "0.1.4"
 dependencies = [
