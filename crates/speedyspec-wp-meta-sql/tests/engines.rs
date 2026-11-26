@@ -2,6 +2,7 @@
 //! charset, prefix and missing-table cases. MySQL and PostgreSQL run when `SPEEDYSPEC_TEST_MYSQL_URL` or
 //! `SPEEDYSPEC_TEST_POSTGRES_URL` is set, and print `skipped` otherwise.
 
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Mutex;
@@ -59,6 +60,7 @@ fn meta_table(table: &str, object_column: &str, id_column: &str) -> String {
 struct Rig {
     db: Rc<NativeWpdb>,
     hooks: Rc<WpHookApi>,
+    host: Rc<MemoryWpdbHost>,
     repos: SqlMetaRepositories,
 }
 
@@ -110,11 +112,12 @@ fn rig(engine: Engine) -> Option<Rig> {
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
+    let host = Rc::new(MemoryWpdbHost::new());
     let db = Rc::new(NativeWpdb::new(WpDbParts {
         store: registry.sql("default").unwrap(),
         hooks: hooks.clone(),
         state: Rc::new(MemoryWpdbState::new()),
-        host: Rc::new(MemoryWpdbHost::new()),
+        host: host.clone(),
         config: WpDbConfig {
             user: String::new(),
             password: String::new(),
@@ -137,7 +140,12 @@ fn rig(engine: Engine) -> Option<Rig> {
             .unwrap();
     }
     let repos = SqlMetaRepositories::new(db.clone(), engine.name());
-    Some(Rig { db, hooks, repos })
+    Some(Rig {
+        db,
+        hooks,
+        host,
+        repos,
+    })
 }
 
 fn of(name: &str) -> MetaType {
@@ -288,5 +296,76 @@ fn hook_failure_surfaces() {
         let hidden = repo.add(ObjectId(1), &MetaKey::from("k"), None);
         assert!(matches!(hidden, Ok(None)), "{hidden:?}");
         assert!(take_hook_error().is_some());
+    });
+}
+
+/// `add_metadata()` sends no formats, so `comment_id` (not in `$wpdb->field_types`) goes in as a string.
+#[test]
+fn comment_add_sends_comment_id_as_string() {
+    on(Engine::Sqlite, |rig| {
+        rig.db
+            .query(&meta_table("wp_commentmeta", "comment_id", "meta_id"))
+            .unwrap();
+        let sent: Rc<RefCell<Vec<String>>> = Rc::default();
+        let log = sent.clone();
+        rig.hooks
+            .add_filter(
+                &HookName::from("query"),
+                Callback::rust("record", move |args: &[WpValue]| {
+                    let query = args.first().cloned().unwrap_or(WpValue::Null);
+                    if let WpValue::Str(text) = &query {
+                        log.borrow_mut().push(text.clone());
+                    }
+                    Ok(query)
+                }),
+                &WpValue::Int(10),
+                1,
+            )
+            .unwrap();
+        repo(&rig, "comment")
+            .add(
+                ObjectId(5),
+                &MetaKey::from("k"),
+                Some(&SerializedValue::new(b"v".to_vec())),
+            )
+            .unwrap()
+            .expect("an id");
+        let inserts: Vec<String> = sent
+            .borrow()
+            .iter()
+            .filter(|q| q.starts_with("INSERT"))
+            .cloned()
+            .collect();
+        assert_eq!(
+            inserts,
+            [
+                "INSERT INTO `wp_commentmeta` (`comment_id`, `meta_key`, `meta_value`) VALUES ('5', 'k', 'v')"
+            ]
+        );
+    });
+}
+
+/// `_get_meta_table( 'blog' )` is false on a single site: `$wpdb->blogmeta` is unset.
+#[test]
+fn single_site_has_no_blogmeta() {
+    on(Engine::Sqlite, |rig| {
+        assert!(rig.repos.for_type(&of("blog")).is_none());
+    });
+}
+
+/// On multisite `set_prefix` sets `$wpdb->blogmeta`, so the type has its table.
+#[test]
+fn multisite_has_blogmeta() {
+    on(Engine::Sqlite, |rig| {
+        rig.host.multisite.replace(true);
+        rig.db.set_prefix("wp_", true).unwrap();
+        let repo = rig.repos.for_type(&of("blog")).expect("blogmeta is set");
+        rig.db
+            .query(&meta_table("wp_blogmeta", "blog_id", "meta_id"))
+            .unwrap();
+        repo.add(ObjectId(1), &MetaKey::from("k"), None)
+            .unwrap()
+            .expect("an id");
+        assert_eq!(count(&rig.db, "wp_blogmeta"), 1);
     });
 }

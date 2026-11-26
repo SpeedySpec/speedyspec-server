@@ -7,10 +7,12 @@ use crate::{NativeWpdb, TABLE_PROPERTIES};
 
 impl Wpdb for NativeWpdb {
     /// `$wpdb->{logical}`. A declared table property answers its prefixed name even while unset; any other name
-    /// is empty until it is set, as PHP reads an undefined property (`_get_meta_table()` relies on that).
+    /// is empty until it is set, as PHP reads an undefined property (`_get_meta_table()` relies on that). `blogmeta`
+    /// is empty while unset on a single site, where the PHP property is `NULL`.
     fn table_name(&self, logical: &str) -> String {
         match self.with_tables(|t| t.get(logical).map(str::to_string)) {
             Some(name) => name,
+            None if logical == "blogmeta" && !self.table_env().multisite => String::new(),
             None if TABLE_PROPERTIES.contains(&logical) => NativeWpdb::table_name(self, logical),
             None => String::new(),
         }

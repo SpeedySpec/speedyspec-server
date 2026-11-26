@@ -157,8 +157,12 @@ impl MetaRepository for SqlMetaRepository {
         Ok(rows.first().map_or(0, |row| number(first_column(row))))
     }
 
-    /// `$wpdb->insert( $table, array( $column => $object_id, 'meta_key' => .., 'meta_value' => .. ) )`, then
-    /// `$wpdb->insert_id`.
+    /// `$wpdb->insert( $table, array( $column => $object_id, 'meta_key' => .., 'meta_value' => .. ) )` with no
+    /// formats, as `meta.php` sends it (so `$wpdb->field_types` decides: `post_id` is `%d`, `comment_id` and a custom
+    /// `{type}_id` go in as strings), then `$wpdb->insert_id`.
+    ///
+    /// A `query` callback's failure answers `Ok(None)`: `$wpdb->insert`'s charset lookup hides it, as WordPress's
+    /// does. The payload stays in `take_hook_error()`, which callers must check to rethrow it.
     fn add(
         &self,
         object: ObjectId,
@@ -166,8 +170,7 @@ impl MetaRepository for SqlMetaRepository {
         value: Option<&SerializedValue>,
     ) -> Result<Option<MetaId>, MetaError> {
         let fields = self.mapper.insert_fields(object, key, value);
-        let formats: Vec<String> = ["%d", "%s", "%s"].map(String::from).to_vec();
-        let inserted = self.written(self.wpdb.insert(&self.table(), &fields, Some(&formats)))?;
+        let inserted = self.written(self.wpdb.insert(&self.table(), &fields, None))?;
         if inserted == 0 {
             return Ok(None);
         }
@@ -318,6 +321,9 @@ impl MetaRepository for SqlMetaRepository {
         self.written(self.wpdb.delete(&self.table(), &conditions, None))
     }
 
+    /// `update_meta_cache()`'s query with one known difference: the id column is added, because [`Meta`] carries
+    /// `mid`. The `query` filter sees `SELECT meta_id, post_id, meta_key, meta_value FROM wp_postmeta WHERE post_id
+    /// IN (..) ORDER BY meta_id ASC` where WordPress sends `SELECT post_id, meta_key, meta_value ...`.
     fn for_objects(&self, objects: &[ObjectId]) -> Result<Vec<Meta>, MetaError> {
         if objects.is_empty() {
             return Ok(Vec::new());
