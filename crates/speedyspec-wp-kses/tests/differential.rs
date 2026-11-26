@@ -30,7 +30,10 @@ fn corpus_matches_php() {
     let mut compared = 0usize;
     for set in CORPUS_SETS {
         for input in corpus(set) {
-            let id = format!("{:x}", Sha256::digest(&input));
+            let id = Sha256::digest(&input)
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>();
             for ctx in ["post", "data", "strip"] {
                 let (_, api) = common::setup();
                 let expected = from_bytes(

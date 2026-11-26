@@ -48,7 +48,7 @@ fn plain(tree: &Tree) -> Value {
                 json!({"$latin1": b.iter().map(|x| format!("{x:02x}")).collect::<String>()})
             }
             Err(_) => {
-                json!({"$bytes": {"len": b.len(), "sha256": format!("{:x}", Sha256::digest(b))}})
+                json!({"$bytes": {"len": b.len(), "sha256": Sha256::digest(b).iter().map(|b| format!("{b:02x}")).collect::<String>()}})
             }
         },
         Tree::List(l) => Value::Array(l.iter().map(plain).collect()),

@@ -159,6 +159,15 @@ fn set_without_upsert_deletes_then_inserts() {
 }
 
 #[test]
+fn stored_key_digest_is_pinned() {
+    // `printf 'a%.0s' {1..192} | shasum -a 256`
+    assert_eq!(
+        stored_key(&"a".repeat(192)),
+        "sha256:7cee24628d290c16183532716cc5a8a889bc951b4b0a1507c32b8e29cee01052"
+    );
+}
+
+#[test]
 fn stored_key_hashes_long_keys() {
     let k191 = "a".repeat(191);
     assert_eq!(stored_key(&k191), k191);
