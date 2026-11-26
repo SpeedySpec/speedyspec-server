@@ -162,6 +162,7 @@ impl NativeArea for MetaArea {
         self.shared.loaders.borrow_mut().clear();
         codec::clear_live();
         let _ = adapters::take_parked();
+        native::reset_depth();
     }
 }
 

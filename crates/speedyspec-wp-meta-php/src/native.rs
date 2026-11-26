@@ -604,6 +604,14 @@ fn guarded(f: Native, args: &[Value]) -> R {
     }
 }
 
+/// Forgets how deeply native functions were nested, at the end of a request.
+///
+/// A hook callback that exits or fatals inside a native function never returns to [`guarded`], so the count would
+/// stay raised, and the next request's outermost call would keep a stale parked failure as if it were nested.
+pub(crate) fn reset_depth() {
+    DEPTH.with(|d| d.set(0));
+}
+
 /// Stops a native function once a port has parked a failure; [`guarded`] rethrows what was parked.
 pub(crate) fn stop_if_parked() -> Result<(), NativeError> {
     if is_parked() {
@@ -641,4 +649,24 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
             })
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_reset_depth_starts_the_next_call_clean() {
+        // A callback exited inside a native function: the count stayed at one, and a failure stayed parked.
+        DEPTH.with(|d| d.set(1));
+        keep(Parked::Failure {
+            class: "RuntimeException",
+            message: "stale".into(),
+        });
+        reset_depth();
+        let result = guarded(|_| Ok(Value::Bool(true)), &[]);
+        assert!(matches!(result, Ok(Value::Bool(true))));
+        assert!(!is_parked(), "the stale failure is dropped, not carried on");
+        assert_eq!(DEPTH.with(std::cell::Cell::get), 0);
+    }
 }
