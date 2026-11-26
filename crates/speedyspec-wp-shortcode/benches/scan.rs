@@ -2,7 +2,9 @@
 
 mod common;
 
-use criterion::{BenchmarkId, Throughput, black_box};
+use std::hint::black_box;
+
+use criterion::{BenchmarkId, Throughput};
 use speedyspec_wp_shortcode::{FancyRegexScanner, HandScanner};
 use speedyspec_wp_shortcode_contracts::ShortcodeScanner;
 
