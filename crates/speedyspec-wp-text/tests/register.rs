@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{ArrayKey, CallbackId, HasFilterResult, HookName, HookValue};
 use speedyspec_wp_text::{FilterContext, register_text_filters};
 
@@ -159,7 +159,7 @@ const EXPECTED: &[(&str, &str, i64, i64, bool)] = &[
 ];
 
 /// `has_filter( $hook, $function )`: the priority, or `None` for false.
-fn registered_priority(hooks: &HookApi, hook: &str, function: &str) -> Option<i64> {
+fn registered_priority(hooks: &WpHookApi, hook: &str, function: &str) -> Option<i64> {
     match hooks.has_filter(&HookName::from(hook), Some(&CallbackId(Some(function.into()))), None).unwrap() {
         HasFilterResult::At(ArrayKey::Int(p)) => Some(p),
         HasFilterResult::No => None,

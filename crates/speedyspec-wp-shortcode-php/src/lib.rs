@@ -24,7 +24,7 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_kses_contracts::Kses;
 use speedyspec_wp_shortcode::{
     HandAttsParser, HandScanner, HookApiFilters, ShortcodeApi, ShortcodeDeps, register_shortcode_handlers,
@@ -65,14 +65,14 @@ pub struct ShortcodeArea {
 impl ShortcodeArea {
     /// The Shortcode API over `$shortcode_tags`, with the Hook API's filters, the Rust `wp_html_split()`, kses
     /// through `kses` (the kses area's API) and the PHP adapters, and its handlers registered in `container`.
-    pub fn new(container: Rc<Container>, hooks: Rc<HookApi>, kses: Rc<dyn Kses>) -> Self {
+    pub fn new(container: Rc<Container>, hooks: Rc<WpHookApi>, kses: Rc<dyn Kses>) -> Self {
         Self::with_strategies(container, hooks, kses, Rc::new(HandScanner::new()), Rc::new(HandAttsParser::new()))
     }
 
     /// As [`ShortcodeArea::new`], with the scanner and attribute parser given.
     pub fn with_strategies(
         container: Rc<Container>,
-        hooks: Rc<HookApi>,
+        hooks: Rc<WpHookApi>,
         kses: Rc<dyn Kses>,
         scanner: Rc<dyn ShortcodeScanner>,
         atts: Rc<dyn AttsParser>,

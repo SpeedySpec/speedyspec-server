@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use speedyspec_cache::{CacheError, CachingStore};
 use speedyspec_cache_memory::MemoryCache;
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache, ObjectCachePorts};
@@ -63,7 +63,7 @@ fn s(v: &str) -> HookValue {
 
 #[test]
 fn get_option_survives_failing_second_level() {
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

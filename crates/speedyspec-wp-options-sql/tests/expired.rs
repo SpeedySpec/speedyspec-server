@@ -9,7 +9,7 @@ use speedyspec_data_postgres::PostgresEngineFactory;
 use speedyspec_data_query::EngineRegistry;
 use speedyspec_data_sqlite::SqliteEngineFactory;
 use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts};
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_options::{ExpiredTransients, TransientPrefix};
 use speedyspec_wp_options_sql::SqlExpiredTransients;
@@ -76,7 +76,7 @@ fn rig(engine: Engine) -> Rc<WpDb> {
             options,
         })
         .unwrap();
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

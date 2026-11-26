@@ -10,7 +10,7 @@ knowing about it.
 |---|---|
 | `speedyspec-transport-contracts` | The ports: `Transport` (with its default mapping), `BindingStore`, `ExposureLookup`, `Authenticator`, `Codec`, `TransportHooks`, `StageHooks`; plus `TransportName`, `DecodedCall`, `ExposedOperation` and `ExposureError`. Depends only on `speedyspec-operation-contracts` |
 | `speedyspec-transport` | `MemoryBindingStore`, `TransportRegistry` and the `Exposure` it computes, `StageMiddleware`, and the `Pipeline` every transport serves through |
-| `speedyspec-transport-hooks-wp` | `WpTransportHooks`, the `TransportHooks` port over `speedyspec_wp_hooks::HookApi`, with `to_hook`/`from_hook` conversions |
+| `speedyspec-transport-hooks-wp` | `WpTransportHooks`, the `TransportHooks` port over `speedyspec_wp_hooks::WpHookApi`, with `to_hook`/`from_hook` conversions |
 
 ## Exposure
 

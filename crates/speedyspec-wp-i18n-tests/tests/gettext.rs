@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_i18n::{I18nApi, Translated, TranslationController};
@@ -23,8 +23,8 @@ fn s(v: &str) -> HookValue {
 
 type Log = Rc<RefCell<Vec<(String, Vec<HookValue>)>>>;
 
-fn api() -> (I18nApi, Rc<HookApi>) {
-    let hooks = Rc::new(HookApi::new(
+fn api() -> (I18nApi, Rc<WpHookApi>) {
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

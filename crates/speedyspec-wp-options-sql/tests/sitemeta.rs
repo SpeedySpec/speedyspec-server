@@ -7,7 +7,7 @@ use speedyspec_data::EngineConfig;
 use speedyspec_data_mysql::MySqlEngineFactory;
 use speedyspec_data_query::EngineRegistry;
 use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts};
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_options::{NetworkMeta, SerializedValue, SitemetaRepository};
@@ -22,7 +22,7 @@ const SCHEMA: &str = "CREATE TABLE wp_sitemeta (meta_id bigint(20) unsigned NOT 
     PRIMARY KEY (meta_id), KEY meta_key (meta_key(191)), KEY site_id (site_id)) \
     DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci";
 
-fn rig() -> (SqlSitemetaRepository, Rc<HookApi>) {
+fn rig() -> (SqlSitemetaRepository, Rc<WpHookApi>) {
     let url = std::env::var("SPEEDYSPEC_TEST_MYSQL_URL").expect("set SPEEDYSPEC_TEST_MYSQL_URL");
     let registry = EngineRegistry::new();
     registry.register_factory(Rc::new(MySqlEngineFactory));
@@ -33,7 +33,7 @@ fn rig() -> (SqlSitemetaRepository, Rc<HookApi>) {
             options: BTreeMap::new(),
         })
         .unwrap();
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

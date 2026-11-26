@@ -8,7 +8,7 @@ use std::rc::Rc;
 use speedyspec_data::*;
 use speedyspec_data_query::mysql_text;
 use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts, WpValue};
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::{Callback, HookError, HookName};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 
@@ -184,7 +184,7 @@ pub fn rows(columns: &[&str], values: &[&[Option<&str>]]) -> Rows {
 pub struct Rig {
     pub db: WpDb,
     pub store: Rc<FakeStore>,
-    pub hooks: Rc<HookApi>,
+    pub hooks: Rc<WpHookApi>,
     pub host: Rc<MemoryWpdbHost>,
     pub state: Rc<MemoryWpdbState>,
 }
@@ -207,7 +207,7 @@ pub fn rig() -> Rig {
 
 pub fn rig_with(host: MemoryWpdbHost) -> Rig {
     let store = FakeStore::new();
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
@@ -231,7 +231,7 @@ pub fn rig_with(host: MemoryWpdbHost) -> Rig {
 
 /// Adds a Rust filter callback.
 pub fn filter(
-    hooks: &HookApi,
+    hooks: &WpHookApi,
     hook: &str,
     id: &str,
     f: impl Fn(&[WpValue]) -> Result<WpValue, HookError> + 'static,

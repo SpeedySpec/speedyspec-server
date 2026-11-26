@@ -19,7 +19,7 @@ use speedyspec_router::TableCache;
 use speedyspec_router::dispatch::ChunkedAlternation;
 use speedyspec_router_php::BoundRouteTableStore;
 use speedyspec_router_store_memory::MemoryRouteTableStore;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_rewrite::{
     RewriteDeps, RewriteOptions, RewriteService, WpRouting, register_rewrite_handlers,
 };
@@ -46,7 +46,7 @@ impl RewriteArea {
     /// worker, memory options in tests), firing hooks through `hooks`, with its handlers bound in `container`.
     pub fn new(
         container: Rc<Container>,
-        hooks: Rc<HookApi>,
+        hooks: Rc<WpHookApi>,
         options: Rc<dyn RewriteOptions>,
     ) -> RewriteArea {
         let store = Rc::new(BoundRouteTableStore::new(

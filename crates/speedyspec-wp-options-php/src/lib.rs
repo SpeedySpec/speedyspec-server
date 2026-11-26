@@ -26,7 +26,7 @@ use speedyspec_container::Container;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_wp_db::WpDb;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_object_cache::CurrentObjectCache;
 use speedyspec_wp_options::{
     NetworkOptionsApi, NetworkPorts, OptionsApi, OptionsDeps, SettingsRegistry, SystemClock,
@@ -97,7 +97,7 @@ impl OptionsArea {
     /// registered in `container`.
     pub fn new(
         container: Rc<Container>,
-        hooks: Rc<HookApi>,
+        hooks: Rc<WpHookApi>,
         cache: Rc<CurrentObjectCache>,
         wpdb: Rc<WpDb>,
     ) -> OptionsArea {

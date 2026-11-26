@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use speedyspec_container::Container;
 use speedyspec_cqrs::{Command, CommandBus, Query, QueryBus};
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{CallbackId, HasFilterResult, HookName};
 use speedyspec_wp_kses::{
     AllowedFrom, AllowedHtmlExplicitValue, AllowedHtmlQuery, AllowedHtmlValue, KsesAttr,
@@ -12,7 +12,7 @@ use speedyspec_wp_kses::{
     KsesSplit, KsesSplit2, OneAttr, SafecssFilterAttr, register_kses_handlers,
 };
 
-fn has(hooks: &HookApi, hook: &str, f: &str) -> bool {
+fn has(hooks: &WpHookApi, hook: &str, f: &str) -> bool {
     hooks
         .has_filter(
             &HookName::from(hook),
@@ -150,7 +150,7 @@ fn init_filters_prefer_the_bridges_named_functions() {
             }))
         }
     }
-    let hooks = Rc::new(speedyspec_wp_hooks::HookApi::new(
+    let hooks = Rc::new(speedyspec_wp_hooks::WpHookApi::new(
         Rc::new(speedyspec_wp_hooks_memory::MemoryHookStore::new()),
         Rc::new(speedyspec_wp_hooks::IgnoreDeprecations),
     ));

@@ -32,7 +32,7 @@ Nothing is named `…Service`, `…Contract`, `…Interface` or `…Manager`.
 
 | Crate | Holds |
 |---|---|
-| `speedyspec-wp-hooks` | the ports, the use cases and their handler (`HookApi`), the domain services |
+| `speedyspec-wp-hooks` | the ports, the use cases and their handler (`WpHookApi`), the domain services |
 | `speedyspec-wp-hooks-memory` | `MemoryHookStore` |
 | `speedyspec-wp-hooks-php` | the PHP side: WordPress's functions, `WP_Hook`, the globals, `PhpHookStore` |
 
@@ -53,7 +53,7 @@ it replaces. The Hook API's functions are the model:
   else passes through as the zval PHP gave (`Value::Opaque`, one more reference, no copy) and goes back to PHP as the
   same zval. A Rust callback reads such a value only when it runs (`Value::read`).
 - **Nothing to do returns early.** A hook with no callbacks (and no `all` hook) counts the run and hands the value
-  straight back, before any argument list is built (`HookApi::skip_if_empty`).
+  straight back, before any argument list is built (`WpHookApi::skip_if_empty`).
 - **PHP's hash is the hash.** A hook name from PHP keeps the hash its `zend_string` carries (`HookKey::prehashed`);
   the store hashes nothing again. A name made in Rust is hashed the same way PHP would.
 - **Sort when adding, walk when firing.** Priorities are kept in `ksort(SORT_NUMERIC)` order as callbacks are added

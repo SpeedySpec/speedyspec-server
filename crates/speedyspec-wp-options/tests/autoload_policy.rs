@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_options::{
@@ -13,14 +13,14 @@ fn s(v: &str) -> HookValue {
     HookValue::Str(v.into())
 }
 
-fn hooks() -> Rc<HookApi> {
-    Rc::new(HookApi::new(
+fn hooks() -> Rc<WpHookApi> {
+    Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ))
 }
 
-fn filter(hooks: &HookApi, name: &str, run: impl Fn(&[HookValue]) -> HookValue + 'static) {
+fn filter(hooks: &WpHookApi, name: &str, run: impl Fn(&[HookValue]) -> HookValue + 'static) {
     hooks
         .add_filter(
             &HookName::from(name),

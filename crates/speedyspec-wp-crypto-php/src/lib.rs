@@ -22,7 +22,7 @@ use std::rc::Rc;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_wp_crypto_sodium::Sodium;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 
 pub use adapters::{
     HookTrustedKeysFilter, PhpFileHasher, PhpSiteSettings, PhpTranslator, QuietDiagnostics,
@@ -40,7 +40,7 @@ pub struct CryptoArea {
 impl CryptoArea {
     /// The area, hashing and verifying with `sodium` and filtering and escaping through `hooks`. The caller
     /// initializes libsodium ([`Sodium::init`]) and hands it over, so a process initializes it once.
-    pub fn new(hooks: Rc<HookApi>, sodium: Sodium) -> CryptoArea {
+    pub fn new(hooks: Rc<WpHookApi>, sodium: Sodium) -> CryptoArea {
         CryptoArea {
             natives: Rc::new(natives::Natives::new(hooks, sodium)),
         }

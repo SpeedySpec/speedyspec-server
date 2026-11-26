@@ -6,7 +6,7 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{Count, HookError, HookName, HookValue as Value};
 use speedyspec_wp_media::functions::{
     Outcome, add_id3_tag_data, media_creation_timestamp, read_audio_metadata, read_video_metadata,
@@ -22,7 +22,7 @@ use crate::adapters::{
 use crate::convert::{from_php, to_php};
 
 pub(crate) struct Natives {
-    pub hooks: Rc<HookApi>,
+    pub hooks: Rc<WpHookApi>,
     pub container: Rc<Container>,
     pub limits: ProbeLimits,
     pub default: std::cell::RefCell<Option<Rc<dyn MediaReader>>>,

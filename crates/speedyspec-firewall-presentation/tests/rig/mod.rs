@@ -7,7 +7,7 @@ use speedyspec_cache_memory::MemoryCache;
 use speedyspec_firewall::FirewallLog;
 use speedyspec_firewall_presentation::{FirewallComposition, FirewallScope, FirewallStage};
 use speedyspec_native_stage::{NativeStage, StageOutcome, StageRequest};
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
@@ -26,7 +26,7 @@ impl FirewallLog for RecordingLog {
 }
 
 pub struct Rig {
-    pub hooks: Rc<HookApi>,
+    pub hooks: Rc<WpHookApi>,
     pub options: Rc<OptionsApi>,
     pub log: Rc<RecordingLog>,
     pub stage: Rc<FirewallStage>,
@@ -34,7 +34,7 @@ pub struct Rig {
 
 impl Rig {
     pub fn new(settings: &[(&str, HookValue)]) -> Rig {
-        let hooks = Rc::new(HookApi::new(
+        let hooks = Rc::new(WpHookApi::new(
             Rc::new(MemoryHookStore::new()),
             Rc::new(IgnoreDeprecations),
         ));

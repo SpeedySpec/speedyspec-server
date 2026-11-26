@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use speedyspec_php_ext::Value;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_options::{
     CORE_SANITIZED_OPTIONS, Deprecations, HookSanitizing, Installing, Multisite, OptionGroups,
     OptionName, OptionsError, ProtectedOptions, Sanitizing,
@@ -122,7 +122,7 @@ impl Multisite for PhpMultisite {
 pub struct PhpSanitizing(pub HookSanitizing);
 
 impl PhpSanitizing {
-    pub fn new(hooks: Rc<HookApi>) -> PhpSanitizing {
+    pub fn new(hooks: Rc<WpHookApi>) -> PhpSanitizing {
         PhpSanitizing(HookSanitizing::new(hooks))
     }
 }

@@ -3,21 +3,21 @@
 use std::rc::Rc;
 
 use speedyspec_hooks::Value;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{Count, HookName};
 use speedyspec_wp_theme_json_contracts::ThemeJsonError;
 use speedyspec_wp_theme_json_contracts::ports::ThemeJsonFilters;
 
 /// The filters through the Rust Hook API, so PHP plugins' callbacks keep working (an Adapter).
 ///
-/// Each filter goes through [`HookApi::skip_if_empty`] first, as the shortcode and options ports do.
+/// Each filter goes through [`WpHookApi::skip_if_empty`] first, as the shortcode and options ports do.
 pub struct HookApiFilters {
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
 }
 
 impl HookApiFilters {
     /// Filters over `hooks`.
-    pub fn new(hooks: Rc<HookApi>) -> HookApiFilters {
+    pub fn new(hooks: Rc<WpHookApi>) -> HookApiFilters {
         HookApiFilters { hooks }
     }
 

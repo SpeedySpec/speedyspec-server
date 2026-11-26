@@ -1,21 +1,21 @@
-//! The `TransportHooks` adapter over `HookApi`.
+//! The `TransportHooks` adapter over `WpHookApi`.
 
 use std::rc::Rc;
 
 use speedyspec_operation_contracts::{Category, OperationError, Value};
 use speedyspec_transport_contracts::TransportHooks;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{HookError, HookName, HookValue};
 
 use crate::{from_hook, to_hook};
 
 /// Fires transport hooks through WordPress's Hook API. A filter that changes nothing returns the value it was given.
 pub struct WpTransportHooks {
-    api: Rc<HookApi>,
+    api: Rc<WpHookApi>,
 }
 
 impl WpTransportHooks {
-    pub fn new(api: Rc<HookApi>) -> Self {
+    pub fn new(api: Rc<WpHookApi>) -> Self {
         WpTransportHooks { api }
     }
 }

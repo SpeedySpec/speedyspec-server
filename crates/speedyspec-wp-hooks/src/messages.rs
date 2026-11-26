@@ -1,6 +1,6 @@
-//! Every Hook API function as a use case: a [`Command`] or a [`Query`], handled by [`HookApi`].
+//! Every Hook API function as a use case: a [`Command`] or a [`Query`], handled by [`WpHookApi`].
 //!
-//! [`register_hook_handlers`] binds [`HookApi`] as the handler of each one, under its `KEY`; PHP overrides one by
+//! [`register_hook_handlers`] binds [`WpHookApi`] as the handler of each one, under its `KEY`; PHP overrides one by
 //! binding the same key.
 
 use std::rc::Rc;
@@ -10,7 +10,7 @@ use speedyspec_cqrs::{
     Command, CommandHandler, Query, QueryHandler, bind_command_handler, bind_query_handler,
 };
 
-use crate::HookApi;
+use crate::WpHookApi;
 use speedyspec_wp_hooks_contracts::{
     ArrayKey, Callback, CallbackId, HasFilterResult, HookError, HookName, HookValue,
 };
@@ -29,7 +29,7 @@ impl Command for AddFilter {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\AddFilterHandler";
 }
 
-impl CommandHandler<AddFilter> for HookApi {
+impl CommandHandler<AddFilter> for WpHookApi {
     fn handle(&self, m: AddFilter) -> Result<bool, HookError> {
         self.add_filter(&m.hook, m.callback, &m.priority, m.accepted_args)
     }
@@ -49,7 +49,7 @@ impl Command for AddAction {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\AddActionHandler";
 }
 
-impl CommandHandler<AddAction> for HookApi {
+impl CommandHandler<AddAction> for WpHookApi {
     fn handle(&self, m: AddAction) -> Result<bool, HookError> {
         self.add_filter(&m.hook, m.callback, &m.priority, m.accepted_args)
     }
@@ -68,7 +68,7 @@ impl Command for RemoveFilter {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\RemoveFilterHandler";
 }
 
-impl CommandHandler<RemoveFilter> for HookApi {
+impl CommandHandler<RemoveFilter> for WpHookApi {
     fn handle(&self, m: RemoveFilter) -> Result<bool, HookError> {
         self.remove_filter(&m.hook, m.callback, &m.priority)
     }
@@ -87,7 +87,7 @@ impl Command for RemoveAction {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\RemoveActionHandler";
 }
 
-impl CommandHandler<RemoveAction> for HookApi {
+impl CommandHandler<RemoveAction> for WpHookApi {
     fn handle(&self, m: RemoveAction) -> Result<bool, HookError> {
         self.remove_filter(&m.hook, m.callback, &m.priority)
     }
@@ -105,7 +105,7 @@ impl Command for RemoveAllFilters {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\RemoveAllFiltersHandler";
 }
 
-impl CommandHandler<RemoveAllFilters> for HookApi {
+impl CommandHandler<RemoveAllFilters> for WpHookApi {
     fn handle(&self, m: RemoveAllFilters) -> Result<bool, HookError> {
         self.remove_all_filters(&m.hook, m.priority.as_ref())
     }
@@ -123,7 +123,7 @@ impl Command for RemoveAllActions {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\RemoveAllActionsHandler";
 }
 
-impl CommandHandler<RemoveAllActions> for HookApi {
+impl CommandHandler<RemoveAllActions> for WpHookApi {
     fn handle(&self, m: RemoveAllActions) -> Result<bool, HookError> {
         self.remove_all_filters(&m.hook, m.priority.as_ref())
     }
@@ -142,7 +142,7 @@ impl Command for ApplyFilters {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\ApplyFiltersHandler";
 }
 
-impl CommandHandler<ApplyFilters> for HookApi {
+impl CommandHandler<ApplyFilters> for WpHookApi {
     fn handle(&self, m: ApplyFilters) -> Result<HookValue, HookError> {
         self.apply_filters(&m.hook, m.value, m.args)
     }
@@ -160,7 +160,7 @@ impl Command for ApplyFiltersRefArray {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\ApplyFiltersRefArrayHandler";
 }
 
-impl CommandHandler<ApplyFiltersRefArray> for HookApi {
+impl CommandHandler<ApplyFiltersRefArray> for WpHookApi {
     fn handle(&self, m: ApplyFiltersRefArray) -> Result<HookValue, HookError> {
         self.apply_filters_ref_array(&m.hook, m.args)
     }
@@ -181,7 +181,7 @@ impl Command for ApplyFiltersDeprecated {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\ApplyFiltersDeprecatedHandler";
 }
 
-impl CommandHandler<ApplyFiltersDeprecated> for HookApi {
+impl CommandHandler<ApplyFiltersDeprecated> for WpHookApi {
     fn handle(&self, m: ApplyFiltersDeprecated) -> Result<HookValue, HookError> {
         self.apply_filters_deprecated(&m.hook, m.args, &m.version, &m.replacement, &m.message)
     }
@@ -199,7 +199,7 @@ impl Command for DoAction {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\DoActionHandler";
 }
 
-impl CommandHandler<DoAction> for HookApi {
+impl CommandHandler<DoAction> for WpHookApi {
     fn handle(&self, m: DoAction) -> Result<(), HookError> {
         self.do_action(&m.hook, m.args)
     }
@@ -217,7 +217,7 @@ impl Command for DoActionRefArray {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\DoActionRefArrayHandler";
 }
 
-impl CommandHandler<DoActionRefArray> for HookApi {
+impl CommandHandler<DoActionRefArray> for WpHookApi {
     fn handle(&self, m: DoActionRefArray) -> Result<(), HookError> {
         self.do_action_ref_array(&m.hook, m.args)
     }
@@ -238,7 +238,7 @@ impl Command for DoActionDeprecated {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\DoActionDeprecatedHandler";
 }
 
-impl CommandHandler<DoActionDeprecated> for HookApi {
+impl CommandHandler<DoActionDeprecated> for WpHookApi {
     fn handle(&self, m: DoActionDeprecated) -> Result<(), HookError> {
         self.do_action_deprecated(&m.hook, m.args, &m.version, &m.replacement, &m.message)
     }
@@ -257,7 +257,7 @@ impl Query for HasFilter {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\HasFilterHandler";
 }
 
-impl QueryHandler<HasFilter> for HookApi {
+impl QueryHandler<HasFilter> for WpHookApi {
     fn handle(&self, m: HasFilter) -> Result<HasFilterResult, HookError> {
         self.has_filter(&m.hook, m.callback.as_ref(), m.priority)
     }
@@ -276,7 +276,7 @@ impl Query for HasAction {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\HasActionHandler";
 }
 
-impl QueryHandler<HasAction> for HookApi {
+impl QueryHandler<HasAction> for WpHookApi {
     fn handle(&self, m: HasAction) -> Result<HasFilterResult, HookError> {
         self.has_filter(&m.hook, m.callback.as_ref(), m.priority)
     }
@@ -293,7 +293,7 @@ impl Query for DidAction {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\DidActionHandler";
 }
 
-impl QueryHandler<DidAction> for HookApi {
+impl QueryHandler<DidAction> for WpHookApi {
     fn handle(&self, m: DidAction) -> Result<i64, HookError> {
         self.did_action(&m.hook)
     }
@@ -310,7 +310,7 @@ impl Query for DidFilter {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\DidFilterHandler";
 }
 
-impl QueryHandler<DidFilter> for HookApi {
+impl QueryHandler<DidFilter> for WpHookApi {
     fn handle(&self, m: DidFilter) -> Result<i64, HookError> {
         self.did_filter(&m.hook)
     }
@@ -327,7 +327,7 @@ impl Query for DoingFilter {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\DoingFilterHandler";
 }
 
-impl QueryHandler<DoingFilter> for HookApi {
+impl QueryHandler<DoingFilter> for WpHookApi {
     fn handle(&self, m: DoingFilter) -> bool {
         self.doing_filter(m.hook.as_ref())
     }
@@ -344,7 +344,7 @@ impl Query for DoingAction {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\DoingActionHandler";
 }
 
-impl QueryHandler<DoingAction> for HookApi {
+impl QueryHandler<DoingAction> for WpHookApi {
     fn handle(&self, m: DoingAction) -> bool {
         self.doing_filter(m.hook.as_ref())
     }
@@ -359,7 +359,7 @@ impl Query for CurrentFilter {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\CurrentFilterHandler";
 }
 
-impl QueryHandler<CurrentFilter> for HookApi {
+impl QueryHandler<CurrentFilter> for WpHookApi {
     fn handle(&self, _m: CurrentFilter) -> Option<HookValue> {
         self.current_filter()
     }
@@ -374,7 +374,7 @@ impl Query for CurrentAction {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\CurrentActionHandler";
 }
 
-impl QueryHandler<CurrentAction> for HookApi {
+impl QueryHandler<CurrentAction> for WpHookApi {
     fn handle(&self, _m: CurrentAction) -> Option<HookValue> {
         self.current_filter()
     }
@@ -391,14 +391,14 @@ impl Query for CurrentPriority {
     const KEY: &'static str = "SpeedySpec\\WpHooks\\CurrentPriorityHandler";
 }
 
-impl QueryHandler<CurrentPriority> for HookApi {
+impl QueryHandler<CurrentPriority> for WpHookApi {
     fn handle(&self, m: CurrentPriority) -> Result<Option<ArrayKey>, HookError> {
         self.current_priority(&m.hook)
     }
 }
 
-/// Binds [`HookApi`] as the handler of every Hook API use case.
-pub fn register_hook_handlers(container: &Container, api: Rc<HookApi>) {
+/// Binds [`WpHookApi`] as the handler of every Hook API use case.
+pub fn register_hook_handlers(container: &Container, api: Rc<WpHookApi>) {
     let a = api.clone();
     bind_command_handler::<AddFilter>(container, move |_, _| Ok(a.clone()));
     let a = api.clone();

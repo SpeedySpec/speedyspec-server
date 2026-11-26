@@ -17,7 +17,7 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_kses::{KsesApi, KsesDeps, register_kses_handlers};
 
 pub use adapters::{
@@ -69,7 +69,7 @@ pub struct KsesArea {
 
 impl KsesArea {
     /// The kses API over `hooks` with the PHP adapters, and its handlers registered in `container`.
-    pub fn new(container: Rc<Container>, hooks: Rc<HookApi>) -> KsesArea {
+    pub fn new(container: Rc<Container>, hooks: Rc<WpHookApi>) -> KsesArea {
         let globals = Rc::new(PhpAllowedGlobals::default());
         let api = KsesApi::shared(KsesDeps {
             hooks,

@@ -9,7 +9,7 @@ use speedyspec_wp_hooks::{
     AddAction, AddFilter, ApplyFilters, ApplyFiltersDeprecated, ApplyFiltersRefArray,
     CallbackIdentity, CallbackShape, CurrentAction, CurrentFilter, CurrentPriority, DeprecatedHooks,
     DidAction, DidFilter, DoAction, DoActionDeprecated, DoActionRefArray, DoingAction, DoingFilter,
-    HasAction, HasFilter, HookApi, HookStore, RemoveAction, RemoveAllActions, RemoveAllFilters,
+    HasAction, HasFilter, WpHookApi, HookStore, RemoveAction, RemoveAllActions, RemoveAllFilters,
     RemoveFilter, register_hook_handlers,
 };
 use speedyspec_wp_hooks_contracts::{
@@ -23,7 +23,7 @@ struct World {
     commands: CommandBus,
     queries: QueryBus,
     store: Rc<MemoryHookStore>,
-    api: Rc<HookApi>,
+    api: Rc<WpHookApi>,
     log: Log,
     deprecated: Log,
 }
@@ -47,7 +47,7 @@ fn world() -> World {
     let container = Rc::new(Container::new());
     let store = Rc::new(MemoryHookStore::new());
     let deprecated: Log = Rc::default();
-    let api = Rc::new(HookApi::new(
+    let api = Rc::new(WpHookApi::new(
         store.clone(),
         Rc::new(Notes(deprecated.clone())),
     ));
@@ -108,7 +108,7 @@ impl World {
             .unwrap()
     }
 
-    fn api(&self) -> Rc<HookApi> {
+    fn api(&self) -> Rc<WpHookApi> {
         self.api.clone()
     }
 }

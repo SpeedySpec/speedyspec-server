@@ -12,7 +12,7 @@ use speedyspec_wp_cron::{CronApi, CronParts, RustArgsKeyer};
 use speedyspec_wp_cron_contracts::{Clock, CronResult, PhpObjects, Translator};
 use speedyspec_wp_cron_options::OptionCronStore;
 use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts};
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::{HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
@@ -73,7 +73,7 @@ fn db(prefix: &str) -> Option<Rc<WpDb>> {
         .unwrap();
     let db = Rc::new(WpDb::new(WpDbParts {
         store: registry.sql("default").unwrap(),
-        hooks: Rc::new(HookApi::new(
+        hooks: Rc::new(WpHookApi::new(
             Rc::new(MemoryHookStore::new()),
             Rc::new(IgnoreDeprecations),
         )),
@@ -96,7 +96,7 @@ fn db(prefix: &str) -> Option<Rc<WpDb>> {
 
 /// A process's cron API over its own options API and object cache.
 fn cron_api(db: Rc<WpDb>) -> CronApi {
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

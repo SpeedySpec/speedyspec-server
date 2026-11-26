@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue, Key};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_kses::{
@@ -31,8 +31,8 @@ impl UploadsLocation for Uploads {
     }
 }
 
-fn setup() -> (Rc<HookApi>, KsesApi) {
-    let hooks = Rc::new(HookApi::new(
+fn setup() -> (Rc<WpHookApi>, KsesApi) {
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
@@ -49,7 +49,7 @@ fn setup() -> (Rc<HookApi>, KsesApi) {
     (hooks, api)
 }
 
-fn filter(hooks: &HookApi, name: &str, run: impl Fn(&[HookValue]) -> HookValue + 'static) {
+fn filter(hooks: &WpHookApi, name: &str, run: impl Fn(&[HookValue]) -> HookValue + 'static) {
     hooks
         .add_filter(
             &HookName::from(name),

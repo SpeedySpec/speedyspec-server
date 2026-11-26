@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use speedyspec_routing::Rule;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{HookName, HookValue, Key};
 use speedyspec_wp_options::OptionsApi;
 
@@ -127,11 +127,11 @@ pub trait RewriteOptions {
 /// [`RandomContentRedirects`] over the Hook API: `(bool) apply_filters( 'wp_enable_random_content_redirect', true )`,
 /// as query.php has it.
 pub struct FilteredRandomContentRedirects {
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
 }
 
 impl FilteredRandomContentRedirects {
-    pub fn new(hooks: Rc<HookApi>) -> FilteredRandomContentRedirects {
+    pub fn new(hooks: Rc<WpHookApi>) -> FilteredRandomContentRedirects {
         FilteredRandomContentRedirects { hooks }
     }
 }

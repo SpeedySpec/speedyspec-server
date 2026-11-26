@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use speedyspec_php::{CallFailure, PhpError};
 use speedyspec_php_ext::{Key, Value};
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{HasFilterResult, HookName};
 use speedyspec_wp_shortcode_contracts::{ShortcodeTagNames, TagName};
 use speedyspec_wp_text::strings::to_php_string;
@@ -189,7 +189,7 @@ impl ShortcodeTagNames for PhpShortcodeTags {
 /// While nothing is hooked to `mime_types` the known list can't change within a request, so it is read from PHP once
 /// per request. The allowed list depends on the current user as well, so it is read on every call.
 pub struct PhpMimeTypes {
-    hooks: Option<Rc<HookApi>>,
+    hooks: Option<Rc<WpHookApi>>,
     cache: RefCell<Option<Rc<MimePairs>>>,
 }
 
@@ -206,7 +206,7 @@ impl PhpMimeTypes {
     ///     The shared hook store's API.
     /// @return
     ///     The adapter.
-    pub fn cached(hooks: Rc<HookApi>) -> PhpMimeTypes {
+    pub fn cached(hooks: Rc<WpHookApi>) -> PhpMimeTypes {
         PhpMimeTypes { hooks: Some(hooks), cache: RefCell::new(None) }
     }
 

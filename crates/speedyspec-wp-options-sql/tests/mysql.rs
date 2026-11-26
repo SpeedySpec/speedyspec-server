@@ -7,7 +7,7 @@ use speedyspec_data::EngineConfig;
 use speedyspec_data_mysql::MySqlEngineFactory;
 use speedyspec_data_query::EngineRegistry;
 use speedyspec_wp_db::{MemoryWpdbHost, MemoryWpdbState, WpDb, WpDbConfig, WpDbParts, WpValue};
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
@@ -28,7 +28,7 @@ const SCHEMA: &str = "CREATE TABLE wp_options (option_id bigint(20) unsigned NOT
 
 struct Rig {
     db: Rc<WpDb>,
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     host: Rc<MemoryWpdbHost>,
     repo: Rc<SqlOptionRepository>,
 }
@@ -44,7 +44,7 @@ fn rig() -> Rig {
             options: BTreeMap::new(),
         })
         .unwrap();
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
@@ -85,7 +85,7 @@ fn num_queries(db: &WpDb) -> i64 {
     }
 }
 
-fn on_query(hooks: &HookApi, run: impl Fn(&HookValue) -> HookValue + 'static) {
+fn on_query(hooks: &WpHookApi, run: impl Fn(&HookValue) -> HookValue + 'static) {
     hooks
         .add_filter(
             &HookName::from("query"),

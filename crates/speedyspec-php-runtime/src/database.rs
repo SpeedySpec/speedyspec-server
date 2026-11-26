@@ -9,7 +9,7 @@ use speedyspec_php::NativeArea;
 use speedyspec_wp_cron_php::CronArea;
 use speedyspec_wp_db::WpDbConfig;
 use speedyspec_wp_db_php::WpDbArea;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_object_cache_php::ObjectCacheArea;
 use speedyspec_wp_options_php::OptionsArea;
 
@@ -55,7 +55,7 @@ fn check(registry: &EngineRegistry) -> Result<(), String> {
 pub fn boot_database(
     config: WpDbConfig,
     container: &Rc<Container>,
-    hook_api: &Rc<HookApi>,
+    hook_api: &Rc<WpHookApi>,
     wake: Rc<crate::wake::NextWake>,
 ) -> Result<(WorkerDatabase, Vec<Rc<dyn NativeArea>>), BootFailure> {
     let registry = Rc::new(EngineRegistry::new());

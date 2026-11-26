@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{Callback, HookError, HookName, HookValue};
 use speedyspec_wp_text_contracts::TextError;
 
@@ -258,7 +258,7 @@ fn callback(api: &Rc<TextApi>, function: &'static str) -> Callback {
 ///     Whether the admin-only lines apply.
 /// @return
 ///     Nothing, or the hook store's error.
-pub fn register_text_filters(api: &Rc<TextApi>, hooks: &HookApi, context: FilterContext) -> Result<(), HookError> {
+pub fn register_text_filters(api: &Rc<TextApi>, hooks: &WpHookApi, context: FilterContext) -> Result<(), HookError> {
     for &(hook, function, priority, accepted_args, admin_only) in REGISTRATIONS {
         if admin_only && !context.admin {
             continue;

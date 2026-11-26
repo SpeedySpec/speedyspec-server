@@ -13,7 +13,7 @@ use speedyspec_router_presentation::{
 };
 use speedyspec_router_store_memory::MemoryRouteTableStore;
 use speedyspec_routing::{Resolution, RouteMatch, Rule};
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_rewrite::memory::MemoryRewriteOptions;
@@ -60,7 +60,7 @@ fn cache() -> Rc<TableCache> {
 
 fn middleware(
     router: Router<AppHandler, AppMiddleware>,
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     php_hooks: &[&'static str],
 ) -> RoutingMiddleware {
     let options = Rc::new(MemoryRewriteOptions::new());
@@ -83,8 +83,8 @@ fn middleware(
     )
 }
 
-fn hooks() -> Rc<HookApi> {
-    Rc::new(HookApi::new(
+fn hooks() -> Rc<WpHookApi> {
+    Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ))
@@ -188,7 +188,7 @@ fn route_middleware_wraps_the_handler() {
     assert_eq!(response.headers().get("x-stamp").as_deref(), Some("1"));
 }
 
-fn filter_to(hooks: &HookApi, hook: &str, value: HookValue) {
+fn filter_to(hooks: &WpHookApi, hook: &str, value: HookValue) {
     hooks
         .add_filter(
             &HookName::from(hook),
@@ -199,7 +199,7 @@ fn filter_to(hooks: &HookApi, hook: &str, value: HookValue) {
         .unwrap();
 }
 
-fn redirect_response(hooks: Rc<HookApi>, php_hooks: &[&'static str]) -> HttpResponse {
+fn redirect_response(hooks: Rc<WpHookApi>, php_hooks: &[&'static str]) -> HttpResponse {
     let mut router: Router<AppHandler, AppMiddleware> = Router::new();
     router.redirect("/old", "/new", 301);
     middleware(router, hooks, php_hooks).process(request("/old", "/index.php"), &Php)

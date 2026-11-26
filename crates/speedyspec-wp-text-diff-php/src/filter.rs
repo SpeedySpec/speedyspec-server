@@ -3,26 +3,26 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{Count, HookError, HookName, HookValue};
 use speedyspec_wp_text_diff::contracts::{
     CheckedLineFilter, LineHtmlFilter, RowKind, TextDifferError,
 };
 
-/// The `process_text_diff_html` filter, as an adapter over [`HookApi`].
+/// The `process_text_diff_html` filter, as an adapter over [`WpHookApi`].
 ///
 /// Each row asks the Hook API once: with no callback the run is only counted (`did_filter()` stays WordPress's) and
 /// PHP is not entered. A failing callback stops the filtering; [`CheckedLineFilter::take_failure`] then gives the
 /// failure to rethrow.
 pub struct HookLineFilter {
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     name: HookName,
     failure: RefCell<Option<TextDifferError>>,
 }
 
 impl HookLineFilter {
     /// The filter over `hooks`.
-    pub fn new(hooks: Rc<HookApi>) -> HookLineFilter {
+    pub fn new(hooks: Rc<WpHookApi>) -> HookLineFilter {
         HookLineFilter {
             hooks,
             name: HookName::from("process_text_diff_html"),

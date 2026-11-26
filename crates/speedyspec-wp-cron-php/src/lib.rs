@@ -21,7 +21,7 @@ use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_wp_cron::{CronApi, CronParts};
 use speedyspec_wp_cron_contracts::WakeReporter;
 use speedyspec_wp_cron_options::OptionCronStore;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_options::OptionsApi;
 
 pub use adapters::{
@@ -58,7 +58,7 @@ pub fn cron_scenario_runner(
 /// The native cron functions and their wrapper.
 pub struct CronArea {
     api: Rc<CronApi>,
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     options: Rc<OptionsApi>,
 }
 
@@ -69,7 +69,7 @@ impl WakeReporter for NoWake {
     fn wake_at(&self, _: i64) {}
 }
 
-fn api(hooks: &Rc<HookApi>, options: &Rc<OptionsApi>, wake: Rc<dyn WakeReporter>) -> Rc<CronApi> {
+fn api(hooks: &Rc<WpHookApi>, options: &Rc<OptionsApi>, wake: Rc<dyn WakeReporter>) -> Rc<CronApi> {
     Rc::new(CronApi::new(CronParts {
         hooks: hooks.clone(),
         store: Rc::new(OptionCronStore::new(options.clone())),
@@ -87,7 +87,7 @@ fn api(hooks: &Rc<HookApi>, options: &Rc<OptionsApi>, wake: Rc<dyn WakeReporter>
 
 impl CronArea {
     /// The area over the worker's Hook API and options API, reporting no wake times.
-    pub fn new(hooks: Rc<HookApi>, options: Rc<OptionsApi>) -> CronArea {
+    pub fn new(hooks: Rc<WpHookApi>, options: Rc<OptionsApi>) -> CronArea {
         CronArea {
             api: api(&hooks, &options, Rc::new(NoWake)),
             hooks,

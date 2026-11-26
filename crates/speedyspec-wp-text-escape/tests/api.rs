@@ -3,20 +3,20 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_text_contracts::{SiteSettings, TextError, WordCountType};
 use speedyspec_wp_text_escape::EscapeApi;
 use speedyspec_wp_text_memory::{FixedSiteSettings, RecordingDiagnostics};
 
-fn api_with(settings: Rc<dyn SiteSettings>) -> (Rc<HookApi>, EscapeApi) {
-    let hooks = Rc::new(HookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)));
+fn api_with(settings: Rc<dyn SiteSettings>) -> (Rc<WpHookApi>, EscapeApi) {
+    let hooks = Rc::new(WpHookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)));
     let api = EscapeApi::new(hooks.clone(), settings, Rc::new(RecordingDiagnostics::default()));
     (hooks, api)
 }
 
-fn recording(hooks: &HookApi, hook: &str, result: Option<HookValue>) -> Rc<RefCell<Vec<Vec<HookValue>>>> {
+fn recording(hooks: &WpHookApi, hook: &str, result: Option<HookValue>) -> Rc<RefCell<Vec<Vec<HookValue>>>> {
     let seen = Rc::new(RefCell::new(Vec::new()));
     let kept = seen.clone();
     hooks

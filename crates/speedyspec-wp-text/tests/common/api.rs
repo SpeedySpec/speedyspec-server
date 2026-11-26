@@ -4,7 +4,7 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_shortcode_contracts::{ShortcodeTagNames, TagName};
 use speedyspec_wp_kses::KsesApi;
@@ -30,7 +30,7 @@ pub fn tags() -> Vec<TagName> {
 }
 
 pub struct Harness {
-    pub hooks: Rc<HookApi>,
+    pub hooks: Rc<WpHookApi>,
     pub diagnostics: Rc<RecordingDiagnostics>,
     pub kses: Rc<KsesApi>,
     pub api: Rc<TextApi>,
@@ -59,7 +59,7 @@ impl Default for Options {
 
 /// A harness with the given options, on the adapters the corpus was recorded with.
 pub fn harness_options(options: Options) -> Harness {
-    let hooks = Rc::new(HookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)));
+    let hooks = Rc::new(WpHookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)));
     let diagnostics = Rc::new(RecordingDiagnostics::default());
     let settings = Rc::new(options.settings);
     let escape = Rc::new(EscapeApi::new(hooks.clone(), settings.clone(), diagnostics.clone()));

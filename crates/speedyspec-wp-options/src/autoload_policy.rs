@@ -2,7 +2,7 @@
 
 use std::rc::{Rc, Weak};
 
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{Callback, Count, HookName, HookValue, Key};
 
 use crate::{
@@ -26,17 +26,17 @@ pub trait AutoloadPolicy {
 
 /// WordPress's policy, with its two filters.
 pub struct WordPressAutoloadPolicy {
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
 }
 
 impl WordPressAutoloadPolicy {
-    pub fn new(hooks: Rc<HookApi>) -> WordPressAutoloadPolicy {
+    pub fn new(hooks: Rc<WpHookApi>) -> WordPressAutoloadPolicy {
         WordPressAutoloadPolicy { hooks }
     }
 }
 
 fn filter(
-    hooks: &HookApi,
+    hooks: &WpHookApi,
     name: &str,
     value: HookValue,
     args: Vec<HookValue>,
@@ -193,7 +193,7 @@ fn php_int(value: &HookValue) -> i64 {
 /// `wp_filter_default_autoload_value_via_option_size()`: a value larger than `wp_max_autoloaded_option_size`
 /// (150000 bytes by default) is not autoloaded by default.
 pub fn filter_default_autoload_value_via_option_size(
-    hooks: &HookApi,
+    hooks: &WpHookApi,
     autoload: HookValue,
     name: &str,
     serialized: &HookValue,
@@ -218,8 +218,8 @@ pub fn filter_default_autoload_value_via_option_size(
 
 /// The filter `default-filters.php` adds, for hosts with no PHP: the same id, so a PHP host's own `add_filter`
 /// replaces it. The callback holds the Hook API weakly: the store that holds the callback must not keep the API.
-pub fn register_default_filters(hooks: &Rc<HookApi>) -> Result<(), OptionsError> {
-    let api: Weak<HookApi> = Rc::downgrade(hooks);
+pub fn register_default_filters(hooks: &Rc<WpHookApi>) -> Result<(), OptionsError> {
+    let api: Weak<WpHookApi> = Rc::downgrade(hooks);
     let id = "wp_filter_default_autoload_value_via_option_size";
     let callback = Callback::rust(id, move |args: &[HookValue]| {
         let autoload = args.first().cloned().unwrap_or(HookValue::Null);

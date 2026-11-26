@@ -4,7 +4,7 @@
 use std::rc::Rc;
 
 use speedyspec_data::DbError;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{HookName, HookValue};
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache};
 
@@ -68,7 +68,7 @@ pub struct TransientsApi {
     options: Rc<OptionsApi>,
     network: Rc<NetworkOptionsApi>,
     cache: Rc<CurrentObjectCache>,
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     ports: TransientPorts,
 }
 
@@ -77,7 +77,7 @@ impl TransientsApi {
         options: Rc<OptionsApi>,
         network: Rc<NetworkOptionsApi>,
         cache: Rc<CurrentObjectCache>,
-        hooks: Rc<HookApi>,
+        hooks: Rc<WpHookApi>,
         ports: TransientPorts,
     ) -> TransientsApi {
         TransientsApi {

@@ -2,7 +2,7 @@
 //!
 //! - [`TextArea`] builds `EscapeApi` and `TextApi` over PHP adapters ([`adapters`]), binds their use cases in the
 //!   container, and registers one native function per ported WordPress function, under WordPress's own name.
-//! - Filters fire through the shared `HookApi`, so PHP and Rust callbacks interleave by priority, as in WordPress.
+//! - Filters fire through the shared `WpHookApi`, so PHP and Rust callbacks interleave by priority, as in WordPress.
 //! - Formatting's functions added as callbacks by name (`add_filter( 'the_content', 'wpautop' )`) are stored as Rust
 //!   callbacks in the same slot ([`swap`]), so a chain of them runs without crossing into PHP.
 //! - What WordPress keeps in function statics lasts one request: [`TextArea`] resets it at each request start.
@@ -20,7 +20,7 @@ use std::rc::Rc;
 use speedyspec_container::Container;
 use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_kses::KsesApi;
 use speedyspec_wp_text::{TextApi, TextDeps, register_text_handlers};
 use speedyspec_wp_text_escape::{EscapeApi, register_escape_handlers};
@@ -63,7 +63,7 @@ impl TextArea {
     ///     kses, for `wp_allowed_protocols()`, the URI attributes and the entity names.
     /// @return
     ///     The area.
-    pub fn new(container: Rc<Container>, hooks: Rc<HookApi>, kses: Rc<KsesApi>) -> TextArea {
+    pub fn new(container: Rc<Container>, hooks: Rc<WpHookApi>, kses: Rc<KsesApi>) -> TextArea {
         let settings = Rc::new(PhpSiteSettings);
         let diagnostics = Rc::new(PhpDiagnostics);
         let escape = Rc::new(EscapeApi::new(hooks.clone(), settings.clone(), diagnostics.clone()));

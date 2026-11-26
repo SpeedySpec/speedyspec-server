@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::{
     Callback, CallbackId, HasFilterResult, HookName, HookValue, Key,
 };
@@ -59,12 +59,12 @@ impl Deprecations for Notices {
 struct Rig {
     registry: Rc<SettingsRegistry>,
     store: Rc<MemorySettingsStore>,
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     notices: Rc<Notices>,
 }
 
 fn rig() -> Rig {
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

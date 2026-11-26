@@ -311,7 +311,7 @@ fn review_fixes(php: &Php, container: &Rc<Container>) {
 }
 
 /// Whether the callback `id` at `priority` on `hook` is stored as a Rust callback.
-fn is_rust(hooks: &speedyspec_wp_hooks::HookApi, hook: &str, id: &str, priority: i64) -> bool {
+fn is_rust(hooks: &speedyspec_wp_hooks::WpHookApi, hook: &str, id: &str, priority: i64) -> bool {
     use speedyspec_wp_hooks_contracts::{ArrayKey, Callback, HookName};
     let name = HookName::from(hook);
     let Some(found) = name.key().ok().and_then(|k| hooks.store().hook(k)) else {
@@ -326,7 +326,7 @@ fn is_rust(hooks: &speedyspec_wp_hooks::HookApi, hook: &str, id: &str, priority:
 }
 
 /// Formatting's callbacks added by name run as Rust callbacks, unchanged in every way a plugin can see.
-fn swap(php: &Php, hooks: &Rc<speedyspec_wp_hooks::HookApi>) {
+fn swap(php: &Php, hooks: &Rc<speedyspec_wp_hooks::WpHookApi>) {
     // The probe: whether a `clean_url` callback (fired on every esc_url() call) sees an `esc_url` frame.
     const PROBE: &str = r#"function swap_probe($url) {
         $GLOBALS['frame'] = in_array('esc_url', array_column(debug_backtrace(), 'function'), true);

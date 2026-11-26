@@ -5,7 +5,7 @@ use speedyspec_firewall::FirewallLog;
 use speedyspec_firewall_app::{FirewallCache, FirewallScope};
 use speedyspec_firewall_infra_cache::{CacheBanStore, CacheCounterStore, SystemClock};
 use speedyspec_firewall_infra_options::OptionsSettingsSource;
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::HookError;
 use speedyspec_wp_options::Options;
 
@@ -28,7 +28,7 @@ impl FirewallComposition {
     pub fn build(
         options: Options,
         cache: Rc<dyn CachingStore>,
-        hooks: &HookApi,
+        hooks: &WpHookApi,
         scope: FirewallScope,
         log: Rc<dyn FirewallLog>,
     ) -> Result<Rc<FirewallStage>, HookError> {

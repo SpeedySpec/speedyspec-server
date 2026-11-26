@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use indexmap::IndexMap;
 use speedyspec_data::{DbError, SqlStore, Statement, StatementKind};
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{Count, HookError, HookName};
 
 use crate::binary::parse_bytes;
@@ -20,7 +20,7 @@ use crate::{
 /// What `WpDb` is made from.
 pub struct WpDbParts {
     pub store: Rc<dyn SqlStore>,
-    pub hooks: Rc<HookApi>,
+    pub hooks: Rc<WpHookApi>,
     pub state: Rc<dyn WpdbState>,
     pub host: Rc<dyn WpdbHost>,
     pub config: WpDbConfig,
@@ -62,7 +62,7 @@ pub(crate) struct Settings {
 /// WordPress's `wpdb`.
 pub struct WpDb {
     pub(crate) store: Rc<TimedSqlStore>,
-    pub(crate) hooks: Rc<HookApi>,
+    pub(crate) hooks: Rc<WpHookApi>,
     pub(crate) state: Rc<dyn WpdbState>,
     pub(crate) host: Rc<dyn WpdbHost>,
     pub(crate) config: WpDbConfig,
@@ -182,7 +182,7 @@ impl WpDb {
         &self.host
     }
 
-    pub fn hooks(&self) -> &Rc<HookApi> {
+    pub fn hooks(&self) -> &Rc<WpHookApi> {
         &self.hooks
     }
 

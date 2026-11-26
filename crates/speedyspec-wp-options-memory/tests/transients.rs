@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use speedyspec_cache_memory::MemoryCache;
 use speedyspec_data::DbError;
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::{Callback, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts, SiteContext};
@@ -90,7 +90,7 @@ type Log = Rc<RefCell<Vec<(String, Vec<HookValue>)>>>;
 struct Rig {
     api: TransientsApi,
     current: Rc<CurrentObjectCache>,
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     repo: Rc<MemoryOptionRepository>,
     sitemeta: Rc<MemorySitemetaRepository>,
     site: Rc<Site>,
@@ -102,7 +102,7 @@ struct Rig {
 }
 
 fn rig_with(multisite: bool, persistent: bool) -> Rig {
-    let hooks = Rc::new(HookApi::new(
+    let hooks = Rc::new(WpHookApi::new(
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));

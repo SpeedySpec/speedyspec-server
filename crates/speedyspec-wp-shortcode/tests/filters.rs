@@ -7,18 +7,18 @@ use std::rc::Rc;
 
 use speedyspec_container::Container;
 use speedyspec_cqrs::{CommandBus, QueryBus};
-use speedyspec_wp_hooks::{HookApi, IgnoreDeprecations};
+use speedyspec_wp_hooks::{WpHookApi, IgnoreDeprecations};
 use speedyspec_wp_hooks_contracts::{Callback, CallbackId, HasFilterResult, HookName, HookValue};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_shortcode::{AddShortcode, DoShortcode, HookApiFilters, ShortcodeExists, register_shortcode_handlers};
 use speedyspec_wp_shortcode_contracts::{PhpValue, ShortcodeError};
 use support::doubles::{handler, harness_with};
 
-fn hooks() -> Rc<HookApi> {
-    Rc::new(HookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)))
+fn hooks() -> Rc<WpHookApi> {
+    Rc::new(WpHookApi::new(Rc::new(MemoryHookStore::new()), Rc::new(IgnoreDeprecations)))
 }
 
-fn context_attached(hooks: &HookApi) -> bool {
+fn context_attached(hooks: &WpHookApi) -> bool {
     hooks
         .has_filter(
             &HookName::from("wp_get_attachment_image_context"),

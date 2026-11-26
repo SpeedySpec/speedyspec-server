@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_routing::{GuardAnswer, Rule, RuleGuard};
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::HookName;
 use speedyspec_wp_rewrite::{
     Multisite, PageUris, PostTypes, PublicQueryVars, QueryableTaxonomy, RandomContentRedirects,
@@ -49,11 +49,11 @@ impl Multisite for PhpMultisite {
 
 /// `did_action( 'wp_loaded' )`, answered by the Rust Hook API both languages share.
 pub struct HookWpLoaded {
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
 }
 
 impl HookWpLoaded {
-    pub fn new(hooks: Rc<HookApi>) -> HookWpLoaded {
+    pub fn new(hooks: Rc<WpHookApi>) -> HookWpLoaded {
         HookWpLoaded { hooks }
     }
 }

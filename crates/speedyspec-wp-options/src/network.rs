@@ -3,7 +3,7 @@
 
 use std::rc::Rc;
 
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{HookValue, Key};
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCache};
 
@@ -73,7 +73,7 @@ pub struct NetworkOptionsApi {
     options: Rc<OptionsApi>,
     sitemeta: Rc<dyn SitemetaRepository>,
     cache: Rc<CurrentObjectCache>,
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     ports: NetworkPorts,
 }
 
@@ -94,7 +94,7 @@ impl NetworkOptionsApi {
         options: Rc<OptionsApi>,
         sitemeta: Rc<dyn SitemetaRepository>,
         cache: Rc<CurrentObjectCache>,
-        hooks: Rc<HookApi>,
+        hooks: Rc<WpHookApi>,
         ports: NetworkPorts,
     ) -> NetworkOptionsApi {
         let api = NetworkOptionsApi {
@@ -108,7 +108,7 @@ impl NetworkOptionsApi {
         api
     }
 
-    pub fn hooks(&self) -> &Rc<HookApi> {
+    pub fn hooks(&self) -> &Rc<WpHookApi> {
         &self.hooks
     }
 

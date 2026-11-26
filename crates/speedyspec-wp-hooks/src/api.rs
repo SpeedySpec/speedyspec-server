@@ -39,14 +39,14 @@ impl DeprecatedHooks for IgnoreDeprecations {
 static ALL: LazyLock<HookKey> = LazyLock::new(|| HookKey::new(ArrayKey::Str("all".into())));
 
 /// The functions of `plugin.php`. Every use-case handler runs through one of these.
-pub struct HookApi {
+pub struct WpHookApi {
     store: Rc<dyn HookStore>,
     deprecated: Rc<dyn DeprecatedHooks>,
 }
 
-impl HookApi {
-    pub fn new(store: Rc<dyn HookStore>, deprecated: Rc<dyn DeprecatedHooks>) -> HookApi {
-        HookApi { store, deprecated }
+impl WpHookApi {
+    pub fn new(store: Rc<dyn HookStore>, deprecated: Rc<dyn DeprecatedHooks>) -> WpHookApi {
+        WpHookApi { store, deprecated }
     }
 
     pub fn store(&self) -> &Rc<dyn HookStore> {

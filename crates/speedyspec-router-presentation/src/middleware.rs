@@ -8,7 +8,7 @@ use speedyspec_http_pipeline::Pipeline;
 use speedyspec_router::wordpress::wp_sanitize_redirect;
 use speedyspec_router::{RouteRequest, Router, TableCache, Target};
 use speedyspec_routing::{GuardAnswer, Resolution, RouteId, RouteMatch, Rule, RuleGuard};
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{HookName, HookValue};
 use speedyspec_wp_rewrite::{WpOutcome, WpRouting};
 
@@ -46,7 +46,7 @@ pub struct RoutingMiddleware {
     cache: Rc<TableCache>,
     routing: Rc<WpRouting>,
     sources: RedirectSources,
-    hooks: Rc<HookApi>,
+    hooks: Rc<WpHookApi>,
     registry: Rc<dyn PhpCallbackRegistry>,
     guard: Rc<dyn RuleGuard>,
     home_path: String,
@@ -60,7 +60,7 @@ impl RoutingMiddleware {
         cache: Rc<TableCache>,
         routing: Rc<WpRouting>,
         sources: RedirectSources,
-        hooks: Rc<HookApi>,
+        hooks: Rc<WpHookApi>,
         registry: Rc<dyn PhpCallbackRegistry>,
         guard: Rc<dyn RuleGuard>,
         home_path: &str,

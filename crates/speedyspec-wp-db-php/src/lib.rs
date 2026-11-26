@@ -34,7 +34,7 @@ use speedyspec_wp_db::{
     MemoryWpdbState, WPDB_STATE, WpDb, WpDbConfig, WpDbError, WpDbParts, WpdbState,
     register_wpdb_handlers,
 };
-use speedyspec_wp_hooks::HookApi;
+use speedyspec_wp_hooks::WpHookApi;
 
 pub use host::PhpWpdbHost;
 pub use state::{PhpWpdbState, ResolvedWpdbState};
@@ -46,7 +46,7 @@ pub(crate) struct Instances {
 }
 
 pub(crate) struct Shared {
-    pub hooks: Rc<HookApi>,
+    pub hooks: Rc<WpHookApi>,
     pub registry: Rc<EngineRegistry>,
     pub global: Rc<WpDb>,
     pub memory: Rc<MemoryWpdbState>,
@@ -69,7 +69,7 @@ impl WpDbArea {
     /// memory state, which PHP may replace), the PHP host, and every handler registered in `container`.
     pub fn new(
         container: Rc<Container>,
-        hooks: Rc<HookApi>,
+        hooks: Rc<WpHookApi>,
         registry: Rc<EngineRegistry>,
         config: WpDbConfig,
     ) -> WpDbArea {
