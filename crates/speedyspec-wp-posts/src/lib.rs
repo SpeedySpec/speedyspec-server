@@ -2,9 +2,10 @@
 //! `WP_Post_Type`'s argument resolution, the post type registry with its supports and meta capabilities, and the
 //! post status rules and registry, the filtered post type and status lists, and the exists, hierarchical and
 //! viewable predicates, `create_initial_post_types()`, `wp_unique_post_slug()`'s rules over the post repository,
-//! and the post hierarchy: parents, loops, ancestors, page URIs and page trees.
+//! the post hierarchy: parents, loops, ancestors, page URIs and page trees, and `get_extended()`'s more split.
 
 mod caps;
+mod content;
 mod dates;
 mod hierarchy;
 mod initial;
@@ -20,6 +21,7 @@ mod slug;
 mod status;
 
 pub use caps::{meta_capabilities, post_type_capabilities};
+pub use content::{Extended, extended};
 pub use dates::{
     InsertDateInput, InsertDates, ResolvedPostDate, gregorian_date_valid, insert_post_dates,
     resolve_post_date,

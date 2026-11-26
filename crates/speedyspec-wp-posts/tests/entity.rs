@@ -11,8 +11,9 @@ mod support;
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::{
     InsertDateInput, NoBadSlugs, PostStatusRegistry, SlugPorts, SlugRequest, Uncached,
-    check_post_hierarchy_for_loops, find_hierarchy_loop, insert_post_dates, page_children,
-    page_hierarchy, page_uri, post_ancestors, post_parent_id, resolve_post_date, unique_post_slug,
+    check_post_hierarchy_for_loops, extended, find_hierarchy_loop, insert_post_dates,
+    page_children, page_hierarchy, page_uri, post_ancestors, post_parent_id, resolve_post_date,
+    unique_post_slug,
 };
 use speedyspec_wp_posts_contracts::{PostId, PostReader};
 use support::entity::{
@@ -307,4 +308,29 @@ fn pages_match_wordpress() {
         }
     }
     assert_eq!(calls, 16);
+}
+
+#[test]
+fn extended_matches_wordpress() {
+    let cases = entity_cases();
+    let entries = cases["extended"].as_array().unwrap();
+    assert_eq!(entries.len(), 10);
+    for (index, entry) in entries.iter().enumerate() {
+        let PhpValue::Str(content) = support::decode(&entry["content"]) else {
+            panic!("case {index}: content is not a string");
+        };
+        let parts = extended(&content);
+        let result = PhpValue::Array(vec![
+            (PhpKey::Str(b"main".to_vec()), PhpValue::Str(parts.main)),
+            (
+                PhpKey::Str(b"extended".to_vec()),
+                PhpValue::Str(parts.extended),
+            ),
+            (
+                PhpKey::Str(b"more_text".to_vec()),
+                PhpValue::Str(parts.more_text),
+            ),
+        ]);
+        assert_eq!(result, support::decode(&entry["result"]), "case {index}");
+    }
 }

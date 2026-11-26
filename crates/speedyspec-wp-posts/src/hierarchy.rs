@@ -82,7 +82,9 @@ pub fn find_hierarchy_loop(
         return Ok(Vec::new());
     };
     let mut members = Vec::new();
-    tortoise_hare(posts, member, over, Some(&mut members))?;
+    // The first pass found `member` on a loop, so a walk that starts there never ends and always laps.
+    let lapped = tortoise_hare(posts, member, over, Some(&mut members))?;
+    debug_assert!(lapped.is_some(), "a walk that starts on a loop member laps");
     Ok(members)
 }
 
