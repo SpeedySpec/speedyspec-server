@@ -2,7 +2,7 @@
 //! entry, to the post entity and back (WordPress 7.2-RC2).
 
 use speedyspec_data::{DbValue, Row};
-use speedyspec_php_serialize::semantics::{get, to_php_int, to_php_string};
+use speedyspec_php_serialize::semantics::{get, isset, to_php_int, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts_contracts::{
     CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
@@ -224,7 +224,7 @@ impl PostMapper {
             return None;
         }
         let columns = CacheColumns(properties);
-        get(properties, "ID").filter(|v| !matches!(v, PhpValue::Null))?;
+        isset(properties, "ID")?;
         let id = columns.uint("ID").ok().flatten()?;
         Some(entity(&columns, PostId(id)).expect("cache columns always cast"))
     }

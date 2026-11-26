@@ -45,6 +45,9 @@ fn empty_date(date: &[u8]) -> bool {
 /// `wp_resolve_post_date( $post_date, $post_date_gmt )` without the `wp_checkdate` filter: an empty local date
 /// becomes now when the GMT date is empty too, else the GMT date in local time; then
 /// `/^(\d{4})-(\d{1,2})-(\d{1,2})/` and `checkdate()`.
+///
+/// Dates are bytes here, as PHP strings are, while [`PostDateTime`] holds a `String`: a caller converts between
+/// them, lossily for bytes that are not UTF-8.
 pub fn resolve_post_date(
     post_date: &[u8],
     post_date_gmt: &[u8],
@@ -143,6 +146,9 @@ pub struct InsertDates {
 /// local date unless the status floats, then zero), the modified dates (now on update or for a zero date, else the
 /// post's), and `publish` scheduled as `future` a minute or more ahead, `future` published when less than a minute
 /// ahead, except for attachments. A date `strtotime()` cannot read counts as 0, as PHP's `false` does.
+///
+/// Dates are bytes here, as PHP strings are, while [`PostDateTime`] holds a `String`: a caller converts between
+/// them, lossily for bytes that are not UTF-8.
 pub fn insert_post_dates(
     input: &InsertDateInput<'_>,
     statuses: &dyn PostStatuses,

@@ -19,6 +19,8 @@ mod reader;
 mod registry;
 mod slug;
 mod status;
+#[cfg(test)]
+mod test_support;
 
 pub use caps::{meta_capabilities, post_type_capabilities};
 pub use content::{Extended, extended};

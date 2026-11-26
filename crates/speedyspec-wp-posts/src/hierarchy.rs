@@ -6,6 +6,7 @@
 //! Each reads through a [`PostReader`] exactly where WordPress calls `get_post()`, so with
 //! [`crate::Uncached`] the statements are uncached WordPress's.
 
+use speedyspec_php_serialize::semantics::bytes_truthy;
 use speedyspec_wp_posts_contracts::{Post, PostError, PostId, PostReader};
 
 /// `wp_get_post_parent_id( $id )`: the post's `post_parent` (0 for none), or `None` for a missing post (false).
@@ -161,7 +162,7 @@ pub fn page_uri(posts: &dyn PostReader, page: &Post) -> Result<Vec<u8>, PostErro
     for id in post_ancestors(posts, page)? {
         if let Some(parent) = posts.post(id)? {
             let name = parent.name.as_bytes();
-            if !matches!(name, b"" | b"0") {
+            if bytes_truthy(name) {
                 uri = [name, b"/", &uri].concat();
             }
         }

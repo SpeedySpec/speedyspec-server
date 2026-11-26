@@ -8,7 +8,7 @@
 //! [`unique_post_slug`] the value passed to the second.
 
 use speedyspec_php_serialize::PhpValue;
-use speedyspec_php_serialize::semantics::to_php_int;
+use speedyspec_php_serialize::semantics::{bytes_truthy, to_php_int};
 use speedyspec_wp_posts_contracts::{
     BadSlugs, PostError, PostId, PostReader, PostRepository, PostTypeName, PostTypes, Slug,
     SlugTruncation,
@@ -92,7 +92,7 @@ enum OwnerQuery<'a> {
 /// PHP truth of `$post_name_check`: a missing owner (null) and an owner named `""` or `"0"` are false, so they never
 /// force a suffix.
 fn truthy(owner: Option<Slug>) -> bool {
-    owner.is_some_and(|name| !matches!(name.as_bytes(), b"" | b"0"))
+    owner.is_some_and(|name| bytes_truthy(name.as_bytes()))
 }
 
 impl OwnerQuery<'_> {
@@ -178,7 +178,7 @@ fn conflicts_with_date_archive(
     let parts: Vec<&[u8]> = context
         .permalink_structure
         .split(|&b| b == b'/')
-        .filter(|part| !matches!(*part, b"" | b"0"))
+        .filter(|part| bytes_truthy(part))
         .collect();
     match parts.iter().position(|part| *part == b"%postname%") {
         Some(0) => true,
@@ -253,6 +253,8 @@ mod tests {
     use speedyspec_php_serialize::PhpKey;
     use speedyspec_wp_posts_contracts::{Post, PostType};
     use speedyspec_wp_posts_memory::MemoryPostRepository;
+
+    use crate::test_support::Silent;
 
     use super::*;
     use crate::Uncached;
@@ -386,56 +388,12 @@ mod tests {
         );
     }
 
-    /// A repository that must not be asked anything.
-    struct Untouched;
-
-    impl PostRepository for Untouched {
-        fn engine(&self) -> String {
-            "untouched".to_owned()
-        }
-
-        fn find(&self, _id: PostId) -> Result<Option<Post>, PostError> {
-            panic!("find")
-        }
-
-        fn insert(&self, _post: &Post) -> Result<Option<PostId>, PostError> {
-            panic!("insert")
-        }
-
-        fn attachment_slug_owner(
-            &self,
-            _slug: &Slug,
-            _except: PostId,
-        ) -> Result<Option<Slug>, PostError> {
-            panic!("attachment_slug_owner")
-        }
-
-        fn hierarchical_slug_owner(
-            &self,
-            _slug: &Slug,
-            _post_type: &PostTypeName,
-            _except: PostId,
-            _parent: PostId,
-        ) -> Result<Option<Slug>, PostError> {
-            panic!("hierarchical_slug_owner")
-        }
-
-        fn flat_slug_owner(
-            &self,
-            _slug: &Slug,
-            _post_type: &PostTypeName,
-            _except: PostId,
-        ) -> Result<Option<Slug>, PostError> {
-            panic!("flat_slug_owner")
-        }
-    }
-
     #[test]
     fn hierarchical_nav_menu_item_returns_the_slug() {
         let types = Types(vec![("nav_menu_item", true)]);
-        let reader = Uncached(&Untouched);
+        let reader = Uncached(&Silent);
         let ports = SlugPorts {
-            repository: &Untouched,
+            repository: &Silent,
             posts: &reader,
             types: &types,
             truncation: &Truncation,

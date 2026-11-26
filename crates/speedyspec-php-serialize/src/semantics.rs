@@ -16,6 +16,11 @@ pub fn is_empty(value: &PhpValue) -> bool {
     }
 }
 
+/// PHP truth of a byte string: `""` and `"0"` are false, every other string is true.
+pub fn bytes_truthy(bytes: &[u8]) -> bool {
+    !matches!(bytes, b"" | b"0")
+}
+
 /// `$array['name']` for a string key.
 ///
 /// `name` must not be integer-like (`"5"`): PHP stores such a key as an int, and this matches string keys only.
@@ -497,6 +502,16 @@ pub fn loose_eq(a: &PhpValue, b: &PhpValue) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bytes_truthy_is_false_only_for_empty_and_zero() {
+        assert!(!bytes_truthy(b""));
+        assert!(!bytes_truthy(b"0"));
+        assert!(bytes_truthy(b"00"));
+        assert!(bytes_truthy(b"0.0"));
+        assert!(bytes_truthy(b" "));
+        assert!(bytes_truthy(b"a"));
+    }
 
     fn s(v: &str) -> PhpValue {
         PhpValue::Str(v.as_bytes().to_vec())
