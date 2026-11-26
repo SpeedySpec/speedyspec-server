@@ -153,3 +153,105 @@ fn get_with_runs_once() {
     assert_eq!(miss, Ok(None));
     assert_eq!(calls.get(), 2);
 }
+
+/// A cache whose `read_with` breaks the contract: it returns `Ok` without calling its reader.
+struct SilentReader(MapCache);
+
+impl ObjectCache for SilentReader {
+    fn get(
+        &self,
+        key: &Value,
+        group: &Value,
+        force: bool,
+    ) -> Result<Option<Value>, ObjectCacheError> {
+        self.0.get(key, group, force)
+    }
+
+    fn read_with(
+        &self,
+        _key: &Value,
+        _group: &Value,
+        _force: bool,
+        _reader: &mut dyn FnMut(Option<&Value>),
+    ) -> Result<(), ObjectCacheError> {
+        Ok(())
+    }
+
+    fn get_multiple(
+        &self,
+        keys: &[Value],
+        group: &Value,
+        force: bool,
+    ) -> Result<Vec<(Key, Value)>, ObjectCacheError> {
+        self.0.get_multiple(keys, group, force)
+    }
+
+    fn peek(&self, key: &Value, group: &Value) -> Option<Value> {
+        self.0.peek(key, group)
+    }
+
+    fn add(
+        &self,
+        key: &Value,
+        data: Value,
+        group: &Value,
+        expire: i64,
+    ) -> Result<bool, ObjectCacheError> {
+        self.0.add(key, data, group, expire)
+    }
+
+    fn add_multiple(
+        &self,
+        data: Vec<(Key, Value)>,
+        group: &Value,
+        expire: i64,
+    ) -> Result<Vec<(Key, bool)>, ObjectCacheError> {
+        self.0.add_multiple(data, group, expire)
+    }
+
+    fn set(
+        &self,
+        key: &Value,
+        data: Value,
+        group: &Value,
+        expire: i64,
+    ) -> Result<bool, ObjectCacheError> {
+        self.0.set(key, data, group, expire)
+    }
+
+    fn set_multiple(
+        &self,
+        data: Vec<(Key, Value)>,
+        group: &Value,
+        expire: i64,
+    ) -> Result<Vec<(Key, bool)>, ObjectCacheError> {
+        self.0.set_multiple(data, group, expire)
+    }
+
+    fn delete(&self, key: &Value, group: &Value) -> Result<bool, ObjectCacheError> {
+        self.0.delete(key, group)
+    }
+
+    fn delete_multiple(
+        &self,
+        keys: &[Value],
+        group: &Value,
+    ) -> Result<Vec<(Key, bool)>, ObjectCacheError> {
+        self.0.delete_multiple(keys, group)
+    }
+
+    fn add_global_groups(&self, groups: &[Value]) {
+        self.0.add_global_groups(groups)
+    }
+
+    fn is_persistent(&self) -> bool {
+        self.0.is_persistent()
+    }
+}
+
+#[test]
+#[should_panic(expected = "ObjectCache::read_with must call its reader once when it succeeds")]
+fn get_with_panics_when_read_with_skips_the_reader() {
+    let cache = SilentReader(MapCache::default());
+    let _ = get_with(&cache, &s("k"), &s("g"), false, |v| v.cloned());
+}

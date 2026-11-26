@@ -18,6 +18,8 @@ pub trait ObjectCache {
     ) -> Result<Option<Value>, ObjectCacheError>;
     /// options (the autoloaded `alloptions` read): [`get_with`], object safe. `reader` sees the value in place
     /// (`None` on a miss), once, unless the result is `Err`. `reader` must not call back into the cache.
+    ///
+    /// Implementations must call `reader` on every path that returns `Ok`: [`get_with`] panics otherwise.
     fn read_with(
         &self,
         key: &Value,
@@ -82,6 +84,11 @@ pub trait ObjectCache {
 /// `wp_cache_get()`, with the value lent to `f` instead of copied: the generic form of
 /// [`ObjectCache::read_with`], kept outside the trait so the trait stays object safe. `f` runs once, unless the
 /// result is `Err`; it must not call back into the cache.
+///
+/// # Panics
+///
+/// Panics if `cache.read_with` returns `Ok` without calling its reader, which breaks the
+/// [`ObjectCache::read_with`] contract.
 pub fn get_with<R>(
     cache: &dyn ObjectCache,
     key: &Value,
