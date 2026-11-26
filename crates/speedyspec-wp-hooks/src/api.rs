@@ -6,7 +6,8 @@ use std::sync::LazyLock;
 
 use crate::{HookStore, WpHook};
 use speedyspec_wp_hooks_contracts::{
-    ArrayKey, Callback, CallbackId, Count, HasFilterResult, HookError, HookKey, HookName, HookValue,
+    ArrayKey, Callback, CallbackId, Count, HasFilterResult, HookApi, HookError, HookKey, HookName,
+    HookValue,
 };
 
 /// WordPress's `_deprecated_hook()` (it stays outside the Hook API).
@@ -338,6 +339,70 @@ impl WpHookApi {
             .store
             .hook(hook.key()?)
             .and_then(|target| target.current_priority()))
+    }
+}
+
+/// The Hook API port. Each method names `WpHookApi::` explicitly: `self.method(..)` would resolve to the trait method
+/// and call itself.
+impl HookApi for WpHookApi {
+    fn skip_if_empty(&self, hook: &HookName, count: Count) -> Result<bool, HookError> {
+        WpHookApi::skip_if_empty(self, hook, count)
+    }
+
+    fn add_filter(
+        &self,
+        hook: &HookName,
+        callback: Callback,
+        priority: &HookValue,
+        accepted_args: i64,
+    ) -> Result<bool, HookError> {
+        WpHookApi::add_filter(self, hook, callback, priority, accepted_args)
+    }
+
+    fn has_filter(
+        &self,
+        hook: &HookName,
+        callback: Option<&CallbackId>,
+        priority: Option<i64>,
+    ) -> Result<HasFilterResult, HookError> {
+        WpHookApi::has_filter(self, hook, callback, priority)
+    }
+
+    fn remove_filter(
+        &self,
+        hook: &HookName,
+        callback: CallbackId,
+        priority: &HookValue,
+    ) -> Result<bool, HookError> {
+        WpHookApi::remove_filter(self, hook, callback, priority)
+    }
+
+    fn apply_filters(
+        &self,
+        hook: &HookName,
+        value: HookValue,
+        args: Vec<HookValue>,
+    ) -> Result<HookValue, HookError> {
+        WpHookApi::apply_filters(self, hook, value, args)
+    }
+
+    fn do_action(&self, hook: &HookName, args: Vec<HookValue>) -> Result<(), HookError> {
+        WpHookApi::do_action(self, hook, args)
+    }
+
+    fn do_action_ref_array(&self, hook: &HookName, args: Vec<HookValue>) -> Result<(), HookError> {
+        WpHookApi::do_action_ref_array(self, hook, args)
+    }
+
+    fn do_action_deprecated(
+        &self,
+        hook: &HookName,
+        args: Vec<HookValue>,
+        version: &HookValue,
+        replacement: &HookValue,
+        message: &HookValue,
+    ) -> Result<(), HookError> {
+        WpHookApi::do_action_deprecated(self, hook, args, version, replacement, message)
     }
 }
 

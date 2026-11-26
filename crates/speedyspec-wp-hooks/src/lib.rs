@@ -1,7 +1,8 @@
 //! WordPress's Hook API, in Rust.
 //!
 //! - [`WpHookApi`] is `plugin.php`: every function, over the outbound port [`HookStore`] (`$wp_filter`, `$wp_actions`,
-//!   `$wp_filters`, `$wp_current_filter`).
+//!   `$wp_filters`, `$wp_current_filter`). It implements the hooks seam's port,
+//!   `speedyspec_wp_hooks_contracts::HookApi`.
 //! - [`WpHook`] is `WP_Hook`, ported literally, with [`HookIteration`] (how running iterations follow changes) and
 //!   [`PriorityOrder`] (PHP's key ordering and comparisons).
 //! - [`CallbackIdentity`] is `_wp_filter_build_unique_id()`.
