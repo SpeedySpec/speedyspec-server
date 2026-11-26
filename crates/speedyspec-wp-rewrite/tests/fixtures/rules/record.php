@@ -7,7 +7,9 @@
  *
  * Only class-wp-rewrite.php is loaded. Each case sets the options, URLs and registrations WordPress would have at
  * that point (the category, tag and post format permastructs register_taxonomy() adds), and the WordPress functions
- * the class calls are stubbed: filters return their value unchanged, so this records generation alone.
+ * the class calls are stubbed: filters return their value unchanged, so this records generation alone. A case may
+ * also list the randomable post types, the publicly queryable taxonomies (with the permastructs register_taxonomy()
+ * would add for them), the posts published at a path, and whether random content redirects are on.
  */
 
 $root = rtrim( $argv[1] ?? '', '/' );
@@ -23,6 +25,7 @@ foreach ( array(
 ) as $name => $value ) {
 	define( $name, $value );
 }
+define( 'OBJECT', 'OBJECT' );
 
 $GLOBALS['case'] = array();
 
@@ -41,8 +44,53 @@ function is_multisite() {
 function is_main_site() {
 	return true;
 }
-function get_post_types( $args = array() ) {
-	return array();
+function get_post_types( $args = array(), $output = 'names' ) {
+	if ( empty( $args['randomable'] ) ) {
+		return array();
+	}
+	$types = array();
+	foreach ( $GLOBALS['case']['randomable'] ?? array() as $type ) {
+		$types[ $type['name'] ] = 'objects' === $output ? (object) $type : $type['name'];
+	}
+	return $types;
+}
+function get_taxonomies( $args = array(), $output = 'names' ) {
+	$taxonomies = array();
+	foreach ( $GLOBALS['case']['taxonomies'] ?? array() as $taxonomy ) {
+		$taxonomies[ $taxonomy['name'] ] = (object) $taxonomy;
+	}
+	return $taxonomies;
+}
+final class WP_Post {
+	public $post_type;
+}
+function get_page_by_path( $path, $output = OBJECT, $post_type = 'page' ) {
+	foreach ( $GLOBALS['case']['posts'] ?? array() as $post ) {
+		if ( array( $path, $post_type ) === $post ) {
+			$found            = new WP_Post();
+			$found->post_type = $post_type;
+			return $found;
+		}
+	}
+	return null;
+}
+function is_post_publicly_viewable( $post ) {
+	return true;
+}
+function wp_is_random_content_redirect_enabled() {
+	return $GLOBALS['case']['random'] ?? true;
+}
+function get_locale() {
+	return 'en_US';
+}
+function switch_to_locale( $locale ) {
+	return false;
+}
+function restore_previous_locale() {
+	return false;
+}
+function _x( $text, $context ) {
+	return $text;
 }
 function is_post_type_hierarchical( $type ) {
 	return false;
@@ -110,6 +158,46 @@ $cases = array(
 		'external'  => array( array( 'legacy/(.+?)$', 'legacy.php?path=$1' ) ),
 	),
 	array(
+		'name'       => 'random_content',
+		'options'    => array( 'permalink_structure' => '/%postname%/' ),
+		'randomable' => array(
+			array( 'name' => 'post', 'has_archive' => false, 'rewrite' => false ),
+			array( 'name' => 'book', 'has_archive' => 'books', 'rewrite' => array( 'slug' => 'book' ) ),
+			array( 'name' => 'movie', 'has_archive' => true, 'rewrite' => array( 'slug' => 'film' ) ),
+			array( 'name' => 'quote', 'has_archive' => true, 'rewrite' => array( 'with_front' => true ) ),
+			array( 'name' => 'note', 'has_archive' => 'notes', 'rewrite' => false ),
+		),
+		'taxonomies' => array(
+			array( 'name' => 'category', 'rewrite' => array( 'slug' => 'category' ), 'object_type' => array( 'post' ) ),
+			array( 'name' => 'post_tag', 'rewrite' => array( 'slug' => 'tag' ), 'object_type' => array( 'page' ) ),
+			array( 'name' => 'genre', 'rewrite' => array( 'slug' => 'genre' ), 'object_type' => array( 'book', 'movie' ) ),
+			array( 'name' => 'unregistered', 'rewrite' => array( 'slug' => 'nope' ), 'object_type' => array( 'book' ) ),
+			array( 'name' => 'plain', 'rewrite' => false, 'object_type' => array( 'book' ) ),
+		),
+		'permastructs' => array( array( 'genre', 'genre/%genre%', '([^/]+)', 'genre=' ) ),
+		'top'          => array( array( 'random/books/?$', 'index.php?post_type=book&orderby=rand' ) ),
+	),
+	array(
+		'name'    => 'random_base_taken',
+		'options' => array( 'permalink_structure' => '/%postname%/', 'wp_random_base' => 'surprise' ),
+		'posts'   => array( array( 'surprise', 'post' ) ),
+	),
+	array(
+		'name'    => 'random_base_page_taken',
+		'options' => array( 'permalink_structure' => '/%year%/%postname%/' ),
+		'posts'   => array( array( 'random', 'page' ), array( 'random', 'post' ) ),
+	),
+	array(
+		'name'    => 'random_base_post_elsewhere',
+		'options' => array( 'permalink_structure' => '/%year%/%postname%/' ),
+		'posts'   => array( array( 'random', 'post' ) ),
+	),
+	array(
+		'name'    => 'random_disabled',
+		'options' => array( 'permalink_structure' => '/%postname%/' ),
+		'random'  => false,
+	),
+	array(
 		'name'    => 'verbose_rules',
 		'options' => array( 'permalink_structure' => '/%postname%/' ),
 		'verbose' => true,
@@ -127,6 +215,10 @@ foreach ( $cases as $case ) {
 	$rewrite->matches = 'matches';
 	$rewrite->use_verbose_rules = ! empty( $case['verbose'] );
 	taxonomies( $rewrite, $case['options'] );
+	foreach ( $case['permastructs'] ?? array() as $permastruct ) {
+		$rewrite->add_rewrite_tag( "%{$permastruct[0]}%", $permastruct[2], $permastruct[3] );
+		$rewrite->add_permastruct( $permastruct[0], $permastruct[1], array( 'with_front' => true ) );
+	}
 	foreach ( $case['endpoints'] ?? array() as $endpoint ) {
 		$rewrite->endpoints[] = $endpoint;
 	}
@@ -155,6 +247,11 @@ foreach ( $cases as $case ) {
 		'top'       => $case['top'] ?? array(),
 		'bottom'    => $case['bottom'] ?? array(),
 		'external'  => $case['external'] ?? array(),
+		'randomable'   => $case['randomable'] ?? array(),
+		'taxonomies'   => $case['taxonomies'] ?? array(),
+		'permastructs' => $case['permastructs'] ?? array(),
+		'posts'        => $case['posts'] ?? array(),
+		'random'       => $case['random'] ?? true,
 		'rules'     => $pairs,
 		'mod_rewrite' => $mod,
 		'iis7'      => $rewrite->iis7_url_rewrite_rules( false ),

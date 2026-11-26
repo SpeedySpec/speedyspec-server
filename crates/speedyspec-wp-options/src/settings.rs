@@ -186,6 +186,7 @@ impl SettingsRegistry {
             (Key::Str("description".into()), s("")),
             (Key::Str("sanitize_callback".into()), HookValue::Null),
             (Key::Str("show_in_rest".into()), HookValue::Bool(false)),
+            (Key::Str("show_in_abilities".into()), HookValue::Bool(false)),
         ]);
         let args = match args {
             SettingArgsInput::Array(v) | SettingArgsInput::Other(v) => v,

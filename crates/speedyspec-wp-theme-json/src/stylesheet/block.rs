@@ -3,7 +3,8 @@
 use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_theme_json_contracts::schema::{self, ROOT_BLOCK_SELECTOR};
 
-use super::custom_css::process_blocks_custom_css;
+use super::custom_css::{css_text, process_blocks_custom_css};
+use super::states::{state_base_styles, with_text_clip_escapes};
 use crate::array_path;
 use crate::css::{Declaration, to_ruleset};
 use crate::declarations::{
@@ -57,6 +58,18 @@ fn wrap_media(media: &str, inner: &[u8]) -> Vec<u8> {
     out.extend_from_slice(inner);
     out.push(b'}');
     out
+}
+
+/// `get_pseudo_rule_selector( $base_selector, $pseudo_selector )`: a pseudo-class goes on each part inside
+/// `:root :where()`; a pseudo-element, not valid inside `:where()`, goes after it (WordPress 7.2).
+fn pseudo_rule_selector(base_selector: &str, pseudo_selector: &str) -> String {
+    if pseudo_selector.starts_with("::") {
+        return format!(":root :where({base_selector}){pseudo_selector}");
+    }
+    format!(
+        ":root :where({})",
+        append_to_selector(base_selector, pseudo_selector)
+    )
 }
 
 fn element_pseudo_selectors(element: &str) -> Vec<String> {
@@ -122,6 +135,18 @@ impl Sheet<'_> {
         let Some(pseudos) = block_name.and_then(block_pseudo_selectors) else {
             return result;
         };
+        // Nearest first: this node, then its variation's, then its block's.
+        let mut base_styles = vec![node.clone()];
+        for owner in [variation, metadata].into_iter().flatten() {
+            let layer_path = path_of(owner, "path");
+            if layer_path.is_empty() {
+                continue;
+            }
+            let refs: Vec<&str> = layer_path.iter().map(String::as_str).collect();
+            if let Some(layer @ Value::Array(_)) = array_path::get(self.doc, &refs) {
+                base_styles.push(layer.clone());
+            }
+        }
         for pseudo in pseudos {
             let Some(pseudo_node) = get_opt(node, &[&pseudo]) else {
                 continue;
@@ -149,6 +174,7 @@ impl Sheet<'_> {
                 false,
                 self.decl(),
             );
+            let declarations = with_text_clip_escapes(declarations, &pseudo_node, &base_styles);
             add(append_to_selector(base_selector, &pseudo), declarations);
         }
         result
@@ -179,6 +205,15 @@ impl Sheet<'_> {
             .unwrap_or(Value::Array(Vec::new()));
         feature_declarations = update_button_width_declarations(feature_declarations, &settings);
         let metadata_css = get_opt(metadata, &["css"]).map(text).unwrap_or_default();
+        // The block's `css` feature selector, which custom CSS targets.
+        let css_feature_selector = match get_opt(metadata, &["selectors", "css"]) {
+            Some(Value::Array(_)) => get_opt(metadata, &["selectors", "css", "root"]),
+            other => other,
+        }
+        .and_then(|v| match v {
+            Value::Str(s) => Some(s.clone()),
+            _ => None,
+        });
 
         let mut variation_declarations = FeatureDeclarations::new();
         let mut variation_custom_css: Vec<(String, String)> = Vec::new();
@@ -237,8 +272,13 @@ impl Sheet<'_> {
                 ) {
                     assign(&mut variation_declarations, s, d);
                 }
+                let variation_css_selector = match &css_feature_selector {
+                    Some(feature) => variation_feature_selector(variation, feature),
+                    None => variation_selector.clone(),
+                };
                 if let Some(css) = get_opt(&variation_node, &["css"]) {
-                    let processed = process_blocks_custom_css(&text(css), &variation_selector);
+                    let processed =
+                        process_blocks_custom_css(&css_text(css), &variation_css_selector);
                     match variation_custom_css
                         .iter_mut()
                         .find(|(s, _)| *s == variation_selector)
@@ -305,6 +345,11 @@ impl Sheet<'_> {
                         false,
                         self.decl(),
                     );
+                    let base = with_text_clip_escapes(
+                        base,
+                        &breakpoint_node,
+                        &[variation_node.clone(), node.clone()],
+                    );
                     if !base.is_empty() {
                         responsive_css.extend(wrap_media(
                             media,
@@ -330,7 +375,8 @@ impl Sheet<'_> {
                     if let Some(css) = get_opt(&breakpoint_node, &["css"]) {
                         responsive_css.extend(wrap_media(
                             media,
-                            process_blocks_custom_css(&text(css), &variation_selector).as_bytes(),
+                            process_blocks_custom_css(&css_text(css), &variation_css_selector)
+                                .as_bytes(),
                         ));
                     }
                     if array_path::isset(&breakpoint_node, &["spacing", "blockGap"]) {
@@ -386,7 +432,7 @@ impl Sheet<'_> {
                             if let Some(css) = get_opt(element_node, &["css"]) {
                                 responsive_css.extend(wrap_media(
                                     media,
-                                    process_blocks_custom_css(&text(css), &element_selector)
+                                    process_blocks_custom_css(&css_text(css), &element_selector)
                                         .as_bytes(),
                                 ));
                             }
@@ -406,11 +452,10 @@ impl Sheet<'_> {
                                 if declarations.is_empty() {
                                     continue;
                                 }
-                                let combined = append_to_selector(&element_selector, &pseudo);
                                 responsive_pseudo_css.extend(wrap_media(
                                     media,
                                     &to_ruleset(
-                                        &format!(":root :where({combined})"),
+                                        &pseudo_rule_selector(&element_selector, &pseudo),
                                         &declarations,
                                     ),
                                 ));
@@ -462,26 +507,35 @@ impl Sheet<'_> {
             }
             false
         });
+        let base_styles = state_base_styles(&path, self.doc, &settings);
         let mut declarations =
             match pseudo_selector.and_then(|p| get_opt(&node, &[p.as_str()]).map(|n| (p, n))) {
-                Some((_, pseudo_node)) => compute_style_properties(
-                    pseudo_node,
-                    &settings,
-                    None,
-                    Some(self.doc),
-                    Some(&selector),
-                    use_root_padding,
-                    self.decl(),
-                ),
-                None => compute_style_properties(
-                    &node,
-                    &settings,
-                    None,
-                    Some(self.doc),
-                    Some(&selector),
-                    use_root_padding,
-                    self.decl(),
-                ),
+                Some((_, pseudo_node)) => {
+                    let declarations = compute_style_properties(
+                        pseudo_node,
+                        &settings,
+                        None,
+                        Some(self.doc),
+                        Some(&selector),
+                        use_root_padding,
+                        self.decl(),
+                    );
+                    let mut layers = vec![node.clone()];
+                    layers.extend(base_styles.iter().cloned());
+                    with_text_clip_escapes(declarations, pseudo_node, &layers)
+                }
+                None => {
+                    let declarations = compute_style_properties(
+                        &node,
+                        &settings,
+                        None,
+                        Some(self.doc),
+                        Some(&selector),
+                        use_root_padding,
+                        self.decl(),
+                    );
+                    with_text_clip_escapes(declarations, &node, &base_styles)
+                }
             };
 
         let mut block_rules = Vec::new();
@@ -522,7 +576,10 @@ impl Sheet<'_> {
             matches!(array_path::get(&elements, &[element]), Some(Value::Str(s)) if *s == selector)
                 && !array_path::isset(&class_names, &[element])
         });
-        let general = if element_only {
+        let general = if let Some(pseudo) = pseudo_selector.filter(|p| p.starts_with("::")) {
+            // The selector carries the pseudo-element on each part: strip it for the base selector.
+            pseudo_rule_selector(&selector.replace(pseudo.as_str(), ""), pseudo)
+        } else if element_only {
             selector.clone()
         } else {
             format!(":root :where({selector})")
@@ -578,16 +635,12 @@ impl Sheet<'_> {
         if let Some(css) = get_opt(&node, &["css"])
             && !is_root
         {
-            let css_feature = match get_opt(metadata, &["selectors", "css"]) {
-                Some(Value::Array(_)) => get_opt(metadata, &["selectors", "css", "root"]).cloned(),
-                other => other.cloned(),
-            };
-            let css_selector = match css_feature.as_ref().and_then(as_str) {
-                Some(s) => s.into_owned(),
-                None => selector.clone(),
-            };
-            block_rules
-                .extend_from_slice(process_blocks_custom_css(&text(css), &css_selector).as_bytes());
+            let css_selector = css_feature_selector
+                .clone()
+                .unwrap_or_else(|| selector.clone());
+            block_rules.extend_from_slice(
+                process_blocks_custom_css(&css_text(css), &css_selector).as_bytes(),
+            );
         }
         if let Some(media) = media_query.filter(|m| !m.is_empty() && m != "0")
             && !block_rules.is_empty()

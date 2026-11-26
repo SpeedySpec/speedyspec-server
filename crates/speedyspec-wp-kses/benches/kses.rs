@@ -12,7 +12,7 @@ use speedyspec_wp_kses_contracts::{
 };
 use speedyspec_wp_kses_testkit::{bench_page, bench_snippets};
 
-/// `esc_attr()` as WordPress 7.1.5 behaves with no filter on valid UTF-8 (the same as the tests' double).
+/// `esc_attr()` as WordPress behaves with no filter on valid UTF-8 (the same as the tests' double).
 struct Escaper;
 impl AttributeEscaper for Escaper {
     fn esc_attr(&self, v: &[u8]) -> Result<Vec<u8>, KsesError> {
@@ -98,6 +98,8 @@ fn main() {
         globals: Rc::new(DefaultGlobals::default()),
         uploads: Rc::new(Uploads),
         callbacks: Rc::new(NoValueCallbacks),
+        html_api: Rc::new(speedyspec_wp_kses::NoHtmlApiSanitizer),
+        mode: Rc::new(speedyspec_wp_kses::MemoryOperatingMode::default()),
     });
     let snippets = bench_snippets();
     let page = vec![bench_page()];

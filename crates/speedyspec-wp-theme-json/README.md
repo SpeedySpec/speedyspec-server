@@ -1,8 +1,8 @@
 # speedyspec-wp-theme-json
 
 WordPress's theme.json engine (`WP_Theme_JSON`, `WP_Theme_JSON_Schema`) in Rust, split into domain pieces, with
-`ThemeJsonApi` as the facade behind the PHP class. It follows WordPress 7.1.5, the release every area is recorded
-against. Arrays come back equal to WordPress's by PHP's `==`; CSS is byte for byte the same.
+`ThemeJsonApi` as the facade behind the PHP class. It follows the WordPress release every area is recorded
+against (`compat/wordpress.json`). Arrays come back equal to WordPress's by PHP's `==`; CSS is byte for byte the same.
 
 All four plans are in: the typed model, the schema tables, migration, sanitizing, construction, merging, the data
 methods, stylesheets (`get_stylesheet` for every type, `get_styles_for_block`, layout styles, preset variables and
@@ -77,7 +77,7 @@ filter may change.
 
 ## Testing
 
-- Unit and integration tests whose expected values were produced by WordPress 7.1.5 itself (sanitizing, unwrapping,
+- Unit and integration tests whose expected values were produced by WordPress itself (sanitizing, unwrapping,
   opting in, breakpoints, construction, spacing sizes, merging, the data methods, PHP's float formatting and
   `round()`).
 - Stylesheet tests the same way: selectors and block metadata, nodes, fluid font sizes, kebab-casing, preset

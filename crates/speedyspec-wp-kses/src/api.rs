@@ -6,8 +6,8 @@ use std::rc::Rc;
 use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_hooks::{Count, HookApi, HookError, HookName};
 use speedyspec_wp_kses_contracts::{
-    AllowedHtml, AttributeEscaper, Context, KsesError, Payload, Protocols, UnfilteredHtmlPolicy,
-    UriAttributes, ValueCallback,
+    AllowedHtml, AttributeEscaper, Context, HtmlApiSanitizer, KsesError, OperatingMode, Payload,
+    Protocols, UnfilteredHtmlPolicy, UriAttributes, ValueCallback,
 };
 use speedyspec_wp_kses_lexical::HairAttr;
 
@@ -29,6 +29,10 @@ pub struct KsesDeps {
     pub globals: Rc<dyn AllowedGlobals>,
     pub uploads: Rc<dyn UploadsLocation>,
     pub callbacks: Rc<dyn ValueCallbacks>,
+    /// `wp_sanitize_html_kses()`, which `wp_kses()` runs when `wp_kses_force_legacy_parser` answers false.
+    pub html_api: Rc<dyn HtmlApiSanitizer>,
+    /// `$wp_kses_operating_mode`, which `wp_kses()` sets to `legacy` around `wp_kses_hook()`.
+    pub mode: Rc<dyn OperatingMode>,
 }
 
 /// WordPress's kses functions over the Rust Hook API (Facade). One per request, as WordPress's `static` caches are.

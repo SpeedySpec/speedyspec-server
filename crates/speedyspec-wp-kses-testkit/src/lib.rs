@@ -18,7 +18,7 @@ pub use convert::{allowed_from_php, bytes, from_bytes, rule_value};
 pub use gate::{ExploitFinder, Verdict, gate};
 pub use generate::token_soup;
 pub use oracle::{OracleResult, PHP_TIMED_OUT, PhpOracle};
-pub use release::{WORDPRESS, wordpress_release};
+pub use release::{wordpress, wordpress_release};
 
 mod corpus;
 

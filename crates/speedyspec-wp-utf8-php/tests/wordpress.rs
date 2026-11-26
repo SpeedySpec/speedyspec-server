@@ -115,7 +115,8 @@ fn main() {
         &unlisted,
     );
 
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("WordPress 7.1.5");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned release");
     let prepared = prepare_release(&release, &release.with_file_name("wordpress-utf8-port"))
         .expect("release prepared");
     // SAFETY: set before PHP boots, while this process has one thread.

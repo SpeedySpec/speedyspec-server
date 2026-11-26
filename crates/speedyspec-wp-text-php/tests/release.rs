@@ -23,13 +23,13 @@ fn ported_list_matches_natives() {
 
 #[test]
 fn strips_exactly_the_ported_functions() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("formatting")).expect("the pinned release");
     let source = std::fs::read_to_string(release.join("wp-includes/formatting.php")).unwrap();
     let stripped = strip_ported(&source).unwrap();
     let before = declared(&source);
     let after = declared(&stripped);
     for name in PORTED_FUNCTIONS {
-        assert!(before.iter().any(|n| n == name), "7.1.5's formatting.php declares {name}");
+        assert!(before.iter().any(|n| n == name), "the release's formatting.php declares {name}");
         assert!(!after.iter().any(|n| n == name), "{name} is stripped");
     }
     let kept: Vec<&String> = before.iter().filter(|n| !PORTED_FUNCTIONS.contains(&n.as_str())).collect();
@@ -39,7 +39,7 @@ fn strips_exactly_the_ported_functions() {
 
 #[test]
 fn prepared_release_lints_and_keeps_the_kses_strip() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("formatting")).expect("the pinned release");
     let out = tempfile::tempdir().unwrap();
     let root = prepare_release(&release, &out.path().join("wordpress")).unwrap();
     let formatting = root.join("wp-includes/formatting.php");

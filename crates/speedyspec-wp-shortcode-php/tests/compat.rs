@@ -1,4 +1,4 @@
-//! WordPress's shortcode functions, recorded from WordPress 7.1.5 (`compat/shortcode`), replayed exactly through the
+//! WordPress's shortcode functions, recorded from the pinned WordPress release (`compat/shortcode`), replayed exactly through the
 //! native ones, with every combination of scanner and attribute parser.
 //!
 //! PHP boots once per process, so this file has its own `main()` (`harness = false`).
@@ -41,7 +41,7 @@ impl AttsParser for Switch {
 }
 
 fn main() -> ExitCode {
-    let release = match wordpress_release("7.1.5") {
+    let release = match wordpress_release(&speedyspec_compat::area_wordpress("shortcode")) {
         Ok(root) => root,
         Err(why) => {
             println!("FAILED: the WordPress release: {why}");

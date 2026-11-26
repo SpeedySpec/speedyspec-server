@@ -6,7 +6,7 @@ use speedyspec_wp_shortcode_contracts::TagName;
 use speedyspec_wp_text::{AutopOptions, DEFAULT_SPACES, shortcode_unautop, wp_replace_in_html_tags, wpautop_reference};
 use speedyspec_wp_text_corpus::{Php, assert_corpus};
 
-/// The shortcodes the corpus was recorded with, in WordPress 7.1.5's registration order.
+/// The shortcodes the corpus was recorded with, in WordPress's registration order.
 fn tags() -> Vec<TagName> {
     ["wp_caption", "caption", "gallery", "playlist", "audio", "video", "embed"]
         .iter()

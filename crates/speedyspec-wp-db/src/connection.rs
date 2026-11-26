@@ -182,6 +182,10 @@ impl WpDb {
                 .map(str::to_string)
                 .collect();
         }
+        // WordPress 7.2: `$modes = array_map( 'strtoupper', $modes );` (ASCII only, as PHP 8's strtoupper).
+        for mode in &mut modes {
+            mode.make_ascii_uppercase();
+        }
         let defaults = self.settings.borrow().incompatible_modes.clone();
         let hook = HookName::from("incompatible_sql_modes");
         let incompatible: Vec<String> = if self.hooks.skip_if_empty(&hook, Count::Filters)? {

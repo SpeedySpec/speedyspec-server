@@ -1,4 +1,4 @@
-//! `create_initial_post_types()` (post.php, 7.1.5 lines 20-826) as a table: each `register_post_type()` call in
+//! `create_initial_post_types()` (post.php, 7.2-RC2 lines 20-834) as a table: each `register_post_type()` call in
 //! WordPress's order with its args as PHP arrays in the source's key order, its labels through the translator, the
 //! supports calls WordPress makes between them, then each `register_post_status()` call in order.
 //!
@@ -225,6 +225,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                     Arr::new().set("name_admin_bar", x(t, "Post", "add new from admin bar")),
                 )
                 .set("public", true)
+                .set("randomable", true)
                 .set("_builtin", true)
                 .set("_edit_link", "post.php?post=%d")
                 .set("capability_type", "post")
@@ -250,6 +251,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                         .push("post-formats"),
                 )
                 .set("show_in_rest", true)
+                .set("show_in_abilities", true)
                 .set("rest_base", "posts")
                 .set("rest_controller_class", "WP_REST_Posts_Controller")
                 .items(),
@@ -263,6 +265,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 )
                 .set("public", true)
                 .set("publicly_queryable", false)
+                .set("randomable", false)
                 .set("_builtin", true)
                 .set("_edit_link", "post.php?post=%d")
                 .set("capability_type", "page")
@@ -286,6 +289,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                         .push("revisions"),
                 )
                 .set("show_in_rest", true)
+                .set("show_in_abilities", true)
                 .set("rest_base", "pages")
                 .set("rest_controller_class", "WP_REST_Posts_Controller")
                 .items(),
@@ -312,6 +316,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                         .set("attributes", tr(t, "Attachment Attributes")),
                 )
                 .set("public", true)
+                .set("randomable", false)
                 .set("show_ui", true)
                 .set("_builtin", true)
                 .set("_edit_link", "post.php?post=%d")
@@ -591,8 +596,17 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("map_meta_cap", true)
                 .set(
                     "supports",
-                    list(&["title", "excerpt", "editor", "revisions", "custom-fields"]),
+                    list(&[
+                        "title",
+                        "excerpt",
+                        "editor",
+                        "revisions",
+                        "custom-fields",
+                        "author",
+                    ]),
                 )
+                // Keep patterns when their author is deleted, as they may be used across the site.
+                .set("delete_with_user", false)
                 .items(),
         ),
         Step::PostType(

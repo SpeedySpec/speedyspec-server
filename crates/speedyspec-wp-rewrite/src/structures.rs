@@ -42,6 +42,11 @@ impl RewriteService {
         if self.using_index_permalinks(state) {
             state.root = format!("{}/", state.index);
         }
+        state.random_base = self
+            .deps
+            .options
+            .get_string("wp_random_base")?
+            .unwrap_or_default();
         state.author_structure = None;
         state.date_structure = None;
         state.page_structure = None;
@@ -234,5 +239,46 @@ impl RewriteService {
             self.init(state)?;
         }
         Ok(())
+    }
+
+    /// `WP_Rewrite::set_random_base()`: the comparison is strict, so an option that is not a string is replaced.
+    pub fn set_random_base(
+        &self,
+        state: &mut RewriteState,
+        base: &str,
+    ) -> Result<(), RewriteError> {
+        if self.deps.options.get_string("wp_random_base")?.as_deref() != Some(base) {
+            self.deps.options.update("wp_random_base", base)?;
+            self.init(state)?;
+        }
+        Ok(())
+    }
+
+    /// `WP_Rewrite::get_random_base()`: the custom base, else the default translated into the site language, else
+    /// `random`. An error carries what translating threw.
+    pub fn get_random_base(&self, state: &RewriteState) -> Result<String, RewriteError> {
+        if !state.random_base.is_empty() {
+            return Ok(state.random_base.clone());
+        }
+        let translated = self.deps.translations.random_base()?;
+        Ok(if translated.is_empty() {
+            "random".into()
+        } else {
+            translated
+        })
+    }
+
+    /// `WP_Rewrite::post_permalinks_share_random_base()`: whether the permalink structure is only the post name at
+    /// the root, so a post can sit at the random base.
+    pub fn post_permalinks_share_random_base(&self, state: &RewriteState) -> bool {
+        if !self.using_permalinks(state) {
+            return false;
+        }
+        // PCRE's `$` also matches before a final newline.
+        let pattern = format!(
+            "^{}%postname%/?\\n?$",
+            regex::escape(&format!("/{}", state.root))
+        );
+        Regex::new(&pattern).is_ok_and(|re| re.is_match(&state.permalink_structure))
     }
 }

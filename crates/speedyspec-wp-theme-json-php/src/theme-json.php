@@ -524,14 +524,7 @@ namespace
         if ( isset( $theme_has_support[ $stylesheet ] ) && ! wp_is_development_mode( 'theme' ) ) {
             return $theme_has_support[ $stylesheet ];
         }
-        $stylesheet_directory = get_stylesheet_directory();
-        $template_directory   = get_template_directory();
-        if ( $stylesheet_directory !== $template_directory && file_exists( $stylesheet_directory . '/theme.json' ) ) {
-            $path = $stylesheet_directory . '/theme.json';
-        } else {
-            $path = $template_directory . '/theme.json';
-        }
-        $path = apply_filters( 'theme_file_path', $path, 'theme.json' );
+        $path = get_theme_file_path( 'theme.json' );
         $theme_has_support[ $stylesheet ] = file_exists( $path );
         return $theme_has_support[ $stylesheet ];
     }

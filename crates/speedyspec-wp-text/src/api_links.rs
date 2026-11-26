@@ -17,7 +17,7 @@ use crate::preg::{Captures, Pattern, SplitFlags, preg_match, preg_match_all_grou
 use crate::strings::{bytes_value, php_trim, to_php_string, PHP_TRIM_DEFAULT};
 use crate::url::wp_parse_url;
 
-/// `make_clickable()`'s URL pattern, copied from 7.1.5 with PHP's string escapes resolved.
+/// `make_clickable()`'s URL pattern, copied from WordPress with PHP's string escapes resolved.
 const URL_CLICKABLE: &str = r"~
 				([\s(<.,;:!?])                                # 1: Leading whitespace, or punctuation.
 				(                                              # 2: URL.

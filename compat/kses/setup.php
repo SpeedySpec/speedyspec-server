@@ -16,6 +16,8 @@ define('ABSPATH', SPEEDYSPEC_COMPAT_WP_ROOT);
 define('WPINC', 'wp-includes');
 define('WP_CONTENT_DIR', sys_get_temp_dir() . '/speedyspec-compat-kses-content');
 define('WP_CONTENT_URL', 'http://example.org/wp-content');
+// wp_initial_constants()'s default: _deprecated_function(), which wp_kses_html_error() calls, reads it.
+define('WP_DEBUG', false);
 
 if (!SPEEDYSPEC_COMPAT_PORT)
 {
@@ -67,15 +69,33 @@ foreach (
     array(
         'html5-named-character-references', 'class-wp-html-attribute-token', 'class-wp-html-span',
         'class-wp-html-doctype-info', 'class-wp-html-text-replacement', 'class-wp-html-decoder',
-        'class-wp-html-tag-processor',
+        'class-wp-html-tag-processor', 'class-wp-html-unsupported-exception', 'class-wp-html-active-formatting-elements',
+        'class-wp-html-open-elements', 'class-wp-html-token', 'class-wp-html-stack-event', 'class-wp-html-processor-state',
+        'class-wp-html-processor',
     ) as $speedyspec_file
 )
 {
     require ABSPATH . WPINC . "/html-api/{$speedyspec_file}.php";
 }
+// WordPress 7.2's wp_kses() sanitizes through wp_sanitize_html_kses() on a booted site (default-filters.php turns
+// `wp_kses_force_legacy_parser` off), which needs the whole HTML API and the block processor. The html_api_*
+// scenarios turn the filter off the same way.
+require ABSPATH . WPINC . '/class-wp-block-processor.php';
 require ABSPATH . WPINC . '/formatting.php';
 require ABSPATH . WPINC . '/functions.php';
 require ABSPATH . WPINC . '/kses.php';
+
+// WordPress 7.2 moved wp_kses_html_error() from kses.php to deprecated.php. Define that copy alone, on both sides, as
+// the kses testkit's oracle does: the rest of deprecated.php is not part of this area.
+if (!function_exists('wp_kses_html_error'))
+{
+    preg_match(
+        '/^function wp_kses_html_error\(.*?^}\n/ms',
+        (string) file_get_contents(ABSPATH . WPINC . '/deprecated.php'),
+        $speedyspec_function
+    ) || throw new RuntimeException('wp_kses_html_error() is not in deprecated.php');
+    eval($speedyspec_function[0]);
+}
 
 // Filters the scenarios add by name: each changes a result, and a recording fixture beside it counts the runs.
 

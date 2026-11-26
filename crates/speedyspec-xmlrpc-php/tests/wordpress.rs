@@ -70,7 +70,8 @@ fn phpunit() -> PathBuf {
 }
 
 fn main() {
-    let release = wordpress_release("7.1.5").expect("the pinned WordPress release");
+    let release = wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned WordPress release");
     // SAFETY: set before PHP boots, while this process has one thread.
     unsafe { std::env::set_var("SPEEDYSPEC_WP_ROOT", &release) };
     let phar = phpunit();

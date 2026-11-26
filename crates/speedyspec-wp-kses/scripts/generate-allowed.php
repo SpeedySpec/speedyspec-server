@@ -1,7 +1,7 @@
 <?php
-// Writes data/allowed-7.1.5.json: WordPress 7.1.5's $allowedposttags (after _wp_add_global_attributes) and
-// $allowedtags, as nested [key, value] pairs so key order survives JSON.
-// Usage: php scripts/generate-allowed.php <wordpress-root> > data/allowed-7.1.5.json
+// Writes data/allowed-<release>.json: the pinned WordPress release's $allowedposttags (after
+// _wp_add_global_attributes) and $allowedtags, as nested [key, value] pairs so key order survives JSON.
+// Usage: php scripts/generate-allowed.php <wordpress-root> > data/allowed-<release>.json
 $wp = rtrim( $argv[1], '/' );
 define( 'ABSPATH', $wp . '/' );
 function apply_filters( $hook, $value ) { return $value; }

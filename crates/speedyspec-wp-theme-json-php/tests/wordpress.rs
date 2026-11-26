@@ -1,7 +1,7 @@
-//! WordPress's own theme.json tests (tests/php/wordpress/theme-json, copied from wordpress-develop 7.1.5) pass
-//! against the native theme.json area, run by the pinned PHPUnit inside the embedded PHP. The release is prepared
-//! without WordPress's theme.json classes and global styles functions. Tests marked `@group documented-break` or
-//! `@group needs-wordpress-core` are excluded.
+//! WordPress's own theme.json tests (tests/php/wordpress/theme-json, copied from wordpress-develop: wpThemeJson.php
+//! from the 7.2-RC2 commit, the rest from 7.1.5) pass against the native theme.json area, run by the pinned PHPUnit
+//! inside the embedded PHP. The release is prepared without WordPress's theme.json classes and global styles
+//! functions. Tests marked `@group documented-break` or `@group needs-wordpress-core` are excluded.
 
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -63,7 +63,8 @@ fn phpunit() -> PathBuf {
 }
 
 fn main() {
-    let release = wordpress_release("7.1.5").expect("the pinned WordPress release");
+    let release = wordpress_release(&speedyspec_compat::area_wordpress("theme-json"))
+        .expect("the pinned WordPress release");
     let prepared = prepare_release(
         &release,
         &release.with_file_name("wordpress-theme-json-port"),

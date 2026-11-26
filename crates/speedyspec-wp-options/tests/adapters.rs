@@ -128,7 +128,8 @@ fn rust_codec_round_trips() {
 fn every_core_switch_name_is_refused() {
     // `show_on_front` is in WordPress 7.1.5's `sanitize_option()` switch, though the plan's copy left it out.
     let sanitizing = HookSanitizing::new(hooks());
-    for n in ["show_on_front", "WPLANG", "admin_email"] {
+    // `wp_random_base` joined the permalink bases' case in WordPress 7.2.
+    for n in ["show_on_front", "WPLANG", "admin_email", "wp_random_base"] {
         assert!(
             matches!(
                 sanitizing.sanitize_option(&name(n), s("x")),

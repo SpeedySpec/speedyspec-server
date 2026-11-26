@@ -1,4 +1,4 @@
-//! Replays what `compat/text-diff/record.php` recorded from WordPress 7.1.5 on PHP 8.5.12.
+//! Replays what `compat/text-diff/record.php` recorded from the pinned release on PHP 8.5.12.
 //!
 //! Every recorded value must come out byte for byte: escaping, word splitting, PHP's loose `==`, the string
 //! distance, the engine's op scripts, the inline word diffs, and `wp_text_diff()` itself (cases whose arguments the

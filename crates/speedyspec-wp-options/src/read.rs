@@ -89,7 +89,15 @@ impl OptionsApi {
         if n == "home" && matches!(&value, HookValue::Str(s) if s.is_empty()) {
             return self.get_option("siteurl", None);
         }
-        let value = if ["siteurl", "home", "category_base", "tag_base"].contains(&n) {
+        let value = if [
+            "siteurl",
+            "home",
+            "category_base",
+            "tag_base",
+            "wp_random_base",
+        ]
+        .contains(&n)
+        {
             untrailingslashit(&value)
         } else {
             value

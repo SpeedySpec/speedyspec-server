@@ -1,5 +1,5 @@
-//! The kses ports over PHP: the allowlist globals, `esc_attr()`, `current_user_can()`, `wp_upload_dir()` and PHP
-//! callables (Adapter).
+//! The kses ports over PHP: the allowlist globals, `esc_attr()`, `current_user_can()`, `wp_upload_dir()`, PHP
+//! callables, `wp_sanitize_html_kses()` and `$wp_kses_operating_mode` (Adapter).
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -12,9 +12,12 @@ use speedyspec_php::ext_php_rs::ffi::{
 use speedyspec_php_ext::Value;
 use speedyspec_wp_hooks::Callback;
 use speedyspec_wp_hooks_php::php_callback;
-use speedyspec_wp_kses::{AllowedGlobals, DefaultGlobals, UploadsLocation, ValueCallbacks};
+use speedyspec_wp_kses::{
+    AllowedGlobals, DefaultGlobals, UploadsLocation, ValueCallbacks, allowed_spec_to_value,
+};
 use speedyspec_wp_kses_contracts::{
-    AttributeEscaper, EntityNames, KsesError, Payload, UnfilteredHtmlPolicy, ValueCallback,
+    AllowedSpec, AttributeEscaper, EntityNames, HtmlApiSanitizer, KsesError, OperatingMode,
+    Payload, Protocols, UnfilteredHtmlPolicy, ValueCallback,
 };
 
 use crate::native::{bytes, truthy, value};
@@ -418,5 +421,55 @@ impl ValueCallbacks for PhpValueCallbacks {
 
     fn named_filter(&self, name: &str) -> Option<Callback> {
         Some(php_callback(Value::Str(name.to_string())))
+    }
+}
+
+/// `wp_sanitize_html_kses()`, WordPress's own: the release keeps it, since the port follows the legacy parser.
+pub struct PhpHtmlApiSanitizer;
+
+impl HtmlApiSanitizer for PhpHtmlApiSanitizer {
+    fn sanitize(
+        &self,
+        content: &[u8],
+        allowed: &AllowedSpec,
+        protocols: Option<&Protocols>,
+    ) -> Result<Option<Vec<u8>>, KsesError> {
+        let protocols = Value::Array(
+            protocols
+                .map(|p| p.0.as_slice())
+                .unwrap_or_default()
+                .iter()
+                .enumerate()
+                .map(|(i, p)| (speedyspec_php_ext::Key::Int(i as i64), value(p)))
+                .collect(),
+        );
+        let sanitized = call(
+            "wp_sanitize_html_kses",
+            &[value(content), allowed_spec_to_value(allowed), protocols],
+        )?;
+        Ok(Some(bytes(&sanitized)))
+    }
+}
+
+/// The global `$wp_kses_operating_mode`.
+pub struct PhpOperatingMode;
+
+/// The global's name.
+const OPERATING_MODE: &str = "wp_kses_operating_mode";
+
+impl OperatingMode for PhpOperatingMode {
+    fn enter(&self, mode: &'static str) -> Box<dyn std::any::Any> {
+        let previous = speedyspec_php::global(OPERATING_MODE).unwrap_or(Value::Null);
+        if let Err(err) = speedyspec_php::set_global(OPERATING_MODE, &Value::Str(mode.into())) {
+            eprintln!("speedyspec_wordpress: setting $wp_kses_operating_mode failed: {err}");
+        }
+        Box::new(previous)
+    }
+
+    fn restore(&self, previous: Box<dyn std::any::Any>) {
+        let previous = previous.downcast::<Value>().map_or(Value::Null, |v| *v);
+        if let Err(err) = speedyspec_php::set_global(OPERATING_MODE, &previous) {
+            eprintln!("speedyspec_wordpress: restoring $wp_kses_operating_mode failed: {err}");
+        }
     }
 }

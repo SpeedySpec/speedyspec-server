@@ -318,5 +318,7 @@ pub fn safe_css() -> std::rc::Rc<dyn speedyspec_wp_kses_contracts::SafeCss> {
         globals: Rc::new(speedyspec_wp_kses::DefaultGlobals::default()),
         uploads: Rc::new(Uploads),
         callbacks: Rc::new(speedyspec_wp_kses::NoValueCallbacks),
+        html_api: Rc::new(speedyspec_wp_kses::NoHtmlApiSanitizer),
+        mode: Rc::new(speedyspec_wp_kses::MemoryOperatingMode::default()),
     })
 }

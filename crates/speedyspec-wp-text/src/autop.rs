@@ -58,7 +58,7 @@ impl Default for AutopOptions {
 
 const ALLBLOCKS: &str = "(?:table|thead|tfoot|caption|col|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|form|map|area|blockquote|address|style|p|h[1-6]|hr|fieldset|legend|section|article|aside|hgroup|header|footer|nav|figure|figcaption|details|menu|summary)";
 
-/// Every pattern in 7.1.5's `wpautop()`, in the order it uses them.
+/// Every pattern in WordPress's `wpautop()`, in the order it uses them.
 pub(crate) struct AutopPatterns {
     pub(crate) double_br: Pattern,
     pub(crate) block_open: Pattern,

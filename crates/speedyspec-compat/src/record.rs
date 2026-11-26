@@ -12,9 +12,10 @@ use speedyspec_php::{BootOptions, Php};
 
 use crate::{Catalogue, Fixture, PhpRunner, ScenarioRunner, compat_dir, read_json};
 
-/// `compat/<area>/source.json`: the release the fixture is recorded from, and the pinned releases.
+/// `compat/wordpress.json`, the one release table: the repository's pin and every release it may name, with the URL
+/// and SHA-256 each is fetched and checked by. Moving to a new release adds its entry here and changes `wordpress`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Source {
+pub struct Releases {
     pub wordpress: String,
     pub releases: BTreeMap<String, Release>,
 }
@@ -25,19 +26,63 @@ pub struct Release {
     pub sha256: String,
 }
 
+/// `compat/<area>/source.json`: an area's optional override of the repository's pin. Without one (the file is `{}`,
+/// or absent) the area is recorded from, and replays, the release `compat/wordpress.json` pins.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Source {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wordpress: Option<String>,
+}
+
 /// The largest release tarball the recorder accepts.
 const LIMIT: u64 = 256 * 1024 * 1024;
 
-/// The pinned WordPress `version` (`compat/hooks/source.json`), unpacked once into the system's temporary directory
-/// and reused; its `wordpress/` root.
+/// The release table, `compat/wordpress.json`.
+pub fn releases() -> Result<Releases, String> {
+    read_json(&compat_dir().join("wordpress.json"))
+}
+
+/// `version`'s entry in the release table.
+fn release(version: &str) -> Result<Release, String> {
+    let mut table = releases()?;
+    table.releases.remove(version).ok_or_else(|| {
+        format!(
+            "WordPress {version} is not in {}",
+            compat_dir().join("wordpress.json").display()
+        )
+    })
+}
+
+/// The WordPress release the repository is pinned to: `compat/wordpress.json`'s `wordpress`. Areas without a
+/// `source.json` override, and tests that load a release outside any area (abilities, REST, crypto, i18n, ...), run
+/// against this one.
+pub fn pinned_wordpress() -> String {
+    releases().unwrap_or_else(|e| panic!("{e}")).wordpress
+}
+
+/// The WordPress release `area`'s fixture is recorded from and [`crate::load`] reads: `compat/<area>/source.json`'s
+/// `wordpress` override, else the repository's pin.
+pub fn area_wordpress(area: &str) -> String {
+    try_area_wordpress(area).unwrap_or_else(|e| panic!("{e}"))
+}
+
+pub(crate) fn try_area_wordpress(area: &str) -> Result<String, String> {
+    let path = compat_dir().join(area).join("source.json");
+    let source: Source = if path.exists() {
+        read_json(&path)?
+    } else {
+        Source::default()
+    };
+    match source.wordpress {
+        Some(version) => Ok(version),
+        None => Ok(releases()?.wordpress),
+    }
+}
+
+/// WordPress `version` from the release table (`compat/wordpress.json`), unpacked once into the system's temporary
+/// directory and reused; its `wordpress/` root.
 pub fn wordpress_release(version: &str) -> Result<PathBuf, String> {
-    let path = compat_dir().join("hooks/source.json");
-    let source: Source = read_json(&path)?;
-    let release = source
-        .releases
-        .get(version)
-        .ok_or_else(|| format!("WordPress {version} is not pinned in {}", path.display()))?;
-    unpacked(version, release)
+    unpacked(version, &release(version)?)
 }
 
 /// The release's tarball: `SPEEDYSPEC_COMPAT_TARBALL` when set, else fetched; checked against the pin either way.
@@ -115,17 +160,11 @@ pub fn record_for(area: &str, version: &str, multisite: bool) -> Result<PathBuf,
         ));
     }
     let dir = compat_dir().join(area);
-    let source: Source = read_json(&dir.join("source.json"))?;
-    let release = source.releases.get(version).ok_or_else(|| {
-        format!(
-            "WordPress {version} is not pinned in {}",
-            dir.join("source.json").display()
-        )
-    })?;
+    let release = release(version)?;
     let mut catalogue: Catalogue = read_json(&dir.join("scenarios.json"))?;
     catalogue.scenarios.retain(|s| s.multisite == multisite);
 
-    let mut runner = runner_for(area, version, release, multisite)?;
+    let mut runner = runner_for(area, version, &release, multisite)?;
     let mut results = BTreeMap::new();
     let mut errors = Vec::new();
     for scenario in &catalogue.scenarios {
@@ -153,15 +192,7 @@ pub fn record_for(area: &str, version: &str, multisite: bool) -> Result<PathBuf,
 /// A runner of `area`'s scenarios against WordPress `version`'s original code (single site), as the recorder runs
 /// them, for tests that need to see what WordPress does with a hand-made scenario.
 pub fn area_runner(area: &str, version: &str) -> Result<PhpRunner, String> {
-    let dir = compat_dir().join(area);
-    let source: Source = read_json(&dir.join("source.json"))?;
-    let release = source.releases.get(version).ok_or_else(|| {
-        format!(
-            "WordPress {version} is not pinned in {}",
-            dir.join("source.json").display()
-        )
-    })?;
-    runner_for(area, version, release, false)
+    runner_for(area, version, &release(version)?, false)
 }
 
 fn runner_for(
@@ -242,4 +273,34 @@ fn setup_for(area: &str, root: &Path, multisite: bool) -> Result<Setup, String> 
             .map(|_| ())
             .map_err(|e| e.to_string())
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every area resolves to a release the table pins, and has that release's fixture.
+    #[test]
+    fn every_area_resolves_to_a_pinned_release_with_a_fixture() {
+        let table = releases().expect("compat/wordpress.json");
+        assert!(
+            table.releases.contains_key(&table.wordpress),
+            "compat/wordpress.json pins {}, which is not in its releases",
+            table.wordpress
+        );
+        for entry in std::fs::read_dir(compat_dir()).expect("compat/") {
+            let dir = entry.expect("compat/ entry").path();
+            if !dir.join("source.json").exists() {
+                continue;
+            }
+            let area = dir.file_name().unwrap().to_string_lossy().into_owned();
+            let version = area_wordpress(&area);
+            assert!(
+                table.releases.contains_key(&version),
+                "{area} is recorded from WordPress {version}, which compat/wordpress.json does not list"
+            );
+            let fixture = dir.join(crate::fixture_name(&version, false));
+            assert!(fixture.exists(), "{} is missing", fixture.display());
+        }
+    }
 }

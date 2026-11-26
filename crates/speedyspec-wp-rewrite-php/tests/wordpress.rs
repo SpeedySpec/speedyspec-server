@@ -122,7 +122,9 @@ fn main() {
         &unlisted,
     );
 
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release =
+        speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("rewrite"))
+            .expect("the pinned release");
     // SAFETY: nothing else runs yet; PHP is not booted and this process has one thread.
     unsafe { std::env::set_var("SPEEDYSPEC_REWRITE_WP_ROOT", &release) };
     let phar = phpunit();

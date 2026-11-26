@@ -1,4 +1,4 @@
-//! `wp_html_split` returns what WordPress 7.1.5 returned for every recorded case, including every whole post.
+//! `wp_html_split` returns what the pinned WordPress release returned for every recorded case, including every whole post.
 
 use speedyspec_wp_html_split::wp_html_split;
 use speedyspec_wp_text_corpus::{Php, assert_corpus};

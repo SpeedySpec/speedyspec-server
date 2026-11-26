@@ -22,7 +22,10 @@ pub use php::{DRIVER, PhpRunner};
 
 /// The WordPress functions the object cache calls, declared the same on both sides of `compat/object-cache`.
 pub const OBJECT_CACHE_STUBS: &str = include_str!("object_cache_stubs.php");
-pub use record::{Source, area_runner, record, record_for, wordpress_release};
+pub use record::{
+    Release, Releases, Source, area_runner, area_wordpress, pinned_wordpress, record, record_for,
+    releases, wordpress_release,
+};
 
 /// A catalogue of scenarios for one area.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -182,8 +185,8 @@ pub fn load_for(area: &str, multisite: bool) -> Result<(Catalogue, Fixture, Brea
     let dir = compat_dir().join(area);
     let mut catalogue: Catalogue = read_json(&dir.join("scenarios.json"))?;
     catalogue.scenarios.retain(|s| s.multisite == multisite);
-    let source: Source = read_json(&dir.join("source.json"))?;
-    let fixture = read_json(&dir.join(fixture_name(&source.wordpress, multisite)))?;
+    let version = record::try_area_wordpress(area)?;
+    let fixture = read_json(&dir.join(fixture_name(&version, multisite)))?;
     let breaks_path = dir.join("breaks.json");
     let breaks = if breaks_path.exists() {
         read_json(&breaks_path)?

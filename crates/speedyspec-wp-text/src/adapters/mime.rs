@@ -13,7 +13,7 @@ pub struct FixedMimeTypes {
 }
 
 impl FixedMimeTypes {
-    /// WordPress 7.1.5's defaults, for a user without `unfiltered_html`.
+    /// WordPress's defaults, for a user without `unfiltered_html`.
     ///
     /// @return
     ///     The lists.

@@ -19,7 +19,7 @@ const SINGULAR: Option<&str> = Some("post type singular name");
 const LINK_TITLE: Option<&str> = Some("navigation link block title");
 const LINK_DESCRIPTION: Option<&str> = Some("navigation link block description");
 
-/// `get_default_labels()`, 7.1.5 lines 986-1026: `[non-hierarchical, hierarchical]`; `None` is null.
+/// `get_default_labels()`, 7.2-RC2 lines 1000-1040: `[non-hierarchical, hierarchical]`; `None` is null.
 const DEFAULT_LABELS: [(&str, [Option<Text>; 2]); 33] = [
     ("name", [Some(("Posts", GENERAL)), Some(("Pages", GENERAL))]),
     (

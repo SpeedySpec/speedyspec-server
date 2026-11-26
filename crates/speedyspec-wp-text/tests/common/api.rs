@@ -21,7 +21,7 @@ pub const HOME: &[u8] = b"http://example.org";
 /// setup.php's includes_url().
 pub const INCLUDES: &[u8] = b"https://example.org/wp-includes/";
 
-/// The shortcodes the corpus was recorded with, in WordPress 7.1.5's registration order.
+/// The shortcodes the corpus was recorded with, in WordPress's registration order.
 pub fn tags() -> Vec<TagName> {
     ["wp_caption", "caption", "gallery", "playlist", "audio", "video", "embed"]
         .iter()

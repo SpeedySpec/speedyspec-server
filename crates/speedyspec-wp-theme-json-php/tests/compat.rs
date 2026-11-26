@@ -1,4 +1,4 @@
-//! `WP_Theme_JSON` and `WP_Theme_JSON_Schema` recorded from WordPress 7.1.5 (`compat/theme-json`), replayed through
+//! `WP_Theme_JSON` and `WP_Theme_JSON_Schema` recorded from the pinned release (`compat/theme-json`), replayed through
 //! the native classes. Arrays are compared after `compat_canon()` (PHP's `==`); strings byte for byte.
 //!
 //! PHP boots once per process, so this file has its own `main()` (`harness = false`).
@@ -15,7 +15,7 @@ use speedyspec_wp_hooks_php::WpHooksArea;
 use speedyspec_wp_theme_json_php::{ThemeJsonArea, theme_json_scenario_runner};
 
 fn main() -> ExitCode {
-    let release = match wordpress_release("7.1.5") {
+    let release = match wordpress_release(&speedyspec_compat::area_wordpress("theme-json")) {
         Ok(root) => root,
         Err(why) => {
             println!("FAILED: the WordPress release: {why}");

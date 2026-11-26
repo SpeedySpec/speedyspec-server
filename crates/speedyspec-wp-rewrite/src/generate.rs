@@ -1,4 +1,4 @@
-//! `WP_Rewrite::rewrite_rules()`, `page_rewrite_rules()` and `page_uri_index()`.
+//! `WP_Rewrite::rewrite_rules()`, `page_rewrite_rules()`, `random_rewrite_rules()` and `page_uri_index()`.
 
 use speedyspec_router::wordpress::{ExpandContext, PhpArray, generate_rewrite_rules};
 use speedyspec_routing::{EndpointMask, PermastructArgs, Rule};
@@ -73,6 +73,80 @@ impl RewriteService {
             ..RewriteService::args(EndpointMask::PAGES)
         };
         Ok(self.expand(state, &structure, args)?.into_rules())
+    }
+
+    /// `WP_Rewrite::random_rewrite_rules()`: the rules for random content redirects, an archive path under the
+    /// random base (`/random/`, `/random/author/{author}/`, `/random/{taxonomy-slug}/{term}/`,
+    /// `/random/{post-type-slug}/`), each adding `random=1` to the archive's query. A published page, or a post when
+    /// posts can sit there, at the random base drops the `/random/` rule.
+    pub fn random_rewrite_rules(&self, state: &RewriteState) -> Result<Vec<Rule>, RewriteError> {
+        if !self.deps.random_content.enabled()? {
+            return Ok(Vec::new());
+        }
+        let slug = self.get_random_base(state)?;
+        let base = format!("{}{}", state.root, slug);
+        let mut rules = PhpArray::new();
+
+        let page_taken = self.deps.posts.viewable_at(&slug, "page")?;
+        let post_taken = self.post_permalinks_share_random_base(state)
+            && self.deps.posts.viewable_at(&slug, "post")?;
+        if !page_taken && !post_taken {
+            rules.set(format!("{base}/?$"), format!("{}?random=1", state.index));
+        }
+
+        let mut structures = vec![format!("{base}/{}/%author%", state.author_base)];
+        let post_types = self.deps.post_types.randomable_post_types()?;
+        for taxonomy in self.deps.taxonomies.publicly_queryable()? {
+            // Only taxonomies with pretty permalinks have a registered rewrite tag.
+            let Some(taxonomy_slug) = taxonomy.rewrite_slug.filter(|s| !s.is_empty()) else {
+                continue;
+            };
+            if !state
+                .extra_permastructs
+                .iter()
+                .any(|(name, _)| *name == taxonomy.name)
+            {
+                continue;
+            }
+            // Only taxonomies used by randomable post types can hold random content.
+            if !taxonomy
+                .object_types
+                .iter()
+                .any(|object_type| post_types.iter().any(|t| t.name == *object_type))
+            {
+                continue;
+            }
+            structures.push(format!("{base}/{taxonomy_slug}/%{}%", taxonomy.name));
+        }
+
+        let archive = PermastructArgs {
+            paged: false,
+            feed: false,
+            forcomments: false,
+            walk_dirs: false,
+            endpoints: false,
+            ..RewriteService::args(EndpointMask::NONE)
+        };
+        for structure in structures {
+            for rule in self.expand(state, &structure, archive)?.into_rules() {
+                rules.set(rule.pattern, format!("{}&random=1", rule.query));
+            }
+        }
+
+        for post_type in post_types {
+            // Post types without rewrites have no pretty permalinks.
+            if !post_type.rewrites {
+                continue;
+            }
+            let Some(post_type_slug) = post_type.archive_slug.or(post_type.rewrite_slug) else {
+                continue;
+            };
+            rules.set(
+                format!("{base}/{post_type_slug}/?$"),
+                format!("{}?post_type={}&random=1", state.index, post_type.name),
+            );
+        }
+        Ok(rules.into_rules())
     }
 
     /// `WP_Rewrite::rewrite_rules()`: every rule, in WordPress's order, through every filter.
@@ -187,6 +261,14 @@ impl RewriteService {
                 .into_rules();
         }
 
+        // Rules added to the top (post types' and taxonomies' included) win over random content rules with the same
+        // regex, which `array_merge` would otherwise let the random content rule's query replace.
+        let mut random = PhpArray::from_rules(&self.random_rewrite_rules(state)?);
+        random
+            .0
+            .retain(|(regex, _)| !state.extra_rules_top.iter().any(|r| r.pattern == *regex));
+        let random = self.filter_rules("random_rewrite_rules", random)?;
+
         let (first, second) = if state.use_verbose_page_rules {
             (page, post)
         } else {
@@ -198,6 +280,7 @@ impl RewriteService {
             .merge(sitemap)
             .merge(deprecated_files)
             .merge(registration)
+            .merge(random)
             .merge(root)
             .merge(comments)
             .merge(search)

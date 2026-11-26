@@ -203,8 +203,20 @@ struct Break {
     step: Option<usize>,
 }
 
-/// The WordPress release the corpus was recorded from.
-pub const WORDPRESS: &str = "7.1.5";
+#[derive(Deserialize)]
+struct Source {
+    #[serde(default)]
+    wordpress: Option<String>,
+}
+
+/// The WordPress release the corpus was recorded from: the formatting area's release, its `source.json`'s
+/// `wordpress` override, else the repository's pin in `compat/wordpress.json`.
+pub fn wordpress() -> String {
+    read::<Source>(&compat_dir().join("source.json"))
+        .wordpress
+        .or_else(|| read::<Source>(&compat_dir().join("../wordpress.json")).wordpress)
+        .expect("compat/wordpress.json pins a release")
+}
 
 fn compat_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../compat/formatting")
@@ -220,7 +232,7 @@ fn read<T: for<'de> Deserialize<'de>>(path: &Path) -> T {
 fn all_cases() -> Vec<Case> {
     let dir = compat_dir();
     let catalogue: Catalogue = read(&dir.join("scenarios.json"));
-    let fixture: Fixture = read(&dir.join(format!("wordpress-{WORDPRESS}.json")));
+    let fixture: Fixture = read(&dir.join(format!("wordpress-{}.json", wordpress())));
     let breaks: Breaks = read(&dir.join("breaks.json"));
     catalogue
         .scenarios

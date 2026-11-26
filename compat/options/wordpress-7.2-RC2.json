@@ -1,5 +1,5 @@
 {
-  "wordpress": "7.1.5",
+  "wordpress": "7.2-RC2",
   "results": {
     "add_option_after_notoptions": [
       {
@@ -55983,6 +55983,10 @@
             [
               "show_in_rest",
               false
+            ],
+            [
+              "show_in_abilities",
+              false
             ]
           ]
         },
@@ -57008,6 +57012,10 @@
                       [
                         "show_in_rest",
                         false
+                      ],
+                      [
+                        "show_in_abilities",
+                        false
                       ]
                     ]
                   }
@@ -57062,6 +57070,10 @@
                       [
                         "show_in_rest",
                         true
+                      ],
+                      [
+                        "show_in_abilities",
+                        false
                       ],
                       [
                         "default",
@@ -57127,6 +57139,10 @@
             [
               "show_in_rest",
               true
+            ],
+            [
+              "show_in_abilities",
+              false
             ],
             [
               "default",
@@ -57361,6 +57377,10 @@
                       [
                         "show_in_rest",
                         false
+                      ],
+                      [
+                        "show_in_abilities",
+                        false
                       ]
                     ]
                   }
@@ -57414,6 +57434,10 @@
                       ],
                       [
                         "show_in_rest",
+                        false
+                      ],
+                      [
+                        "show_in_abilities",
                         false
                       ]
                     ]
@@ -57519,6 +57543,10 @@
                       [
                         "show_in_rest",
                         false
+                      ],
+                      [
+                        "show_in_abilities",
+                        false
                       ]
                     ]
                   }
@@ -57572,6 +57600,10 @@
                       ],
                       [
                         "show_in_rest",
+                        false
+                      ],
+                      [
+                        "show_in_abilities",
                         false
                       ],
                       [
@@ -57675,6 +57707,10 @@
                     true
                   ],
                   [
+                    "show_in_abilities",
+                    false
+                  ],
+                  [
                     "default",
                     "x"
                   ]
@@ -57708,6 +57744,10 @@
                   [
                     "show_in_rest",
                     false
+                  ],
+                  [
+                    "show_in_abilities",
+                    false
                   ]
                 ]
               }
@@ -57738,6 +57778,10 @@
                   ],
                   [
                     "show_in_rest",
+                    false
+                  ],
+                  [
+                    "show_in_abilities",
                     false
                   ],
                   [
@@ -57918,6 +57962,10 @@
                       [
                         "show_in_rest",
                         false
+                      ],
+                      [
+                        "show_in_abilities",
+                        false
                       ]
                     ]
                   }
@@ -57971,6 +58019,10 @@
                       ],
                       [
                         "show_in_rest",
+                        false
+                      ],
+                      [
+                        "show_in_abilities",
                         false
                       ],
                       [
@@ -58421,6 +58473,10 @@
             ],
             [
               "show_in_rest",
+              false
+            ],
+            [
+              "show_in_abilities",
               false
             ]
           ]

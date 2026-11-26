@@ -44,7 +44,7 @@ fn pattern(parts: &[&[u8]]) -> Result<Pattern, PregError> {
 }
 
 impl TexturizeTables {
-    /// Builds the tables as 7.1.5's `wptexturize()` setup does.
+    /// Builds the tables as WordPress's `wptexturize()` setup does.
     ///
     /// @param translate
     ///     `_x( $text, $context )`.

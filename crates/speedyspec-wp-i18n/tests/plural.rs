@@ -1,4 +1,4 @@
-//! Plural-Forms expressions, against WordPress 7.1.5's `Plural_Forms` (recorded in `data/plural-forms.json` by
+//! Plural-Forms expressions, against WordPress's `Plural_Forms` (recorded in `data/plural-forms.json` by
 //! `data/record-plural-forms.php` over every GlotPress locale and edge cases).
 
 use speedyspec_wp_i18n::{PluralError, PluralRule};

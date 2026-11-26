@@ -1,6 +1,6 @@
-//! Post statuses: `register_post_status()`'s argument resolution and `$wp_post_statuses` (post.php, 7.1.5 lines
-//! 1457-1530), `get_post_status_object()` (1552-1560), and the label tables of `get_post_statuses()`,
-//! `get_page_statuses()` and `_wp_privacy_statuses()` (1360-1406).
+//! Post statuses: `register_post_status()`'s argument resolution and `$wp_post_statuses` (post.php, 7.2-RC2 lines
+//! 1467-1514), `get_post_status_object()` (1536-1544), and the label tables of `get_post_statuses()`,
+//! `get_page_statuses()` and `_wp_privacy_statuses()` (1368-1414).
 //!
 //! `$args` is an array here: `wp_parse_args()`' query-string form is the adapter's to parse. The adapter also
 //! answers `get_post_status_object()`'s `! is_string()` check; a stored status is an object, never `empty()`.

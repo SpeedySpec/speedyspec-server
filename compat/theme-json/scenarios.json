@@ -6692,6 +6692,39 @@
                     ]
                 }
             ]
+        },
+        {
+            "name": "stylesheet_background_clip_and_text_clip_escapes",
+            "steps": [
+                {
+                    "call": "compat_eval",
+                    "args": [
+                        "return (function(){ compat_register_block('core/button', json_decode(base64_decode('eyJzdXBwb3J0cyI6eyJjb2xvciI6eyJ0ZXh0Ijp0cnVlLCJiYWNrZ3JvdW5kIjp0cnVlLCJncmFkaWVudHMiOnRydWV9LCJiYWNrZ3JvdW5kIjp7ImJhY2tncm91bmRJbWFnZSI6dHJ1ZX19fQ=='), true)); compat_register_block_style('core/button', json_decode(base64_decode('eyJuYW1lIjoib3V0bGluZSIsImxhYmVsIjoiT3V0bGluZSJ9'), true)); $t = compat_theme_json(json_decode(base64_decode('eyJ2ZXJzaW9uIjozLCJzZXR0aW5ncyI6eyJhcHBlYXJhbmNlVG9vbHMiOnRydWV9LCJzdHlsZXMiOnsiYmFja2dyb3VuZCI6eyJiYWNrZ3JvdW5kQ2xpcCI6InRleHQiLCJncmFkaWVudCI6ImxpbmVhci1ncmFkaWVudChyZWQsYmx1ZSkifSwiZWxlbWVudHMiOnsibGluayI6eyJiYWNrZ3JvdW5kIjp7ImJhY2tncm91bmRDbGlwIjoidGV4dCJ9LCI6aG92ZXIiOnsiY29sb3IiOnsidGV4dCI6InJlZCJ9fSwiOmZvY3VzIjp7ImJhY2tncm91bmQiOnsiYmFja2dyb3VuZENsaXAiOiJwYWRkaW5nLWJveCJ9fSwiOmFjdGl2ZSI6eyJiYWNrZ3JvdW5kIjp7ImJhY2tncm91bmRDbGlwIjoiYm9yZGVyLWJveCIsImdyYWRpZW50IjoibGluZWFyLWdyYWRpZW50KHJlZCxyZWQpIn19fSwiYnV0dG9uIjp7ImJhY2tncm91bmQiOnsiYmFja2dyb3VuZENsaXAiOiJwYWRkaW5nLWJveCJ9fX0sImJsb2NrcyI6eyJjb3JlL2J1dHRvbiI6eyJiYWNrZ3JvdW5kIjp7ImJhY2tncm91bmRDbGlwIjoidGV4dCJ9LCI6aG92ZXIiOnsiYmFja2dyb3VuZCI6eyJiYWNrZ3JvdW5kQ2xpcCI6ImJvcmRlci1ib3gifX0sIjpmb2N1cyI6eyJjb2xvciI6eyJ0ZXh0IjoiYmx1ZSJ9fSwiOmFjdGl2ZSI6eyJiYWNrZ3JvdW5kIjp7ImJhY2tncm91bmRDbGlwIjoiYm9ndXMifX0sIkBtb2JpbGUiOnsiY29sb3IiOnsidGV4dCI6ImdyZWVuIn19LCJ2YXJpYXRpb25zIjp7Im91dGxpbmUiOnsiYmFja2dyb3VuZCI6eyJiYWNrZ3JvdW5kQ2xpcCI6InRleHQifSwiQG1vYmlsZSI6eyJiYWNrZ3JvdW5kIjp7ImJhY2tncm91bmRDbGlwIjoiY29udGVudC1ib3gifX19fX19fX0='), true), 'theme'); $GLOBALS['speedyspec_notices']=[]; $css = $t->get_stylesheet(json_decode(base64_decode('WyJzdHlsZXMiXQ=='), true), null, json_decode(base64_decode('e30='), true)); return [$css, $GLOBALS['speedyspec_notices']]; })();"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "stylesheet_text_input_pseudo_element_and_label",
+            "steps": [
+                {
+                    "call": "compat_eval",
+                    "args": [
+                        "return (function(){ compat_register_block('core/group', json_decode(base64_decode('eyJzdXBwb3J0cyI6eyJjb2xvciI6eyJ0ZXh0Ijp0cnVlfX19'), true)); $t = compat_theme_json(json_decode(base64_decode('eyJ2ZXJzaW9uIjozLCJzdHlsZXMiOnsiZWxlbWVudHMiOnsidGV4dElucHV0Ijp7ImNvbG9yIjp7InRleHQiOiIjMTExIn0sIjo6cGxhY2Vob2xkZXIiOnsiY29sb3IiOnsidGV4dCI6IiM5OTkifX0sIjpmb2N1cyI6eyJjb2xvciI6eyJ0ZXh0IjoiIzAwMCJ9fSwiOnVzZXItaW52YWxpZCI6eyJjb2xvciI6eyJ0ZXh0IjoiI2YwMCJ9fX0sInNlbGVjdCI6eyI6aG92ZXIiOnsiY29sb3IiOnsidGV4dCI6IiMyMjIifX19LCJsYWJlbCI6eyJjb2xvciI6eyJ0ZXh0IjoiIzMzMyJ9fX0sImJsb2NrcyI6eyJjb3JlL2dyb3VwIjp7ImVsZW1lbnRzIjp7InRleHRJbnB1dCI6eyI6OnBsYWNlaG9sZGVyIjp7ImNvbG9yIjp7InRleHQiOiIjNzc3In19fX19fX19'), true), 'theme'); $GLOBALS['speedyspec_notices']=[]; $css = $t->get_stylesheet(json_decode(base64_decode('WyJzdHlsZXMiXQ=='), true), null, json_decode(base64_decode('e30='), true)); return [$css, $GLOBALS['speedyspec_notices']]; })();"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "stylesheet_custom_css_feature_selector_and_non_string_css",
+            "steps": [
+                {
+                    "call": "compat_eval",
+                    "args": [
+                        "return (function(){ compat_register_block('core/x', json_decode(base64_decode('eyJzdXBwb3J0cyI6eyJjb2xvciI6eyJ0ZXh0Ijp0cnVlfX0sInNlbGVjdG9ycyI6eyJyb290IjoiLndwLWJsb2NrLXgiLCJjc3MiOiIud3AtYmxvY2steCAuaW5uZXIifX0='), true)); compat_register_block('core/group', json_decode(base64_decode('eyJzdXBwb3J0cyI6eyJjb2xvciI6eyJ0ZXh0Ijp0cnVlfX19'), true)); compat_register_block_style('core/x', json_decode(base64_decode('eyJuYW1lIjoiZmFuY3kiLCJsYWJlbCI6IkZhbmN5In0='), true)); $t = compat_theme_json(json_decode(base64_decode('eyJ2ZXJzaW9uIjozLCJzdHlsZXMiOnsiY3NzIjo1LCJibG9ja3MiOnsiY29yZS94Ijp7ImNzcyI6ImNvbG9yOnJlZDsiLCJ2YXJpYXRpb25zIjp7ImZhbmN5Ijp7ImNzcyI6ImNvbG9yOmJsdWU7ICYgLmF7Y29sb3I6Z3JlZW59IiwiQG1vYmlsZSI6eyJjc3MiOiJjb2xvcjpwaW5rOyJ9fX19LCJjb3JlL2dyb3VwIjp7ImNzcyI6WyJub3QgY3NzIl19fX19'), true), 'theme'); $GLOBALS['speedyspec_notices']=[]; $css = $t->get_stylesheet(json_decode(base64_decode('WyJzdHlsZXMiLCJjdXN0b20tY3NzIl0='), true), null, json_decode(base64_decode('e30='), true)); return [$css, $GLOBALS['speedyspec_notices']]; })();"
+                    ]
+                }
+            ]
         }
     ]
 }

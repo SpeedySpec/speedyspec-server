@@ -15,7 +15,7 @@ use speedyspec_compat::{DRIVER, compat_dir, wordpress_release};
 use speedyspec_hooks::Value;
 use speedyspec_hooks_memory::MemoryHooks;
 use speedyspec_php::{BootOptions, Php};
-use speedyspec_wp_text_corpus::{WORDPRESS, inputs, page, short_inputs};
+use speedyspec_wp_text_corpus::{inputs, page, short_inputs, wordpress};
 
 /// The PHP side's timing loop: runs `$function` over every input until `$seconds` pass, and answers bytes per second
 /// by wall time and by CPU time.
@@ -73,7 +73,7 @@ fn run() -> Result<(), String> {
     let function = std::env::args()
         .nth(1)
         .ok_or("usage: php-baseline <function>")?;
-    let root = wordpress_release(WORDPRESS)?;
+    let root = wordpress_release(&wordpress())?;
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),
         preload: &[],
@@ -98,7 +98,7 @@ fn run() -> Result<(), String> {
         .map(|(_, bytes)| bytes)
         .collect();
     let seconds = Duration::from_secs(2).as_secs_f64();
-    println!("WordPress {WORDPRESS} {function} in the embedded PHP");
+    println!("WordPress {} {function} in the embedded PHP", wordpress());
     let mut groups = Vec::new();
     if !posts.is_empty() {
         groups.push(("whole_posts", posts));

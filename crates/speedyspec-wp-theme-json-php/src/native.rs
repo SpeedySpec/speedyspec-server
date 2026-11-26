@@ -329,6 +329,10 @@ pub(crate) fn functions(h: Rc<Handlers>) -> Vec<FunctionBuilder<'static>> {
         f(
             "process_blocks_custom_css",
             Box::new(|_, a| {
+                // Only a string is CSS (WordPress 7.2).
+                if !matches!(a.first(), Some(Value::Str(_) | Value::Bytes(_))) {
+                    return Ok(Value::Str(String::new()));
+                }
                 let css = String::from_utf8_lossy(&bytes(a, 0)).into_owned();
                 let selector = String::from_utf8_lossy(&bytes(a, 1)).into_owned();
                 Ok(Value::Str(

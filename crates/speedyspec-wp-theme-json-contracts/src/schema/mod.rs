@@ -1,4 +1,5 @@
-//! WordPress 7.1.5's `WP_Theme_JSON` class constants: the schema tables every piece of the engine reads.
+//! WordPress's `WP_Theme_JSON` class constants, from the release `data_release!` names: the schema tables every
+//! piece of the engine reads.
 //!
 //! The values are WordPress's own, exported by `tools/export-constants.php` as PHP `serialize()` output and
 //! embedded here, so they cannot drift from the release by a transcription mistake. The compat scenarios
@@ -15,13 +16,24 @@ pub const ROOT_BLOCK_SELECTOR: &str = "body";
 /// The selector CSS custom properties are declared on (`ROOT_CSS_PROPERTIES_SELECTOR`).
 pub const ROOT_CSS_PROPERTIES_SELECTOR: &str = ":root";
 
-const SERIALIZED: &[u8] = include_bytes!("wordpress-7.1.5.constants");
+/// The WordPress release the embedded `wordpress-<release>.*` files were exported from. `include_bytes!` takes only a
+/// literal, so this macro is the one place the crate names the release; a test checks that it equals the theme-json
+/// area's release (`compat/theme-json/source.json`'s override, else `compat/wordpress.json`'s pin). Moving the pin
+/// edits this macro too.
+macro_rules! data_release {
+    () => {
+        "7.2-RC2"
+    };
+}
 
-/// WordPress 7.1.5's `wp-includes/theme-i18n.json`: which settings and titles are translated, and with which
+const SERIALIZED: &[u8] = include_bytes!(concat!("wordpress-", data_release!(), ".constants"));
+
+/// The release's `wp-includes/theme-i18n.json`: which settings and titles are translated, and with which
 /// context.
-pub const THEME_I18N: &str = include_str!("wordpress-7.1.5.theme-i18n.json");
+pub const THEME_I18N: &str =
+    include_str!(concat!("wordpress-", data_release!(), ".theme-i18n.json"));
 
-const LAYOUT: &[u8] = include_bytes!("wordpress-7.1.5.layout");
+const LAYOUT: &[u8] = include_bytes!(concat!("wordpress-", data_release!(), ".layout"));
 
 thread_local! {
     static LAYOUT_DEFINITIONS: Rc<Value> = Rc::new(unserialize(LAYOUT));
@@ -208,6 +220,24 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_embedded_files_come_from_the_theme_json_areas_release() {
+        let compat = concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat");
+        let json = |path: String| -> serde_json::Value {
+            serde_json::from_str(&std::fs::read_to_string(&path).expect(&path)).expect(&path)
+        };
+        let source = json(format!("{compat}/theme-json/source.json"));
+        let table = json(format!("{compat}/wordpress.json"));
+        let release = source["wordpress"].as_str().or(table["wordpress"].as_str());
+        assert_eq!(
+            release,
+            Some(data_release!()),
+            "the theme-json area is recorded from WordPress {release:?}, not {}: re-export the \
+             wordpress-<release>.* files with tools/ and change data_release!",
+            data_release!()
+        );
+    }
+
+    #[test]
     fn presets_metadata_order() {
         let paths: Vec<String> = presets_metadata()
             .iter()
@@ -222,6 +252,7 @@ mod tests {
                 "color.duotone",
                 "typography.fontSizes",
                 "typography.fontFamilies",
+                "typography.textShadowPresets",
                 "spacing.spacingSizes",
                 "shadow.presets",
                 "border.radiusSizes",

@@ -24,6 +24,23 @@ fn incompatible_modes_filtered() {
     );
 }
 
+/// WordPress 7.2 upper-cases the modes before it compares them (`array_map( 'strtoupper', $modes )`) and lists
+/// `NO_BACKSLASH_ESCAPES` as incompatible.
+#[test]
+fn incompatible_modes_compare_upper_case() {
+    let r = rig();
+    r.db.set_sql_mode(&[
+        "no_zero_date".into(),
+        "No_Backslash_Escapes".into(),
+        "error_for_division_by_zero".into(),
+    ])
+    .unwrap();
+    assert_eq!(
+        r.store.texts(),
+        vec!["SET SESSION sql_mode = 'ERROR_FOR_DIVISION_BY_ZERO'"]
+    );
+}
+
 #[test]
 fn incompatible_modes_filter_hook() {
     let r = rig();

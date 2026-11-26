@@ -12,3 +12,6 @@ speedyspec-hooks = { path = "../speedyspec-hooks" }
 speedyspec-wp-kses-contracts = { path = "../speedyspec-wp-kses-contracts" }
 indexmap = "2"
 speedyspec-php-serialize = { path = "../speedyspec-php-serialize" }
+
+[dev-dependencies]
+serde_json = "1"

@@ -2,10 +2,14 @@
 /**
  * Records WordPress's meta key rules into the fixtures the Rust meta port is tested against.
  *
- * Usage: php record.php <wordpress-root> <out-dir>
+ * Usage: php record.php <wordpress-root> <out-dir> [<expected-wordpress-version>]
  *
- * Run it with the static PHP the runtime embeds (`.php-build/buildroot/bin/php`) against the WordPress 7.1.5 root
- * that `speedyspec_compat::wordpress_release("7.1.5")` unpacks. It records three things into `<out-dir>/cases.json`:
+ * The recording stops unless the release's `$wp_version` is the expected version: the third argument, else
+ * `SPEEDYSPEC_COMPAT_WORDPRESS`, else the repository's pin, `compat/wordpress.json`'s `wordpress`.
+ *
+ * Run it with the static PHP the runtime embeds (`.php-build/buildroot/bin/php`) against the pinned WordPress root
+ * that `speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())` unpacks.
+ * It records three things into `<out-dir>/cases.json`:
  *
  * - `protected`: `is_protected_meta()` over keys with control, non-ASCII and Latin-1 bytes, under meta types
  *   `post` and `""`.
@@ -49,10 +53,14 @@
 
 declare(strict_types=1);
 
-[$_, $root, $out] = $argv + [null, null, null];
+[$_, $root, $out, $expected] = $argv + [null, null, null, null];
 if (!$root || !$out) {
-    fwrite(STDERR, "usage: php record.php <wordpress-root> <out-dir>\n");
+    fwrite(STDERR, "usage: php record.php <wordpress-root> <out-dir> [<expected-wordpress-version>]\n");
     exit(2);
+}
+if (!$expected) {
+    $expected = getenv('SPEEDYSPEC_COMPAT_WORDPRESS')
+        ?: json_decode((string) file_get_contents(__DIR__ . '/../wordpress.json'), true)['wordpress'];
 }
 $root = rtrim($root, '/') . '/';
 define('ABSPATH', $root);
@@ -212,8 +220,8 @@ function scenario(string $name, array $calls): array
 }
 
 $cases = ['wordpress' => $GLOBALS['wp_version'], 'php' => PHP_VERSION, 'protected' => [], 'register' => [], 'default' => []];
-if ('7.1.5' !== $cases['wordpress']) {
-    fwrite(STDERR, "expected WordPress 7.1.5, found {$cases['wordpress']}\n");
+if ($expected !== $cases['wordpress']) {
+    fwrite(STDERR, "expected WordPress {$expected}, found {$cases['wordpress']}\n");
     exit(1);
 }
 

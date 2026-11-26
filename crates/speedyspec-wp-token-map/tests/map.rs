@@ -1,4 +1,4 @@
-//! `WP_Token_Map` in Rust against WordPress 7.1.5's own class (recorded in `data/map-recorded.json` by
+//! `WP_Token_Map` in Rust against WordPress's own class (recorded in `data/map-recorded.json` by
 //! `data/record-map.php`).
 
 use std::path::Path;

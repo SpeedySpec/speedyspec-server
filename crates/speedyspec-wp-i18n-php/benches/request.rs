@@ -1,4 +1,4 @@
-//! The request benchmark: WordPress translations through the port (embedded PHP) against stock WordPress 7.1.5 on
+//! The request benchmark: WordPress translations through the port (embedded PHP) against stock WordPress on
 //! the same static PHP (CLI), both with OPcache and the tracing JIT, over core de_DE and WooCommerce de_DE.
 //!
 //! Run `benches/fetch-packs.sh` first. The bar: with nothing hooked, a translated request at least 3x faster than
@@ -33,7 +33,8 @@ fn main() {
         eprintln!("run benches/fetch-packs.sh first");
         std::process::exit(2);
     }
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("WordPress 7.1.5");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned release");
     let prepared = prepare_release(&release, &release.with_file_name("wordpress-i18n-port"))
         .expect("prepared");
 

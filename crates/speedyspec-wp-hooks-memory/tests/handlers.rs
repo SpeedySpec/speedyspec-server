@@ -169,7 +169,7 @@ fn string_numeric_priorities_sort_numerically() {
     assert_eq!(
         w.apply("f", "x"),
         s("x-a-c-b"),
-        "recorded from WordPress 7.1.5"
+        "recorded from WordPress"
     );
     let has = w
         .queries
@@ -512,7 +512,7 @@ fn exception_leaves_the_current_filter_as_wordpress_does() {
     );
 }
 
-// ----- HookIteration (Review Focus 2), as recorded from WordPress 7.1.5
+// ----- HookIteration (Review Focus 2), as recorded from WordPress
 
 /// A callback that adds `added` to `f` at `priority` the first time it runs.
 fn adder(w: &World, priority: i64, added: Callback) -> Callback {
@@ -781,12 +781,19 @@ fn accepted_args_truncates() {
 
 #[test]
 fn callback_identity_matches_wordpress() {
+    // The fixture of the hooks area's release: its source.json override, else compat/wordpress.json's pin.
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat/hooks");
+    let json = |path: String| -> serde_json::Value {
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+    };
+    let source = json(format!("{dir}/source.json"));
+    let table = json(format!("{dir}/../wordpress.json"));
+    let version = source["wordpress"]
+        .as_str()
+        .or(table["wordpress"].as_str())
+        .unwrap();
     let fixture: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../compat/hooks/wordpress-7.1.5.json"
-        ))
-        .unwrap(),
+        &std::fs::read_to_string(format!("{dir}/wordpress-{version}.json")).unwrap(),
     )
     .unwrap();
     let recorded = |scenario: &str| {

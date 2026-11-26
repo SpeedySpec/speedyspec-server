@@ -1,0 +1,9 @@
+{
+  "wordpress": "7.2-RC2",
+  "releases": {
+    "7.2-RC2": {
+      "url": "https://wordpress.org/wordpress-7.2-RC2.tar.gz",
+      "sha256": "2a6e02b9fb26d39f85d79c23046d81a6ca4ef25332a53bf7ce89b8d57102e4ec"
+    }
+  }
+}

@@ -14,7 +14,10 @@ fn returned(runner: &mut dyn ScenarioRunner, step: serde_json::Value) -> serde_j
 
 #[test]
 fn invalid_utf8_round_trips_exactly() {
-    let mut runner = match area_runner("formatting", "7.1.5") {
+    let mut runner = match area_runner(
+        "formatting",
+        &speedyspec_compat::area_wordpress("formatting"),
+    ) {
         Ok(runner) => runner,
         Err(why) => panic!("{why}"),
     };

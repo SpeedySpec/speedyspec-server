@@ -138,6 +138,7 @@ pub fn state_from_vars(vars: &Value) -> RewriteState {
     string("root", &mut s.root);
     string("index", &mut s.index);
     string("matches", &mut s.matches);
+    string("random_base", &mut s.random_base);
     s.use_trailing_slashes = get("use_trailing_slashes").is_some_and(truthy);
     s.use_verbose_rules = get("use_verbose_rules").is_some_and(truthy);
     s.use_verbose_page_rules = get("use_verbose_page_rules").is_none_or(truthy);
@@ -210,6 +211,7 @@ pub fn vars_from_state(s: &RewriteState) -> (Value, Vec<String>) {
     put("root", Value::Str(s.root.clone()));
     put("index", Value::Str(s.index.clone()));
     put("matches", Value::Str(s.matches.clone()));
+    put("random_base", Value::Str(s.random_base.clone()));
     put("use_verbose_rules", Value::Bool(s.use_verbose_rules));
     put(
         "use_verbose_page_rules",

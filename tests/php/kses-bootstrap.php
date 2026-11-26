@@ -70,6 +70,8 @@ require ABSPATH . WPINC . '/link-template.php';
 require ABSPATH . WPINC . '/http.php';
 require ABSPATH . WPINC . '/class-wp-block-parser-block.php';
 require ABSPATH . WPINC . '/class-wp-block-parser-frame.php';
+// WordPress 7.2's block parser reads documents through WP_Block_Processor.
+require ABSPATH . WPINC . '/class-wp-block-processor.php';
 require ABSPATH . WPINC . '/class-wp-block-parser.php';
 foreach (
     array(

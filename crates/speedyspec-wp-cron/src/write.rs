@@ -215,7 +215,7 @@ impl CronApi {
             .unwrap_or(HookValue::Null)
     }
 
-    /// Writes `$crons[ $event->timestamp ][ $event->hook ][ $key ] = array( … )` and `uksort`s.
+    /// Writes `$crons[ $event->timestamp ][ $event->hook ][ $key ] = array( … )` and `ksort`s.
     pub(crate) fn insert_event(
         &self,
         cron: &mut CronArray,
@@ -241,7 +241,7 @@ impl CronApi {
                 HookValue::Array(stored),
             )
         });
-        cron.natural_sort();
+        cron.key_sort();
         Ok(())
     }
 

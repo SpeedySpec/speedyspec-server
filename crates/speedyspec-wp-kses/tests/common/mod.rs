@@ -8,7 +8,7 @@ use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_kses::{DefaultGlobals, KsesApi, KsesDeps, NoValueCallbacks, UploadsLocation};
 use speedyspec_wp_kses_contracts::{AttributeEscaper, KsesError, UnfilteredHtmlPolicy};
 
-/// `esc_attr()` as WordPress 7.1.5 behaves with no filter on valid UTF-8: entities normalized, then
+/// `esc_attr()` as WordPress behaves with no filter on valid UTF-8: entities normalized, then
 /// `htmlspecialchars( ENT_QUOTES, double_encode false )`.
 pub struct Escaper;
 impl AttributeEscaper for Escaper {
@@ -63,6 +63,8 @@ pub fn setup_shared(unfiltered: bool) -> (Rc<HookApi>, Rc<KsesApi>) {
         globals: Rc::new(DefaultGlobals::default()),
         uploads: Rc::new(Uploads),
         callbacks: Rc::new(NoValueCallbacks),
+        html_api: Rc::new(speedyspec_wp_kses::NoHtmlApiSanitizer),
+        mode: Rc::new(speedyspec_wp_kses::MemoryOperatingMode::default()),
     });
     (hooks, api)
 }
@@ -113,6 +115,8 @@ pub fn setup() -> (Rc<HookApi>, KsesApi) {
         globals: Rc::new(DefaultGlobals::default()),
         uploads: Rc::new(Uploads),
         callbacks: Rc::new(NoValueCallbacks),
+        html_api: Rc::new(speedyspec_wp_kses::NoHtmlApiSanitizer),
+        mode: Rc::new(speedyspec_wp_kses::MemoryOperatingMode::default()),
     });
     (hooks, api)
 }

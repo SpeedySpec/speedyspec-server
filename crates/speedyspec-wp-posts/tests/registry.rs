@@ -1,4 +1,4 @@
-//! `PostTypeRegistry`: WordPress 7.1.5's `$wp_post_types`, `$_wp_post_type_features` and `$post_type_meta_caps`
+//! `PostTypeRegistry`: WordPress's `$wp_post_types`, `$_wp_post_type_features` and `$post_type_meta_caps`
 //! under register_post_type(), unregister_post_type() and the post type supports functions.
 
 mod support;
@@ -308,6 +308,32 @@ fn unregister_removes_features_and_meta_caps() {
             ("delete_post", "delete_post"),
         ])
     );
+}
+
+#[test]
+fn unregister_keeps_meta_caps_another_type_still_owes() {
+    // WordPress 7.2 rebuilds $post_type_meta_caps from the types that remain, so a capability_type two types share
+    // keeps its meta capabilities when one of them goes (7.1 unset them).
+    let mut registry = PostTypeRegistry::new();
+    let tome = || {
+        vec![
+            (k("capability_type"), s("tome")),
+            (k("map_meta_cap"), PhpValue::Bool(true)),
+        ]
+    };
+    register(&mut registry, "book", tome());
+    register(&mut registry, "scroll", tome());
+    registry.unregister("book").unwrap();
+    assert_eq!(
+        registry.meta_caps(),
+        owned(&[
+            ("edit_tome", "edit_post"),
+            ("read_tome", "read_post"),
+            ("delete_tome", "delete_post"),
+        ])
+    );
+    registry.unregister("scroll").unwrap();
+    assert!(registry.meta_caps().is_empty());
 }
 
 #[test]

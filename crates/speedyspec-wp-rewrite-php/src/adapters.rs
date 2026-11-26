@@ -1,15 +1,18 @@
 //! The rewrite port's outbound ports, answered by WordPress's PHP functions (Gateway) until those areas are ported.
 
+use std::any::Any;
 use std::rc::Rc;
 
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_routing::{GuardAnswer, Rule, RuleGuard};
 use speedyspec_wp_hooks::{HookApi, HookName};
 use speedyspec_wp_rewrite::{
-    Multisite, PageUris, PostTypes, PublicQueryVars, SiteUrls, UriIndex, WpLoaded,
+    Multisite, PageUris, PostTypes, PublicQueryVars, QueryableTaxonomy, RandomContentRedirects,
+    RandomablePostType, RewriteError, SiteTranslations, SiteUrls, Taxonomies, UriIndex,
+    ViewablePosts, WpLoaded,
 };
 
-use crate::values::{items, key_text, text, truthy};
+use crate::values::{items, key_text, list, text, truthy};
 
 fn call(function: &str, args: &[Value]) -> Value {
     match speedyspec_php::call(&Value::Str(function.into()), args) {
@@ -90,7 +93,34 @@ impl PageUris for PhpPageUris {
     }
 }
 
-/// `get_post_types( array( '_builtin' => false ) )`, each with `is_post_type_hierarchical()`.
+/// A failed PHP call as a [`RewriteError`]: the exception it threw is the error's cause, so the native functions
+/// rethrow it unchanged, as they do a hook callback's.
+fn caught(what: &str, failure: speedyspec_php::CallFailure) -> RewriteError {
+    RewriteError {
+        message: format!("{what} failed: {}", failure.error),
+        cause: failure
+            .exception
+            .map(|exception| Rc::new(exception) as Rc<dyn Any>),
+    }
+}
+
+/// Runs `code`, which returns a static closure, with `args`. What it throws (WordPress's filters and functions it
+/// calls) propagates as the error's cause, as it does out of WordPress's `rewrite_rules()`.
+fn run(name: &str, code: &str, args: &[Value]) -> Result<Value, RewriteError> {
+    let callback = speedyspec_php::eval(name, code)
+        .map_err(|err| RewriteError::new(format!("{name} failed: {err}")))?;
+    speedyspec_php::call_catching(&callback, args).map_err(|failure| caught(name, failure))
+}
+
+/// A PHP string, or `null`, as an option.
+fn optional_text(value: &Value) -> Option<String> {
+    match value {
+        Value::Null => None,
+        other => Some(text(other)),
+    }
+}
+
+/// Post types through `get_post_types()`, which stays PHP until post types are wired to Rust.
 pub struct PhpPostTypes;
 
 impl PostTypes for PhpPostTypes {
@@ -107,6 +137,122 @@ impl PostTypes for PhpPostTypes {
                 (name, hierarchical)
             })
             .collect()
+    }
+
+    fn randomable_post_types(&self) -> Result<Vec<RandomablePostType>, RewriteError> {
+        let code = r#"return static function () {
+            $types = array();
+            foreach (get_post_types(array('randomable' => true), 'objects') as $type) {
+                $rewrite = $type->rewrite;
+                $types[] = array(
+                    (string) $type->name,
+                    is_string($type->has_archive) ? $type->has_archive : null,
+                    is_array($rewrite),
+                    is_array($rewrite) && isset($rewrite['slug']) && is_string($rewrite['slug']) ? $rewrite['slug'] : null,
+                );
+            }
+            return $types;
+        };"#;
+        Ok(list(&run("speedyspec://wp-rewrite-randomable", code, &[])?)
+            .iter()
+            .map(|entry| {
+                let fields = list(entry);
+                let at = |i: usize| fields.get(i).cloned().unwrap_or(Value::Null);
+                RandomablePostType {
+                    name: text(&at(0)),
+                    archive_slug: optional_text(&at(1)),
+                    rewrites: truthy(&at(2)),
+                    rewrite_slug: optional_text(&at(3)),
+                }
+            })
+            .collect())
+    }
+}
+
+/// `get_taxonomies( array( 'publicly_queryable' => true ), 'objects' )`, which stays PHP until taxonomies are ported.
+pub struct PhpTaxonomies;
+
+impl Taxonomies for PhpTaxonomies {
+    fn publicly_queryable(&self) -> Result<Vec<QueryableTaxonomy>, RewriteError> {
+        let code = r#"return static function () {
+            $taxonomies = array();
+            foreach (get_taxonomies(array('publicly_queryable' => true), 'objects') as $taxonomy) {
+                $rewrite = $taxonomy->rewrite;
+                $taxonomies[] = array(
+                    (string) $taxonomy->name,
+                    is_array($rewrite) && isset($rewrite['slug']) && is_string($rewrite['slug']) ? $rewrite['slug'] : null,
+                    array_values(array_map('strval', (array) $taxonomy->object_type)),
+                );
+            }
+            return $taxonomies;
+        };"#;
+        Ok(list(&run("speedyspec://wp-rewrite-taxonomies", code, &[])?)
+            .iter()
+            .map(|entry| {
+                let fields = list(entry);
+                let at = |i: usize| fields.get(i).cloned().unwrap_or(Value::Null);
+                QueryableTaxonomy {
+                    name: text(&at(0)),
+                    rewrite_slug: optional_text(&at(1)),
+                    object_types: list(&at(2)).iter().map(text).collect(),
+                }
+            })
+            .collect())
+    }
+}
+
+/// `get_page_by_path( $path, OBJECT, $post_type )` and `is_post_publicly_viewable()`, which stay PHP until posts are
+/// ported.
+pub struct PhpViewablePosts;
+
+impl ViewablePosts for PhpViewablePosts {
+    fn viewable_at(&self, path: &str, post_type: &str) -> Result<bool, RewriteError> {
+        let code = r#"return static function ($path, $post_type) {
+            $post = get_page_by_path($path, OBJECT, $post_type);
+            return $post instanceof WP_Post && is_post_publicly_viewable($post);
+        };"#;
+        Ok(truthy(&run(
+            "speedyspec://wp-rewrite-viewable-post",
+            code,
+            &[Value::Str(path.into()), Value::Str(post_type.into())],
+        )?))
+    }
+}
+
+/// `wp_is_random_content_redirect_enabled()`, from query.php, which stays PHP until queries are ported. An exception
+/// it throws is the error's cause, so the native functions rethrow it unchanged, as they do a hook callback's.
+pub struct PhpRandomContentRedirects;
+
+impl RandomContentRedirects for PhpRandomContentRedirects {
+    fn enabled(&self) -> Result<bool, RewriteError> {
+        speedyspec_php::call_catching(
+            &Value::Str("wp_is_random_content_redirect_enabled".into()),
+            &[],
+        )
+        .map(|enabled| truthy(&enabled))
+        .map_err(|failure| caught("wp_is_random_content_redirect_enabled()", failure))
+    }
+}
+
+/// The default random base in the site language, through WordPress's i18n functions, which stay PHP until i18n is
+/// ported.
+pub struct PhpSiteTranslations;
+
+impl SiteTranslations for PhpSiteTranslations {
+    fn random_base(&self) -> Result<String, RewriteError> {
+        let code = r#"return static function () {
+            $switched_locale = switch_to_locale(get_locale());
+            $random_base = _x('random', 'random content permalink base');
+            if ($switched_locale) {
+                restore_previous_locale();
+            }
+            return $random_base;
+        };"#;
+        Ok(text(&run(
+            "speedyspec://wp-rewrite-random-base",
+            code,
+            &[],
+        )?))
     }
 }
 
@@ -189,6 +335,17 @@ impl speedyspec_wp_rewrite::RewriteOptions for PhpRewriteOptions {
         Ok(match php("get_option", &[Value::Str(name.into())])? {
             Value::Str(s) => Some(s),
             Value::Int(i) => Some(i.to_string()),
+            _ => None,
+        })
+    }
+
+    fn get_string(
+        &self,
+        name: &str,
+    ) -> Result<Option<String>, speedyspec_wp_rewrite::RewriteError> {
+        Ok(match php("get_option", &[Value::Str(name.into())])? {
+            Value::Str(s) => Some(s),
+            Value::Bytes(b) => Some(String::from_utf8_lossy(&b).into_owned()),
             _ => None,
         })
     }

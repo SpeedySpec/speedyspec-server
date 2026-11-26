@@ -1,6 +1,6 @@
 <?php
 /**
- * Records WordPress 7.1.5's translation functions over the fixtures into cases.json.
+ * Records WordPress's translation functions over the fixtures into cases.json.
  *
  * Usage: .php-build/buildroot/bin/php compat/i18n/record.php <wordpress-root>
  */

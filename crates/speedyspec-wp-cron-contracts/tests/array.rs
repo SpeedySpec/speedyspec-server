@@ -133,37 +133,180 @@ fn insert_builds_wordpress_shapes() {
     assert!(cron.contains(300, "123", &key(K2)));
 }
 
-#[test]
-fn natural_sort_matches_strnatcasecmp() {
-    // PHP 8.5.12: uksort($a, 'strnatcasecmp') on these keys gives
-    // ["2x",9,10,"10a",900,1700000000,"b","B2"].
-    let keys = vec![
-        Key::Int(10),
-        Key::Int(9),
-        Key::Str("2x".into()),
-        Key::Str("10a".into()),
-        Key::Str("b".into()),
-        Key::Str("B2".into()),
-        Key::Int(1700000000),
-        Key::Int(900),
-    ];
+fn key_sorted(keys: Vec<Key>) -> Vec<Key> {
     let mut cron = CronArray::from_value(arr(keys.into_iter().map(|k| (k, arr(vec![]))).collect()));
-    cron.natural_sort();
-    let sorted: Vec<Key> = match cron.to_value() {
+    cron.key_sort();
+    match cron.to_value() {
         Value::Array(items) => items.into_iter().map(|(k, _)| k).collect(),
         _ => unreachable!(),
-    };
+    }
+}
+
+fn str_key(k: &str) -> Key {
+    Key::Str(k.into())
+}
+
+#[test]
+fn key_sort_matches_ksort_on_timestamps() {
+    // PHP 8.5.12: ksort($a) on these keys gives
+    // [-1,"9.9",10,"1e1","010","10.25","10.5"," 11","11 ","ABC","abc"]: numeric strings compare by value (equal
+    // values keep their order), and WordPress 7.1.5's strnatcasecmp put "10.5" before "10.25".
+    let sorted = key_sorted(vec![
+        str_key("10.5"),
+        str_key("10.25"),
+        Key::Int(10),
+        str_key("9.9"),
+        str_key(" 11"),
+        str_key("1e1"),
+        str_key("010"),
+        Key::Int(-1),
+        str_key("abc"),
+        str_key("ABC"),
+        str_key("11 "),
+    ]);
     assert_eq!(
         sorted,
         vec![
-            Key::Str("2x".into()),
+            Key::Int(-1),
+            str_key("9.9"),
+            Key::Int(10),
+            str_key("1e1"),
+            str_key("010"),
+            str_key("10.25"),
+            str_key("10.5"),
+            str_key(" 11"),
+            str_key("11 "),
+            str_key("ABC"),
+            str_key("abc"),
+        ]
+    );
+}
+
+#[test]
+fn key_sort_matches_ksort_past_the_integer_range() {
+    // PHP 8.5.12: ksort($a) on these keys gives ["-1e999",PHP_INT_MIN,PHP_INT_MAX,"99999999999999999998",
+    // "99999999999999999999","1e999","x"].
+    let sorted = key_sorted(vec![
+        str_key("99999999999999999999"),
+        str_key("99999999999999999998"),
+        Key::Int(i64::MAX),
+        str_key("1e999"),
+        str_key("-1e999"),
+        Key::Int(i64::MIN),
+        str_key("x"),
+    ]);
+    assert_eq!(
+        sorted,
+        vec![
+            str_key("-1e999"),
+            Key::Int(i64::MIN),
+            Key::Int(i64::MAX),
+            str_key("99999999999999999998"),
+            str_key("99999999999999999999"),
+            str_key("1e999"),
+            str_key("x"),
+        ]
+    );
+}
+
+#[test]
+fn key_sort_places_junk_keys_as_php_does() {
+    // Non-numeric keys beside timestamps make PHP's comparisons intransitive ("10a" < 3 < 42 < "9x" < "10a"), so
+    // the order is zend_sort()'s own. PHP 8.5.12's ksort($a) on these 30 keys (its quicksort, not its insertion
+    // sort) gives the order below.
+    let sorted = key_sorted(vec![
+        Key::Int(1700003600),
+        str_key("next"),
+        Key::Int(1700000000),
+        str_key("9x"),
+        Key::Int(1700007200),
+        str_key(" 1700000500"),
+        str_key("1700000100.5"),
+        Key::Int(100),
+        str_key("1e9"),
+        str_key("abc"),
+        Key::Int(1700001000),
+        Key::Int(7),
+        str_key("10a"),
+        Key::Int(5),
+        str_key("x9"),
+        Key::Int(1700000001),
+        Key::Int(1700000002),
+        Key::Int(42),
+        str_key("Z"),
+        str_key("a"),
+        Key::Int(1700009999),
+        Key::Int(3),
+        Key::Int(300),
+        Key::Int(1700005000),
+        str_key("0x1A"),
+        str_key(""),
+        Key::Int(1700000050),
+        Key::Int(-5),
+        Key::Int(1699999999),
+        str_key("1700000000.25"),
+    ]);
+    assert_eq!(
+        sorted,
+        vec![
+            str_key(""),
+            Key::Int(-5),
+            str_key("0x1A"),
+            str_key("10a"),
+            Key::Int(3),
+            Key::Int(5),
+            Key::Int(7),
+            Key::Int(42),
+            Key::Int(100),
+            Key::Int(300),
+            str_key("1e9"),
+            Key::Int(1699999999),
+            Key::Int(1700000000),
+            str_key("1700000000.25"),
+            Key::Int(1700000001),
+            Key::Int(1700000002),
+            Key::Int(1700000050),
+            str_key("1700000100.5"),
+            str_key(" 1700000500"),
+            Key::Int(1700001000),
+            Key::Int(1700003600),
+            Key::Int(1700005000),
+            Key::Int(1700007200),
+            Key::Int(1700009999),
+            str_key("9x"),
+            str_key("Z"),
+            str_key("a"),
+            str_key("abc"),
+            str_key("next"),
+            str_key("x9"),
+        ]
+    );
+}
+
+#[test]
+fn key_sort_places_a_short_mix_as_php_does() {
+    // PHP 8.5.12: ksort($a) on these keys (its insertion sort) gives [9,10,"10a",1700000000,"2x",900,"B2","b"].
+    let sorted = key_sorted(vec![
+        Key::Int(10),
+        Key::Int(9),
+        str_key("2x"),
+        str_key("10a"),
+        str_key("b"),
+        str_key("B2"),
+        Key::Int(1700000000),
+        Key::Int(900),
+    ]);
+    assert_eq!(
+        sorted,
+        vec![
             Key::Int(9),
             Key::Int(10),
-            Key::Str("10a".into()),
-            Key::Int(900),
+            str_key("10a"),
             Key::Int(1700000000),
-            Key::Str("b".into()),
-            Key::Str("B2".into()),
+            str_key("2x"),
+            Key::Int(900),
+            str_key("B2"),
+            str_key("b"),
         ]
     );
 }

@@ -1,6 +1,6 @@
 //! Matching and compiling WordPress rule lists: the router's two dispatch strategies against one regex per rule
-//! (what WP::parse_request does in PHP), over WordPress 7.1.5's own `/%postname%/` rules (recorded in
-//! compat/rewrite) and a 500-rule list (those rules plus generated `add_rewrite_rule` ones).
+//! (what WP::parse_request does in PHP), over WordPress's own `/%postname%/` rules (recorded from the pinned release
+//! in compat/rewrite) and a 500-rule list (those rules plus generated `add_rewrite_rule` ones).
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use regex::Regex;
@@ -19,12 +19,22 @@ impl RuleGuard for Accept {
 }
 
 fn fixture() -> serde_json::Value {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../compat/rewrite/wordpress-7.1.5.json"
-    );
-    serde_json::from_str(&std::fs::read_to_string(path).expect("compat/rewrite fixture"))
-        .expect("json")
+    // The fixture of the rewrite area's release: its source.json override, else compat/wordpress.json's pin.
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat/rewrite");
+    let json = |path: String| -> serde_json::Value {
+        serde_json::from_str(&std::fs::read_to_string(&path).expect(&path)).expect("json")
+    };
+    let source = json(format!("{dir}/source.json"));
+    let table = json(format!("{dir}/../wordpress.json"));
+    let version = source["wordpress"]
+        .as_str()
+        .or(table["wordpress"].as_str())
+        .expect("a pinned release");
+    serde_json::from_str(
+        &std::fs::read_to_string(format!("{dir}/wordpress-{version}.json"))
+            .expect("compat/rewrite fixture"),
+    )
+    .expect("json")
 }
 
 /// The rules `get_option( 'rewrite_rules' )` returned after the postname structure's flush (step 3).

@@ -1,4 +1,4 @@
-//! The HTML5 named character references: WordPress 7.1.5's precomputed table, and the lookup the HTML/kses port
+//! The HTML5 named character references: WordPress's precomputed table, and the lookup the HTML/kses port
 //! uses.
 
 use std::path::Path;

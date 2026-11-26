@@ -1,4 +1,4 @@
-//! The image corpus read through the native image rules against WordPress 7.1.5 and PHP 8.5
+//! The image corpus read through the native image rules against WordPress and PHP 8.5
 //! (`compat/media/recorded-images.json`), except the paths `compat/media/image-differences.json` lists.
 //!
 //! On the fast path the facade returns PHP's own `getimagesize()`, so the recorded answer stands in for it here; this

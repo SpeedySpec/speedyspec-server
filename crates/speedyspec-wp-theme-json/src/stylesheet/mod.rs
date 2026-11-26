@@ -3,7 +3,9 @@
 
 mod block;
 mod custom_css;
+mod states;
 
+use custom_css::css_text;
 pub use custom_css::process_blocks_custom_css;
 
 use speedyspec_hooks::{Key, Value};
@@ -322,8 +324,10 @@ impl Sheet<'_> {
         if types.contains(&StylesheetType::Presets) {
             stylesheet.extend(self.preset_classes(&settings, origins));
         }
+        // The global styles root CSS, when it is a string (WordPress 7.2).
         if types.contains(&StylesheetType::CustomCss)
-            && let Some(css) = array_path::get(self.doc, &["styles", "css"])
+            && let Some(css @ (Value::Str(_) | Value::Bytes(_))) =
+                array_path::get(self.doc, &["styles", "css"])
         {
             stylesheet.extend(to_php_string(css));
         }
@@ -353,8 +357,9 @@ impl Sheet<'_> {
                 let selector = get_opt(&self.meta, &[&name, "selector"])
                     .map(text)
                     .unwrap_or_default();
-                stylesheet
-                    .extend_from_slice(process_blocks_custom_css(&text(css), &selector).as_bytes());
+                stylesheet.extend_from_slice(
+                    process_blocks_custom_css(&css_text(css), &selector).as_bytes(),
+                );
             }
         }
         stylesheet

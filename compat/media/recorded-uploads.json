@@ -1,6 +1,6 @@
 {
-    "wordpress": "7.1.5",
-    "getid3": "1.9.25-202603080933",
+    "wordpress": "7.2-RC2",
+    "getid3": "1.9.28-202610301738",
     "php": "8.5.12",
     "files": {
         "bars.dv": {
@@ -10,7 +10,7 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 120000,
                 "filepath": "<corpus>",
                 "filename": "bars.dv",
@@ -30,7 +30,7 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 215040,
                 "filepath": "<corpus>",
                 "filename": "bars.m2ts",
@@ -41,7 +41,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 61
+            "us": 60
         },
         "bars.m2v": {
             "kind": "video",
@@ -51,7 +51,7 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 92844,
                 "filepath": "<corpus>",
                 "filename": "bars.m2v",
@@ -63,7 +63,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 52
+            "us": 46
         },
         "bars.mxf": {
             "kind": "video",
@@ -72,7 +72,7 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 416313,
                 "filepath": "<corpus>",
                 "filename": "bars.mxf",
@@ -83,7 +83,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 60
+            "us": 59
         },
         "bars.ogm": {
             "kind": "video",
@@ -97,7 +97,7 @@
             },
             "file_format": "ogg",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 26190,
                 "filepath": "<corpus>",
                 "filename": "bars.ogm",
@@ -113,7 +113,7 @@
                     "pixel_aspect_ratio": 1.0
                 },
                 "warning": [
-                    "Ogg Theora (v3) not fully supported in this version of getID3 [1.9.25-202603080933] -- bitrate, playtime and all audio data are currently unavailable"
+                    "Ogg Theora (v3) not fully supported in this version of getID3 [1.9.28-202610301738] -- bitrate, playtime and all audio data are currently unavailable"
                 ],
                 "encoding": "UTF-8",
                 "mime_type": "video/ogg",
@@ -236,7 +236,7 @@
                 }
             },
             "creation_timestamp": false,
-            "us": 92
+            "us": 91
         },
         "bars.rm": {
             "kind": "video",
@@ -246,7 +246,7 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 101643,
                 "filepath": "<corpus>",
                 "filename": "bars.rm",
@@ -258,7 +258,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 48
+            "us": 46
         },
         "bars.vob": {
             "kind": "video",
@@ -268,7 +268,7 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 192512,
                 "filepath": "<corpus>",
                 "filename": "bars.vob",
@@ -280,7 +280,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 47
+            "us": 45
         },
         "tone.au": {
             "kind": "audio",
@@ -290,7 +290,7 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 176432,
                 "filepath": "<corpus>",
                 "filename": "tone.au",
@@ -302,7 +302,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 43
+            "us": 41
         },
         "tone.caf": {
             "kind": "audio",
@@ -311,7 +311,7 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 35555,
                 "filepath": "<corpus>",
                 "filename": "tone.caf",
@@ -343,7 +343,7 @@
             },
             "file_format": "ac3",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 24240,
                 "filepath": "<corpus>",
                 "filename": "tone.eac3",
@@ -362,7 +362,7 @@
                     "compression_ratio": 0.15873015873015872
                 },
                 "error": [
-                    "E-AC3 parsing is incomplete and experimental in this version of getID3 (1.9.25-202603080933). Notably the bitrate calculations are wrong -- value might (or not) be correct, but it is not calculated correctly. Email info@getid3.org if you know how to calculate EAC3 bitrate correctly."
+                    "E-AC3 parsing is incomplete and experimental in this version of getID3 (1.9.28-202610301738). Notably the bitrate calculations are wrong -- value might (or not) be correct, but it is not calculated correctly. Email info@getid3.org if you know how to calculate EAC3 bitrate correctly."
                 ],
                 "encoding": "UTF-8",
                 "mime_type": "audio/ac3",
@@ -413,7 +413,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 76
+            "us": 62
         },
         "tone.mp2": {
             "kind": "audio",
@@ -435,7 +435,7 @@
             },
             "file_format": "mp2",
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 32182,
                 "filepath": "<corpus>",
                 "filename": "tone.mp2",
@@ -495,7 +495,7 @@
                 "playtime_string": "0:02"
             },
             "creation_timestamp": false,
-            "us": 152
+            "us": 150
         },
         "tone.tta": {
             "kind": "audio",
@@ -505,7 +505,7 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 29143,
                 "filepath": "<corpus>",
                 "filename": "tone.tta",
@@ -580,7 +580,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 58
+            "us": 52
         },
         "tone.voc": {
             "kind": "audio",
@@ -590,7 +590,7 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 44305,
                 "filepath": "<corpus>",
                 "filename": "tone.voc",
@@ -602,7 +602,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 46
+            "us": 44
         },
         "tone.w64": {
             "kind": "audio",
@@ -611,7 +611,7 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 176504,
                 "filepath": "<corpus>",
                 "filename": "tone.w64",
@@ -622,7 +622,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 60
+            "us": 58
         },
         "tone.wv": {
             "kind": "audio",
@@ -632,7 +632,7 @@
             },
             "file_format": null,
             "data": {
-                "GETID3_VERSION": "1.9.25-202603080933",
+                "GETID3_VERSION": "1.9.28-202610301738",
                 "filesize": 40493,
                 "filepath": "<corpus>",
                 "filename": "tone.wv",
@@ -707,7 +707,7 @@
                 ]
             },
             "creation_timestamp": false,
-            "us": 64
+            "us": 52
         }
     }
 }

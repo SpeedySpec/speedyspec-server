@@ -14,7 +14,8 @@ pub const REPLACED_FILES: &[&str] = &[
     "class-wp-theme-json-resolver.php",
 ];
 
-/// The functions of `global-styles-and-settings.php` the area declares (all of them in 7.1.5).
+/// The functions of `global-styles-and-settings.php` the area declares: all of them but `wp_get_viewport_media_queries()`,
+/// which stays WordPress's own and calls the native `WP_Theme_JSON::get_viewport_media_queries()`.
 pub const PORTED_FUNCTIONS: &[&str] = &[
     "wp_get_global_settings",
     "wp_get_global_styles",
@@ -81,7 +82,7 @@ pub fn prepare_release(release: &Path, out: &Path) -> Result<PathBuf, String> {
 mod tests {
     use super::*;
 
-    /// Every ported function is stripped from 7.1.5's file and nothing else is, when the release is at hand.
+    /// Every ported function is stripped from the release's file and nothing else is, when the release is at hand.
     #[test]
     fn strips_every_ported_function_from_the_release() {
         let Ok(root) = std::env::var("WP") else {

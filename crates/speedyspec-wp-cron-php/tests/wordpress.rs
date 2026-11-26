@@ -76,7 +76,8 @@ fn main() {
         println!("skipped: needs MySQL: set SPEEDYSPEC_TEST_MYSQL_URL");
         return;
     };
-    let release = wordpress_release("7.1.5").expect("the pinned WordPress release");
+    let release = wordpress_release(&speedyspec_compat::area_wordpress("cron"))
+        .expect("the pinned WordPress release");
     let prepared = prepare_release(
         &release,
         &Path::new(env!("CARGO_TARGET_TMPDIR")).join("wordpress-cron"),

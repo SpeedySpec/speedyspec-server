@@ -37,6 +37,9 @@ else
     // rewrite.php's functions that stay PHP until posts are ported, as WordPress has them.
     eval(speedyspec_compat_function(ABSPATH . WPINC . '/rewrite.php', 'wp_resolve_numeric_slug_conflicts'));
 }
+// query.php's switch for random content redirects, which `WP_Rewrite::random_rewrite_rules()` reads, as WordPress has
+// it on both sides: it stays PHP until queries are ported.
+eval(speedyspec_compat_function(ABSPATH . WPINC . '/query.php', 'wp_is_random_content_redirect_enabled'));
 
 /**
  * Extracts one top-level function's source from a WordPress file.
@@ -170,6 +173,29 @@ function is_admin()
 function __($text, $domain = 'default')
 {
     return $text;
+}
+
+function _x($text, $context, $domain = 'default')
+{
+    return $text;
+}
+
+/**
+ * The site language is English, so `WP_Rewrite::get_random_base()` switches to no other locale.
+ */
+function get_locale()
+{
+    return 'en_US';
+}
+
+function switch_to_locale($locale)
+{
+    return false;
+}
+
+function restore_previous_locale()
+{
+    return false;
 }
 
 function wp_die($message = '', $title = '', $args = array())

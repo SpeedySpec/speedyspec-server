@@ -1,4 +1,4 @@
-//! The PO reader and writer, against WordPress 7.1.5's `PO` (recorded in `data/po-recorded.json` by
+//! The PO reader and writer, against WordPress's `PO` (recorded in `data/po-recorded.json` by
 //! `data/record-po.php`).
 
 use std::path::{Path, PathBuf};

@@ -1,5 +1,5 @@
 //! Post type capabilities: `get_post_type_capabilities()` and `_post_type_meta_capabilities()` (post.php,
-//! 7.1.5 lines 2034-2101), without the `$post_type_meta_caps` global, which the registry keeps.
+//! 7.2-RC2 lines 2050-2121), without the `$post_type_meta_caps` global, which the registry keeps.
 
 use speedyspec_php_serialize::semantics::{
     array_merge, get, isset, key_to_string, set, to_array_key, to_php_string,

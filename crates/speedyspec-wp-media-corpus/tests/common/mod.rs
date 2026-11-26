@@ -1,5 +1,5 @@
 //! The comparison every audio and video corpus test shares: each recorded file read with FFmpeg (or the MIDI reader)
-//! through WordPress's rules must match what WordPress 7.1.5 and getID3 returned, except the paths a differences file
+//! through WordPress's rules must match what WordPress and getID3 returned, except the paths a differences file
 //! lists, each with a reason in `DIFFERENCES.md`.
 
 use std::path::{Path, PathBuf};

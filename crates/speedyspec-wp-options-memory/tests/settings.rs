@@ -125,6 +125,7 @@ fn defaults_merged_in_order() {
             "description",
             "sanitize_callback",
             "show_in_rest",
+            "show_in_abilities",
             "default"
         ]
     );
@@ -132,6 +133,10 @@ fn defaults_merged_in_order() {
     assert_eq!(field(&args, "group"), Some(s("g")));
     assert_eq!(field(&args, "sanitize_callback"), Some(HookValue::Null));
     assert_eq!(field(&args, "show_in_rest"), Some(HookValue::Bool(false)));
+    assert_eq!(
+        field(&args, "show_in_abilities"),
+        Some(HookValue::Bool(false))
+    );
 }
 
 #[test]
@@ -255,7 +260,8 @@ fn args_filter_sees_raw_args() {
             "label",
             "description",
             "sanitize_callback",
-            "show_in_rest"
+            "show_in_rest",
+            "show_in_abilities"
         ]
     );
     assert_eq!((seen[2].clone(), seen[3].clone()), (s("g"), s("n")));

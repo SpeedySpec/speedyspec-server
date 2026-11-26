@@ -24,7 +24,9 @@ pub fn property_value(
         Some(Value::Str(t)) if t.is_empty() => return s(""),
         Some(v) => v.clone(),
     };
-    let Some(reference) = array_path::get(&value, &["ref"]).filter(|r| !matches!(r, Value::Null))
+    // Only a string `ref` is followed (WordPress 7.2).
+    let Some(reference) =
+        array_path::get(&value, &["ref"]).filter(|r| matches!(r, Value::Str(_) | Value::Bytes(_)))
     else {
         return value;
     };
@@ -152,7 +154,22 @@ pub fn compute_style_properties(
         if css_property == "aspect-ratio" {
             declarations.push(Declaration::text("min-height", "unset"));
         }
+        // Background clipping needs vendor prefixed properties (WordPress 7.2): `text` clips to the text through a
+        // transparent fill; a box value only restores the fill color. Other values get neither.
+        let clip = (css_property == "background-clip").then(|| value.clone());
         declarations.push(Declaration::new(css_property, value));
+        match clip {
+            Some(Value::Str(clip)) if clip == "text" => {
+                declarations.push(Declaration::text("-webkit-background-clip", "text"));
+                declarations.push(Declaration::text("-webkit-text-fill-color", "transparent"));
+            }
+            Some(Value::Str(clip))
+                if ["border-box", "padding-box", "content-box"].contains(&clip.as_str()) =>
+            {
+                declarations.push(Declaration::text("-webkit-text-fill-color", "currentColor"));
+            }
+            _ => {}
+        }
     }
     for duplicate in root_variable_duplicates {
         if let Some(index) = declarations.iter().position(|d| d.name == duplicate) {

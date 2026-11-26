@@ -1,4 +1,4 @@
-//! WordPress's kses functions, recorded from the 7.1.5 release (`compat/kses`), replayed exactly through the native
+//! WordPress's kses functions, recorded from the pinned release (`compat/kses`), replayed exactly through the native
 //! ones: every step's result, every recorded hook invocation and the hook globals (counts included).
 
 use std::rc::Rc;
@@ -29,7 +29,8 @@ fn main() {
         areas,
     })
     .expect("PHP boots");
-    let release = wordpress_release("7.1.5").expect("the pinned release");
+    let release =
+        wordpress_release(&speedyspec_compat::area_wordpress("kses")).expect("the pinned release");
     let mut runner = kses_scenario_runner(php, &release).expect("the release prepares");
     // SPEEDYSPEC_COMPAT_TRACE=1 replays one scenario at a time, naming each and its time; SPEEDYSPEC_COMPAT_ONLY
     // picks one.

@@ -1,6 +1,6 @@
 /**
- * WordPress 7.1.5's kses functions, declared over SpeedySpec's native kses (generated from the release's own
- * signatures; see release.rs for the list). Evaluated as code: no opening tag.
+ * The pinned WordPress release's kses functions, declared over SpeedySpec's native kses (generated from the
+ * release's own signatures; see release.rs for the list). Evaluated as code: no opening tag.
  */
 
 namespace
@@ -118,11 +118,6 @@ namespace
     function wp_kses_array_lc($inarray)
     {
         return N\wp_kses_array_lc(...func_get_args());
-    }
-
-    function wp_kses_html_error($attr)
-    {
-        return N\wp_kses_html_error(...func_get_args());
     }
 
     function wp_kses_bad_protocol_once($content, $allowed_protocols, $count = 1)

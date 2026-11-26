@@ -561,10 +561,6 @@ fn wp_kses_array_lc(args: &[Value]) -> R {
     Ok(Value::Array(out))
 }
 
-fn wp_kses_html_error(args: &[Value]) -> R {
-    Ok(value(lexical::html_error(&bytes(&a(args, 0)))))
-}
-
 fn wp_kses_bad_protocol_once(args: &[Value]) -> R {
     let count = args.get(2).map(int).unwrap_or(1);
     let count = u32::try_from(count).unwrap_or(0);
@@ -809,7 +805,6 @@ pub(crate) fn entries() -> Vec<(&'static str, Native)> {
         ("wp_kses_no_null", wp_kses_no_null),
         ("wp_kses_stripslashes", wp_kses_stripslashes),
         ("wp_kses_array_lc", wp_kses_array_lc),
-        ("wp_kses_html_error", wp_kses_html_error),
         ("wp_kses_bad_protocol_once", wp_kses_bad_protocol_once),
         ("wp_kses_bad_protocol_once2", wp_kses_bad_protocol_once2),
         ("wp_kses_normalize_entities", wp_kses_normalize_entities),

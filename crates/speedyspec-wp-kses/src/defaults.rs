@@ -1,11 +1,20 @@
-//! WordPress 7.1.5's default allowlists, kept once per thread as the PHP-shaped values the filters receive, and the
+//! The pinned WordPress release's default allowlists, kept once per thread as the PHP-shaped values the filters receive, and the
 //! helpers kses.php builds them with.
 
 use serde_json::Value as Json;
 use speedyspec_hooks::{Key, Value};
 
+/// The WordPress release `data/allowed-<release>.json` was generated from. `include_str!` takes only a literal, so this
+/// macro is the one place the crate names the release; a test checks that it equals the kses area's release
+/// (`compat/kses/source.json`'s override, else `compat/wordpress.json`'s pin). Moving the pin edits this macro too.
+macro_rules! data_release {
+    () => {
+        "7.2-RC2"
+    };
+}
+
 /// `$allowedposttags` (after `_wp_add_global_attributes`) and `$allowedtags`, as pairs so order survives JSON.
-const DATA: &str = include_str!("../data/allowed-7.1.5.json");
+const DATA: &str = include_str!(concat!("../data/allowed-", data_release!(), ".json"));
 
 fn from_json(v: &Json) -> Value {
     match v {
@@ -40,12 +49,12 @@ thread_local! {
     };
 }
 
-/// `$allowedposttags` as WordPress 7.1.5 sets it up.
+/// `$allowedposttags` as the pinned WordPress release sets it up.
 pub fn default_post_value() -> Value {
     DEFAULTS.with(|d| d.0.clone())
 }
 
-/// `$allowedtags` as WordPress 7.1.5 sets it up.
+/// `$allowedtags` as the pinned WordPress release sets it up.
 pub fn default_tags_value() -> Value {
     DEFAULTS.with(|d| d.1.clone())
 }
@@ -141,4 +150,25 @@ pub fn allow_pdf_objects(url: &[u8], upload_url: &[u8]) -> bool {
     let (host, port) = host_and_port(upload_url);
     let prefix = |scheme: &[u8]| [scheme, b"://", &host, &port, b"/"].concat();
     url.starts_with(&prefix(b"http")) || url.starts_with(&prefix(b"https"))
+}
+
+#[cfg(test)]
+mod release {
+    #[test]
+    fn the_allowlists_come_from_the_kses_areas_release() {
+        let compat = concat!(env!("CARGO_MANIFEST_DIR"), "/../../compat");
+        let json = |path: String| -> serde_json::Value {
+            serde_json::from_str(&std::fs::read_to_string(&path).expect(&path)).expect(&path)
+        };
+        let source = json(format!("{compat}/kses/source.json"));
+        let table = json(format!("{compat}/wordpress.json"));
+        let release = source["wordpress"].as_str().or(table["wordpress"].as_str());
+        assert_eq!(
+            release,
+            Some(data_release!()),
+            "the kses area is recorded from WordPress {release:?}, not {}: regenerate \
+             data/allowed-<release>.json with scripts/generate-allowed.php and change data_release!",
+            data_release!()
+        );
+    }
 }

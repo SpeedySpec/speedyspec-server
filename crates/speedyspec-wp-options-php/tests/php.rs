@@ -357,7 +357,9 @@ fn main() {
         $new_allowed_options = $saved;
         return $thrown;",
     );
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release =
+        speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("options"))
+            .expect("the pinned release");
     let option_php = std::fs::read_to_string(release.join("wp-includes/option.php")).unwrap();
     let stripped = speedyspec_wp_options_php::strip_ported(&option_php).unwrap();
     let body = stripped.trim_start().trim_start_matches("<?php");

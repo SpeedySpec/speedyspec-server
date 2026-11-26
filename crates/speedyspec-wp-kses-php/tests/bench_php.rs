@@ -1,5 +1,5 @@
-//! The native `wp_kses_post()` against WordPress 7.1.5's own kses.php in the same embedded PHP (goal: at least 5x),
-//! on the benchmark corpus. Run on demand: `SPEEDYSPEC_KSES_BENCH=1 cargo test --release -p speedyspec-wp-kses-php
+//! The native `wp_kses_post()` against the pinned WordPress release's own kses.php in the same embedded PHP (goal: at
+//! least 5x), on the benchmark corpus. Run on demand: `SPEEDYSPEC_KSES_BENCH=1 cargo test --release -p speedyspec-wp-kses-php
 //! --test bench_php`.
 //!
 //! The release's kses.php is loaded a second time inside `namespace Legacy`, its string callbacks pointed at the
@@ -42,7 +42,8 @@ fn main() {
         println!("skipped: set SPEEDYSPEC_KSES_BENCH=1 to run the PHP benchmark");
         return;
     }
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("kses"))
+        .expect("the pinned release");
     let out = tempfile::tempdir().unwrap();
     let root = prepare_release(&release, &out.path().join("wordpress")).unwrap();
     let container = Rc::new(Container::new());

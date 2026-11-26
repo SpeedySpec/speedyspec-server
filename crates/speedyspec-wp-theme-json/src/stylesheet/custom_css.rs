@@ -9,6 +9,15 @@ use crate::selectors::{append_to_selector, scope_selector};
 static PSEUDO_ELEMENT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"([>+~ \t\n\x{0b}\x{0c}\r]*::[a-zA-Z-]+)").expect("compiles"));
 
+/// A node's `css` as `process_blocks_custom_css()` takes it: only a string is CSS (WordPress 7.2).
+pub(crate) fn css_text(css: &speedyspec_hooks::Value) -> String {
+    match css {
+        speedyspec_hooks::Value::Str(s) => s.clone(),
+        speedyspec_hooks::Value::Bytes(b) => String::from_utf8_lossy(b).into_owned(),
+        _ => String::new(),
+    }
+}
+
 /// PHP's `trim()` with its default characters.
 fn php_trim(s: &str) -> &str {
     s.trim_matches([' ', '\t', '\n', '\r', '\0', '\u{b}'])

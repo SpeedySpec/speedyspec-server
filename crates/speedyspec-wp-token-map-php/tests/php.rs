@@ -1,5 +1,5 @@
 //! The token map in embedded PHP: WordPress's class and HTML5 table from the prepared release, replayed against
-//! WordPress 7.1.5 (`compat/token-map/cases.json`, recorded by `compat/token-map/record.php`).
+//! WordPress (`compat/token-map/cases.json`, recorded by `compat/token-map/record.php`).
 //!
 //! PHP boots once per process, so this test has its own `main()` (`harness = false`).
 
@@ -31,7 +31,8 @@ fn text(result: &Result<HookValue, PhpError>) -> String {
 }
 
 fn main() {
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("WordPress 7.1.5");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::pinned_wordpress())
+        .expect("the pinned release");
     let prepared = prepare_release(
         &release,
         &release.with_file_name("wordpress-token-map-port"),

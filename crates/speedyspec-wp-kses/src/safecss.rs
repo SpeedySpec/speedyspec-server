@@ -21,6 +21,9 @@ const SAFE_STYLE_CSS: &[&str] = &[
     "background-size",
     "background-attachment",
     "background-blend-mode",
+    "background-clip",
+    "-webkit-background-clip",
+    "-webkit-text-fill-color",
     "border",
     "border-radius",
     "border-width",
@@ -74,6 +77,7 @@ const SAFE_STYLE_CSS: &[&str] = &[
     "text-align",
     "text-decoration",
     "text-indent",
+    "text-shadow",
     "text-transform",
     "white-space",
     "height",
@@ -203,6 +207,14 @@ const SAFE_STYLE_CSS: &[&str] = &[
     "transform-origin",
     "pointer-events",
     "visibility",
+    "anchor-name",
+    "anchor-scope",
+    "position-anchor",
+    "position-area",
+    "position-try",
+    "position-try-fallbacks",
+    "position-try-order",
+    "position-visibility",
     "--*",
 ];
 
@@ -598,7 +610,7 @@ impl KsesApi {
 }
 
 /// PHP's truthiness.
-fn truthy(v: &Value) -> bool {
+pub(crate) fn truthy(v: &Value) -> bool {
     match v {
         Value::Null => false,
         Value::Bool(b) => *b,

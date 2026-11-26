@@ -150,6 +150,17 @@ fn home_falls_back_to_siteurl() {
     assert_eq!(f.api.get_option("tag_base", None).unwrap(), s("/tag"));
 }
 
+/// WordPress 7.2's `get_option()` also untrailingslashes `wp_random_base`.
+#[test]
+fn random_base_is_untrailingslashed() {
+    let f = fixture();
+    seed(&f, "wp_random_base", "/random/", Autoload::On);
+    assert_eq!(
+        f.api.get_option("wp_random_base", None).unwrap(),
+        s("/random")
+    );
+}
+
 #[test]
 fn alloptions_filter_non_array() {
     let f = fixture();

@@ -1,4 +1,4 @@
-//! The MO and `.l10n.php` readers, against what WordPress 7.1.5's own `WP_Translation_File` readers make of every
+//! The MO and `.l10n.php` readers, against what WordPress's own `WP_Translation_File` readers make of every
 //! fixture in `data/` (recorded in `data/recorded.json` by `data/record.php`).
 
 use std::path::{Path, PathBuf};

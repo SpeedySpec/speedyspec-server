@@ -1,5 +1,5 @@
-//! Random kses input against WordPress 7.1.5: every difference must pass the gate rule and the port's output must
-//! hold no exploit. `KSES_FUZZ_CASES` raises the case count. Failing inputs are saved under the testkit's
+//! Random kses input against the pinned WordPress release: every difference must pass the gate rule and the port's
+//! output must hold no exploit. `KSES_FUZZ_CASES` raises the case count. Failing inputs are saved under the testkit's
 //! corpus/fuzz-found/ so they become regression inputs.
 
 mod common;

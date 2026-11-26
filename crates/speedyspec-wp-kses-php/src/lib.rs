@@ -1,7 +1,7 @@
 //! WordPress's kses functions in PHP, native over the Rust kses API (Facade, Adapter).
 //!
 //! [`KsesArea`] declares, at the start of every request (from `kses.php`), `wp_kses()` and every other function of
-//! 7.1.5's `kses.php` this port covers, plus `wp_allowed_protocols()`, with WordPress's signatures. Each is one line
+//! the release's `kses.php` this port covers, plus `wp_allowed_protocols()`, with WordPress's signatures. Each is one line
 //! calling a native function under `SpeedySpec\WpKses\Native\`, which dispatches through the handler bound in the
 //! container (resolved once), so PHP may override one. The release's own `kses.php` still runs for its globals
 //! ([`prepare_release`] strips the functions); the adapters read those globals live, so a plugin that writes
@@ -20,7 +20,10 @@ use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_wp_hooks::HookApi;
 use speedyspec_wp_kses::{KsesApi, KsesDeps, register_kses_handlers};
 
-pub use adapters::{PhpAllowedGlobals, PhpEscaper, PhpPolicy, PhpUploads, PhpValueCallbacks};
+pub use adapters::{
+    PhpAllowedGlobals, PhpEscaper, PhpHtmlApiSanitizer, PhpOperatingMode, PhpPolicy, PhpUploads,
+    PhpValueCallbacks,
+};
 pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
 
 /// Runs the kses scenarios through the native functions (the port side of `compat/kses`), over `release` prepared
@@ -75,6 +78,8 @@ impl KsesArea {
             globals: globals.clone(),
             uploads: Rc::new(PhpUploads),
             callbacks: Rc::new(PhpValueCallbacks),
+            html_api: Rc::new(PhpHtmlApiSanitizer),
+            mode: Rc::new(PhpOperatingMode),
         });
         register_kses_handlers(&container, api.clone());
         let shared = Rc::new(Shared {

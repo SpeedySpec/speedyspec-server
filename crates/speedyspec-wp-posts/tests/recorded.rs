@@ -1,4 +1,4 @@
-//! Replays what `compat/posts/record.php` recorded from WordPress 7.1.5: `get_post_type_labels()` over plain
+//! Replays what `compat/posts/record.php` recorded from the pinned WordPress: `get_post_type_labels()` over plain
 //! objects, with no `post_type_labels_{$post_type}` filter added; `get_post_type_capabilities()` with the meta
 //! capabilities it remembers; `new WP_Post_Type()`'s `set_props()`, under each recorded permalink structure;
 //! the `post_types` scenarios: register_post_type(), unregister_post_type() and the supports functions replayed on
@@ -108,7 +108,7 @@ fn capabilities_match_wordpress() {
 fn set_props_matches_wordpress() {
     let cases = support::cases();
     let set_props = cases["set_props"].as_array().unwrap();
-    assert_eq!(set_props.len(), 21);
+    assert_eq!(set_props.len(), 27);
     for case in set_props {
         let name = &case["name"];
         let PhpValue::Array(args) = support::decode(&case["args"]) else {
@@ -218,7 +218,7 @@ fn assert_scenario_state(scenario: &serde_json::Value, registries: &support::Reg
 fn post_type_scenarios_match_wordpress() {
     let cases = support::cases();
     let scenarios = cases["post_types"].as_array().unwrap();
-    assert_eq!(scenarios.len(), 11);
+    assert_eq!(scenarios.len(), 12);
     let mut calls = 0;
     for scenario in scenarios {
         let scenario_name = scenario["name"].as_str().unwrap();
@@ -253,7 +253,7 @@ fn post_type_scenarios_match_wordpress() {
         });
         assert_scenario_state(scenario, &registries);
     }
-    assert_eq!(calls, 33);
+    assert_eq!(calls, 38);
 }
 
 #[test]

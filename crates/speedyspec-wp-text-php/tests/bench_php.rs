@@ -1,4 +1,4 @@
-//! The native formatting functions against WordPress 7.1.5's own formatting.php in the same embedded PHP, on the
+//! The native formatting functions against the pinned WordPress release's own formatting.php in the same embedded PHP, on the
 //! corpus's inputs, called from PHP as WordPress calls them. Run on demand:
 //! `SPEEDYSPEC_TEXT_BENCH=1 cargo test --release -p speedyspec-wp-text-php --test bench_php` (add
 //! `SPEEDYSPEC_TEXT_BENCH_ONLY=<function>` to time one function).
@@ -157,7 +157,7 @@ fn main() {
         println!("skipped: set SPEEDYSPEC_TEXT_BENCH=1 to run the PHP benchmark");
         return;
     }
-    let release = speedyspec_compat::wordpress_release("7.1.5").expect("the pinned release");
+    let release = speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("formatting")).expect("the pinned release");
     let out = tempfile::tempdir().unwrap();
     let root = prepare_release(&release, &out.path().join("wordpress")).unwrap();
     let container = Rc::new(Container::new());

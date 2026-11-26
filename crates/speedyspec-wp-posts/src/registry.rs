@@ -1,7 +1,7 @@
 //! The post type registry: `$wp_post_types`, `$_wp_post_type_features` and `$post_type_meta_caps` under
-//! `register_post_type()`, `unregister_post_type()` (post.php, 7.1.5 lines 1857-1962), the post type supports
-//! functions (2326-2395) and `WP_Post_Type`'s `add_supports()`, `register_meta_boxes()`, `add_hooks()`,
-//! `register_taxonomies()` and their removal counterparts (class-wp-post-type.php 676-860).
+//! `register_post_type()`, `unregister_post_type()` (post.php, 7.2-RC2 lines 1859-1973), the post type supports
+//! functions (2373-2442) and `WP_Post_Type`'s `add_supports()`, `register_meta_boxes()`, `add_hooks()`,
+//! `register_taxonomies()` and their removal counterparts (class-wp-post-type.php 694-874).
 //!
 //! The registry hooks nothing and registers no taxonomy: it returns the actions and taxonomies for phase 4's
 //! adapter. Rewrite rules and query vars are left to the rewrite seam. `add_supports()` walks an object `supports`'
@@ -9,15 +9,17 @@
 //!
 //! The write side is pure, so phase 4's PHP adapter can apply it to `$_wp_post_type_features` and
 //! `$post_type_meta_caps` itself: [`add_supports`] reads the features through the [`PostTypeSupports`] port and
-//! returns the `add_post_type_support()` calls to make, and [`unregistration`] returns the features and meta
-//! capabilities to remove. [`PostTypeRegistry`] is the in-memory adapter that applies both to its own maps.
+//! returns the `add_post_type_support()` calls to make, and [`unregistration`] returns the features to remove and
+//! the rebuilt meta capabilities. [`PostTypeRegistry`] is the in-memory adapter that applies both to its own maps.
 //!
 //! Approximations, none of them recorded:
 //! - a non-empty `supports` that is neither an array nor an object adds no features (PHP warns in `foreach`) and is
 //!   still removed;
 //! - a `supports` list entry's value becomes a feature as PHP's `(array)` cast and array key conversion make it
 //!   (`false` is `"0"`, `1.5` is `"1"`, null adds nothing);
-//! - a non-scalar value in `cap` removes no meta capability (PHP throws "Illegal offset type").
+//! - in the meta capability rebuild, a non-scalar value in a remaining type's `cap` is skipped (PHP throws "Illegal
+//!   offset type"), and a `cap` that is an array rather than an object is read as the object would be (PHP's
+//!   `get_object_vars()` throws a `TypeError`).
 
 use indexmap::IndexMap;
 use speedyspec_php_serialize::semantics::{is_empty, key_to_string, to_array, to_array_key};
@@ -26,6 +28,7 @@ use speedyspec_wp_posts_contracts::{
     PostType, PostTypeError, PostTypeName, PostTypeSupports, PostTypes,
 };
 
+use crate::caps::meta_capabilities;
 use crate::post_type::{PostTypePorts, resolve_post_type};
 
 /// An `add_action()` call the adapter makes.
@@ -72,9 +75,10 @@ pub struct PostTypeUnregistration {
     pub post_type: PostType,
     /// `remove_supports()`: the `$_wp_post_type_features` key to unset (the post type's name).
     pub supports_to_remove: String,
-    /// `remove_rewrite_rules()`: the `$post_type_meta_caps` keys to unset, one per array-key `cap` value, in
-    /// order.
-    pub meta_caps_to_remove: Vec<String>,
+    /// `$post_type_meta_caps` after the type is unset: emptied, then rebuilt by `_post_type_meta_capabilities()`
+    /// from the `cap` of every remaining type whose `map_meta_cap` is truthy, in registration order, `(custom,
+    /// core)` in insertion order.
+    pub meta_caps: Vec<(String, &'static str)>,
     /// `unregister_meta_boxes()` (priority 10, when the callback is truthy), then `remove_hooks()` (priority 5).
     pub actions: Vec<ActionToRemove>,
 }
@@ -163,25 +167,37 @@ pub fn add_supports(
     calls
 }
 
-/// `unregister_post_type()` for a registered type: `Builtin` when its `_builtin` is truthy; otherwise its features,
-/// the meta capability of every `cap` value and its actions, for the registry or adapter to remove.
-pub fn unregistration(post_type: PostType) -> Result<PostTypeUnregistration, PostTypeError> {
+/// `unregister_post_type()` for a registered type: `Builtin` when its `_builtin` is truthy; otherwise its features
+/// and actions to remove, and `$post_type_meta_caps` rebuilt from `registered`, the post types registered before
+/// the call (the type itself among them, which the rebuild skips).
+///
+/// WordPress 7.2 rebuilds the meta capabilities instead of unsetting the type's own: one custom capability may be
+/// owed to several types, so removing this type's entries could remove ones the others still need.
+pub fn unregistration(
+    post_type: PostType,
+    registered: &dyn PostTypes,
+) -> Result<PostTypeUnregistration, PostTypeError> {
     if post_type.get("_builtin").is_some_and(|b| !is_empty(b)) {
         return Err(PostTypeError::Builtin);
     }
     let name = post_type.name().as_str().to_owned();
 
-    // remove_rewrite_rules()' meta capabilities: `unset( $post_type_meta_caps[ $cap ] )` for every cap.
-    let caps = match post_type.get("cap") {
-        Some(PhpValue::Object { properties, .. }) => properties.as_slice(),
-        Some(PhpValue::Array(items)) => items.as_slice(),
-        _ => &[],
-    };
-    let meta_caps_to_remove = caps
-        .iter()
-        .filter_map(|(_, cap)| to_array_key(cap))
-        .map(|cap| key_to_string(&cap))
-        .collect();
+    // `$post_type_meta_caps = array();` then, for each remaining type with a truthy `map_meta_cap`,
+    // `_post_type_meta_capabilities( get_object_vars( $registered_post_type->cap ) )`.
+    let mut meta_caps: IndexMap<String, &'static str> = IndexMap::new();
+    for remaining in registered.post_types() {
+        if remaining.name().as_str() == name || remaining.get("map_meta_cap").is_none_or(is_empty) {
+            continue;
+        }
+        let caps = match remaining.get("cap") {
+            Some(PhpValue::Object { properties, .. }) => properties.as_slice(),
+            Some(PhpValue::Array(items)) => items.as_slice(),
+            _ => &[],
+        };
+        for (custom, core) in meta_capabilities(caps) {
+            meta_caps.insert(custom, core);
+        }
+    }
 
     let mut actions = Vec::new();
     if let Some(cb) = post_type
@@ -202,7 +218,7 @@ pub fn unregistration(post_type: PostType) -> Result<PostTypeUnregistration, Pos
     Ok(PostTypeUnregistration {
         post_type,
         supports_to_remove: name,
-        meta_caps_to_remove,
+        meta_caps: meta_caps.into_iter().collect(),
         actions,
     })
 }
@@ -279,17 +295,15 @@ impl PostTypeRegistry {
     }
 
     /// `unregister_post_type()`: `Invalid` when the type is missing, `Builtin` when its `_builtin` is truthy.
-    /// Otherwise applies [`unregistration`]: removes the type's features, the meta capability of every `cap` value
-    /// and the entry.
+    /// Otherwise applies [`unregistration`]: removes the type's features and the entry, and replaces the meta
+    /// capabilities with the rebuilt ones.
     pub fn unregister(&mut self, name: &str) -> Result<PostTypeUnregistration, PostTypeError> {
         let post_type = self.post_types.get(name).ok_or(PostTypeError::Invalid)?;
-        let unregistration = unregistration(post_type.clone())?;
+        let unregistration = unregistration(post_type.clone(), &*self)?;
         self.features
             .shift_remove(&unregistration.supports_to_remove);
-        for cap in &unregistration.meta_caps_to_remove {
-            self.meta_caps.shift_remove(cap);
-        }
         self.post_types.shift_remove(name);
+        self.meta_caps = unregistration.meta_caps.iter().cloned().collect();
         Ok(unregistration)
     }
 
@@ -496,33 +510,48 @@ mod tests {
 
     #[test]
     fn unregistration_returns_what_to_remove() {
-        let post_type = PostType::new(
-            PostTypeName::new("book"),
-            vec![
-                (k("name"), s("book")),
-                (
-                    k("cap"),
-                    PhpValue::Object {
-                        class: "stdClass".into(),
-                        properties: vec![
-                            (k("edit_post"), s("edit_tome")),
-                            (k("bad"), PhpValue::Array(Vec::new())),
-                            (k("read"), PhpValue::Int(7)),
-                        ],
-                    },
-                ),
+        let cap = |edit: PhpValue| PhpValue::Object {
+            class: "stdClass".into(),
+            properties: vec![
+                (k("edit_post"), edit),
+                (k("read_post"), PhpValue::Array(Vec::new())),
+                (k("read"), PhpValue::Int(7)),
             ],
-        );
-        let removal = unregistration(post_type).unwrap();
+        };
+        let typed = |name: &str, edit: &str, map_meta_cap: bool| {
+            PostType::new(
+                PostTypeName::new(name),
+                vec![
+                    (k("name"), s(name)),
+                    (k("map_meta_cap"), PhpValue::Bool(map_meta_cap)),
+                    (k("cap"), cap(s(edit))),
+                ],
+            )
+        };
+        let mut registry = PostTypeRegistry::new();
+        for post_type in [
+            typed("book", "edit_tome", true),
+            typed("scroll", "edit_tome", true),
+            typed("note", "edit_note", false),
+        ] {
+            registry
+                .post_types
+                .insert(post_type.name().as_str().to_owned(), post_type);
+        }
+        let removal = unregistration(registry.post_types["book"].clone(), &registry).unwrap();
         assert_eq!(removal.supports_to_remove, "book");
-        // A non-key `cap` value removes nothing (PHP throws "Illegal offset type"); an int is its decimal key.
-        assert_eq!(removal.meta_caps_to_remove, ["edit_tome", "7"]);
+        // Rebuilt from the types that remain with a truthy map_meta_cap: `scroll` still owes `edit_tome`, `note`
+        // adds nothing, and a non-key `cap` value is skipped (PHP throws "Illegal offset type").
+        assert_eq!(removal.meta_caps, [("edit_tome".to_owned(), "edit_post")]);
         assert_eq!(removal.actions.len(), 1);
 
         let builtin = PostType::new(
             PostTypeName::new("post"),
             vec![(k("_builtin"), PhpValue::Bool(true))],
         );
-        assert_eq!(unregistration(builtin).unwrap_err(), PostTypeError::Builtin);
+        assert_eq!(
+            unregistration(builtin, &registry).unwrap_err(),
+            PostTypeError::Builtin
+        );
     }
 }

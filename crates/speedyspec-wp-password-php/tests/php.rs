@@ -1,5 +1,5 @@
 //! WordPress's password functions in embedded PHP: the facade over the native functions and the container ports,
-//! with libsodium and bcrypt behind them, replaying what `compat/password/record.php` recorded from WordPress 7.1.5.
+//! with libsodium and bcrypt behind them, replaying what `compat/password/record.php` recorded from the pinned release.
 //!
 //! PHP boots once per process, so this test has its own `main()` (`harness = false`) and runs each check in order.
 

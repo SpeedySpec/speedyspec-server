@@ -1,6 +1,6 @@
 --- a/wp-includes/class-wp.php
 +++ b/wp-includes/class-wp.php
-@@ -216,66 +216,22 @@
+@@ -217,66 +217,22 @@
  
  			$this->request = $requested_path;
  
@@ -80,5 +80,5 @@
 +				$this->matched_query = $speedyspec_match['matched_query'];
 +				$perma_query_vars    = $speedyspec_match['perma_query_vars'];
  
- 				// If we're processing a 404 request, clear the error var since we found something.
- 				if ( '404' === $error ) {
+ 				// Clear the 404 error var since we found something.
+ 				unset( $error, $_GET['error'] );

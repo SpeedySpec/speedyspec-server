@@ -530,7 +530,7 @@ function speedyspec_cron_schedules($schedules)
 }
 
 /**
- * Runs the due events: on WordPress's side, `wp-cron.php`'s loop (WordPress 7.1.5, verbatim, without its lock, which
+ * Runs the due events: on WordPress's side, `wp-cron.php`'s loop (WordPress's, verbatim, without its lock, which
  *  the runner replaces with its claim); on the port's side, the native runner.
  */
 function speedyspec_compat_run_cron()

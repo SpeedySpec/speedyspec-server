@@ -119,3 +119,63 @@ fn category_base_applies() {
     f.service.set_tag_base(&mut state, "labels").unwrap();
     assert_eq!(f.options.get("tag_base").as_deref(), Some("labels"));
 }
+
+#[test]
+fn init_reads_the_random_base() {
+    let f = fixture("/%postname%/");
+    f.options.set("wp_random_base", "surprise");
+    let mut state = RewriteState::default();
+    f.service.init(&mut state).unwrap();
+    assert_eq!(state.random_base, "surprise");
+    assert_eq!(f.service.get_random_base(&state).unwrap(), "surprise");
+}
+
+#[test]
+fn the_random_base_defaults_to_its_translation() {
+    struct Translated(&'static str);
+    impl speedyspec_wp_rewrite::SiteTranslations for Translated {
+        fn random_base(&self) -> Result<String, speedyspec_wp_rewrite::RewriteError> {
+            Ok(self.0.into())
+        }
+    }
+    let (f, state) = init("/%postname%/");
+    assert_eq!(f.service.get_random_base(&state).unwrap(), "random");
+    for (translation, base) in [("zufall", "zufall"), ("", "random")] {
+        let mut deps = f.service.deps().clone();
+        deps.translations = std::rc::Rc::new(Translated(translation));
+        let service = speedyspec_wp_rewrite::RewriteService::new(deps);
+        assert_eq!(service.get_random_base(&state).unwrap(), base);
+    }
+}
+
+#[test]
+fn set_random_base_updates_and_reinitialises() {
+    let (f, mut state) = init("/%postname%/");
+    state.author_structure = Some("cached".into());
+    f.service.set_random_base(&mut state, "lucky").unwrap();
+    assert_eq!(f.options.get("wp_random_base").as_deref(), Some("lucky"));
+    assert_eq!(state.random_base, "lucky");
+    assert_eq!(state.author_structure, None);
+    state.author_structure = Some("cached".into());
+    f.service.set_random_base(&mut state, "lucky").unwrap();
+    assert_eq!(state.author_structure.as_deref(), Some("cached"));
+}
+
+#[test]
+fn post_permalinks_share_the_random_base_only_at_the_root() {
+    for (structure, shares) in [
+        ("/%postname%/", true),
+        ("/%postname%", true),
+        ("/index.php/%postname%/", true),
+        ("/blog/%postname%/", false),
+        ("/%year%/%postname%/", false),
+        ("", false),
+    ] {
+        let (f, state) = init(structure);
+        assert_eq!(
+            f.service.post_permalinks_share_random_base(&state),
+            shares,
+            "{structure}"
+        );
+    }
+}

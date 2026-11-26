@@ -38,8 +38,8 @@ pub struct ResolverDeps {
     pub core_dir: String,
 }
 
-/// The four origins WordPress's `$blocks_cache` tracks.
-const CACHE_ORIGINS: [&str; 4] = ["core", "blocks", "theme", "user"];
+/// The origins WordPress's `$blocks_cache` tracks; `merged` is the merged data's (WordPress 7.2).
+const CACHE_ORIGINS: [&str; 5] = ["core", "blocks", "theme", "user", "merged"];
 
 /// WordPress's per-request statics.
 #[derive(Default)]
@@ -48,6 +48,8 @@ struct State {
     blocks: Option<ThemeJson>,
     theme: Option<ThemeJson>,
     user: Option<ThemeJson>,
+    /// `$merged`: the merged data by origin, for the request.
+    merged: Vec<(&'static str, ThemeJson)>,
     blocks_cache: Vec<(&'static str, Vec<String>)>,
     user_post_id: Option<Value>,
 }
@@ -372,7 +374,9 @@ impl ThemeJsonResolver {
         Ok(user)
     }
 
-    /// `get_merged_data( $origin )`: core, then blocks, theme and user, stopping at `origin`.
+    /// `get_merged_data( $origin )`: core, then blocks, theme and user, stopping at `origin`. The result is cached per
+    /// origin for the request until a block is registered or the cached data is cleaned, and each caller gets its own
+    /// copy (WordPress 7.2).
     pub fn get_merged_data(&self, origin: &Value) -> Result<ThemeJson, ThemeJsonError> {
         if let Value::Array(_) = origin {
             self.api
@@ -380,27 +384,45 @@ impl ThemeJsonResolver {
                 .diagnostics
                 .deprecated_argument("get_merged_data", "5.9.0", b"");
         }
-        let is = |name: &str| matches!(origin, Value::Str(s) if s == name);
+        let origin = match origin {
+            Value::Str(s) if s == "default" => "default",
+            Value::Str(s) if s == "blocks" => "blocks",
+            Value::Str(s) if s == "theme" => "theme",
+            _ => "custom",
+        };
+        if !self.has_same_registered_blocks("merged") {
+            self.state.borrow_mut().merged.clear();
+        }
+        if let Some((_, cached)) = self
+            .state
+            .borrow()
+            .merged
+            .iter()
+            .find(|(o, _)| *o == origin)
+        {
+            return Ok(cached.clone());
+        }
         let mut result = self.api.construct(
             Value::Array(vec![(Key::Str("version".into()), Value::Int(3))]),
             b"theme",
         );
         result = self.api.merge(&result, &self.get_core_data()?);
-        if is("default") {
-            return Ok(result);
+        if origin != "default" {
+            result = self.api.merge(&result, &self.get_block_data()?);
         }
-        result = self.api.merge(&result, &self.get_block_data()?);
-        if is("blocks") {
-            return Ok(result);
+        if origin == "theme" || origin == "custom" {
+            result = self.api.merge(
+                &result,
+                &self.get_theme_data(&Value::Array(Vec::new()), true)?,
+            );
         }
-        result = self.api.merge(
-            &result,
-            &self.get_theme_data(&Value::Array(Vec::new()), true)?,
-        );
-        if is("theme") {
-            return Ok(result);
+        if origin == "custom" {
+            result = self.api.merge(&result, &self.get_user_data()?);
         }
-        result = self.api.merge(&result, &self.get_user_data()?);
+        self.state
+            .borrow_mut()
+            .merged
+            .push((origin, result.clone()));
         Ok(result)
     }
 

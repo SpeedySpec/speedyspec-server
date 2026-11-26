@@ -5,8 +5,8 @@ use std::rc::Rc;
 
 use speedyspec_hooks::{Key, Value};
 use speedyspec_wp_kses_contracts::{
-    AllowedAttrs, AllowedHtml, AttrRule, AttrRules, ByteMap, Bytes, KsesError, RuleValue,
-    ValueCallback,
+    AllowedAttrs, AllowedHtml, AllowedSpec, AttrRule, AttrRules, ByteMap, Bytes, KsesError,
+    RuleValue, ValueCallback,
 };
 
 fn key_bytes(k: &Key) -> Bytes {
@@ -222,4 +222,17 @@ pub fn allowed_to_value(allowed: &AllowedHtml) -> Value {
             })
             .collect(),
     )
+}
+
+/// `$allowed_html` as the caller gave it: a context name, the explicit allowlist, or the PHP value it came from.
+pub fn allowed_spec_to_value(allowed: &AllowedSpec) -> Value {
+    match allowed {
+        AllowedSpec::Context(c) => crate::api::bytes_value(c.as_bytes()),
+        AllowedSpec::Explicit(a) => allowed_to_value(a),
+        AllowedSpec::Foreign { html, source } => source
+            .0
+            .downcast_ref::<Value>()
+            .cloned()
+            .unwrap_or_else(|| allowed_to_value(html)),
+    }
 }

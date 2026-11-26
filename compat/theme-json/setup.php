@@ -141,6 +141,9 @@ if (!SPEEDYSPEC_COMPAT_PORT) {
         'wp_get_computed_fluid_typography_value', 'wp_get_typography_font_size_value']);
     compat_load_functions('wp-includes/block-supports/layout.php', ['wp_get_layout_definitions']);
     compat_load_functions('wp-includes/blocks.php', ['block_has_support']);
+    // How a style state escapes a text clip set below it (WordPress 7.2).
+    compat_load_functions('wp-includes/block-supports/states.php', ['wp_get_state_text_clip_escape',
+        'wp_get_state_text_fill_reset', 'wp_state_paints_own_background']);
     // get_svg_filters() calls WP_Duotone, which the block supports area owns.
     require_once SPEEDYSPEC_COMPAT_WP_ROOT . 'wp-includes/class-wp-duotone.php';
     foreach (['style-engine.php', 'style-engine/class-wp-style-engine.php',
@@ -375,6 +378,8 @@ if (!function_exists('get_theme_file_uri')) {
         return apply_filters('theme_file_uri', $url, ltrim($file, '/'));
     }
 }
+// WordPress's own, over the theme stubs above: the resolver and global styles find theme files with it.
+compat_load_functions('wp-includes/link-template.php', ['get_theme_file_path']);
 if (!function_exists('wp_check_filetype')) {
     function wp_check_filetype($filename, $mimes = null)
     {

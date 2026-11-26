@@ -69,7 +69,8 @@ fn main() {
         areas,
     })
     .expect("PHP boots");
-    let release = wordpress_release("7.1.5").expect("the pinned release");
+    let release = wordpress_release(&speedyspec_compat::area_wordpress("options"))
+        .expect("the pinned release");
     let multisite = Rc::new(Cell::new(false));
     let mut runner =
         options_scenario_runner(php, &release, multisite.clone()).expect("the release prepares");
