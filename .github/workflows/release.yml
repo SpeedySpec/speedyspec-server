@@ -310,11 +310,8 @@ jobs:
   # Never when pending failed (its outputs are empty then, and the checkout would fall back to main's head).
   crates:
     needs: [pending, build-server, build-runtime, release-please]
-    if: >-
-      always() && !cancelled() && needs.pending.result == 'success' &&
-      needs.pending.outputs.runtime == 'true' && needs.pending.outputs.ref != '' &&
-      needs.build-runtime.result == 'success' && needs.build-server.result != 'failure' &&
-      (needs.release-please.result == 'success' || github.event_name == 'workflow_dispatch')
+    # Frozen: the moved crates publish from speedyspec-platform (removed with the moved crates).
+    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: read
