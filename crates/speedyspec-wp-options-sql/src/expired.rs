@@ -1,5 +1,5 @@
 //! `SqlExpiredTransients`: `delete_expired_transients()`'s multi-table `DELETE`s, WordPress's text with its three
-//! values bound, sent through `WpDb` so the `query` filter fires.
+//! values bound, sent through the wpdb port so the `query` filter fires.
 
 use std::rc::Rc;
 
