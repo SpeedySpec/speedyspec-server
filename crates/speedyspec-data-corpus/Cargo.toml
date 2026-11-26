@@ -11,6 +11,10 @@ license.workspace = true
 name = "speedyspec-sql-corpus"
 path = "src/main.rs"
 
+[package.metadata.speedyspec]
+seam = "data"
+role = "test"
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

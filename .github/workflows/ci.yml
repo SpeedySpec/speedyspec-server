@@ -37,6 +37,8 @@ jobs:
       # server's own tests (which start the PHP runtime's workers), run in the php job.
       - run: cargo build -p speedyspec-server --features test-hooks --target ${{ matrix.target }}
       - run: scripts/check-no-php-in-server.sh
+      - run: scripts/tests/check-seams.sh
+      - run: scripts/check-seams.sh
       - run: >-
           cargo test --workspace --target ${{ matrix.target }}
           --exclude speedyspec-server --exclude speedyspec-php-runtime

@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[package.metadata.speedyspec]
+seam = "html"
+role = "implementation"
+
 [dependencies]
 html5ever = "0.40.1"
 markup5ever_rcdom = "0.40.1"

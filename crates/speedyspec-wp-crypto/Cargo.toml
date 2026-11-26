@@ -7,6 +7,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "password"
+role = "implementation"
+
 [dependencies]
 speedyspec-wp-crypto-contracts = { path = "../speedyspec-wp-crypto-contracts" }
 sha2 = "0.10"

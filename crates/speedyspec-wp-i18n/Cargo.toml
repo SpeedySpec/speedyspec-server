@@ -7,6 +7,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "i18n"
+role = "implementation"
+
 [dependencies]
 foldhash = "0.2"
 indexmap = "2"

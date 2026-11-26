@@ -7,6 +7,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "data"
+role = "adapter"
+
 [dependencies]
 redis = { version = "0.32", default-features = false }
 speedyspec-data = { path = "../speedyspec-data" }

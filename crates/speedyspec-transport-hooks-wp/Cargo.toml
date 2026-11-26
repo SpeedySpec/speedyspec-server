@@ -7,6 +7,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "operation"
+role = "adapter"
+
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 speedyspec-operation-contracts = { path = "../speedyspec-operation-contracts" }

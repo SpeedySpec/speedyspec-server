@@ -7,6 +7,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "cron"
+role = "php"
+
 [dependencies]
 speedyspec-php = { path = "../speedyspec-php" }
 speedyspec-hooks = { path = "../speedyspec-hooks" }

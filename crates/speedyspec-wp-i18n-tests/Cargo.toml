@@ -7,6 +7,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[package.metadata.speedyspec]
+seam = "i18n"
+role = "test"
+
 [dev-dependencies]
 base64 = "0.22"
 serde_json = "1"
