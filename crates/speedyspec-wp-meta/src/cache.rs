@@ -49,9 +49,10 @@ pub(crate) fn probe(
                 Ok(Probe::Slot(slot.map(pv).transpose()?))
             }
         },
-        HookValue::Opaque(_) => match pv(&read)? {
-            PhpValue::Array(items) if items.is_empty() => Ok(Probe::Miss),
-            whole @ PhpValue::Array(_) => Ok(from_whole(whole, key)),
+        // A foreign opaque value (a live PHP object another caller cached) is not an array: a miss.
+        HookValue::Opaque(_) => match speedyspec_php_serialize::from_hook_value(&read) {
+            Ok(PhpValue::Array(items)) if items.is_empty() => Ok(Probe::Miss),
+            Ok(whole @ PhpValue::Array(_)) => Ok(from_whole(whole, key)),
             _ => Ok(Probe::Miss),
         },
         _ => Ok(Probe::Miss),
@@ -80,7 +81,10 @@ pub(crate) fn slot_of(entry: &PhpValue, key: &PhpKey) -> Option<PhpValue> {
 fn is_array(value: &HookValue) -> Result<bool, MetadataError> {
     Ok(match &*value.read() {
         HookValue::Array(_) => true,
-        HookValue::Opaque(_) => matches!(pv(value)?, PhpValue::Array(_)),
+        HookValue::Opaque(_) => matches!(
+            speedyspec_php_serialize::from_hook_value(value),
+            Ok(PhpValue::Array(_))
+        ),
         _ => false,
     })
 }

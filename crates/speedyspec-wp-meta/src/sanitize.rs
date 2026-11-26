@@ -46,15 +46,15 @@ pub fn sanitize_meta(
     pv(&out)
 }
 
-/// `is_protected_meta( $meta_key, $meta_type )`: `rule`'s answer (the unfiltered rule, usually
-/// [`UnfilteredProtection`](crate::UnfilteredProtection)), then the `is_protected_meta` filter, run once, with
-/// `( $protected, $meta_key, $meta_type )`, read for truth.
-pub fn is_protected_meta(
+/// `is_protected_meta( $meta_key, $meta_type )` as WordPress returns it: `rule`'s answer (the unfiltered rule,
+/// usually [`UnfilteredProtection`](crate::UnfilteredProtection)), then the `is_protected_meta` filter, run once, with
+/// `( $protected, $meta_key, $meta_type )`. The filter's answer comes back as it is (a callback may return a string).
+pub fn protected_meta_answer(
     hooks: &dyn HookApi,
     rule: &dyn ProtectedMeta,
     key: &MetaKey,
     meta_type: &str,
-) -> Result<bool, MetadataError> {
+) -> Result<PhpValue, MetadataError> {
     let protected = rule.is_protected(key, meta_type);
     let out = filter(
         hooks,
@@ -62,7 +62,19 @@ pub fn is_protected_meta(
         HookValue::Bool(protected),
         || vec![key_value(key), HookValue::Str(meta_type.to_owned())],
     )?;
-    Ok(crate::api::truthy(&pv(&out)?))
+    pv(&out)
+}
+
+/// [`protected_meta_answer`] read for truth, as `register_meta()` and the other callers read it.
+pub fn is_protected_meta(
+    hooks: &dyn HookApi,
+    rule: &dyn ProtectedMeta,
+    key: &MetaKey,
+    meta_type: &str,
+) -> Result<bool, MetadataError> {
+    Ok(crate::api::truthy(&protected_meta_answer(
+        hooks, rule, key, meta_type,
+    )?))
 }
 
 /// [`is_protected_meta`] as a [`ProtectedMeta`] port, for code that asks the port (`register_meta()`'s

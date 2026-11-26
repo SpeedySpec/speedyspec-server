@@ -95,6 +95,15 @@ impl MetadataApi {
         crate::is_protected_meta(&*self.d.hooks, &*self.d.protection, key, meta_type)
     }
 
+    /// `is_protected_meta()` as WordPress returns it: the filter's answer, which a callback may make any value.
+    pub fn protected_meta_answer(
+        &self,
+        key: &MetaKey,
+        meta_type: &str,
+    ) -> Result<PhpValue, MetadataError> {
+        crate::protected_meta_answer(&*self.d.hooks, &*self.d.protection, key, meta_type)
+    }
+
     /// `register_meta()`'s second half ([`resolve_registration`](crate::resolve_registration)), asking
     /// `is_protected_meta()` (filtered once) when no `auth_callback` was given. A failing `is_protected_meta`
     /// callback is [`MetadataError::Hook`], payload intact, and nothing is registered.

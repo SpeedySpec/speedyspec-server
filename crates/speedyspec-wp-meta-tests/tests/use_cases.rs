@@ -889,6 +889,67 @@ fn update_meta_cache_queries_only_the_uncached() {
     );
 }
 
+/// `wp_cache_get_multiple()` returns a keyed array, so duplicate ids collapse: one entry per object, one query for
+/// the uncached ones, as PHP's `$cache_values` keys them.
+#[test]
+fn update_meta_cache_collapses_duplicate_ids() {
+    let f = fixture();
+    add(&f, &post(), 1, "k", s("a"));
+    add(&f, &post(), 2, "k", s("b"));
+    f.cache.flush();
+    f.calls.reset();
+    let got = f
+        .api
+        .update_meta_cache(
+            &post(),
+            &[ObjectId(2), ObjectId(1), ObjectId(2), ObjectId(1)],
+        )
+        .unwrap()
+        .unwrap();
+    let entry = |v: &str| PhpValue::Array(vec![(PhpKey::Str(b"k".to_vec()), list(&[s(v)]))]);
+    assert_eq!(
+        got,
+        // Rows come in meta id order, so post 1 is keyed first, as in PHP.
+        PhpValue::Array(vec![
+            (PhpKey::Int(1), entry("a")),
+            (PhpKey::Int(2), entry("b"))
+        ])
+    );
+    assert_eq!(f.calls.count("for_objects"), 1);
+    // Cached now: the same duplicates read both entries once, with no query.
+    f.calls.reset();
+    let again = f
+        .api
+        .update_meta_cache(&post(), &[ObjectId(1), ObjectId(1)])
+        .unwrap()
+        .unwrap();
+    assert_eq!(again, PhpValue::Array(vec![(PhpKey::Int(1), entry("a"))]));
+    assert_eq!(f.calls.total(), 0);
+}
+
+/// A cached value Rust cannot read (a live PHP object another caller cached) is not an array: a miss, which the read
+/// repairs, as 7.2-RC2 does (the `get-cache-miss-object` scenario).
+#[test]
+fn foreign_cache_entry_is_a_miss() {
+    let f = fixture();
+    add(&f, &post(), 1, "k", s("stored"));
+    let group = HookValue::Str("post_meta".into());
+    f.cache
+        .set(
+            &HookValue::Int(1),
+            HookValue::Opaque(Rc::new(7u8)),
+            &group,
+            0,
+        )
+        .unwrap();
+    let got = f
+        .api
+        .get_metadata(&post(), ObjectId(1), Some(&k("k")), true)
+        .unwrap();
+    assert_eq!(got, s("stored"));
+    assert!(matches!(cached(&f, &post(), 1), Some(HookValue::Array(_))));
+}
+
 #[test]
 fn get_short_circuit_single_reads_index_zero() {
     let f = fixture();
@@ -1199,7 +1260,7 @@ fn is_protected_meta_filter_runs_once_per_path() {
         })
         .unwrap()
         .unwrap();
-    assert!(protected);
+    assert_eq!(protected, PhpValue::Bool(true));
     assert_eq!(runs(&f, "is_protected_meta"), 1);
     // The auth fallback of register_meta().
     f.log.borrow_mut().clear();

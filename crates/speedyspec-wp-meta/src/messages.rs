@@ -80,8 +80,8 @@ message!(command UpdateMetaCache { meta_type: MetaType, objects: Vec<ObjectId> }
     |a, m| a.update_meta_cache(&m.meta_type, &m.objects));
 message!(query SanitizeMeta { key: MetaKey, value: PhpValue, object_type: String, subtype: String } -> R<PhpValue>,
     |a, m| sanitize_meta(&*a.d.hooks, &m.key, m.value, &m.object_type, &m.subtype));
-message!(query IsProtectedMeta { key: MetaKey, meta_type: String } -> R<bool>,
-    |a, m| a.is_protected_meta(&m.key, &m.meta_type));
+message!(query IsProtectedMeta { key: MetaKey, meta_type: String } -> R<PhpValue>,
+    |a, m| a.protected_meta_answer(&m.key, &m.meta_type));
 message!(query GetObjectSubtype { meta_type: MetaType, object: ObjectId } -> R<String>,
     |a, m| object_subtype(&*a.d.hooks, &*a.d.subtypes, &m.meta_type, m.object));
 message!(query FilterDefaultMetadata { value: PhpValue, object: ObjectId, key: MetaKey, single: bool,

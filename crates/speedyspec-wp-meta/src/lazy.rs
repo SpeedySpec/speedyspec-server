@@ -3,7 +3,7 @@
 //! The queue and the loading are Rust; adding and removing the `get_{type}_metadata` filter callback is PHP's job
 //! (the callback is a PHP callable), so [`LazySettings`] says what to hook. Patterns: Observer (the
 //! `metadata_lazyloader_queued_objects` action over the [`HookApi`] port), Strategy (the per-type
-//! [`LazySettings`]), and the loader holds a Unit-of-work-like pending set per type (an ordered set keyed by id).
+//! [`LazySettings`]). The loader keeps the pending ids per type as an ordered set keyed by id.
 
 use std::cell::RefCell;
 use std::fmt;
@@ -69,6 +69,19 @@ impl LazyError {
             LazyError::UnknownType(_) => "invalid_object_type",
             _ => "",
         }
+    }
+
+    /// The hook failure behind this error, from the queued-objects action or from loading the meta cache.
+    pub fn hook_error(&self) -> Option<&HookError> {
+        match self {
+            LazyError::Hook(e) | LazyError::Metadata(MetadataError::Hook(e)) => Some(e),
+            _ => None,
+        }
+    }
+
+    /// What a language bridge rethrows: the payload of the hook failure (a PHP exception object), if any.
+    pub fn payload(&self) -> Option<&Rc<dyn std::any::Any>> {
+        self.hook_error().and_then(|e| e.payload.as_ref())
     }
 }
 

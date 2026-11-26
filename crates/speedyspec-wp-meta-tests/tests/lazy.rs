@@ -325,3 +325,33 @@ fn a_real_get_fills_the_cache_for_the_queue() {
     }
     assert!(loader.pending("term").is_empty());
 }
+
+/// A failing `metadata_lazyloader_queued_objects` callback reaches the caller with its payload intact, so a bridge
+/// can rethrow the PHP exception.
+#[test]
+fn hook_error_keeps_its_payload() {
+    let h = hooks();
+    let payload: Rc<dyn std::any::Any> = Rc::new("the exception".to_owned());
+    let thrown = payload.clone();
+    h.add_filter(
+        &HookName::from("metadata_lazyloader_queued_objects"),
+        Callback::rust("throws", move |_: &[HookValue]| {
+            Err(speedyspec_wp_hooks_contracts::HookError {
+                message: "thrown".into(),
+                payload: Some(thrown.clone()),
+            })
+        }),
+        &HookValue::Int(10),
+        3,
+    )
+    .unwrap();
+    let loader = LazyLoader::new(h, Rc::new(Spy::default()));
+    let err = loader.queue("term", &ids(&[1])).unwrap_err();
+    assert!(matches!(err, LazyError::Hook(_)));
+    assert!(Rc::ptr_eq(err.payload().expect("a payload"), &payload));
+    assert_eq!(err.hook_error().map(|e| e.message.as_str()), Some("thrown"));
+    // The queue still holds the id, as WordPress's does after its action throws.
+    assert_eq!(loader.pending("term"), ids(&[1]));
+    // An unknown type has none.
+    assert!(loader.reset("post").unwrap_err().payload().is_none());
+}
