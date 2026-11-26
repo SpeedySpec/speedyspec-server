@@ -2,7 +2,9 @@
 
 mod common;
 
-use criterion::{BenchmarkId, Throughput, black_box};
+use std::hint::black_box;
+
+use criterion::{BenchmarkId, Throughput};
 use speedyspec_wp_shortcode::candidate_tokens;
 
 fn main() {

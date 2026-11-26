@@ -2,9 +2,10 @@
 
 mod common;
 
+use std::hint::black_box;
 use std::rc::Rc;
 
-use criterion::{BenchmarkId, Throughput, black_box};
+use criterion::{BenchmarkId, Throughput};
 use speedyspec_wp_shortcode::{FancyRegexScanner, HandAttsParser, HandScanner, RegexAttsParser};
 
 fn main() {
