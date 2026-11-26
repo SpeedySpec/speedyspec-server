@@ -31,7 +31,7 @@ speedyspec-wp-media-midi = { path = "../speedyspec-wp-media-midi" }
 seccompiler = "0.5"
 
 [dev-dependencies]
-criterion = { version = "0.5", default-features = false }
+criterion = { version = "0.8", default-features = false }
 speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
 speedyspec-wp-media-testkit = { path = "../speedyspec-wp-media-testkit" }
 tempfile = "3"

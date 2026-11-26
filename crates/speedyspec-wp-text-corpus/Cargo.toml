@@ -23,7 +23,7 @@ speedyspec-wp-text-memory = { path = "../speedyspec-wp-text-memory", optional = 
 speedyspec-wp-text-contracts = { workspace = true, optional = true }
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.8"
 speedyspec-wp-html-split.workspace = true
 
 [features]
