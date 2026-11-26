@@ -5,10 +5,11 @@
 use indexmap::IndexMap;
 use speedyspec_php_serialize::semantics::{is_integer_key, isset};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
-use speedyspec_wp_meta_contracts::{Callables, MetaKey, MetaType, ObjectId, ObjectSubtypes};
+use speedyspec_wp_meta_contracts::{
+    Callables, MetaKey, MetaKeys, MetaType, ObjectId, ObjectSubtypes, RegisteredMetaKey,
+};
 
 use crate::hook_names::MetaHookNames;
-use crate::register::RegisteredMetaKey;
 
 type Keys = IndexMap<MetaKey, RegisteredMetaKey>;
 
@@ -59,13 +60,6 @@ impl MetaKeyRegistry {
             .is_some_and(|keys| keys.contains_key(key))
     }
 
-    /// `get_registered_meta_keys()`: empty for an unknown type or subtype, in insertion order.
-    pub fn keys(&self, object_type: &str, subtype: &str) -> Vec<&RegisteredMetaKey> {
-        self.level(object_type, subtype)
-            .map(|keys| keys.values().collect())
-            .unwrap_or_default()
-    }
-
     /// Every entry, type by type and subtype by subtype, in insertion order (the whole `$wp_meta_keys`).
     pub fn iter(&self) -> impl Iterator<Item = &RegisteredMetaKey> {
         self.types
@@ -77,43 +71,51 @@ impl MetaKeyRegistry {
     fn level(&self, object_type: &str, subtype: &str) -> Option<&Keys> {
         self.types.get(object_type)?.get(subtype)
     }
+}
 
-    /// filter_default_metadata() without its wp_installing() check (the phase-3 use case makes it).
-    ///
-    /// `None` means the value passes through unchanged. Single: the default; otherwise a one-element array.
-    /// `ObjectSubtypes` is asked only when no `""`-subtype default exists. WordPress compares the stored key with
-    /// `===`, and PHP stores a key like `"10"` as the int `10`, so such a key never finds its default.
-    pub fn default_for(
-        &self,
-        meta_type: &MetaType,
-        object: ObjectId,
-        key: &MetaKey,
-        single: bool,
-        subtypes: &dyn ObjectSubtypes,
-    ) -> Option<PhpValue> {
-        if is_integer_key(key.as_bytes()) {
-            return None;
-        }
-        let defaults: Vec<(&str, &PhpValue)> = self
-            .types
-            .get(meta_type.name())?
-            .iter()
-            .filter_map(|(subtype, keys)| Some((subtype.as_str(), keys.get(key)?.default()?)))
-            .collect();
-        if defaults.is_empty() {
-            return None;
-        }
-        let find = |wanted: &str| defaults.iter().find(|(s, _)| *s == wanted).map(|(_, d)| *d);
-        let default = match find("") {
-            Some(default) => default,
-            None => find(&subtypes.subtype_of(meta_type, object))?,
-        };
-        Some(if single {
-            default.clone()
-        } else {
-            PhpValue::Array(vec![(PhpKey::Int(0), default.clone())])
-        })
+/// The read port (Registry): `get_registered_meta_keys()` is empty for an unknown type or subtype, in insertion order.
+impl MetaKeys for MetaKeyRegistry {
+    fn keys(&self, object_type: &str, subtype: &str) -> Vec<RegisteredMetaKey> {
+        self.level(object_type, subtype)
+            .map(|keys| keys.values().cloned().collect())
+            .unwrap_or_default()
     }
+
+    fn find(&self, object_type: &str, subtype: &str, key: &MetaKey) -> Option<RegisteredMetaKey> {
+        self.level(object_type, subtype)?.get(key).cloned()
+    }
+}
+
+/// filter_default_metadata() without its wp_installing() check (the phase-3 use case makes it).
+///
+/// It reads the registered keys through the [`MetaKeys`] port, so the PHP adapter can answer from `$wp_meta_keys`
+/// live. `None` means the value passes through unchanged. Single: the default; otherwise a one-element array.
+/// `ObjectSubtypes` is asked only when no `""`-subtype default exists. WordPress compares the stored key with
+/// `===`, and PHP stores a key like `"10"` as the int `10`, so such a key never finds its default.
+pub fn default_for(
+    keys: &dyn MetaKeys,
+    meta_type: &MetaType,
+    object: ObjectId,
+    key: &MetaKey,
+    single: bool,
+    subtypes: &dyn ObjectSubtypes,
+) -> Option<PhpValue> {
+    if is_integer_key(key.as_bytes()) {
+        return None;
+    }
+    let with_default = |subtype: &str| {
+        keys.find(meta_type.name(), subtype, key)
+            .and_then(|entry| entry.default().cloned())
+    };
+    let default = match with_default("") {
+        Some(default) => default,
+        None => with_default(&subtypes.subtype_of(meta_type, object))?,
+    };
+    Some(if single {
+        default
+    } else {
+        PhpValue::Array(vec![(PhpKey::Int(0), default)])
+    })
 }
 
 /// `unregister_meta_key()`'s `remove_filter()` calls (at the default priority 10) for an entry
@@ -160,7 +162,7 @@ mod tests {
         });
         let post = MetaType::new("post").unwrap();
         assert_eq!(
-            registry.default_for(&post, ObjectId(1), &key, true, &NoSubtype),
+            default_for(&registry, &post, ObjectId(1), &key, true, &NoSubtype),
             None
         );
     }

@@ -13,7 +13,7 @@
 use speedyspec_php_serialize::semantics::{array_merge, get, is_empty, isset, set, unset};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_meta_contracts::{
-    Callables, DefaultSchemaCheck, MetaKey, ProtectedMeta, RevisionSupport,
+    Callables, DefaultSchemaCheck, MetaKey, ProtectedMeta, RegisteredMetaKey, RevisionSupport,
 };
 
 use crate::hook_names::MetaHookNames;
@@ -62,32 +62,6 @@ pub enum Registration {
         version: &'static str,
         filters: Vec<FilterToAdd>,
     },
-}
-
-/// One entry of `$wp_meta_keys[ $object_type ][ $subtype ][ $key ]`: the parsed args, without `object_subtype`.
-#[derive(Clone, Debug, PartialEq)]
-pub struct RegisteredMetaKey {
-    pub object_type: String,
-    pub subtype: String,
-    pub key: MetaKey,
-    pub args: Vec<(PhpKey, PhpValue)>,
-}
-
-impl RegisteredMetaKey {
-    /// `$args['single']`, as PHP tests it for truth.
-    pub fn single(&self) -> bool {
-        get(&self.args, "single").is_some_and(|v| !is_empty(v))
-    }
-
-    /// `$args['default']` when the key was registered with one (`array_key_exists`, so a null default counts).
-    pub fn default(&self) -> Option<&PhpValue> {
-        get(&self.args, "default")
-    }
-
-    /// `$args[$name]`.
-    pub fn arg(&self, name: &str) -> Option<&PhpValue> {
-        get(&self.args, name)
-    }
 }
 
 /// The ports `register_meta()` asks.

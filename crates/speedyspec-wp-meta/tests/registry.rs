@@ -2,8 +2,8 @@
 //! clean-up, following WordPress 7.1.5's `wp-includes/meta.php`.
 
 use speedyspec_php_serialize::{PhpKey, PhpValue};
-use speedyspec_wp_meta::{MetaKeyRegistry, RegisteredMetaKey};
-use speedyspec_wp_meta_contracts::MetaKey;
+use speedyspec_wp_meta::MetaKeyRegistry;
+use speedyspec_wp_meta_contracts::{MetaKey, MetaKeys, RegisteredMetaKey};
 
 fn entry(object_type: &str, subtype: &str, key: &str, label: &str) -> RegisteredMetaKey {
     RegisteredMetaKey {
@@ -106,6 +106,6 @@ fn insert_same_key_replaces_in_place() {
     registry.insert(entry("post", "", "color", "b"));
     let keys = registry.keys("post", "");
     assert_eq!(keys.len(), 2);
-    assert_eq!(*keys[0], entry("post", "", "color", "b"));
-    assert_eq!(*keys[1], entry("post", "", "size", "a"));
+    assert_eq!(keys[0], entry("post", "", "color", "b"));
+    assert_eq!(keys[1], entry("post", "", "size", "a"));
 }

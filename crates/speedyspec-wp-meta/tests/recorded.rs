@@ -36,11 +36,11 @@ use indexmap::IndexMap;
 use serde_json::Value;
 use speedyspec_php_serialize::PhpKey;
 use speedyspec_wp_meta::{
-    MetaKeyRegistry, RegisterPorts, Registration, UnfilteredProtection, allowed_args,
+    MetaKeyRegistry, RegisterPorts, Registration, UnfilteredProtection, allowed_args, default_for,
     filters_to_remove, prepare_registration, resolve_registration,
 };
 use speedyspec_wp_meta_contracts::{
-    Callables, DefaultSchemaCheck, MetaType, ObjectId, ObjectSubtypes, RevisionSupport,
+    Callables, DefaultSchemaCheck, MetaKeys, MetaType, ObjectId, ObjectSubtypes, RevisionSupport,
 };
 
 /// `post_type_supports()` as record.php stubs it: true only for `post` and `page`.
@@ -464,16 +464,15 @@ fn defaults_match_wordpress() {
         }
         let key = MetaKey::new(hex::decode(case["key_hex"].as_str().unwrap()).unwrap());
         let value = support::decode(&case["value"]);
-        let got = replay
-            .registry
-            .default_for(
-                &meta_type,
-                object,
-                &key,
-                case["single"].as_bool().unwrap(),
-                &Subtypes,
-            )
-            .unwrap_or(value);
+        let got = default_for(
+            &replay.registry,
+            &meta_type,
+            object,
+            &key,
+            case["single"].as_bool().unwrap(),
+            &Subtypes,
+        )
+        .unwrap_or(value);
         assert_eq!(got, support::decode(&case["result"]), "{name}");
     }
 }

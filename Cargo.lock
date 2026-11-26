@@ -6457,11 +6457,13 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-meta-contracts"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6f5e4fcf2f68679db5b944c3997ac25d28383348a5b39bc326525773ffe9fdc"
+checksum = "519feb4b11a8edb55632f931b1bb10a1f71a004e4137bacb1967f3082a7e377a"
 dependencies = [
  "speedyspec-php-serialize",
+ "speedyspec-wp-hooks-contracts",
+ "speedyspec-wp-object-cache-contracts",
 ]
 
 [[package]]
