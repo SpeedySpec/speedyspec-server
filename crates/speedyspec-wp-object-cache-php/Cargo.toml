@@ -25,7 +25,7 @@ speedyspec-wp-object-cache-contracts.workspace = true
 
 [dev-dependencies]
 serde_json = "1"
-sha2 = "0.10"
+sha2 = "0.11"
 speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
 speedyspec-container-php.workspace = true
 speedyspec-hooks-memory.workspace = true

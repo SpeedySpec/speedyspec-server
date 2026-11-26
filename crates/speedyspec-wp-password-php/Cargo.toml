@@ -28,7 +28,7 @@ speedyspec-wp-hooks-contracts.workspace = true
 
 [dev-dependencies]
 speedyspec-compat.workspace = true
-sha2 = "0.10"
+sha2 = "0.11"
 ureq = "3"
 speedyspec-hooks-memory.workspace = true
 speedyspec-wp-hooks-memory.workspace = true

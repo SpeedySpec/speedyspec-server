@@ -13,7 +13,7 @@ role = "php"
 
 [dependencies]
 indexmap = "2"
-sha2 = "0.10"
+sha2 = "0.11"
 speedyspec-container.workspace = true
 speedyspec-cqrs.workspace = true
 speedyspec-data.workspace = true

@@ -27,7 +27,7 @@ speedyspec-transport = { path = "../speedyspec-transport" }
 speedyspec-transport-contracts.workspace = true
 
 [dev-dependencies]
-sha2 = "0.10"
+sha2 = "0.11"
 ureq = "3"
 speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-hooks-php.workspace = true

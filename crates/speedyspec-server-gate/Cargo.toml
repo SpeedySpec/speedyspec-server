@@ -16,7 +16,7 @@ speedyspec-server-domain = { path = "../speedyspec-server-domain" }
 http = "1"
 regex = "1"
 httpdate = "1"
-sha2 = "0.10"
+sha2 = "0.11"
 semver = "1"
 tokio = { version = "1", features = ["time", "sync", "rt", "macros"] }
 tracing = "0.1"

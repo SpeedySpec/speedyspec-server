@@ -13,4 +13,4 @@ role = "implementation"
 
 [dependencies]
 speedyspec-wp-crypto-contracts.workspace = true
-sha2 = "0.10"
+sha2 = "0.11"
