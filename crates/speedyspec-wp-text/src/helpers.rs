@@ -220,6 +220,34 @@ pub fn utf8_uri_encode(text: &[u8], length: usize, encode_ascii: bool) -> Vec<u8
     out
 }
 
+/// WordPress's `wp_truncate_slug()` (7.2): cuts a slug to `length` bytes without splitting a percent-encoded
+/// character, then removes trailing `-`, whether or not it was cut.
+///
+/// A slug longer than `length` that `urldecode()` leaves as it is is cut at `length` bytes. One that it changes
+/// (a `%XX` sequence, or a `+`, which decodes to a space) is re-encoded by `utf8_uri_encode( $decoded, $length,
+/// true )`: ASCII `rawurlencode`d (uppercase hex), multibyte characters in lowercase hex, whole characters only.
+///
+/// @param slug
+///     The slug.
+/// @param length
+///     The longest slug in bytes; WordPress's default is 200.
+/// @return
+///     The truncated slug.
+pub fn wp_truncate_slug(slug: &[u8], length: usize) -> Vec<u8> {
+    let mut slug = slug.to_vec();
+    if slug.len() > length {
+        let decoded = urldecode(&slug);
+        if decoded == slug {
+            slug.truncate(length);
+        } else {
+            slug = utf8_uri_encode(&decoded, length, true);
+        }
+    }
+    let end = slug.iter().rposition(|&b| b != b'-').map_or(0, |i| i + 1);
+    slug.truncate(end);
+    slug
+}
+
 /// WordPress's `antispambot()`: writes each character of an address as itself, an HTML numeric reference or
 /// percent-encoded bytes, chosen at random.
 ///

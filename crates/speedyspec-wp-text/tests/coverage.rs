@@ -43,6 +43,7 @@ const PORTED: &[&str] = &[
     "wp_make_link_relative",
     "_deep_replace",
     "utf8_uri_encode",
+    "wp_truncate_slug",
     "remove_accents",
     "sanitize_title_with_dashes",
     "sanitize_user",

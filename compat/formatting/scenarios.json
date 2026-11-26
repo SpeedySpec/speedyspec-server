@@ -23061,6 +23061,137 @@
           "call": "speedyspec_wp_parse_str"
         }
       ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_short",
+      "steps": [
+        {
+          "args": [
+            "abcdefghij",
+            200
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_exact",
+      "steps": [
+        {
+          "args": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            200
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_over",
+      "steps": [
+        {
+          "args": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            200
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_dash",
+      "steps": [
+        {
+          "args": [
+            "abc-",
+            200
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_dashes",
+      "steps": [
+        {
+          "args": [
+            "abc---",
+            200
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_cut_dash",
+      "steps": [
+        {
+          "args": [
+            "a-b",
+            2
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_encoded_197",
+      "steps": [
+        {
+          "args": [
+            "%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac",
+            197
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_encoded_198",
+      "steps": [
+        {
+          "args": [
+            "%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac",
+            198
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_plus",
+      "steps": [
+        {
+          "args": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            198
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_cut_sequence",
+      "steps": [
+        {
+          "args": [
+            "abcdef%e2%82%ac",
+            10
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
+    },
+    {
+      "name": "wp_truncate_slug/literal/truncate_default_length",
+      "steps": [
+        {
+          "args": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa--"
+          ],
+          "call": "wp_truncate_slug"
+        }
+      ]
     }
   ]
 }

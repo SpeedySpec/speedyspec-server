@@ -41391,6 +41391,171 @@
         }
       }
     ],
+    "wp_truncate_slug/literal/truncate_cut_dash": [
+      {
+        "returned": "a",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_cut_sequence": [
+      {
+        "returned": "abcdef",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_dash": [
+      {
+        "returned": "abc",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_dashes": [
+      {
+        "returned": "abc",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_default_length": [
+      {
+        "returned": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_encoded_197": [
+      {
+        "returned": "%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_encoded_198": [
+      {
+        "returned": "%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac%e2%82%ac",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_exact": [
+      {
+        "returned": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_over": [
+      {
+        "returned": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_plus": [
+      {
+        "returned": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa%20bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
+    "wp_truncate_slug/literal/truncate_short": [
+      {
+        "returned": "abcdefghij",
+        "invocations": [],
+        "globals": {
+          "wp_filter": null,
+          "wp_actions": null,
+          "wp_filters": null,
+          "wp_current_filter": null
+        },
+        "state": {
+          "array": []
+        }
+      }
+    ],
     "wp_unslash/literal/unslash_array": [
       {
         "returned": {

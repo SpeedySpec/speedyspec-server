@@ -5,7 +5,7 @@ mod common;
 use common::{php_int, text};
 use speedyspec_wp_text::helpers::{
     antispambot_core, deep_replace, trailingslashit, untrailingslashit, url_shorten, utf8_uri_encode, wp_basename,
-    wp_iso_descrambler, wp_make_link_relative, zeroise,
+    wp_iso_descrambler, wp_make_link_relative, wp_truncate_slug, zeroise,
 };
 use speedyspec_wp_text::strings::to_php_string;
 use speedyspec_wp_text_corpus::{Php, assert_corpus, to_value};
@@ -78,6 +78,38 @@ fn utf8_uri_encode_corpus() {
 fn utf8_uri_encode_cuts_whole_characters() {
     assert_eq!(utf8_uri_encode("aé€".as_bytes(), 5, false), b"a");
     assert_eq!(utf8_uri_encode("aé€".as_bytes(), 7, false), b"a%c3%a9");
+}
+
+#[test]
+fn wp_truncate_slug_corpus() {
+    assert_corpus("wp_truncate_slug", |args| {
+        let length = args.get(1).map_or(200, php_int).max(0) as usize;
+        Php::Str(wp_truncate_slug(text(&args[0]), length))
+    });
+}
+
+#[test]
+fn wp_truncate_slug_trims_dashes_even_when_short() {
+    assert_eq!(wp_truncate_slug(b"abc-", 200), b"abc");
+    assert_eq!(wp_truncate_slug(b"abc---", 200), b"abc");
+    assert_eq!(wp_truncate_slug(b"a-b", 2), b"a");
+    assert_eq!(wp_truncate_slug(b"---", 200), b"");
+}
+
+#[test]
+fn wp_truncate_slug_plus_reencodes() {
+    // `urldecode()` turns `+` into a space, so the slug is re-encoded: ASCII is `rawurlencode`d (uppercase hex),
+    // multibyte characters keep lowercase hex, and a cut never splits a character.
+    let slug = [&[b'a'; 99][..], b"+", &[b'b'; 99][..]].concat();
+    let expected = [&[b'a'; 99][..], b"%20", &[b'b'; 96][..]].concat();
+    assert_eq!(wp_truncate_slug(&slug, 198), expected);
+    // Hex case is the encoder's, not the input's.
+    assert_eq!(wp_truncate_slug(b"%2f%E2%82%AC%2f", 14), b"%2F%e2%82%ac");
+    // A character that doesn't fit is dropped whole.
+    assert_eq!(wp_truncate_slug(b"a+%E2%82%AC/", 11), b"a%20");
+    // Not longer than the limit: kept as it is, `+` and all.
+    assert_eq!(wp_truncate_slug(b"a+%E2%82%AC/", 12), b"a+%E2%82%AC/");
+    assert_eq!(wp_truncate_slug(b"abcdef%e2%82%ac", 10), b"abcdef");
 }
 
 #[test]
