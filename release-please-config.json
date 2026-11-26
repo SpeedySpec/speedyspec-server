@@ -364,6 +364,11 @@
       "skip-github-release": true,
       "skip-changelog": true
     },
+    "crates/speedyspec-wp-db-contracts": {
+      "component": "speedyspec-wp-db-contracts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
     "crates/speedyspec-wp-db-php": {
       "component": "speedyspec-wp-db-php",
       "skip-github-release": true,
@@ -371,6 +376,11 @@
     },
     "crates/speedyspec-wp-object-cache": {
       "component": "speedyspec-wp-object-cache",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-object-cache-contracts": {
+      "component": "speedyspec-wp-object-cache-contracts",
       "skip-github-release": true,
       "skip-changelog": true
     },
