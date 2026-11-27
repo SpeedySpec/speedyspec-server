@@ -23,10 +23,6 @@
 //! Approximations, none of them recorded:
 //! - a `stdClass` inside the args crosses as a copy (another object stays itself), so a `register_post_type_args`
 //!   callback that hands in a `stdClass` gets an equal object back on the post type, not the same one;
-//! - `unregister_post_type()` rebuilds `$post_type_meta_caps` from the types registered when it starts (the type
-//!   itself left out by its `name`), and removes the features of its `name`; WordPress rebuilds after the
-//!   `unregister_*` methods ran and skips the key it unset. They differ only when an action those methods fire
-//!   changes `$wp_post_types`, or when a type is stored under a key other than its name;
 //! - `create_initial_post_types()` translates its labels before it registers anything; WordPress translates each
 //!   type's as it registers it, so a `gettext` callback sees the same strings in another order.
 
@@ -36,9 +32,7 @@ use std::rc::Rc;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_php::native::{self, NativeError};
 use speedyspec_php_ext::{Key, Value};
-use speedyspec_php_serialize::semantics::{
-    get, is_empty, key_to_string, to_array, to_array_key, to_php_string,
-};
+use speedyspec_php_serialize::semantics::{get, is_empty, key_to_string, to_array, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_hooks_contracts::{Count, HookApi, HookError, HookName, HookValue};
 use speedyspec_wp_posts::{
@@ -310,11 +304,15 @@ fn register_post_type(x: &[Value]) -> R {
     // $post_type_object->add_supports().
     for call in add_supports(&mut post_type, &PhpPostTypeSupports) {
         stop_if_parked()?;
-        add_support(
-            &string(call.post_type.as_bytes()),
-            &call.features,
-            &call.args,
-        )?;
+        let features = list(call.features.iter().map(|f| Value::Str(f.clone())));
+        let args = php_out(&PhpValue::Array(
+            call.args
+                .iter()
+                .enumerate()
+                .map(|(i, v)| (PhpKey::Int(i as i64), v.clone()))
+                .collect(),
+        ))?;
+        add_support(&string(call.post_type.as_bytes()), features, args)?;
     }
     stop_if_parked()?;
 
@@ -364,27 +362,47 @@ fn meta_caps_list(caps: &[(String, &'static str)]) -> Value {
     )
 }
 
-/// `add_post_type_support( $post_type, $features, ...$args )` on the global.
-fn add_support(
-    post_type: &Value,
-    features: &[String],
-    args: &[PhpValue],
-) -> Result<(), NativeError> {
-    let features = Value::Array(
-        features
-            .iter()
-            .enumerate()
-            .map(|(i, f)| (Key::Int(i as i64), Value::Str(f.clone())))
-            .collect(),
-    );
-    let args = php_out(&PhpValue::Array(
-        args.iter()
-            .enumerate()
-            .map(|(i, v)| (PhpKey::Int(i as i64), v.clone()))
-            .collect(),
-    ))?;
+/// `add_post_type_support( $post_type, $features, ...$args )` on the global: `$features` is cast with `(array)` in
+/// PHP, and `$args` is the list of PHP values to store (none stores `true`).
+fn add_support(post_type: &Value, features: Value, args: Value) -> Result<(), NativeError> {
     helper("add_support", &[post_type.clone(), features, args]).map_err(thrown)?;
     Ok(())
+}
+
+/// A list of PHP values.
+fn list(values: impl IntoIterator<Item = Value>) -> Value {
+    Value::Array(
+        values
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (Key::Int(i as i64), v))
+            .collect(),
+    )
+}
+
+/// `$post_type_meta_caps` as `unregister_post_type()` rebuilds it after the unset: from the `cap` of every type
+/// left in the live `$wp_post_types` whose `map_meta_cap` is truthy, in order, each custom capability keeping its
+/// first position and its last core capability.
+fn rebuilt_meta_caps() -> Result<Vec<(String, &'static str)>, NativeError> {
+    let mut caps: Vec<(String, &'static str)> = Vec::new();
+    for remaining in speedyspec_wp_posts_contracts::PostTypes::post_types(&PhpPostTypes) {
+        if remaining.get("map_meta_cap").is_none_or(is_empty) {
+            continue;
+        }
+        let cap = match remaining.get("cap") {
+            Some(PhpValue::Object { properties, .. }) => properties.as_slice(),
+            Some(PhpValue::Array(items)) => items.as_slice(),
+            _ => &[],
+        };
+        for (custom, core) in meta_capabilities(cap) {
+            match caps.iter_mut().find(|(c, _)| *c == custom) {
+                Some(entry) => entry.1 = core,
+                None => caps.push((custom, core)),
+            }
+        }
+    }
+    stop_if_parked()?;
+    Ok(caps)
 }
 
 fn unregister_post_type(x: &[Value]) -> R {
@@ -425,7 +443,9 @@ fn unregister_post_type(x: &[Value]) -> R {
         method(&object, step, &[]).map_err(thrown)?;
     }
     helper("forget_post_type", std::slice::from_ref(&post_type)).map_err(thrown)?;
-    helper("meta_caps_set", &[meta_caps_list(&removal.meta_caps)]).map_err(thrown)?;
+    // WordPress 7.2 rebuilds the map after the unset, from the types left then.
+    let meta_caps = rebuilt_meta_caps()?;
+    helper("meta_caps_set", &[meta_caps_list(&meta_caps)]).map_err(thrown)?;
     action(
         &*hooks()?,
         &HookName::from("unregistered_post_type"),
@@ -487,29 +507,48 @@ fn php_key(key: &PhpKey) -> Key {
     }
 }
 
-/// The fields of `value` that `wanted` names: `isset( $obj->{$key} )` for an object, `array_key_exists()` for an
-/// array, none for anything else.
-fn fields(value: &Value, wanted: &[Vec<u8>]) -> Result<Vec<(Vec<u8>, PhpValue)>, NativeError> {
-    let (items, object) = if is_object(value) {
-        (object_vars(value).map_err(thrown)?, true)
-    } else {
-        match value.read().into_owned() {
-            Value::Array(items) => (items, false),
-            _ => return Ok(Vec::new()),
-        }
-    };
-    let mut out = Vec::new();
-    for (k, v) in &items {
-        let name = crate::adapters::key_text(k).into_bytes();
-        if !wanted.contains(&name) || (object && matches!(&*v.read(), Value::Null)) {
-            continue;
-        }
-        out.push((name, php_in(v)?));
+/// An object's properties or an array's entries, as PHP values; nothing for anything else.
+fn raw_items(value: &Value) -> Result<(Vec<(Key, Value)>, bool), NativeError> {
+    if is_object(value) {
+        return Ok((object_vars(value).map_err(thrown)?, true));
     }
-    Ok(out)
+    Ok(match value.read().into_owned() {
+        Value::Array(items) => (items, false),
+        _ => (Vec::new(), false),
+    })
 }
 
+/// The fields of `value` that `wanted` names, as PHP values: `isset( $obj->{$key} )` for an object,
+/// `array_key_exists()` for an array, none for anything else.
+fn raw_fields(value: &Value, wanted: &[Vec<u8>]) -> Result<Vec<(Vec<u8>, Value)>, NativeError> {
+    let (items, object) = raw_items(value)?;
+    Ok(items
+        .into_iter()
+        .map(|(k, v)| (crate::adapters::key_text(&k).into_bytes(), v))
+        .filter(|(name, v)| wanted.contains(name) && !(object && matches!(&*v.read(), Value::Null)))
+        .collect())
+}
+
+/// Whether a converted value holds an object the codec keeps live, which the rules cannot compare as PHP does.
+fn holds_live(value: &PhpValue) -> bool {
+    match value {
+        PhpValue::Custom { .. } => true,
+        PhpValue::Array(items)
+        | PhpValue::Object {
+            properties: items, ..
+        } => items.iter().any(|(_, v)| holds_live(v)),
+        _ => false,
+    }
+}
+
+/// What an argument compared with PHP's `==` is replaced by, and what an entry's field that PHP found equal reads
+/// as: the rules' `==` then matches exactly those entries.
+const MATCHED: &[u8] = b"\0SpeedySpec\\WpPosts\\Matched";
+
 /// `wp_filter_object_list( $GLOBALS[ $global ], $args, $operator, 'names' === $output ? 'name' : false )`.
+///
+/// `WP_List_Util::filter()` compares with `==`. The rules do that for scalars, arrays and `stdClass` copies; an
+/// argument key where the argument or an entry's field holds any other object is compared by PHP itself.
 fn filter_global(global: &str, x: &[Value]) -> R {
     let Some(list) = speedyspec_php::global(global).map(|v| v.read().into_owned()) else {
         return Ok(Value::Array(Vec::new()));
@@ -517,24 +556,61 @@ fn filter_global(global: &str, x: &[Value]) -> R {
     let Value::Array(list) = list else {
         return Ok(Value::Array(Vec::new()));
     };
-    let args = to_array(php_in(
-        &x.first().cloned().unwrap_or(Value::Array(Vec::new())),
-    )?);
+    let raw_args = x.first().cloned().unwrap_or(Value::Array(Vec::new()));
+    let mut args = to_array(php_in(&raw_args)?);
     let names = matches!(&*a_or(x, 1, "names").read(), Value::Str(s) if s == "names");
     let operator = String::from_utf8_lossy(&text_bytes(&a_or(x, 2, "and"))?).into_owned();
     let wanted: Vec<Vec<u8>> = args
         .iter()
         .map(|(k, _)| key_to_string(k).into_bytes())
         .collect();
-    let mut items = Vec::with_capacity(list.len());
+    let filtering = !args.is_empty() && FilterOperator::parse(&operator).is_some();
+    let mut entries = Vec::with_capacity(list.len());
     for (key, value) in list {
-        let fields = if args.is_empty() || FilterOperator::parse(&operator).is_none() {
-            Vec::new()
+        let raw = if filtering {
+            raw_fields(&value, &wanted)?
         } else {
-            fields(&value, &wanted)?
+            Vec::new()
         };
-        items.push((key_of(&key), Entry { value, fields }));
+        let fields = raw
+            .iter()
+            .map(|(name, v)| Ok((name.clone(), php_in(v)?)))
+            .collect::<Result<Vec<_>, NativeError>>()?;
+        entries.push((key, value, raw, fields));
     }
+    // The argument keys PHP must compare.
+    let raw_args = raw_items(&raw_args)?.0;
+    for (i, name) in wanted.iter().enumerate() {
+        let involved = holds_live(&args[i].1)
+            || entries
+                .iter()
+                .any(|(_, _, _, fields)| fields.iter().any(|(f, v)| f == name && holds_live(v)));
+        if !involved {
+            continue;
+        }
+        let Some(arg) = raw_args
+            .iter()
+            .find(|(k, _)| crate::adapters::key_text(k).as_bytes() == name.as_slice())
+            .map(|(_, v)| v.clone())
+        else {
+            continue;
+        };
+        args[i].1 = PhpValue::Str(MATCHED.to_vec());
+        for (_, _, raw, fields) in &mut entries {
+            let Some(field) = raw.iter().find(|(f, _)| f == name).map(|(_, v)| v.clone()) else {
+                continue;
+            };
+            let equal = truthy(&helper("loose_equals", &[arg.clone(), field]).map_err(thrown)?);
+            fields.retain(|(f, _)| f != name);
+            if equal {
+                fields.push((name.clone(), PhpValue::Str(MATCHED.to_vec())));
+            }
+        }
+    }
+    let items = entries
+        .into_iter()
+        .map(|(key, value, _, fields)| (key_of(&key), Entry { value, fields }))
+        .collect();
     let kept = filter_object_list(items, &args, &operator);
     if !names {
         return Ok(Value::Array(
@@ -603,19 +679,10 @@ fn post_type_supports(x: &[Value]) -> R {
 }
 
 fn add_post_type_support(x: &[Value]) -> R {
-    // `(array) $feature`, each value an array key.
-    let features: Vec<String> = to_array(php_in(&a(x, 1))?)
-        .iter()
-        .filter_map(|(_, f)| to_array_key(f))
-        .map(|f| key_to_string(&f))
-        .collect();
-    let args = x
-        .get(2..)
-        .unwrap_or_default()
-        .iter()
-        .map(php_in)
-        .collect::<Result<Vec<_>, _>>()?;
-    add_support(&a(x, 0), &features, &args)?;
+    // The args are stored as PHP gave them, so an object keeps its identity; `(array) $feature` is PHP's, so a
+    // feature that is no array key throws as it does in WordPress.
+    let args = list(x.get(2..).unwrap_or_default().iter().cloned());
+    add_support(&a(x, 0), a(x, 1), args)?;
     Ok(Value::Null)
 }
 
@@ -909,7 +976,13 @@ fn guarded(f: Native, args: &[Value]) -> R {
     if let Some(outer) = outer {
         restore(outer);
     }
-    DEPTH.with(|d| d.set(d.get() - 1));
+    if DEPTH.with(|d| {
+        d.set(d.get() - 1);
+        d.get() == 0
+    }) {
+        // The markers only live for one outermost call: the objects they hold are released now, not at request end.
+        crate::codec::clear_live();
+    }
     match (result, parked) {
         (Err(NativeError::Rethrow(exception)), _) => Err(NativeError::Rethrow(exception)),
         // A port's exception stopped the work: it is what PHP sees.

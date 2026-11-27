@@ -364,6 +364,75 @@ fn main() {
         &helpers,
     );
 
+    // unregister_post_type() rebuilds `$post_type_meta_caps` after the unset, from the types left then: a type is
+    // kept by its key, not skipped because the unregistered object shares its `name`, and a change made while unregistering is seen.
+    ok &= yes(
+        php,
+        &setup,
+        "unregister_rebuild_skips_only_the_unset_key",
+        r#"global $wp_post_types, $post_type_meta_caps;
+        register_post_type('book', array('capability_type' => 'tome', 'map_meta_cap' => true, 'rewrite' => false, 'query_var' => false));
+        // A second object that also names itself `book`, under its own key, without meta capabilities.
+        $alias = clone $wp_post_types['book'];
+        $alias->map_meta_cap = false;
+        $wp_post_types['alias'] = $alias;
+        $done = unregister_post_type('alias');
+        return true === $done && post_type_exists('book') && !post_type_exists('alias')
+            && 'edit_post' === ($post_type_meta_caps['edit_tome'] ?? null)
+            && 'read_post' === ($post_type_meta_caps['read_tome'] ?? null);"#,
+    );
+    ok &= yes(
+        php,
+        &setup,
+        "unregister_rebuild_sees_changes_made_while_unregistering",
+        r#"global $wp_post_types, $post_type_meta_caps;
+        register_post_type('scroll', array('capability_type' => 'scroll', 'map_meta_cap' => true, 'rewrite' => false, 'query_var' => false));
+        register_post_type('book', array('capability_type' => 'tome', 'map_meta_cap' => true, 'taxonomies' => array('category'), 'rewrite' => false, 'query_var' => false));
+        add_action('unregistered_taxonomy_for_object_type', function () {
+            $GLOBALS['wp_post_types']['scroll']->cap->edit_post = 'edit_scroll_now';
+        });
+        unregister_post_type('book');
+        return 'edit_post' === ($post_type_meta_caps['edit_scroll_now'] ?? null)
+            && !isset($post_type_meta_caps['edit_scroll']) && !isset($post_type_meta_caps['edit_tome'])
+            && 'read_post' === ($post_type_meta_caps['read_scroll'] ?? null);"#,
+    );
+    // add_post_type_support() stores its args as given, and `(array) $feature` is PHP's own.
+    ok &= yes(
+        php,
+        &setup,
+        "add_post_type_support_keeps_its_args",
+        r#"global $_wp_post_type_features;
+        $settings = new stdClass();
+        add_post_type_support('post', 'speedyspec', $settings, 2);
+        $kept = $_wp_post_type_features['post']['speedyspec'][0] === $settings
+            && 2 === $_wp_post_type_features['post']['speedyspec'][1];
+        try { add_post_type_support('post', array(array('nested'))); $thrown = false; } catch (TypeError $e) { $thrown = true; }
+        return $kept && $thrown;"#,
+    );
+    // WP_List_Util::filter() compares objects with PHP's `==`: same class and equal properties.
+    ok &= yes(
+        php,
+        &setup,
+        "list_filter_compares_objects_as_php",
+        r#"global $wp_post_types;
+        $controller = new ArrayIterator(array('a' => 1));
+        $wp_post_types['post']->rest_controller = $controller;
+        $wp_post_types['page']->rest_controller = new ArrayIterator(array('a' => 2));
+        foreach (array(new ArrayIterator(array('a' => 1)), $controller, new ArrayIterator(array('a' => 3))) as $wanted) {
+            foreach (array('and', 'or', 'not') as $operator) {
+                $args = array('rest_controller' => $wanted, 'public' => true);
+                foreach (array('names', 'objects') as $output) {
+                    $native = get_post_types($args, $output, $operator);
+                    $wordpress = wp_filter_object_list($wp_post_types, $args, $operator, 'names' === $output ? 'name' : false);
+                    if ($native !== $wordpress) {
+                        return array($operator, $output, array_keys($native), array_keys($wordpress));
+                    }
+                }
+            }
+        }
+        return array('post' => 'post') === get_post_types(array('rest_controller' => new ArrayIterator(array('a' => 1))));"#,
+    );
+
     // A callback's exception during register_post_type() reaches the caller as the same object, and nothing of the
     // post type is registered.
     ok &= yes(

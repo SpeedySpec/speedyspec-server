@@ -5,7 +5,8 @@
 //! - a `stdClass` (the `cap` and `labels` objects, a status, an object passed as `labels` or `supports`) is copied
 //!   with its properties, so the rules can read inside it;
 //! - any other object (a meta box callback's closure, `[$this, 'method']`, a REST controller) stays the object
-//!   itself: a marker naming a slot in this request's table of live values, so its identity survives the trip.
+//!   itself: a marker naming a slot in a table of live values, so its identity survives the trip. The table is
+//!   emptied when the outermost native function returns, so the objects it holds are released then.
 //!
 //! [`to_php`] turns a `PhpValue` back into a PHP value: a marker is the very object it names, a copied `stdClass` is
 //! cast from its properties (`(object) $properties`), anything else is built by PHP's `unserialize()`.

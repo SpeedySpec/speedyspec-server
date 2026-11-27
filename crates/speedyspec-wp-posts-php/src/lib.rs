@@ -10,6 +10,9 @@
 //! [`PhpPostTypeSupports`]); the other outbound ports are PHP adapters ([`PhpTranslator`], [`PhpRewriteContext`],
 //! [`PhpTitleSanitizer`]). `WP_Post_Type` stays WordPress's class (see the `registry` module).
 //!
+//! The area has no container port yet: the registries are PHP's globals. The reading task adds the `PostRepository`
+//! port with `PostsArea::ports`, chained in the runtime's `worker.rs` after `MetaArea::ports`.
+//!
 //! Patterns: Facade (the PHP functions), Adapter (the ports over PHP and its globals), Registry (`$wp_post_types`,
 //! `$wp_post_statuses` and `$_wp_post_type_features`, read live), Observer (the hooks, through [`HookApi`]),
 //! Command (`create_initial_post_types()`' table of calls, from `speedyspec-wp-posts`).

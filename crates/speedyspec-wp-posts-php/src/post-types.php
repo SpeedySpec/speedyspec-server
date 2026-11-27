@@ -207,15 +207,23 @@ namespace SpeedySpec\WpPosts\Php
     }
 
     /**
-     * add_post_type_support()'s writes: each feature `true`, or the args list when there are args.
+     * Writes add_post_type_support()'s features: each `true`, or the args list when there are args.
      */
-    function add_support($post_type, array $features, array $args)
+    function add_support($post_type, $features, array $args)
     {
         global $_wp_post_type_features;
-        foreach ($features as $feature)
+        foreach ((array) $features as $feature)
         {
             $_wp_post_type_features[$post_type][$feature] = $args ? $args : true;
         }
+    }
+
+    /**
+     * Compares two values as `WP_List_Util::filter()` does (`==`), for the objects the native side holds as markers.
+     */
+    function loose_equals($a, $b)
+    {
+        return $a == $b;
     }
 
     /**
