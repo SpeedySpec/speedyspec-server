@@ -12,7 +12,8 @@ declare(strict_types=1);
  *  (`wp_insert_post()`, `wp_trash_post()`, `wp_delete_post()`) calls: WordPress's comment.php, cron.php and
  *  link-template.php, default-constants.php's time constants and `EMPTY_TRASH_DAYS`, and the comment tables. The
  *  write path is WordPress's own and not ported; it makes the fixtures the reading tests read. A save of a post with
- *  a name still needs `WP_Query`, which is not loaded. Also: post-template.php (`get_post_parent()`), and the HTML
+ *  a name runs `get_posts()`, so WordPress's own `WP_Query` is loaded too, as the runtime serves it until the query
+ *  port, with wp-admin's template.php for `_post_states()`. Also: post-template.php (`get_post_parent()`), and the HTML
  *  API and block parser for the tests' `assertEqualHTML()`.
  *
  *  The factory stores the posts the tests make as rows (`SPEEDYSPEC_FACTORY_ROWS`, see includes/factory.php).
@@ -41,6 +42,7 @@ define('SPEEDYSPEC_COMPAT_WP_ROOT', rtrim($speedyspec_root, '/') . '/');
 define('SPEEDYSPEC_COMPAT_PORT', true);
 define('SPEEDYSPEC_COMPAT_MULTISITE', '1' === getenv('WP_TESTS_MULTISITE'));
 define('SPEEDYSPEC_FACTORY_ROWS', true);
+define('SPEEDYSPEC_FACTORY_ROLES', true);
 define('DIR_TESTDATA', __DIR__ . '/data');
 require dirname(__DIR__, 2) . '/compat/posts-read/setup.php';
 
@@ -112,6 +114,40 @@ $GLOBALS['wpdb']->query(
     . "PRIMARY KEY (meta_id), KEY comment_id (comment_id), KEY meta_key (meta_key(191))) "
     . "DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
 );
+
+// WordPress's default roles, as the install makes them (wp-admin's populate_roles()), in place of the seed's few
+// capabilities: the write path checks them (a pending post's slug needs `publish_pages`).
+require_once ABSPATH . 'wp-admin/includes/schema.php';
+delete_option('wp_user_roles');
+$GLOBALS['wp_roles'] = null;
+populate_roles();
+wp_roles()->for_site();
+// default-constants.php's content URL, which the attachment URL wp_trash_post() records is built on.
+if (!defined('WP_CONTENT_URL'))
+{
+    define('WP_CONTENT_URL', get_option('siteurl') . '/wp-content');
+}
+
+// WordPress's own WP_Query, which the runtime serves until the query port: get_posts(), and the trashed-suffix check
+// wp_insert_post() runs for a post with a name. The main query globals as wp-settings.php sets them.
+require_once ABSPATH . WPINC . '/class-wp-date-query.php';
+require_once ABSPATH . WPINC . '/class-wp-tax-query.php';
+require_once ABSPATH . WPINC . '/class-wp-query.php';
+require_once ABSPATH . WPINC . '/query.php';
+$GLOBALS['wp_the_query'] = new WP_Query();
+$GLOBALS['wp_query'] = $GLOBALS['wp_the_query'];
+// _post_states() and get_post_states(), wp-admin's.
+require_once ABSPATH . WPINC . '/class-wp-walker.php';
+require_once ABSPATH . 'wp-admin/includes/template.php';
+
+/**
+ * Gives the list separator as l10n.php's does with no locale loaded (compat/posts-read/setup.php stands in for
+ *  l10n.php's translation functions, so l10n.php itself is not loaded); _post_states() joins with it.
+ */
+function wp_get_list_item_separator()
+{
+    return __(', ');
+}
 
 // The REST controllers WP_Post_Type::get_rest_controller() and its revisions and autosave readers construct.
 foreach ([
@@ -195,10 +231,13 @@ function speedyspec_doubles_snapshot(): void
 }
 
 /**
- * WordPress's test case `tear_down()` makes a new `WP` and empties the post loop globals `setup_postdata()` writes.
+ * WordPress's test case `tear_down()` makes a new main query and `WP`, and empties the post loop globals
+ *  `setup_postdata()` writes.
  */
 function speedyspec_doubles_restore(): void
 {
+    $GLOBALS['wp_the_query'] = new WP_Query();
+    $GLOBALS['wp_query'] = $GLOBALS['wp_the_query'];
     $GLOBALS['wp'] = new WP();
     $globals = ['post', 'id', 'authordata', 'currentday', 'currentmonth', 'page', 'pages', 'multipage', 'more',
         'numpages'];

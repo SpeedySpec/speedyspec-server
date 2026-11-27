@@ -105,13 +105,20 @@ final class WP_UnitTest_Factory_For_User
         global $wpdb;
         $n = self::$next++;
         $login = $args['user_login'] ?? "User $n";
-        return WP_UnitTest_Factory::insert($wpdb->users, array(
+        $id = WP_UnitTest_Factory::insert($wpdb->users, array(
             'user_login' => $login,
             'user_nicename' => sanitize_title($login),
             'user_email' => $args['user_email'] ?? "user_$n@example.org",
             'user_registered' => '2026-01-01 00:00:00',
             'display_name' => $login,
         ));
+        // With `SPEEDYSPEC_FACTORY_ROLES` (a bootstrap with WordPress's roles), the user gets the role as
+        // wp_insert_user() gives it.
+        if (defined('SPEEDYSPEC_FACTORY_ROLES') && SPEEDYSPEC_FACTORY_ROLES && !empty($args['role']))
+        {
+            (new WP_User($id))->set_role($args['role']);
+        }
+        return $id;
     }
 }
 

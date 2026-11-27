@@ -101,27 +101,16 @@ struct Run {
 /// Tests left out of both runs because they need code that is not ported or not loaded; they are untested, not
 /// different, so none is a documented break. One reason each:
 ///
-/// - `Tests_Post_GetPostStatus`, `test_get_post_parent`, `test_has_post_parent`, `test_get_post_ancestors`,
-///   `test_prime_post_parent_id_caches_update`, `test_cache_should_be_invalidated_when_post_name_is_edited`,
-///   `test_should_prefer_published_page_then_lowest_id`: they save a post that has a name through
-///   `wp_insert_post()` (directly, or through `wp_update_post()`, `wp_trash_post()` or `wp_insert_attachment()`),
-///   which runs `get_posts()` (`WP_Query`, not ported) in `wp_add_trashed_suffix_to_post_name_for_trashed_posts()`.
-///   `Tests_Post_GetPostStatus` does so in `wpSetUpBeforeClass()`, so its `_post_states()` tests (wp-admin's
-///   template.php, not loaded) go too.
-/// - `test_get_page_uri_without_argument`, `test_query_caches_post_filter`: `go_to()`, which runs `WP_Query`.
-/// - `test_get_posts_caches_post_filter_is_always_raw`: `get_posts()`, which runs `WP_Query`.
+/// - `test_get_page_uri_without_argument`, `test_query_caches_post_filter`: `go_to()`, which needs WordPress's whole
+///   request (`WP::main()`, the template loader), not loaded.
 /// - `test_get_post_category_property`: `wp_insert_term()` and `wp_set_post_categories()` (taxonomy is not ported).
 /// - `test_get_tags_input_property`: `wp_set_post_tags()` makes terms, whose names default-filters.php's
 ///   `pre_term_name` filters trim (taxonomy is not ported, and its filters are not loaded).
 /// - `test_should_return_expected_post_mime_types`: `create_upload_object()` uploads files (media is not loaded).
 const EXCLUDE_FILTER: &str = concat!(
-    "/Tests_Post_GetPostStatus::",
-    "|::(test_get_post_parent|test_has_post_parent|test_get_post_ancestors",
-    "|test_prime_post_parent_id_caches_update|test_cache_should_be_invalidated_when_post_name_is_edited",
-    "|test_should_prefer_published_page_then_lowest_id",
-    "|test_get_page_uri_without_argument|test_query_caches_post_filter",
-    "|test_get_posts_caches_post_filter_is_always_raw|test_get_post_category_property",
-    "|test_get_tags_input_property|test_should_return_expected_post_mime_types)( |$)/"
+    "/::(test_get_page_uri_without_argument|test_query_caches_post_filter",
+    "|test_get_post_category_property|test_get_tags_input_property",
+    "|test_should_return_expected_post_mime_types)( |$)/"
 );
 
 const RUNS: &[Run] = &[
@@ -129,13 +118,13 @@ const RUNS: &[Run] = &[
         name: "single_site",
         multisite: false,
         exclude_groups: &["documented-break", "ms-required"],
-        min_tests: 192,
+        min_tests: 235,
     },
     Run {
         name: "multisite",
         multisite: true,
         exclude_groups: &["documented-break", "ms-excluded"],
-        min_tests: 192,
+        min_tests: 235,
     },
 ];
 
