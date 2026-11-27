@@ -20,10 +20,10 @@ use speedyspec_wp_meta_contracts::{
 use speedyspec_wp_meta_memory::MemoryMetaRepositories;
 use speedyspec_wp_object_cache::{ObjectCachePorts, WpObjectCache};
 use speedyspec_wp_posts::{
-    CacheInvalidation, CleanPostCache, GetPost, InitialOptions, Microtime, PostEntry, PostRead,
-    PostStatusRegistry, PostTypePorts, PostTypeRegistry, PostsApi, PostsDeps, PrimePostCaches,
-    Taxonomy, Untranslated, UpdatePostCaches, UpdatePostParentCaches, Users, WpCountPosts,
-    create_initial_post_types, read_hooks, register_posts_handlers,
+    CacheInvalidation, CleanPostCache, GetPost, InitialOptions, Microtime, PostEntry, PostObject,
+    PostRead, PostStatusRegistry, PostTypePorts, PostTypeRegistry, PostsApi, PostsDeps,
+    PrimePostCaches, Taxonomy, Untranslated, UpdatePostCaches, UpdatePostParentCaches, Users,
+    WpCountPosts, create_initial_post_types, read_hooks, register_posts_handlers,
 };
 use speedyspec_wp_posts_contracts::{
     CurrentPost, Filter, LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime,
@@ -1711,4 +1711,50 @@ impl speedyspec_wp_posts::Options for NoOptions {
     fn get_option(&self, _name: &str) -> Result<PhpValue, PostError> {
         Ok(PhpValue::Bool(false))
     }
+}
+
+/// A warm read by id lends the cached entry (PostObject::Entry), the very handle the cache holds; the first read,
+/// a miss, built the object; an entry PHP shaped differently is copied (PostObject::Object).
+#[test]
+fn warm_read_lends_the_cached_entry() {
+    let f = fixture();
+    let first = f.api.post_object(PostRef::Id(PostId(1))).unwrap().unwrap();
+    assert!(matches!(first, PostObject::Object(_)));
+    let warm = f.api.post_object(PostRef::Id(PostId(1))).unwrap().unwrap();
+    let PostObject::Entry(HookValue::Opaque(lent)) = &warm else {
+        panic!("not lent: {warm:?}");
+    };
+    let held = f
+        .cache
+        .get_with(&HookValue::Int(1), &group("posts"), false, |v| v.cloned())
+        .unwrap();
+    let Some(HookValue::Opaque(held)) = held else {
+        panic!("no entry");
+    };
+    assert!(Rc::ptr_eq(lent, &held));
+    // Lent or copied, the object is the same.
+    assert_eq!(
+        warm.into_value().unwrap(),
+        f.api
+            .get_post_object(PostRef::Id(PostId(1)))
+            .unwrap()
+            .unwrap()
+    );
+    let mut entry = PostEntry::raw_properties(&post(1, "post", "hello-world", 0, "publish", 1));
+    entry.push((PhpKey::Str(b"extra".to_vec()), s("x")));
+    f.cache
+        .set(
+            &HookValue::Int(1),
+            to_hook_value(&PhpValue::Object {
+                class: "stdClass".into(),
+                properties: entry,
+            }),
+            &group("posts"),
+            0,
+        )
+        .unwrap();
+    assert!(matches!(
+        f.api.post_object(PostRef::Id(PostId(1))).unwrap().unwrap(),
+        PostObject::Object(_)
+    ));
 }

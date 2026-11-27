@@ -164,15 +164,39 @@ fn main() {
         $c = get_post(1);
         $title = $c->post_title;
         $b->post_title .= ' changed';
+        $sibling = $c->post_title === $title && $a->post_title === $title;
         $c->ID = 99;
         $d = get_post(1);
         $entry = wp_cache_get(1, 'posts');
         $out = [
-            $a !== $b, $b !== $c, $c !== $d, $d instanceof WP_Post, $title === $d->post_title, 1 === $d->ID,
+            $sibling, $a !== $b, $b !== $c, $c !== $d, $d instanceof WP_Post, $title === $d->post_title, 1 === $d->ID,
             'raw' === $d->filter, $entry instanceof stdClass, 'raw' === $entry->filter,
             get_object_vars(new WP_Post($entry)) === get_object_vars($d),
             get_object_vars($a) === get_object_vars($d),
             $d->to_array() === get_post(1, ARRAY_A),
+        ];
+        return !in_array(false, $out, true) ? true : $out;"#,
+    );
+    // An entry replaced in the same request renders its new content, not the earlier rendering; a warm read asked
+    // for 'display' still goes through WP_Post::filter().
+    ok &= yes(
+        &php,
+        &setup,
+        "replaced_entry_renders_its_new_content",
+        r#"wp_cache_delete(1, 'posts');
+        $first = get_post(1)->post_title;
+        get_post(1);
+        clean_post_cache(1);
+        $GLOBALS['wpdb']->update($GLOBALS['wpdb']->posts, ['post_title' => 'Retitled'], ['ID' => 1]);
+        $second = get_post(1);
+        $third = get_post(1);
+        $display = get_post(1, OBJECT, 'display');
+        $GLOBALS['wpdb']->update($GLOBALS['wpdb']->posts, ['post_title' => $first], ['ID' => 1]);
+        clean_post_cache(1);
+        $out = [
+            'Retitled' === $second->post_title, 'Retitled' === $third->post_title,
+            'display' === $display->filter, 'Retitled' === $display->post_title, $display !== $third,
+            'raw' === $third->filter, $first === get_post(1)->post_title,
         ];
         return !in_array(false, $out, true) ? true : $out;"#,
     );

@@ -50,6 +50,12 @@ pub(crate) fn clear_renderings() {
     RENDERINGS.with(|r| *r.borrow_mut() = Renderings::default());
 }
 
+/// At a request's start, drops nothing a previous request left: had its end not cleared the renderings, their PHP
+/// values would belong to a heap already freed, so they are forgotten rather than released.
+pub(crate) fn forget_renderings() {
+    RENDERINGS.with(|r| std::mem::forget(std::mem::take(&mut *r.borrow_mut())));
+}
+
 fn keep(value: &Value) -> PhpValue {
     let index = LIVE.with(|l| {
         let mut l = l.borrow_mut();
@@ -404,30 +410,52 @@ pub(crate) fn post_entry(entry: &Value) -> Result<Value, Thrown> {
 
 /// The PHP lists [`post_entry`] wrote, by the address of the entry's handle. The weak handle keeps the address from
 /// being reused while the rendering is kept, and tells a dropped entry from a live one.
-#[derive(Default)]
-struct Renderings {
-    by_entry: HashMap<usize, (Weak<dyn Any>, Value)>,
+///
+/// Dropped entries' renderings are pruned when the map has doubled since the last prune (512 at least), so a loop
+/// over many live posts (a sitemap, an export, WP-CLI) costs amortized O(1) per insert, not a scan each time.
+///
+/// An object cache that hands back a fresh handle on every read (a backend that decodes each `get`) never hits
+/// here: every warm read then writes its values again, and the dead renderings wait for the next prune. That is
+/// correct, only slower.
+struct Renderings<V> {
+    by_entry: HashMap<usize, (Weak<dyn Any>, V)>,
+    /// The size that triggers the next prune.
+    prune_at: usize,
+    /// How many prunes ran, for the tests.
+    prunes: usize,
 }
 
-impl Renderings {
-    /// Prune the dropped entries' renderings past this many.
-    const PRUNE_AT: usize = 512;
+impl<V> Default for Renderings<V> {
+    fn default() -> Self {
+        Renderings {
+            by_entry: HashMap::new(),
+            prune_at: PRUNE_FLOOR,
+            prunes: 0,
+        }
+    }
+}
 
-    fn get(&self, at: usize) -> Option<Value> {
+/// The smallest [`Renderings`] map that is ever pruned.
+const PRUNE_FLOOR: usize = 512;
+
+impl<V: Clone> Renderings<V> {
+    fn get(&self, at: usize) -> Option<V> {
         let (entry, values) = self.by_entry.get(&at)?;
         (entry.strong_count() > 0).then(|| values.clone())
     }
 
-    fn keep(&mut self, at: usize, entry: Weak<dyn Any>, values: Value) {
-        if self.by_entry.len() >= Self::PRUNE_AT {
+    fn keep(&mut self, at: usize, entry: Weak<dyn Any>, values: V) {
+        if self.by_entry.len() >= self.prune_at {
             self.by_entry.retain(|_, (e, _)| e.strong_count() > 0);
+            self.prune_at = (self.by_entry.len() * 2).max(PRUNE_FLOOR);
+            self.prunes += 1;
         }
         self.by_entry.insert(at, (entry, values));
     }
 }
 
 thread_local! {
-    static RENDERINGS: RefCell<Renderings> = RefCell::new(Renderings::default());
+    static RENDERINGS: RefCell<Renderings<Value>> = RefCell::new(Renderings::default());
     /// The facade's `values()` helper (an array as PHP holds it), resolved once per request.
     static VALUES: Callable = Callable::new(Value::Str(format!("{HELPERS}values")));
     /// The facade's `post()` helper, resolved once per request.
@@ -505,4 +533,51 @@ pub(crate) fn cache_out(value: &Value) -> Result<Value, Thrown> {
         }
         _ => read.into_owned(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::any::Any;
+    use std::rc::Rc;
+
+    use super::Renderings;
+
+    /// 20,000 renderings that all stay alive: the prunes find nothing to drop, and run O(log n) times.
+    #[test]
+    fn pruning_is_amortized_over_live_entries() {
+        let mut r: Renderings<u32> = Renderings::default();
+        let entries: Vec<Rc<dyn Any>> = (0..20_000).map(|_| Rc::new(0u8) as Rc<dyn Any>).collect();
+        for (i, e) in entries.iter().enumerate() {
+            let at = Rc::as_ptr(e).cast::<()>() as usize;
+            r.keep(at, Rc::downgrade(e), i as u32);
+        }
+        assert_eq!(r.by_entry.len(), 20_000);
+        // 512, 1024, 2048, … 16384: six prunes.
+        assert!(r.prunes <= 7, "{} prunes", r.prunes);
+        let e = &entries[19_999];
+        assert_eq!(r.get(Rc::as_ptr(e).cast::<()>() as usize), Some(19_999));
+    }
+
+    /// Dropped entries are pruned, and a dropped entry's rendering is never answered.
+    #[test]
+    fn dropped_entries_are_pruned() {
+        let mut r: Renderings<u32> = Renderings::default();
+        let mut kept = Vec::new();
+        for i in 0..2_000u32 {
+            let e: Rc<dyn Any> = Rc::new(i);
+            let at = Rc::as_ptr(&e).cast::<()>() as usize;
+            r.keep(at, Rc::downgrade(&e), i);
+            if i % 100 == 0 {
+                kept.push((at, e));
+            } else {
+                assert_eq!(r.get(at), Some(i));
+                drop(e);
+                assert_eq!(r.get(at), None);
+            }
+        }
+        assert!(r.by_entry.len() < 1_024, "{}", r.by_entry.len());
+        for (at, e) in &kept {
+            assert_eq!(r.get(*at), e.downcast_ref::<u32>().copied());
+        }
+    }
 }

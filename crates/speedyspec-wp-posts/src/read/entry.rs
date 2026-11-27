@@ -259,7 +259,7 @@ impl PostEntry {
         }
         let mut defaults: Option<Vec<(PhpKey, PhpValue)>> = None;
         let mut properties = Vec::with_capacity(DECLARED.len() + others.len());
-        for (i, slot) in slots.into_iter().enumerate() {
+        for (name, slot) in DECLARED.iter().zip(slots) {
             properties.push(slot.unwrap_or_else(|| {
                 let defaults = defaults.get_or_insert_with(|| {
                     let mut d = Self::raw_properties(&Post::default());
@@ -267,7 +267,11 @@ impl PostEntry {
                     set(&mut d, "filter", PhpValue::Null);
                     d
                 });
-                defaults[i].clone()
+                // By name: the defaults' order is raw_properties()', not relied on here.
+                (
+                    key(name),
+                    get(defaults, name).cloned().unwrap_or(PhpValue::Null),
+                )
             }));
         }
         properties.extend(others);
@@ -280,5 +284,56 @@ impl PostEntry {
             class: "WP_Post".to_owned(),
             properties,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use speedyspec_php_serialize::to_hook_value;
+    use speedyspec_wp_posts_contracts::{Post, PostId};
+
+    use super::{DECLARED, PostEntry};
+
+    /// The entry get_instance() caches after a read is one the warm path lends (PostObject::Entry): its properties
+    /// are the declared ones in class order, so a drift in raw_properties() shows here, not as a silent copy.
+    #[test]
+    fn a_cached_row_is_plain_raw() {
+        let post = Post {
+            id: PostId(7),
+            title: b"Title".to_vec(),
+            ..Post::default()
+        };
+        let entry = PostEntry::to_entry(&post);
+        assert!(PostEntry::is_plain_raw(&to_hook_value(&entry)));
+        let names: Vec<Vec<u8>> = PostEntry::raw_properties(&post)
+            .into_iter()
+            .map(|(k, _)| match k {
+                speedyspec_php_serialize::PhpKey::Str(k) => k,
+                speedyspec_php_serialize::PhpKey::Int(i) => i.to_string().into_bytes(),
+            })
+            .collect();
+        let declared: Vec<Vec<u8>> = DECLARED.iter().map(|d| d.as_bytes().to_vec()).collect();
+        assert_eq!(names, declared);
+    }
+
+    /// A missing declared property takes WP_Post's default by name.
+    #[test]
+    fn missing_properties_take_their_defaults() {
+        let props = PostEntry::wp_post_properties_owned(Vec::new());
+        assert_eq!(props.len(), DECLARED.len());
+        let get = |n: &str| speedyspec_php_serialize::semantics::get(&props, n).cloned();
+        assert_eq!(get("ID"), Some(speedyspec_php_serialize::PhpValue::Null));
+        assert_eq!(
+            get("post_status"),
+            Some(speedyspec_php_serialize::PhpValue::Str(b"publish".to_vec()))
+        );
+        assert_eq!(
+            get("post_author"),
+            Some(speedyspec_php_serialize::PhpValue::Str(b"0".to_vec()))
+        );
+        assert_eq!(
+            get("filter"),
+            Some(speedyspec_php_serialize::PhpValue::Null)
+        );
     }
 }
