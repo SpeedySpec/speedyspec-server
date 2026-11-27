@@ -3,9 +3,10 @@
 //! functions (2373-2442) and `WP_Post_Type`'s `add_supports()`, `register_meta_boxes()`, `add_hooks()`,
 //! `register_taxonomies()` and their removal counterparts (class-wp-post-type.php 694-874).
 //!
-//! The registry hooks nothing and registers no taxonomy: it returns the actions and taxonomies for phase 4's
-//! adapter. Rewrite rules and query vars are left to the rewrite seam. `add_supports()` walks an object `supports`'
-//! properties as it walks an array's entries, as PHP's `foreach` does.
+//! The registry hooks nothing but the labels filter ([`PostTypeRegistry::register_filtered`]) and registers no
+//! taxonomy: it returns the actions and taxonomies for phase 4's adapter. Rewrite rules and query vars are left to
+//! the rewrite seam. `add_supports()` walks an object `supports`' properties as it walks an array's entries, as
+//! PHP's `foreach` does.
 //!
 //! The write side is pure, so phase 4's PHP adapter can apply it to `$_wp_post_type_features` and
 //! `$post_type_meta_caps` itself: [`add_supports`] reads the features through the [`PostTypeSupports`] port and
@@ -24,12 +25,15 @@
 use indexmap::IndexMap;
 use speedyspec_php_serialize::semantics::{is_empty, key_to_string, to_array, to_array_key};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
+use speedyspec_wp_hooks_contracts::HookApi;
 use speedyspec_wp_posts_contracts::{
-    PostType, PostTypeError, PostTypeName, PostTypeSupports, PostTypes,
+    PostError, PostType, PostTypeError, PostTypeName, PostTypeSupports, PostTypes,
 };
 
 use crate::caps::meta_capabilities;
-use crate::post_type::{PostTypePorts, resolve_post_type};
+use crate::post_type::{
+    PostTypePorts, ResolvedPostType, filter_post_type_labels, resolve_post_type,
+};
 
 /// An `add_action()` call the adapter makes.
 #[derive(Debug, Clone, PartialEq)]
@@ -248,7 +252,26 @@ impl PostTypeRegistry {
         args: Vec<(PhpKey, PhpValue)>,
         ports: &PostTypePorts<'_>,
     ) -> PostTypeRegistration {
-        let resolved = resolve_post_type(name, args, ports);
+        self.store(resolve_post_type(name, args, ports))
+    }
+
+    /// [`Self::register`] with the `post_type_labels_{$name}` filter run on the new object
+    /// ([`filter_post_type_labels`]), where `set_props()` runs it: before `add_supports()` and before the object is
+    /// stored. A callback's failure leaves the registry unchanged.
+    pub fn register_filtered(
+        &mut self,
+        name: PostTypeName,
+        args: Vec<(PhpKey, PhpValue)>,
+        ports: &PostTypePorts<'_>,
+        hooks: &dyn HookApi,
+    ) -> Result<PostTypeRegistration, PostError> {
+        let mut resolved = resolve_post_type(name, args, ports);
+        filter_post_type_labels(hooks, &mut resolved.post_type)?;
+        Ok(self.store(resolved))
+    }
+
+    /// The rest of `register_post_type()` once the object is built.
+    fn store(&mut self, resolved: ResolvedPostType) -> PostTypeRegistration {
         for (custom, core) in resolved.meta_caps {
             self.meta_caps.insert(custom, core);
         }

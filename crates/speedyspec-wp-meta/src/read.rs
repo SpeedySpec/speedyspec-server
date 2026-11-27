@@ -9,12 +9,15 @@ use crate::api::{MetadataApi, bytes_value, falsy_key, first, hv, int, php_key, p
 use crate::cache::Probe;
 use crate::{MetaHookNames, default_for};
 
-/// The hooks a `get_metadata()` may fire: the `get_{type}_metadata` short-circuit and the `default_{type}_metadata`
-/// filter. A native path asks the hook registry about these before it stays in Rust.
+/// The hooks a `get_metadata()` may fire, in order: the `get_{type}_metadata` short-circuit, the
+/// `update_{type}_metadata_cache` short-circuit `update_meta_cache()` applies when the object's cache entry is cold,
+/// and the `default_{type}_metadata` filter. A native path asks the hook registry about these before it stays in
+/// Rust.
 pub fn read_hooks(meta_type: &MetaType) -> Vec<HookName> {
     let names = MetaHookNames::new(meta_type);
     vec![
         HookName::from(names.get_pre().as_str()),
+        HookName::from(names.cache_pre().as_str()),
         HookName::from(names.default().as_str()),
     ]
 }

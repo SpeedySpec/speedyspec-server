@@ -14,7 +14,14 @@ role = "implementation"
 [dependencies]
 speedyspec-wp-posts-contracts.workspace = true
 speedyspec-php-serialize.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
+speedyspec-wp-meta-contracts.workspace = true
+speedyspec-wp-object-cache-contracts.workspace = true
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
 indexmap = "2"
+# A pure utility, as indexmap is: get_page_by_path()'s md5() cache key. Not a seam member, so no seam edge.
+md5 = { package = "md-5", version = "0.11.0" }
 
 [dev-dependencies]
 speedyspec-wp-posts-memory = { path = "../speedyspec-wp-posts-memory" }

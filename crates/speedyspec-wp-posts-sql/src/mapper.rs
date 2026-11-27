@@ -1,15 +1,13 @@
-//! `PostMapper` (Data Mapper): a `wp_posts` row, `wp_insert_post()`'s column values, and the `posts` cache group's
-//! entry, to the post entity and back (WordPress 7.2-RC2).
+//! `PostMapper` (Data Mapper): a `wp_posts` row and `wp_insert_post()`'s column values, to the post entity and back
+//! (WordPress 7.2-RC2). The `posts` cache group's entry is the read use cases' (`speedyspec_wp_posts::PostEntry`).
 
 use speedyspec_data::{DbValue, Row};
-use speedyspec_php_serialize::semantics::{get, isset, to_php_int, to_php_string};
-use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts_contracts::{
     CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
     PostStatusName, PostTypeName, Slug,
 };
 
-/// Maps the post entity to and from its row, its insert values and its cache entry. It holds no state.
+/// Maps the post entity to and from its row and its insert values. It holds no state.
 pub struct PostMapper;
 
 /// A column's bytes as mysqli's text protocol gives them; `None` for a missing column or `NULL`.
@@ -30,7 +28,7 @@ fn lossy(raw: &[u8]) -> String {
     String::from_utf8_lossy(raw).into_owned()
 }
 
-/// One column's value, whatever its source: the row's or the cache entry's.
+/// One column's value.
 trait Columns {
     /// The column's bytes, or `None` when it is missing.
     fn text(&self, column: &str) -> Option<Vec<u8>>;
@@ -70,24 +68,6 @@ impl Columns for RowColumns<'_> {
 
     fn int(&self, column: &str) -> Result<Option<i64>, PostError> {
         self.number(column)
-    }
-}
-
-/// A cache entry's properties, read with PHP's `(string)` and `(int)` casts.
-struct CacheColumns<'a>(&'a [(PhpKey, PhpValue)]);
-
-impl Columns for CacheColumns<'_> {
-    fn text(&self, column: &str) -> Option<Vec<u8>> {
-        get(self.0, column).map(to_php_string)
-    }
-
-    /// `(int)`, with a negative value clamped to 0: the entity's unsigned fields cannot hold it.
-    fn uint(&self, column: &str) -> Result<Option<u64>, PostError> {
-        Ok(get(self.0, column).map(|v| u64::try_from(to_php_int(v)).unwrap_or(0)))
-    }
-
-    fn int(&self, column: &str) -> Result<Option<i64>, PostError> {
-        Ok(get(self.0, column).map(to_php_int))
     }
 }
 
@@ -201,81 +181,5 @@ impl PostMapper {
             .into_iter()
             .map(|(column, value)| (column.to_owned(), value))
             .collect()
-    }
-
-    /// A `posts` cache group entry as `WP_Post::get_instance()` (class-wp-post.php 279-306) reads it.
-    ///
-    /// `None` is a miss, which WordPress answers by querying: an entry that is not a `stdClass` or `WP_Post`
-    /// object, or whose `ID` is not set (missing or null). A subclass of `stdClass` also counts as a miss, an
-    /// approximation: [`PhpValue`] carries a class name but no class hierarchy, so `instanceof` cannot be told.
-    ///
-    /// Otherwise the numbers go through [`to_php_int`] and the text through [`to_php_string`]. For an entry whose
-    /// `filter` is not `raw`, `sanitize_post( …, 'raw' )` casts `ID`, `post_parent` and `menu_order` exactly so.
-    /// The rest are approximations, because WordPress keeps the value as cached: a `raw` entry's non-int `ID`,
-    /// `post_parent` or `menu_order`, and every entry's `post_author` and `comment_count`, which WordPress keeps
-    /// as strings. A negative `ID`, `post_parent` or `post_author` is clamped to 0, since the entity's fields are
-    /// unsigned; only this cache path clamps (a row reports it as [`PostError::Db`]). A missing column takes
-    /// [`Post::default()`]'s value, as `WP_Post`'s property defaults do; any other property is ignored.
-    pub fn from_cache(value: &PhpValue) -> Option<Post> {
-        let PhpValue::Object { class, properties } = value else {
-            return None;
-        };
-        if !class.eq_ignore_ascii_case("stdClass") && !class.eq_ignore_ascii_case("WP_Post") {
-            return None;
-        }
-        let columns = CacheColumns(properties);
-        isset(properties, "ID")?;
-        let id = columns.uint("ID").ok().flatten()?;
-        Some(entity(&columns, PostId(id)).expect("cache columns always cast"))
-    }
-
-    /// The `stdClass` `get_instance()` caches after a miss: the 23 columns in table order, `ID`, `post_parent`
-    /// and `menu_order` as ints, every other column a string (`post_author` and `comment_count` in decimal), then
-    /// `filter` `raw`.
-    ///
-    /// An `ID` or `post_parent` above `i64::MAX` is `i64::MAX`. That is faithful: mysqli hands PHP the decimal
-    /// string, and `sanitize_post()`'s `(int)` cast saturates it to `PHP_INT_MAX`.
-    pub fn to_cache(post: &Post) -> PhpValue {
-        let s = |b: &[u8]| PhpValue::Str(b.to_vec());
-        let int = |i: u64| PhpValue::Int(i64::try_from(i).unwrap_or(i64::MAX));
-        let properties = [
-            ("ID", int(post.id.0)),
-            ("post_author", s(post.author.to_string().as_bytes())),
-            ("post_date", s(post.date.local.as_str().as_bytes())),
-            ("post_date_gmt", s(post.date.gmt.as_str().as_bytes())),
-            ("post_content", s(&post.content)),
-            ("post_title", s(&post.title)),
-            ("post_excerpt", s(&post.excerpt)),
-            ("post_status", s(post.status.as_str().as_bytes())),
-            ("comment_status", s(post.comment_status.as_str().as_bytes())),
-            ("ping_status", s(post.ping_status.as_str().as_bytes())),
-            ("post_password", s(&post.password)),
-            ("post_name", s(post.name.as_bytes())),
-            ("to_ping", s(&post.to_ping)),
-            ("pinged", s(&post.pinged)),
-            ("post_modified", s(post.modified.local.as_str().as_bytes())),
-            (
-                "post_modified_gmt",
-                s(post.modified.gmt.as_str().as_bytes()),
-            ),
-            ("post_content_filtered", s(&post.content_filtered)),
-            ("post_parent", int(post.parent.0)),
-            ("guid", s(&post.guid)),
-            ("menu_order", PhpValue::Int(post.menu_order)),
-            ("post_type", s(post.post_type.as_str().as_bytes())),
-            ("post_mime_type", s(post.mime_type.as_bytes())),
-            (
-                "comment_count",
-                s(post.comment_count.to_string().as_bytes()),
-            ),
-            ("filter", s(b"raw")),
-        ];
-        PhpValue::Object {
-            class: "stdClass".to_owned(),
-            properties: properties
-                .into_iter()
-                .map(|(name, value)| (PhpKey::Str(name.as_bytes().to_vec()), value))
-                .collect(),
-        }
     }
 }

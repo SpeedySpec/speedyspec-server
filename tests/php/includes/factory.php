@@ -27,6 +27,9 @@ final class WP_UnitTest_Factory
     /** @var WP_UnitTest_Factory_For_Post */
     public $post;
 
+    /** @var WP_UnitTest_Factory_For_Attachment */
+    public $attachment;
+
     /** @var WP_UnitTest_Factory_For_Comment */
     public $comment;
 
@@ -41,6 +44,7 @@ final class WP_UnitTest_Factory
         $this->network = new WP_UnitTest_Factory_For_Network();
         $this->user = new WP_UnitTest_Factory_For_User();
         $this->post = new WP_UnitTest_Factory_For_Post();
+        $this->attachment = new WP_UnitTest_Factory_For_Attachment();
         $this->comment = new WP_UnitTest_Factory_For_Comment();
         $this->term = new WP_UnitTest_Factory_For_Term();
         $this->blog = new WP_UnitTest_Factory_For_Blog();
@@ -101,13 +105,20 @@ final class WP_UnitTest_Factory_For_User
         global $wpdb;
         $n = self::$next++;
         $login = $args['user_login'] ?? "User $n";
-        return WP_UnitTest_Factory::insert($wpdb->users, array(
+        $id = WP_UnitTest_Factory::insert($wpdb->users, array(
             'user_login' => $login,
             'user_nicename' => sanitize_title($login),
             'user_email' => $args['user_email'] ?? "user_$n@example.org",
             'user_registered' => '2026-01-01 00:00:00',
             'display_name' => $login,
         ));
+        // With `SPEEDYSPEC_FACTORY_ROLES` (a bootstrap with WordPress's roles), the user gets the role as
+        // wp_insert_user() gives it.
+        if (defined('SPEEDYSPEC_FACTORY_ROLES') && SPEEDYSPEC_FACTORY_ROLES && !empty($args['role']))
+        {
+            (new WP_User($id))->set_role($args['role']);
+        }
+        return $id;
     }
 }
 
@@ -150,7 +161,10 @@ final class WP_UnitTest_Factory_For_Network
 /**
  * Hands out post ids without storing posts: posts are not ported, and a test class whose `wpSetUpBeforeClass()`
  *  makes posts it never reads (the rewrite endpoint tests, whose tests that visit posts are excluded) still runs.
- *  With rows, it writes a `wp_posts` row (type, parent, title and status).
+ *  With rows, it writes a `wp_posts` row with every column the post tests read (author, type, status, name, title,
+ *  content, dates, mime type, menu order, parent, pings), from the arguments or the defaults, sanitized for the
+ *  database as `wp_insert_post()` does. Unlike WordPress's factory, content and excerpt default to empty, the date to
+ *  a fixed one (its GMT date the same), and the status is not adjusted for a future date.
  */
 final class WP_UnitTest_Factory_For_Post
 {
@@ -173,22 +187,126 @@ final class WP_UnitTest_Factory_For_Post
         }
         global $wpdb;
         $n = self::$next++;
-        return WP_UnitTest_Factory::insert($wpdb->posts, array(
-            'post_type' => $args['post_type'] ?? 'post',
-            'post_parent' => (int) ($args['post_parent'] ?? 0),
-            'post_status' => $args['post_status'] ?? 'publish',
-            'post_title' => $args['post_title'] ?? "Post title $n",
-            'post_name' => "post-title-$n",
+        $title = $args['post_title'] ?? "Post title $n";
+        $date = empty($args['post_date']) ? '2026-01-01 00:00:00' : $args['post_date'];
+        $row = array(
+            'post_author' => 0,
+            'post_type' => 'post',
+            'post_parent' => 0,
+            'post_status' => 'publish',
+            'post_title' => $title,
+            'post_name' => sanitize_title($title),
             'post_content' => '',
             'post_excerpt' => '',
+            'post_mime_type' => '',
+            'menu_order' => 0,
             'to_ping' => '',
             'pinged' => '',
             'post_content_filtered' => '',
-            'post_date' => '2026-01-01 00:00:00',
-            'post_date_gmt' => '2026-01-01 00:00:00',
-            'post_modified' => '2026-01-01 00:00:00',
-            'post_modified_gmt' => '2026-01-01 00:00:00',
-        ));
+            'post_date' => $date,
+            'post_date_gmt' => $date,
+            'post_modified' => $date,
+            'post_modified_gmt' => $date,
+        );
+        // Every other column the test gives is written as it is, as wp_insert_post() would store it unfiltered.
+        $columns = array('post_author', 'post_type', 'post_parent', 'post_status', 'post_name', 'post_content',
+            'post_excerpt', 'post_mime_type', 'menu_order', 'to_ping', 'pinged', 'post_date_gmt', 'post_modified',
+            'post_modified_gmt', 'post_password', 'comment_status', 'ping_status', 'guid', 'comment_count');
+        foreach (array_intersect_key($args, array_flip($columns)) as $column => $value)
+        {
+            $row[$column] = $value;
+        }
+        $row['post_parent'] = (int) $row['post_parent'];
+        $row['menu_order'] = (int) $row['menu_order'];
+        // wp_insert_post() sanitizes the fields for the database (the `*_save_pre` filters) and unslashes them.
+        if (function_exists('sanitize_post'))
+        {
+            $row = wp_unslash(sanitize_post($row, 'db'));
+            unset($row['ID'], $row['filter']);
+        }
+        $id = WP_UnitTest_Factory::insert($wpdb->posts, $row);
+        // wp_insert_post() cleans the post's caches (bumping `last_changed`) and reads the post back, which caches it.
+        if (function_exists('clean_post_cache'))
+        {
+            clean_post_cache($id);
+            get_post($id);
+        }
+        return $id;
+    }
+
+    /**
+     * Creates a post and reads it back with {@link get_post()}, as WordPress's factory does.
+     *
+     * @param array $args
+     *   As for {@see create()}.
+     *
+     * @return WP_Post|null
+     *   The new post.
+     */
+    public function create_and_get($args = array())
+    {
+        return get_post($this->create($args));
+    }
+
+    /**
+     * Creates `$count` posts and returns their ids.
+     *
+     * @param int $count
+     *   How many.
+     * @param array $args
+     *   As for {@see create()}.
+     *
+     * @return int[]
+     *   The new posts' ids.
+     */
+    public function create_many($count, $args = array())
+    {
+        $ids = array();
+        for ($i = 0; $i < $count; $i++)
+        {
+            $ids[] = $this->create($args);
+        }
+        return $ids;
+    }
+}
+
+/**
+ * Makes attachments through WordPress's own `wp_insert_attachment()`, as WordPress's attachment factory does
+ *  (tests/phpunit/includes/factory/class-wp-unittest-factory-for-attachment.php), for a suite that loads the post
+ *  write path. Uploads (`create_upload_object()`) are not made.
+ */
+final class WP_UnitTest_Factory_For_Attachment
+{
+    /**
+     * Creates an attachment and returns its id.
+     *
+     * @param array|string $args
+     *   What wp_insert_attachment() takes, with `file` and `post_parent`; a file path in the legacy form.
+     * @param int $legacy_parent
+     *   The parent, in the legacy form.
+     * @param array $legacy_args
+     *   The arguments, in the legacy form.
+     *
+     * @return int
+     *   The new attachment's id.
+     */
+    public function create_object($args, $legacy_parent = 0, $legacy_args = array())
+    {
+        if (is_string($args))
+        {
+            $file = $args;
+            $args = $legacy_args;
+            $args['post_parent'] = $legacy_parent;
+            $args['file'] = $file;
+        }
+        $r = array_merge(array('file' => '', 'post_parent' => 0), $args);
+        $id = wp_insert_attachment($r, $r['file'], $r['post_parent'], true);
+        if (is_wp_error($id) || !$id)
+        {
+            $message = is_wp_error($id) ? $id->get_error_message() : 'no id';
+            throw new RuntimeException("Unable to create the attachment: $message");
+        }
+        return $id;
     }
 }
 

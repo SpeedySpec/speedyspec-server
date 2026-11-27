@@ -7,7 +7,7 @@
 
 use std::rc::Rc;
 
-use speedyspec_php_serialize::semantics::{is_empty, to_array_key, to_php_string};
+use speedyspec_php_serialize::semantics::{is_empty, is_integer_key, to_array_key, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue, from_hook_value, maybe_serialize, to_hook_value};
 use speedyspec_wp_hooks_contracts::{Count, HookApi, HookError, HookName, HookValue};
 use speedyspec_wp_meta_contracts::{
@@ -158,7 +158,12 @@ pub(crate) fn filter(
 
 /// `{type}_meta`, the cache group.
 pub(crate) fn group(meta_type: &MetaType) -> HookValue {
-    HookValue::Str(meta_type.cache_group())
+    // MetaType::cache_group(), sized once: this runs on every cached read.
+    let name = meta_type.name();
+    let mut group = String::with_capacity(name.len() + "_meta".len());
+    group.push_str(name);
+    group.push_str("_meta");
+    HookValue::Str(group)
 }
 
 /// A PHP value as the hooks carry it.
@@ -213,7 +218,12 @@ pub(crate) fn falsy_key(key: &MetaKey) -> bool {
 
 /// `$array[ $meta_key ]`'s key, as PHP normalizes it (`"10"` is the int `10`).
 pub(crate) fn php_key(key: &MetaKey) -> PhpKey {
-    to_array_key(&PhpValue::Str(key.as_bytes().to_vec())).expect("a string is always a key")
+    let bytes = key.as_bytes();
+    if !is_integer_key(bytes) {
+        // to_array_key()'s answer for any other string, without the copy it would make first.
+        return PhpKey::Str(bytes.to_vec());
+    }
+    to_array_key(&PhpValue::Str(bytes.to_vec())).expect("a string is always a key")
 }
 
 /// `$array[ $key ]` on a PHP array.

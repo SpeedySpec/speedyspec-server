@@ -1,0 +1,7993 @@
+{
+  "area": "posts-read",
+  "scenarios": [
+    {
+      "name": "get-by-id",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "page"
+        }
+      ]
+    },
+    {
+      "name": "get-by-numeric-string",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            "2"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            " 2"
+          ],
+          "as": "spaced"
+        }
+      ]
+    },
+    {
+      "name": "get-by-float",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            {
+              "float": 1.9
+            }
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "get-by-object",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "p"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            {
+              "var": "p"
+            }
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "get-by-stdclass-raw",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": 1,
+              "post_title": "Not from the table",
+              "filter": "raw"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            {
+              "var": "o"
+            }
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "get-by-stdclass-unfiltered",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": "1",
+              "post_title": "Unfiltered",
+              "post_parent": "3"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            {
+              "var": "o"
+            }
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "get-by-stdclass-display",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": 2,
+              "post_title": "Ignored",
+              "filter": "display"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            {
+              "var": "o"
+            }
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "get-by-stdclass-no-id",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "post_title": "No ID",
+              "filter": "display"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            {
+              "var": "o"
+            }
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "get-array-a",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "ARRAY_A"
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            4,
+            "ARRAY_A"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-array-n",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "ARRAY_N"
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            4,
+            "ARRAY_N",
+            "display"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-output-unknown",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "NOPE"
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "get-filter-raw",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "OBJECT",
+            "raw"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "ARRAY_A",
+            "raw"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-filter-edit",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "OBJECT",
+            "edit"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "ARRAY_A",
+            "edit"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-filter-db",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "OBJECT",
+            "db"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "ARRAY_A",
+            "db"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-filter-display",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "OBJECT",
+            "display"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "ARRAY_A",
+            "display"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-filter-attribute",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "OBJECT",
+            "attribute"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "ARRAY_A",
+            "attribute"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-filter-js",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "OBJECT",
+            "js"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "ARRAY_A",
+            "js"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-filter-unknown",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "OBJECT",
+            "unknown"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "ARRAY_A",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-filter-back-to-raw",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "OBJECT",
+            "display"
+          ],
+          "as": "p"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            {
+              "var": "p"
+            },
+            "OBJECT",
+            "raw"
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "get-filter-hooks",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "append",
+              "label": "append:post_title",
+              "with": {
+                "suffix": " [display]"
+              }
+            },
+            10,
+            1
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "edit_post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "title_edit_pre",
+            {
+              "callback": "return_arg",
+              "label": "rec:title_edit_pre"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "OBJECT",
+            "display"
+          ],
+          "as": "display"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "OBJECT",
+            "edit"
+          ],
+          "as": "edit"
+        }
+      ]
+    },
+    {
+      "name": "get-negative",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            -1
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            "-1"
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            -999
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-non-numeric",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            "abc"
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            "1abc"
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            false
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            []
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            [
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-missing",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            999
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            999
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-cache-hit",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "first"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "second"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "ARRAY_A"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-each-type",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            9
+          ],
+          "as": "attachment"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            16
+          ],
+          "as": "zero_dates"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            20
+          ],
+          "as": "book"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            23
+          ],
+          "as": "revision"
+        }
+      ]
+    },
+    {
+      "name": "get-zero-dates",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            16,
+            "ARRAY_A"
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            16,
+            "OBJECT",
+            "display"
+          ],
+          "as": "display"
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_date_gmt",
+            16
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_modified",
+            16,
+            "raw"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-global-zero",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "p"
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            {
+              "var": "p"
+            }
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            0
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            "0"
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            0,
+            "OBJECT",
+            "display"
+          ],
+          "as": "display"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            0,
+            "ARRAY_A"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-global-none",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "p"
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            {
+              "var": "p"
+            }
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            null
+          ],
+          "as": "null"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            ""
+          ],
+          "as": "empty"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            false
+          ],
+          "as": "false"
+        }
+      ]
+    },
+    {
+      "name": "get-global-unset",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": []
+        },
+        {
+          "call": "get_post",
+          "args": [
+            0
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            null,
+            "ARRAY_A"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "get-global-stdclass",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": 1,
+              "post_title": "Global stdClass",
+              "post_type": "post",
+              "filter": "raw"
+            }
+          ],
+          "as": "g"
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            {
+              "var": "g"
+            }
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            0,
+            "OBJECT",
+            "display"
+          ],
+          "as": "display"
+        }
+      ]
+    },
+    {
+      "name": "get-global-display",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "OBJECT",
+            "display"
+          ],
+          "as": "g"
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            {
+              "var": "g"
+            }
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "get-global-not-a-post",
+      "steps": [
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            3
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [],
+          "as": "out"
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            "abc"
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [],
+          "as": "string"
+        }
+      ]
+    },
+    {
+      "name": "get-global-ignored-for-id",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "p"
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            {
+              "var": "p"
+            }
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "field-default-context",
+      "steps": [
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_content",
+            1
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_parent",
+            3
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "ID",
+            1
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "menu_order",
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-raw",
+      "steps": [
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1,
+            "raw"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_content",
+            1,
+            "raw"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_excerpt",
+            1,
+            "raw"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "comment_status",
+            1,
+            "raw"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_parent",
+            3,
+            "raw"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "guid",
+            1,
+            "raw"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-edit",
+      "steps": [
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1,
+            "edit"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_content",
+            1,
+            "edit"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_excerpt",
+            1,
+            "edit"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "comment_status",
+            1,
+            "edit"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_parent",
+            3,
+            "edit"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "guid",
+            1,
+            "edit"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-db",
+      "steps": [
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1,
+            "db"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_content",
+            1,
+            "db"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_excerpt",
+            1,
+            "db"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "comment_status",
+            1,
+            "db"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_parent",
+            3,
+            "db"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "guid",
+            1,
+            "db"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-display",
+      "steps": [
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1,
+            "display"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_content",
+            1,
+            "display"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_excerpt",
+            1,
+            "display"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "comment_status",
+            1,
+            "display"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_parent",
+            3,
+            "display"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "guid",
+            1,
+            "display"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-attribute",
+      "steps": [
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1,
+            "attribute"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_content",
+            1,
+            "attribute"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_excerpt",
+            1,
+            "attribute"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "comment_status",
+            1,
+            "attribute"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_parent",
+            3,
+            "attribute"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "guid",
+            1,
+            "attribute"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-js",
+      "steps": [
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1,
+            "js"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_content",
+            1,
+            "js"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_excerpt",
+            1,
+            "js"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "comment_status",
+            1,
+            "js"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_parent",
+            3,
+            "js"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "guid",
+            1,
+            "js"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-unknown",
+      "steps": [
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1,
+            "unknown"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_content",
+            1,
+            "unknown"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_excerpt",
+            1,
+            "unknown"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "comment_status",
+            1,
+            "unknown"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_parent",
+            3,
+            "unknown"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "guid",
+            1,
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-missing-field",
+      "steps": [
+        {
+          "call": "get_post_field",
+          "args": [
+            "nope",
+            1
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-missing-post",
+      "steps": [
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            999
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-magic",
+      "steps": [
+        {
+          "call": "get_post_field",
+          "args": [
+            "ancestors",
+            4
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "page_template",
+            4
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_category",
+            1
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "tags_input",
+            1
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "ancestors",
+            4,
+            "raw"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-global",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "p"
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            {
+              "var": "p"
+            }
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_name"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_name",
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-object",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "p"
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_name",
+            {
+              "var": "p"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "field-hooks",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "append",
+              "label": "append:post_title",
+              "with": {
+                "suffix": " [display]"
+              }
+            },
+            10,
+            1
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_comment_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_comment_status"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "edit_post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "title_edit_pre",
+            {
+              "callback": "return_arg",
+              "label": "rec:title_edit_pre"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "edit_post_comment_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post_comment_status"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "title_save_pre",
+            {
+              "callback": "return_arg",
+              "label": "rec:title_save_pre"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_post_comment_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_post_comment_status"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "comment_status_pre",
+            {
+              "callback": "return_arg",
+              "label": "rec:comment_status_pre"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "comment_status",
+            1
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1,
+            "edit"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "comment_status",
+            1,
+            "edit"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1,
+            "db"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "comment_status",
+            1,
+            "db"
+          ]
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1,
+            "raw"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status-each",
+      "steps": [
+        {
+          "call": "get_post_status",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            6
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            12
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            14
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            15
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            16
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            23
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            24
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status-missing",
+      "steps": [
+        {
+          "call": "get_post_status",
+          "args": [
+            999
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            0
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            "abc"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status-global",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            6
+          ],
+          "as": "p"
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            {
+              "var": "p"
+            }
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "status-attachment-inherit",
+      "steps": [
+        {
+          "call": "get_post_status",
+          "args": [
+            9
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            10
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            25
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            26
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status-attachment-parent-trash",
+      "steps": [
+        {
+          "call": "get_post_status",
+          "args": [
+            11
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status-attachment-parent-trash-no-meta",
+      "steps": [
+        {
+          "call": "delete_post_meta",
+          "args": [
+            12,
+            "_wp_trash_meta_status"
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            11
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status-attachment-own",
+      "steps": [
+        {
+          "call": "get_post_status",
+          "args": [
+            13
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            27
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status-sample",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "p"
+        },
+        {
+          "call": "set:$p->filter",
+          "args": [
+            "sample"
+          ]
+        },
+        {
+          "call": "set:$p->post_status",
+          "args": [
+            "draft"
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            {
+              "var": "p"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status-filter",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "get_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_post_status"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            9
+          ]
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            11
+          ]
+        }
+      ]
+    },
+    {
+      "name": "type-each",
+      "steps": [
+        {
+          "call": "get_post_type",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "get_post_type",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "get_post_type",
+          "args": [
+            9
+          ]
+        },
+        {
+          "call": "get_post_type",
+          "args": [
+            20
+          ]
+        },
+        {
+          "call": "get_post_type",
+          "args": [
+            23
+          ]
+        },
+        {
+          "call": "get_post_type",
+          "args": [
+            999
+          ]
+        },
+        {
+          "call": "get_post_type",
+          "args": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "type-global",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            9
+          ],
+          "as": "p"
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            {
+              "var": "p"
+            }
+          ]
+        },
+        {
+          "call": "get_post_type",
+          "args": []
+        },
+        {
+          "call": "get_post_type",
+          "args": [
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "type-object",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": 1,
+              "post_type": "custom",
+              "filter": "raw"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "get_post_type",
+          "args": [
+            {
+              "var": "o"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mime-each",
+      "steps": [
+        {
+          "call": "get_post_mime_type",
+          "args": [
+            9
+          ]
+        },
+        {
+          "call": "get_post_mime_type",
+          "args": [
+            10
+          ]
+        },
+        {
+          "call": "get_post_mime_type",
+          "args": [
+            11
+          ]
+        },
+        {
+          "call": "get_post_mime_type",
+          "args": [
+            27
+          ]
+        },
+        {
+          "call": "get_post_mime_type",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "get_post_mime_type",
+          "args": [
+            999
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mime-global",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            10
+          ],
+          "as": "p"
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            {
+              "var": "p"
+            }
+          ]
+        },
+        {
+          "call": "get_post_mime_type",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "mime-available",
+      "steps": [
+        {
+          "call": "get_available_post_mime_types",
+          "args": []
+        },
+        {
+          "call": "get_available_post_mime_types",
+          "args": [
+            "attachment"
+          ]
+        },
+        {
+          "call": "get_available_post_mime_types",
+          "args": [
+            "post"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_get_available_post_mime_types",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_get_available_post_mime_types"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_available_post_mime_types",
+          "args": [
+            "attachment"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ancestors-nested",
+      "steps": [
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            4
+          ]
+        },
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            3
+          ]
+        },
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ancestors-loop",
+      "steps": [
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            17
+          ]
+        },
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            18
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ancestors-missing-parent",
+      "steps": [
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            19
+          ]
+        },
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            9
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ancestors-self-parent",
+      "steps": [
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            22
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ancestors-missing-post",
+      "steps": [
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            999
+          ]
+        },
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ancestors-object",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            21
+          ],
+          "as": "p"
+        },
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            {
+              "var": "p"
+            }
+          ]
+        },
+        {
+          "call": "get:$p->ancestors",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "ancestors-cached",
+      "steps": [
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            4
+          ]
+        },
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "name": "parent-each",
+      "steps": [
+        {
+          "call": "wp_get_post_parent_id",
+          "args": [
+            3
+          ]
+        },
+        {
+          "call": "wp_get_post_parent_id",
+          "args": [
+            4
+          ]
+        },
+        {
+          "call": "wp_get_post_parent_id",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "wp_get_post_parent_id",
+          "args": [
+            19
+          ]
+        },
+        {
+          "call": "wp_get_post_parent_id",
+          "args": [
+            22
+          ]
+        },
+        {
+          "call": "wp_get_post_parent_id",
+          "args": [
+            9
+          ]
+        }
+      ]
+    },
+    {
+      "name": "parent-missing",
+      "steps": [
+        {
+          "call": "wp_get_post_parent_id",
+          "args": [
+            999
+          ]
+        },
+        {
+          "call": "wp_get_post_parent_id",
+          "args": [
+            0
+          ]
+        },
+        {
+          "call": "wp_get_post_parent_id",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "parent-global",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            4
+          ],
+          "as": "p"
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            {
+              "var": "p"
+            }
+          ]
+        },
+        {
+          "call": "wp_get_post_parent_id",
+          "args": []
+        },
+        {
+          "call": "wp_get_post_parent_id",
+          "args": [
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "parent-object",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            3
+          ],
+          "as": "p"
+        },
+        {
+          "call": "wp_get_post_parent_id",
+          "args": [
+            {
+              "var": "p"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-path-nested",
+      "steps": [
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about"
+          ],
+          "as": "about"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about/team"
+          ],
+          "as": "team"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about/team/lead"
+          ],
+          "as": "lead"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "team/lead"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "lead"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "team"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about/lead"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-path-case",
+      "steps": [
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "About"
+          ],
+          "as": "upper"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "ABOUT/Team"
+          ],
+          "as": "team"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "mixed"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "Mixed"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-path-case-without-sanitize-title",
+      "steps": [
+        {
+          "call": "remove_filter",
+          "args": [
+            "sanitize_title",
+            "sanitize_title_with_dashes",
+            10
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "About"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "Mixed"
+          ],
+          "as": "stored_upper"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "mixed"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-path-slashes",
+      "steps": [
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about/team/"
+          ],
+          "as": "trailing"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "/about/"
+          ],
+          "as": "both"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about//team"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-path-encoded",
+      "steps": [
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "café"
+          ],
+          "as": "raw"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "caf%C3%A9"
+          ],
+          "as": "upper"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "caf%c3%a9"
+          ],
+          "as": "lower"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about%2Fteam"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about us"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about%20us"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-path-types",
+      "steps": [
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about",
+            "OBJECT",
+            "book"
+          ],
+          "as": "book"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about/chapter",
+            "OBJECT",
+            "book"
+          ],
+          "as": "chapter"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about",
+            "OBJECT",
+            [
+              "book",
+              "page"
+            ]
+          ],
+          "as": "either"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about",
+            "OBJECT",
+            [
+              "page",
+              "book"
+            ]
+          ],
+          "as": "either_reversed"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about",
+            "OBJECT",
+            "post"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "hello-world",
+            "OBJECT",
+            "post"
+          ],
+          "as": "post"
+        }
+      ]
+    },
+    {
+      "name": "page-path-attachment",
+      "steps": [
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "photo"
+          ],
+          "as": "photo"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "photo",
+            "OBJECT",
+            [
+              "page"
+            ]
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "trashed-file"
+          ],
+          "as": "trashed"
+        }
+      ]
+    },
+    {
+      "name": "page-path-status-order",
+      "steps": [
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "dup"
+          ],
+          "as": "dup"
+        }
+      ]
+    },
+    {
+      "name": "page-path-loop",
+      "steps": [
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "loop-a"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "loop-b/loop-a"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "orphan"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "self-parent"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-path-output",
+      "steps": [
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about/team",
+            "ARRAY_A"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about/team",
+            "ARRAY_N"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-path-empty",
+      "steps": [
+        {
+          "call": "get_page_by_path",
+          "args": [
+            ""
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "0"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-path-cache",
+      "steps": [
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about/team"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about/team"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "nope"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "nope"
+          ]
+        },
+        {
+          "call": "clean_post_cache",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about/team"
+          ]
+        },
+        {
+          "call": "wp_cache_set_posts_last_changed",
+          "args": []
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "nope"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-path-statement",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "query",
+            {
+              "callback": "return_arg",
+              "label": "rec:query"
+            },
+            10,
+            1
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "About/team"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about",
+            "OBJECT",
+            [
+              "book",
+              "page"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-uri-nested",
+      "steps": [
+        {
+          "call": "get_page_uri",
+          "args": [
+            4
+          ]
+        },
+        {
+          "call": "get_page_uri",
+          "args": [
+            3
+          ]
+        },
+        {
+          "call": "get_page_uri",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "get_page_uri",
+          "args": [
+            21
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-uri-encoded",
+      "steps": [
+        {
+          "call": "get_page_uri",
+          "args": [
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-uri-loop",
+      "steps": [
+        {
+          "call": "get_page_uri",
+          "args": [
+            17
+          ]
+        },
+        {
+          "call": "get_page_uri",
+          "args": [
+            19
+          ]
+        },
+        {
+          "call": "get_page_uri",
+          "args": [
+            22
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-uri-missing",
+      "steps": [
+        {
+          "call": "get_page_uri",
+          "args": [
+            999
+          ]
+        },
+        {
+          "call": "get_page_uri",
+          "args": [
+            0
+          ]
+        },
+        {
+          "call": "get_page_uri",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "page-uri-empty-name",
+      "steps": [
+        {
+          "call": "get_page_uri",
+          "args": [
+            16
+          ]
+        },
+        {
+          "call": "get_page_uri",
+          "args": [
+            25
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-uri-object",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            4
+          ],
+          "as": "p"
+        },
+        {
+          "call": "get_page_uri",
+          "args": [
+            {
+              "var": "p"
+            }
+          ]
+        },
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": 4,
+              "post_name": "unsaved",
+              "post_parent": 3,
+              "filter": "raw"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "get_page_uri",
+          "args": [
+            {
+              "var": "o"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-uri-global",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            3
+          ],
+          "as": "p"
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "post",
+            {
+              "var": "p"
+            }
+          ]
+        },
+        {
+          "call": "get_page_uri",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "page-uri-filter",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "get_page_uri",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_page_uri"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_page_uri",
+          "args": [
+            4
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_page_uri",
+            {
+              "callback": "append",
+              "label": "append:get_page_uri",
+              "with": {
+                "suffix": "/x"
+              }
+            },
+            10,
+            1
+          ]
+        },
+        {
+          "call": "get_page_uri",
+          "args": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-hierarchy-tree",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "p2"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            3
+          ],
+          "as": "p3"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            4
+          ],
+          "as": "p4"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            5
+          ],
+          "as": "p5"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            17
+          ],
+          "as": "p17"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            18
+          ],
+          "as": "p18"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            19
+          ],
+          "as": "p19"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            22
+          ],
+          "as": "p22"
+        },
+        {
+          "call": "get_page_hierarchy",
+          "args": [
+            [
+              {
+                "var": "p2"
+              },
+              {
+                "var": "p3"
+              },
+              {
+                "var": "p4"
+              },
+              {
+                "var": "p5"
+              }
+            ]
+          ]
+        },
+        {
+          "call": "get_page_hierarchy",
+          "args": [
+            [
+              {
+                "var": "p4"
+              },
+              {
+                "var": "p3"
+              },
+              {
+                "var": "p5"
+              },
+              {
+                "var": "p2"
+              }
+            ]
+          ]
+        },
+        {
+          "call": "get_page_hierarchy",
+          "args": [
+            [
+              {
+                "var": "p2"
+              },
+              {
+                "var": "p3"
+              },
+              {
+                "var": "p4"
+              }
+            ],
+            2
+          ]
+        },
+        {
+          "call": "get_page_hierarchy",
+          "args": [
+            [
+              {
+                "var": "p2"
+              },
+              {
+                "var": "p3"
+              },
+              {
+                "var": "p4"
+              }
+            ],
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-hierarchy-orphans",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "p2"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            3
+          ],
+          "as": "p3"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            4
+          ],
+          "as": "p4"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            5
+          ],
+          "as": "p5"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            17
+          ],
+          "as": "p17"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            18
+          ],
+          "as": "p18"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            19
+          ],
+          "as": "p19"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            22
+          ],
+          "as": "p22"
+        },
+        {
+          "call": "get_page_hierarchy",
+          "args": [
+            [
+              {
+                "var": "p17"
+              },
+              {
+                "var": "p18"
+              },
+              {
+                "var": "p19"
+              }
+            ]
+          ]
+        },
+        {
+          "call": "get_page_hierarchy",
+          "args": [
+            [
+              {
+                "var": "p19"
+              }
+            ],
+            999
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-hierarchy-empty",
+      "steps": [
+        {
+          "call": "get_page_hierarchy",
+          "args": [
+            []
+          ]
+        },
+        {
+          "call": "get_page_hierarchy",
+          "args": [
+            [],
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-hierarchy-stdclass",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": 30,
+              "post_name": "x",
+              "post_parent": "0"
+            }
+          ],
+          "as": "a"
+        },
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": 31,
+              "post_name": "y",
+              "post_parent": "30"
+            }
+          ],
+          "as": "b"
+        },
+        {
+          "call": "get_page_hierarchy",
+          "args": [
+            [
+              {
+                "var": "b"
+              },
+              {
+                "var": "a"
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-children-tree",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "p2"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            3
+          ],
+          "as": "p3"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            4
+          ],
+          "as": "p4"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            5
+          ],
+          "as": "p5"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            17
+          ],
+          "as": "p17"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            18
+          ],
+          "as": "p18"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            19
+          ],
+          "as": "p19"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            22
+          ],
+          "as": "p22"
+        },
+        {
+          "call": "get_page_children",
+          "args": [
+            2,
+            [
+              {
+                "var": "p2"
+              },
+              {
+                "var": "p3"
+              },
+              {
+                "var": "p4"
+              },
+              {
+                "var": "p5"
+              }
+            ]
+          ]
+        },
+        {
+          "call": "get_page_children",
+          "args": [
+            3,
+            [
+              {
+                "var": "p4"
+              },
+              {
+                "var": "p3"
+              },
+              {
+                "var": "p2"
+              }
+            ]
+          ]
+        },
+        {
+          "call": "get_page_children",
+          "args": [
+            0,
+            [
+              {
+                "var": "p2"
+              },
+              {
+                "var": "p3"
+              },
+              {
+                "var": "p4"
+              },
+              {
+                "var": "p5"
+              }
+            ]
+          ]
+        },
+        {
+          "call": "get_page_children",
+          "args": [
+            5,
+            [
+              {
+                "var": "p2"
+              },
+              {
+                "var": "p3"
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-children-orphans",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "p2"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            3
+          ],
+          "as": "p3"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            4
+          ],
+          "as": "p4"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            5
+          ],
+          "as": "p5"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            17
+          ],
+          "as": "p17"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            18
+          ],
+          "as": "p18"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            19
+          ],
+          "as": "p19"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            22
+          ],
+          "as": "p22"
+        },
+        {
+          "call": "get_page_children",
+          "args": [
+            999,
+            [
+              {
+                "var": "p19"
+              }
+            ]
+          ]
+        },
+        {
+          "call": "get_page_children",
+          "args": [
+            18,
+            [
+              {
+                "var": "p17"
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "page-children-empty",
+      "steps": [
+        {
+          "call": "get_page_children",
+          "args": [
+            2,
+            []
+          ]
+        },
+        {
+          "call": "get_page_children",
+          "args": [
+            0,
+            []
+          ]
+        }
+      ]
+    },
+    {
+      "name": "all-page-ids-read",
+      "steps": [
+        {
+          "call": "get_all_page_ids",
+          "args": []
+        },
+        {
+          "call": "get_all_page_ids",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "all-page-ids-clean",
+      "steps": [
+        {
+          "call": "get_all_page_ids",
+          "args": []
+        },
+        {
+          "call": "clean_post_cache",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "get_all_page_ids",
+          "args": []
+        },
+        {
+          "call": "clean_post_cache",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "get_all_page_ids",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "all-page-ids-not-an-array",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "all_page_ids",
+            "stale",
+            "posts"
+          ]
+        },
+        {
+          "call": "get_all_page_ids",
+          "args": []
+        },
+        {
+          "call": "get_all_page_ids",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "count-posts-each",
+      "steps": [
+        {
+          "call": "wp_count_posts",
+          "args": [],
+          "as": "post"
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "page"
+          ],
+          "as": "page"
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "attachment"
+          ],
+          "as": "attachment"
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "revision"
+          ],
+          "as": "revision"
+        }
+      ]
+    },
+    {
+      "name": "count-posts-unknown-type",
+      "steps": [
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "nope"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "book"
+          ],
+          "as": "book"
+        }
+      ]
+    },
+    {
+      "name": "count-posts-cache",
+      "steps": [
+        {
+          "call": "wp_count_posts",
+          "args": [],
+          "as": "first"
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [],
+          "as": "second"
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "post",
+            "readable"
+          ],
+          "as": "readable"
+        }
+      ]
+    },
+    {
+      "name": "count-readable-logged-out",
+      "steps": [
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "post",
+            "readable"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "post",
+            ""
+          ],
+          "as": "plain"
+        }
+      ]
+    },
+    {
+      "name": "count-readable-author",
+      "steps": [
+        {
+          "call": "speedyspec_compat_login",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "post",
+            "readable"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "post",
+            "readable"
+          ],
+          "as": "cached"
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "post"
+          ],
+          "as": "all"
+        }
+      ]
+    },
+    {
+      "name": "count-readable-admin",
+      "steps": [
+        {
+          "call": "speedyspec_compat_login",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "post",
+            "readable"
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "count-readable-statement",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "query",
+            {
+              "callback": "return_arg",
+              "label": "rec:query"
+            },
+            10,
+            1
+          ]
+        },
+        {
+          "call": "speedyspec_compat_login",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "post",
+            "readable"
+          ]
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "page"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "count-filter",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_count_posts",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_count_posts"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "page"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "page"
+          ],
+          "as": "cached"
+        }
+      ]
+    },
+    {
+      "name": "count-pre-filter",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_wp_count_posts",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_wp_count_posts"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_wp_count_posts",
+            "speedyspec_compat_count_override",
+            20
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_count_posts",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_count_posts"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "post",
+            "readable"
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "count-new-status",
+      "steps": [
+        {
+          "call": "wp_count_posts",
+          "args": [],
+          "as": "before"
+        },
+        {
+          "call": "register_post_status",
+          "args": [
+            "archived",
+            {
+              "label": "Archived"
+            }
+          ]
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [],
+          "as": "after"
+        }
+      ]
+    },
+    {
+      "name": "count-attachments-all",
+      "steps": [
+        {
+          "call": "wp_count_attachments",
+          "args": [],
+          "as": "out"
+        },
+        {
+          "call": "wp_count_attachments",
+          "args": [],
+          "as": "cached"
+        }
+      ]
+    },
+    {
+      "name": "count-attachments-mime",
+      "steps": [
+        {
+          "call": "wp_count_attachments",
+          "args": [
+            "image"
+          ],
+          "as": "image"
+        },
+        {
+          "call": "wp_count_attachments",
+          "args": [
+            "image/jpeg"
+          ],
+          "as": "jpeg"
+        },
+        {
+          "call": "wp_count_attachments",
+          "args": [
+            [
+              "image/jpeg",
+              "application/pdf"
+            ]
+          ],
+          "as": "list"
+        },
+        {
+          "call": "wp_count_attachments",
+          "args": [
+            "image/*"
+          ],
+          "as": "wildcard"
+        },
+        {
+          "call": "wp_count_attachments",
+          "args": [
+            "image,video"
+          ],
+          "as": "comma"
+        }
+      ]
+    },
+    {
+      "name": "count-attachments-statement",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "query",
+            {
+              "callback": "return_arg",
+              "label": "rec:query"
+            },
+            10,
+            1
+          ]
+        },
+        {
+          "call": "wp_count_attachments",
+          "args": [
+            "image"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "count-attachments-filter",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_count_attachments",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_count_attachments"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_wp_count_attachments",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_wp_count_attachments"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "wp_count_attachments",
+          "args": [
+            "image"
+          ],
+          "as": "out"
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_wp_count_attachments",
+            "speedyspec_compat_attachments_override",
+            20
+          ]
+        },
+        {
+          "call": "wp_count_attachments",
+          "args": [
+            "video"
+          ],
+          "as": "pre"
+        }
+      ]
+    },
+    {
+      "name": "last-date-blog",
+      "steps": [
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "blog"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "blog",
+            "page"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "blog",
+            "attachment"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "blog"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "last-modified-blog",
+      "steps": [
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "blog"
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "blog",
+            "page"
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "blog",
+            "attachment"
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "blog"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "last-date-gmt",
+      "steps": [
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "gmt"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "gmt",
+            "page"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "gmt",
+            "attachment"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "gmt"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "last-modified-gmt",
+      "steps": [
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "gmt"
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "gmt",
+            "page"
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "gmt",
+            "attachment"
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "gmt"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "last-date-server",
+      "steps": [
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "server"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "server",
+            "page"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "server",
+            "attachment"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "server"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "last-modified-server",
+      "steps": [
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "server"
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "server",
+            "page"
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "server",
+            "attachment"
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "server"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "last-default",
+      "steps": [
+        {
+          "call": "get_lastpostdate",
+          "args": []
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "last-timezone-case",
+      "steps": [
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "GMT"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "gmt"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "nope"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "last-type-key",
+      "steps": [
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "gmt",
+            "Page"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "gmt",
+            "book"
+          ]
+        },
+        {
+          "call": "register_post_type",
+          "args": [
+            "book",
+            {
+              "public": true,
+              "rewrite": false,
+              "query_var": false,
+              "hierarchical": true
+            }
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "gmt"
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "blog",
+            "book"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "last-statement",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "query",
+            {
+              "callback": "return_arg",
+              "label": "rec:query"
+            },
+            10,
+            1
+          ]
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "server"
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "gmt",
+            "post"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "last-filters",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "get_lastpostdate",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_lastpostdate"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_get_lastpostmodified",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_get_lastpostmodified"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "get_lastpostmodified",
+            {
+              "callback": "return_arg",
+              "label": "rec:get_lastpostmodified"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "blog"
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_get_lastpostmodified",
+            "speedyspec_compat_lastmodified_override",
+            20
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "gmt"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "last-modified-older-than-date",
+      "steps": [
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "lastpostmodified:gmt",
+            "2000-01-01 00:00:00",
+            "timeinfo"
+          ]
+        },
+        {
+          "call": "get_lastpostmodified",
+          "args": [
+            "gmt"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-update",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": 1,
+              "post_title": "Updated",
+              "post_parent": "0",
+              "filter": "raw"
+            }
+          ],
+          "as": "raw"
+        },
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": "2",
+              "post_title": "Unfiltered",
+              "post_parent": "0"
+            }
+          ],
+          "as": "plain"
+        },
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": 3,
+              "post_title": "Displayed",
+              "filter": "display"
+            }
+          ],
+          "as": "display"
+        },
+        {
+          "call": "update_post_cache",
+          "args": [
+            [
+              {
+                "var": "raw"
+              },
+              {
+                "var": "plain"
+              },
+              {
+                "var": "display"
+              }
+            ]
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "one"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "two"
+        }
+      ]
+    },
+    {
+      "name": "cache-update-keeps-existing",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": 1,
+              "post_title": "Not added",
+              "filter": "raw"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "update_post_cache",
+          "args": [
+            [
+              {
+                "var": "o"
+              }
+            ]
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "cache-update-empty",
+      "steps": [
+        {
+          "call": "update_post_cache",
+          "args": [
+            []
+          ]
+        },
+        {
+          "call": "update_post_cache",
+          "args": [
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-update-wp-post",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            4
+          ],
+          "as": "p"
+        },
+        {
+          "call": "wp_cache_delete",
+          "args": [
+            4,
+            "posts"
+          ]
+        },
+        {
+          "call": "update_post_cache",
+          "args": [
+            [
+              {
+                "var": "p"
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-clean-post",
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "clean_post_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:clean_post_cache"
+            },
+            10,
+            2
+          ]
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "clean_page_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:clean_page_cache"
+            },
+            10,
+            1
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "_prime_post_parent_id_caches",
+          "args": [
+            [
+              1
+            ]
+          ]
+        },
+        {
+          "call": "get_post_meta",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "wp_cache_set",
+          "args": [
+            "wp_get_archives",
+            "x",
+            "general"
+          ]
+        },
+        {
+          "call": "clean_post_cache",
+          "args": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-clean-page",
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "clean_post_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:clean_post_cache"
+            },
+            10,
+            2
+          ]
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "clean_page_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:clean_page_cache"
+            },
+            10,
+            1
+          ]
+        },
+        {
+          "call": "get_all_page_ids",
+          "args": []
+        },
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "clean_post_cache",
+          "args": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-clean-object",
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "clean_post_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:clean_post_cache"
+            },
+            10,
+            2
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            3
+          ],
+          "as": "p"
+        },
+        {
+          "call": "clean_post_cache",
+          "args": [
+            {
+              "var": "p"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-clean-missing",
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "clean_post_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:clean_post_cache"
+            },
+            10,
+            2
+          ]
+        },
+        {
+          "call": "clean_post_cache",
+          "args": [
+            999
+          ]
+        },
+        {
+          "call": "clean_post_cache",
+          "args": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-clean-suspended",
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "clean_post_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:clean_post_cache"
+            },
+            10,
+            2
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "global:replace",
+          "args": [
+            "_wp_suspend_cache_invalidation",
+            true
+          ]
+        },
+        {
+          "call": "clean_post_cache",
+          "args": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-clean-terms",
+      "steps": [
+        {
+          "call": "_prime_post_caches",
+          "args": [
+            [
+              1
+            ]
+          ]
+        },
+        {
+          "call": "clean_post_cache",
+          "args": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-prime-with-meta",
+      "steps": [
+        {
+          "call": "_prime_post_caches",
+          "args": [
+            [
+              1,
+              2,
+              999
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-prime-without-meta",
+      "steps": [
+        {
+          "call": "_prime_post_caches",
+          "args": [
+            [
+              1,
+              2
+            ],
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-prime-terms-only",
+      "steps": [
+        {
+          "call": "_prime_post_caches",
+          "args": [
+            [
+              1,
+              4
+            ],
+            true,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-prime-partly-cached",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "_prime_post_caches",
+          "args": [
+            [
+              1,
+              2,
+              3
+            ],
+            false,
+            false
+          ]
+        },
+        {
+          "call": "_prime_post_caches",
+          "args": [
+            [
+              1,
+              2,
+              3
+            ],
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-prime-statement",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "query",
+            {
+              "callback": "return_arg",
+              "label": "rec:query"
+            },
+            10,
+            1
+          ]
+        },
+        {
+          "call": "_prime_post_caches",
+          "args": [
+            [
+              3,
+              1,
+              2
+            ],
+            false,
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-prime-parent-ids",
+      "steps": [
+        {
+          "call": "_prime_post_parent_id_caches",
+          "args": [
+            [
+              3,
+              4,
+              "x",
+              3,
+              -1,
+              999
+            ]
+          ]
+        },
+        {
+          "call": "_prime_post_parent_id_caches",
+          "args": [
+            [
+              3,
+              4
+            ]
+          ]
+        },
+        {
+          "call": "_prime_post_parent_id_caches",
+          "args": [
+            []
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-update-parent-caches",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            3
+          ],
+          "as": "p3"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            4
+          ],
+          "as": "p4"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            9
+          ],
+          "as": "p9"
+        },
+        {
+          "call": "wp_cache_delete",
+          "args": [
+            1,
+            "posts"
+          ]
+        },
+        {
+          "call": "wp_cache_delete",
+          "args": [
+            2,
+            "posts"
+          ]
+        },
+        {
+          "call": "wp_cache_delete",
+          "args": [
+            3,
+            "posts"
+          ]
+        },
+        {
+          "call": "update_post_parent_caches",
+          "args": [
+            [
+              {
+                "var": "p3"
+              },
+              {
+                "var": "p4"
+              },
+              {
+                "var": "p9"
+              }
+            ]
+          ]
+        },
+        {
+          "call": "update_post_parent_caches",
+          "args": [
+            []
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cache-php-entry",
+      "steps": [
+        {
+          "call": "speedyspec_compat_cache_post",
+          "args": [
+            1,
+            {
+              "post_title": "From another process"
+            }
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post_field",
+          "args": [
+            "post_title",
+            1
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1,
+            "OBJECT",
+            "display"
+          ],
+          "as": "display"
+        }
+      ]
+    },
+    {
+      "name": "cache-php-entry-unfiltered",
+      "steps": [
+        {
+          "call": "speedyspec_compat_cache_post",
+          "args": [
+            1,
+            {
+              "post_title": "Unfiltered entry",
+              "filter": null,
+              "post_parent": "0"
+            }
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "cache-php-entry-display",
+      "steps": [
+        {
+          "call": "speedyspec_compat_cache_post",
+          "args": [
+            1,
+            {
+              "post_title": "A & B",
+              "filter": "display"
+            }
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "cache-php-entry-wp-post",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "p"
+        },
+        {
+          "call": "speedyspec_compat_cache_value",
+          "args": [
+            1,
+            {
+              "var": "p"
+            }
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "cache-non-object-entry",
+      "steps": [
+        {
+          "call": "speedyspec_compat_cache_value",
+          "args": [
+            1,
+            "garbage"
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "again"
+        }
+      ]
+    },
+    {
+      "name": "cache-array-entry",
+      "steps": [
+        {
+          "call": "speedyspec_compat_cache_value",
+          "args": [
+            1,
+            {
+              "ID": 1,
+              "post_title": "An array"
+            }
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "cache-entry-without-id",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "post_title": "No ID",
+              "filter": "raw"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "speedyspec_compat_cache_value",
+          "args": [
+            1,
+            {
+              "var": "o"
+            }
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "out"
+        }
+      ]
+    },
+    {
+      "name": "cache-false-entry",
+      "steps": [
+        {
+          "call": "speedyspec_compat_cache_value",
+          "args": [
+            999,
+            false
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            999
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-post-raw",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "var": "o"
+            },
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            },
+            "raw"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-post-edit",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "var": "o"
+            },
+            "edit"
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            },
+            "edit"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-post-db",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "var": "o"
+            },
+            "db"
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            },
+            "db"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-post-display",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "var": "o"
+            },
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            },
+            "display"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-post-attribute",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "var": "o"
+            },
+            "attribute"
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            },
+            "attribute"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-post-js",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "var": "o"
+            },
+            "js"
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            },
+            "js"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-post-unknown",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "var": "o"
+            },
+            "unknown"
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            },
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-post-default-context",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "var": "o"
+            }
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-post-same-filter",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry",
+              "filter": "display"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "var": "o"
+            },
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "ID": "7",
+              "post_title": "Tom & \"Jerry\" <b>bold</b>",
+              "post_content": "<p>It's</p>\n<script>x</script>",
+              "post_excerpt": "a < b",
+              "post_password": "p&ss",
+              "post_parent": "3",
+              "menu_order": "2",
+              "comment_status": "open",
+              "guid": "http://example.org/?p=7&x=<y>",
+              "ancestors": [
+                "3",
+                "-2",
+                "x"
+              ],
+              "post_name": "tom-jerry",
+              "filter": "edit"
+            },
+            "edit"
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "var": "o"
+            },
+            "edit"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-post-no-id",
+      "steps": [
+        {
+          "call": "speedyspec_compat_object",
+          "args": [
+            {
+              "post_title": "x"
+            }
+          ],
+          "as": "o"
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "var": "o"
+            },
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "post_title": "x"
+            },
+            "raw"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-post-scalar",
+      "steps": [
+        {
+          "call": "sanitize_post",
+          "args": [
+            "string",
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            5,
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-post-wp-post",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "p"
+        },
+        {
+          "call": "sanitize_post",
+          "args": [
+            {
+              "var": "p"
+            },
+            "edit"
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "again"
+        }
+      ]
+    },
+    {
+      "name": "sanitize-field-raw",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "edit_post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "append",
+              "label": "append:post_title",
+              "with": {
+                "suffix": " [hooked]"
+              }
+            },
+            10,
+            3
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_title",
+            "Tom & \"Jerry\" <b>bold</b>",
+            7,
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_content",
+            "<p>It's</p>\n<script>x</script>",
+            7,
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_excerpt",
+            "a < b",
+            7,
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_password",
+            "p&ss",
+            7,
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "comment_status",
+            "o'pen",
+            7,
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ID",
+            "7abc",
+            7,
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_parent",
+            "3",
+            7,
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "menu_order",
+            "-2",
+            7,
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "guid",
+            "http://example.org/?p=7&x=<y>",
+            7,
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            [
+              "3",
+              "-2"
+            ],
+            7,
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            "5",
+            7,
+            "raw"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-field-edit",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "edit_post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "title_edit_pre",
+            {
+              "callback": "return_arg",
+              "label": "rec:title_edit_pre"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "edit_post_comment_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post_comment_status"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "edit_post_ID",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post_ID"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "edit_post_guid",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post_guid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "edit_post_title",
+            {
+              "callback": "append",
+              "label": "append:edit_post_title",
+              "with": {
+                "suffix": " [hooked]"
+              }
+            },
+            10,
+            3
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_title",
+            "Tom & \"Jerry\" <b>bold</b>",
+            7,
+            "edit"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_content",
+            "<p>It's</p>\n<script>x</script>",
+            7,
+            "edit"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_excerpt",
+            "a < b",
+            7,
+            "edit"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_password",
+            "p&ss",
+            7,
+            "edit"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "comment_status",
+            "o'pen",
+            7,
+            "edit"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ID",
+            "7abc",
+            7,
+            "edit"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_parent",
+            "3",
+            7,
+            "edit"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "menu_order",
+            "-2",
+            7,
+            "edit"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "guid",
+            "http://example.org/?p=7&x=<y>",
+            7,
+            "edit"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            [
+              "3",
+              "-2"
+            ],
+            7,
+            "edit"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            "5",
+            7,
+            "edit"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-field-db",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "title_save_pre",
+            {
+              "callback": "return_arg",
+              "label": "rec:title_save_pre"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_post_comment_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_post_comment_status"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "comment_status_pre",
+            {
+              "callback": "return_arg",
+              "label": "rec:comment_status_pre"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_post_guid",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_post_guid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "guid_pre",
+            {
+              "callback": "return_arg",
+              "label": "rec:guid_pre"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_post_title",
+            {
+              "callback": "append",
+              "label": "append:pre_post_title",
+              "with": {
+                "suffix": " [hooked]"
+              }
+            },
+            10,
+            3
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_title",
+            "Tom & \"Jerry\" <b>bold</b>",
+            7,
+            "db"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_content",
+            "<p>It's</p>\n<script>x</script>",
+            7,
+            "db"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_excerpt",
+            "a < b",
+            7,
+            "db"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_password",
+            "p&ss",
+            7,
+            "db"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "comment_status",
+            "o'pen",
+            7,
+            "db"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ID",
+            "7abc",
+            7,
+            "db"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_parent",
+            "3",
+            7,
+            "db"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "menu_order",
+            "-2",
+            7,
+            "db"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "guid",
+            "http://example.org/?p=7&x=<y>",
+            7,
+            "db"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            [
+              "3",
+              "-2"
+            ],
+            7,
+            "db"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            "5",
+            7,
+            "db"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-field-display",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_comment_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_comment_status"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_ID",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_ID"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_guid",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_guid"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "append",
+              "label": "append:post_title",
+              "with": {
+                "suffix": " [hooked]"
+              }
+            },
+            10,
+            3
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_title",
+            "Tom & \"Jerry\" <b>bold</b>",
+            7,
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_content",
+            "<p>It's</p>\n<script>x</script>",
+            7,
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_excerpt",
+            "a < b",
+            7,
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_password",
+            "p&ss",
+            7,
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "comment_status",
+            "o'pen",
+            7,
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ID",
+            "7abc",
+            7,
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_parent",
+            "3",
+            7,
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "menu_order",
+            "-2",
+            7,
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "guid",
+            "http://example.org/?p=7&x=<y>",
+            7,
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            [
+              "3",
+              "-2"
+            ],
+            7,
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            "5",
+            7,
+            "display"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-field-attribute",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_comment_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_comment_status"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "append",
+              "label": "append:post_title",
+              "with": {
+                "suffix": " [hooked]"
+              }
+            },
+            10,
+            3
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_title",
+            "Tom & \"Jerry\" <b>bold</b>",
+            7,
+            "attribute"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_content",
+            "<p>It's</p>\n<script>x</script>",
+            7,
+            "attribute"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_excerpt",
+            "a < b",
+            7,
+            "attribute"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_password",
+            "p&ss",
+            7,
+            "attribute"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "comment_status",
+            "o'pen",
+            7,
+            "attribute"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ID",
+            "7abc",
+            7,
+            "attribute"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_parent",
+            "3",
+            7,
+            "attribute"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "menu_order",
+            "-2",
+            7,
+            "attribute"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "guid",
+            "http://example.org/?p=7&x=<y>",
+            7,
+            "attribute"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            [
+              "3",
+              "-2"
+            ],
+            7,
+            "attribute"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            "5",
+            7,
+            "attribute"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-field-js",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_comment_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_comment_status"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "append",
+              "label": "append:post_title",
+              "with": {
+                "suffix": " [hooked]"
+              }
+            },
+            10,
+            3
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_title",
+            "Tom & \"Jerry\" <b>bold</b>",
+            7,
+            "js"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_content",
+            "<p>It's</p>\n<script>x</script>",
+            7,
+            "js"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_excerpt",
+            "a < b",
+            7,
+            "js"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_password",
+            "p&ss",
+            7,
+            "js"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "comment_status",
+            "o'pen",
+            7,
+            "js"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ID",
+            "7abc",
+            7,
+            "js"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_parent",
+            "3",
+            7,
+            "js"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "menu_order",
+            "-2",
+            7,
+            "js"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "guid",
+            "http://example.org/?p=7&x=<y>",
+            7,
+            "js"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            [
+              "3",
+              "-2"
+            ],
+            7,
+            "js"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            "5",
+            7,
+            "js"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-field-unknown",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_title"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "post_title",
+            {
+              "callback": "append",
+              "label": "append:post_title",
+              "with": {
+                "suffix": " [hooked]"
+              }
+            },
+            10,
+            3
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_title",
+            "Tom & \"Jerry\" <b>bold</b>",
+            7,
+            "unknown"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_content",
+            "<p>It's</p>\n<script>x</script>",
+            7,
+            "unknown"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_excerpt",
+            "a < b",
+            7,
+            "unknown"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_password",
+            "p&ss",
+            7,
+            "unknown"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "comment_status",
+            "o'pen",
+            7,
+            "unknown"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ID",
+            "7abc",
+            7,
+            "unknown"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_parent",
+            "3",
+            7,
+            "unknown"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "menu_order",
+            "-2",
+            7,
+            "unknown"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "guid",
+            "http://example.org/?p=7&x=<y>",
+            7,
+            "unknown"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            [
+              "3",
+              "-2"
+            ],
+            7,
+            "unknown"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "ancestors",
+            "5",
+            7,
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-field-default-context",
+      "steps": [
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_title",
+            "Tom & \"Jerry\" <b>bold</b>",
+            7
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-field-richedit",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "user_can_richedit",
+            {
+              "callback": "return_arg",
+              "label": "rec:user_can_richedit"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_content",
+            "<p>x</p>",
+            1,
+            "edit"
+          ]
+        },
+        {
+          "call": "speedyspec_compat_login",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_content",
+            "<p>x</p>",
+            1,
+            "edit"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sanitize-field-non-string",
+      "steps": [
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_title",
+            null,
+            1,
+            "display"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_title",
+            12,
+            1,
+            "attribute"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_title",
+            [
+              "a"
+            ],
+            1,
+            "raw"
+          ]
+        },
+        {
+          "call": "sanitize_post_field",
+          "args": [
+            "post_parent",
+            null,
+            1,
+            "edit"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "types-core",
+      "steps": [
+        {
+          "call": "get_post_types",
+          "args": []
+        },
+        {
+          "call": "get_post_types",
+          "args": [
+            {
+              "public": true
+            }
+          ]
+        },
+        {
+          "call": "get_post_types",
+          "args": [
+            {
+              "hierarchical": true
+            }
+          ]
+        },
+        {
+          "call": "get_post_types",
+          "args": [
+            {
+              "public": true,
+              "show_ui": true
+            },
+            "names",
+            "or"
+          ]
+        },
+        {
+          "call": "get_post_types",
+          "args": [
+            {
+              "_builtin": false
+            }
+          ]
+        },
+        {
+          "call": "get_post_types",
+          "args": [
+            {
+              "public": true
+            },
+            "names",
+            "not"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "types-object",
+      "steps": [
+        {
+          "call": "get_post_type_object",
+          "args": [
+            "post"
+          ],
+          "as": "post"
+        },
+        {
+          "call": "get_post_type_object",
+          "args": [
+            "page"
+          ],
+          "as": "page"
+        },
+        {
+          "call": "get_post_type_object",
+          "args": [
+            "attachment"
+          ],
+          "as": "attachment"
+        },
+        {
+          "call": "get_post_type_object",
+          "args": [
+            "nope"
+          ]
+        },
+        {
+          "call": "get_post_type_object",
+          "args": [
+            [
+              "post"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "types-exists",
+      "steps": [
+        {
+          "call": "post_type_exists",
+          "args": [
+            "post"
+          ]
+        },
+        {
+          "call": "post_type_exists",
+          "args": [
+            "nope"
+          ]
+        },
+        {
+          "call": "post_type_exists",
+          "args": [
+            "Post"
+          ]
+        },
+        {
+          "call": "is_post_type_hierarchical",
+          "args": [
+            "page"
+          ]
+        },
+        {
+          "call": "is_post_type_hierarchical",
+          "args": [
+            "post"
+          ]
+        },
+        {
+          "call": "is_post_type_hierarchical",
+          "args": [
+            "nope"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "types-supports",
+      "steps": [
+        {
+          "call": "post_type_supports",
+          "args": [
+            "post",
+            "editor"
+          ]
+        },
+        {
+          "call": "post_type_supports",
+          "args": [
+            "post",
+            "nope"
+          ]
+        },
+        {
+          "call": "post_type_supports",
+          "args": [
+            "nope",
+            "title"
+          ]
+        },
+        {
+          "call": "get_all_post_type_supports",
+          "args": [
+            "page"
+          ]
+        },
+        {
+          "call": "get_post_types_by_support",
+          "args": [
+            "title"
+          ]
+        },
+        {
+          "call": "get_post_types_by_support",
+          "args": [
+            [
+              "title",
+              "editor"
+            ]
+          ]
+        },
+        {
+          "call": "get_post_types_by_support",
+          "args": [
+            [
+              "title",
+              "page-attributes"
+            ],
+            "or"
+          ]
+        },
+        {
+          "call": "global:read",
+          "args": [
+            "_wp_post_type_features",
+            "post"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "types-register",
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "register_post_type_args",
+            {
+              "callback": "return_arg",
+              "label": "rec:register_post_type_args"
+            },
+            10,
+            99
+          ]
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "registered_post_type",
+            {
+              "callback": "return_arg",
+              "label": "rec:registered_post_type"
+            },
+            10,
+            2
+          ]
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "registered_post_type_book",
+            {
+              "callback": "return_arg",
+              "label": "rec:registered_post_type_book"
+            },
+            10,
+            2
+          ]
+        },
+        {
+          "call": "register_post_type",
+          "args": [
+            "book",
+            {
+              "public": true,
+              "hierarchical": true,
+              "rewrite": false,
+              "query_var": false,
+              "supports": [
+                "title",
+                "page-attributes"
+              ],
+              "labels": {
+                "name": "Books"
+              }
+            }
+          ],
+          "as": "book"
+        },
+        {
+          "call": "get_post_type_object",
+          "args": [
+            "book"
+          ],
+          "as": "read"
+        },
+        {
+          "call": "post_type_exists",
+          "args": [
+            "book"
+          ]
+        },
+        {
+          "call": "is_post_type_hierarchical",
+          "args": [
+            "book"
+          ]
+        },
+        {
+          "call": "get_post_types",
+          "args": [
+            {
+              "public": true
+            }
+          ]
+        },
+        {
+          "call": "get_post_type_labels",
+          "args": [
+            {
+              "var": "book"
+            }
+          ]
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "book"
+          ],
+          "as": "counts"
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about/chapter",
+            "OBJECT",
+            "book"
+          ],
+          "as": "chapter"
+        }
+      ]
+    },
+    {
+      "name": "types-register-invalid",
+      "steps": [
+        {
+          "call": "register_post_type",
+          "args": [
+            "",
+            {}
+          ]
+        },
+        {
+          "call": "register_post_type",
+          "args": [
+            "xxxxxxxxxxxxxxxxxxxxx",
+            {}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "types-capabilities",
+      "steps": [
+        {
+          "call": "register_post_type",
+          "args": [
+            "story",
+            {
+              "capability_type": "story",
+              "map_meta_cap": true,
+              "rewrite": false,
+              "query_var": false
+            }
+          ],
+          "as": "story"
+        },
+        {
+          "call": "global:read",
+          "args": [
+            "post_type_meta_caps"
+          ]
+        },
+        {
+          "call": "get_post_type_object",
+          "args": [
+            "story"
+          ],
+          "as": "read"
+        }
+      ]
+    },
+    {
+      "name": "types-mutated-after-register",
+      "steps": [
+        {
+          "call": "get_post_type_object",
+          "args": [
+            "post"
+          ],
+          "as": "pt"
+        },
+        {
+          "call": "set:$pt->hierarchical",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "set:$pt->label",
+          "args": [
+            "Articles"
+          ]
+        },
+        {
+          "call": "is_post_type_hierarchical",
+          "args": [
+            "post"
+          ]
+        },
+        {
+          "call": "get_post_types",
+          "args": [
+            {
+              "hierarchical": true
+            }
+          ]
+        },
+        {
+          "call": "get_post_type_object",
+          "args": [
+            "post"
+          ],
+          "as": "again"
+        },
+        {
+          "call": "get_post_types",
+          "args": [
+            {
+              "label": "Articles"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "types-global-replaced",
+      "steps": [
+        {
+          "call": "register_post_type",
+          "args": [
+            "book",
+            {
+              "rewrite": false,
+              "query_var": false
+            }
+          ],
+          "as": "book"
+        },
+        {
+          "call": "global:unset",
+          "args": [
+            "wp_post_types",
+            "book"
+          ]
+        },
+        {
+          "call": "post_type_exists",
+          "args": [
+            "book"
+          ]
+        },
+        {
+          "call": "get_post_type_object",
+          "args": [
+            "book"
+          ]
+        },
+        {
+          "call": "global:set",
+          "args": [
+            "wp_post_types",
+            "book",
+            {
+              "var": "book"
+            }
+          ]
+        },
+        {
+          "call": "post_type_exists",
+          "args": [
+            "book"
+          ]
+        },
+        {
+          "call": "get_post_types",
+          "args": [
+            {
+              "name": "book"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "types-unregister",
+      "steps": [
+        {
+          "call": "register_post_type",
+          "args": [
+            "book",
+            {
+              "rewrite": false,
+              "query_var": false
+            }
+          ]
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "unregistered_post_type",
+            {
+              "callback": "return_arg",
+              "label": "rec:unregistered_post_type"
+            },
+            10,
+            1
+          ]
+        },
+        {
+          "call": "unregister_post_type",
+          "args": [
+            "book"
+          ]
+        },
+        {
+          "call": "post_type_exists",
+          "args": [
+            "book"
+          ]
+        },
+        {
+          "call": "unregister_post_type",
+          "args": [
+            "post"
+          ]
+        },
+        {
+          "call": "unregister_post_type",
+          "args": [
+            "nope"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "statuses-core",
+      "steps": [
+        {
+          "call": "get_post_stati",
+          "args": []
+        },
+        {
+          "call": "get_post_stati",
+          "args": [
+            {
+              "public": true
+            }
+          ]
+        },
+        {
+          "call": "get_post_stati",
+          "args": [
+            {
+              "internal": true
+            }
+          ]
+        },
+        {
+          "call": "get_post_stati",
+          "args": [
+            {
+              "show_in_admin_status_list": true
+            }
+          ]
+        },
+        {
+          "call": "get_post_stati",
+          "args": [
+            {
+              "private": true,
+              "protected": true
+            },
+            "names",
+            "or"
+          ]
+        },
+        {
+          "call": "get_post_stati",
+          "args": [
+            {
+              "exclude_from_search": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "statuses-object",
+      "steps": [
+        {
+          "call": "get_post_status_object",
+          "args": [
+            "publish"
+          ],
+          "as": "publish"
+        },
+        {
+          "call": "get_post_status_object",
+          "args": [
+            "inherit"
+          ],
+          "as": "inherit"
+        },
+        {
+          "call": "get_post_status_object",
+          "args": [
+            "nope"
+          ]
+        },
+        {
+          "call": "get_post_stati",
+          "args": [
+            {
+              "name": "draft"
+            },
+            "objects"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "statuses-register",
+      "steps": [
+        {
+          "call": "register_post_status",
+          "args": [
+            "archived",
+            {
+              "label": "Archived",
+              "public": false,
+              "show_in_admin_all_list": false
+            }
+          ],
+          "as": "archived"
+        },
+        {
+          "call": "get_post_status_object",
+          "args": [
+            "archived"
+          ],
+          "as": "read"
+        },
+        {
+          "call": "get_post_stati",
+          "args": [
+            {
+              "public": false
+            }
+          ]
+        },
+        {
+          "call": "register_post_status",
+          "args": [
+            "defaults"
+          ],
+          "as": "defaults"
+        },
+        {
+          "call": "register_post_status",
+          "args": [
+            "archived",
+            {
+              "label": "Again"
+            }
+          ],
+          "as": "again"
+        }
+      ]
+    },
+    {
+      "name": "statuses-mutated-after-register",
+      "steps": [
+        {
+          "call": "get_post_status_object",
+          "args": [
+            "draft"
+          ],
+          "as": "s"
+        },
+        {
+          "call": "set:$s->public",
+          "args": [
+            true
+          ]
+        },
+        {
+          "call": "get_post_stati",
+          "args": [
+            {
+              "public": true
+            }
+          ]
+        },
+        {
+          "call": "global:unset",
+          "args": [
+            "wp_post_statuses",
+            "pending"
+          ]
+        },
+        {
+          "call": "get_post_status_object",
+          "args": [
+            "pending"
+          ]
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [],
+          "as": "counts"
+        }
+      ]
+    },
+    {
+      "name": "ms-get-switch",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "one"
+        },
+        {
+          "call": "switch_to_blog",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "two"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "second"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            4
+          ]
+        },
+        {
+          "call": "restore_current_blog",
+          "args": []
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "back"
+        }
+      ],
+      "multisite": true
+    },
+    {
+      "name": "ms-page-path-switch",
+      "steps": [
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about"
+          ],
+          "as": "one"
+        },
+        {
+          "call": "switch_to_blog",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about"
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "blog-two-home/blog-two-child"
+          ],
+          "as": "two"
+        },
+        {
+          "call": "get_page_uri",
+          "args": [
+            3
+          ]
+        },
+        {
+          "call": "get_post_ancestors",
+          "args": [
+            3
+          ]
+        },
+        {
+          "call": "get_all_page_ids",
+          "args": []
+        },
+        {
+          "call": "restore_current_blog",
+          "args": []
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about"
+          ]
+        },
+        {
+          "call": "get_all_page_ids",
+          "args": []
+        }
+      ],
+      "multisite": true
+    },
+    {
+      "name": "ms-count-switch",
+      "steps": [
+        {
+          "call": "wp_count_posts",
+          "args": [],
+          "as": "one"
+        },
+        {
+          "call": "switch_to_blog",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [],
+          "as": "two"
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "page"
+          ],
+          "as": "pages"
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "gmt"
+          ]
+        },
+        {
+          "call": "restore_current_blog",
+          "args": []
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [],
+          "as": "back"
+        },
+        {
+          "call": "get_lastpostdate",
+          "args": [
+            "gmt"
+          ]
+        }
+      ],
+      "multisite": true
+    },
+    {
+      "name": "ms-cache-switch",
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "clean_post_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:clean_post_cache"
+            },
+            10,
+            2
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "switch_to_blog",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "_prime_post_caches",
+          "args": [
+            [
+              1,
+              2,
+              3
+            ]
+          ]
+        },
+        {
+          "call": "clean_post_cache",
+          "args": [
+            1
+          ]
+        },
+        {
+          "call": "restore_current_blog",
+          "args": []
+        },
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "back"
+        },
+        {
+          "call": "speedyspec_compat_cache_post",
+          "args": [
+            2,
+            {
+              "post_title": "Blog one entry"
+            }
+          ]
+        },
+        {
+          "call": "switch_to_blog",
+          "args": [
+            2
+          ]
+        },
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "blog_two"
+        },
+        {
+          "call": "restore_current_blog",
+          "args": []
+        }
+      ],
+      "multisite": true
+    },
+    {
+      "name": "ms-get-single",
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            1
+          ],
+          "as": "out"
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            9
+          ]
+        },
+        {
+          "call": "get_page_by_path",
+          "args": [
+            "about/team/lead"
+          ],
+          "as": "lead"
+        },
+        {
+          "call": "wp_count_posts",
+          "args": [
+            "page",
+            "readable"
+          ],
+          "as": "pages"
+        }
+      ],
+      "multisite": true
+    }
+  ]
+}

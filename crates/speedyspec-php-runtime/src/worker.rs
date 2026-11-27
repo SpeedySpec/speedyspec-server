@@ -18,6 +18,7 @@ use speedyspec_wp_hooks_php::{HOOK_STORE, PhpHookStore, WpHooksArea};
 use speedyspec_wp_media_php::MediaArea;
 use speedyspec_wp_meta_php::MetaArea;
 use speedyspec_wp_password_php::PasswordArea;
+use speedyspec_wp_posts_php::PostsArea;
 use speedyspec_wp_text_diff_php::TextDiffArea;
 
 /// WordPress's password functions, with WordPress's rules bound in `container` under their pluggable ports.
@@ -309,8 +310,9 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         .bindings(spec.bindings.clone());
     let hook_api = hooks.api();
     let media = media_area(hook_api.clone(), &container, &spec);
-    let container_area =
-        MetaArea::ports(media.ports(TextDiffArea::ports(PasswordArea::ports(container_area))));
+    let container_area = PostsArea::ports(MetaArea::ports(
+        media.ports(TextDiffArea::ports(PasswordArea::ports(container_area))),
+    ));
     // When the app wants its scheduled call next: reported to the server after each request.
     let next_wake = crate::wake::NextWake::new();
     let crypto = CryptoArea::new(hook_api.clone(), sodium);

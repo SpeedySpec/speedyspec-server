@@ -104,6 +104,14 @@ abstract class WP_UnitTestCase extends TestCase
         {
             call_user_func(array(static::class, 'wpTearDownAfterClass'));
         }
+        // A bootstrap that defines WordPress's `_delete_all_data()` (tests/phpunit/includes/functions.php) gets its
+        // clean-up between classes, after the class's own, as WordPress's test case runs it.
+        if (function_exists('_delete_all_data'))
+        {
+            self::flush_cache();
+            _delete_all_data();
+            self::flush_cache();
+        }
     }
 
     public function set_up()

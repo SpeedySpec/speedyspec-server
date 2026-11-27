@@ -5,6 +5,7 @@ mod column_types;
 mod dml;
 mod functions;
 mod limit;
+mod nul;
 mod numeric_compare;
 mod quote;
 
@@ -16,6 +17,7 @@ pub use column_types::SqliteTypes;
 pub use dml::SqliteDml;
 pub use functions::SqliteFunctions;
 pub use limit::SqliteLimit;
+pub use nul::SqliteNul;
 pub use numeric_compare::SqliteNumericCompare;
 pub use quote::SqliteQuote;
 
@@ -29,6 +31,7 @@ pub fn sqlite_chain() -> PassChain {
     chain.push(Box::new(SqliteLimit));
     chain.push(Box::new(SqliteNumericCompare));
     chain.push(Box::new(SqliteFunctions));
+    chain.push(Box::new(SqliteNul));
     chain.push(Box::new(SqliteQuote));
     chain
 }

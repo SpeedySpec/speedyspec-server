@@ -13,6 +13,7 @@ use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_meta_php::MetaArea;
 use speedyspec_wp_object_cache_php::ObjectCacheArea;
 use speedyspec_wp_options_php::OptionsArea;
+use speedyspec_wp_posts_php::PostsArea;
 
 /// What a worker with a database keeps for its life: the engines, reset at each request end.
 pub struct WorkerDatabase {
@@ -51,7 +52,7 @@ fn check(registry: &EngineRegistry) -> Result<(), String> {
 }
 
 /// The `default` engine from `config`, and the areas that use it, in the order they must be registered:
-/// `WpDbArea`, `ObjectCacheArea`, `MetaArea`, `OptionsArea`, `CronArea`. The engine must answer before `WpDbArea` is built. The
+/// `WpDbArea`, `ObjectCacheArea`, `MetaArea`, `PostsArea`, `OptionsArea`, `CronArea`. The engine must answer before `WpDbArea` is built. The
 /// object cache has no persistent level yet (request lifetime, as WordPress's default).
 pub fn boot_database(
     config: WpDbConfig,
@@ -77,6 +78,15 @@ pub fn boot_database(
     let cache = ObjectCacheArea::new(container.clone(), None);
     // The meta area takes the contracts only: the Hook API, the object cache and wpdb as `Rc<dyn …>`.
     let meta = MetaArea::new(container.clone(), hook_api.clone(), cache.api(), wpdb.api());
+    // The post registries read PHP's globals live; post reading takes the contracts only, the metadata API among
+    // them.
+    let posts = PostsArea::new(
+        container.clone(),
+        hook_api.clone(),
+        cache.api(),
+        wpdb.api(),
+        meta.api(),
+    );
     let options = OptionsArea::new(container.clone(), hook_api.clone(), cache.api(), wpdb.api());
     let cron = CronArea::new(hook_api.clone(), options.api()).with_wake(wake);
     let database = WorkerDatabase { registry };
@@ -84,6 +94,7 @@ pub fn boot_database(
         Rc::new(wpdb),
         Rc::new(cache),
         Rc::new(meta),
+        Rc::new(posts),
         Rc::new(options),
         Rc::new(cron),
     ];

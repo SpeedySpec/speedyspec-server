@@ -2,7 +2,7 @@
 //! WordPress's order with its args as PHP arrays in the source's key order, its labels through the translator, the
 //! supports calls WordPress makes between them, then each `register_post_status()` call in order.
 //!
-//! The table is a list of [`Step`]s (Command): the function only runs them against the registries, so the order
+//! The table is a list of [`InitialCall`]s (Command): the function only runs them against the registries, so the order
 //! and data live in one place. `WP_Post_Type::reset_default_labels()` has nothing to reset here: the default labels
 //! are built per call. `build_query()` does not encode, so the two site editor edit links are constants.
 
@@ -26,7 +26,8 @@ const TEMPLATE_EDIT_LINK: &str = "site-editor.php?p=/%s/%s&canvas=edit";
 const NAVIGATION_EDIT_LINK: &str = "site-editor.php?p=/wp_navigation/%s&canvas=edit";
 
 /// One call `create_initial_post_types()` makes.
-enum Step {
+#[derive(Debug, Clone)]
+pub enum InitialCall {
     /// `register_post_type( $name, $args )`.
     PostType(&'static str, Vec<(PhpKey, PhpValue)>),
     /// `add_post_type_support( $post_type, $feature )`.
@@ -46,16 +47,18 @@ pub fn create_initial_post_types(
     ports: &PostTypePorts<'_>,
 ) -> Vec<PostTypeRegistration> {
     let mut registrations = Vec::new();
-    for step in steps(options, ports.translator) {
+    for step in initial_calls(options, ports.translator) {
         match step {
-            Step::PostType(name, args) => {
+            InitialCall::PostType(name, args) => {
                 registrations.push(types.register(PostTypeName::new(name), args, ports));
             }
-            Step::AddSupport(post_type, feature) => {
+            InitialCall::AddSupport(post_type, feature) => {
                 types.add_support(post_type, &[feature], Vec::new());
             }
-            Step::RemoveSupport(post_type, feature) => types.remove_support(post_type, feature),
-            Step::Status(name, args) => {
+            InitialCall::RemoveSupport(post_type, feature) => {
+                types.remove_support(post_type, feature)
+            }
+            InitialCall::Status(name, args) => {
                 statuses.register(name.as_bytes(), args);
             }
         }
@@ -170,8 +173,9 @@ fn count(singular: &str, plural: &str) -> Value {
     ))
 }
 
-/// Every call, in WordPress's order.
-fn steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
+/// Every call `create_initial_post_types()` makes, in WordPress's order, for an adapter that makes them itself (the
+/// PHP one runs each through the native `register_post_type()` and the rest, so their hooks fire).
+pub fn initial_calls(options: &InitialOptions, t: &dyn Translator) -> Vec<InitialCall> {
     let mut steps = post_type_steps(options, t);
     steps.extend(status_steps(t));
     steps
@@ -182,7 +186,7 @@ fn editor_notes() -> Arr {
     Arr::new().set("notes", true)
 }
 
-fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
+fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<InitialCall> {
     // wp_template and wp_template_part give the same capabilities.
     let template_caps = || {
         theme_options(&[
@@ -217,7 +221,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
     let template_supports = || list(&["title", "slug", "excerpt", "editor", "revisions", "author"]);
 
     vec![
-        Step::PostType(
+        InitialCall::PostType(
             "post",
             Arr::new()
                 .set(
@@ -256,7 +260,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("rest_controller_class", "WP_REST_Posts_Controller")
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "page",
             Arr::new()
                 .set(
@@ -294,7 +298,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("rest_controller_class", "WP_REST_Posts_Controller")
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "attachment",
             Arr::new()
                 .set(
@@ -335,9 +339,9 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("rest_controller_class", "WP_REST_Attachments_Controller")
                 .items(),
         ),
-        Step::AddSupport("attachment:audio", "thumbnail"),
-        Step::AddSupport("attachment:video", "thumbnail"),
-        Step::PostType(
+        InitialCall::AddSupport("attachment:audio", "thumbnail"),
+        InitialCall::AddSupport("attachment:video", "thumbnail"),
+        InitialCall::PostType(
             "revision",
             Arr::new()
                 .set(
@@ -357,7 +361,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("supports", list(&["author"]))
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "nav_menu_item",
             Arr::new()
                 .set(
@@ -405,7 +409,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("rest_controller_class", "WP_REST_Menu_Items_Controller")
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "custom_css",
             Arr::new()
                 .set(
@@ -442,7 +446,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 )
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "customize_changeset",
             Arr::new()
                 .set(
@@ -495,7 +499,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 )
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "oembed_cache",
             Arr::new()
                 .set(
@@ -518,7 +522,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("supports", Arr::new())
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "user_request",
             Arr::new()
                 .set(
@@ -538,7 +542,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("supports", Arr::new())
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "wp_block",
             Arr::new()
                 .set(
@@ -609,7 +613,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("delete_with_user", false)
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "wp_template",
             Arr::new()
                 .set(
@@ -661,7 +665,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("supports", template_supports())
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "wp_template_part",
             Arr::new()
                 .set(
@@ -727,7 +731,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("supports", template_supports())
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "wp_global_styles",
             Arr::new()
                 .set("label", x(t, "Global Styles", "post type general name"))
@@ -761,8 +765,8 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .items(),
         ),
         // Disable autosave endpoints for global styles.
-        Step::RemoveSupport("wp_global_styles", "autosave"),
-        Step::PostType(
+        InitialCall::RemoveSupport("wp_global_styles", "autosave"),
+        InitialCall::PostType(
             "wp_navigation",
             Arr::new()
                 .set(
@@ -835,7 +839,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("supports", list(&["title", "editor", "revisions"]))
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "wp_font_family",
             Arr::new()
                 .set(
@@ -858,7 +862,7 @@ fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<Step> {
                 .set("supports", list(&["title"]))
                 .items(),
         ),
-        Step::PostType(
+        InitialCall::PostType(
             "wp_font_face",
             Arr::new()
                 .set(
@@ -889,10 +893,10 @@ fn counted(label: &str) -> String {
     format!("{label} <span class=\"count\">(%s)</span>")
 }
 
-fn status_steps(t: &dyn Translator) -> Vec<Step> {
+fn status_steps(t: &dyn Translator) -> Vec<InitialCall> {
     // `register_post_status()` for the request statuses differs only in its label and count text.
     let request = |name: &'static str, label: &str| {
-        Step::Status(
+        InitialCall::Status(
             name,
             Arr::new()
                 .set("label", x(t, label, "request status"))
@@ -904,7 +908,7 @@ fn status_steps(t: &dyn Translator) -> Vec<Step> {
         )
     };
     vec![
-        Step::Status(
+        InitialCall::Status(
             "publish",
             Arr::new()
                 .set("label", x(t, "Published", "post status"))
@@ -916,7 +920,7 @@ fn status_steps(t: &dyn Translator) -> Vec<Step> {
                 )
                 .items(),
         ),
-        Step::Status(
+        InitialCall::Status(
             "future",
             Arr::new()
                 .set("label", x(t, "Scheduled", "post status"))
@@ -928,7 +932,7 @@ fn status_steps(t: &dyn Translator) -> Vec<Step> {
                 )
                 .items(),
         ),
-        Step::Status(
+        InitialCall::Status(
             "draft",
             Arr::new()
                 .set("label", x(t, "Draft", "post status"))
@@ -938,7 +942,7 @@ fn status_steps(t: &dyn Translator) -> Vec<Step> {
                 .set("date_floating", true)
                 .items(),
         ),
-        Step::Status(
+        InitialCall::Status(
             "pending",
             Arr::new()
                 .set("label", x(t, "Pending", "post status"))
@@ -951,7 +955,7 @@ fn status_steps(t: &dyn Translator) -> Vec<Step> {
                 .set("date_floating", true)
                 .items(),
         ),
-        Step::Status(
+        InitialCall::Status(
             "private",
             Arr::new()
                 .set("label", x(t, "Private", "post status"))
@@ -963,7 +967,7 @@ fn status_steps(t: &dyn Translator) -> Vec<Step> {
                 )
                 .items(),
         ),
-        Step::Status(
+        InitialCall::Status(
             "trash",
             Arr::new()
                 .set("label", x(t, "Trash", "post status"))
@@ -973,7 +977,7 @@ fn status_steps(t: &dyn Translator) -> Vec<Step> {
                 .set("show_in_admin_status_list", true)
                 .items(),
         ),
-        Step::Status(
+        InitialCall::Status(
             "auto-draft",
             Arr::new()
                 .set("label", "auto-draft")
@@ -982,7 +986,7 @@ fn status_steps(t: &dyn Translator) -> Vec<Step> {
                 .set("date_floating", true)
                 .items(),
         ),
-        Step::Status(
+        InitialCall::Status(
             "inherit",
             Arr::new()
                 .set("label", "inherit")

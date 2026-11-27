@@ -1,5 +1,6 @@
-//! `PostMapper` against WordPress 7.2-RC2: the rows `WP_Post::get_instance()` reads and caches, and the `posts`
-//! cache entries it accepts or treats as a miss (`compat/posts-entity/cases.json`).
+//! `PostMapper` against WordPress 7.2-RC2: the rows `WP_Post::get_instance()` reads, mapped through `PostEntry` (the
+//! read use cases' cache mapper) to the entry it caches, and the `posts` cache entries `PostEntry` accepts or treats
+//! as a miss (`compat/posts-entity/cases.json`).
 
 mod support;
 
@@ -8,6 +9,7 @@ use std::rc::Rc;
 use speedyspec_data::{DbValue, Row};
 use speedyspec_php_serialize::semantics::{get, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
+use speedyspec_wp_posts::PostEntry;
 use speedyspec_wp_posts_contracts::{
     CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
     PostStatusName, PostTypeName, Slug,
@@ -89,7 +91,7 @@ fn rows_map_to_the_cached_object() {
         let entity = PostMapper::to_entity(&recorded_row(&decode(&case["row"])))
             .unwrap_or_else(|e| panic!("{name}: {e}"));
         assert_eq!(
-            PostMapper::to_cache(&entity),
+            PostEntry::to_entry(&entity),
             decode(&case["cached"]),
             "{name}"
         );
@@ -103,11 +105,11 @@ fn cache_reads_match_wordpress() {
     assert!(!reads.is_empty());
     for case in reads {
         let name = case["name"].as_str().unwrap();
-        let read = PostMapper::from_cache(&decode(&case["cached"]));
+        let read = PostEntry::from_entry(&decode(&case["cached"]));
         assert_eq!(read.is_none(), case["queried"].as_bool().unwrap(), "{name}");
         let Some(entity) = read else { continue };
         let post = decode(&case["post"]);
-        let ours = PostMapper::to_cache(&entity);
+        let ours = PostEntry::to_entry(&entity);
         for column in COLUMNS {
             assert_eq!(
                 get(properties(&ours), column).map(to_php_string),
@@ -119,7 +121,7 @@ fn cache_reads_match_wordpress() {
 }
 
 #[test]
-fn from_cache_casts_numbers_and_defaults_missing_columns() {
+fn entry_casts_numbers_and_defaults_missing_columns() {
     let s = |v: &str| PhpValue::Str(v.as_bytes().to_vec());
     let k = |v: &str| PhpKey::Str(v.as_bytes().to_vec());
     let entry = PhpValue::Object {
@@ -134,7 +136,7 @@ fn from_cache_casts_numbers_and_defaults_missing_columns() {
             (k("unknown"), s("ignored")),
         ],
     };
-    let post = PostMapper::from_cache(&entry).unwrap();
+    let post = PostEntry::from_entry(&entry).unwrap();
     assert_eq!(post.id, PostId(12));
     assert_eq!(post.parent, PostId(4));
     assert_eq!(post.menu_order, -2);
@@ -149,12 +151,12 @@ fn from_cache_casts_numbers_and_defaults_missing_columns() {
         class: "WP_Post".into(),
         properties: vec![(k("ID"), PhpValue::Null)],
     };
-    assert!(PostMapper::from_cache(&null_id).is_none());
+    assert!(PostEntry::from_entry(&null_id).is_none());
     let other_class = PhpValue::Object {
         class: "ArrayObject".into(),
         properties: vec![(k("ID"), PhpValue::Int(3))],
     };
-    assert!(PostMapper::from_cache(&other_class).is_none());
+    assert!(PostEntry::from_entry(&other_class).is_none());
 }
 
 fn sample(id: u64) -> Post {
@@ -284,7 +286,7 @@ fn unsigned_columns_above_i64_max_parse() {
     assert_eq!(post.author, big);
     assert_eq!(post.parent, PostId(i64::MAX as u64 + 1));
     // `(int)` saturates the decimal string, as sanitize_post() does; the author stays a string.
-    let cached = PostMapper::to_cache(&post);
+    let cached = PostEntry::to_entry(&post);
     let PhpValue::Object { properties, .. } = &cached else {
         panic!("an object");
     };
@@ -346,7 +348,7 @@ fn cache_clamps_negative_unsigned_columns() {
             (k("post_parent"), PhpValue::Int(-2)),
         ],
     };
-    let post = PostMapper::from_cache(&entry).unwrap();
+    let post = PostEntry::from_entry(&entry).unwrap();
     assert_eq!(post.author, 0);
     assert_eq!(post.parent, PostId(0));
 }

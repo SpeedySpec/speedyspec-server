@@ -2,12 +2,19 @@
 //! `is_post_type_hierarchical()` (1587-1594), `is_post_type_viewable()` (2496-2526) and `is_post_status_viewable()`
 //! (2540-2578).
 //!
-//! The `is_post_type_viewable` and `is_post_status_viewable` filters, and their `true ===` check, are phase 4's;
-//! these are the values passed to them. The adapter answers the `is_scalar()` and `is_string()` checks on a name.
+//! [`is_post_type_viewable`] and [`is_post_status_viewable`] are the values passed to the `is_post_type_viewable` and
+//! `is_post_status_viewable` filters; the `*_filtered` functions run those filters (Observer, through [`HookApi`])
+//! with WordPress's `true ===` check, so only a filter answer of exactly `true` is viewable. The adapter answers the
+//! `is_scalar()` and `is_string()` checks on a name.
 
 use speedyspec_php_serialize::semantics::{get, is_empty};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
-use speedyspec_wp_posts_contracts::{PostStatusObject, PostStatuses, PostType, PostTypes};
+use speedyspec_wp_hooks_contracts::{HookApi, HookName, HookValue};
+use speedyspec_wp_posts_contracts::{
+    PostError, PostStatusObject, PostStatuses, PostType, PostTypes,
+};
+
+use crate::hook::{filter_hook, hv};
 
 /// PHP truth of a property; a missing one reads as null.
 fn truthy(value: Option<&PhpValue>) -> bool {
@@ -59,6 +66,86 @@ pub fn post_status_name_viewable(statuses: &dyn PostStatuses, name: &str) -> boo
     statuses
         .status(name)
         .is_some_and(|s| is_post_status_viewable(&s))
+}
+
+/// `true === apply_filters( $hook, $is_viewable, $object )`.
+fn filtered_viewable(
+    hooks: &dyn HookApi,
+    hook: &str,
+    is_viewable: bool,
+    object: impl FnOnce() -> PhpValue,
+) -> Result<bool, PostError> {
+    let out = filter_hook(
+        hooks,
+        &HookName::from(hook),
+        HookValue::Bool(is_viewable),
+        || vec![hv(&object())],
+    )?;
+    Ok(matches!(&*out.read(), HookValue::Bool(true)))
+}
+
+/// `is_post_type_viewable( $post_type )` for an object, with its filter: [`is_post_type_viewable`] through
+/// `is_post_type_viewable` with `( $is_viewable, $post_type )`, true only when the filter answers exactly `true`.
+/// The filter sees a `WP_Post_Type`-classed copy of the object.
+pub fn is_post_type_viewable_filtered(
+    hooks: &dyn HookApi,
+    post_type: &PostType,
+) -> Result<bool, PostError> {
+    filtered_viewable(
+        hooks,
+        "is_post_type_viewable",
+        is_post_type_viewable(post_type),
+        || PhpValue::Object {
+            class: "WP_Post_Type".to_owned(),
+            properties: post_type.properties().to_vec(),
+        },
+    )
+}
+
+/// `is_post_status_viewable( $post_status )` for an object, with its filter: false for an `internal` or
+/// `protected` status before any filter; else [`is_post_status_viewable`] through `is_post_status_viewable` with
+/// `( $is_viewable, $post_status )`, true only when the filter answers exactly `true`. The filter sees a `stdClass`
+/// copy of the object, as `register_post_status()` stores one.
+pub fn is_post_status_viewable_filtered(
+    hooks: &dyn HookApi,
+    status: &PostStatusObject,
+) -> Result<bool, PostError> {
+    if truthy(status.get("internal")) || truthy(status.get("protected")) {
+        return Ok(false);
+    }
+    filtered_viewable(
+        hooks,
+        "is_post_status_viewable",
+        viewable(status.properties()),
+        || PhpValue::Object {
+            class: "stdClass".to_owned(),
+            properties: status.properties().to_vec(),
+        },
+    )
+}
+
+/// `is_post_type_viewable()` for a name, with its filter: false, unfiltered, when the post type is missing.
+pub fn post_type_name_viewable_filtered(
+    hooks: &dyn HookApi,
+    types: &dyn PostTypes,
+    name: &str,
+) -> Result<bool, PostError> {
+    match types.post_type(name) {
+        Some(post_type) => is_post_type_viewable_filtered(hooks, &post_type),
+        None => Ok(false),
+    }
+}
+
+/// `is_post_status_viewable()` for a string name, with its filter: false, unfiltered, when the status is missing.
+pub fn post_status_name_viewable_filtered(
+    hooks: &dyn HookApi,
+    statuses: &dyn PostStatuses,
+    name: &str,
+) -> Result<bool, PostError> {
+    match statuses.status(name) {
+        Some(status) => is_post_status_viewable_filtered(hooks, &status),
+        None => Ok(false),
+    }
 }
 
 #[cfg(test)]

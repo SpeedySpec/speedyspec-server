@@ -657,14 +657,18 @@ fn default_skipped_while_installing() {
 }
 
 #[test]
-fn read_hooks_lists_short_circuit_and_default() {
+fn read_hooks_lists_short_circuit_cache_and_default() {
     let names: Vec<HookValue> = read_hooks(&post())
         .iter()
         .map(|n| n.value().clone())
         .collect();
     assert_eq!(
         names,
-        [hs("get_post_metadata"), hs("default_post_metadata")]
+        [
+            hs("get_post_metadata"),
+            hs("update_post_metadata_cache"),
+            hs("default_post_metadata")
+        ]
     );
     let names: Vec<HookValue> = read_hooks(&MetaType::new("thing").unwrap())
         .iter()
@@ -672,7 +676,11 @@ fn read_hooks_lists_short_circuit_and_default() {
         .collect();
     assert_eq!(
         names,
-        [hs("get_thing_metadata"), hs("default_thing_metadata")]
+        [
+            hs("get_thing_metadata"),
+            hs("update_thing_metadata_cache"),
+            hs("default_thing_metadata")
+        ]
     );
 }
 
