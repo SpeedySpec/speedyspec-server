@@ -194,39 +194,9 @@ fn suite(engine: Engine) {
     });
 }
 
-/// Runs `check`, which must fail with `expected` in its message: a break the contracts or an engine own, not this
-/// repository. When the owner fixes it, this fails, so the wrapper comes off.
-fn known_break(expected: &str, check: impl FnOnce()) {
-    let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(check))
-        .expect_err("the known break is fixed: run the check plainly");
-    let message = failure
-        .downcast_ref::<String>()
-        .cloned()
-        .or_else(|| failure.downcast_ref::<&str>().map(|s| s.to_string()))
-        .unwrap_or_default();
-    assert!(message.contains(expected), "a different failure: {message}");
-}
-
-/// Known break (the 0.3.0 conformance suite): `last_post_time_orders_by_the_gmt_column` expects the `server` answer
-/// without fractional seconds, but MySQL's `DATE_ADD(.., INTERVAL '0' SECOND)` answers `2024-03-01 20:00:00.000000`,
-/// which WordPress returns as is (`compat/posts-read`'s `last-*` scenarios). The repository keeps MySQL's text; see
-/// `server_time_keeps_mysql_fraction`. Every check before it passes, and the two after it are this file's own
-/// (`zero_dates_round_trip`, `last_post_time_of_nothing_is_none`).
-///
-/// TODO(posts-contracts 0.3.1): platform PR #18 accepts the fraction; take 0.3.1 and run `suite(Engine::MySql)`
-/// plainly.
 #[test]
 fn suite_on_mysql() {
-    // Without a MySQL rig the suite only prints `skipped`, which the known break would read as fixed.
-    if std::env::var_os("SPEEDYSPEC_TEST_MYSQL_URL").is_none() {
-        println!("skipped: SPEEDYSPEC_TEST_MYSQL_URL is not set");
-        return;
-    }
-    known_break(
-        "check `last_post_time_orders_by_the_gmt_column` failed: Some(\"2024-03-02 01:00:00\") \
-         Some(\"2024-03-01 20:00:00\") Some(\"2024-03-01 20:00:00.000000\") Some(\"2024-03-01 20:00:00\")",
-        || suite(Engine::MySql),
-    );
+    suite(Engine::MySql);
 }
 
 #[test]

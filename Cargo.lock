@@ -4607,7 +4607,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "969cde0349344dbbf58b5f9badbfb8f806db13969364eb8007c057ef687007d9"
 dependencies = [
  "annotate-snippets",
- "base64 0.23.1",
+ "base64 0.22.1",
  "encoding_rs_io",
  "granit-parser",
  "nohash-hasher",
@@ -5390,9 +5390,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-php"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7b4a547e881474535f2a6b9536835666384b8171a4c3a16062e11fa3de521fa"
+checksum = "0698195cb5ca267fd8e0e1f7e8e1405ac781d2fed083cb862b848c8bd4ced29f"
 dependencies = [
  "ext-php-rs",
  "speedyspec-hooks",
@@ -6735,9 +6735,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-posts-contracts"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17b4525b4f620e2ac788f192c04ef82b7b89bfd12e223e5b2e3ef568f15098fe"
+checksum = "88e9e1fb29b32085cb07be0ba827b1399537e0c6e958b5fb7814a4c613521d7f"
 dependencies = [
  "speedyspec-php-serialize",
  "speedyspec-wp-hooks-contracts",
@@ -7488,7 +7488,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",

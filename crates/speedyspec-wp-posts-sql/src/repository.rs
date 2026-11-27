@@ -571,7 +571,15 @@ impl PostRepository for SqlPostRepository {
         .concat();
         self.hidden_checked(|| {
             let rows = self.select_text(&sql)?;
-            Ok(Self::var(&rows).map(|d| PostDateTime::new(String::from_utf8_lossy(&d))))
+            Ok(Self::var(&rows).map(|d| {
+                let mut at = String::from_utf8_lossy(&d).into_owned();
+                // MySQL's DATE_ADD answers six fractional digits; the other engines' translations of it do not, and the
+                // contracts' answer is MySQL's text.
+                if matches!(timezone, Timezone::Server) && !at.contains('.') {
+                    at.push_str(".000000");
+                }
+                PostDateTime::new(at)
+            }))
         })
     }
 

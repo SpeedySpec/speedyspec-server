@@ -258,8 +258,9 @@ impl PostRepository for MemoryPostRepository {
             match timezone {
                 Timezone::Blog => Some(date.local.clone()),
                 Timezone::Gmt => Some(date.gmt.clone()),
-                // MySQL's DATE_ADD answers NULL for a zero date.
-                Timezone::Server => (!date.gmt.is_zero()).then(|| date.gmt.clone()),
+                // MySQL's DATE_ADD answers NULL for a zero date, and text with six fractional digits otherwise.
+                Timezone::Server => (!date.gmt.is_zero())
+                    .then(|| PostDateTime::new(format!("{}.000000", date.gmt.as_str()))),
             }
         }))
     }
