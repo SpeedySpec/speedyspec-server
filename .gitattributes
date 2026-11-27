@@ -6,3 +6,4 @@ tests/php/data/pomo/windows-line-endings.po -text
 crates/speedyspec-wp-i18n-files/tests/data/po/** -text
 # The media tests' WordPress data must keep its exact bytes too (fileinfo reads CRLF CSV and VTT files).
 tests/php/wordpress/media/data/** -text
+compat/*/wordpress-*.json linguist-generated=true -diff
