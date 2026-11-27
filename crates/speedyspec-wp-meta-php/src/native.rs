@@ -229,17 +229,18 @@ fn delete_metadata(x: &[Value]) -> R {
 }
 
 pub(crate) fn get_metadata(x: &[Value]) -> R {
-    let Some(meta_type) = meta_type(&a(x, 0)) else {
+    let arg = |i: usize| x.get(i).unwrap_or(&Value::Null);
+    let Some(meta_type) = meta_type(arg(0)) else {
         return no();
     };
-    let Some(object) = object(&a(x, 1)) else {
+    let Some(object) = object(arg(1)) else {
         return no();
     };
     let m = GetMetadata {
         meta_type,
         object,
         key: optional_key(x, 2),
-        single: truthy(&a(x, 3)),
+        single: truthy(arg(3)),
     };
     php_out(&h(|h| ask(&h.get, m))??)
 }

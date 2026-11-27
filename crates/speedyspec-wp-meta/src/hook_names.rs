@@ -26,7 +26,11 @@ impl MetaHookNames {
     }
 
     fn named(&self, prefix: &str, suffix: &str) -> String {
-        format!("{prefix}{}{suffix}", self.meta_type)
+        let mut name = String::with_capacity(prefix.len() + self.meta_type.len() + suffix.len());
+        name.push_str(prefix);
+        name.push_str(&self.meta_type);
+        name.push_str(suffix);
+        name
     }
 
     fn with_key(&self, prefix: &str, key: &MetaKey, subtype: Option<&str>) -> Vec<u8> {

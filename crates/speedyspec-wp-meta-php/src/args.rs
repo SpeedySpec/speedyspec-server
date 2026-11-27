@@ -3,7 +3,7 @@
 
 use speedyspec_php_ext::Value;
 use speedyspec_php_serialize::PhpValue;
-use speedyspec_php_serialize::semantics::{to_php_int, to_php_string};
+use speedyspec_php_serialize::semantics::{bytes_truthy, to_php_int, to_php_string};
 use speedyspec_wp_meta_contracts::{MetaKey, MetaType};
 
 pub(crate) use crate::adapters::truthy;
@@ -45,6 +45,14 @@ pub(crate) fn key(value: &Value) -> MetaKey {
 
 /// `$meta_type` past `! $meta_type`; an array or object never names a type with a table.
 pub(crate) fn meta_type(value: &Value) -> Option<MetaType> {
+    if let Value::Str(name) = value {
+        // A string names the type as it is: no conversion to make.
+        return if bytes_truthy(name.as_bytes()) {
+            MetaType::new(name)
+        } else {
+            None
+        };
+    }
     if !truthy(value) || matches!(&*value.read(), Value::Array(_) | Value::Opaque(_)) {
         return None;
     }
