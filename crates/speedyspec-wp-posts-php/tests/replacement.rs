@@ -58,6 +58,44 @@ fn main() {
                 ? true : [$post, $page, $ids, MemoryPostRepository::$calls];"#
         ),
     );
+    // WP_Post::get_instance() (its body swapped in the prepared release) and get_post() of a WP_Post that is not raw
+    // read through the bound repository too: get_post() has one read path.
+    ok &= yes(
+        &php,
+        &setup,
+        "php_repository_serves_get_instance",
+        &format!(
+            r#"{bind}
+            $direct = WP_Post::get_instance(5);
+            $display = new WP_Post((object) ['ID' => 5, 'post_title' => 'stale', 'filter' => 'display']);
+            $raw = get_post($display);
+            return $direct instanceof WP_Post && 'From PHP' === $direct->post_title && 'raw' === $direct->filter
+                && $raw instanceof WP_Post && 'From PHP' === $raw->post_title
+                && false === WP_Post::get_instance(0) && false === WP_Post::get_instance('abc')
+                && false === WP_Post::get_instance(-3) && false === WP_Post::get_instance(1)
+                ? true : [$direct, $raw];"#
+        ),
+    );
+    // The taxonomy port: a PHP object implementing the twin, bound in the container, serves the post reads' term
+    // cache calls and WP_Post's term properties.
+    ok &= yes(
+        &php,
+        &setup,
+        "php_taxonomy_is_used",
+        r#"final class MemoryTaxonomy implements SpeedySpec\WpPosts\Taxonomy
+        {
+            public static array $calls = [];
+            public function update_object_term_cache($object_ids, $object_types) { self::$calls[] = ['update', $object_ids, $object_types]; }
+            public function clean_object_term_cache($object_ids, $object_type) { self::$calls[] = ['clean', $object_ids, $object_type]; }
+            public function post_term_fields($post, $taxonomy, $field) { self::$calls[] = ['fields', $post->ID, $taxonomy, $field]; return [7, 8]; }
+        }
+        SpeedySpec\Container\Container::getInstance()->bind('SpeedySpec\WpPosts\Taxonomy', fn () => new MemoryTaxonomy(), true);
+        $category = get_post_field('post_category', 1, 'raw');
+        clean_post_cache(1);
+        _prime_post_caches([2], true, false);
+        $expected = [['fields', 1, 'category', 'term_id'], ['clean', [1], 'post'], ['update', [2], ['page']]];
+        return [7, 8] === $category && $expected === MemoryTaxonomy::$calls ? true : [$category, MemoryTaxonomy::$calls];"#,
+    );
     // A binding that fails reaches the caller; nothing falls back to the SQL table.
     ok &= yes(
         &php,

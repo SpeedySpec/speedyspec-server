@@ -288,7 +288,8 @@ pub(crate) fn none_if_false(value: PhpValue) -> Option<PhpValue> {
 /// Which `Posts` read a native caller is about to make, for [`read_hooks`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PostRead<'a> {
-    /// `get_post()`.
+    /// `get_post()` with the `raw` filter (another context fires the `sanitize_post_field()` filters, which
+    /// [`PostRead::Field`] lists).
     Get,
     /// `get_post_field( $name, $post, $context )`.
     Field { name: &'a [u8], context: &'a str },

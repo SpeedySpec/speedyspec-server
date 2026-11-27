@@ -21,6 +21,19 @@
 //!
 //! An object `$post` is handed over for one dispatch only: every dispatch saves the pending object, puts its own
 //! (or none) in place, and restores the saved one after (see [`PhpCurrentPost`]).
+//!
+//! `WP_Post::get_instance()` keeps its signature and its int checks, but the prepared release swaps its body for the
+//! native raw read (`post_instance`), so a direct caller and `WP_Post::filter( 'raw' )` read through the bound post
+//! repository and the `posts` cache, as `get_post()` does.
+//!
+//! Known differences, none of them recorded:
+//! - the readers beside `get_post()` (`get_post_field()`, `get_post_status()`, `get_post_type()`,
+//!   `clean_post_cache()` and the others) read an object argument as a copy: WordPress's `get_post()` inside them
+//!   sanitizes a filterless `stdClass` in place (`filter = 'raw'`, int-cast ids), and here the caller's object is left
+//!   as it was;
+//! - the objects hooks receive are rebuilt copies: the `get_post_status`, `get_page_uri` and `clean_post_cache`
+//!   callbacks get a new `WP_Post`, so a callback that mutates `$post` does not change the caller's object, as it does
+//!   in WordPress (a cross-cutting limit of the hook values, as in the meta functions).
 
 use std::rc::Rc;
 
@@ -330,6 +343,12 @@ fn instance(id: i64) -> Result<Option<Instance>, NativeError> {
         }
         _ => Ok(None),
     }
+}
+
+/// `WP_Post::get_instance( $post_id )`'s body in the prepared release (`release::GET_INSTANCE_BODY`), after its int
+/// checks: the post read by id through the use case, or `false`.
+fn post_instance(x: &[Value]) -> R {
+    Ok(Instance::post(instance(int(&a(x, 0))?)?).unwrap_or(Value::Bool(false)))
 }
 
 /// A `WP_Post` [`instance`] built, and whether its `filter` is the string `raw`.
@@ -963,6 +982,7 @@ fn is_sticky(x: &[Value]) -> R {
 /// The functions the facade calls, with WordPress's names.
 pub(crate) const ENTRIES: &[(&str, Native)] = &[
     ("get_post", get_post),
+    ("post_instance", post_instance),
     ("get_post_field", get_post_field),
     ("get_post_mime_type", get_post_mime_type),
     ("get_post_status", get_post_status),

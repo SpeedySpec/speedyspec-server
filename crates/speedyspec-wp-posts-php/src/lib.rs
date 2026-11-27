@@ -48,7 +48,7 @@ use speedyspec_wp_db_contracts::Wpdb;
 use speedyspec_wp_hooks_contracts::HookApi;
 use speedyspec_wp_meta_contracts::Metadata;
 use speedyspec_wp_object_cache_contracts::ObjectCache;
-use speedyspec_wp_posts::{PostsApi, PostsDeps, register_posts_handlers};
+use speedyspec_wp_posts::{PostsApi, PostsDeps, Taxonomy, register_posts_handlers};
 use speedyspec_wp_posts_contracts::PostRepository;
 use speedyspec_wp_posts_sql::SqlPostRepository;
 
@@ -60,11 +60,14 @@ pub use codec::{Thrown, copy_php, from_php, to_php};
 pub use hooks::PhpValueHooks;
 pub use ports::{
     POST_REPOSITORY, PhpCacheInvalidation, PhpCurrentPost, PhpFormatting, PhpOptions, PhpTaxonomy,
-    PhpUsers, PhpValueCache, ResolvedRepository, SystemMicrotime,
+    PhpUsers, PhpValueCache, ResolvedRepository, ResolvedTaxonomy, SystemMicrotime, TAXONOMY,
 };
-pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
+pub use release::{
+    CLASS_FILE, GET_INSTANCE_BODY, PORTED_FUNCTIONS, prepare_release, strip_ported,
+    swap_get_instance,
+};
 pub use runner::{php_string, posts_read_scenario_runner};
-pub use twins::{PhpPostRepository, PostRepositoryTwin};
+pub use twins::{PhpBoundTaxonomy, PhpPostRepository, PostRepositoryTwin, TaxonomyTwin};
 
 const FACADE: &str = include_str!("post-types.php");
 const READING: &str = include_str!("posts.php");
@@ -94,6 +97,9 @@ impl PostsArea {
         let sql: Rc<dyn PostRepository> = Rc::new(SqlPostRepository::new(wpdb, "default"));
         let default = sql.clone();
         container.bind_port::<dyn PostRepository>(POST_REPOSITORY, move |_, _| Ok(default.clone()));
+        let php_terms: Rc<dyn Taxonomy> = Rc::new(PhpTaxonomy);
+        let default_terms = php_terms.clone();
+        container.bind_port::<dyn Taxonomy>(TAXONOMY, move |_, _| Ok(default_terms.clone()));
         let current = Rc::new(PhpCurrentPost::new());
         let api = PostsApi::new(PostsDeps {
             hooks: Rc::new(PhpValueHooks::new(hooks.clone())),
@@ -105,7 +111,7 @@ impl PostsArea {
             current: current.clone(),
             formatting: Rc::new(PhpFormatting),
             users: Rc::new(PhpUsers),
-            terms: Rc::new(PhpTaxonomy),
+            terms: Rc::new(ResolvedTaxonomy::new(&container, php_terms)),
             clock: Rc::new(SystemMicrotime),
             invalidation: Rc::new(PhpCacheInvalidation),
             options: Rc::new(PhpOptions),
@@ -125,6 +131,7 @@ impl PostsArea {
     /// `SpeedySpec\WpPosts\PostRepository` twin and bound at [`POST_REPOSITORY`] reaches the use cases.
     pub fn ports(area: ContainerArea) -> ContainerArea {
         area.port::<dyn PostRepository>(POST_REPOSITORY, twins::wrap)
+            .port::<dyn Taxonomy>(TAXONOMY, twins::wrap_taxonomy)
     }
 }
 

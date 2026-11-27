@@ -398,6 +398,9 @@ impl ObjectCache for PhpValueCache {
         keys: &[HookValue],
         group: &HookValue,
     ) -> Result<Vec<(Key, bool)>, ObjectCacheError> {
+        if is_parked() {
+            return Ok(Vec::new());
+        }
         self.inner.delete_multiple(keys, group)
     }
 
@@ -407,6 +410,58 @@ impl ObjectCache for PhpValueCache {
 
     fn is_persistent(&self) -> bool {
         self.inner.is_persistent()
+    }
+}
+
+/// The container key of the taxonomy port: PHP binds an object implementing the `SpeedySpec\WpPosts\Taxonomy`
+/// twin here to replace WordPress's term cache functions for the post reads.
+pub const TAXONOMY: &str = "SpeedySpec\\WpPosts\\Taxonomy";
+
+/// The taxonomy port resolved from the container on every call (as [`ResolvedRepository`] is): [`PhpTaxonomy`] is
+/// the default binding; a binding that fails is [`PostError::Db`], and nothing falls back.
+pub struct ResolvedTaxonomy {
+    container: Weak<Container>,
+    fallback: Rc<dyn Taxonomy>,
+}
+
+impl ResolvedTaxonomy {
+    pub fn new(container: &Rc<Container>, fallback: Rc<dyn Taxonomy>) -> ResolvedTaxonomy {
+        ResolvedTaxonomy {
+            container: Rc::downgrade(container),
+            fallback,
+        }
+    }
+
+    fn resolved(&self) -> Result<Rc<dyn Taxonomy>, PostError> {
+        let Some(container) = self.container.upgrade() else {
+            return Ok(self.fallback.clone());
+        };
+        container
+            .make_port::<dyn Taxonomy>(TAXONOMY)
+            .map_err(|e| PostError::Db(format!("the taxonomy binding failed: {e}")))
+    }
+}
+
+impl Taxonomy for ResolvedTaxonomy {
+    fn update_object_term_cache(
+        &self,
+        ids: &[PostId],
+        object_types: &[PhpValue],
+    ) -> Result<(), PostError> {
+        self.resolved()?.update_object_term_cache(ids, object_types)
+    }
+
+    fn clean_object_term_cache(&self, ids: &[PostId], object_type: &str) -> Result<(), PostError> {
+        self.resolved()?.clean_object_term_cache(ids, object_type)
+    }
+
+    fn post_term_fields(
+        &self,
+        post: &PhpValue,
+        taxonomy: &str,
+        field: &str,
+    ) -> Result<PhpValue, PostError> {
+        self.resolved()?.post_term_fields(post, taxonomy, field)
     }
 }
 

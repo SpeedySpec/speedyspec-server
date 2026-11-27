@@ -118,6 +118,22 @@ fn main() {
         return $out === $global && 'display' === $global->filter
             && 'Hello &#8220;World&#8221; &amp; <b>friends</b>' !== $global->post_title ? true : [$out, $global];"#,
     );
+    // A callback that catches a nested get_post()'s failure: the outer native returns normally, nothing it did not
+    // meet is rethrown (wpdb's side channel is emptied by the nested call that took it).
+    ok &= yes(
+        &php,
+        &setup,
+        "caught_nested_failure_is_not_rethrown",
+        r#"$thrown = new LogicException('from query');
+        add_filter('query', function ($sql) use ($thrown) { if (str_contains($sql, 'ID = 999 ')) { throw $thrown; } return $sql; });
+        $caught = null;
+        add_filter('get_post_status', function ($status) use (&$caught) {
+            try { get_post(999); } catch (LogicException $e) { $caught = $e; }
+            return $status;
+        });
+        try { $status = get_post_status(1); } catch (Throwable $e) { $status = $e; }
+        return 'publish' === $status && $caught instanceof LogicException ? true : [$status, $caught];"#,
+    );
     // On the edit screen get_sample_permalink() filters the global `sample` and changes its status: with no
     // argument get_post_status() reads the post again by its ID; given the object, it uses it as it is.
     ok &= yes(

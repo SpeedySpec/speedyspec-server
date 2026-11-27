@@ -2,7 +2,10 @@
 //! rest (the meta wrappers, the `WP_Query` callers, `update_post_author_caches()`, the attachment readers), and it
 //! still parses.
 
-use speedyspec_wp_posts_php::{PORTED_FUNCTIONS, prepare_release, strip_ported};
+use speedyspec_wp_posts_php::{
+    CLASS_FILE, GET_INSTANCE_BODY, PORTED_FUNCTIONS, prepare_release, strip_ported,
+    swap_get_instance,
+};
 
 fn release() -> std::path::PathBuf {
     speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("posts-read"))
@@ -128,4 +131,50 @@ fn facades_declare_every_ported_function() {
         };
         assert_eq!(line(&facade), line(&source), "{name}'s parameters differ");
     }
+}
+
+/// The prepared release swaps `WP_Post::get_instance()`'s body for the native raw read and keeps the rest of the
+/// class: the signature, the docblock, the other methods. The copy parses.
+#[test]
+fn get_instance_body_is_swapped() {
+    let release = release();
+    let source = std::fs::read_to_string(release.join(CLASS_FILE)).unwrap();
+    let swapped = swap_get_instance(&source).unwrap();
+    assert!(
+        source.contains("$wpdb->get_row("),
+        "the release reads wpdb itself"
+    );
+    assert!(
+        !swapped.contains("$wpdb->get_row("),
+        "the swapped class still reads wpdb"
+    );
+    assert!(swapped.contains(GET_INSTANCE_BODY));
+    assert!(swapped.contains("\tpublic static function get_instance( $post_id ) {\n"));
+    for method in ["__construct", "__isset", "__get", "filter", "to_array"] {
+        assert!(
+            swapped.contains(&format!("public function {method}(")),
+            "{method} was removed"
+        );
+    }
+    assert_eq!(
+        source.matches("function ").count(),
+        swapped.matches("function ").count()
+    );
+    let out = tempfile::tempdir().unwrap();
+    let root = prepare_release(&release, &out.path().join("wordpress")).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(root.join(CLASS_FILE)).unwrap(),
+        swapped
+    );
+    let php = std::env::var("PHP").unwrap_or_else(|_| "php".into());
+    let lint = std::process::Command::new(&php)
+        .arg("-l")
+        .arg(root.join(CLASS_FILE))
+        .output()
+        .unwrap();
+    assert!(
+        lint.status.success(),
+        "class-wp-post.php: {}",
+        String::from_utf8_lossy(&lint.stdout)
+    );
 }
