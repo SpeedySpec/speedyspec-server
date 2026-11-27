@@ -19,7 +19,7 @@ use speedyspec_wp_posts_contracts::{
 };
 
 use crate::hook::{filter, hv, pv};
-use crate::read::ports::{CacheInvalidation, Microtime, Taxonomy, Users};
+use crate::read::ports::{CacheInvalidation, Microtime, Options, Taxonomy, Users};
 use crate::{Formatting, SanitizePorts};
 
 /// What the post read use cases work through. The runtime passes the concrete adapters in.
@@ -48,6 +48,8 @@ pub struct PostsDeps {
     pub clock: Rc<dyn Microtime>,
     /// `$_wp_suspend_cache_invalidation`.
     pub invalidation: Rc<dyn CacheInvalidation>,
+    /// `get_option()`, for `is_sticky()`.
+    pub options: Rc<dyn Options>,
 }
 
 /// WordPress's post reading (`post.php` and `WP_Post::get_instance()`), one method per function. It implements the

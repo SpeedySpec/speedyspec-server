@@ -1,4 +1,4 @@
-//! The outbound ports the read use cases call for code that is not ported yet (Adapter): users, taxonomy, the clock
+//! The outbound ports the read use cases call for code that is not ported yet (Adapter): users, taxonomy, options, the clock
 //! `wp_cache_set_last_changed()` reads, and the `$_wp_suspend_cache_invalidation` global. Phase 4's PHP adapters
 //! call WordPress's own functions; the Rust adapters come with the users and taxonomy ports.
 
@@ -41,6 +41,12 @@ pub trait Taxonomy {
         taxonomy: &str,
         field: &str,
     ) -> Result<PhpValue, PostError>;
+}
+
+/// The options the post reads take (`is_sticky()`'s `sticky_posts`): an outbound port to the options seam.
+pub trait Options {
+    /// `get_option( $name )`, its filters included; `false` when the option does not exist.
+    fn get_option(&self, name: &str) -> Result<PhpValue, PostError>;
 }
 
 /// PHP's `microtime()` with no argument: `"0.12345600 1700000000"`, the value `wp_cache_set_last_changed()` stores.

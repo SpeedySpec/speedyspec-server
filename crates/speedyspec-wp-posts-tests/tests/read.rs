@@ -345,6 +345,7 @@ fn fixture_with(posts: Vec<Post>) -> Fixture {
         terms: terms.clone(),
         clock: Rc::new(Clock::default()),
         invalidation: suspend.clone(),
+        options: Rc::new(NoOptions),
     });
     Fixture {
         api,
@@ -1701,4 +1702,13 @@ fn update_post_cache_objects_key_string_ids_as_ints() {
         b"Keyed"
     );
     assert!(calls(&f).is_empty());
+}
+
+/// No option exists (`get_option()` answers false).
+struct NoOptions;
+
+impl speedyspec_wp_posts::Options for NoOptions {
+    fn get_option(&self, _name: &str) -> Result<PhpValue, PostError> {
+        Ok(PhpValue::Bool(false))
+    }
 }

@@ -59,11 +59,11 @@ pub use adapters::{
 pub use codec::{Thrown, copy_php, from_php, to_php};
 pub use hooks::PhpValueHooks;
 pub use ports::{
-    POST_REPOSITORY, PhpCacheInvalidation, PhpCurrentPost, PhpFormatting, PhpTaxonomy, PhpUsers,
-    PhpValueCache, ResolvedRepository, SystemMicrotime,
+    POST_REPOSITORY, PhpCacheInvalidation, PhpCurrentPost, PhpFormatting, PhpOptions, PhpTaxonomy,
+    PhpUsers, PhpValueCache, ResolvedRepository, SystemMicrotime,
 };
 pub use release::{PORTED_FUNCTIONS, prepare_release, strip_ported};
-pub use runner::posts_read_scenario_runner;
+pub use runner::{php_string, posts_read_scenario_runner};
 pub use twins::{PhpPostRepository, PostRepositoryTwin};
 
 const FACADE: &str = include_str!("post-types.php");
@@ -108,9 +108,10 @@ impl PostsArea {
             terms: Rc::new(PhpTaxonomy),
             clock: Rc::new(SystemMicrotime),
             invalidation: Rc::new(PhpCacheInvalidation),
+            options: Rc::new(PhpOptions),
         });
         register_posts_handlers(&container, api.clone());
-        let reading = Rc::new(read::Reading::new(&container, current, hooks));
+        let reading = Rc::new(read::Reading::new(&container, current));
         read::READING.with(|r| *r.borrow_mut() = Some(reading));
         PostsArea { api }
     }

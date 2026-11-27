@@ -36,6 +36,10 @@ pub trait Formatting {
 
     /// `user_can_richedit()`, read for PHP truth as `format_to_edit()` reads it.
     fn user_can_richedit(&self) -> Result<bool, PostError>;
+
+    /// `sanitize_trackback_urls( $to_ping )`, with its filter: the `http(s)` URLs of the list, each through
+    /// `sanitize_url()`, joined with newlines (`get_to_ping()`).
+    fn sanitize_trackback_urls(&self, to_ping: PhpValue) -> Result<PhpValue, PostError>;
 }
 
 /// What the sanitize functions work through.

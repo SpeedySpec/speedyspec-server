@@ -15,7 +15,7 @@ use speedyspec_php_ext::{Key, Value};
 use speedyspec_php_serialize::PhpValue;
 use speedyspec_wp_hooks_contracts::{HookError, HookValue};
 use speedyspec_wp_object_cache_contracts::{ObjectCache, ObjectCacheError};
-use speedyspec_wp_posts::{CacheInvalidation, Formatting, Microtime, Taxonomy, Users};
+use speedyspec_wp_posts::{CacheInvalidation, Formatting, Microtime, Options, Taxonomy, Users};
 use speedyspec_wp_posts_contracts::{
     CurrentPost, LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError,
     PostId, PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
@@ -66,10 +66,14 @@ fn id_list(ids: &[PostId]) -> Value {
 /// was given in its place.
 ///
 /// WordPress's readers take `$post` as an id or as an object. The [`PostRef`](speedyspec_wp_posts_contracts::PostRef)
-/// the use cases take names an id or the current post, so a native function given an object hands it over with
-/// `give` and asks for [`PostRef::Current`](speedyspec_wp_posts_contracts::PostRef::Current): the
-/// next read takes the given object once, exactly as `get_post()` would take it, and later reads see the global
-/// again. The native function forgets an object no read took (`forget`).
+/// the use cases take names an id or the current post (a `PostRef` cannot carry an object; a note for the next
+/// posts contracts), so a native function given an object hands it over for one dispatch and asks for
+/// [`PostRef::Current`](speedyspec_wp_posts_contracts::PostRef::Current): the first read takes it, exactly as
+/// `get_post()` would take it, and later reads see the global again.
+///
+/// The hand-over is scoped to the dispatch (`replace`): the native functions save what is pending, put their own
+/// object (or nothing) in its place, and restore the saved value when the handler returns. A handler PHP rebinds
+/// that never reads the object therefore cannot leak it into a read nested inside it.
 #[derive(Default)]
 pub struct PhpCurrentPost {
     given: RefCell<Option<PhpValue>>,
@@ -80,14 +84,9 @@ impl PhpCurrentPost {
         PhpCurrentPost::default()
     }
 
-    /// The object the next read takes in place of the global.
-    pub(crate) fn give(&self, post: PhpValue) {
-        *self.given.borrow_mut() = Some(post);
-    }
-
-    /// Drops a given object no read took.
-    pub(crate) fn forget(&self) {
-        self.given.borrow_mut().take();
+    /// Puts `given` in place of the pending object, which it returns.
+    pub(crate) fn replace(&self, given: Option<PhpValue>) -> Option<PhpValue> {
+        std::mem::replace(&mut *self.given.borrow_mut(), given)
     }
 }
 
@@ -146,6 +145,23 @@ impl Formatting for PhpFormatting {
             return Ok(false);
         }
         Ok(truthy(&call("user_can_richedit", &[])?))
+    }
+
+    fn sanitize_trackback_urls(&self, to_ping: PhpValue) -> Result<PhpValue, PostError> {
+        let args = [into_php(&to_ping)?];
+        self.text("sanitize_trackback_urls", &args, to_ping)
+    }
+}
+
+/// `get_option()` (the native options functions, or option.php): `false` while it is not declared.
+pub struct PhpOptions;
+
+impl Options for PhpOptions {
+    fn get_option(&self, name: &str) -> Result<PhpValue, PostError> {
+        if !exists("get_option") {
+            return Ok(PhpValue::Bool(false));
+        }
+        from_answer(&call("get_option", &[Value::Str(name.into())])?)
     }
 }
 
@@ -253,7 +269,8 @@ impl CacheInvalidation for PhpCacheInvalidation {
 
 /// The request's object cache with the PHP objects in its answers carried as `PhpValue`s (Decorator): a `posts`
 /// entry another caller stored (a `WP_Post`, a `stdClass`) is copied with its class and properties, so the use cases
-/// read it as `WP_Post::get_instance()` does. Writes pass through.
+/// read it as `WP_Post::get_instance()` does. Writes pass through, except while a port's failure is parked: then
+/// nothing is written, as WordPress writes nothing after the exception.
 pub struct PhpValueCache {
     inner: Rc<dyn ObjectCache>,
 }
@@ -326,6 +343,9 @@ impl ObjectCache for PhpValueCache {
         group: &HookValue,
         expire: i64,
     ) -> Result<bool, ObjectCacheError> {
+        if is_parked() {
+            return Ok(false);
+        }
         self.inner.add(key, data, group, expire)
     }
 
@@ -335,6 +355,9 @@ impl ObjectCache for PhpValueCache {
         group: &HookValue,
         expire: i64,
     ) -> Result<Vec<(Key, bool)>, ObjectCacheError> {
+        if is_parked() {
+            return Ok(data.into_iter().map(|(k, _)| (k, false)).collect());
+        }
         self.inner.add_multiple(data, group, expire)
     }
 
@@ -345,6 +368,9 @@ impl ObjectCache for PhpValueCache {
         group: &HookValue,
         expire: i64,
     ) -> Result<bool, ObjectCacheError> {
+        if is_parked() {
+            return Ok(false);
+        }
         self.inner.set(key, data, group, expire)
     }
 
@@ -354,10 +380,16 @@ impl ObjectCache for PhpValueCache {
         group: &HookValue,
         expire: i64,
     ) -> Result<Vec<(Key, bool)>, ObjectCacheError> {
+        if is_parked() {
+            return Ok(data.into_iter().map(|(k, _)| (k, false)).collect());
+        }
         self.inner.set_multiple(data, group, expire)
     }
 
     fn delete(&self, key: &HookValue, group: &HookValue) -> Result<bool, ObjectCacheError> {
+        if is_parked() {
+            return Ok(false);
+        }
         self.inner.delete(key, group)
     }
 

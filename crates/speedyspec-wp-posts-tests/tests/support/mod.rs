@@ -99,6 +99,11 @@ impl Formatting for RustFormatting {
         let out = php(&self.filter("user_can_richedit", HookValue::Bool(false))?);
         Ok(!speedyspec_php_serialize::semantics::is_empty(&out))
     }
+
+    /// Not recorded by these tests: the text as it is.
+    fn sanitize_trackback_urls(&self, to_ping: PhpValue) -> Result<PhpValue, PostError> {
+        Ok(to_ping)
+    }
 }
 
 // ---- the recordings ----

@@ -92,6 +92,8 @@ message!(command UpdatePostmetaCache { ids: Vec<PostId> } -> R<Option<PhpValue>>
 message!(query WpGetPostParentId { post: PostRef } -> R<Option<PostId>>, |a, m| a.wp_get_post_parent_id(m.post));
 message!(command PrimePostCaches { ids: Vec<PostId>, terms: bool, meta: bool } -> R<()>,
     |a, m| a.prime_post_caches(&m.ids, m.terms, m.meta));
+message!(command PrimePostCachesGiven { ids: Vec<PostId>, given: Vec<PhpValue>, terms: bool, meta: bool } -> R<()>,
+    |a, m| a.prime_post_caches_given(&m.ids, &m.given, m.terms, m.meta));
 message!(command PrimePostParentIdCaches { ids: Vec<PostId> } -> R<()>,
     |a, m| a.prime_post_parent_id_caches(&m.ids));
 message!(command WpCacheSetPostsLastChanged {} -> R<()>, |a, m| a.wp_cache_set_posts_last_changed());
@@ -107,6 +109,12 @@ message!(query GetPageChildren { page_id: PostId, pages: Vec<Post> } -> R<Vec<Po
     |a, m| Ok(page_children(m.page_id, &m.pages)));
 message!(query GetPageHierarchy { pages: Vec<Post>, page_id: PostId } -> R<Vec<(PostId, Slug)>>,
     |a, m| Ok(page_hierarchy(&m.pages, m.page_id)));
+message!(query GetPung { post: PostRef } -> R<PhpValue>, |a, m| a.get_pung(m.post));
+message!(query GetToPing { post: PostRef } -> R<PhpValue>, |a, m| a.get_to_ping(m.post));
+message!(query GetEnclosed { post_id: PhpValue } -> R<PhpValue>, |a, m| a.get_enclosed(&m.post_id));
+message!(query IsSticky { post_id: PhpValue } -> R<PhpValue>, |a, m| a.is_sticky(&m.post_id));
+message!(query PageTraverseName { page_id: PhpValue, children: PhpValue, result: PhpValue } -> R<PhpValue>,
+    |a, m| a.page_traverse_name(&m.page_id, &m.children, m.result));
 message!(query GetAvailablePostMimeTypes { post_type: String } -> R<Vec<PhpValue>>,
     |a, m| a.get_available_post_mime_types(&m.post_type));
 
@@ -122,10 +130,11 @@ macro_rules! bind_all {
 pub fn register_posts_handlers(container: &Container, api: Rc<PostsApi>) {
     bind_all!(container, api;
         commands: UpdatePostCache, UpdatePostCacheObjects, CleanPostCache, UpdatePostCaches, UpdatePostCachesObjects,
-            UpdatePostParentCaches, UpdatePostmetaCache, PrimePostCaches, PrimePostParentIdCaches,
+            UpdatePostParentCaches, UpdatePostmetaCache, PrimePostCaches, PrimePostCachesGiven, PrimePostParentIdCaches,
             WpCacheSetPostsLastChanged;
         queries: GetPost, GetPostObject, GetPostAncestors, GetPostField, GetPostMimeType, GetPostStatus, GetPostType,
             SanitizePost, SanitizePostField, CountPostsCacheKey, WpCountPosts, WpCountAttachments, GetAllPageIds,
             GetPageByPath, GetPageChildren, GetPageHierarchy, GetPageUri, GetLastPostDate, GetLastPostModified,
-            GetLastPostTime, WpGetPostParentId, GetAvailablePostMimeTypes);
+            GetLastPostTime, WpGetPostParentId, GetAvailablePostMimeTypes, GetPung, GetToPing, GetEnclosed,
+            IsSticky, PageTraverseName);
 }

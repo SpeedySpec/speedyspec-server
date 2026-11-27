@@ -8,9 +8,10 @@ mod entry;
 mod get;
 mod messages;
 mod pages;
+mod pings;
 mod ports;
 
 pub use api::{PostRead, PostsApi, PostsDeps, read_hooks};
 pub use entry::PostEntry;
 pub use messages::*;
-pub use ports::{CacheInvalidation, Microtime, Taxonomy, Users};
+pub use ports::{CacheInvalidation, Microtime, Options, Taxonomy, Users};

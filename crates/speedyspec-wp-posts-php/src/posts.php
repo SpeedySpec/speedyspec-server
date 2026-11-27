@@ -217,14 +217,6 @@ namespace SpeedySpec\WpPosts\Php
     }
 
     /**
-     * `$post->$name`, through the class's magic.
-     */
-    function property($post, $name)
-    {
-        return $post->$name;
-    }
-
-    /**
      * `WP_Post::__get()`'s `post_category` and `tags_input` branch.
      */
     function term_fields($post, $taxonomy, $field)

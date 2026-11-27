@@ -304,10 +304,11 @@ impl PostsApi {
     /// `get_post_status( $post )` (post.php 1298-1355), as WordPress returns it: `false` with no post, otherwise the
     /// `get_post_status` filter's answer, which a callback may make any value.
     ///
-    /// A `WP_Post` whose `filter` is `sample` (`get_sample_permalink()`'s) is used as it is, not read again. The
-    /// binding hands an object argument over as [`PostRef::Current`], so a global `$post` filtered `sample` is used
-    /// as it is too, where WordPress would read the global again by its `ID` (an approximation: only
-    /// `get_sample_permalink()` makes such an object, and it passes it explicitly).
+    /// A `WP_Post` given explicitly whose `filter` is `sample` (`get_sample_permalink()`'s) is used as it is, not
+    /// read again. The binding hands an object argument over as [`PostRef::Current`], so the current post is read
+    /// that way. With no argument, WordPress reads a `sample`-filtered global again by its `ID` (on the edit screen
+    /// `get_sample_permalink()` sets the filter on the global itself): the binding asks for [`PostRef::Id`] of the
+    /// global's `ID` there, and a Rust caller does the same.
     pub fn get_post_status(&self, post: PostRef) -> Result<PhpValue, PostError> {
         let loaded = match post {
             PostRef::Id(PostId(0)) | PostRef::Current => match self.d.current.current() {

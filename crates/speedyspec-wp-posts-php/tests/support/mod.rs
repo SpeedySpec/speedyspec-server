@@ -133,14 +133,17 @@ pub fn boot(url: &str) -> (Php, Rc<Container>) {
 /// The code that loads compat/posts-read/setup.php (single site) over `root`: WordPress's own files, the seeded
 /// tables, and the core post types.
 pub fn setup_code(root: &Path) -> String {
+    use speedyspec_wp_posts_php::php_string;
     format!(
-        "define('SPEEDYSPEC_COMPAT_WP_ROOT', {:?}); define('SPEEDYSPEC_COMPAT_PORT', true); \
-         define('SPEEDYSPEC_COMPAT_MULTISITE', false); require {:?}; return true;",
-        format!("{}/", root.display()),
-        speedyspec_compat::compat_dir()
-            .join("posts-read/setup.php")
-            .display()
-            .to_string()
+        "define('SPEEDYSPEC_COMPAT_WP_ROOT', {}); define('SPEEDYSPEC_COMPAT_PORT', true); \
+         define('SPEEDYSPEC_COMPAT_MULTISITE', false); require {}; return true;",
+        php_string(&format!("{}/", root.display())),
+        php_string(
+            &speedyspec_compat::compat_dir()
+                .join("posts-read/setup.php")
+                .display()
+                .to_string()
+        )
     )
 }
 

@@ -231,6 +231,22 @@ impl PostsApi {
         terms: bool,
         meta: bool,
     ) -> Result<(), PostError> {
+        let given: Vec<PhpValue> = ids.iter().map(|id| PhpValue::Int(int(id.0))).collect();
+        self.prime_post_caches_given(ids, &given, terms, meta)
+    }
+
+    /// [`PostsApi::prime_post_caches`] where the caller's `$ids` hold values the typed `ids` drop (a non-integer
+    /// string `_validate_cache_id()` refused, a negative id): the rows are read for `ids`, while the meta and term
+    /// steps take `given`, as WordPress passes them its unfiltered `$ids`. `update_postmeta_cache()` reads each
+    /// given value as `intval` (a negative one as 0, since the metadata ids are unsigned), and `get_post_type()`
+    /// reads each as `get_post()` does.
+    pub fn prime_post_caches_given(
+        &self,
+        ids: &[PostId],
+        given: &[PhpValue],
+        terms: bool,
+        meta: bool,
+    ) -> Result<(), PostError> {
         let non_cached = self.non_cached_ids(ids, "posts")?;
         if !non_cached.is_empty() {
             let wanted: Vec<PostId> = non_cached
@@ -242,14 +258,18 @@ impl PostsApi {
                 self.update_post_cache(&fresh)?;
             }
         }
+        let intval: Vec<PostId> = given
+            .iter()
+            .map(|v| PostId(u64::try_from(to_php_int(v)).unwrap_or(0)))
+            .collect();
         if meta {
-            self.update_postmeta_cache(ids)?;
+            self.update_postmeta_cache(&intval)?;
         }
         if terms {
             let mut types: Vec<PhpValue> = Vec::new();
-            for id in ids {
-                let post_type = match self.get_post_type(PostRef::Id(*id))? {
-                    Some(t) => s(t.as_str()),
+            for value in given {
+                let post_type = match self.resolve_value(value.clone())? {
+                    Some(loaded) => s(loaded.post.post_type.as_str()),
                     None => PhpValue::Bool(false),
                 };
                 // array_unique() compares string forms: false and '' are one value.
@@ -260,7 +280,7 @@ impl PostsApi {
                     types.push(post_type);
                 }
             }
-            self.d.terms.update_object_term_cache(ids, &types)?;
+            self.d.terms.update_object_term_cache(&intval, &types)?;
         }
         Ok(())
     }

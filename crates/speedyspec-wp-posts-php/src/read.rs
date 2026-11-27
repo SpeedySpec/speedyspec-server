@@ -16,9 +16,11 @@
 //! - `_validate_cache_id()` stays WordPress's (functions.php): the ids it refuses never reach the typed use cases,
 //!   and a negative id, which it accepts, is dropped there too (`compat/posts-read/breaks.json`).
 //!
-//! `get_pung()`, `get_to_ping()`, `get_enclosed()`, `is_sticky()` and `_page_traverse_name()` have no use case: they
-//! read a post through `get_post()` (or `get_post_custom()`, `get_option()`) and filter a list, so the adapter does
-//! that work over the native `get_post()` and WordPress's own helpers.
+//! `get_post()` dispatches `GetPostObject` (the handler PHP rebinds to change how a post is read by id); the typed
+//! `GetPost` handler is for Rust callers, and `get_post()` never reaches it, since it keeps PHP's own objects.
+//!
+//! An object `$post` is handed over for one dispatch only: every dispatch saves the pending object, puts its own
+//! (or none) in place, and restores the saved one after (see [`PhpCurrentPost`]).
 
 use std::rc::Rc;
 
@@ -28,15 +30,14 @@ use speedyspec_php::native::NativeError;
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_php_serialize::semantics::{get, to_php_int, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
-use speedyspec_wp_hooks_contracts::{Count, HookApi, HookName};
 use speedyspec_wp_posts::{
-    CleanPostCache, CountPostsCacheKey, GetAllPageIds, GetAvailablePostMimeTypes, GetLastPostDate,
-    GetLastPostModified, GetLastPostTime, GetPageByPath, GetPageChildren, GetPageHierarchy,
-    GetPageUri, GetPostAncestors, GetPostField, GetPostMimeType, GetPostObject, GetPostStatus,
-    GetPostType, PostEntry, PrimePostCaches, PrimePostParentIdCaches, SanitizePost,
-    SanitizePostField, UpdatePostCacheObjects, UpdatePostCachesObjects, UpdatePostParentCaches,
-    UpdatePostmetaCache, WpCacheSetPostsLastChanged, WpCountAttachments, WpCountPosts,
-    WpGetPostParentId,
+    CleanPostCache, CountPostsCacheKey, GetAllPageIds, GetAvailablePostMimeTypes, GetEnclosed,
+    GetLastPostDate, GetLastPostModified, GetLastPostTime, GetPageByPath, GetPageChildren,
+    GetPageHierarchy, GetPageUri, GetPostAncestors, GetPostField, GetPostMimeType, GetPostObject,
+    GetPostStatus, GetPostType, GetPung, GetToPing, IsSticky, PageTraverseName, PostEntry,
+    PrimePostCachesGiven, PrimePostParentIdCaches, SanitizePost, SanitizePostField,
+    UpdatePostCacheObjects, UpdatePostCachesObjects, UpdatePostParentCaches, UpdatePostmetaCache,
+    WpCacheSetPostsLastChanged, WpCountAttachments, WpCountPosts, WpGetPostParentId,
 };
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, Post, PostError, PostId, PostRef, PostTypeArg, PostTypeName,
@@ -75,9 +76,14 @@ pub(crate) struct Handlers {
     parent_caches: HandlerRef<UpdatePostParentCaches>,
     clean: HandlerRef<CleanPostCache>,
     meta_cache: HandlerRef<UpdatePostmetaCache>,
-    prime: HandlerRef<PrimePostCaches>,
     prime_parents: HandlerRef<PrimePostParentIdCaches>,
     last_changed: HandlerRef<WpCacheSetPostsLastChanged>,
+    prime_given: HandlerRef<PrimePostCachesGiven>,
+    pung: QueryRef<GetPung>,
+    to_ping: QueryRef<GetToPing>,
+    enclosed: QueryRef<GetEnclosed>,
+    sticky: QueryRef<IsSticky>,
+    traverse: QueryRef<PageTraverseName>,
 }
 
 impl Handlers {
@@ -109,9 +115,14 @@ impl Handlers {
             parent_caches: HandlerRef::new(c.clone()),
             clean: HandlerRef::new(c.clone()),
             meta_cache: HandlerRef::new(c.clone()),
-            prime: HandlerRef::new(c.clone()),
             prime_parents: HandlerRef::new(c.clone()),
             last_changed: HandlerRef::new(c.clone()),
+            prime_given: HandlerRef::new(c.clone()),
+            pung: QueryRef::new(c.clone()),
+            to_ping: QueryRef::new(c.clone()),
+            enclosed: QueryRef::new(c.clone()),
+            sticky: QueryRef::new(c.clone()),
+            traverse: QueryRef::new(c.clone()),
         }
     }
 }
@@ -121,26 +132,21 @@ pub(crate) struct Reading {
     handlers: Handlers,
     /// The global `$post`, and the object a native function hands over in its place.
     current: Rc<PhpCurrentPost>,
-    /// The Hook API as PHP gave it, for the filters this adapter runs itself (`get_pung` and the others).
-    hooks: Rc<dyn HookApi>,
 }
 
 impl Reading {
-    pub(crate) fn new(
-        container: &Rc<Container>,
-        current: Rc<PhpCurrentPost>,
-        hooks: Rc<dyn HookApi>,
-    ) -> Reading {
+    pub(crate) fn new(container: &Rc<Container>, current: Rc<PhpCurrentPost>) -> Reading {
         Reading {
             handlers: Handlers::new(container),
             current,
-            hooks,
         }
     }
 }
 
 thread_local! {
     pub(crate) static READING: std::cell::RefCell<Option<Rc<Reading>>> = const { std::cell::RefCell::new(None) };
+    /// The object the next dispatch hands over in place of the global (`with_post`).
+    static GIVE_NEXT: std::cell::RefCell<Option<PhpValue>> = const { std::cell::RefCell::new(None) };
 }
 
 fn reading() -> Result<Rc<Reading>, NativeError> {
@@ -161,12 +167,25 @@ fn bus(e: BusError) -> NativeError {
     NativeError::throw("Error", e.to_string())
 }
 
+/// Runs one dispatch with the object `with_post` queued for it (or none) as the pending one, restoring what was
+/// pending before, so nothing handed to an outer dispatch reaches a read nested in this one, and nothing this
+/// dispatch left untaken outlives it.
+fn scoped<T>(r: &Reading, f: impl FnOnce() -> T) -> T {
+    let next = GIVE_NEXT.with(|g| g.borrow_mut().take());
+    let saved = r.current.replace(next);
+    let out = f();
+    r.current.replace(saved);
+    out
+}
+
 fn ask<Q: Query<Result = Result<T, PostError>>, T>(
     pick: impl FnOnce(&Handlers) -> &QueryRef<Q>,
     q: Q,
 ) -> Result<T, NativeError> {
     let r = reading()?;
-    pick(&r.handlers).call(q).map_err(bus)?.map_err(post_error)
+    scoped(&r, || pick(&r.handlers).call(q))
+        .map_err(bus)?
+        .map_err(post_error)
 }
 
 fn send<C: Command<Result = Result<T, PostError>>, T>(
@@ -174,7 +193,9 @@ fn send<C: Command<Result = Result<T, PostError>>, T>(
     c: C,
 ) -> Result<T, NativeError> {
     let r = reading()?;
-    pick(&r.handlers).call(c).map_err(bus)?.map_err(post_error)
+    scoped(&r, || pick(&r.handlers).call(c))
+        .map_err(bus)?
+        .map_err(post_error)
 }
 
 fn php_in(value: &Value) -> Result<PhpValue, NativeError> {
@@ -265,10 +286,9 @@ fn with_post<T>(
         PostArg::Missing => Ok(None),
         PostArg::Ref(post) => f(post).map(Some),
         PostArg::Object(object) => {
-            let current = reading()?.current.clone();
-            current.give(object);
+            GIVE_NEXT.with(|g| *g.borrow_mut() = Some(object));
             let out = f(PostRef::Current);
-            current.forget();
+            GIVE_NEXT.with(|g| g.borrow_mut().take());
             out.map(Some)
         }
     }
@@ -408,8 +428,37 @@ fn get_post_mime_type(x: &[Value]) -> R {
     })
 }
 
+/// With no `$post`, a global `WP_Post` filtered `sample` (`get_sample_permalink()` sets it on the global on the edit
+/// screen) is read again by its `ID`, as `get_post()` does through `WP_Post::filter( 'raw' )`.
+fn status_arg(value: Value) -> Result<Value, NativeError> {
+    if truthy(&value) {
+        return Ok(value);
+    }
+    let Some(global) = speedyspec_php::global("post") else {
+        return Ok(value);
+    };
+    if !is_wp_post(&global)? {
+        return Ok(value);
+    }
+    match copy(&global)? {
+        PhpValue::Object { properties, .. } if matches!(get(&properties, "filter"), Some(PhpValue::Str(f)) if f == b"sample") =>
+        {
+            let id = get(&properties, "ID").map_or(0, to_php_int);
+            // `(int) $ID`: below 1 is no post (a non-numeric argument is one).
+            Ok(if id > 0 {
+                Value::Int(id)
+            } else {
+                Value::Str("x".into())
+            })
+        }
+        _ => Ok(value),
+    }
+}
+
 fn get_post_status(x: &[Value]) -> R {
-    let found = with_post(&a(x, 0), |post| ask(|h| &h.status, GetPostStatus { post }))?;
+    let found = with_post(&status_arg(a(x, 0))?, |post| {
+        ask(|h| &h.status, GetPostStatus { post })
+    })?;
     match found {
         Some(status) => php_out(&status),
         None => Ok(Value::Bool(false)),
@@ -553,62 +602,13 @@ fn get_page_hierarchy(x: &[Value]) -> R {
     ))
 }
 
-/// An array key as PHP makes it from a value (`$array[ $value ]`).
-fn array_key(value: &Value) -> Result<Key, NativeError> {
-    let read = value.read().into_owned();
-    Ok(match read {
-        Value::Int(i) => Key::Int(i),
-        Value::Bool(b) => Key::Int(i64::from(b)),
-        Value::Float(f) if f.is_finite() => Key::Int(f.trunc() as i64),
-        Value::Null => Key::Str(String::new()),
-        other => crate::adapters::canonical(&bytes(&other)?),
-    })
-}
-
-/// `_page_traverse_name( $page_id, $children, $result )`: the names below `page_key`, depth first, written into
-/// `result` as `$result[ $child->ID ] = $child->post_name` does. A child already on the path is listed but not
-/// descended into, where PHP recurses forever (as the page tree rules stop).
-fn traverse(
-    page_key: &Key,
-    children: &[(Key, Value)],
-    result: &mut Vec<(Key, Value)>,
-    path: &mut Vec<Key>,
-) -> Result<(), NativeError> {
-    let Some((_, list)) = children.iter().find(|(k, _)| k == page_key) else {
-        return Ok(());
-    };
-    for (_, child) in entries(list) {
-        let properties = match copy(&child)? {
-            PhpValue::Object { properties, .. } => properties,
-            _ => Vec::new(),
-        };
-        let id = php_out(&get(&properties, "ID").cloned().unwrap_or(PhpValue::Null))?;
-        let name = php_out(
-            &get(&properties, "post_name")
-                .cloned()
-                .unwrap_or(PhpValue::Null),
-        )?;
-        let key = array_key(&id)?;
-        match result.iter_mut().find(|(k, _)| *k == key) {
-            Some(slot) => slot.1 = name,
-            None => result.push((key.clone(), name)),
-        }
-        if !path.contains(&key) {
-            path.push(key.clone());
-            traverse(&key, children, result, path)?;
-            path.pop();
-        }
-    }
-    Ok(())
-}
-
 fn page_traverse_name(x: &[Value]) -> R {
-    let key = array_key(&a(x, 0))?;
-    let children = entries(&a(x, 1));
-    let mut result = entries(&a(x, 2));
-    let mut path = vec![key.clone()];
-    traverse(&key, &children, &mut result, &mut path)?;
-    Ok(Value::Array(result))
+    let m = PageTraverseName {
+        page_id: php_in(&a(x, 0))?,
+        children: copy(&a(x, 1))?,
+        result: php_in(&a(x, 2))?,
+    };
+    php_out(&ask(|h| &h.traverse, m)?)
 }
 
 fn get_page_uri(x: &[Value]) -> R {
@@ -848,32 +848,36 @@ fn update_postmeta_cache(x: &[Value]) -> R {
 }
 
 /// `array_filter( $ids, '_validate_cache_id' )` (WordPress's own, with its `_doing_it_wrong()`), then `intval`;
-/// a negative id is dropped as well, since the typed use cases cannot carry it.
-fn cache_ids(value: &Value) -> Result<Vec<PostId>, NativeError> {
+/// a negative id is dropped as well, since the typed use cases cannot carry it. The ids as given come back too.
+fn cache_ids(value: &Value) -> Result<(Vec<PostId>, Vec<PhpValue>), NativeError> {
     let mut ids = Vec::new();
+    let mut given = Vec::new();
     for (_, id) in entries(value) {
+        given.push(php_in(&id)?);
         let valid = truthy(&php("_validate_cache_id", std::slice::from_ref(&id)).map_err(thrown)?);
         if valid && let Ok(id) = u64::try_from(int(&id)?) {
             ids.push(PostId(id));
         }
     }
-    Ok(ids)
+    Ok((ids, given))
 }
 
 fn prime_post_caches(x: &[Value]) -> R {
     let terms = x.get(1).is_none_or(truthy);
     let meta = x.get(2).is_none_or(truthy);
-    let m = PrimePostCaches {
-        ids: cache_ids(&a(x, 0))?,
+    let (ids, given) = cache_ids(&a(x, 0))?;
+    let m = PrimePostCachesGiven {
+        ids,
+        given,
         terms,
         meta,
     };
-    send(|h| &h.prime, m)?;
+    send(|h| &h.prime_given, m)?;
     Ok(Value::Null)
 }
 
 fn prime_post_parent_id_caches(x: &[Value]) -> R {
-    let ids = cache_ids(&a(x, 0))?;
+    let (ids, _) = cache_ids(&a(x, 0))?;
     send(|h| &h.prime_parents, PrimePostParentIdCaches { ids })?;
     Ok(Value::Null)
 }
@@ -883,111 +887,34 @@ fn wp_cache_set_posts_last_changed(_: &[Value]) -> R {
     Ok(Value::Null)
 }
 
-/// `apply_filters( $hook, $value, ...$args )` on PHP values, through the fast path when nothing listens.
-fn filter(hook: &str, value: Value, args: Vec<Value>) -> R {
-    let hooks = reading()?.hooks.clone();
-    let name = HookName::from(hook);
-    if hooks
-        .skip_if_empty(&name, Count::Filters)
-        .map_err(hook_error)?
-    {
-        return Ok(value);
-    }
-    hooks.apply_filters(&name, value, args).map_err(hook_error)
-}
-
-/// `$post->$name` on a post `get_post()` gave.
-fn property(post: &Value, name: &str) -> R {
-    helper("property", &[post.clone(), Value::Str(name.into())]).map_err(thrown)
-}
-
-/// `preg_split( '/\s/', $text, … )`.
-fn split_space(text: &Value, no_empty: bool) -> R {
-    let flags = if no_empty { 1 } else { 0 };
-    php(
-        "preg_split",
-        &[
-            Value::Str("/\\s/".into()),
-            text.clone(),
-            Value::Int(-1),
-            Value::Int(flags),
-        ],
-    )
-    .map_err(thrown)
-}
-
 fn get_pung(x: &[Value]) -> R {
-    let post = get_post_value(
-        a(x, 0),
-        &Value::Str("OBJECT".into()),
-        &Value::Str("raw".into()),
-    )?;
-    if !truthy(&post) {
-        return Ok(Value::Bool(false));
+    let found = with_post(&a(x, 0), |post| ask(|h| &h.pung, GetPung { post }))?;
+    match found {
+        Some(pung) => php_out(&pung),
+        None => Ok(Value::Bool(false)),
     }
-    let pinged = php("trim", &[property(&post, "pinged")?]).map_err(thrown)?;
-    let pung = split_space(&pinged, false)?;
-    filter("get_pung", pung, Vec::new())
 }
 
 fn get_to_ping(x: &[Value]) -> R {
-    let post = get_post_value(
-        a(x, 0),
-        &Value::Str("OBJECT".into()),
-        &Value::Str("raw".into()),
-    )?;
-    if !truthy(&post) {
-        return Ok(Value::Bool(false));
+    let found = with_post(&a(x, 0), |post| ask(|h| &h.to_ping, GetToPing { post }))?;
+    match found {
+        Some(to_ping) => php_out(&to_ping),
+        None => Ok(Value::Bool(false)),
     }
-    let to_ping = php("sanitize_trackback_urls", &[property(&post, "to_ping")?]).map_err(thrown)?;
-    let to_ping = split_space(&to_ping, true)?;
-    filter("get_to_ping", to_ping, Vec::new())
 }
 
 fn get_enclosed(x: &[Value]) -> R {
-    let post_id = a(x, 0);
-    let custom = php("get_post_custom", std::slice::from_ref(&post_id)).map_err(thrown)?;
-    if !matches!(&*custom.read(), Value::Array(_)) {
-        return Ok(Value::Array(Vec::new()));
-    }
-    let mut pung = Vec::new();
-    for (key, values) in entries(&custom) {
-        if key != Key::Str("enclosure".into()) {
-            continue;
-        }
-        for (_, enclosure) in entries(&values) {
-            let first = bytes(&enclosure)?
-                .split(|b| *b == b'\n')
-                .next()
-                .map(<[u8]>::to_vec)
-                .unwrap_or_default();
-            let trimmed = php("trim", &[string(&first)]).map_err(thrown)?;
-            pung.push((Key::Int(pung.len() as i64), trimmed));
-        }
-    }
-    filter("get_enclosed", Value::Array(pung), vec![post_id])
+    let m = GetEnclosed {
+        post_id: php_in(&a(x, 0))?,
+    };
+    php_out(&ask(|h| &h.enclosed, m)?)
 }
 
 fn is_sticky(x: &[Value]) -> R {
-    let mut post_id = int(&a(x, 0))?.unsigned_abs();
-    if post_id == 0 {
-        post_id = u64::try_from(int(&php("get_the_ID", &[]).map_err(thrown)?)?).unwrap_or(0);
-    }
-    let post_id = i64::try_from(post_id).unwrap_or(i64::MAX);
-    let stickies = php("get_option", &[Value::Str("sticky_posts".into())]).map_err(thrown)?;
-    let sticky = match stickies.read().into_owned() {
-        Value::Array(items) => {
-            let mut found = false;
-            for (_, v) in items {
-                if int(&v)? == post_id {
-                    found = true;
-                }
-            }
-            found
-        }
-        _ => false,
+    let m = IsSticky {
+        post_id: php_in(&a(x, 0))?,
     };
-    filter("is_sticky", Value::Bool(sticky), vec![Value::Int(post_id)])
+    php_out(&ask(|h| &h.sticky, m)?)
 }
 
 /// The functions the facade calls, with WordPress's names.
