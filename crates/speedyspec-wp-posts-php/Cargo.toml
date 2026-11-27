@@ -38,6 +38,7 @@ speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-hooks-php.workspace = true
 speedyspec-wp-meta-php = { path = "../speedyspec-wp-meta-php" }
 speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
+criterion = { version = "0.8", default-features = false }
 serde_json = "1"
 sha2 = "0.11"
 tempfile = "3"
@@ -61,4 +62,8 @@ harness = false
 
 [[test]]
 name = "wordpress"
+harness = false
+
+[[bench]]
+name = "read"
 harness = false

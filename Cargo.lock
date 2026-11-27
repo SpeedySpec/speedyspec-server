@@ -6755,6 +6755,7 @@ dependencies = [
 name = "speedyspec-wp-posts-php"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "serde_json",
  "sha2 0.11.1",
  "speedyspec-compat",
