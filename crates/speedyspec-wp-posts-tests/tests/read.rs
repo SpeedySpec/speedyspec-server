@@ -22,8 +22,8 @@ use speedyspec_wp_object_cache::{ObjectCachePorts, WpObjectCache};
 use speedyspec_wp_posts::{
     CacheInvalidation, CleanPostCache, GetPost, InitialOptions, Microtime, PostEntry, PostRead,
     PostStatusRegistry, PostTypePorts, PostTypeRegistry, PostsApi, PostsDeps, PrimePostCaches,
-    Taxonomy, Untranslated, Users, WpCountPosts, create_initial_post_types, read_hooks,
-    register_posts_handlers,
+    Taxonomy, Untranslated, UpdatePostCaches, UpdatePostParentCaches, Users, WpCountPosts,
+    create_initial_post_types, read_hooks, register_posts_handlers,
 };
 use speedyspec_wp_posts_contracts::{
     CurrentPost, Filter, LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime,
@@ -155,8 +155,8 @@ impl Users for Reader {
     fn is_user_logged_in(&self) -> Result<bool, PostError> {
         Ok(self.id.get() != 0)
     }
-    fn get_current_user_id(&self) -> u64 {
-        self.id.get()
+    fn get_current_user_id(&self) -> Result<u64, PostError> {
+        Ok(self.id.get())
     }
     fn current_user_can(&self, capability: &PhpValue) -> Result<bool, PostError> {
         self.asked.borrow_mut().push(capability.clone());
@@ -283,10 +283,7 @@ fn post(id: u64, post_type: &str, name: &str, parent: u64, status: &str, author:
 }
 
 fn fixture() -> Fixture {
-    let hooks = support::hooks();
-    let cache = Rc::new(WpObjectCache::new(ObjectCachePorts::rust(), None));
-    let repository = MemoryPostRepository::new();
-    for p in [
+    fixture_with(vec![
         post(1, "post", "hello-world", 0, "publish", 1),
         post(2, "page", "about", 0, "publish", 1),
         post(3, "page", "team", 2, "publish", 1),
@@ -294,7 +291,14 @@ fn fixture() -> Fixture {
         post(5, "post", "mine", 0, "private", 2),
         post(6, "post", "draft", 0, "draft", 2),
         post(9, "attachment", "photo", 1, "inherit", 1),
-    ] {
+    ])
+}
+
+fn fixture_with(posts: Vec<Post>) -> Fixture {
+    let hooks = support::hooks();
+    let cache = Rc::new(WpObjectCache::new(ObjectCachePorts::rust(), None));
+    let repository = MemoryPostRepository::new();
+    for p in posts {
         repository.insert(&p).unwrap();
     }
     let calls: Calls = Rc::default();
@@ -1176,12 +1180,34 @@ fn read_hooks_lists_get_post_metadata_free_path() {
             name: b"color",
             context: "raw"
         }),
-        ["get_post_metadata", "default_post_metadata"]
+        [
+            "get_post_metadata",
+            "update_post_metadata_cache",
+            "default_post_metadata"
+        ]
     );
+    // page_template reads _wp_page_template, so a cold post_meta entry runs update_post_metadata_cache.
+    assert_eq!(
+        names(PostRead::Field {
+            name: b"page_template",
+            context: "raw"
+        }),
+        [
+            "get_post_metadata",
+            "update_post_metadata_cache",
+            "default_post_metadata"
+        ]
+    );
+    assert_eq!(
+        names(PostRead::UpdatePostParentCaches),
+        ["update_post_metadata_cache"]
+    );
+    assert!(names(PostRead::UpdatePostCaches { meta: false }).is_empty());
     assert_eq!(
         names(PostRead::Status),
         [
             "get_post_metadata",
+            "update_post_metadata_cache",
             "default_post_metadata",
             "get_post_status"
         ]
@@ -1370,6 +1396,8 @@ fn handlers_answer_through_the_buses() {
     assert!(container.has(<WpCountPosts as Query>::KEY));
     assert!(container.has(<CleanPostCache as Command>::KEY));
     assert!(container.has(<PrimePostCaches as Command>::KEY));
+    assert!(container.has(<UpdatePostCaches as Command>::KEY));
+    assert!(container.has(<UpdatePostParentCaches as Command>::KEY));
     assert_eq!(
         <GetPost as Query>::KEY,
         "SpeedySpec\\WpPosts\\GetPostHandler"
@@ -1382,4 +1410,295 @@ fn handlers_answer_through_the_buses() {
         .unwrap()
         .unwrap();
     assert_eq!(read.unwrap().id, PostId(2));
+}
+
+// ---- fix round 1 ----
+
+/// The `posts` and `post_meta` entries a recorded step's state holds, by id.
+fn recorded_group(step: &serde_json::Value, group_name: &str) -> Vec<(PhpKey, PhpValue)> {
+    let state = step["state"]["array"].as_array().unwrap();
+    let Some(pair) = state
+        .iter()
+        .find(|pair| pair[0].as_str() == Some(&format!("cache:{group_name}")))
+    else {
+        return Vec::new();
+    };
+    let PhpValue::Array(entries) = support::decode(&pair[1]).unwrap() else {
+        panic!("a group is an array");
+    };
+    entries
+}
+
+#[test]
+fn update_post_parent_caches_replays_recording() {
+    let (name, _, steps) = support::scenarios("cache-update-parent-caches")
+        .into_iter()
+        .next()
+        .unwrap();
+    // The step after update_post_parent_caches( [ $p3, $p4, $p9 ] ) holds every post involved, and post 1's meta.
+    let after = &steps[6];
+    let state = after["state"]["array"].as_array().unwrap();
+    let posts_pair = state
+        .iter()
+        .find(|pair| pair[0].as_str() == Some("cache:posts"))
+        .unwrap();
+    let recorded_posts: Vec<(i64, PhpValue)> = posts_pair[1]["array"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|pair| (pair[0].as_i64().unwrap(), support::decode_kept(&pair[1])))
+        .collect();
+    let rows: Vec<Post> = recorded_posts
+        .iter()
+        .map(|(_, entry)| PostEntry::from_entry(entry).unwrap())
+        .collect();
+    let f = fixture_with(rows);
+    let post_meta = MetaType::new("post").unwrap();
+    for (id, entry) in recorded_group(after, "post_meta") {
+        let PhpKey::Int(id) = id else { panic!("an id") };
+        let PhpValue::Array(keys) = entry else {
+            panic!("a meta entry")
+        };
+        for (key, values) in keys {
+            let PhpKey::Str(key) = key else {
+                panic!("a key")
+            };
+            let PhpValue::Array(values) = values else {
+                panic!("values")
+            };
+            for (_, value) in values {
+                f.metadata
+                    .add(
+                        &post_meta,
+                        ObjectId(id as u64),
+                        &MetaKey::new(key.clone()),
+                        value,
+                        false,
+                    )
+                    .unwrap();
+            }
+        }
+    }
+
+    // get_post( 3 ), ( 4 ), ( 9 ); then the parents 1, 2 and 3 leave the cache.
+    let read = |id| {
+        f.api
+            .get(PostRef::Id(PostId(id)), Filter::Raw)
+            .unwrap()
+            .unwrap()
+    };
+    let posts = [read(3), read(4), read(9)];
+    for id in [1, 2, 3] {
+        f.cache
+            .delete(&HookValue::Int(id), &group("posts"))
+            .unwrap();
+    }
+    f.calls.borrow_mut().clear();
+    f.api.update_post_parent_caches(&posts).unwrap();
+    // One posts statement for the parents (2, 3, 1 in order), and their meta (one update_meta_cache).
+    assert_eq!(calls(&f), ["find_many(2,3,1)"], "{name}");
+    for (id, entry) in &recorded_posts {
+        // The repository's insert, like wp_insert_post(), never writes comment_count, so the seeded rows hold 0.
+        let mut entry = entry.clone();
+        if let PhpValue::Object { properties, .. } = &mut entry {
+            speedyspec_php_serialize::semantics::set(properties, "comment_count", s("0"));
+        }
+        let entry = &entry;
+        assert_eq!(
+            cached(&f, HookValue::Int(*id), "posts").as_ref(),
+            Some(entry),
+            "{name}: post {id}"
+        );
+    }
+    for (id, entry) in recorded_group(after, "post_meta") {
+        let PhpKey::Int(id) = id else { panic!("an id") };
+        assert_eq!(
+            cached(&f, HookValue::Int(id), "post_meta"),
+            Some(entry),
+            "{name}: meta {id}"
+        );
+    }
+    assert!(
+        f.terms.0.borrow().is_empty(),
+        "no term cache: _prime_post_caches( $ids, false )"
+    );
+
+    // update_post_parent_caches( array() ): nothing.
+    f.calls.borrow_mut().clear();
+    f.api.update_post_parent_caches(&[]).unwrap();
+    assert!(calls(&f).is_empty());
+}
+
+#[test]
+fn update_post_caches_caches_posts_terms_and_meta() {
+    let f = fixture();
+    let p1 = post(1, "post", "hello-world", 0, "publish", 1);
+    let p2 = post(2, "page", "about", 0, "publish", 1);
+    let posts = [p1.clone(), p2.clone(), p1.clone()];
+    // A falsy type is 'any': the posts' own types, array_unique()d; every id, repeats kept.
+    f.api
+        .update_post_caches(&posts, &s(""), true, true)
+        .unwrap();
+    assert_eq!(*f.terms.0.borrow(), ["update(1,2,1;post,page)"]);
+    assert_eq!(
+        cached(&f, HookValue::Int(2), "posts"),
+        Some(PostEntry::to_entry(&p2))
+    );
+    assert!(cached(&f, HookValue::Int(1), "post_meta").is_some());
+    assert!(cached(&f, HookValue::Int(2), "post_meta").is_some());
+    assert!(calls(&f).is_empty(), "the posts are given, not read");
+
+    // A type, or an array of them, is used as given; no terms or meta when not asked; no posts, nothing.
+    f.terms.0.borrow_mut().clear();
+    f.api
+        .update_post_caches(std::slice::from_ref(&p1), &s("page"), true, false)
+        .unwrap();
+    f.api
+        .update_post_caches(
+            std::slice::from_ref(&p1),
+            &PhpValue::Array(vec![(PhpKey::Int(0), s("a")), (PhpKey::Int(1), s("b"))]),
+            true,
+            false,
+        )
+        .unwrap();
+    f.api
+        .update_post_caches(std::slice::from_ref(&p1), &s("any"), false, false)
+        .unwrap();
+    f.api
+        .update_post_caches(&[], &s("any"), true, true)
+        .unwrap();
+    assert_eq!(*f.terms.0.borrow(), ["update(1;page)", "update(1;a,b)"]);
+
+    // An entry already cached stays (wp_cache_add_multiple).
+    let mut changed = p1.clone();
+    changed.title = b"Changed".to_vec();
+    f.api
+        .update_post_caches(&[changed], &s("post"), false, false)
+        .unwrap();
+    assert_eq!(
+        cached(&f, HookValue::Int(1), "posts"),
+        Some(PostEntry::to_entry(&p1))
+    );
+}
+
+#[test]
+fn negative_cached_page_id_is_null_not_the_global() {
+    let f = fixture();
+    *f.global.0.borrow_mut() = Some(PhpValue::Int(1));
+    let page = PostTypeArg::One(PostTypeName::new("page"));
+    let salt = f.api.wp_cache_get_last_changed("posts").unwrap();
+    let hash: String = <md5::Md5 as md5::Digest>::digest(b"abouts:4:\"page\";")
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    let entry = |data: PhpValue| {
+        to_hook_value(&PhpValue::Array(vec![
+            (PhpKey::Str(b"data".to_vec()), data),
+            (PhpKey::Str(b"salt".to_vec()), salt.clone()),
+        ]))
+    };
+    let key = hs(&format!("get_page_by_path:{hash}"));
+    // get_post( -1 ) is null: -1 is not empty, and get_instance() rejects it.
+    f.cache
+        .set(&key, entry(s("-1")), &group("post-queries"), 0)
+        .unwrap();
+    assert_eq!(f.api.page_by_path("about", &page).unwrap(), None);
+    // get_post( (int) 'abc' ) is get_post( 0 ), which reads the global $post, as WordPress does.
+    f.cache
+        .set(&key, entry(s("abc")), &group("post-queries"), 0)
+        .unwrap();
+    assert_eq!(
+        f.api.page_by_path("about", &page).unwrap().unwrap().id,
+        PostId(1)
+    );
+    assert!(calls(&f).iter().all(|c| c != "pages_by_names"));
+}
+
+#[test]
+fn entry_with_any_set_id_is_used() {
+    let f = fixture();
+    // WordPress only asks isset( $_post->ID ): "abc" is used (as ID 0) with no query.
+    let entry = PhpValue::Object {
+        class: "stdClass".into(),
+        properties: vec![
+            (PhpKey::Str(b"ID".to_vec()), s("abc")),
+            (PhpKey::Str(b"post_title".to_vec()), s("Odd")),
+            (PhpKey::Str(b"filter".to_vec()), s("raw")),
+        ],
+    };
+    f.cache
+        .set(
+            &HookValue::Int(5),
+            to_hook_value(&entry),
+            &group("posts"),
+            0,
+        )
+        .unwrap();
+    let read = f
+        .api
+        .get(PostRef::Id(PostId(5)), Filter::Raw)
+        .unwrap()
+        .unwrap();
+    assert_eq!(read.title, b"Odd");
+    assert_eq!(read.id, PostId(0));
+    assert!(calls(&f).is_empty());
+    assert_eq!(PostEntry::from_entry(&entry).unwrap().id, PostId(0));
+}
+
+#[test]
+fn null_property_is_not_a_meta_lookup() {
+    let f = fixture();
+    let post_meta = MetaType::new("post").unwrap();
+    f.metadata
+        .add(
+            &post_meta,
+            ObjectId(1),
+            &MetaKey::from("post_title"),
+            s("from meta"),
+            false,
+        )
+        .unwrap();
+    // A raw object whose post_title is null: the property is accessible, so isset() is false with no __isset().
+    *f.global.0.borrow_mut() = Some(PhpValue::Object {
+        class: "stdClass".into(),
+        properties: vec![
+            (PhpKey::Str(b"ID".to_vec()), PhpValue::Int(1)),
+            (PhpKey::Str(b"post_title".to_vec()), PhpValue::Null),
+            (PhpKey::Str(b"filter".to_vec()), s("raw")),
+        ],
+    });
+    record(&f, "get_post_metadata");
+    assert_eq!(
+        f.api
+            .field("post_title", PostRef::Current, Filter::Raw)
+            .unwrap(),
+        s("")
+    );
+    assert!(fired(&f).is_empty());
+}
+
+#[test]
+fn update_post_cache_objects_key_string_ids_as_ints() {
+    let f = fixture();
+    let object = PhpValue::Object {
+        class: "stdClass".into(),
+        properties: vec![
+            (PhpKey::Str(b"ID".to_vec()), s("5")),
+            (PhpKey::Str(b"post_title".to_vec()), s("Keyed")),
+            (PhpKey::Str(b"filter".to_vec()), s("raw")),
+        ],
+    };
+    f.api
+        .update_post_cache_objects(vec![object.clone()])
+        .unwrap();
+    assert_eq!(cached(&f, HookValue::Int(5), "posts"), Some(object));
+    assert_eq!(
+        f.api
+            .get(PostRef::Id(PostId(5)), Filter::Raw)
+            .unwrap()
+            .unwrap()
+            .title,
+        b"Keyed"
+    );
+    assert!(calls(&f).is_empty());
 }

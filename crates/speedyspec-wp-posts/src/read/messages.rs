@@ -80,6 +80,9 @@ message!(query GetLastPostModified { timezone: String, post_type: String } -> R<
 message!(command UpdatePostCache { posts: Vec<Post> } -> R<()>, |a, m| a.update_post_cache(&m.posts));
 message!(command UpdatePostCacheObjects { posts: Vec<PhpValue> } -> R<()>,
     |a, m| a.update_post_cache_objects(m.posts));
+message!(command UpdatePostCaches { posts: Vec<Post>, post_type: PhpValue, terms: bool, meta: bool } -> R<()>,
+    |a, m| a.update_post_caches(&m.posts, &m.post_type, m.terms, m.meta));
+message!(command UpdatePostParentCaches { posts: Vec<Post> } -> R<()>, |a, m| a.update_post_parent_caches(&m.posts));
 message!(command CleanPostCache { post: PostRef } -> R<()>, |a, m| a.clean_post_cache(m.post));
 message!(command UpdatePostmetaCache { ids: Vec<PostId> } -> R<Option<PhpValue>>,
     |a, m| a.update_postmeta_cache(&m.ids));
@@ -103,7 +106,7 @@ macro_rules! bind_all {
 /// same key.
 pub fn register_posts_handlers(container: &Container, api: Rc<PostsApi>) {
     bind_all!(container, api;
-        commands: UpdatePostCache, UpdatePostCacheObjects, CleanPostCache, UpdatePostmetaCache, PrimePostCaches,
+        commands: UpdatePostCache, UpdatePostCacheObjects, CleanPostCache, UpdatePostCaches, UpdatePostParentCaches, UpdatePostmetaCache, PrimePostCaches,
             PrimePostParentIdCaches, WpCacheSetPostsLastChanged;
         queries: GetPost, GetPostObject, GetPostAncestors, GetPostField, GetPostMimeType, GetPostStatus, GetPostType,
             CountPostsCacheKey, WpCountPosts, WpCountAttachments, GetAllPageIds, GetPageByPath, GetPageUri,

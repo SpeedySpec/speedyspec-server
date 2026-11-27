@@ -1,12 +1,13 @@
 //! The `posts` cache functions (WordPress 7.2-RC2): `update_post_cache()` (post.php 8152-8166),
-//! `clean_post_cache()` (8182-8224), `_prime_post_caches()` (8736-8758), `_prime_post_parent_id_caches()`
+//! `clean_post_cache()` (8182-8224), `update_post_caches()` (8240-8287), `update_post_parent_caches()`
+//! (8312-8320), `_prime_post_caches()` (8736-8758), `_prime_post_parent_id_caches()`
 //! (8769-8805) and `wp_cache_set_posts_last_changed()` (8875-8877), with the cache helpers they use:
 //! `_get_non_cached_ids()` (functions.php 7566-7584), `wp_cache_get_last_changed()` and
 //! `wp_cache_set_last_changed()` (functions.php 8411-8450), `wp_cache_get_salted()` and `wp_cache_set_salted()`
 //! (cache-compat.php 214-255).
 
 use indexmap::IndexSet;
-use speedyspec_php_serialize::semantics::{get, to_php_string};
+use speedyspec_php_serialize::semantics::{get, to_array_key, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_hooks_contracts::{HookValue, Key};
 use speedyspec_wp_meta_contracts::ObjectId;
@@ -148,9 +149,11 @@ impl PostsApi {
             if !get(&properties, "filter").is_some_and(|f| is_str(f, "raw")) {
                 sanitize_post_properties(&self.sanitize_ports(), &mut properties, "raw")?;
             }
-            let key = match get(&properties, "ID") {
-                Some(PhpValue::Int(i)) => Key::Int(*i),
-                Some(v) => Key::Str(String::from_utf8_lossy(&to_php_string(v)).into_owned()),
+            // $data[ $post->ID ]: PHP's array key rules ("5" is 5, null is "").
+            let id = get(&properties, "ID").cloned().unwrap_or(PhpValue::Null);
+            let key = match to_array_key(&id) {
+                Some(PhpKey::Int(i)) => Key::Int(i),
+                Some(PhpKey::Str(b)) => Key::Str(String::from_utf8_lossy(&b).into_owned()),
                 None => Key::Str(String::new()),
             };
             let entry = PhpValue::Object { class, properties };
@@ -217,6 +220,11 @@ impl PostsApi {
     /// [`PostsApi::update_post_cache`]; then, for every id given, `update_postmeta_cache()` (the metadata API's
     /// `update_cache`) and `update_object_term_cache( $ids, array_unique( array_map( 'get_post_type', $ids ) ) )`
     /// through the terms port.
+    ///
+    /// The ids are typed, so WordPress's `_validate_cache_id()` cases cannot reach it: a non-integer string (`"x"`,
+    /// dropped with `_doing_it_wrong()`) and a negative id (`-1`, which passes the check and reaches the `IN (…)`
+    /// statement and `update_postmeta_cache()`). The PHP binding drops both before calling, so its statement text
+    /// can differ from WordPress's for such input (Task 8 lists it as a documented break).
     pub fn prime_post_caches(
         &self,
         ids: &[PostId],
@@ -257,6 +265,72 @@ impl PostsApi {
         Ok(())
     }
 
+    /// `update_post_caches( $posts, $post_type, $update_term_cache, $update_meta_cache )` (post.php 8240-8279): no
+    /// posts, nothing; otherwise [`PostsApi::update_post_cache`], then `update_object_term_cache( $post_ids, $ptypes )`
+    /// through the terms port when `terms` and `$ptypes` is not empty, then `update_postmeta_cache( $post_ids )` when
+    /// `meta`. `$post_ids` keeps every post's id in order, repeats included.
+    ///
+    /// `post_type` is PHP's `$post_type`: a falsy value is `'any'`; an array gives its values; `'any'` (compared
+    /// with `===`) gives the posts' own types, `array_unique()`d; any other value is the one type.
+    pub fn update_post_caches(
+        &self,
+        posts: &[Post],
+        post_type: &PhpValue,
+        terms: bool,
+        meta: bool,
+    ) -> Result<(), PostError> {
+        if posts.is_empty() {
+            return Ok(());
+        }
+        self.update_post_cache(posts)?;
+        let ids: Vec<PostId> = posts.iter().map(|p| p.id).collect();
+        let post_type = if truthy(post_type) {
+            post_type.clone()
+        } else {
+            s("any")
+        };
+        if terms {
+            let types: Vec<PhpValue> = match &post_type {
+                PhpValue::Array(items) => items.iter().map(|(_, v)| v.clone()).collect(),
+                any if is_str(any, "any") => {
+                    let mut types: Vec<PhpValue> = Vec::new();
+                    for post in posts {
+                        let t = s(post.post_type.as_str());
+                        if !types.contains(&t) {
+                            types.push(t);
+                        }
+                    }
+                    types
+                }
+                one => vec![one.clone()],
+            };
+            if !types.is_empty() {
+                self.d.terms.update_object_term_cache(&ids, &types)?;
+            }
+        }
+        if meta {
+            self.update_postmeta_cache(&ids)?;
+        }
+        Ok(())
+    }
+
+    /// `update_post_parent_caches( $posts )` (post.php 8312-8320): the posts' `post_parent`s, `absint`ed, zeros
+    /// dropped and `array_unique()`d in order, then `_prime_post_caches( $parent_ids, false )` (the parents and
+    /// their meta, no terms). No parents, nothing.
+    pub fn update_post_parent_caches(&self, posts: &[Post]) -> Result<(), PostError> {
+        let parents: Vec<PostId> = posts
+            .iter()
+            .map(|p| p.parent)
+            .filter(|p| p.0 != 0)
+            .collect::<IndexSet<PostId>>()
+            .into_iter()
+            .collect();
+        if parents.is_empty() {
+            return Ok(());
+        }
+        self.prime_post_caches(&parents, false, true)
+    }
+
     /// `update_postmeta_cache( $post_ids )`: `update_meta_cache( 'post', $post_ids )`.
     pub fn update_postmeta_cache(&self, ids: &[PostId]) -> Result<Option<PhpValue>, PostError> {
         let objects: Vec<ObjectId> = ids.iter().map(|id| ObjectId(id.0)).collect();
@@ -269,6 +343,11 @@ impl PostsApi {
     /// `_prime_post_parent_id_caches( $ids )`: for each distinct id whose `post_parent:{ID}` entry is a miss,
     /// [`PostRepository::parent_ids`](speedyspec_wp_posts_contracts::PostRepository::parent_ids), and each answer
     /// added as `(int) post_parent` with `wp_cache_add_multiple()`.
+    ///
+    /// The ids are typed, so WordPress's `_validate_cache_id()` cases cannot reach it: a non-integer string (`"x"`,
+    /// dropped with `_doing_it_wrong()`) and a negative id (`-1`, which passes the check and reaches the `IN (…)`
+    /// statement and `update_postmeta_cache()`). The PHP binding drops both before calling, so its statement text
+    /// can differ from WordPress's for such input (Task 8 lists it as a documented break).
     pub fn prime_post_parent_id_caches(&self, ids: &[PostId]) -> Result<(), PostError> {
         let ids = unique(ids);
         if ids.is_empty() {

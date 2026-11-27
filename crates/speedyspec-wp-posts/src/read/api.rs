@@ -268,13 +268,26 @@ pub enum PostRead<'a> {
     PrimeCaches { meta: bool },
     /// `_prime_post_parent_id_caches()`.
     PrimeParentCaches,
+    /// `update_post_caches( $posts, $post_type, $terms, $meta )`.
+    UpdatePostCaches { meta: bool },
+    /// `update_post_parent_caches()`, which primes the parents with their meta.
+    UpdatePostParentCaches,
 }
+
+/// The hooks a post meta read (`get_post_meta()`, `metadata_exists()`) may fire, as the metadata seam's
+/// `read_hooks( 'post' )` lists them: the short-circuit, the cold-cache `update_meta_cache()` short-circuit, and the
+/// default.
+const META_READ: [&str; 3] = [
+    "get_post_metadata",
+    "update_post_metadata_cache",
+    "default_post_metadata",
+];
 
 /// The hooks a read may fire, for the native-path decision (spec, *Native paths*): when none has a PHP callback,
 /// the read can stay in Rust. `get_post()` and the cache reads fire none; the `posts` group has no hooks.
 ///
-/// The list names this seam's hooks and the metadata hooks the read reaches (`get_post_metadata`,
-/// `default_post_metadata`, `update_post_metadata_cache`), plus the escaping hooks of the [`Formatting`] port
+/// The list names this seam's hooks and the metadata hooks every read that can reach post meta fires on a cold
+/// `post_meta` entry (`get_post_metadata`, `update_post_metadata_cache`, `default_post_metadata`), plus the escaping hooks of the [`Formatting`] port
 /// (`format_to_edit`, `attribute_escape`, `js_escape`, `user_can_richedit`). The [`Users`] and [`Taxonomy`] ports'
 /// own hooks (`user_has_cap`, `map_meta_cap`, the term cache hooks) and `$wpdb`'s `query` are the binding's to add.
 pub fn read_hooks(read: PostRead<'_>) -> Vec<HookName> {
@@ -291,17 +304,12 @@ pub fn read_hooks(read: PostRead<'_>) -> Vec<HookName> {
             let mut hooks = Vec::new();
             if name == b"page_template" || (!crate::PostEntry::is_declared(name) && !is_magic(name))
             {
-                hooks.push(b"get_post_metadata".to_vec());
-                hooks.push(b"default_post_metadata".to_vec());
+                hooks.extend(words(&META_READ));
             }
             hooks.extend(crate::sanitize::field_hooks(name, context));
             hooks
         }
-        PostRead::Status => words(&[
-            "get_post_metadata",
-            "default_post_metadata",
-            "get_post_status",
-        ]),
+        PostRead::Status => [words(&META_READ), words(&["get_post_status"])].concat(),
         PostRead::PageByPath => words(&["wp_cache_set_last_changed", "sanitize_title"]),
         PostRead::PageUri => words(&["get_page_uri"]),
         PostRead::CountPosts => words(&["pre_wp_count_posts", "wp_count_posts"]),
@@ -319,7 +327,8 @@ pub fn read_hooks(read: PostRead<'_>) -> Vec<HookName> {
             "clean_page_cache",
             "wp_cache_set_last_changed",
         ]),
-        PostRead::PrimeCaches { meta } => {
+        PostRead::UpdatePostParentCaches => words(&["update_post_metadata_cache"]),
+        PostRead::PrimeCaches { meta } | PostRead::UpdatePostCaches { meta } => {
             if meta {
                 words(&["update_post_metadata_cache"])
             } else {

@@ -2,7 +2,8 @@
 //! back. The entry stays WordPress's `stdClass` (Identity Map), so an entry another PHP process wrote is read as is.
 //!
 //! It lives beside the use cases because the cache entry is theirs, not the database's: the SQL adapter's
-//! `PostMapper` maps rows. Its cache half (`from_cache`/`to_cache`) is the same mapping and can delegate here.
+//! `PostMapper` maps rows only. This is the one decoder of the entry; posts-sql's recorded row and cache-read cases
+//! test it.
 
 use speedyspec_php_serialize::semantics::{get, isset, set, to_php_int, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
@@ -65,6 +66,16 @@ impl PostEntry {
         }
         isset(properties, "ID")?;
         Some(properties)
+    }
+
+    /// A `posts` entry as `WP_Post::get_instance()` reads it: [`PostEntry::usable`], then
+    /// [`PostEntry::from_properties`]. `None` is a miss.
+    ///
+    /// Any set `ID` is usable, whatever its value, as in WordPress: `"12abc"` reads as 12 and `"abc"` as 0 (PHP's
+    /// `(int)`), with no query. A negative `ID` becomes 0 here, where WordPress's `WP_Post` keeps it; the
+    /// entity's ids are unsigned.
+    pub fn from_entry(value: &PhpValue) -> Option<Post> {
+        Self::usable(value).map(Self::from_properties)
     }
 
     /// The entity from an object's properties, read with PHP's `(string)` and `(int)` casts. A missing property

@@ -211,12 +211,11 @@ impl PostsApi {
             return Ok(s(""));
         };
         let id = loaded.id();
-        let value = match loaded
-            .properties
-            .iter()
-            .find(|(k, v)| *k == PhpKey::Str(field.to_vec()) && !matches!(v, PhpValue::Null))
-        {
+        let key = PhpKey::Str(field.to_vec());
+        let value = match loaded.properties.iter().find(|(k, _)| *k == key) {
+            Some((_, PhpValue::Null)) => return Ok(s("")),
             Some((_, v)) => v.clone(),
+            // Only an inaccessible property reaches __isset() and __get().
             None => match self.magic(&loaded, field)? {
                 Some(v) => v,
                 None => return Ok(s("")),

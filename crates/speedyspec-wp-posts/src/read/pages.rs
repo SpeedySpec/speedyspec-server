@@ -163,7 +163,12 @@ impl PostsApi {
             {
                 return Ok(None);
             }
-            return self.get_post(PostRef::Id(id_of(to_php_int(&cached))));
+            // get_post( (int) $cached ): a negative id is not empty, so get_instance() answers false (null); 0 (a
+            // non-numeric entry) is empty, so it reads the global $post.
+            return match u64::try_from(to_php_int(&cached)) {
+                Ok(id) => self.get_post(PostRef::Id(PostId(id))),
+                Err(_) => Ok(None),
+            };
         }
 
         let path = rawurlencode(&urldecode(page_path));
@@ -236,11 +241,6 @@ impl PostsApi {
         let uri = page_uri(&Reader(self), &loaded.post)?;
         self.filter("get_page_uri", s(uri), || vec![hv(&loaded.object())])
     }
-}
-
-/// `(int) $value` as a post id: a negative id is 0, which `get_post()` treats as empty.
-fn id_of(value: i64) -> PostId {
-    PostId(u64::try_from(value).unwrap_or(0))
 }
 
 #[cfg(test)]

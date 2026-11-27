@@ -10,8 +10,9 @@ use speedyspec_wp_posts_contracts::{PostError, PostId};
 pub trait Users {
     /// `is_user_logged_in()` (pluggable).
     fn is_user_logged_in(&self) -> Result<bool, PostError>;
-    /// `get_current_user_id()`: 0 when nobody is logged in.
-    fn get_current_user_id(&self) -> u64;
+    /// `get_current_user_id()`: 0 when nobody is logged in. `Err` carries a `determine_current_user` callback's
+    /// failure.
+    fn get_current_user_id(&self) -> Result<u64, PostError>;
     /// `current_user_can( $capability )`, with the capability as PHP holds it (a post type's `cap` property may hold
     /// anything a plugin put there).
     fn current_user_can(&self, capability: &PhpValue) -> Result<bool, PostError>;

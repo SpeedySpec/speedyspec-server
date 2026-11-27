@@ -6769,6 +6769,7 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-posts",
  "speedyspec-wp-posts-contracts",
 ]
 

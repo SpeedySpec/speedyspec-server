@@ -105,7 +105,7 @@ impl PostsApi {
         {
             let cap = self.read_private_cap(post_type);
             if !self.d.users.current_user_can(&cap)? {
-                key.push_str(&format!("_{perm}_{}", self.d.users.get_current_user_id()));
+                key.push_str(&format!("_{perm}_{}", self.d.users.get_current_user_id()?));
             }
         }
         Ok(key)
@@ -151,7 +151,7 @@ impl PostsApi {
             if self.d.users.current_user_can(&cap)? {
                 None
             } else {
-                Some(self.d.users.get_current_user_id())
+                Some(self.d.users.get_current_user_id()?)
             }
         } else {
             None
