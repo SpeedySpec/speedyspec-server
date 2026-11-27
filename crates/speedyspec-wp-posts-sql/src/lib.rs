@@ -1,5 +1,7 @@
-//! The post row mapper: a `wp_posts` row and a `posts` cache entry to the post entity and back.
+//! `wp_posts` over the `wpdb` port: the post repository and the row mapper.
 
 mod mapper;
+mod repository;
 
 pub use mapper::PostMapper;
+pub use repository::SqlPostRepository;

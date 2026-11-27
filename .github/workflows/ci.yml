@@ -172,6 +172,7 @@ jobs:
           scripts/linux-php.sh cargo test -p speedyspec-php-runtime --test database --test cron_run_once --test worker
           scripts/linux-php.sh cargo test -p speedyspec-wp-options-sql --test conditional_mysql
           scripts/linux-php.sh cargo test -p speedyspec-wp-meta-sql --test engines
+          scripts/linux-php.sh cargo test -p speedyspec-wp-posts-sql --test engines
           # Each makes its own database beside speedyspec_test (<db>_metadata for the replay, <db>_metadata_php for
           # the PHP tests), so they never empty the tables another test uses.
           scripts/linux-php.sh cargo test -p speedyspec-wp-meta-php --test compat --test errors --test replacement --test wordpress

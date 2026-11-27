@@ -6749,9 +6749,20 @@ name = "speedyspec-wp-posts-sql"
 version = "0.1.0"
 dependencies = [
  "hex",
+ "indexmap",
+ "postgres",
  "serde_json",
  "speedyspec-data",
+ "speedyspec-data-mysql",
+ "speedyspec-data-postgres",
+ "speedyspec-data-query",
+ "speedyspec-data-sqlite",
  "speedyspec-php-serialize",
+ "speedyspec-wp-db",
+ "speedyspec-wp-db-contracts",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-contracts",
+ "speedyspec-wp-hooks-memory",
  "speedyspec-wp-posts-contracts",
 ]
 

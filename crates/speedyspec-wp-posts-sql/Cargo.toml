@@ -2,7 +2,7 @@
 name = "speedyspec-wp-posts-sql"
 version = "0.1.0"
 publish = false
-description = "The post row mapper: a wp_posts row and a posts cache entry to the post entity and back."
+description = "wp_posts over the wpdb port: the post repository and its row mapper."
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -15,7 +15,19 @@ role = "adapter"
 speedyspec-data.workspace = true
 speedyspec-php-serialize.workspace = true
 speedyspec-wp-posts-contracts.workspace = true
+speedyspec-wp-db-contracts.workspace = true
 
 [dev-dependencies]
 serde_json = "1"
 hex = "0.4"
+indexmap = "2"
+speedyspec-wp-posts-contracts = { workspace = true, features = ["conformance"] }
+speedyspec-wp-db = { path = "../speedyspec-wp-db" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
+speedyspec-data-postgres = { path = "../speedyspec-data-postgres" }
+speedyspec-data-sqlite = { path = "../speedyspec-data-sqlite" }
+postgres = "0.19"
+speedyspec-wp-hooks.workspace = true
+speedyspec-wp-hooks-memory.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
