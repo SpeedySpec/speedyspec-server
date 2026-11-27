@@ -27,6 +27,9 @@ final class WP_UnitTest_Factory
     /** @var WP_UnitTest_Factory_For_Post */
     public $post;
 
+    /** @var WP_UnitTest_Factory_For_Attachment */
+    public $attachment;
+
     /** @var WP_UnitTest_Factory_For_Comment */
     public $comment;
 
@@ -41,6 +44,7 @@ final class WP_UnitTest_Factory
         $this->network = new WP_UnitTest_Factory_For_Network();
         $this->user = new WP_UnitTest_Factory_For_User();
         $this->post = new WP_UnitTest_Factory_For_Post();
+        $this->attachment = new WP_UnitTest_Factory_For_Attachment();
         $this->comment = new WP_UnitTest_Factory_For_Comment();
         $this->term = new WP_UnitTest_Factory_For_Term();
         $this->blog = new WP_UnitTest_Factory_For_Blog();
@@ -151,7 +155,9 @@ final class WP_UnitTest_Factory_For_Network
  * Hands out post ids without storing posts: posts are not ported, and a test class whose `wpSetUpBeforeClass()`
  *  makes posts it never reads (the rewrite endpoint tests, whose tests that visit posts are excluded) still runs.
  *  With rows, it writes a `wp_posts` row with every column the post tests read (author, type, status, name, title,
- *  content, dates, mime type, menu order, parent, pings), from the arguments or the defaults.
+ *  content, dates, mime type, menu order, parent, pings), from the arguments or the defaults, sanitized for the
+ *  database as `wp_insert_post()` does. Unlike WordPress's factory, content and excerpt default to empty, the date to
+ *  a fixed one (its GMT date the same), and the status is not adjusted for a future date.
  */
 final class WP_UnitTest_Factory_For_Post
 {
@@ -205,6 +211,12 @@ final class WP_UnitTest_Factory_For_Post
         }
         $row['post_parent'] = (int) $row['post_parent'];
         $row['menu_order'] = (int) $row['menu_order'];
+        // wp_insert_post() sanitizes the fields for the database (the `*_save_pre` filters) and unslashes them.
+        if (function_exists('sanitize_post'))
+        {
+            $row = wp_unslash(sanitize_post($row, 'db'));
+            unset($row['ID'], $row['filter']);
+        }
         $id = WP_UnitTest_Factory::insert($wpdb->posts, $row);
         // wp_insert_post() cleans the post's caches (bumping `last_changed`) and reads the post back, which caches it.
         if (function_exists('clean_post_cache'))
@@ -248,6 +260,46 @@ final class WP_UnitTest_Factory_For_Post
             $ids[] = $this->create($args);
         }
         return $ids;
+    }
+}
+
+/**
+ * Makes attachments through WordPress's own `wp_insert_attachment()`, as WordPress's attachment factory does
+ *  (tests/phpunit/includes/factory/class-wp-unittest-factory-for-attachment.php), for a suite that loads the post
+ *  write path. Uploads (`create_upload_object()`) are not made.
+ */
+final class WP_UnitTest_Factory_For_Attachment
+{
+    /**
+     * Creates an attachment and returns its id.
+     *
+     * @param array|string $args
+     *   What wp_insert_attachment() takes, with `file` and `post_parent`; a file path in the legacy form.
+     * @param int $legacy_parent
+     *   The parent, in the legacy form.
+     * @param array $legacy_args
+     *   The arguments, in the legacy form.
+     *
+     * @return int
+     *   The new attachment's id.
+     */
+    public function create_object($args, $legacy_parent = 0, $legacy_args = array())
+    {
+        if (is_string($args))
+        {
+            $file = $args;
+            $args = $legacy_args;
+            $args['post_parent'] = $legacy_parent;
+            $args['file'] = $file;
+        }
+        $r = array_merge(array('file' => '', 'post_parent' => 0), $args);
+        $id = wp_insert_attachment($r, $r['file'], $r['post_parent'], true);
+        if (is_wp_error($id) || !$id)
+        {
+            $message = is_wp_error($id) ? $id->get_error_message() : 'no id';
+            throw new RuntimeException("Unable to create the attachment: $message");
+        }
+        return $id;
     }
 }
 

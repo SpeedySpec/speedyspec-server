@@ -8,7 +8,12 @@ declare(strict_types=1);
  *  taxonomy, user and capability files over MySQL, with the core post types and the category and tag taxonomies).
  *
  *  Beside it: WordPress's rewrite API and `WP` (for the query vars and rewrite rules `register_post_type()` adds),
- *  with a permalink structure; and the REST controller classes `WP_Post_Type` hands out.
+ *  with a permalink structure; the REST controller classes `WP_Post_Type` hands out; and what post.php's write path
+ *  (`wp_insert_post()`, `wp_trash_post()`, `wp_delete_post()`) calls: WordPress's comment.php, cron.php and
+ *  link-template.php, default-constants.php's time constants and `EMPTY_TRASH_DAYS`, and the comment tables. The
+ *  write path is WordPress's own and not ported; it makes the fixtures the reading tests read. A save of a post with
+ *  a name still needs `WP_Query`, which is not loaded. Also: post-template.php (`get_post_parent()`), and the HTML
+ *  API and block parser for the tests' `assertEqualHTML()`.
  *
  *  The factory stores the posts the tests make as rows (`SPEEDYSPEC_FACTORY_ROWS`, see includes/factory.php).
  *  `WP_TESTS_MULTISITE=1` makes the install a multisite one through the setup's multisite branch.
@@ -48,6 +53,66 @@ update_option('permalink_structure', '/%year%/%monthnum%/%day%/%postname%/');
 $GLOBALS['wp_rewrite'] = new WP_Rewrite();
 $GLOBALS['wp'] = new WP();
 
+// What post.php's write path calls: default comment statuses and comment deletion, scheduled-hook clean-up, and
+// permalinks (for an empty guid), with the trash lifetime default-constants.php gives.
+require_once ABSPATH . WPINC . '/comment.php';
+require_once ABSPATH . WPINC . '/cron.php';
+require_once ABSPATH . WPINC . '/link-template.php';
+// default-constants.php's wp_initial_constants(): the time units wp_insert_post() compares dates in, and the trash
+// lifetime.
+foreach ([
+    'MINUTE_IN_SECONDS' => 60,
+    'HOUR_IN_SECONDS' => 3600,
+    'DAY_IN_SECONDS' => 86400,
+    'WEEK_IN_SECONDS' => 604800,
+    'MONTH_IN_SECONDS' => 2592000,
+    'YEAR_IN_SECONDS' => 31536000,
+    'EMPTY_TRASH_DAYS' => 30,
+] as $speedyspec_name => $speedyspec_value)
+{
+    if (!defined($speedyspec_name))
+    {
+        define($speedyspec_name, $speedyspec_value);
+    }
+}
+// get_post_parent() and has_post_parent(), WordPress's own template functions over the native readers.
+require_once ABSPATH . WPINC . '/post-template.php';
+// The HTML API, for the tests' build_visual_html_tree() (assertEqualHTML()).
+require_once ABSPATH . WPINC . '/class-wp-token-map.php';
+foreach ([
+    'html5-named-character-references', 'class-wp-html-attribute-token', 'class-wp-html-span',
+    'class-wp-html-doctype-info', 'class-wp-html-text-replacement', 'class-wp-html-decoder',
+    'class-wp-html-tag-processor', 'class-wp-html-unsupported-exception', 'class-wp-html-active-formatting-elements',
+    'class-wp-html-open-elements', 'class-wp-html-token', 'class-wp-html-stack-event',
+    'class-wp-html-processor-state', 'class-wp-html-processor',
+] as $speedyspec_file)
+{
+    require_once ABSPATH . WPINC . "/html-api/{$speedyspec_file}.php";
+}
+// The block parser build_visual_html_tree() reads block comments with.
+require_once ABSPATH . WPINC . '/class-wp-block-processor.php';
+require_once ABSPATH . WPINC . '/class-wp-block-parser.php';
+require_once __DIR__ . '/includes/build-visual-html-tree.php';
+$GLOBALS['wpdb']->query(
+    "CREATE TABLE IF NOT EXISTS {$GLOBALS['wpdb']->comments} (comment_ID bigint(20) unsigned NOT NULL auto_increment, "
+    . "comment_post_ID bigint(20) unsigned NOT NULL default '0', comment_author tinytext NOT NULL, "
+    . "comment_author_email varchar(100) NOT NULL default '', comment_author_url varchar(200) NOT NULL default '', "
+    . "comment_author_IP varchar(100) NOT NULL default '', "
+    . "comment_date datetime NOT NULL default '0000-00-00 00:00:00', "
+    . "comment_date_gmt datetime NOT NULL default '0000-00-00 00:00:00', comment_content text NOT NULL, "
+    . "comment_karma int(11) NOT NULL default '0', comment_approved varchar(20) NOT NULL default '1', "
+    . "comment_agent varchar(255) NOT NULL default '', comment_type varchar(20) NOT NULL default 'comment', "
+    . "comment_parent bigint(20) unsigned NOT NULL default '0', user_id bigint(20) unsigned NOT NULL default '0', "
+    . "PRIMARY KEY (comment_ID), KEY comment_post_ID (comment_post_ID)) "
+    . "DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+);
+$GLOBALS['wpdb']->query(
+    "CREATE TABLE IF NOT EXISTS {$GLOBALS['wpdb']->commentmeta} (meta_id bigint(20) unsigned NOT NULL auto_increment, "
+    . "comment_id bigint(20) unsigned NOT NULL default '0', meta_key varchar(255) default NULL, meta_value longtext, "
+    . "PRIMARY KEY (meta_id), KEY comment_id (comment_id), KEY meta_key (meta_key(191))) "
+    . "DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+);
+
 // The REST controllers WP_Post_Type::get_rest_controller() and its revisions and autosave readers construct.
 foreach ([
     'endpoints/class-wp-rest-controller.php',
@@ -81,13 +146,16 @@ function _unregister_post_status($status)
 }
 
 /**
- * Deletes every post, meta row, term relationship and user but the first, as WordPress's
- *  tests/phpunit/includes/utils.php does (over the tables compat/posts-read/setup.php creates).
+ * Deletes every post, comment, meta row, term relationship and user but the first, as WordPress's
+ *  tests/phpunit/includes/functions.php does.
+ *
+ *  Unlike WordPress's, it deletes attachment rows without `wp_delete_attachment()`: the factory uploads no files.
  */
 function _delete_all_data()
 {
     global $wpdb;
-    foreach ([$wpdb->posts, $wpdb->postmeta, $wpdb->term_relationships, $wpdb->termmeta] as $table)
+    foreach ([$wpdb->posts, $wpdb->postmeta, $wpdb->comments, $wpdb->commentmeta, $wpdb->term_relationships,
+        $wpdb->termmeta] as $table)
     {
         $wpdb->query("DELETE FROM {$table}");
     }
@@ -132,7 +200,9 @@ function speedyspec_doubles_snapshot(): void
 function speedyspec_doubles_restore(): void
 {
     $GLOBALS['wp'] = new WP();
-    foreach (['post', 'id', 'authordata', 'currentday', 'currentmonth', 'page', 'pages', 'multipage', 'more', 'numpages'] as $global)
+    $globals = ['post', 'id', 'authordata', 'currentday', 'currentmonth', 'page', 'pages', 'multipage', 'more',
+        'numpages'];
+    foreach ($globals as $global)
     {
         $GLOBALS[$global] = null;
     }
