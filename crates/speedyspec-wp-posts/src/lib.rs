@@ -4,7 +4,9 @@
 //! viewable predicates, `create_initial_post_types()`, `wp_unique_post_slug()`'s rules over the post repository,
 //! the post hierarchy: parents, loops, ancestors, page URIs and page trees, `get_extended()`'s more split, and
 //! `sanitize_post()` and `sanitize_post_field()` on PHP-shaped values over the [`Formatting`] port; the post type
-//! labels, viewable and unique slug filters run through the hooks contract.
+//! labels, viewable and unique slug filters run through the hooks contract; and the read use cases
+//! ([`PostsApi`], the [`Posts`](speedyspec_wp_posts_contracts::Posts) Facade) with the `posts` cache functions and
+//! their messages ([`register_posts_handlers`]).
 
 mod caps;
 mod content;
@@ -18,6 +20,7 @@ mod list;
 mod pages;
 mod post_type;
 mod queries;
+mod read;
 mod reader;
 mod registry;
 mod sanitize;
@@ -58,6 +61,7 @@ pub use queries::{
     post_status_name_viewable_filtered, post_type_exists, post_type_name_viewable,
     post_type_name_viewable_filtered,
 };
+pub use read::*;
 pub use reader::Uncached;
 pub use registry::{
     ActionToAdd, ActionToRemove, PostTypeRegistration, PostTypeRegistry, PostTypeUnregistration,

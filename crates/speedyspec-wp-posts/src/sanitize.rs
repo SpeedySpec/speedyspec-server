@@ -193,6 +193,54 @@ pub fn sanitize_post_field_word(
     Ok(value)
 }
 
+/// The filters [`sanitize_post_field_word`] runs for `field` in `context`, in order, with the [`Formatting`] port's
+/// own hooks (`user_can_richedit`, `format_to_edit`, `attribute_escape`, `js_escape`) where it calls them; for
+/// [`crate::read_hooks`].
+pub(crate) fn field_hooks(field: &[u8], context: &str) -> Vec<Vec<u8>> {
+    if field == b"ancestors" || "raw" == context {
+        return Vec::new();
+    }
+    let prefixed = field.windows(5).any(|w| w == b"post_");
+    let no_prefix = without_post_prefix(field);
+    let mut hooks: Vec<Vec<u8>> = Vec::new();
+    if "edit" == context {
+        if prefixed {
+            hooks.push([b"edit_", field].concat());
+            hooks.push([&no_prefix[..], b"_edit_pre"].concat());
+        } else {
+            hooks.push([b"edit_post_", field].concat());
+        }
+        if FORMAT_TO_EDIT.contains(&field) {
+            if field == b"post_content" {
+                hooks.push(b"user_can_richedit".to_vec());
+            }
+            hooks.push(b"format_to_edit".to_vec());
+        } else {
+            hooks.push(b"attribute_escape".to_vec());
+        }
+    } else if "db" == context {
+        if prefixed {
+            hooks.push([b"pre_", field].concat());
+            hooks.push([&no_prefix[..], b"_save_pre"].concat());
+        } else {
+            hooks.push([b"pre_post_", field].concat());
+            hooks.push([field, b"_pre"].concat());
+        }
+    } else {
+        hooks.push(if prefixed {
+            field.to_vec()
+        } else {
+            [b"post_", field].concat()
+        });
+        if "attribute" == context {
+            hooks.push(b"attribute_escape".to_vec());
+        } else if "js" == context {
+            hooks.push(b"js_escape".to_vec());
+        }
+    }
+    hooks
+}
+
 /// `sanitize_post()`'s object and array branches over the properties (or entries), in place.
 ///
 /// When `filter` is set and equals `context`, nothing changes. Otherwise an unset (missing or null) `ID` becomes 0,

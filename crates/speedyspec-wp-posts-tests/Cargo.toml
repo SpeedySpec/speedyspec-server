@@ -2,7 +2,7 @@
 name = "speedyspec-wp-posts-tests"
 version = "0.1.0"
 publish = false
-description = "Integration tests of speedyspec-wp-posts's filtered use cases with the Rust hook API, the Rust escaping and the in-memory post repository, replaying the recorded compat/posts-read scenarios. A crate of its own so speedyspec-wp-posts depends on contracts only."
+description = "Integration tests of speedyspec-wp-posts's filtered use cases with the Rust hook API, the Rust escaping and the in-memory post repository, replaying the recorded compat/posts-read scenarios; and of the read use cases over the Rust object cache and the metadata API. A crate of its own so speedyspec-wp-posts depends on contracts only."
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -12,6 +12,14 @@ seam = "query"
 role = "test"
 
 [dev-dependencies]
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
+speedyspec-wp-meta = { path = "../speedyspec-wp-meta" }
+speedyspec-wp-meta-contracts.workspace = true
+speedyspec-wp-meta-memory = { path = "../speedyspec-wp-meta-memory" }
+speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
+speedyspec-wp-object-cache-contracts.workspace = true
+md5 = { package = "md-5", version = "0.11.0" }
 speedyspec-php-serialize.workspace = true
 speedyspec-wp-hooks.workspace = true
 speedyspec-wp-hooks-contracts.workspace = true
