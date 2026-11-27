@@ -51,6 +51,7 @@ speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
 speedyspec-data-query = { path = "../speedyspec-data-query" }
 speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
 speedyspec-wp-meta-php = { path = "../speedyspec-wp-meta-php" }
+speedyspec-wp-posts-php = { path = "../speedyspec-wp-posts-php" }
 speedyspec-wp-options-php = { path = "../speedyspec-wp-options-php" }
 speedyspec-wp-cron-php = { path = "../speedyspec-wp-cron-php" }
 speedyspec-wp-cron-contracts.workspace = true

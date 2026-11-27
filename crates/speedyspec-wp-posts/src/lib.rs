@@ -39,7 +39,7 @@ pub use hierarchy::{
     ParentCheck, check_post_hierarchy_for_loops, find_hierarchy_loop, page_uri, post_ancestors,
     post_parent_id,
 };
-pub use initial::{InitialOptions, create_initial_post_types};
+pub use initial::{InitialCall, InitialOptions, create_initial_post_types, initial_calls};
 
 pub use key::{NAME_LENGTH_VERSION, check_post_type_name, sanitize_key};
 pub use labels::{

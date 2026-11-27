@@ -363,6 +363,36 @@
       "component": "speedyspec-wp-meta-sql",
       "skip-github-release": true,
       "skip-changelog": true
+    },
+    "crates/speedyspec-wp-kses": {
+      "component": "speedyspec-wp-kses",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-kses-security": {
+      "component": "speedyspec-wp-kses-security",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-text": {
+      "component": "speedyspec-wp-text",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-posts": {
+      "component": "speedyspec-wp-posts",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-posts-memory": {
+      "component": "speedyspec-wp-posts-memory",
+      "skip-github-release": true,
+      "skip-changelog": true
+    },
+    "crates/speedyspec-wp-posts-php": {
+      "component": "speedyspec-wp-posts-php",
+      "skip-github-release": true,
+      "skip-changelog": true
     }
   }
 }

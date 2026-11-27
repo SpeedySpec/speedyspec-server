@@ -1,0 +1,39 @@
+[package]
+name = "speedyspec-wp-posts-php"
+version = "0.1.0"
+publish = false
+description = "WordPress's post type and post status registries (register_post_type() and its readers) as native PHP over the Rust post type rules, reading PHP's globals live."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[package.metadata.speedyspec]
+seam = "query"
+role = "php"
+
+[dependencies]
+speedyspec-compat.workspace = true
+speedyspec-php.workspace = true
+speedyspec-php-ext.workspace = true
+speedyspec-php-serialize.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
+speedyspec-wp-posts = { path = "../speedyspec-wp-posts" }
+speedyspec-wp-posts-contracts.workspace = true
+
+[dev-dependencies]
+speedyspec-container.workspace = true
+speedyspec-container-php.workspace = true
+speedyspec-data.workspace = true
+speedyspec-data-mysql = { path = "../speedyspec-data-mysql" }
+speedyspec-data-query = { path = "../speedyspec-data-query" }
+speedyspec-hooks-memory.workspace = true
+speedyspec-wp-db = { path = "../speedyspec-wp-db" }
+speedyspec-wp-db-php = { path = "../speedyspec-wp-db-php" }
+speedyspec-wp-hooks-memory.workspace = true
+speedyspec-wp-hooks-php.workspace = true
+speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
+serde_json = "1"
+
+[[test]]
+name = "registry"
+harness = false
