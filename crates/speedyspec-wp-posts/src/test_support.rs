@@ -1,6 +1,9 @@
 //! Test doubles shared by the crate's unit tests.
 
-use speedyspec_wp_posts_contracts::{Post, PostError, PostId, PostRepository, PostTypeName, Slug};
+use speedyspec_wp_posts_contracts::{
+    LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
+    PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+};
 
 /// A repository that answers nothing: any statement panics.
 pub(crate) struct Silent;
@@ -43,5 +46,53 @@ impl PostRepository for Silent {
         _except: PostId,
     ) -> Result<Option<Slug>, PostError> {
         panic!("flat_slug_owner")
+    }
+
+    fn find_many(&self, _ids: &[PostId]) -> Result<Vec<Post>, PostError> {
+        panic!("find_many")
+    }
+
+    fn parent_ids(&self, _ids: &[PostId]) -> Result<Vec<(PostId, PostId)>, PostError> {
+        panic!("parent_ids")
+    }
+
+    fn pages_by_names(
+        &self,
+        _names: &[Slug],
+        _post_types: &[PostTypeName],
+    ) -> Result<Vec<PageRow>, PostError> {
+        panic!("pages_by_names")
+    }
+
+    fn all_page_ids(&self) -> Result<Vec<PostId>, PostError> {
+        panic!("all_page_ids")
+    }
+
+    fn count_by_status(
+        &self,
+        _post_type: &PostTypeName,
+        _reader: Option<u64>,
+    ) -> Result<Vec<(PostStatusName, u64)>, PostError> {
+        panic!("count_by_status")
+    }
+
+    fn count_attachments(
+        &self,
+        _mime_type: Option<&MimeFilter>,
+    ) -> Result<(Vec<(MimeType, u64)>, u64), PostError> {
+        panic!("count_attachments")
+    }
+
+    fn last_post_time(
+        &self,
+        _field: LastPostField,
+        _post_types: &[PostTypeName],
+        _timezone: Timezone,
+    ) -> Result<Option<PostDateTime>, PostError> {
+        panic!("last_post_time")
+    }
+
+    fn available_mime_types(&self, _post_type: &PostTypeName) -> Result<Vec<MimeType>, PostError> {
+        panic!("available_mime_types")
     }
 }

@@ -9,8 +9,9 @@ use speedyspec_php_serialize::semantics::to_php_int;
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::SlugContext;
 use speedyspec_wp_posts_contracts::{
-    Clock, CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
-    PostRepository, PostStatusName, PostType, PostTypeName, PostTypes, Slug, SlugTruncation,
+    Clock, CommentStatus, LastPostField, MimeFilter, MimeType, PageRow, PingStatus, Post, PostDate,
+    PostDateTime, PostError, PostId, PostRepository, PostStatusName, PostType, PostTypeName,
+    PostTypes, Slug, SlugTruncation, Timezone,
 };
 use speedyspec_wp_posts_memory::MemoryPostRepository;
 
@@ -345,6 +346,54 @@ impl<R: PostRepository> PostRepository for Recording<R> {
             ],
         );
         self.inner.flat_slug_owner(slug, post_type, except)
+    }
+
+    fn find_many(&self, ids: &[PostId]) -> Result<Vec<Post>, PostError> {
+        self.inner.find_many(ids)
+    }
+
+    fn parent_ids(&self, ids: &[PostId]) -> Result<Vec<(PostId, PostId)>, PostError> {
+        self.inner.parent_ids(ids)
+    }
+
+    fn pages_by_names(
+        &self,
+        names: &[Slug],
+        post_types: &[PostTypeName],
+    ) -> Result<Vec<PageRow>, PostError> {
+        self.inner.pages_by_names(names, post_types)
+    }
+
+    fn all_page_ids(&self) -> Result<Vec<PostId>, PostError> {
+        self.inner.all_page_ids()
+    }
+
+    fn count_by_status(
+        &self,
+        post_type: &PostTypeName,
+        reader: Option<u64>,
+    ) -> Result<Vec<(PostStatusName, u64)>, PostError> {
+        self.inner.count_by_status(post_type, reader)
+    }
+
+    fn count_attachments(
+        &self,
+        mime_type: Option<&MimeFilter>,
+    ) -> Result<(Vec<(MimeType, u64)>, u64), PostError> {
+        self.inner.count_attachments(mime_type)
+    }
+
+    fn last_post_time(
+        &self,
+        field: LastPostField,
+        post_types: &[PostTypeName],
+        timezone: Timezone,
+    ) -> Result<Option<PostDateTime>, PostError> {
+        self.inner.last_post_time(field, post_types, timezone)
+    }
+
+    fn available_mime_types(&self, post_type: &PostTypeName) -> Result<Vec<MimeType>, PostError> {
+        self.inner.available_mime_types(post_type)
     }
 }
 
