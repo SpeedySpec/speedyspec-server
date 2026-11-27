@@ -2,7 +2,7 @@
 name = "speedyspec-wp-meta"
 version = "0.1.0"
 publish = false
-description = "WordPress's metadata API rules: protected keys, hook names, register_meta() and the registered-keys registry."
+description = "WordPress's metadata API in Rust: the meta.php use cases over their ports, protected keys, hook names, register_meta() and the registered-keys registry."
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -12,8 +12,12 @@ seam = "meta"
 role = "implementation"
 
 [dependencies]
+speedyspec-container.workspace = true
+speedyspec-cqrs.workspace = true
 speedyspec-wp-meta-contracts.workspace = true
 speedyspec-php-serialize.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
+speedyspec-wp-object-cache-contracts.workspace = true
 indexmap = "2"
 
 [dev-dependencies]

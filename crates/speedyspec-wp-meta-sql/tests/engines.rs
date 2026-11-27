@@ -19,7 +19,8 @@ use speedyspec_wp_hooks_contracts::{Callback, HookError, HookName};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_meta_contracts::conformance::meta_repository_suite;
 use speedyspec_wp_meta_contracts::{
-    MetaError, MetaKey, MetaRepositories, MetaRepository, MetaType, ObjectId, SerializedValue,
+    MetaError, MetaId, MetaKey, MetaRepositories, MetaRepository, MetaType, ObjectId,
+    SerializedValue,
 };
 use speedyspec_wp_meta_sql::SqlMetaRepositories;
 
@@ -292,9 +293,16 @@ fn hook_failure_surfaces() {
         );
         assert_eq!(take_hook_error().map(|e| e.message), Some("boom".into()));
         // `$wpdb->insert`'s charset lookup meets the failure first and hides it ("Could not retrieve table
-        // charset."), so `add` answers as `$wpdb` does; the payload is still there for the bridge to rethrow.
+        // charset."); the write still fails, as WordPress would have thrown, and the payload stays for the bridge.
         let hidden = repo.add(ObjectId(1), &MetaKey::from("k"), None);
-        assert!(matches!(hidden, Ok(None)), "{hidden:?}");
+        assert!(
+            matches!(hidden, Err(MetaError::Db(ref m)) if m == "boom"),
+            "{hidden:?}"
+        );
+        assert!(take_hook_error().is_some());
+        // So does every other write that answers 0 behind a hidden failure.
+        let deleted = repo.delete_by_mid(MetaId(1));
+        assert!(matches!(deleted, Err(MetaError::Db(_))), "{deleted:?}");
         assert!(take_hook_error().is_some());
     });
 }

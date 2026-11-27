@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use speedyspec_data::{DbValue, Row};
-use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue, Wpdb};
+use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue, Wpdb, take_hook_error};
 use speedyspec_wp_meta_contracts::{
     Meta, MetaError, MetaId, MetaKey, MetaRepositories, MetaRepository, MetaType, ObjectId,
     SerializedValue,
@@ -122,6 +122,32 @@ impl SqlMetaRepository {
     }
 
     /// A write helper's count; 0 where `wpdb` returns false.
+    /// Runs a write, then fails it when a hook failure hid behind its answer.
+    ///
+    /// `$wpdb` hides a `query` callback's exception raised during a write's charset lookup and answers false or 0,
+    /// where WordPress would have thrown and stopped. The write then answers `MetaError::Db`, so the use case stops
+    /// before its cache delete and actions; the failure stays in `take_hook_error()` for the bridge to rethrow. A
+    /// failure already pending before the write stays pending too (the first one wins).
+    fn hidden_checked<T>(
+        &self,
+        run: impl FnOnce() -> Result<T, MetaError>,
+    ) -> Result<T, MetaError> {
+        let before = take_hook_error();
+        let result = run();
+        let during = take_hook_error();
+        if let Some(before) = before {
+            let _ = WpDbError::from(before);
+        }
+        match during {
+            Some(hook) => {
+                let message = hook.message.clone();
+                let _ = WpDbError::from(hook);
+                Err(MetaError::Db(message))
+            }
+            None => result,
+        }
+    }
+
     fn written(&self, result: Result<u64, WpDbError>) -> Result<u64, MetaError> {
         match result {
             Ok(n) => Ok(n),
@@ -170,11 +196,13 @@ impl MetaRepository for SqlMetaRepository {
         value: Option<&SerializedValue>,
     ) -> Result<Option<MetaId>, MetaError> {
         let fields = self.mapper.insert_fields(object, key, value);
-        let inserted = self.written(self.wpdb.insert(&self.table(), &fields, None))?;
-        if inserted == 0 {
-            return Ok(None);
-        }
-        Ok(Some(MetaId(self.wpdb.insert_id())))
+        self.hidden_checked(|| {
+            let inserted = self.written(self.wpdb.insert(&self.table(), &fields, None))?;
+            if inserted == 0 {
+                return Ok(None);
+            }
+            Ok(Some(MetaId(self.wpdb.insert_id())))
+        })
     }
 
     /// WordPress sends no `ORDER BY`; the ids are sorted here, which is the order MySQL gives.
@@ -207,10 +235,12 @@ impl MetaRepository for SqlMetaRepository {
         if let Some(previous) = previous {
             conditions.push(("meta_value".to_string(), Self::value(Some(previous))));
         }
-        self.written(
-            self.wpdb
-                .update(&self.table(), &data, &conditions, None, None),
-        )
+        self.hidden_checked(|| {
+            self.written(
+                self.wpdb
+                    .update(&self.table(), &data, &conditions, None, None),
+            )
+        })
     }
 
     /// One `prepare` of the whole template: the same text as `meta.php`'s three concatenated `prepare` calls.
@@ -274,11 +304,11 @@ impl MetaRepository for SqlMetaRepository {
             self.id_column(),
             id_list(ids.iter().map(|id| id.0))
         );
-        match self.wpdb.query_bytes(sql.as_bytes()) {
+        self.hidden_checked(|| match self.wpdb.query_bytes(sql.as_bytes()) {
             Ok(QueryOutcome::Affected { rows, .. }) => Ok(rows),
             Ok(_) => Ok(0),
             Err(e) => surfaced(e).map(|()| 0),
-        }
+        })
     }
 
     fn by_mid(&self, mid: MetaId) -> Result<Option<Meta>, MetaError> {
@@ -306,19 +336,21 @@ impl MetaRepository for SqlMetaRepository {
         ];
         let conditions = vec![(self.id_column().to_string(), int(mid.0))];
         let (format, where_format) = (vec!["%s".to_string()], vec!["%d".to_string()]);
-        self.written(self.wpdb.update(
-            &self.table(),
-            &data,
-            &conditions,
-            Some(&format),
-            Some(&where_format),
-        ))
+        self.hidden_checked(|| {
+            self.written(self.wpdb.update(
+                &self.table(),
+                &data,
+                &conditions,
+                Some(&format),
+                Some(&where_format),
+            ))
+        })
     }
 
     /// `$wpdb->delete( $table, array( $id_column => $meta_id ) )`, no format.
     fn delete_by_mid(&self, mid: MetaId) -> Result<u64, MetaError> {
         let conditions = vec![(self.id_column().to_string(), int(mid.0))];
-        self.written(self.wpdb.delete(&self.table(), &conditions, None))
+        self.hidden_checked(|| self.written(self.wpdb.delete(&self.table(), &conditions, None)))
     }
 
     /// `update_meta_cache()`'s query with one known difference: the id column is added, because [`Meta`] carries
@@ -361,6 +393,12 @@ impl SqlMetaRepositories {
 }
 
 impl MetaRepositories for SqlMetaRepositories {
+    /// `_get_meta_table( $type )`: `None` when `$wpdb->{type}meta` is empty.
+    ///
+    /// Known difference: on a single site, `'site'` has a table here (`wpdb` answers `wp_sitemeta`), where
+    /// WordPress's `$wpdb->sitemeta` is unset and `_get_meta_table( 'site' )` is false. The options seam's network
+    /// code relies on that `wp_sitemeta` fallback, so `add_metadata( 'site', ... )` on a single site writes
+    /// `wp_sitemeta` where WordPress fails. (`'blog'` follows WordPress: no table on a single site.)
     fn for_type(&self, meta_type: &MetaType) -> Option<Rc<dyn MetaRepository>> {
         if self.wpdb.table_name(&meta_type.table_suffix()).is_empty() {
             return None;

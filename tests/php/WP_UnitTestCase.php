@@ -92,10 +92,15 @@ abstract class WP_UnitTestCase extends TestCase
 
     /**
      * Runs the test class's `wpTearDownAfterClass()`, as WordPress's test case does.
+     *
+     * A bootstrap may name classes whose clean-up calls functions that are not loaded in
+     *  `SPEEDYSPEC_SKIP_TEAR_DOWN_AFTER_CLASS`; their fixtures stay until the bootstrap empties the tables at the start
+     *  of the next run.
      */
     public static function tear_down_after_class()
     {
-        if (method_exists(static::class, 'wpTearDownAfterClass'))
+        $skipped = defined('SPEEDYSPEC_SKIP_TEAR_DOWN_AFTER_CLASS') ? SPEEDYSPEC_SKIP_TEAR_DOWN_AFTER_CLASS : array();
+        if (method_exists(static::class, 'wpTearDownAfterClass') && !in_array(static::class, $skipped, true))
         {
             call_user_func(array(static::class, 'wpTearDownAfterClass'));
         }
@@ -260,6 +265,46 @@ abstract class WP_UnitTestCase extends TestCase
         );
 
         wp_cache_add_non_persistent_groups(array('counts', 'plugins', 'theme_json'));
+    }
+
+    /**
+     * Unregisters every registered meta key, as WordPress's test case does.
+     */
+    public function unregister_all_meta_keys()
+    {
+        global $wp_meta_keys;
+        if (!is_array($wp_meta_keys))
+        {
+            return;
+        }
+        foreach ($wp_meta_keys as $object_type => $type_keys)
+        {
+            foreach ($type_keys as $object_subtype => $subtype_keys)
+            {
+                foreach ($subtype_keys as $key => $value)
+                {
+                    unregister_meta_key($object_type, $key, $object_subtype);
+                }
+            }
+        }
+    }
+
+    /**
+     * Deletes a user: through `wp_delete_user()` when wp-admin's user functions are loaded, and otherwise the
+     *  `wp_users` row and its meta (what includes/factory.php stores).
+     *
+     * @return bool
+     *   Whether the user was deleted.
+     */
+    public static function delete_user($user_id)
+    {
+        if (function_exists('wp_delete_user'))
+        {
+            return wp_delete_user($user_id);
+        }
+        global $wpdb;
+        $wpdb->delete($wpdb->usermeta, array('user_id' => $user_id));
+        return (bool) $wpdb->delete($wpdb->users, array('ID' => $user_id));
     }
 
     protected function assert_post_conditions()

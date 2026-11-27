@@ -10,6 +10,7 @@ use speedyspec_wp_cron_php::CronArea;
 use speedyspec_wp_db::WpDbConfig;
 use speedyspec_wp_db_php::WpDbArea;
 use speedyspec_wp_hooks::WpHookApi;
+use speedyspec_wp_meta_php::MetaArea;
 use speedyspec_wp_object_cache_php::ObjectCacheArea;
 use speedyspec_wp_options_php::OptionsArea;
 
@@ -50,7 +51,7 @@ fn check(registry: &EngineRegistry) -> Result<(), String> {
 }
 
 /// The `default` engine from `config`, and the areas that use it, in the order they must be registered:
-/// `WpDbArea`, `ObjectCacheArea`, `OptionsArea`, `CronArea`. The engine must answer before `WpDbArea` is built. The
+/// `WpDbArea`, `ObjectCacheArea`, `MetaArea`, `OptionsArea`, `CronArea`. The engine must answer before `WpDbArea` is built. The
 /// object cache has no persistent level yet (request lifetime, as WordPress's default).
 pub fn boot_database(
     config: WpDbConfig,
@@ -74,12 +75,15 @@ pub fn boot_database(
         config,
     );
     let cache = ObjectCacheArea::new(container.clone(), None);
+    // The meta area takes the contracts only: the Hook API, the object cache and wpdb as `Rc<dyn …>`.
+    let meta = MetaArea::new(container.clone(), hook_api.clone(), cache.api(), wpdb.api());
     let options = OptionsArea::new(container.clone(), hook_api.clone(), cache.api(), wpdb.api());
     let cron = CronArea::new(hook_api.clone(), options.api()).with_wake(wake);
     let database = WorkerDatabase { registry };
     let areas: Vec<Rc<dyn NativeArea>> = vec![
         Rc::new(wpdb),
         Rc::new(cache),
+        Rc::new(meta),
         Rc::new(options),
         Rc::new(cron),
     ];
