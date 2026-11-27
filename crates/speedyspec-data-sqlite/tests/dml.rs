@@ -528,3 +528,13 @@ fn convert_using_unicode_and_binary() {
         unsupported("CONVERT ... USING a non-Unicode charset")
     );
 }
+
+/// A NUL byte (mysqli's `\0` escape) cannot appear raw in SQLite's SQL text: the literal becomes a blob read as text.
+#[test]
+fn nul_literal_becomes_a_text_cast_blob() {
+    one(
+        r"INSERT INTO t (a, b) VALUES (1, 'x\0y')",
+        vec![],
+        r#"INSERT INTO "t" ("a", "b") VALUES (1, CAST(X'780079' AS TEXT))"#,
+    );
+}

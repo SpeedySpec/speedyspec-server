@@ -673,3 +673,46 @@ fn limit_past_i64_means_every_row() {
         assert_eq!(query(&store, sql).rows.len(), 2, "{sql}");
     }
 }
+
+/// mysqli escapes a NUL byte as `\0`; MySQL stores the byte, and so does SQLite: the value reads back whole, compares
+/// equal, and has its length.
+#[test]
+fn nul_escape_stores_the_byte() {
+    let store = memory();
+    exec(
+        &store,
+        r"INSERT INTO wp_options (option_name, option_value) VALUES ('nul', 'before\0after')",
+    );
+    assert_eq!(
+        scalar(
+            &store,
+            "SELECT option_value FROM wp_options WHERE option_name = 'nul'"
+        ),
+        Some("before\0after".to_string())
+    );
+    assert_eq!(
+        scalar(
+            &store,
+            r"SELECT COUNT(*) FROM wp_options WHERE option_value = 'before\0after'"
+        ),
+        Some("1".to_string())
+    );
+    assert_eq!(
+        scalar(
+            &store,
+            "SELECT LENGTH(option_value) FROM wp_options WHERE option_name = 'nul'"
+        ),
+        Some("12".to_string())
+    );
+    exec(
+        &store,
+        r"UPDATE wp_options SET option_value = '\0' WHERE option_name = 'nul'",
+    );
+    assert_eq!(
+        scalar(
+            &store,
+            "SELECT option_value FROM wp_options WHERE option_name = 'nul'"
+        ),
+        Some("\0".to_string())
+    );
+}
