@@ -961,25 +961,26 @@ fn create_initial_post_types(_: &[Value]) -> R {
     Ok(Value::Null)
 }
 
-/// Clears what a call from Rust may have left, runs `f`, then rethrows the first exception a port parked.
+/// Clears what a call from Rust may have left, runs `f`, then rethrows the first failure the work met: the
+/// callback's own exception, a port's parked one, or one `wpdb` hid behind an empty answer (`take_hook_error()`).
 ///
 /// A native function PHP calls while another one runs (from a hook callback) keeps the outer call's parked
-/// exception for it; the outermost call starts clean.
+/// exception for it. Every call, nested or not, starts with `wpdb`'s side channel empty and takes it once `f`
+/// returns, as meta-php's natives do, so a failure a nested call met (and a callback caught) is never rethrown by
+/// the call around it.
 fn guarded(f: Native, args: &[Value]) -> R {
     let depth = DEPTH.with(|d| {
         d.set(d.get() + 1);
         d.get()
     });
-    if depth == 1 {
-        // What a call from Rust may have left: the outermost call starts clean.
-        let _ = speedyspec_wp_db_contracts::take_hook_error();
-    }
+    let _ = speedyspec_wp_db_contracts::take_hook_error();
     let outer = take_parked().filter(|_| depth > 1);
     let result = f(args);
     let parked = take_parked();
     if let Some(outer) = outer {
         restore(outer);
     }
+    let hidden = speedyspec_wp_db_contracts::take_hook_error();
     if DEPTH.with(|d| {
         d.set(d.get() - 1);
         d.get() == 0
@@ -987,15 +988,13 @@ fn guarded(f: Native, args: &[Value]) -> R {
         // The markers only live for one outermost call: the objects they hold are released now, not at request end.
         crate::codec::clear_live();
     }
-    match (result, parked) {
-        (Err(NativeError::Rethrow(exception)), _) => Err(NativeError::Rethrow(exception)),
+    match (result, parked, hidden) {
+        (Err(NativeError::Rethrow(exception)), _, _) => Err(NativeError::Rethrow(exception)),
         // A port's exception stopped the work: it is what PHP sees.
-        (_, Some(exception)) => Err(NativeError::Rethrow(exception)),
+        (_, Some(exception), _) => Err(NativeError::Rethrow(exception)),
         // `wpdb` answered false or 0 where a `query` callback threw: the exception still reaches PHP.
-        (other, None) => match speedyspec_wp_db_contracts::take_hook_error() {
-            Some(hook) => Err(hook_error(hook)),
-            None => other,
-        },
+        (_, None, Some(hook)) => Err(hook_error(hook)),
+        (other, None, None) => other,
     }
 }
 
