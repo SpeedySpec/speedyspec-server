@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-meta-php"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "WordPress's meta.php functions (add_metadata and the rest) and WP_Metadata_Lazyloader as native PHP over the Rust metadata API."
 edition.workspace = true

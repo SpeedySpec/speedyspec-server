@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.5.0](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-php-runtime-v1.4.1...speedyspec-php-runtime-v1.5.0) (2026-11-27)
+
+
+### Features
+
+* hooks, object cache and database contracts ([#119](https://github.com/SpeedySpec/speedyspec-server/issues/119)) ([dd41e75](https://github.com/SpeedySpec/speedyspec-server/commit/dd41e75146cba66185260824e753277134df3155))
+* **meta:** the metadata use cases, lazy loader and native meta.php (phase 3, part 2) ([#131](https://github.com/SpeedySpec/speedyspec-server/issues/131)) ([43bb14a](https://github.com/SpeedySpec/speedyspec-server/commit/43bb14a3947d91f82af14a4c10070b91bcaffaf7))
+* seam metadata and the check-seams CI step (server half of feat/seam-platform) ([#122](https://github.com/SpeedySpec/speedyspec-server/issues/122)) ([5bd3deb](https://github.com/SpeedySpec/speedyspec-server/commit/5bd3deb718aea1a7a783821c692c7412d739cb97))
+
+
+### Build System
+
+* depend on speedyspec-platform from crates.io ([#123](https://github.com/SpeedySpec/speedyspec-server/issues/123)) ([b23b23e](https://github.com/SpeedySpec/speedyspec-server/commit/b23b23ea6879cb21dfc0810bad9c63b95817465b))
+
 ## [1.4.1](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-php-runtime-v1.4.0...speedyspec-php-runtime-v1.4.1) (2026-11-24)
 
 ## [1.4.0](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-php-runtime-v1.3.0...speedyspec-php-runtime-v1.4.0) (2026-11-23)

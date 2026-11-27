@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-firewall-infra-cache"
-version = "0.1.1"
+version = "0.1.2"
 publish = false
 description = "The firewall's counters and bans on the Caching Store: memory, database, Valkey, ReDB or file."
 edition.workspace = true

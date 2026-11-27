@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-meta-tests"
-version = "0.1.0"
+version = "0.1.1"
 publish = false
 description = "Integration tests of speedyspec-wp-meta's use cases with the Rust hook API, the object cache and the in-memory meta repositories. A crate of its own so speedyspec-wp-meta depends on contracts only and no crate has a dev-dependency on one that depends on it."
 edition.workspace = true

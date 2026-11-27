@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-data-memory"
-version = "0.2.0"
+version = "0.3.0"
 publish = false
 description = "In-memory NoSQL and Direct Stores, for tests and single-process sites."
 edition.workspace = true

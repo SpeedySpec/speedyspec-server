@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-server-v0.3.1...speedyspec-server-v0.4.0) (2026-11-27)
+
+
+### Features
+
+* seam metadata and the check-seams CI step (server half of feat/seam-platform) ([#122](https://github.com/SpeedySpec/speedyspec-server/issues/122)) ([5bd3deb](https://github.com/SpeedySpec/speedyspec-server/commit/5bd3deb718aea1a7a783821c692c7412d739cb97))
+
+
+### Build System
+
+* depend on speedyspec-platform from crates.io ([#123](https://github.com/SpeedySpec/speedyspec-server/issues/123)) ([b23b23e](https://github.com/SpeedySpec/speedyspec-server/commit/b23b23ea6879cb21dfc0810bad9c63b95817465b))
+* **deps:** bump minisign from 0.7.9 to 0.10.0 ([#127](https://github.com/SpeedySpec/speedyspec-server/issues/127)) ([e5a6fd1](https://github.com/SpeedySpec/speedyspec-server/commit/e5a6fd1d04f56ccf163ade470435f7f5c8154942))
+* **deps:** bump sha2 from 0.10.9 to 0.11.1 ([#126](https://github.com/SpeedySpec/speedyspec-server/issues/126)) ([2b9ca69](https://github.com/SpeedySpec/speedyspec-server/commit/2b9ca69892050459dece20517f9b7bfdcaf42ce4))
+
 ## [0.3.1](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-server-v0.3.0...speedyspec-server-v0.3.1) (2026-11-24)
 
 

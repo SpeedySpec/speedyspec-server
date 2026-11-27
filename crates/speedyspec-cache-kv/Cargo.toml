@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-cache-kv"
-version = "0.2.0"
+version = "0.3.0"
 publish = false
 description = "A Caching Store over any NoSQL store: group generation counters, so flush_group needs no prefix delete."
 edition.workspace = true
