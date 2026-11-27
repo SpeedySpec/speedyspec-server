@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-crypto"
-version = "0.5.0"
+version = "0.6.0"
 publish = false
 description = "WordPress's sodium functions' rules: the fast hash format, trusted keys and file signature checks."
 edition.workspace = true

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-server-infra-http"
-version = "0.1.7"
+version = "0.2.0"
 publish = false
 description = "The SpeedySpec server's release source over HTTPS, with resumable downloads."
 edition.workspace = true

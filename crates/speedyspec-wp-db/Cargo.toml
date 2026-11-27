@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-db"
-version = "0.2.0"
+version = "0.3.0"
 publish = false
 description = "WordPress's wpdb in Rust: every method as a command or query over speedyspec's data layer, with its hooks."
 edition.workspace = true

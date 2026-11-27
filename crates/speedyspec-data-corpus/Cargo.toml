@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-data-corpus"
-version = "0.3.0"
+version = "0.4.0"
 publish = false
 description = "The SQL corpus: the statements WordPress and popular plugins send, by shape, and the check that every engine plans them."
 edition.workspace = true

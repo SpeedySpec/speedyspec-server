@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-options-memory"
-version = "0.2.0"
+version = "0.3.0"
 publish = false
 description = "An in-memory option repository, for tests and for callers with no database."
 edition.workspace = true

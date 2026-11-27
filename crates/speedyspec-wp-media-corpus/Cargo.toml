@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-media-corpus"
-version = "0.1.3"
+version = "0.1.4"
 description = "Test only: the media corpus read through FFmpeg and WordPress's rules, against WordPress and getID3."
 edition.workspace = true
 rust-version.workspace = true

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-data-uow"
-version = "0.2.0"
+version = "0.3.0"
 publish = false
 description = "The unit of work and identity map for speedyspec's data layer: one transaction per engine, callbacks after commit."
 edition.workspace = true
