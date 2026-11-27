@@ -103,12 +103,49 @@ pub fn strip_ported(source: &str) -> Result<String, String> {
         .collect())
 }
 
+/// The release file that declares `WP_Post`, whose `get_instance()` body the prepared release swaps.
+pub const CLASS_FILE: &str = "wp-includes/class-wp-post.php";
+
+/// `WP_Post::get_instance()`'s first line, as WordPress formats it.
+const GET_INSTANCE: &str = "\tpublic static function get_instance( $post_id ) {";
+
+/// The swapped body: WordPress's own int checks and `false` answers, then the native raw read
+/// (`SpeedySpec\WpPosts\Native\post_instance()`), which reads through the bound post repository and the `posts`
+/// cache, so `get_post()` and a direct caller of `WP_Post::get_instance()` share one read path.
+pub const GET_INSTANCE_BODY: &str = "\t\t// SpeedySpec: the native raw read (the bound post repository and the posts cache), the one read\n\
+\t\t// path get_post() uses too.\n\
+\t\t$post_id = (int) $post_id;\n\
+\t\tif ( $post_id <= 0 ) {\n\
+\t\t\treturn false;\n\
+\t\t}\n\
+\n\
+\t\treturn \\SpeedySpec\\WpPosts\\Native\\post_instance( $post_id );\n";
+
+/// `class-wp-post.php`'s text with `get_instance()`'s body (the lines between its first line and the `}` that
+/// closes it, at the method's indent) replaced by [`GET_INSTANCE_BODY`]. Its signature and docblock stay.
+pub fn swap_get_instance(source: &str) -> Result<String, String> {
+    let lines: Vec<&str> = source.split_inclusive('\n').collect();
+    let start = lines
+        .iter()
+        .position(|l| l.trim_end() == GET_INSTANCE)
+        .ok_or("class-wp-post.php has no get_instance()")?;
+    let end = (start + 1..lines.len())
+        .find(|&i| lines[i].trim_end() == "\t}")
+        .ok_or("class-wp-post.php's get_instance() has no end")?;
+    let mut out: String = lines[..=start].concat();
+    out.push_str(GET_INSTANCE_BODY);
+    out.push_str(&lines[end..].concat());
+    Ok(out)
+}
+
 /// Prepares `release` (a `wordpress/` root) in `out`: links to each of its entries, except `wp-includes/post.php`,
-/// written without the ported functions. Reuses a copy already prepared, keeping the files another area's
-/// preparation wrote there (see the module's docs). Returns `out`.
+/// written without the ported functions, and [`CLASS_FILE`], written with `WP_Post::get_instance()`'s body swapped
+/// ([`swap_get_instance`]). Reuses a copy already prepared, keeping the files another area's preparation wrote there
+/// (see the module's docs). Returns `out`.
 pub fn prepare_release(release: &Path, out: &Path) -> Result<PathBuf, String> {
     let mirror = ReleaseMirror::new(release, out)?;
     let post = "wp-includes/post.php";
     mirror.write(post, &strip_ported(&mirror.read(post)?)?)?;
+    mirror.write(CLASS_FILE, &swap_get_instance(&mirror.read(CLASS_FILE)?)?)?;
     Ok(out.to_path_buf())
 }
