@@ -176,8 +176,8 @@ jobs:
           # Each makes its own database beside speedyspec_test (<db>_metadata for the replay, <db>_metadata_php for
           # the PHP tests), so they never empty the tables another test uses.
           scripts/linux-php.sh cargo test -p speedyspec-wp-meta-php --test compat --test errors --test replacement --test wordpress
-          # <db>_posts_read, as compat/posts-read/setup.php seeds it (the registry and the replay), and
-          # <db>_posts_read_php for the PHP tests.
+          # <db>_posts_read, as compat/posts-read/setup.php seeds it (the registry and the replay),
+          # <db>_posts_read_php for the errors and replacement tests, and <db>_posts_wordpress for WordPress's own.
           scripts/linux-php.sh cargo test -p speedyspec-wp-posts-php --test registry --test compat --test errors --test replacement --test release --test wordpress
           scripts/linux-php.sh cargo test -p speedyspec-wp-options-tests --test conditional
           scripts/linux-php.sh cargo test -p speedyspec-wp-cron -p speedyspec-wp-cron-options -p speedyspec-wp-cron-php

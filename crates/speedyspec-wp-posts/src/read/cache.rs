@@ -239,7 +239,7 @@ impl PostsApi {
     /// string `_validate_cache_id()` refused, a negative id): the rows are read for `ids`, while the meta and term
     /// steps take `given`, as WordPress passes them its unfiltered `$ids`. `update_postmeta_cache()` reads each
     /// given value as `intval` (a negative one as 0, since the metadata ids are unsigned), and `get_post_type()`
-    /// reads each as `get_post()` does.
+    /// reads each as `get_post()` does (an empty one, `0` or `''`, as the current post).
     pub fn prime_post_caches_given(
         &self,
         ids: &[PostId],
@@ -268,7 +268,13 @@ impl PostsApi {
         if terms {
             let mut types: Vec<PhpValue> = Vec::new();
             for value in given {
-                let post_type = match self.resolve_value(value.clone())? {
+                // get_post_type( $id ): an empty id is get_post()'s current post.
+                let loaded = if truthy(value) {
+                    self.resolve_value(value.clone())?
+                } else {
+                    self.resolve(PostRef::Current)?
+                };
+                let post_type = match loaded {
                     Some(loaded) => s(loaded.post.post_type.as_str()),
                     None => PhpValue::Bool(false),
                 };

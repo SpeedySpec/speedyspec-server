@@ -303,7 +303,11 @@ fn mime_clauses(filter: Option<&MimeFilter>) -> MimeClauses {
         None => return MimeClauses::All,
         Some(MimeFilter::One(list)) => list
             .split(',')
-            .map(|item| item.trim().to_owned())
+            // PHP's `trim()`: space, tab, newline, carriage return, NUL and vertical tab.
+            .map(|item| {
+                item.trim_matches([' ', '\t', '\n', '\r', '\0', '\x0b'])
+                    .to_owned()
+            })
             .filter(|item| !item.is_empty())
             .collect(),
         Some(MimeFilter::Many(items)) => items.clone(),
@@ -327,7 +331,8 @@ fn mime_clauses(filter: Option<&MimeFilter>) -> MimeClauses {
             Some((group, subgroup)) => {
                 let group = keep(group, false);
                 let subgroup = keep(subgroup, true);
-                let subgroup = if subgroup.is_empty() {
+                // PHP's `empty()`: `''` and `'0'` are both empty.
+                let subgroup = if subgroup.is_empty() || subgroup == "0" {
                     "*".to_owned()
                 } else {
                     subgroup
