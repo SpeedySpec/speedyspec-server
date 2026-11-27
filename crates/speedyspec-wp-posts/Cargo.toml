@@ -14,6 +14,7 @@ role = "implementation"
 [dependencies]
 speedyspec-wp-posts-contracts.workspace = true
 speedyspec-php-serialize.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
 indexmap = "2"
 
 [dev-dependencies]

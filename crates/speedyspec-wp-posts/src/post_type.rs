@@ -2,8 +2,9 @@
 //! lines 25-687), after its `register_post_type_args` and `register_{$post_type}_post_type_args` filters, which the
 //! caller applies to `args` first.
 //!
-//! The labels come from [`post_type_labels`] with no `post_type_labels_{$post_type}` callback; phase 4 runs that
-//! filter and hands its result to [`apply_filtered_labels`].
+//! The labels come from [`post_type_labels`] with no `post_type_labels_{$post_type}` callback.
+//! [`filter_post_type_labels`] then runs that filter (Observer, through [`HookApi`]) and hands its result to
+//! [`apply_filtered_labels`].
 //!
 //! Approximations, none of them recorded:
 //! - a non-array `capabilities` counts as empty (PHP throws a `TypeError` in `array_merge()`);
@@ -19,11 +20,13 @@ use speedyspec_php_serialize::semantics::{
     array_merge, get, is_empty, isset, set, to_array, to_php_string, unset,
 };
 use speedyspec_php_serialize::{PhpKey, PhpValue};
+use speedyspec_wp_hooks_contracts::{Count, HookApi};
 use speedyspec_wp_posts_contracts::{
-    PostType, PostTypeName, RewriteContext, TitleSanitizer, Translator,
+    PostError, PostType, PostTypeName, RewriteContext, TitleSanitizer, Translator,
 };
 
 use crate::caps::{meta_capabilities, post_type_capabilities};
+use crate::hook::{byte_name, hv, pv};
 use crate::labels::{LabelSource, merge_filtered_labels, post_type_labels};
 
 /// What `set_props()` reads beyond its arguments.
@@ -350,16 +353,46 @@ fn store_labels(post_type: &mut PostType, labels: Vec<(PhpKey, PhpValue)>) {
     post_type.set("label", label);
 }
 
-/// Phase 4, after the post_type_labels_{$name} filter: labels = merge_filtered_labels(current, filtered);
-/// label = labels->name.
-pub fn apply_filtered_labels(post_type: &mut PostType, filtered: Vec<(PhpKey, PhpValue)>) {
-    let current = match post_type.get("labels") {
+/// The stored labels as `(array)` reads them.
+fn current_labels(post_type: &PostType) -> Vec<(PhpKey, PhpValue)> {
+    match post_type.get("labels") {
         Some(PhpValue::Object { properties, .. }) => properties.clone(),
         Some(PhpValue::Array(items)) => items.clone(),
         Some(other) => to_array(other.clone()),
         None => Vec::new(),
-    };
+    }
+}
+
+/// After the `post_type_labels_{$name}` filter: `labels = merge_filtered_labels(current, filtered)`;
+/// `label = labels->name`.
+pub fn apply_filtered_labels(post_type: &mut PostType, filtered: Vec<(PhpKey, PhpValue)>) {
+    let current = current_labels(post_type);
     store_labels(post_type, merge_filtered_labels(current, filtered));
+}
+
+/// `get_post_type_labels()`'s filter (post.php 2240-2265) over a resolved post type: `$labels = apply_filters(
+/// "post_type_labels_{$post_type}", $labels )` with the stored labels as a `stdClass`, then `(object) array_merge(
+/// (array) $default_labels, (array) $labels )` through [`apply_filtered_labels`], and `label` from the merged `name`.
+///
+/// With no callback on the hook nothing changes, since [`resolve_post_type`] already stored the unfiltered merge.
+/// The filter sees a copy: a callback that keeps the object and changes it later changes nothing here.
+pub fn filter_post_type_labels(
+    hooks: &dyn HookApi,
+    post_type: &mut PostType,
+) -> Result<(), PostError> {
+    let mut hook = b"post_type_labels_".to_vec();
+    hook.extend_from_slice(post_type.name().as_str().as_bytes());
+    let hook = byte_name(hook);
+    if hooks.skip_if_empty(&hook, Count::Filters)? {
+        return Ok(());
+    }
+    let labels = PhpValue::Object {
+        class: "stdClass".to_owned(),
+        properties: current_labels(post_type),
+    };
+    let filtered = pv(&hooks.apply_filters(&hook, hv(&labels), Vec::new())?)?;
+    apply_filtered_labels(post_type, to_array(filtered));
+    Ok(())
 }
 
 #[cfg(test)]

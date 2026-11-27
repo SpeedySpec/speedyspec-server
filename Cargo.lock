@@ -6721,6 +6721,7 @@ dependencies = [
  "indexmap",
  "serde_json",
  "speedyspec-php-serialize",
+ "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-posts-contracts",
  "speedyspec-wp-posts-memory",
  "speedyspec-wp-text",
@@ -6764,6 +6765,23 @@ dependencies = [
  "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-posts-contracts",
+]
+
+[[package]]
+name = "speedyspec-wp-posts-tests"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "speedyspec-php-serialize",
+ "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-contracts",
+ "speedyspec-wp-hooks-memory",
+ "speedyspec-wp-posts",
+ "speedyspec-wp-posts-contracts",
+ "speedyspec-wp-posts-memory",
+ "speedyspec-wp-text-contracts",
+ "speedyspec-wp-text-escape",
+ "speedyspec-wp-text-memory",
 ]
 
 [[package]]

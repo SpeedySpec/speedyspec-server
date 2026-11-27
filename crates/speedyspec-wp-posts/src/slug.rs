@@ -3,17 +3,19 @@
 //! [`BadSlugs`]), and the numbered suffix loop, which cuts the slug through [`SlugTruncation`] (the text seam's
 //! `wp_truncate_slug()`).
 //!
-//! `pre_wp_unique_post_slug` and `wp_unique_post_slug` are phase 4's: [`slug_needs_no_check`] is the test before the
-//! first (public so phase 4 can place the filter after it; [`unique_post_slug`] also applies it), and
-//! [`unique_post_slug`] the value passed to the second.
+//! [`unique_post_slug_filtered`] adds the two filters around it (Observer, through [`HookApi`]):
+//! [`slug_needs_no_check`] is the test before `pre_wp_unique_post_slug`, and [`unique_post_slug`] the value passed to
+//! `wp_unique_post_slug`.
 
 use speedyspec_php_serialize::PhpValue;
 use speedyspec_php_serialize::semantics::{bytes_truthy, to_php_int};
+use speedyspec_wp_hooks_contracts::{HookApi, HookName, HookValue};
 use speedyspec_wp_posts_contracts::{
     BadSlugs, PostError, PostId, PostReader, PostRepository, PostTypeName, PostTypes, Slug,
     SlugTruncation,
 };
 
+use crate::hook::{bytes_value, filter_hook, pv};
 use crate::is_post_type_hierarchical;
 
 /// `wp_unique_post_slug()`'s first test, before `pre_wp_unique_post_slug`: `draft`, `pending`, `auto-draft`, an
@@ -246,6 +248,69 @@ pub fn unique_post_slug(
         }
         suffix += 1;
     }
+}
+
+/// `wp_unique_post_slug( $slug, $post_id, $post_status, $post_type, $post_parent )` whole (post.php 5801-5972):
+/// - when [`slug_needs_no_check`] holds, the slug as given, with no filter;
+/// - `pre_wp_unique_post_slug` with `( null, $slug, $post_id, $post_status, $post_type, $post_parent )`: any answer
+///   but null is returned as it is;
+/// - a hierarchical `nav_menu_item`: the slug as given, before the second filter, as WordPress returns it;
+/// - else [`unique_post_slug`] through `wp_unique_post_slug` with `( $slug, $post_id, $post_status, $post_type,
+///   $post_parent, $original_slug )`, whose answer is returned as it is.
+///
+/// The IDs reach the filters as ints and the names as strings (a slug that is not UTF-8 as bytes), as
+/// `wp_insert_post()` passes them.
+pub fn unique_post_slug_filtered(
+    hooks: &dyn HookApi,
+    request: &SlugRequest<'_>,
+    context: &SlugContext,
+    ports: &SlugPorts<'_>,
+) -> Result<PhpValue, PostError> {
+    if slug_needs_no_check(request.status, request.post_type) {
+        return Ok(PhpValue::Str(request.slug.to_vec()));
+    }
+    let int = |id: PostId| HookValue::Int(i64::try_from(id.0).unwrap_or(i64::MAX));
+    let tail = || {
+        vec![
+            int(request.post_id),
+            HookValue::Str(request.status.to_owned()),
+            HookValue::Str(request.post_type.to_owned()),
+            int(request.parent),
+        ]
+    };
+
+    let pre = filter_hook(
+        hooks,
+        &HookName::from("pre_wp_unique_post_slug"),
+        HookValue::Null,
+        || {
+            let mut args = vec![bytes_value(request.slug)];
+            args.extend(tail());
+            args
+        },
+    )?;
+    if !matches!(&*pre.read(), HookValue::Null) {
+        return pv(&pre);
+    }
+
+    let slug = unique_post_slug(request, context, ports)?;
+    // A hierarchical `nav_menu_item` returns from inside the branch, before the second filter.
+    if "nav_menu_item" == request.post_type
+        && is_post_type_hierarchical(ports.types, request.post_type)
+    {
+        return Ok(PhpValue::Str(slug));
+    }
+    let out = filter_hook(
+        hooks,
+        &HookName::from("wp_unique_post_slug"),
+        bytes_value(&slug),
+        || {
+            let mut args = tail();
+            args.push(bytes_value(request.slug));
+            args
+        },
+    )?;
+    pv(&out)
 }
 
 #[cfg(test)]
