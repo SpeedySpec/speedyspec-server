@@ -39,7 +39,9 @@ speedyspec-wp-hooks-php.workspace = true
 speedyspec-wp-meta-php = { path = "../speedyspec-wp-meta-php" }
 speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
 serde_json = "1"
+sha2 = "0.11"
 tempfile = "3"
+ureq = "3"
 
 [[test]]
 name = "registry"
@@ -55,4 +57,8 @@ harness = false
 
 [[test]]
 name = "replacement"
+harness = false
+
+[[test]]
+name = "wordpress"
 harness = false

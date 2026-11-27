@@ -150,7 +150,8 @@ final class WP_UnitTest_Factory_For_Network
 /**
  * Hands out post ids without storing posts: posts are not ported, and a test class whose `wpSetUpBeforeClass()`
  *  makes posts it never reads (the rewrite endpoint tests, whose tests that visit posts are excluded) still runs.
- *  With rows, it writes a `wp_posts` row (type, parent, title and status).
+ *  With rows, it writes a `wp_posts` row with every column the post tests read (author, type, status, name, title,
+ *  content, dates, mime type, menu order, parent, pings), from the arguments or the defaults.
  */
 final class WP_UnitTest_Factory_For_Post
 {
@@ -173,22 +174,80 @@ final class WP_UnitTest_Factory_For_Post
         }
         global $wpdb;
         $n = self::$next++;
-        return WP_UnitTest_Factory::insert($wpdb->posts, array(
-            'post_type' => $args['post_type'] ?? 'post',
-            'post_parent' => (int) ($args['post_parent'] ?? 0),
-            'post_status' => $args['post_status'] ?? 'publish',
-            'post_title' => $args['post_title'] ?? "Post title $n",
-            'post_name' => "post-title-$n",
+        $title = $args['post_title'] ?? "Post title $n";
+        $date = empty($args['post_date']) ? '2026-01-01 00:00:00' : $args['post_date'];
+        $row = array(
+            'post_author' => 0,
+            'post_type' => 'post',
+            'post_parent' => 0,
+            'post_status' => 'publish',
+            'post_title' => $title,
+            'post_name' => sanitize_title($title),
             'post_content' => '',
             'post_excerpt' => '',
+            'post_mime_type' => '',
+            'menu_order' => 0,
             'to_ping' => '',
             'pinged' => '',
             'post_content_filtered' => '',
-            'post_date' => '2026-01-01 00:00:00',
-            'post_date_gmt' => '2026-01-01 00:00:00',
-            'post_modified' => '2026-01-01 00:00:00',
-            'post_modified_gmt' => '2026-01-01 00:00:00',
-        ));
+            'post_date' => $date,
+            'post_date_gmt' => $date,
+            'post_modified' => $date,
+            'post_modified_gmt' => $date,
+        );
+        // Every other column the test gives is written as it is, as wp_insert_post() would store it unfiltered.
+        $columns = array('post_author', 'post_type', 'post_parent', 'post_status', 'post_name', 'post_content',
+            'post_excerpt', 'post_mime_type', 'menu_order', 'to_ping', 'pinged', 'post_date_gmt', 'post_modified',
+            'post_modified_gmt', 'post_password', 'comment_status', 'ping_status', 'guid', 'comment_count');
+        foreach (array_intersect_key($args, array_flip($columns)) as $column => $value)
+        {
+            $row[$column] = $value;
+        }
+        $row['post_parent'] = (int) $row['post_parent'];
+        $row['menu_order'] = (int) $row['menu_order'];
+        $id = WP_UnitTest_Factory::insert($wpdb->posts, $row);
+        // wp_insert_post() cleans the post's caches (bumping `last_changed`) and reads the post back, which caches it.
+        if (function_exists('clean_post_cache'))
+        {
+            clean_post_cache($id);
+            get_post($id);
+        }
+        return $id;
+    }
+
+    /**
+     * Creates a post and reads it back with {@link get_post()}, as WordPress's factory does.
+     *
+     * @param array $args
+     *   As for {@see create()}.
+     *
+     * @return WP_Post|null
+     *   The new post.
+     */
+    public function create_and_get($args = array())
+    {
+        return get_post($this->create($args));
+    }
+
+    /**
+     * Creates `$count` posts and returns their ids.
+     *
+     * @param int $count
+     *   How many.
+     * @param array $args
+     *   As for {@see create()}.
+     *
+     * @return int[]
+     *   The new posts' ids.
+     */
+    public function create_many($count, $args = array())
+    {
+        $ids = array();
+        for ($i = 0; $i < $count; $i++)
+        {
+            $ids[] = $this->create($args);
+        }
+        return $ids;
     }
 }
 

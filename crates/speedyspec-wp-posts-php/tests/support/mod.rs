@@ -74,8 +74,15 @@ pub fn prepared(name: &str) -> (PathBuf, PathBuf) {
 /// Boots PHP with the twins, the container (with the meta and post ports), the Hook API, `wpdb`, the object cache,
 /// the meta area and the post area, over `url`.
 pub fn boot(url: &str) -> (Php, Rc<Container>) {
+    boot_with(url, false)
+}
+
+/// As [`boot`], with the Hook API's testing class (`SpeedySpec\WpHooks\Testing`, the snapshots WordPress's test case
+/// stand-in takes) when `testing` is set.
+pub fn boot_with(url: &str, testing: bool) -> (Php, Rc<Container>) {
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
+    let hooks = if testing { hooks.with_testing() } else { hooks };
     let registry = Rc::new(EngineRegistry::new());
     registry.register_factory(Rc::new(MySqlEngineFactory));
     registry

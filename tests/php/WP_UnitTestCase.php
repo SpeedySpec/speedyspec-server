@@ -99,6 +99,13 @@ abstract class WP_UnitTestCase extends TestCase
      */
     public static function tear_down_after_class()
     {
+        // A bootstrap that defines WordPress's `_delete_all_data()` (tests/phpunit/includes/utils.php) gets its
+        // clean-up between classes, as WordPress's test case runs it.
+        if (function_exists('_delete_all_data'))
+        {
+            _delete_all_data();
+            self::flush_cache();
+        }
         $skipped = defined('SPEEDYSPEC_SKIP_TEAR_DOWN_AFTER_CLASS') ? SPEEDYSPEC_SKIP_TEAR_DOWN_AFTER_CLASS : array();
         if (method_exists(static::class, 'wpTearDownAfterClass') && !in_array(static::class, $skipped, true))
         {
