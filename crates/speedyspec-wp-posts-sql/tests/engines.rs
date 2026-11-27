@@ -217,6 +217,11 @@ fn known_break(expected: &str, check: impl FnOnce()) {
 /// plainly.
 #[test]
 fn suite_on_mysql() {
+    // Without a MySQL rig the suite only prints `skipped`, which the known break would read as fixed.
+    if std::env::var_os("SPEEDYSPEC_TEST_MYSQL_URL").is_none() {
+        println!("skipped: SPEEDYSPEC_TEST_MYSQL_URL is not set");
+        return;
+    }
     known_break(
         "check `last_post_time_orders_by_the_gmt_column` failed: Some(\"2024-03-02 01:00:00\") \
          Some(\"2024-03-01 20:00:00\") Some(\"2024-03-01 20:00:00.000000\") Some(\"2024-03-01 20:00:00\")",
