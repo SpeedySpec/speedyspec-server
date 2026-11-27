@@ -1,5 +1,5 @@
 //! The filters phase 2 left for phase 4, against `WpHookApi` over the memory store: `post_type_labels_{$name}`
-//! (get_post_type_labels(), post.php 2240-2265), `is_post_type_viewable` and `is_post_status_viewable` with their
+//! (get_post_type_labels(), post.php 2228-2268), `is_post_type_viewable` and `is_post_status_viewable` with their
 //! `true ===` check (2496-2578), and `pre_wp_unique_post_slug` and `wp_unique_post_slug` (5801-5972). None of them
 //! has a recording with a callback added, so each case states WordPress's behaviour directly.
 
@@ -519,4 +519,131 @@ fn a_hierarchical_nav_menu_item_skips_the_second_filter() {
         fired(&log),
         ["pre_wp_unique_post_slug", "wp_unique_post_slug"]
     );
+}
+
+// ---- a callback's failure reaches the caller whole ----
+
+/// Adds a callback to `hook` that fails with a payload (as a PHP exception object travels), and returns the payload.
+fn failing(hooks: &WpHookApi, hook: &str) -> Rc<dyn std::any::Any> {
+    let payload: Rc<dyn std::any::Any> = Rc::new(format!("exception from {hook}"));
+    let kept = payload.clone();
+    hooks
+        .add_filter(
+            &HookName::from(hook),
+            Callback::rust("throws", move |_: &[HookValue]| {
+                Err(HookError {
+                    message: "thrown".to_owned(),
+                    payload: Some(kept.clone()),
+                })
+            }),
+            &HookValue::Int(10),
+            99,
+        )
+        .unwrap();
+    payload
+}
+
+/// The error is `PostError::Hook` carrying the very payload the callback threw.
+fn assert_payload<T: std::fmt::Debug>(
+    result: Result<T, speedyspec_wp_posts_contracts::PostError>,
+    payload: &Rc<dyn std::any::Any>,
+    what: &str,
+) {
+    match result {
+        Err(speedyspec_wp_posts_contracts::PostError::Hook(e)) => {
+            assert_eq!(e.message, "thrown", "{what}");
+            assert!(
+                e.payload.as_ref().is_some_and(|p| Rc::ptr_eq(p, payload)),
+                "{what}: the payload is the callback's own"
+            );
+        }
+        other => panic!("{what}: {other:?}"),
+    }
+}
+
+#[test]
+fn sanitize_filter_failures_keep_their_payload() {
+    for (hook, field, context) in [
+        ("edit_post_title", "post_title", "edit"),
+        ("title_save_pre", "post_title", "db"),
+        ("post_guid", "guid", "display"),
+        ("user_can_richedit", "post_content", "edit"),
+        ("attribute_escape", "post_title", "attribute"),
+    ] {
+        let hooks = support::hooks();
+        let payload = failing(&hooks, hook);
+        let formatting = support::RustFormatting::new(hooks.clone());
+        let ports = speedyspec_wp_posts::SanitizePorts {
+            hooks: &*hooks,
+            formatting: &formatting,
+        };
+        let result = speedyspec_wp_posts::sanitize_post_field_word(
+            &ports,
+            field.as_bytes(),
+            s("x"),
+            7,
+            context,
+        );
+        assert_payload(result, &payload, hook);
+
+        // The object walk stops at the failing field and reports the same error.
+        let result = speedyspec_wp_posts::sanitize_post_value(
+            &ports,
+            PhpValue::Array(vec![(k(field), s("x"))]),
+            context,
+        );
+        assert_payload(result, &payload, hook);
+    }
+}
+
+#[test]
+fn viewable_filter_failures_keep_their_payload() {
+    let hooks = support::hooks();
+    let payload = failing(&hooks, "is_post_type_viewable");
+    let book = post_type("book", &[]);
+    assert_payload(
+        is_post_type_viewable_filtered(&*hooks, &book),
+        &payload,
+        "is_post_type_viewable",
+    );
+
+    let hooks = support::hooks();
+    let payload = failing(&hooks, "is_post_status_viewable");
+    let mut statuses = PostStatusRegistry::new();
+    statuses.register(b"shown", vec![(k("public"), PhpValue::Bool(true))]);
+    assert_payload(
+        post_status_name_viewable_filtered(&*hooks, &statuses, "shown"),
+        &payload,
+        "is_post_status_viewable",
+    );
+}
+
+#[test]
+fn slug_filter_failures_keep_their_payload() {
+    for hook in ["pre_wp_unique_post_slug", "wp_unique_post_slug"] {
+        let hooks = support::hooks();
+        let payload = failing(&hooks, hook);
+        let repository = MemoryPostRepository::new();
+        let types = Types(vec![hierarchical("post", false)]);
+        let reader = Uncached(&repository);
+        let ports = SlugPorts {
+            repository: &repository,
+            posts: &reader,
+            types: &types,
+            truncation: &Cut,
+            bad: &NoBadSlugs,
+        };
+        let request = SlugRequest {
+            slug: b"hello",
+            post_id: PostId(5),
+            status: "publish",
+            post_type: "post",
+            parent: PostId(0),
+        };
+        assert_payload(
+            unique_post_slug_filtered(&*hooks, &request, &context(), &ports),
+            &payload,
+            hook,
+        );
+    }
 }

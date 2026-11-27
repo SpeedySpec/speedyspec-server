@@ -3,8 +3,8 @@
 //! post status rules and registry, the filtered post type and status lists, and the exists, hierarchical and
 //! viewable predicates, `create_initial_post_types()`, `wp_unique_post_slug()`'s rules over the post repository,
 //! the post hierarchy: parents, loops, ancestors, page URIs and page trees, `get_extended()`'s more split, and
-//! `sanitize_post()` and `sanitize_post_field()` over the [`Formatting`] port; the post type labels, viewable and
-//! unique slug filters run through the hooks contract.
+//! `sanitize_post()` and `sanitize_post_field()` on PHP-shaped values over the [`Formatting`] port; the post type
+//! labels, viewable and unique slug filters run through the hooks contract.
 
 mod caps;
 mod content;
@@ -64,8 +64,8 @@ pub use registry::{
     SupportToAdd, add_supports, unregistration,
 };
 pub use sanitize::{
-    Formatting, SanitizePorts, post_properties, sanitize_post, sanitize_post_field,
-    sanitize_post_field_word, sanitize_post_properties, sanitize_post_value,
+    Formatting, SanitizePorts, sanitize_post_field, sanitize_post_field_word,
+    sanitize_post_properties, sanitize_post_value,
 };
 pub use slug::{
     NoBadSlugs, SlugContext, SlugPorts, SlugRequest, slug_needs_no_check, unique_post_slug,

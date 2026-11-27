@@ -13,10 +13,10 @@ use std::rc::Rc;
 
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::{
-    SanitizePorts, post_properties, sanitize_post, sanitize_post_field, sanitize_post_field_word,
+    SanitizePorts, sanitize_post_field, sanitize_post_field_word, sanitize_post_properties,
     sanitize_post_value,
 };
-use speedyspec_wp_posts_contracts::{Filter, Post, PostId};
+use speedyspec_wp_posts_contracts::{Filter, PostId};
 
 use support::{Invocations, RustFormatting};
 
@@ -175,50 +175,25 @@ fn sanitize_scenarios_match_wordpress() {
     assert_eq!(matched, 22);
 }
 
-/// The typed surface over the recorded `get_post( 1 )` object: `edit` escapes the text fields as the recording's
-/// `sanitize_post( $p, 'edit' )` does, and `raw` changes nothing.
+/// `sanitize_post_properties()` over the recorded `get_post( 1 )` object's properties: `edit` gives the recording's
+/// `sanitize_post( $p, 'edit' )`, and a second `edit` changes nothing (the `filter` check), so nothing is escaped
+/// twice.
 #[test]
-fn typed_sanitize_post_matches_the_recorded_edit() {
+fn properties_sanitize_once_per_context() {
     let (_, _, recorded) = support::scenarios("sanitize-post-wp-post").remove(0);
-    let raw = support::kept(&recorded[0]).remove(0).1;
-    let edited = support::kept(&recorded[1]).remove(0).1;
-    let (
-        PhpValue::Object {
-            properties: raw, ..
-        },
-        PhpValue::Object {
-            properties: edited, ..
-        },
-    ) = (raw, edited)
+    let PhpValue::Object {
+        properties: mut props,
+        ..
+    } = support::kept(&recorded[0]).remove(0).1
     else {
-        panic!("objects");
+        panic!("an object");
     };
-    let text = |props: &[(PhpKey, PhpValue)], name: &str| -> Vec<u8> {
-        match props
-            .iter()
-            .find(|(k, _)| *k == PhpKey::Str(name.as_bytes().to_vec()))
-        {
-            Some((_, PhpValue::Str(s))) => s.clone(),
-            other => panic!("{name}: {other:?}"),
-        }
+    let PhpValue::Object {
+        properties: edited, ..
+    } = support::kept(&recorded[1]).remove(0).1
+    else {
+        panic!("an object");
     };
-
-    let mut post = Post {
-        id: PostId(1),
-        author: 1,
-        content: text(&raw, "post_content"),
-        title: text(&raw, "post_title"),
-        excerpt: text(&raw, "post_excerpt"),
-        guid: text(&raw, "guid"),
-        comment_count: 3,
-        ..Post::default()
-    };
-    // The properties match WP_Post's but for the dates, which this post leaves at zero.
-    let props = post_properties(&post);
-    assert_eq!(props.len(), raw.len());
-    for ((got, _), (want, _)) in props.iter().zip(&raw) {
-        assert_eq!(got, want);
-    }
 
     let hooks = support::hooks();
     let formatting = RustFormatting::new(hooks.clone());
@@ -226,19 +201,11 @@ fn typed_sanitize_post_matches_the_recorded_edit() {
         hooks: &*hooks,
         formatting: &formatting,
     };
-    let unchanged = post.clone();
-    sanitize_post(&ports, &mut post, Filter::Raw).unwrap();
-    assert_eq!(post, unchanged);
-
-    sanitize_post(&ports, &mut post, Filter::Edit).unwrap();
-    assert_eq!(post.content, text(&edited, "post_content"));
-    assert_eq!(post.title, text(&edited, "post_title"));
-    assert_eq!(post.excerpt, text(&edited, "post_excerpt"));
-    assert_eq!(post.guid, text(&edited, "guid"));
-    assert_eq!(
-        (post.id, post.author, post.comment_count),
-        (PostId(1), 1, 3)
-    );
+    assert!(!sanitize_post_properties(&ports, &mut props, "raw").unwrap());
+    assert!(sanitize_post_properties(&ports, &mut props, "edit").unwrap());
+    assert_eq!(props, edited);
+    assert!(!sanitize_post_properties(&ports, &mut props, "edit").unwrap());
+    assert_eq!(props, edited);
 }
 
 /// The typed field surface passes the context's word and the post ID as PHP's int.

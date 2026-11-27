@@ -370,9 +370,10 @@ pub fn apply_filtered_labels(post_type: &mut PostType, filtered: Vec<(PhpKey, Ph
     store_labels(post_type, merge_filtered_labels(current, filtered));
 }
 
-/// `get_post_type_labels()`'s filter (post.php 2240-2265) over a resolved post type: `$labels = apply_filters(
-/// "post_type_labels_{$post_type}", $labels )` with the stored labels as a `stdClass`, then `(object) array_merge(
-/// (array) $default_labels, (array) $labels )` through [`apply_filtered_labels`], and `label` from the merged `name`.
+/// `get_post_type_labels()`'s filter (post.php 2228-2268, the filter at 2262) over a resolved post type:
+/// `$labels = apply_filters( "post_type_labels_{$post_type}", $labels )` with the stored labels as a `stdClass`, then
+/// `(object) array_merge( (array) $default_labels, (array) $labels )` through [`apply_filtered_labels`], and `label`
+/// from the merged `name`.
 ///
 /// With no callback on the hook nothing changes, since [`resolve_post_type`] already stored the unfiltered merge.
 /// The filter sees a copy: a callback that keeps the object and changes it later changes nothing here.

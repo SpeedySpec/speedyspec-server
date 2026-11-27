@@ -49,7 +49,8 @@ pub(crate) fn filter_hook(
     Ok(hooks.apply_filters(hook, value, args())?)
 }
 
-/// [`filter_hook`] on a PHP value: the value as the hooks carry it, and back.
+/// [`filter_hook`] on a PHP value: the value as the hooks carry it, and back. The fast path is checked here first so
+/// that, with nothing listening, the value comes back as given without the two conversions.
 pub(crate) fn filter(
     hooks: &dyn HookApi,
     hook: &HookName,
@@ -59,6 +60,5 @@ pub(crate) fn filter(
     if hooks.skip_if_empty(hook, Count::Filters)? {
         return Ok(value);
     }
-    let out = hooks.apply_filters(hook, hv(&value), args())?;
-    pv(&out)
+    pv(&filter_hook(hooks, hook, hv(&value), args)?)
 }
