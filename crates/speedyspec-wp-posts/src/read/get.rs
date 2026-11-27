@@ -303,8 +303,26 @@ impl PostsApi {
 
     /// `get_post_status( $post )` (post.php 1298-1355), as WordPress returns it: `false` with no post, otherwise the
     /// `get_post_status` filter's answer, which a callback may make any value.
+    ///
+    /// A `WP_Post` whose `filter` is `sample` (`get_sample_permalink()`'s) is used as it is, not read again. The
+    /// binding hands an object argument over as [`PostRef::Current`], so a global `$post` filtered `sample` is used
+    /// as it is too, where WordPress would read the global again by its `ID` (an approximation: only
+    /// `get_sample_permalink()` makes such an object, and it passes it explicitly).
     pub fn get_post_status(&self, post: PostRef) -> Result<PhpValue, PostError> {
-        match self.resolve(post)? {
+        let loaded = match post {
+            PostRef::Id(PostId(0)) | PostRef::Current => match self.d.current.current() {
+                Some(PhpValue::Object { class, properties })
+                    if class.eq_ignore_ascii_case("WP_Post")
+                        && isset(&properties, "filter").is_some_and(|f| is_str(f, "sample")) =>
+                {
+                    Some(Loaded::from_properties(properties))
+                }
+                Some(global) if !matches!(global, PhpValue::Null) => self.resolve_value(global)?,
+                _ => None,
+            },
+            PostRef::Id(id) => self.instance(int(id.0))?,
+        };
+        match loaded {
             Some(loaded) => self.status_of(&loaded),
             None => Ok(PhpValue::Bool(false)),
         }
