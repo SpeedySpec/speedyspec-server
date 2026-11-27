@@ -151,6 +151,45 @@ fn main() {
         return [[''], [], ['http://example.org/a.mp3'], false, [[false, false], [false, 4], [false, 7]],
             [5 => 'kept', 30 => 'x', 31 => 'y']] === $out ? true : $out;"#,
     );
+    // A warm get_post() builds its WP_Post over the cached entry without copying it (PostObject::Entry): every call
+    // is still a new object, a change to one reaches neither the entry nor the next read, and the object is the one
+    // `new WP_Post( $entry )` makes. The entry stays a raw stdClass.
+    ok &= yes(
+        &php,
+        &setup,
+        "warm_get_post_is_a_new_object_each_time",
+        r#"wp_cache_delete(1, 'posts');
+        $a = get_post(1);
+        $b = get_post(1);
+        $c = get_post(1);
+        $title = $c->post_title;
+        $b->post_title .= ' changed';
+        $c->ID = 99;
+        $d = get_post(1);
+        $entry = wp_cache_get(1, 'posts');
+        $out = [
+            $a !== $b, $b !== $c, $c !== $d, $d instanceof WP_Post, $title === $d->post_title, 1 === $d->ID,
+            'raw' === $d->filter, $entry instanceof stdClass, 'raw' === $entry->filter,
+            get_object_vars(new WP_Post($entry)) === get_object_vars($d),
+            get_object_vars($a) === get_object_vars($d),
+            $d->to_array() === get_post(1, ARRAY_A),
+        ];
+        return !in_array(false, $out, true) ? true : $out;"#,
+    );
+    // An entry another caller cached with a property WP_Post does not declare is read as a copy, extra included.
+    ok &= yes(
+        &php,
+        &setup,
+        "cached_entry_with_an_extra_property_is_kept",
+        r#"get_post(1);
+        $entry = wp_cache_get(1, 'posts');
+        $entry->extra = 'x';
+        wp_cache_set(1, $entry, 'posts');
+        $p = get_post(1);
+        $q = get_post(1);
+        wp_cache_delete(1, 'posts');
+        return 'x' === $p->extra && $p !== $q && 'x' === $q->extra && 'raw' === $p->filter ? true : [$p, $q];"#,
+    );
     // A handler bound in place of the default one never reads the object it was handed: the nested read inside it
     // sees the global, not that object (the hand-over is scoped to its dispatch).
     bind_query_handler::<GetPostStatus>(&container, |_, _| {

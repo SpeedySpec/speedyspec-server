@@ -13,6 +13,7 @@ use speedyspec_wp_posts_contracts::{
     PostTypeName, Slug,
 };
 
+use crate::read::get::PostObject;
 use crate::{
     PostsApi, page_children, page_hierarchy, sanitize_post_field_word, sanitize_post_value,
 };
@@ -59,7 +60,7 @@ macro_rules! message {
 type R<T> = Result<T, PostError>;
 
 message!(query GetPost { post: PostRef } -> R<Option<Post>>, |a, m| a.get_post(m.post));
-message!(query GetPostObject { post: PostRef } -> R<Option<PhpValue>>, |a, m| a.get_post_object(m.post));
+message!(query GetPostObject { post: PostRef } -> R<Option<PostObject>>, |a, m| a.post_object(m.post));
 message!(query GetPostAncestors { post: PostRef } -> R<Vec<PostId>>, |a, m| a.get_post_ancestors(m.post));
 message!(query GetPostField { field: Vec<u8>, post: PostRef, context: String } -> R<PhpValue>,
     |a, m| a.get_post_field(&m.field, m.post, &m.context));

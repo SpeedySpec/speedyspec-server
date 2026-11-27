@@ -22,6 +22,45 @@ use crate::hook::{filter, hv, pv};
 use crate::read::ports::{CacheInvalidation, Microtime, Options, Taxonomy, Users};
 use crate::{Formatting, SanitizePorts};
 
+/// The `posts` entries found plain raw most recently, by their shared handle (a small Identity Map of a verdict).
+///
+/// An entry carried as a `PhpValue` is immutable behind its handle, so the verdict holds for as long as the handle
+/// lives. A kept weak handle pins the address, so an address that matches is the same entry, never a new one at a
+/// freed entry's address.
+#[derive(Default)]
+pub(crate) struct PlainEntries {
+    seen: std::cell::RefCell<[Option<std::rc::Weak<dyn std::any::Any>>; PlainEntries::SLOTS]>,
+    next: std::cell::Cell<usize>,
+}
+
+impl PlainEntries {
+    const SLOTS: usize = 16;
+
+    /// Whether `entry` is plain raw, checked once per entry while it stays among the last [`Self::SLOTS`] found.
+    pub(crate) fn check(&self, entry: &HookValue) -> bool {
+        let HookValue::Opaque(handle) = entry else {
+            return false;
+        };
+        let at = Rc::as_ptr(handle).cast::<()>();
+        if self
+            .seen
+            .borrow()
+            .iter()
+            .flatten()
+            .any(|seen| std::ptr::eq(seen.as_ptr().cast::<()>(), at))
+        {
+            return true;
+        }
+        if !crate::PostEntry::is_plain_raw(entry) {
+            return false;
+        }
+        let slot = self.next.get();
+        self.seen.borrow_mut()[slot] = Some(Rc::downgrade(handle));
+        self.next.set((slot + 1) % Self::SLOTS);
+        true
+    }
+}
+
 /// What the post read use cases work through. The runtime passes the concrete adapters in.
 #[derive(Clone)]
 pub struct PostsDeps {
@@ -56,11 +95,16 @@ pub struct PostsDeps {
 /// [`Posts`] contract and handles every post read message ([`register_posts_handlers`](crate::register_posts_handlers)).
 pub struct PostsApi {
     pub(crate) d: PostsDeps,
+    /// The `posts` entries last found plain raw ([`PostEntry::is_plain_raw`](crate::PostEntry::is_plain_raw)).
+    pub(crate) plain: PlainEntries,
 }
 
 impl PostsApi {
     pub fn new(deps: PostsDeps) -> Rc<PostsApi> {
-        Rc::new(PostsApi { d: deps })
+        Rc::new(PostsApi {
+            d: deps,
+            plain: PlainEntries::default(),
+        })
     }
 
     pub fn deps(&self) -> &PostsDeps {
@@ -108,6 +152,18 @@ impl PostsApi {
         get_with(&*self.d.cache, key, &group, false, |v| {
             v.map(pv).transpose()
         })?
+    }
+
+    /// `wp_cache_get( $key, $group )` with the cached value lent to `f` (`None` on a miss), as the object cache
+    /// holds it: nothing is copied unless `f` copies it.
+    pub(crate) fn cache_read<T>(
+        &self,
+        key: &HookValue,
+        group: &str,
+        f: impl FnOnce(Option<&HookValue>) -> Result<T, PostError>,
+    ) -> Result<T, PostError> {
+        let group = HookValue::Str(group.to_owned());
+        get_with(&*self.d.cache, key, &group, false, f)?
     }
 
     /// `wp_cache_set( $key, $value, $group )`.

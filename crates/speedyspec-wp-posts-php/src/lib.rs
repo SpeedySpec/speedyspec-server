@@ -135,6 +135,7 @@ impl NativeArea for PostsArea {
 
     fn request_start(&self) {
         codec::clear_live();
+        codec::clear_renderings();
         for (label, source) in [
             ("speedyspec://wp-post-types", FACADE),
             ("speedyspec://wp-posts", READING),
@@ -147,6 +148,7 @@ impl NativeArea for PostsArea {
 
     fn request_end(&self) {
         codec::clear_live();
+        codec::clear_renderings();
         let _ = adapters::take_parked();
         registry::reset_depth();
     }

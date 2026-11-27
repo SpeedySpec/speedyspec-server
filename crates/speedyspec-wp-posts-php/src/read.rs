@@ -35,7 +35,7 @@ use speedyspec_wp_posts::{
     GetLastPostDate, GetLastPostModified, GetLastPostTime, GetPageByPath, GetPageChildren,
     GetPageHierarchy, GetPageUri, GetPostAncestors, GetPostField, GetPostMimeType, GetPostObject,
     GetPostStatus, GetPostType, GetPung, GetToPing, IsSticky, PageTraverseName, PostEntry,
-    PrimePostCachesGiven, PrimePostParentIdCaches, SanitizePost, SanitizePostField,
+    PostObject, PrimePostCachesGiven, PrimePostParentIdCaches, SanitizePost, SanitizePostField,
     UpdatePostCacheObjects, UpdatePostCachesObjects, UpdatePostParentCaches, UpdatePostmetaCache,
     WpCacheSetPostsLastChanged, WpCountAttachments, WpCountPosts, WpGetPostParentId,
 };
@@ -303,7 +303,7 @@ fn is_wp_post(value: &Value) -> Result<bool, NativeError> {
 }
 
 /// `WP_Post::get_instance( $id )` through the use case: `new WP_Post( $entry )`, or `None` (false).
-fn instance(id: i64) -> Result<Option<Value>, NativeError> {
+fn instance(id: i64) -> Result<Option<Instance>, NativeError> {
     let Ok(id) = u64::try_from(id) else {
         return Ok(None);
     };
@@ -317,10 +317,30 @@ fn instance(id: i64) -> Result<Option<Value>, NativeError> {
         },
     )?;
     match found {
-        Some(PhpValue::Object { properties, .. }) => Ok(Some(
-            crate::codec::post_object(&properties).map_err(thrown)?,
-        )),
+        Some(PostObject::Entry(entry)) => Ok(Some(Instance {
+            post: crate::codec::post_entry(&entry).map_err(thrown)?,
+            raw: true,
+        })),
+        Some(PostObject::Object(PhpValue::Object { properties, .. })) => {
+            let raw = matches!(get(&properties, "filter"), Some(PhpValue::Str(f)) if f == b"raw");
+            Ok(Some(Instance {
+                post: crate::codec::post_object_owned(properties).map_err(thrown)?,
+                raw,
+            }))
+        }
         _ => Ok(None),
+    }
+}
+
+/// A `WP_Post` [`instance`] built, and whether its `filter` is the string `raw`.
+struct Instance {
+    post: Value,
+    raw: bool,
+}
+
+impl Instance {
+    fn post(found: Option<Instance>) -> Option<Value> {
+        found.map(|i| i.post)
     }
 }
 
@@ -342,6 +362,9 @@ fn sanitize_object(object: &Value, context: &str) -> Result<(), NativeError> {
 }
 
 /// `get_post( $post, $output, $filter )` (post.php 1146-1186), see the module's docs.
+///
+/// A post read by id is a `WP_Post` built here, whose class is final: when its `filter` is `raw` and `raw` is asked
+/// for, `WP_Post::filter()` would return the object itself (`$this->filter === $filter`), so it is not called.
 fn get_post_value(post: Value, output: &Value, filter: &Value) -> R {
     let mut post = post;
     if !truthy(&post)
@@ -350,7 +373,18 @@ fn get_post_value(post: Value, output: &Value, filter: &Value) -> R {
     {
         post = global;
     }
-    let found = if is_wp_post(&post)? {
+    let mut built_raw = false;
+    let int_id = match &*post.read() {
+        Value::Int(id) => Some(*id),
+        _ => None,
+    };
+    let found = if let Some(id) = int_id {
+        // is_numeric() of an int is true and (int) is the int itself.
+        instance(id)?.map(|i| {
+            built_raw = i.raw;
+            i.post
+        })
+    } else if is_wp_post(&post)? {
         Some(post)
     } else if is_object(&post) {
         let properties = match copy(&post)? {
@@ -368,24 +402,28 @@ fn get_post_value(post: Value, output: &Value, filter: &Value) -> R {
             Some(helper("post", &[post.clone()]).map_err(thrown)?)
         } else {
             match speedyspec_php_serialize::semantics::isset(&properties, "ID") {
-                Some(id) => instance(to_php_int(id))?,
+                Some(id) => Instance::post(instance(to_php_int(id))?),
                 None => None,
             }
         }
     } else if is_numeric(&post)? {
-        instance(int(&post)?)?
+        Instance::post(instance(int(&post)?)?)
     } else {
         None
     };
     let Some(found) = found else {
         return Ok(Value::Null);
     };
-    let filtered = method(&found, "filter", std::slice::from_ref(filter)).map_err(thrown)?;
+    let filtered = if built_raw && matches!(&*filter.read(), Value::Str(f) if f == "raw") {
+        found
+    } else {
+        method(&found, "filter", std::slice::from_ref(filter)).map_err(thrown)?
+    };
     if !truthy(&filtered) {
         return Ok(Value::Null);
     }
-    let output = output.read().into_owned();
-    match &output {
+    let output = output.read();
+    match &*output {
         Value::Str(s) if s == "ARRAY_A" => method(&filtered, "to_array", &[]).map_err(thrown),
         Value::Str(s) if s == "ARRAY_N" => {
             let array = method(&filtered, "to_array", &[]).map_err(thrown)?;
@@ -396,7 +434,12 @@ fn get_post_value(post: Value, output: &Value, filter: &Value) -> R {
 }
 
 fn get_post(x: &[Value]) -> R {
-    get_post_value(a(x, 0), &a(x, 1), &a(x, 2))
+    // The output and filter are only read: borrowed, not copied.
+    get_post_value(
+        a(x, 0),
+        x.get(1).unwrap_or(&Value::Null),
+        x.get(2).unwrap_or(&Value::Null),
+    )
 }
 
 fn get_post_field(x: &[Value]) -> R {

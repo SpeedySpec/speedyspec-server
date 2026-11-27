@@ -198,6 +198,31 @@ namespace SpeedySpec\WpPosts\Php
     }
 
     /**
+     * The array as PHP holds it, for Rust to keep and pass back by reference.
+     */
+    function values(array $v)
+    {
+        return $v;
+    }
+
+    /**
+     * `new WP_Post( $entry )` for an entry with exactly `WP_Post`'s declared properties, given as their values in
+     * class order: the constructor assigns each property by name, and so does this.
+     */
+    function post_declared(array $v)
+    {
+        $post = new \WP_Post(new \stdClass());
+        [
+            $post->ID, $post->post_author, $post->post_date, $post->post_date_gmt, $post->post_content,
+            $post->post_title, $post->post_excerpt, $post->post_status, $post->comment_status, $post->ping_status,
+            $post->post_password, $post->post_name, $post->to_ping, $post->pinged, $post->post_modified,
+            $post->post_modified_gmt, $post->post_content_filtered, $post->post_parent, $post->guid,
+            $post->menu_order, $post->post_type, $post->post_mime_type, $post->comment_count, $post->filter,
+        ] = $v;
+        return $post;
+    }
+
+    /**
      * `$value instanceof WP_Post`.
      */
     function is_post($value): bool

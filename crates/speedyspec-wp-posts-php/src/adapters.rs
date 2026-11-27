@@ -12,7 +12,7 @@
 use std::cell::RefCell;
 
 use speedyspec_php_ext::{Key, Value};
-use speedyspec_php_serialize::semantics::{is_empty, to_php_string};
+use speedyspec_php_serialize::semantics::{bytes_truthy, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts_contracts::{
     PostStatusName, PostStatusObject, PostStatuses, PostType, PostTypeName, PostTypeSupports,
@@ -82,8 +82,8 @@ pub(crate) fn truthy(value: &Value) -> bool {
         Value::Bool(b) => *b,
         Value::Int(i) => *i != 0,
         Value::Float(f) => *f != 0.0,
-        Value::Str(s) => !is_empty(&PhpValue::Str(s.as_bytes().to_vec())),
-        Value::Bytes(b) => !is_empty(&PhpValue::Str(b.clone())),
+        Value::Str(s) => bytes_truthy(s.as_bytes()),
+        Value::Bytes(b) => bytes_truthy(b),
         Value::Array(items) => !items.is_empty(),
         Value::Opaque(_) => true,
     }

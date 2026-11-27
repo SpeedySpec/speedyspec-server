@@ -11,9 +11,12 @@
 //! [`to_php`] turns a `PhpValue` back into a PHP value: a marker is the very object it names, a copied `stdClass` is
 //! cast from its properties (`(object) $properties`), anything else is built by PHP's `unserialize()`.
 
+use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::{Rc, Weak};
 
+use speedyspec_php::Callable;
 use speedyspec_php_ext::{Key, Value};
 use speedyspec_php_serialize::semantics::is_integer_key;
 use speedyspec_php_serialize::{OpaquePhpValue, PhpKey, PhpValue, serialize};
@@ -37,9 +40,14 @@ thread_local! {
     static LIVE: RefCell<Live> = RefCell::new(Live::default());
 }
 
-/// Forgets the live values: the request that made them is over.
+/// Forgets the live values: the native call that made them is over.
 pub(crate) fn clear_live() {
     LIVE.with(|l| *l.borrow_mut() = Live::default());
+}
+
+/// Forgets the `posts` entries' renderings ([`post_entry`]): the request that made them is over.
+pub(crate) fn clear_renderings() {
+    RENDERINGS.with(|r| *r.borrow_mut() = Renderings::default());
 }
 
 fn keep(value: &Value) -> PhpValue {
@@ -290,6 +298,142 @@ pub(crate) fn post_object(properties: &[(PhpKey, PhpValue)]) -> Result<Value, Th
         PhpKey::Str(s) => Key::Str(String::from_utf8_lossy(s).into_owned()),
     })?;
     helper("post", &[properties])
+}
+
+/// [`post_object`] over properties it may take: each string moves into the PHP value instead of being copied (as
+/// bytes: PHP's strings are bytes either way), and the helper is resolved once per request ([`Callable`]). The
+/// properties `WP_Post::get_instance()` builds are `WP_Post`'s declared ones in class order; those go as a list of
+/// values, so no key is written or hashed.
+pub(crate) fn post_object_owned(properties: Vec<(PhpKey, PhpValue)>) -> Result<Value, Thrown> {
+    let declared = speedyspec_wp_posts::PostEntry::declared();
+    if properties.len() == declared.len()
+        && properties
+            .iter()
+            .zip(declared)
+            .all(|((k, _), d)| matches!(k, PhpKey::Str(k) if k == d.as_bytes()))
+    {
+        // Exactly the declared properties in class order: their values alone, which the helper assigns by name.
+        let values = Value::Array(
+            properties
+                .into_iter()
+                .enumerate()
+                .map(|(i, (_, v))| {
+                    let value = match v {
+                        PhpValue::Str(s) => Value::Bytes(s),
+                        other => to_php(&other)?,
+                    };
+                    Ok((Key::Int(i as i64), value))
+                })
+                .collect::<Result<_, Thrown>>()?,
+        );
+        return POST_DECLARED
+            .with(|helper| helper.call(std::slice::from_ref(&values)))
+            .map_err(|failure| Thrown(failure.exception));
+    }
+    let properties = Value::Array(
+        properties
+            .into_iter()
+            .map(|(k, v)| {
+                let key = match k {
+                    PhpKey::Int(i) => Key::Str(i.to_string()),
+                    PhpKey::Str(s) => Key::Str(
+                        String::from_utf8(s)
+                            .unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned()),
+                    ),
+                };
+                let value = match v {
+                    PhpValue::Str(s) => Value::Bytes(s),
+                    other => to_php(&other)?,
+                };
+                Ok((key, value))
+            })
+            .collect::<Result<_, Thrown>>()?,
+    );
+    POST_HELPER
+        .with(|helper| helper.call(std::slice::from_ref(&properties)))
+        .map_err(|failure| Thrown(failure.exception))
+}
+
+/// `new WP_Post( $entry )` over a plain raw `posts` entry the use case lent
+/// ([`PostObject::Entry`](speedyspec_wp_posts::PostObject::Entry)), with no property copied.
+///
+/// The entry is an immutable `PhpValue` the object cache holds behind a shared handle. Its declared properties'
+/// values are written to PHP once, as a list kept for the rest of the request ([`Renderings`], Identity Map keyed by
+/// the handle); each `WP_Post` built over it then shares PHP's strings by reference count, as WordPress's own
+/// `new WP_Post( clone $entry )` does. A replaced or deleted entry drops its handle, so its rendering is never
+/// reused.
+pub(crate) fn post_entry(entry: &Value) -> Result<Value, Thrown> {
+    let Value::Opaque(any) = entry else {
+        return Ok(Value::Null);
+    };
+    let Some(OpaquePhpValue(PhpValue::Object { properties, .. })) =
+        any.downcast_ref::<OpaquePhpValue>()
+    else {
+        return Ok(Value::Null);
+    };
+    let at = Rc::as_ptr(any).cast::<()>() as usize;
+    let kept = RENDERINGS.with(|r| r.borrow().get(at));
+    let values = match kept {
+        Some(values) => values,
+        None => {
+            let list = Value::Array(
+                properties
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (_, v))| {
+                        let value = match v {
+                            PhpValue::Str(s) => Value::Bytes(s.clone()),
+                            other => to_php(other)?,
+                        };
+                        Ok((Key::Int(i as i64), value))
+                    })
+                    .collect::<Result<_, Thrown>>()?,
+            );
+            // Written once: what comes back is PHP's own array, passed through by reference from now on.
+            let values = VALUES
+                .with(|helper| helper.call(std::slice::from_ref(&list)))
+                .map_err(|failure| Thrown(failure.exception))?;
+            RENDERINGS.with(|r| r.borrow_mut().keep(at, Rc::downgrade(any), values.clone()));
+            values
+        }
+    };
+    POST_DECLARED
+        .with(|helper| helper.call(std::slice::from_ref(&values)))
+        .map_err(|failure| Thrown(failure.exception))
+}
+
+/// The PHP lists [`post_entry`] wrote, by the address of the entry's handle. The weak handle keeps the address from
+/// being reused while the rendering is kept, and tells a dropped entry from a live one.
+#[derive(Default)]
+struct Renderings {
+    by_entry: HashMap<usize, (Weak<dyn Any>, Value)>,
+}
+
+impl Renderings {
+    /// Prune the dropped entries' renderings past this many.
+    const PRUNE_AT: usize = 512;
+
+    fn get(&self, at: usize) -> Option<Value> {
+        let (entry, values) = self.by_entry.get(&at)?;
+        (entry.strong_count() > 0).then(|| values.clone())
+    }
+
+    fn keep(&mut self, at: usize, entry: Weak<dyn Any>, values: Value) {
+        if self.by_entry.len() >= Self::PRUNE_AT {
+            self.by_entry.retain(|_, (e, _)| e.strong_count() > 0);
+        }
+        self.by_entry.insert(at, (entry, values));
+    }
+}
+
+thread_local! {
+    static RENDERINGS: RefCell<Renderings> = RefCell::new(Renderings::default());
+    /// The facade's `values()` helper (an array as PHP holds it), resolved once per request.
+    static VALUES: Callable = Callable::new(Value::Str(format!("{HELPERS}values")));
+    /// The facade's `post()` helper, resolved once per request.
+    static POST_HELPER: Callable = Callable::new(Value::Str(format!("{HELPERS}post")));
+    /// The facade's `post_declared()` helper, resolved once per request.
+    static POST_DECLARED: Callable = Callable::new(Value::Str(format!("{HELPERS}post_declared")));
 }
 
 /// Whether a hook value carries a `PhpValue` PHP cannot read as it is.

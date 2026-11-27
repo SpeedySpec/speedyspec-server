@@ -10,7 +10,7 @@ use speedyspec_wp_posts_contracts::{
     MimeType, Post, PostError, PostId, PostReader, PostRef, PostTypeName,
 };
 
-use crate::hook::hv;
+use crate::hook::{hv, pv};
 use crate::read::api::{PostsApi, int, is_magic, is_str, meta_error, s, truthy};
 use crate::{PostEntry, post_ancestors, sanitize_post_field_word, sanitize_post_properties};
 
@@ -34,9 +34,45 @@ impl Loaded {
         PostEntry::wp_post(self.properties.clone())
     }
 
+    /// The `WP_Post` object, taking the properties.
+    pub fn into_object(self) -> PhpValue {
+        PostEntry::wp_post(self.properties)
+    }
+
     /// `$post->ID` as PHP's int.
     pub fn id(&self) -> i64 {
         get(&self.properties, "ID").map_or(0, to_php_int)
+    }
+}
+
+/// What `WP_Post::get_instance()` found: a plain raw `posts` entry ([`PostEntry::is_plain_raw`]) as the cache holds
+/// it, another usable entry as the `WP_Post`'s properties, or the row it read.
+enum Instance {
+    Shared(HookValue),
+    Cached(Vec<(PhpKey, PhpValue)>),
+    Read(Box<Post>),
+}
+
+/// The `WP_Post` `get_post()` returns, as the PHP edge builds it (`GetPostObject`'s answer).
+#[derive(Clone, Debug)]
+pub enum PostObject {
+    /// `new WP_Post( $entry )` over the `posts` entry the object cache holds, lent rather than copied: an entry
+    /// [`PostEntry::is_plain_raw`] accepts, so the object's properties are the entry's own, in order.
+    Entry(HookValue),
+    /// The `WP_Post` object (a `PhpValue::Object` of class `WP_Post`).
+    Object(PhpValue),
+}
+
+impl PostObject {
+    /// The `WP_Post` object as a [`PhpValue`]: an entry is copied out of the cache.
+    pub fn into_value(self) -> Result<PhpValue, PostError> {
+        match self {
+            PostObject::Object(object) => Ok(object),
+            PostObject::Entry(entry) => Ok(match pv(&entry)? {
+                PhpValue::Object { properties, .. } => PostEntry::wp_post(properties),
+                other => other,
+            }),
+        }
     }
 }
 
@@ -101,30 +137,58 @@ impl PostsApi {
     /// otherwise `SELECT * … LIMIT 1` through [`PostRepository::find`](speedyspec_wp_posts_contracts::PostRepository::find),
     /// whose raw entry replaces the cached value with `wp_cache_set()` (not `add`: an unusable value may be there).
     pub(crate) fn instance(&self, id: i64) -> Result<Option<Loaded>, PostError> {
+        Ok(match self.instance_entry(id)? {
+            None => None,
+            Some(found) => Some(match found {
+                Instance::Shared(entry) => Loaded::from_properties(match pv(&entry)? {
+                    PhpValue::Object { properties, .. } => properties,
+                    // A plain raw entry is an object (PostEntry::is_plain_raw).
+                    _ => Vec::new(),
+                }),
+                Instance::Cached(properties) => Loaded::from_properties(properties),
+                Instance::Read(post) => Loaded {
+                    properties: PostEntry::raw_properties(&post),
+                    post: *post,
+                },
+            }),
+        })
+    }
+
+    /// [`PostsApi::instance`] without building what its caller may not need: a plain raw entry
+    /// ([`PostEntry::is_plain_raw`]) is the entry as the cache holds it; another usable entry is the `WP_Post`'s
+    /// properties, moved out of the one copy the cache read made; a miss is the entity read (and cached).
+    fn instance_entry(&self, id: i64) -> Result<Option<Instance>, PostError> {
         if id <= 0 {
             return Ok(None);
         }
         let key = HookValue::Int(id);
-        let cached = self.cache_get(&key, "posts")?;
-        if let Some(properties) = cached.as_ref().and_then(PostEntry::usable) {
-            let mut properties = properties.to_vec();
+        // A plain raw entry is lent (its handle cloned); any other value is copied for the rules to read.
+        let cached = self.cache_read(&key, "posts", |value| match value {
+            Some(entry) if self.plain.check(entry) => Ok(Err(entry.clone())),
+            value => Ok(Ok(value.map(pv).transpose()?)),
+        })?;
+        let cached = match cached {
+            Err(shared) => return Ok(Some(Instance::Shared(shared))),
+            Ok(copied) => copied,
+        };
+        if let Some(cached) = cached
+            && PostEntry::usable(&cached).is_some()
+            && let PhpValue::Object { mut properties, .. } = cached
+        {
             let filter = get(&properties, "filter");
             if !filter.is_some_and(|f| is_str(f, "raw")) {
                 sanitize_post_properties(&self.sanitize_ports(), &mut properties, "raw")?;
             }
-            return Ok(Some(Loaded::from_properties(
-                PostEntry::wp_post_properties(&properties),
-            )));
+            return Ok(Some(Instance::Cached(PostEntry::wp_post_properties_owned(
+                properties,
+            ))));
         }
         let Some(post) = self.d.repository.find(PostId(id as u64))? else {
             return Ok(None);
         };
         let entry = PostEntry::to_entry(&post);
         self.cache_set(&HookValue::Int(int(post.id.0)), &entry, "posts")?;
-        Ok(Some(Loaded {
-            properties: PostEntry::raw_properties(&post),
-            post,
-        }))
+        Ok(Some(Instance::Read(Box::new(post))))
     }
 
     /// `get_post( $post )` with the `raw` filter: an id, or the global `$post` for [`PostRef::Current`] and for id 0
@@ -186,7 +250,29 @@ impl PostsApi {
 
     /// `get_post( $post, OBJECT, 'raw' )` as PHP holds it: the `WP_Post` object's properties.
     pub fn get_post_object(&self, post: PostRef) -> Result<Option<PhpValue>, PostError> {
-        Ok(self.resolve(post)?.map(|l| l.object()))
+        self.post_object(post)?
+            .map(PostObject::into_value)
+            .transpose()
+    }
+
+    /// `get_post( $post, OBJECT, 'raw' )` as the PHP edge builds it: a plain raw `posts` entry is lent as it is
+    /// ([`PostObject::Entry`]), anything else is the `WP_Post` object.
+    pub fn post_object(&self, post: PostRef) -> Result<Option<PostObject>, PostError> {
+        if let PostRef::Id(id) = post
+            && id.0 != 0
+        {
+            // As `resolve` reads an id, without the entity `get_post()` does not return.
+            return Ok(self.instance_entry(int(id.0))?.map(|found| match found {
+                Instance::Shared(entry) => PostObject::Entry(entry),
+                Instance::Cached(properties) => PostObject::Object(PostEntry::wp_post(properties)),
+                Instance::Read(post) => {
+                    PostObject::Object(PostEntry::wp_post(PostEntry::raw_properties(&post)))
+                }
+            }));
+        }
+        Ok(self
+            .resolve(post)?
+            .map(|l| PostObject::Object(l.into_object())))
     }
 
     /// `get_post_ancestors( $post )` (post.php 1198-1223).

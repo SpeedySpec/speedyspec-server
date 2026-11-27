@@ -6,7 +6,8 @@
 //! test it.
 
 use speedyspec_php_serialize::semantics::{get, isset, set, to_php_int, to_php_string};
-use speedyspec_php_serialize::{PhpKey, PhpValue};
+use speedyspec_php_serialize::{OpaquePhpValue, PhpKey, PhpValue};
+use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_posts_contracts::{
     CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostId, PostStatusName,
     PostTypeName, Slug,
@@ -48,6 +49,11 @@ fn key(name: &str) -> PhpKey {
 }
 
 impl PostEntry {
+    /// `WP_Post`'s declared properties (the 23 columns and `filter`), in class order.
+    pub fn declared() -> &'static [&'static str] {
+        &DECLARED
+    }
+
     /// Whether `name` is one of `WP_Post`'s declared properties (the 23 columns and `filter`).
     pub fn is_declared(name: &[u8]) -> bool {
         DECLARED.iter().any(|d| d.as_bytes() == name)
@@ -66,6 +72,36 @@ impl PostEntry {
         }
         isset(properties, "ID")?;
         Some(properties)
+    }
+
+    /// Whether a `posts` entry, as the object cache holds it, is one `WP_Post::get_instance()` turns into a
+    /// `WP_Post` with exactly its properties: a [usable](PostEntry::usable) entry carried as a [`PhpValue`] (one
+    /// this API wrote) whose properties are `WP_Post`'s declared ones in class order, each a scalar, with `filter`
+    /// `raw`. `new WP_Post( $entry )` then sets each declared property to the entry's value and adds none, and
+    /// `sanitize_post()` is not run, so the object can be built over the entry itself, without copying it.
+    pub fn is_plain_raw(value: &HookValue) -> bool {
+        let HookValue::Opaque(any) = value else {
+            return false;
+        };
+        let Some(OpaquePhpValue(entry)) = any.downcast_ref::<OpaquePhpValue>() else {
+            return false;
+        };
+        let Some(properties) = Self::usable(entry) else {
+            return false;
+        };
+        properties.len() == DECLARED.len()
+            && properties.iter().zip(DECLARED).all(|((k, v), d)| {
+                matches!(k, PhpKey::Str(k) if k == d.as_bytes())
+                    && matches!(
+                        v,
+                        PhpValue::Null
+                            | PhpValue::Bool(_)
+                            | PhpValue::Int(_)
+                            | PhpValue::Float(_)
+                            | PhpValue::Str(_)
+                    )
+            })
+            && matches!(properties.last(), Some((_, PhpValue::Str(f))) if f == b"raw")
     }
 
     /// A `posts` entry as `WP_Post::get_instance()` reads it: [`PostEntry::usable`], then
@@ -190,15 +226,51 @@ impl PostEntry {
     /// `publish`, `comment_status` and `ping_status` `open`, `post_type` `post`, `filter` null), each overwritten by
     /// the object's value, then the object's other properties in their order.
     pub fn wp_post_properties(object: &[(PhpKey, PhpValue)]) -> Vec<(PhpKey, PhpValue)> {
-        let mut properties = Self::raw_properties(&Post::default());
-        set(&mut properties, "ID", PhpValue::Null);
-        set(&mut properties, "filter", PhpValue::Null);
-        for (k, v) in object {
-            match properties.iter_mut().find(|(pk, _)| pk == k) {
-                Some(slot) => slot.1 = v.clone(),
-                None => properties.push((k.clone(), v.clone())),
+        Self::wp_post_properties_owned(object.to_vec())
+    }
+
+    /// [`PostEntry::wp_post_properties`] over properties it may take: each value moves to its slot, and a default
+    /// is built only for a declared property the object lacks.
+    pub fn wp_post_properties_owned(object: Vec<(PhpKey, PhpValue)>) -> Vec<(PhpKey, PhpValue)> {
+        let mut slots: [Option<(PhpKey, PhpValue)>; DECLARED.len()] = std::array::from_fn(|_| None);
+        let mut others: Vec<(PhpKey, PhpValue)> = Vec::new();
+        for (n, (k, v)) in object.into_iter().enumerate() {
+            let declared = match &k {
+                // An entry WordPress wrote has the declared properties in class order: try the next one first.
+                PhpKey::Str(name)
+                    if DECLARED
+                        .get(n)
+                        .is_some_and(|d| d.as_bytes() == name.as_slice()) =>
+                {
+                    Some(n)
+                }
+                PhpKey::Str(name) => DECLARED
+                    .iter()
+                    .position(|d| d.as_bytes() == name.as_slice()),
+                PhpKey::Int(_) => None,
+            };
+            match declared {
+                Some(i) => slots[i] = Some((k, v)),
+                None => match others.iter_mut().find(|(pk, _)| *pk == k) {
+                    Some(slot) => slot.1 = v,
+                    None => others.push((k, v)),
+                },
             }
         }
+        let mut defaults: Option<Vec<(PhpKey, PhpValue)>> = None;
+        let mut properties = Vec::with_capacity(DECLARED.len() + others.len());
+        for (i, slot) in slots.into_iter().enumerate() {
+            properties.push(slot.unwrap_or_else(|| {
+                let defaults = defaults.get_or_insert_with(|| {
+                    let mut d = Self::raw_properties(&Post::default());
+                    set(&mut d, "ID", PhpValue::Null);
+                    set(&mut d, "filter", PhpValue::Null);
+                    d
+                });
+                defaults[i].clone()
+            }));
+        }
+        properties.extend(others);
         properties
     }
 
