@@ -14,7 +14,8 @@
 //!   object handle;
 //! - the page trees keep the caller's objects: the rules order copies, and the answer lists the objects themselves;
 //! - `_validate_cache_id()` stays WordPress's (functions.php): the ids it refuses never reach the typed use cases,
-//!   and a negative id, which it accepts, is dropped there too (`compat/posts-read/breaks.json`).
+//!   and a negative id, which it accepts, is dropped there too. No recorded scenario passes one, so it is a
+//!   documented difference in the guide, not a `compat/posts-read/breaks.json` entry.
 //!
 //! `get_post()` dispatches `GetPostObject` (the handler PHP rebinds to change how a post is read by id); the typed
 //! `GetPost` handler is for Rust callers, and `get_post()` never reaches it, since it keeps PHP's own objects.
