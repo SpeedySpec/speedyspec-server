@@ -7,7 +7,7 @@
 //! (cache-compat.php 214-255).
 
 use indexmap::IndexSet;
-use speedyspec_php_serialize::semantics::{get, to_array_key, to_php_string};
+use speedyspec_php_serialize::semantics::{get, to_array_key, to_php_int, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_hooks_contracts::{HookValue, Key};
 use speedyspec_wp_meta_contracts::ObjectId;
@@ -297,6 +297,62 @@ impl PostsApi {
                     for post in posts {
                         let t = s(post.post_type.as_str());
                         if !types.contains(&t) {
+                            types.push(t);
+                        }
+                    }
+                    types
+                }
+                one => vec![one.clone()],
+            };
+            if !types.is_empty() {
+                self.d.terms.update_object_term_cache(&ids, &types)?;
+            }
+        }
+        if meta {
+            self.update_postmeta_cache(&ids)?;
+        }
+        Ok(())
+    }
+
+    /// [`PostsApi::update_post_caches`] for posts as PHP holds them (objects): the cache is written with
+    /// [`PostsApi::update_post_cache_objects`], so each object is kept as it is (a `WP_Post` stays one), and the ids
+    /// and the `'any'` types are read from each object's `ID` and `post_type` (`(int)` and as they are). A value
+    /// that is not an object adds neither.
+    pub fn update_post_caches_objects(
+        &self,
+        posts: Vec<PhpValue>,
+        post_type: &PhpValue,
+        terms: bool,
+        meta: bool,
+    ) -> Result<(), PostError> {
+        if posts.is_empty() {
+            return Ok(());
+        }
+        let ids: Vec<PostId> = posts
+            .iter()
+            .filter_map(|p| crate::read::api::prop(p, "ID"))
+            .map(|id| PostId(u64::try_from(to_php_int(id)).unwrap_or(0)))
+            .collect();
+        let own_types: Vec<PhpValue> = posts
+            .iter()
+            .filter_map(|p| crate::read::api::prop(p, "post_type").cloned())
+            .collect();
+        self.update_post_cache_objects(posts)?;
+        let post_type = if truthy(post_type) {
+            post_type.clone()
+        } else {
+            s("any")
+        };
+        if terms {
+            let types: Vec<PhpValue> = match &post_type {
+                PhpValue::Array(items) => items.iter().map(|(_, v)| v.clone()).collect(),
+                any if is_str(any, "any") => {
+                    let mut types: Vec<PhpValue> = Vec::new();
+                    for t in own_types {
+                        if !types
+                            .iter()
+                            .any(|seen| to_php_string(seen) == to_php_string(&t))
+                        {
                             types.push(t);
                         }
                     }

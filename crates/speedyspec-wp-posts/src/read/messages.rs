@@ -9,10 +9,13 @@ use speedyspec_cqrs::{
 };
 use speedyspec_php_serialize::PhpValue;
 use speedyspec_wp_posts_contracts::{
-    MimeFilter, MimeType, Post, PostError, PostId, PostRef, PostTypeArg, PostTypeName,
+    LastPostField, MimeFilter, MimeType, Post, PostError, PostId, PostRef, PostTypeArg,
+    PostTypeName, Slug,
 };
 
-use crate::PostsApi;
+use crate::{
+    PostsApi, page_children, page_hierarchy, sanitize_post_field_word, sanitize_post_value,
+};
 
 macro_rules! message {
     ($kind:ident $name:ident { $($field:ident : $ty:ty),* } -> $result:ty, |$a:ident, $m:ident| $body:expr) => {
@@ -92,6 +95,18 @@ message!(command PrimePostCaches { ids: Vec<PostId>, terms: bool, meta: bool } -
 message!(command PrimePostParentIdCaches { ids: Vec<PostId> } -> R<()>,
     |a, m| a.prime_post_parent_id_caches(&m.ids));
 message!(command WpCacheSetPostsLastChanged {} -> R<()>, |a, m| a.wp_cache_set_posts_last_changed());
+message!(query GetLastPostTime { timezone: String, field: LastPostField, post_type: String } -> R<PhpValue>,
+    |a, m| a.last_post_time(&m.timezone, m.field, &m.post_type));
+message!(command UpdatePostCachesObjects { posts: Vec<PhpValue>, post_type: PhpValue, terms: bool, meta: bool } -> R<()>,
+    |a, m| a.update_post_caches_objects(m.posts, &m.post_type, m.terms, m.meta));
+message!(query SanitizePost { post: PhpValue, context: String } -> R<PhpValue>,
+    |a, m| sanitize_post_value(&a.sanitize_ports(), m.post, &m.context));
+message!(query SanitizePostField { field: Vec<u8>, value: PhpValue, post_id: i64, context: String } -> R<PhpValue>,
+    |a, m| sanitize_post_field_word(&a.sanitize_ports(), &m.field, m.value, m.post_id, &m.context));
+message!(query GetPageChildren { page_id: PostId, pages: Vec<Post> } -> R<Vec<Post>>,
+    |a, m| Ok(page_children(m.page_id, &m.pages)));
+message!(query GetPageHierarchy { pages: Vec<Post>, page_id: PostId } -> R<Vec<(PostId, Slug)>>,
+    |a, m| Ok(page_hierarchy(&m.pages, m.page_id)));
 message!(query GetAvailablePostMimeTypes { post_type: String } -> R<Vec<PhpValue>>,
     |a, m| a.get_available_post_mime_types(&m.post_type));
 
@@ -106,9 +121,11 @@ macro_rules! bind_all {
 /// same key.
 pub fn register_posts_handlers(container: &Container, api: Rc<PostsApi>) {
     bind_all!(container, api;
-        commands: UpdatePostCache, UpdatePostCacheObjects, CleanPostCache, UpdatePostCaches, UpdatePostParentCaches, UpdatePostmetaCache, PrimePostCaches,
-            PrimePostParentIdCaches, WpCacheSetPostsLastChanged;
+        commands: UpdatePostCache, UpdatePostCacheObjects, CleanPostCache, UpdatePostCaches, UpdatePostCachesObjects,
+            UpdatePostParentCaches, UpdatePostmetaCache, PrimePostCaches, PrimePostParentIdCaches,
+            WpCacheSetPostsLastChanged;
         queries: GetPost, GetPostObject, GetPostAncestors, GetPostField, GetPostMimeType, GetPostStatus, GetPostType,
-            CountPostsCacheKey, WpCountPosts, WpCountAttachments, GetAllPageIds, GetPageByPath, GetPageUri,
-            GetLastPostDate, GetLastPostModified, WpGetPostParentId, GetAvailablePostMimeTypes);
+            SanitizePost, SanitizePostField, CountPostsCacheKey, WpCountPosts, WpCountAttachments, GetAllPageIds,
+            GetPageByPath, GetPageChildren, GetPageHierarchy, GetPageUri, GetLastPostDate, GetLastPostModified,
+            GetLastPostTime, WpGetPostParentId, GetAvailablePostMimeTypes);
 }
