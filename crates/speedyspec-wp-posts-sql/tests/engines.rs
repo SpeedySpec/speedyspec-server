@@ -75,6 +75,7 @@ fn posts_table(table: &str) -> String {
 struct Rig {
     db: Rc<NativeWpdb>,
     hooks: Rc<WpHookApi>,
+    host: Rc<MemoryWpdbHost>,
     repo: SqlPostRepository,
 }
 
@@ -125,11 +126,12 @@ fn rig(engine: Engine) -> Option<Rig> {
         Rc::new(MemoryHookStore::new()),
         Rc::new(IgnoreDeprecations),
     ));
+    let host = Rc::new(MemoryWpdbHost::new());
     let db = Rc::new(NativeWpdb::new(WpDbParts {
         store: registry.sql("default").unwrap(),
         hooks: hooks.clone(),
         state: Rc::new(MemoryWpdbState::new()),
-        host: Rc::new(MemoryWpdbHost::new()),
+        host: host.clone(),
         config: WpDbConfig {
             user: String::new(),
             password: String::new(),
@@ -148,7 +150,12 @@ fn rig(engine: Engine) -> Option<Rig> {
         db.query(&posts_table(table)).unwrap();
     }
     let repo = SqlPostRepository::new(db.clone(), engine.name());
-    Some(Rig { db, hooks, repo })
+    Some(Rig {
+        db,
+        hooks,
+        host,
+        repo,
+    })
 }
 
 fn count(db: &NativeWpdb, table: &str) -> u64 {
@@ -203,43 +210,95 @@ fn known_break(expected: &str, check: impl FnOnce()) {
 /// Known break (the 0.3.0 conformance suite): `last_post_time_orders_by_the_gmt_column` expects the `server` answer
 /// without fractional seconds, but MySQL's `DATE_ADD(.., INTERVAL '0' SECOND)` answers `2024-03-01 20:00:00.000000`,
 /// which WordPress returns as is (`compat/posts-read`'s `last-*` scenarios). The repository keeps MySQL's text; see
-/// `server_time_keeps_mysql_fraction`. The checks before it all pass.
+/// `server_time_keeps_mysql_fraction`. Every check before it passes, and the two after it are this file's own
+/// (`zero_dates_round_trip`, `last_post_time_of_nothing_is_none`).
+///
+/// TODO(posts-contracts 0.3.1): platform PR #18 accepts the fraction; take 0.3.1 and run `suite(Engine::MySql)`
+/// plainly.
 #[test]
 fn suite_on_mysql() {
-    known_break("last_post_time_orders_by_the_gmt_column", || {
-        suite(Engine::MySql)
-    });
+    known_break(
+        "check `last_post_time_orders_by_the_gmt_column` failed: Some(\"2024-03-02 01:00:00\") \
+         Some(\"2024-03-01 20:00:00\") Some(\"2024-03-01 20:00:00.000000\") Some(\"2024-03-01 20:00:00\")",
+        || suite(Engine::MySql),
+    );
 }
 
-/// Known break (the SQLite engine): a MySQL `\0` escape inside a string literal reaches SQLite as a raw NUL, which
-/// SQLite's tokenizer rejects, so `$wpdb->insert` answers false for the suite's post whose content holds a NUL
-/// (`find_returns_what_insert_wrote`); see `nul_content_on_sqlite`. The checks after it do not run here; the other
-/// tests in this file cover each statement on SQLite.
 #[test]
 fn suite_on_sqlite() {
-    known_break("the insert returns an id", || suite(Engine::Sqlite));
+    suite(Engine::Sqlite);
 }
 
+/// Not run locally or in CI yet. Expect the suite's NUL-content post (`find_returns_what_insert_wrote`) to fail
+/// here: PostgreSQL's `text` cannot hold a `0x00` byte, which MySQL's `longtext` (and SQLite) store.
 #[test]
 fn suite_on_postgres() {
     suite(Engine::Postgres);
 }
 
-/// The SQLite engine's NUL break, pinned: the same post without the NUL inserts.
-#[test]
-fn nul_content_on_sqlite() {
-    on(Engine::Sqlite, |rig| {
-        let with_nul = Post {
+/// A NUL byte in a column (mysqli's `\0` escape) is stored and read back whole.
+fn nul_content_round_trips(engine: Engine) {
+    on(engine, |rig| {
+        let post = Post {
             content: b"before\x00after".to_vec(),
             ..named("nul", "post")
         };
-        assert_eq!(rig.repo.insert(&with_nul).unwrap(), None);
-        let without = Post {
-            content: b"before after".to_vec(),
-            ..named("nul", "post")
-        };
-        assert!(rig.repo.insert(&without).unwrap().is_some());
+        let id = rig.repo.insert(&post).unwrap().expect("an id");
+        assert_eq!(rig.repo.find(id).unwrap(), Some(Post { id, ..post }));
     });
+}
+
+#[test]
+fn nul_content_round_trips_on_sqlite() {
+    nul_content_round_trips(Engine::Sqlite);
+}
+
+#[test]
+fn nul_content_round_trips_on_mysql() {
+    nul_content_round_trips(Engine::MySql);
+}
+
+/// `_get_last_post_time()` answers nothing for only drafts, an unknown type, or no types (`IN ('')`): the 0.3.0
+/// suite's `last_post_time_of_nothing_is_none`, which the MySQL known break skips.
+fn last_post_time_of_nothing_is_none(engine: Engine) {
+    on(engine, |rig| {
+        let at = PostDateTime::new("2024-01-01 00:00:00");
+        rig.repo
+            .insert(&Post {
+                status: PostStatusName::new("draft"),
+                date: PostDate {
+                    local: at.clone(),
+                    gmt: at,
+                },
+                ..named("dated", "rd-last-draft")
+            })
+            .unwrap()
+            .expect("an id");
+        let last = |kinds: &[&str], field, timezone| {
+            let kinds: Vec<_> = kinds.iter().map(|k| PostTypeName::new(*k)).collect();
+            rig.repo.last_post_time(field, &kinds, timezone).unwrap()
+        };
+        assert_eq!(
+            last(&["rd-last-draft"], LastPostField::Date, Timezone::Blog),
+            None
+        );
+        assert_eq!(last(&["rd-none"], LastPostField::Date, Timezone::Gmt), None);
+        assert_eq!(last(&[], LastPostField::Modified, Timezone::Blog), None);
+        assert_eq!(
+            last(&["rd-last-draft"], LastPostField::Date, Timezone::Server),
+            None
+        );
+    });
+}
+
+#[test]
+fn last_post_time_of_nothing_is_none_on_mysql() {
+    last_post_time_of_nothing_is_none(Engine::MySql);
+}
+
+#[test]
+fn last_post_time_of_nothing_is_none_on_sqlite() {
+    last_post_time_of_nothing_is_none(Engine::Sqlite);
 }
 
 /// `get_lastpostdate( 'server' )` on MySQL: `DATE_ADD` answers with six fractional digits, and the repository
@@ -354,7 +413,8 @@ fn page_by_path_ignores_case() {
     });
 }
 
-/// After `switch_to_blog( 2 )` (`set_prefix( 'wp_2_' )`), every call reads and writes `wp_2_posts`.
+/// On multisite, after `switch_to_blog( 2 )` (`$wpdb->set_blog_id( 2 )`), every call reads and writes `wp_2_posts`;
+/// back on blog 1 it reads `wp_posts` again.
 fn follows_switched_prefix(engine: Engine) {
     on(engine, |rig| {
         let main = rig
@@ -362,7 +422,10 @@ fn follows_switched_prefix(engine: Engine) {
             .insert(&named("main", "page"))
             .unwrap()
             .expect("an id");
-        rig.db.set_prefix("wp_2_", true).unwrap();
+        rig.host.multisite.replace(true);
+        rig.host.define("MULTISITE", WpValue::Bool(true));
+        rig.db.set_prefix("wp_", true).unwrap();
+        rig.db.set_blog_id(2, 1);
         assert_eq!(rig.repo.find(main).unwrap(), None);
         assert!(rig.repo.all_page_ids().unwrap().is_empty());
         let id = rig
@@ -382,7 +445,7 @@ fn follows_switched_prefix(engine: Engine) {
             .pages_by_names(&[Slug::from("blog-two")], &[PostTypeName::new("page")])
             .unwrap();
         assert_eq!(rows.iter().map(|r| r.id).collect::<Vec<_>>(), vec![id]);
-        rig.db.set_prefix("wp_", true).unwrap();
+        rig.db.set_blog_id(1, 1);
         assert_eq!(rig.repo.all_page_ids().unwrap(), vec![main]);
     });
 }
@@ -467,8 +530,12 @@ fn statements_match_post_php() {
                 &HookName::from("query"),
                 Callback::rust("record", move |args: &[WpValue]| {
                     let query = args.first().cloned().unwrap_or(WpValue::Null);
-                    if let WpValue::Str(text) = &query {
-                        log.borrow_mut().push(text.clone());
+                    match &query {
+                        WpValue::Str(text) => log.borrow_mut().push(text.clone()),
+                        WpValue::Bytes(bytes) => log
+                            .borrow_mut()
+                            .push(String::from_utf8_lossy(bytes).into_owned()),
+                        other => panic!("the query filter received {other:?}"),
                     }
                     Ok(query)
                 }),

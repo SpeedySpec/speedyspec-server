@@ -41,6 +41,12 @@ fn surfaced(e: WpDbError) -> Result<(), PostError> {
     }
 }
 
+/// Puts a taken hook failure back in `wpdb`'s side channel (`take_hook_error()`) for the PHP bridge. The
+/// `WpDbError::from` conversion is what records it there; the converted error itself is not needed.
+fn restash(hook: impl Into<WpDbError>) {
+    let _: WpDbError = hook.into();
+}
+
 /// `%d` as PHP's `(int)` gives it: an id past `PHP_INT_MAX` is `PHP_INT_MAX`.
 fn int(id: u64) -> WpValue {
     WpValue::Int(i64::try_from(id).unwrap_or(i64::MAX))
@@ -215,7 +221,7 @@ impl SqlPostRepository {
         let quoted = self
             .wpdb
             .prepare(Some(b"%s"), &[php_string(text)])
-            .unwrap_or_default();
+            .expect("prepare answers a one-placeholder template with its one argument");
         match quoted.as_slice() {
             [b'\'', inner @ .., b'\''] => inner.to_vec(),
             _ => quoted,
@@ -266,11 +272,11 @@ impl SqlPostRepository {
         let result = run();
         let during = take_hook_error();
         if let Some(before) = before {
-            let _ = WpDbError::from(before);
+            restash(before);
         }
         match during {
             Some(hook) => {
-                let _ = WpDbError::from(hook.clone());
+                restash(hook.clone());
                 Err(PostError::Hook(hook))
             }
             None => result,
