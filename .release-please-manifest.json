@@ -101,5 +101,6 @@
   "crates/speedyspec-wp-posts": "0.1.1",
   "crates/speedyspec-wp-posts-memory": "0.1.0",
   "crates/speedyspec-wp-posts-php": "0.1.0",
+  "crates/speedyspec-wp-posts-sql": "0.1.0",
   "crates/speedyspec-wp-text-corpus": "0.6.1"
 }

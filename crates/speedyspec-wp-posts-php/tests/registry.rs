@@ -3,6 +3,9 @@
 //! `$wp_post_types` seen live, `create_initial_post_types()` against the release's own PHP, and exceptions reaching
 //! the caller unchanged with nothing registered. PHP boots once per process (`harness = false`).
 //!
+//! Every native post function is declared, the reading ones too (the prepared release no longer has them), over
+//! the release's own `meta.php`.
+//!
 //! Needs MySQL (`SPEEDYSPEC_TEST_MYSQL_URL`); without it the test reports that it was skipped. It runs on a database
 //! of its own (`<database>_posts_read`), because compat/posts-read/setup.php empties every table it seeds.
 
@@ -75,10 +78,23 @@ fn boot(url: &str) -> Php {
     };
     let wpdb = WpDbArea::new(container.clone(), hooks.api(), registry, config);
     let cache = ObjectCacheArea::new(container.clone(), None);
-    let posts = PostsArea::new(hooks.api());
+    // The release's own meta.php runs here, so the meta area is not registered; its API only backs the reads.
+    let meta = speedyspec_wp_meta_php::MetaArea::new(
+        container.clone(),
+        hooks.api(),
+        cache.api(),
+        wpdb.api(),
+    );
+    let posts = PostsArea::new(
+        container.clone(),
+        hooks.api(),
+        cache.api(),
+        wpdb.api(),
+        meta.api(),
+    );
     let areas: Vec<Rc<dyn NativeArea>> = vec![
         twins_area(),
-        Rc::new(ContainerArea::new("tests", container)),
+        Rc::new(PostsArea::ports(ContainerArea::new("tests", container))),
         Rc::new(hooks),
         Rc::new(wpdb),
         Rc::new(cache),

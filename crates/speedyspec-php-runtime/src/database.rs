@@ -78,8 +78,15 @@ pub fn boot_database(
     let cache = ObjectCacheArea::new(container.clone(), None);
     // The meta area takes the contracts only: the Hook API, the object cache and wpdb as `Rc<dyn …>`.
     let meta = MetaArea::new(container.clone(), hook_api.clone(), cache.api(), wpdb.api());
-    // The post type and status registries take the Hook API only; they read PHP's globals live.
-    let posts = PostsArea::new(hook_api.clone());
+    // The post registries read PHP's globals live; post reading takes the contracts only, the metadata API among
+    // them.
+    let posts = PostsArea::new(
+        container.clone(),
+        hook_api.clone(),
+        cache.api(),
+        wpdb.api(),
+        meta.api(),
+    );
     let options = OptionsArea::new(container.clone(), hook_api.clone(), cache.api(), wpdb.api());
     let cron = CronArea::new(hook_api.clone(), options.api()).with_wake(wake);
     let database = WorkerDatabase { registry };

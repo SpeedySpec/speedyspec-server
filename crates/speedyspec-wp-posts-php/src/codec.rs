@@ -234,6 +234,9 @@ pub fn to_php(value: &PhpValue) -> Result<Value, Thrown> {
             })?;
             helper("object", &[properties])?
         }
+        PhpValue::Object { class, properties } if class.eq_ignore_ascii_case("WP_Post") => {
+            post_object(properties)?
+        }
         PhpValue::Custom { class, data } if class == LIVE_CLASS => {
             live(data).unwrap_or(Value::Null)
         }
@@ -247,4 +250,115 @@ pub fn string(bytes: &[u8]) -> Value {
         Ok(s) => Value::Str(s.to_owned()),
         Err(_) => Value::Bytes(bytes.to_vec()),
     }
+}
+
+/// A PHP value as the read use cases take it: like [`from_php`], but every object (a `WP_Post` included) is copied
+/// with its class and public properties, so the use cases can read inside it. A nested object that is not a
+/// `stdClass` stays live (see the module's docs).
+pub fn copy_php(value: &Value) -> Result<PhpValue, Thrown> {
+    let read = value.read();
+    match &*read {
+        Value::Opaque(any) if any.downcast_ref::<OpaquePhpValue>().is_none() => {
+            if speedyspec_php::object_id(&read).is_none() {
+                return Ok(keep(&read));
+            }
+            let class = php("get_class", std::slice::from_ref(&*read))?;
+            let class = bytes_of(&class)
+                .map(|b| String::from_utf8_lossy(&b).into_owned())
+                .unwrap_or_default();
+            let properties = object_vars(&read)?
+                .iter()
+                .map(|(k, v)| Ok((property_key(k), convert(v, 1)?)))
+                .collect::<Result<_, Thrown>>()?;
+            Ok(PhpValue::Object { class, properties })
+        }
+        Value::Array(items) => Ok(PhpValue::Array(
+            items
+                .iter()
+                .map(|(k, v)| Ok((php_key(k), copy_php(v)?)))
+                .collect::<Result<_, Thrown>>()?,
+        )),
+        _ => convert(&read, 0),
+    }
+}
+
+/// A `WP_Post` (or any other class with public properties) as PHP builds it from copied properties: `new
+/// WP_Post( (object) $properties )` for `WP_Post`, as `WP_Post::get_instance()` makes one.
+pub(crate) fn post_object(properties: &[(PhpKey, PhpValue)]) -> Result<Value, Thrown> {
+    let properties = pairs(properties, |k| match k {
+        PhpKey::Int(i) => Key::Str(i.to_string()),
+        PhpKey::Str(s) => Key::Str(String::from_utf8_lossy(s).into_owned()),
+    })?;
+    helper("post", &[properties])
+}
+
+/// Whether a hook value carries a `PhpValue` PHP cannot read as it is.
+fn carries_php_values(value: &Value) -> bool {
+    match value {
+        Value::Opaque(any) => any.is::<OpaquePhpValue>(),
+        Value::Array(items) => items.iter().any(|(_, v)| carries_php_values(v)),
+        _ => false,
+    }
+}
+
+/// A hook value with every carried `PhpValue` (an object the use cases built, a `WP_Post`) made a PHP value, for a
+/// PHP callback to read.
+pub(crate) fn hook_in(value: Value) -> Result<Value, Thrown> {
+    if !carries_php_values(&value) {
+        return Ok(value);
+    }
+    Ok(match value {
+        Value::Opaque(any) => match any.downcast_ref::<OpaquePhpValue>() {
+            Some(carried) => to_php(&carried.0)?,
+            None => Value::Opaque(any),
+        },
+        Value::Array(items) => Value::Array(
+            items
+                .into_iter()
+                .map(|(k, v)| Ok((k, hook_in(v)?)))
+                .collect::<Result<_, Thrown>>()?,
+        ),
+        other => other,
+    })
+}
+
+/// A hook's answer as the use cases read it: every live PHP object in it carried as a `PhpValue` ([`from_php`]: a
+/// `stdClass` copied with its properties, any other object kept live, so handing it back to PHP gives the very
+/// object the callback returned).
+pub(crate) fn hook_out(value: Value) -> Result<Value, Thrown> {
+    let read = value.read();
+    Ok(match &*read {
+        Value::Array(items) => Value::Array(
+            items
+                .iter()
+                .map(|(k, v)| Ok((k.clone(), hook_out(v.clone())?)))
+                .collect::<Result<_, Thrown>>()?,
+        ),
+        Value::Opaque(any)
+            if !any.is::<OpaquePhpValue>() && speedyspec_php::object_id(&read).is_some() =>
+        {
+            Value::Opaque(std::rc::Rc::new(OpaquePhpValue(from_php(&read)?)))
+        }
+        _ => read.into_owned(),
+    })
+}
+
+/// A cached value as the read use cases read it: every live PHP object in it carried as a `PhpValue` copied with its
+/// class and properties ([`copy_php`]), so a `WP_Post` or `stdClass` another caller cached can be read as a post.
+pub(crate) fn cache_out(value: &Value) -> Result<Value, Thrown> {
+    let read = value.read();
+    Ok(match &*read {
+        Value::Array(items) => Value::Array(
+            items
+                .iter()
+                .map(|(k, v)| Ok((k.clone(), cache_out(v)?)))
+                .collect::<Result<_, Thrown>>()?,
+        ),
+        Value::Opaque(any)
+            if !any.is::<OpaquePhpValue>() && speedyspec_php::object_id(&read).is_some() =>
+        {
+            Value::Opaque(std::rc::Rc::new(OpaquePhpValue(copy_php(&read)?)))
+        }
+        _ => read.into_owned(),
+    })
 }

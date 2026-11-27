@@ -1,1 +1,14 @@
-{"breaks": []}
+{
+  "breaks": [
+    {
+      "scenario": "cache-prime-statement",
+      "step": 1,
+      "why": "update_postmeta_cache() runs the native meta functions, whose update_meta_cache() statement selects the id column too (SELECT meta_id, post_id, meta_key, meta_value ...) where WordPress selects SELECT post_id, meta_key, meta_value ..., because the meta entity carries its meta_id. A deliberate difference of phase 3's meta repository (speedyspec-wp-meta-sql's for_objects); the rows, the cache and the query count are WordPress's."
+    },
+    {
+      "scenario": "count-readable-statement",
+      "step": 1,
+      "why": "Logging the author in reads the user's meta through the native meta functions, whose update_meta_cache() statement selects the id column too (SELECT umeta_id, user_id, meta_key, meta_value ...) where WordPress selects SELECT user_id, meta_key, meta_value ..., because the meta entity carries its meta_id. A deliberate difference of phase 3's meta repository (speedyspec-wp-meta-sql's for_objects), not of post reading; the wp_count_posts() statement the scenario is about matches in the next step."
+    }
+  ]
+}

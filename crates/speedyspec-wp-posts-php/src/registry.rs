@@ -69,12 +69,12 @@ pub(crate) type R = Result<Value, NativeError>;
 pub(crate) type Native = fn(&[Value]) -> R;
 
 /// The `i`th argument, `null` when it was not passed.
-fn a(args: &[Value], i: usize) -> Value {
+pub(crate) fn a(args: &[Value], i: usize) -> Value {
     args.get(i).cloned().unwrap_or(Value::Null)
 }
 
 /// A PHP failure as PHP sees it: its exception rethrown, or nothing to throw while PHP unwinds.
-fn thrown(t: Thrown) -> NativeError {
+pub(crate) fn thrown(t: Thrown) -> NativeError {
     match t.0 {
         Some(exception) => NativeError::Rethrow(exception),
         None => NativeError::Silent,
@@ -83,7 +83,7 @@ fn thrown(t: Thrown) -> NativeError {
 
 /// A hook failure as PHP sees it: the callback's exception rethrown, PHP unwinding left alone, anything else an
 /// `Error`.
-fn hook_error(hook: HookError) -> NativeError {
+pub(crate) fn hook_error(hook: HookError) -> NativeError {
     match hook
         .payload
         .as_ref()
@@ -970,6 +970,10 @@ fn guarded(f: Native, args: &[Value]) -> R {
         d.set(d.get() + 1);
         d.get()
     });
+    if depth == 1 {
+        // What a call from Rust may have left: the outermost call starts clean.
+        let _ = speedyspec_wp_db_contracts::take_hook_error();
+    }
     let outer = take_parked().filter(|_| depth > 1);
     let result = f(args);
     let parked = take_parked();
@@ -987,7 +991,11 @@ fn guarded(f: Native, args: &[Value]) -> R {
         (Err(NativeError::Rethrow(exception)), _) => Err(NativeError::Rethrow(exception)),
         // A port's exception stopped the work: it is what PHP sees.
         (_, Some(exception)) => Err(NativeError::Rethrow(exception)),
-        (other, None) => other,
+        // `wpdb` answered false or 0 where a `query` callback threw: the exception still reaches PHP.
+        (other, None) => match speedyspec_wp_db_contracts::take_hook_error() {
+            Some(hook) => Err(hook_error(hook)),
+            None => other,
+        },
     }
 }
 
@@ -1024,6 +1032,7 @@ pub(crate) const ENTRIES: &[(&str, Native)] = &[
 pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
     ENTRIES
         .iter()
+        .chain(crate::read::ENTRIES)
         .map(|&(name, f)| {
             native::function(&format!("{NATIVE}{name}"), move |args: &[Value]| {
                 guarded(f, args)
