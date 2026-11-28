@@ -6,7 +6,9 @@
 //! `sanitize_post()` and `sanitize_post_field()` on PHP-shaped values over the [`Formatting`] port; the post type
 //! labels, viewable and unique slug filters run through the hooks contract; and the read use cases
 //! ([`PostsApi`], the [`Posts`](speedyspec_wp_posts_contracts::Posts) Facade) with the `posts` cache functions and
-//! their messages ([`register_posts_handlers`]).
+//! their messages ([`register_posts_handlers`]); and the write use cases ([`PostWritesApi`]): `wp_insert_post()`,
+//! `wp_update_post()`, the status transitions and `set_post_type()`, with their messages
+//! ([`register_post_write_handlers`]) and default callbacks ([`register_post_write_callbacks`]).
 
 mod caps;
 mod content;
@@ -28,6 +30,7 @@ mod slug;
 mod status;
 #[cfg(test)]
 mod test_support;
+mod write;
 
 pub use caps::{meta_capabilities, post_type_capabilities};
 pub use content::{Extended, extended};
@@ -78,3 +81,4 @@ pub use slug::{
 pub use status::{
     PostStatusRegistry, page_statuses, post_statuses, privacy_statuses, resolve_post_status,
 };
+pub use write::*;
