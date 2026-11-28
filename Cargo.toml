@@ -69,13 +69,3 @@ codegen-units = 1
 [patch.crates-io]
 pcre2-sys = { path = "vendor/pcre2-sys" }
 
-# TEMPORARY: removed once the platform releases.
-# speedyspec-compat 0.11, speedyspec-wp-posts-contracts 0.4.0 and speedyspec-wp-meta-contracts 0.4.0 are in open
-# platform PRs (branches feat/compat-record-writes, feat/posts-write-contracts and feat/meta-contracts-0-4). A git
-# or worktree path patch would bring the branches' own path copies of speedyspec-php, the hooks contracts and
-# php-serialize, which are distinct from the crates.io ones every other crate here uses, so each crate is the
-# `cargo package` output of its branch (dependencies normalized to crates.io), unpacked under target/platform-patch
-# with its version set to the release's.
-speedyspec-compat = { path = "target/platform-patch/speedyspec-compat" }
-speedyspec-wp-meta-contracts = { path = "target/platform-patch/speedyspec-wp-meta-contracts" }
-speedyspec-wp-posts-contracts = { path = "target/platform-patch/speedyspec-wp-posts-contracts" }

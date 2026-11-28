@@ -4987,6 +4987,8 @@ dependencies = [
 [[package]]
 name = "speedyspec-compat"
 version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc3bd103cf0a0641f7676d0f2a615efeceb8d2807709eac07b5515932d42a485"
 dependencies = [
  "flate2",
  "serde",
@@ -6413,6 +6415,8 @@ dependencies = [
 [[package]]
 name = "speedyspec-wp-meta-contracts"
 version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1074060022bbf3e084e26d15bea463680caad4224fb1cb658e066107cce4abf"
 dependencies = [
  "speedyspec-php-serialize",
  "speedyspec-wp-hooks-contracts",
@@ -6753,6 +6757,8 @@ dependencies = [
 [[package]]
 name = "speedyspec-wp-posts-contracts"
 version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d3394b481eb4302b982d9c97d2d0238f10140c2dfbf357681db8323115dde82"
 dependencies = [
  "speedyspec-php-serialize",
  "speedyspec-wp-hooks-contracts",
