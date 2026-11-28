@@ -4607,7 +4607,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "969cde0349344dbbf58b5f9badbfb8f806db13969364eb8007c057ef687007d9"
 dependencies = [
  "annotate-snippets",
- "base64 0.22.1",
+ "base64 0.23.1",
  "encoding_rs_io",
  "granit-parser",
  "nohash-hasher",
@@ -5253,6 +5253,7 @@ dependencies = [
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-object-cache",
  "speedyspec-wp-options",
+ "speedyspec-wp-options-contracts",
  "speedyspec-wp-options-memory",
 ]
 
@@ -5272,6 +5273,7 @@ dependencies = [
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-object-cache",
  "speedyspec-wp-options",
+ "speedyspec-wp-options-contracts",
  "speedyspec-wp-options-memory",
 ]
 
@@ -5887,6 +5889,7 @@ dependencies = [
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-object-cache",
  "speedyspec-wp-options",
+ "speedyspec-wp-options-contracts",
  "speedyspec-wp-options-memory",
  "speedyspec-wp-options-sql",
 ]
@@ -5917,7 +5920,7 @@ dependencies = [
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
  "speedyspec-wp-object-cache-php",
- "speedyspec-wp-options",
+ "speedyspec-wp-options-contracts",
  "speedyspec-wp-options-php",
  "tempfile",
  "ureq",
@@ -6554,7 +6557,19 @@ dependencies = [
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-object-cache",
  "speedyspec-wp-object-cache-contracts",
+ "speedyspec-wp-options-contracts",
  "tracing",
+]
+
+[[package]]
+name = "speedyspec-wp-options-contracts"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "692e44d81d158a57a125a08b919babffd1da1197beeaf17bc6ddfe93d651c965"
+dependencies = [
+ "speedyspec-data",
+ "speedyspec-wp-hooks-contracts",
+ "speedyspec-wp-object-cache-contracts",
 ]
 
 [[package]]
@@ -6728,6 +6743,7 @@ dependencies = [
  "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-meta-contracts",
  "speedyspec-wp-object-cache-contracts",
+ "speedyspec-wp-options-contracts",
  "speedyspec-wp-posts-contracts",
  "speedyspec-wp-posts-memory",
  "speedyspec-wp-text",
@@ -6779,6 +6795,8 @@ dependencies = [
  "speedyspec-wp-meta-php",
  "speedyspec-wp-object-cache-contracts",
  "speedyspec-wp-object-cache-php",
+ "speedyspec-wp-options-contracts",
+ "speedyspec-wp-options-php",
  "speedyspec-wp-posts",
  "speedyspec-wp-posts-contracts",
  "speedyspec-wp-posts-sql",
@@ -6826,6 +6844,7 @@ dependencies = [
  "speedyspec-wp-meta-memory",
  "speedyspec-wp-object-cache",
  "speedyspec-wp-object-cache-contracts",
+ "speedyspec-wp-options-contracts",
  "speedyspec-wp-posts",
  "speedyspec-wp-posts-contracts",
  "speedyspec-wp-posts-memory",
@@ -6849,7 +6868,7 @@ dependencies = [
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-hooks-memory",
- "speedyspec-wp-options",
+ "speedyspec-wp-options-contracts",
 ]
 
 [[package]]
@@ -7488,7 +7507,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",

@@ -2,16 +2,16 @@
 //! `speedyspec_firewall_*` option; a missing one gets its default from [`RawSettings::default`].
 
 use speedyspec_firewall::{FirewallError, RawSettings, SettingsSource};
-use speedyspec_wp_options::{FromOptionValue, Options, OptionsError};
+use speedyspec_wp_options_contracts::{FromOptionValue, OptionsError, TypedOptions};
 
 const PREFIX: &str = "speedyspec_firewall_";
 
 pub struct OptionsSettingsSource {
-    options: Options,
+    options: TypedOptions,
 }
 
 impl OptionsSettingsSource {
-    pub fn new(options: Options) -> OptionsSettingsSource {
+    pub fn new(options: TypedOptions) -> OptionsSettingsSource {
         OptionsSettingsSource { options }
     }
 

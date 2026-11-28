@@ -1,7 +1,7 @@
 mod support;
 
 use speedyspec_wp_hooks_contracts::{HookName, HookValue};
-use speedyspec_wp_options::{Autoload, OptionName, Options};
+use speedyspec_wp_options::{Autoload, OptionName, TypedOptions};
 use support::*;
 
 fn fired(f: &Fixture, name: &str) -> Vec<String> {
@@ -116,7 +116,7 @@ fn facade_get() {
     let f = fixture();
     seed(&f, "n", "5", Autoload::On);
     seed(&f, "t", "", Autoload::On);
-    let options = Options::new(std::rc::Rc::new(f.api));
+    let options = TypedOptions::new(std::rc::Rc::new(f.api));
     assert_eq!(options.get::<i64>("n").unwrap(), Some(5));
     assert_eq!(options.get::<String>("n").unwrap(), Some("5".to_string()));
     assert_eq!(options.get::<bool>("t").unwrap(), Some(false));

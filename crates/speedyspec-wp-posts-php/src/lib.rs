@@ -48,6 +48,7 @@ use speedyspec_wp_db_contracts::Wpdb;
 use speedyspec_wp_hooks_contracts::HookApi;
 use speedyspec_wp_meta_contracts::Metadata;
 use speedyspec_wp_object_cache_contracts::ObjectCache;
+use speedyspec_wp_options_contracts::Options;
 use speedyspec_wp_posts::{PostsApi, PostsDeps, Taxonomy, register_posts_handlers};
 use speedyspec_wp_posts_contracts::PostRepository;
 use speedyspec_wp_posts_sql::SqlPostRepository;
@@ -59,8 +60,8 @@ pub use adapters::{
 pub use codec::{Thrown, copy_php, from_php, to_php};
 pub use hooks::PhpValueHooks;
 pub use ports::{
-    POST_REPOSITORY, PhpCacheInvalidation, PhpCurrentPost, PhpFormatting, PhpOptions, PhpTaxonomy,
-    PhpUsers, PhpValueCache, ResolvedRepository, ResolvedTaxonomy, SystemMicrotime, TAXONOMY,
+    POST_REPOSITORY, PhpCacheInvalidation, PhpCurrentPost, PhpFormatting, PhpTaxonomy, PhpUsers,
+    PhpValueCache, ResolvedRepository, ResolvedTaxonomy, SystemMicrotime, TAXONOMY,
 };
 pub use release::{
     CLASS_FILE, GET_INSTANCE_BODY, PORTED_FUNCTIONS, prepare_release, strip_ported,
@@ -84,14 +85,15 @@ pub struct PostsArea {
 
 impl PostsArea {
     /// The registries, filtering and firing through `hooks`, and the read use cases over `wpdb`'s `default` engine,
-    /// the request's object cache and the metadata API, with their handlers registered in `container` and the SQL
-    /// table bound as the default post repository.
+    /// the request's object cache, the metadata API and the options API, with their handlers registered in
+    /// `container` and the SQL table bound as the default post repository.
     pub fn new(
         container: Rc<Container>,
         hooks: Rc<dyn HookApi>,
         cache: Rc<dyn ObjectCache>,
         wpdb: Rc<dyn Wpdb>,
         metadata: Rc<dyn Metadata>,
+        options: Rc<dyn Options>,
     ) -> PostsArea {
         SHARED.with(|s| *s.borrow_mut() = Some(hooks.clone()));
         let sql: Rc<dyn PostRepository> = Rc::new(SqlPostRepository::new(wpdb, "default"));
@@ -114,7 +116,7 @@ impl PostsArea {
             terms: Rc::new(ResolvedTaxonomy::new(&container, php_terms)),
             clock: Rc::new(SystemMicrotime),
             invalidation: Rc::new(PhpCacheInvalidation),
-            options: Rc::new(PhpOptions),
+            options,
         });
         register_posts_handlers(&container, api.clone());
         let reading = Rc::new(read::Reading::new(&container, current));

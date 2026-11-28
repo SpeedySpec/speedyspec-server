@@ -9,8 +9,8 @@ use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_meta_contracts::ObjectId;
 use speedyspec_wp_posts_contracts::{PostError, PostRef};
 
-use crate::hook::hv;
-use crate::read::api::{PostsApi, meta_error, s};
+use crate::hook::{hv, pv};
+use crate::read::api::{PostsApi, meta_error, options_error, s};
 
 /// PHP's `trim()` characters.
 fn is_trimmed(b: &u8) -> bool {
@@ -129,7 +129,12 @@ impl PostsApi {
         if id == Some(0) {
             id = self.the_id()?;
         }
-        let stickies = self.d.options.get_option("sticky_posts")?;
+        let stickies = self
+            .d
+            .options
+            .get_option("sticky_posts", None)
+            .map_err(options_error)?;
+        let stickies = pv(&stickies.read())?;
         let sticky = match (&stickies, id) {
             (PhpValue::Array(items), Some(id)) => items.iter().any(|(_, v)| to_php_int(v) == id),
             _ => false,

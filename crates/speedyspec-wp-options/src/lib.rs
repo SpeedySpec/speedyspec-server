@@ -5,17 +5,15 @@
 
 mod adapters;
 mod api;
-mod autoload;
 mod autoload_policy;
 mod autoload_set;
 mod clock;
 mod conditional;
 #[cfg(feature = "conformance")]
 pub mod conformance;
+mod contract;
 mod entity;
-mod error;
 mod external_cache;
-mod facade;
 mod fired;
 mod messages;
 mod name;
@@ -33,22 +31,25 @@ mod transients;
 mod value;
 mod write;
 
+// The option API other seams call, its errors, the typed reader and the PHP casts, from the options contracts. They are
+// re-exported so this crate's callers name them as before; `OptionsApi` implements `Options` and `ConditionalOptions`.
+pub use speedyspec_wp_options_contracts::{
+    Autoload, AutoloadRequest, ConditionalOptions, ConditionalWrite, DEFAULT_AUTOLOAD_VALUES,
+    FromOptionValue, Options, OptionsError, TypedOptions, php_empty, php_string,
+};
+
 pub use adapters::{
     CORE_SANITIZED_OPTIONS, FixedProtectedOptions, HookSanitizing, InstallingFlag, LogDeprecations,
     NoOptionGroups, RustCodec, SiteConfiguration,
 };
 pub use api::{OptionsApi, OptionsDeps};
-pub use autoload::{Autoload, AutoloadRequest, DEFAULT_AUTOLOAD_VALUES};
 pub use autoload_policy::{
     AutoloadPolicy, WordPressAutoloadPolicy, autoload_values,
     filter_default_autoload_value_via_option_size, register_default_filters,
 };
 pub use clock::{Clock, SystemClock};
-pub use conditional::ConditionalWrite;
 pub use entity::Option;
-pub use error::OptionsError;
 pub use external_cache::{ExternalObjectCache, ObjectCachePersistence};
-pub use facade::{FromOptionValue, Options};
 pub use messages::{
     AddOption, AutoloadValuesToAutoload, DeleteOption, DetermineOptionAutoloadValue,
     FilterDefaultAutoloadValueViaOptionSize, GetOption, GetOptions, LoadAlloptions,
@@ -81,4 +82,4 @@ pub use transient_messages::{
     SetSiteTransient, SetTransient, register_transient_handlers,
 };
 pub use transients::{ExpiredTransients, TransientPorts, TransientPrefix, TransientsApi};
-pub use value::{SerializedValue, php_empty, php_string};
+pub use value::SerializedValue;

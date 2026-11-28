@@ -11,7 +11,8 @@ use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
-use speedyspec_wp_options::{Options, OptionsApi, OptionsDeps};
+use speedyspec_wp_options::{OptionsApi, OptionsDeps};
+use speedyspec_wp_options_contracts::TypedOptions;
 use speedyspec_wp_options_memory::MemoryOptionRepository;
 
 #[derive(Default)]
@@ -62,7 +63,7 @@ impl Rig {
         }
         let log = Rc::new(RecordingLog::default());
         let stage = FirewallComposition::build(
-            Options::new(options.clone()),
+            TypedOptions::new(options.clone()),
             Rc::new(MemoryCache::new()),
             &hooks,
             FirewallScope::Public,

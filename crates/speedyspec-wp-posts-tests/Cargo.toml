@@ -19,6 +19,7 @@ speedyspec-wp-meta-contracts.workspace = true
 speedyspec-wp-meta-memory = { path = "../speedyspec-wp-meta-memory" }
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }
 speedyspec-wp-object-cache-contracts.workspace = true
+speedyspec-wp-options-contracts.workspace = true
 md5 = { package = "md-5", version = "0.11.0" }
 speedyspec-php-serialize.workspace = true
 speedyspec-wp-hooks.workspace = true

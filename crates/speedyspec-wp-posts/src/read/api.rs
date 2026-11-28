@@ -10,16 +10,17 @@ use std::rc::Rc;
 
 use speedyspec_php_serialize::PhpValue;
 use speedyspec_php_serialize::semantics::is_empty;
-use speedyspec_wp_hooks_contracts::{Count, HookApi, HookName, HookValue, Key};
+use speedyspec_wp_hooks_contracts::{Count, HookApi, HookError, HookName, HookValue, Key};
 use speedyspec_wp_meta_contracts::{MetaType, Metadata, MetadataError};
 use speedyspec_wp_object_cache_contracts::{ObjectCache, get_with};
+use speedyspec_wp_options_contracts::{Options, OptionsError};
 use speedyspec_wp_posts_contracts::{
     CurrentPost, Filter, MimeFilter, MimeType, Post, PostError, PostId, PostRef, PostRepository,
     PostStatusName, PostStatuses, PostTypeArg, PostTypeName, PostTypes, Posts,
 };
 
 use crate::hook::{filter, hv, pv};
-use crate::read::ports::{CacheInvalidation, Microtime, Options, Taxonomy, Users};
+use crate::read::ports::{CacheInvalidation, Microtime, Taxonomy, Users};
 use crate::{Formatting, SanitizePorts};
 
 /// The `posts` entries found plain raw most recently, by their shared handle (a small Identity Map of a verdict).
@@ -87,7 +88,7 @@ pub struct PostsDeps {
     pub clock: Rc<dyn Microtime>,
     /// `$_wp_suspend_cache_invalidation`.
     pub invalidation: Rc<dyn CacheInvalidation>,
-    /// `get_option()`, for `is_sticky()`.
+    /// The options API (the options contracts' inbound port): `get_option()`, for `is_sticky()`.
     pub options: Rc<dyn Options>,
 }
 
@@ -239,6 +240,28 @@ pub(crate) fn meta_error(e: MetadataError) -> PostError {
         MetadataError::Hook(e) => PostError::Hook(e),
         MetadataError::Cache(e) => PostError::Cache(e),
         MetadataError::Db(e) => PostError::Db(e),
+    }
+}
+
+/// What a PHP failure's payload is while PHP unwinds (an `exit()` or a fatal error): no exception to rethrow.
+struct Unwinding;
+
+/// An options failure as a post failure: a callback's payload travels whole, and a PHP exception an options adapter
+/// met becomes the hook error's payload, as the posts adapters carry theirs.
+pub(crate) fn options_error(e: OptionsError) -> PostError {
+    match e {
+        OptionsError::Hook(e) => PostError::Hook(e),
+        OptionsError::Cache(e) => PostError::Cache(e),
+        OptionsError::Db(e) => PostError::Db(e),
+        OptionsError::Php(exception) => PostError::Hook(HookError {
+            message: "a PHP function the options API called failed".into(),
+            payload: Some(if matches!(exception, HookValue::Null) {
+                Rc::new(Unwinding) as Rc<dyn std::any::Any>
+            } else {
+                Rc::new(exception)
+            }),
+        }),
+        other => PostError::Hook(HookError::message(other.to_string())),
     }
 }
 
