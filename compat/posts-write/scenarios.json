@@ -1,0 +1,6149 @@
+{
+  "area": "posts-write",
+  "scenarios": [
+    {
+      "name": "insert-defaults",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Defaults"
+            }
+          ],
+          "as": "id"
+        },
+        {
+          "call": "get_post",
+          "args": [
+            {
+              "var": "id"
+            }
+          ],
+          "as": "post",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "insert-every-field",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_author": 2,
+              "post_date": "2026-10-01 09:30:00",
+              "post_content": "<p>Every <em>field</em></p>",
+              "post_content_filtered": "filtered",
+              "post_title": "  Every Field  ",
+              "post_excerpt": "An excerpt",
+              "post_status": "publish",
+              "post_type": "post",
+              "comment_status": "closed",
+              "ping_status": "closed",
+              "post_password": "secret",
+              "post_name": "Every Field!",
+              "to_ping": "http://a.example/\nhttp://b.example/",
+              "pinged": "",
+              "post_parent": 0,
+              "menu_order": 3,
+              "post_mime_type": "",
+              "guid": "http://example.org/custom-guid",
+              "post_category": [
+                3
+              ],
+              "tags_input": [
+                "fresh",
+                "tagged"
+              ]
+            },
+            true
+          ],
+          "as": "id",
+          "cron": true
+        },
+        {
+          "call": "get_post",
+          "args": [
+            {
+              "var": "id"
+            }
+          ],
+          "as": "post",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_get_post_terms",
+          "args": [
+            {
+              "var": "id"
+            },
+            "post_tag",
+            {
+              "fields": "slugs"
+            }
+          ],
+          "as": "tags",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_get_post_categories",
+          "args": [
+            {
+              "var": "id"
+            }
+          ],
+          "as": "categories",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "insert-import-id",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Imported",
+              "import_id": 500
+            }
+          ],
+          "as": "free"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Imported taken",
+              "import_id": 6
+            }
+          ],
+          "as": "taken"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Imported after",
+              "import_id": 0
+            }
+          ],
+          "as": "zero"
+        }
+      ]
+    },
+    {
+      "name": "insert-empty-content",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {},
+            true
+          ],
+          "as": "error"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_status": "draft"
+            }
+          ],
+          "as": "zero"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_type": "attachment",
+              "post_mime_type": "image/png"
+            }
+          ],
+          "as": "attachment"
+        },
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_insert_post_empty_content",
+            "speedyspec_compat_posts_write_always_empty",
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Has a title"
+            },
+            true
+          ],
+          "as": "forced"
+        }
+      ]
+    },
+    {
+      "name": "insert-parent-loop-self",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "wp_insert_post_parent",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_insert_post_parent"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 11,
+              "post_parent": 12
+            }
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "insert-parent-loop-broken",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "wp_insert_post_parent",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_insert_post_parent"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pre_post_update",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_post_update"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "post_updated",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_updated"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 13,
+              "post_parent": 9
+            }
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "insert-parent-negative",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "wp_insert_post_parent",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_insert_post_parent"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_insert_post_data",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_insert_post_data"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Negative parent",
+              "post_type": "page",
+              "post_status": "publish",
+              "post_parent": -5
+            }
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "insert-parent-missing",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Orphan",
+              "post_type": "page",
+              "post_status": "publish",
+              "post_parent": 999
+            }
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "insert-slug-unique",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Taken",
+              "post_status": "publish"
+            }
+          ],
+          "as": "second"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Other",
+              "post_name": "taken",
+              "post_status": "publish"
+            }
+          ],
+          "as": "third"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Feed",
+              "post_name": "feed",
+              "post_status": "publish"
+            }
+          ],
+          "as": "feed"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Taken page",
+              "post_name": "taken",
+              "post_type": "page",
+              "post_status": "publish"
+            }
+          ],
+          "as": "page"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Taken draft",
+              "post_name": "taken",
+              "post_status": "draft"
+            }
+          ],
+          "as": "draft"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Numeric",
+              "post_name": "2026",
+              "post_status": "publish"
+            }
+          ],
+          "as": "numeric"
+        }
+      ]
+    },
+    {
+      "name": "insert-slug-forced",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "pre_wp_unique_post_slug",
+            "speedyspec_compat_posts_write_forced_slug",
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Taken",
+              "post_status": "publish"
+            }
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "insert-slug-trashed-suffix",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "add_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_post_meta"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Old trash",
+              "post_name": "old-trash",
+              "post_status": "publish"
+            }
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "insert-slug-hierarchical",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "speedyspec_compat_posts_write_register",
+          "args": [],
+          "snapshot": []
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Child Page",
+              "post_type": "page",
+              "post_parent": 2,
+              "post_status": "publish"
+            }
+          ],
+          "as": "sibling"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Child Page",
+              "post_type": "page",
+              "post_parent": 13,
+              "post_status": "publish"
+            }
+          ],
+          "as": "cousin"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Photo",
+              "post_type": "page",
+              "post_parent": 1,
+              "post_status": "publish"
+            }
+          ],
+          "as": "beside_attachment"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Parent Page",
+              "post_type": "book",
+              "post_status": "publish"
+            }
+          ],
+          "as": "book"
+        }
+      ]
+    },
+    {
+      "name": "insert-date-future",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Later",
+              "post_status": "publish",
+              "post_date": "2027-03-01 10:00:00"
+            }
+          ],
+          "as": "id"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Later page",
+              "post_type": "page",
+              "post_status": "publish",
+              "post_date_gmt": "2027-04-01 08:00:00"
+            }
+          ],
+          "as": "page"
+        }
+      ]
+    },
+    {
+      "name": "insert-date-drafts",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Undated draft",
+              "post_status": "draft"
+            }
+          ],
+          "as": "undated"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Dated draft",
+              "post_status": "draft",
+              "post_date": "2026-05-05 05:05:05"
+            }
+          ],
+          "as": "dated"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Pending",
+              "post_status": "pending"
+            }
+          ],
+          "as": "pending"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Bad date",
+              "post_date": "2026-02-30 10:00:00"
+            },
+            true
+          ],
+          "as": "invalid"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Past",
+              "post_status": "future",
+              "post_date": "2020-01-01 10:00:00"
+            }
+          ],
+          "as": "past_future"
+        }
+      ]
+    },
+    {
+      "name": "insert-emoji",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Party 🎉",
+              "post_content": "🎉 time",
+              "post_excerpt": "😀",
+              "post_status": "publish"
+            }
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "insert-meta-input",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "added_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_post_meta"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "With meta",
+              "meta_input": {
+                "color": "blue",
+                "list": [
+                  "a",
+                  "b"
+                ],
+                "empty": ""
+              }
+            }
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "insert-tax-input",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "speedyspec_compat_posts_write_register",
+          "args": [],
+          "snapshot": []
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Taxed",
+              "post_status": "publish",
+              "tax_input": {
+                "genre": [
+                  "fiction",
+                  "drama"
+                ],
+                "category": [
+                  3
+                ],
+                "post_tag": "a, b"
+              }
+            }
+          ],
+          "as": "id"
+        },
+        {
+          "call": "wp_get_object_terms",
+          "args": [
+            {
+              "var": "id"
+            },
+            [
+              "category",
+              "post_tag",
+              "genre"
+            ],
+            {
+              "fields": "slugs"
+            }
+          ],
+          "as": "terms",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Taxed by writer",
+              "tax_input": {
+                "post_tag": [
+                  "w"
+                ]
+              }
+            }
+          ],
+          "as": "writer",
+          "user": 2
+        },
+        {
+          "call": "wp_get_object_terms",
+          "args": [
+            {
+              "var": "writer"
+            },
+            [
+              "post_tag"
+            ],
+            {
+              "fields": "slugs"
+            }
+          ],
+          "as": "writer_terms",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "insert-page-template",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Wide",
+              "post_type": "page",
+              "page_template": "tpl-wide.php"
+            }
+          ],
+          "as": "wide"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Default",
+              "post_type": "page",
+              "page_template": "default"
+            }
+          ],
+          "as": "default"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Missing",
+              "post_type": "page",
+              "page_template": "missing.php"
+            }
+          ],
+          "as": "missing"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Missing error",
+              "post_type": "page",
+              "page_template": "missing.php"
+            },
+            true
+          ],
+          "as": "error"
+        }
+      ]
+    },
+    {
+      "name": "insert-hook-order",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "wp_insert_post_empty_content",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_insert_post_empty_content"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_insert_post_parent",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_insert_post_parent"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pre_wp_unique_post_slug",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_wp_unique_post_slug"
+            },
+            10,
+            6
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_unique_post_slug",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_unique_post_slug"
+            },
+            10,
+            6
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_insert_post_data",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_insert_post_data"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pre_post_update",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_post_update"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "edit_attachment",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_attachment"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "add_attachment",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_attachment"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "clean_post_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:clean_post_cache"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "transition_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:transition_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "new_to_publish",
+            {
+              "callback": "return_arg",
+              "label": "rec:new_to_publish"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_to_publish",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_to_publish"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "edit_post_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "edit_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "post_updated",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_updated"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "save_post_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:save_post_post"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "save_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:save_post"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_insert_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_insert_post"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "added_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_post_meta"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_after_insert_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_after_insert_post"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Hooked",
+              "post_content": "Body",
+              "post_status": "publish"
+            }
+          ],
+          "as": "id",
+          "cron": true
+        }
+      ]
+    },
+    {
+      "name": "insert-hook-order-no-after-hooks",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "wp_insert_post_empty_content",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_insert_post_empty_content"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_insert_post_parent",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_insert_post_parent"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pre_wp_unique_post_slug",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_wp_unique_post_slug"
+            },
+            10,
+            6
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_unique_post_slug",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_unique_post_slug"
+            },
+            10,
+            6
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_insert_post_data",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_insert_post_data"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pre_post_update",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_post_update"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "edit_attachment",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_attachment"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "add_attachment",
+            {
+              "callback": "return_arg",
+              "label": "rec:add_attachment"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "clean_post_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:clean_post_cache"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "transition_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:transition_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "new_to_publish",
+            {
+              "callback": "return_arg",
+              "label": "rec:new_to_publish"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_to_publish",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_to_publish"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "edit_post_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "edit_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "post_updated",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_updated"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "save_post_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:save_post_post"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "save_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:save_post"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_insert_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_insert_post"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "added_post_meta",
+            {
+              "callback": "return_arg",
+              "label": "rec:added_post_meta"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_after_insert_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_after_insert_post"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Quiet",
+              "post_status": "draft"
+            },
+            false,
+            false
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "insert-kses",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "<b>Bold</b> title",
+              "post_content": "<p>ok</p><script>x()</script>",
+              "post_excerpt": "<em>e</em>"
+            }
+          ],
+          "as": "admin"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "<b>Bold</b> title",
+              "post_content": "<p>ok</p><script>x()</script>",
+              "post_excerpt": "<em>e</em>"
+            }
+          ],
+          "as": "writer",
+          "user": 2
+        }
+      ]
+    },
+    {
+      "name": "insert-unknown-status-and-type",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Weird",
+              "post_status": "Made Up!",
+              "post_type": "Nope"
+            },
+            true
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "update-partial",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "post_updated",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_updated"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "edit_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:edit_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 6,
+              "post_title": "Renamed"
+            }
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "update-status",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "transition_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:transition_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 6,
+              "post_status": "private"
+            }
+          ],
+          "as": "private"
+        },
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 19,
+              "post_status": "publish"
+            }
+          ],
+          "as": "publish",
+          "cron": true
+        }
+      ]
+    },
+    {
+      "name": "update-date-clear-draft",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 8,
+              "post_title": "Still undated"
+            }
+          ],
+          "as": "kept_draft"
+        },
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 8,
+              "post_status": "publish"
+            }
+          ],
+          "as": "published",
+          "cron": true
+        }
+      ]
+    },
+    {
+      "name": "update-date-edit-date",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 19,
+              "post_date": "2026-03-03 03:03:03",
+              "edit_date": true
+            }
+          ],
+          "as": "edited"
+        }
+      ]
+    },
+    {
+      "name": "update-post-updated-arguments",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "post_updated",
+            {
+              "callback": "return_arg",
+              "label": "rec:post_updated"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_after_insert_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_after_insert_post"
+            },
+            10,
+            4
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 1,
+              "post_title": "Hello again",
+              "post_name": "hello-again",
+              "post_content": "New body",
+              "post_date": "2026-01-02 10:00:00"
+            }
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "update-missing",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 999,
+              "post_title": "Nobody"
+            },
+            true
+          ],
+          "as": "error"
+        },
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 999,
+              "post_title": "Nobody"
+            }
+          ],
+          "as": "zero"
+        }
+      ]
+    },
+    {
+      "name": "update-categories-keep",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 1,
+              "post_excerpt": "Excerpt only"
+            }
+          ],
+          "as": "id"
+        },
+        {
+          "call": "wp_get_post_categories",
+          "args": [
+            1
+          ],
+          "as": "categories",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "transition-from-new",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            15
+          ],
+          "as": "post",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "transition_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:transition_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "new_to_auto-draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:new_to_auto-draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "new_to_draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:new_to_draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "new_to_pending",
+            {
+              "callback": "return_arg",
+              "label": "rec:new_to_pending"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "new_to_private",
+            {
+              "callback": "return_arg",
+              "label": "rec:new_to_private"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "new_to_publish",
+            {
+              "callback": "return_arg",
+              "label": "rec:new_to_publish"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "new_to_future",
+            {
+              "callback": "return_arg",
+              "label": "rec:new_to_future"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "new_to_trash",
+            {
+              "callback": "return_arg",
+              "label": "rec:new_to_trash"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "auto-draft",
+            "new",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "draft",
+            "new",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "pending",
+            "new",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "private",
+            "new",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "publish",
+            "new",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "future",
+            "new",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "trash",
+            "new",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transition-from-auto-draft",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            15
+          ],
+          "as": "post",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "transition_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:transition_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_to_auto-draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_to_auto-draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_to_draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_to_draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_to_pending",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_to_pending"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_to_private",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_to_private"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_to_publish",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_to_publish"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_to_future",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_to_future"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_to_trash",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_to_trash"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "auto-draft",
+            "auto-draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "draft",
+            "auto-draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "pending",
+            "auto-draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "private",
+            "auto-draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "publish",
+            "auto-draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "future",
+            "auto-draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "trash",
+            "auto-draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transition-from-draft",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            15
+          ],
+          "as": "post",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "transition_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:transition_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_to_auto-draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_to_auto-draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_to_draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_to_draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_to_pending",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_to_pending"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_to_private",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_to_private"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_to_publish",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_to_publish"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_to_future",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_to_future"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_to_trash",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_to_trash"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "auto-draft",
+            "draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "draft",
+            "draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "pending",
+            "draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "private",
+            "draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "publish",
+            "draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "future",
+            "draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "trash",
+            "draft",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transition-from-pending",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            15
+          ],
+          "as": "post",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "transition_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:transition_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_to_auto-draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_to_auto-draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_to_draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_to_draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_to_pending",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_to_pending"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_to_private",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_to_private"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_to_publish",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_to_publish"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_to_future",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_to_future"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_to_trash",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_to_trash"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "auto-draft",
+            "pending",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "draft",
+            "pending",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "pending",
+            "pending",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "private",
+            "pending",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "publish",
+            "pending",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "future",
+            "pending",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "trash",
+            "pending",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transition-from-private",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            15
+          ],
+          "as": "post",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "transition_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:transition_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_to_auto-draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_to_auto-draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_to_draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_to_draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_to_pending",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_to_pending"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_to_private",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_to_private"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_to_publish",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_to_publish"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_to_future",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_to_future"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_to_trash",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_to_trash"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "auto-draft",
+            "private",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "draft",
+            "private",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "pending",
+            "private",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "private",
+            "private",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "publish",
+            "private",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "future",
+            "private",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "trash",
+            "private",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transition-from-publish",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            15
+          ],
+          "as": "post",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "transition_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:transition_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_to_auto-draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_to_auto-draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_to_draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_to_draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_to_pending",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_to_pending"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_to_private",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_to_private"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_to_publish",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_to_publish"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_to_future",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_to_future"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_to_trash",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_to_trash"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "auto-draft",
+            "publish",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "draft",
+            "publish",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "pending",
+            "publish",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "private",
+            "publish",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "publish",
+            "publish",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "future",
+            "publish",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "trash",
+            "publish",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transition-from-future",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            15
+          ],
+          "as": "post",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "transition_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:transition_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_to_auto-draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_to_auto-draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_to_draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_to_draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_to_pending",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_to_pending"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_to_private",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_to_private"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_to_publish",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_to_publish"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_to_future",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_to_future"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_to_trash",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_to_trash"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "auto-draft",
+            "future",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "draft",
+            "future",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "pending",
+            "future",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "private",
+            "future",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "publish",
+            "future",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "future",
+            "future",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "trash",
+            "future",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "transition-from-trash",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            15
+          ],
+          "as": "post",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "transition_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:transition_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_to_auto-draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_to_auto-draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_to_draft",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_to_draft"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_to_pending",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_to_pending"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_to_private",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_to_private"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_to_publish",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_to_publish"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_to_future",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_to_future"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_to_trash",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_to_trash"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "auto-draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:auto-draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "draft_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:draft_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "pending_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:pending_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "private_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:private_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "publish_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:publish_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "future_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:future_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "auto-draft",
+            "trash",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "draft",
+            "trash",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "pending",
+            "trash",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "private",
+            "trash",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "publish",
+            "trash",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "future",
+            "trash",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        },
+        {
+          "call": "wp_transition_post_status",
+          "args": [
+            "trash",
+            "trash",
+            {
+              "var": "post"
+            }
+          ],
+          "snapshot": [
+            "wp_postmeta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete-force",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "before_delete_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:before_delete_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "delete_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "deleted_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "after_delete_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:after_delete_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "delete_post_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_post_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "deleted_post_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_post_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "delete_comment",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_comment"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "delete_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_postmeta"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "deleted_postmeta",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_postmeta"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_delete_post",
+          "args": [
+            1,
+            true
+          ],
+          "as": "deleted"
+        },
+        {
+          "call": "get_term",
+          "args": [
+            1
+          ],
+          "as": "category",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "get_term",
+          "args": [
+            2
+          ],
+          "as": "tag",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "sticky_posts"
+          ],
+          "as": "sticky",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "delete-not-forced",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "wp_trash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_trash_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "before_delete_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:before_delete_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_delete_post",
+          "args": [
+            6
+          ],
+          "as": "trashed"
+        },
+        {
+          "call": "wp_delete_post",
+          "args": [
+            7
+          ],
+          "as": "from_trash"
+        }
+      ]
+    },
+    {
+      "name": "delete-children-reparented",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_delete_post",
+          "args": [
+            2,
+            true
+          ],
+          "as": "deleted"
+        }
+      ]
+    },
+    {
+      "name": "delete-front-page",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_delete_post",
+          "args": [
+            3,
+            true
+          ],
+          "as": "deleted"
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "show_on_front"
+          ],
+          "as": "show_on_front",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "page_on_front"
+          ],
+          "as": "page_on_front",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "delete-attachments",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "delete_attachment",
+            {
+              "callback": "return_arg",
+              "label": "rec:delete_attachment"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "deleted_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:deleted_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_delete_post",
+          "args": [
+            14,
+            true
+          ],
+          "as": "unattached"
+        },
+        {
+          "call": "wp_delete_post",
+          "args": [
+            5
+          ],
+          "as": "photo"
+        }
+      ]
+    },
+    {
+      "name": "delete-revision",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_delete_post",
+          "args": [
+            4,
+            true
+          ],
+          "as": "revision"
+        }
+      ]
+    },
+    {
+      "name": "delete-missing",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_delete_post",
+          "args": [
+            999,
+            true
+          ],
+          "as": "missing"
+        },
+        {
+          "call": "wp_delete_post",
+          "args": [
+            0,
+            true
+          ],
+          "as": "zero"
+        }
+      ]
+    },
+    {
+      "name": "delete-hierarchical-book",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "speedyspec_compat_posts_write_register",
+          "args": [],
+          "snapshot": []
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Shelf",
+              "post_type": "book",
+              "post_status": "publish"
+            }
+          ],
+          "as": "shelf"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Volume",
+              "post_type": "book",
+              "post_status": "publish",
+              "post_parent": 23
+            }
+          ],
+          "as": "volume"
+        },
+        {
+          "call": "wp_delete_post",
+          "args": [
+            23,
+            true
+          ],
+          "as": "deleted"
+        }
+      ]
+    },
+    {
+      "name": "trash-with-comments",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "pre_trash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_trash_post"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_trash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_trash_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trashed_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:trashed_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trash_post_comments",
+            {
+              "callback": "return_arg",
+              "label": "rec:trash_post_comments"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "trashed_post_comments",
+            {
+              "callback": "return_arg",
+              "label": "rec:trashed_post_comments"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_trash_post",
+          "args": [
+            1
+          ],
+          "as": "trashed"
+        },
+        {
+          "call": "is_sticky",
+          "args": [
+            1
+          ],
+          "as": "sticky",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "trash-already-trashed",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_trash_post",
+          "args": [
+            7
+          ],
+          "as": "again"
+        },
+        {
+          "call": "wp_trash_post",
+          "args": [
+            999
+          ],
+          "as": "missing"
+        }
+      ]
+    },
+    {
+      "name": "trash-front-page",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_trash_post",
+          "args": [
+            3
+          ],
+          "as": "trashed"
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "show_on_front"
+          ],
+          "as": "show_on_front",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "trash-draft-no-slug",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_trash_post",
+          "args": [
+            8
+          ],
+          "as": "trashed"
+        }
+      ]
+    },
+    {
+      "name": "untrash-default-status",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "pre_untrash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:pre_untrash_post"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "untrash_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:untrash_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "wp_untrash_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:wp_untrash_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "untrashed_post",
+            {
+              "callback": "return_arg",
+              "label": "rec:untrashed_post"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "untrash_post_comments",
+            {
+              "callback": "return_arg",
+              "label": "rec:untrash_post_comments"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_action",
+          "args": [
+            "untrashed_post_comments",
+            {
+              "callback": "return_arg",
+              "label": "rec:untrashed_post_comments"
+            },
+            10,
+            1
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_untrash_post",
+          "args": [
+            7
+          ],
+          "as": "untrashed"
+        }
+      ]
+    },
+    {
+      "name": "untrash-previous-status",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_untrash_post_status",
+            "wp_untrash_post_set_previous_status",
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_untrash_post",
+          "args": [
+            7
+          ],
+          "as": "untrashed"
+        },
+        {
+          "call": "wp_untrash_post",
+          "args": [
+            20
+          ],
+          "as": "page"
+        }
+      ]
+    },
+    {
+      "name": "untrash-not-trashed",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_untrash_post",
+          "args": [
+            6
+          ],
+          "as": "not_trashed"
+        },
+        {
+          "call": "wp_untrash_post",
+          "args": [
+            999
+          ],
+          "as": "missing"
+        }
+      ]
+    },
+    {
+      "name": "trash-untrash-slug-taken",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_untrash_post_status",
+            "wp_untrash_post_set_previous_status",
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_trash_post",
+          "args": [
+            6
+          ],
+          "as": "trashed"
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Taken again",
+              "post_name": "taken",
+              "post_status": "publish"
+            }
+          ],
+          "as": "taker"
+        },
+        {
+          "call": "wp_untrash_post",
+          "args": [
+            6
+          ],
+          "as": "untrashed"
+        }
+      ]
+    },
+    {
+      "name": "trash-untrash-round-trip",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_filter",
+          "args": [
+            "wp_untrash_post_status",
+            "wp_untrash_post_set_previous_status",
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_trash_post",
+          "args": [
+            1
+          ],
+          "as": "trashed"
+        },
+        {
+          "call": "wp_untrash_post",
+          "args": [
+            1
+          ],
+          "as": "untrashed"
+        }
+      ]
+    },
+    {
+      "name": "publish-draft",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "transition_post_status",
+            {
+              "callback": "return_arg",
+              "label": "rec:transition_post_status"
+            },
+            10,
+            3
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_publish_post",
+          "args": [
+            8
+          ],
+          "as": "draft"
+        },
+        {
+          "call": "wp_publish_post",
+          "args": [
+            19
+          ],
+          "as": "pending"
+        }
+      ]
+    },
+    {
+      "name": "publish-future-early",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "wp_publish_post",
+          "args": [
+            15
+          ],
+          "as": "future"
+        }
+      ]
+    },
+    {
+      "name": "publish-already-and-missing",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "wp_publish_post",
+          "args": [
+            6
+          ],
+          "as": "published"
+        },
+        {
+          "call": "wp_publish_post",
+          "args": [
+            999
+          ],
+          "as": "missing"
+        }
+      ]
+    },
+    {
+      "name": "future-scheduled-then-published",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Scheduled",
+              "post_status": "publish",
+              "post_date": "2027-06-01 10:00:00"
+            }
+          ],
+          "as": "id"
+        },
+        {
+          "call": "check_and_publish_future_post",
+          "args": [
+            {
+              "var": "id"
+            }
+          ],
+          "as": "published",
+          "clock": 1811840400
+        },
+        {
+          "call": "get_post_status",
+          "args": [
+            {
+              "var": "id"
+            }
+          ],
+          "as": "status",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "future-too-early",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "check_and_publish_future_post",
+          "args": [
+            15
+          ],
+          "as": "early"
+        },
+        {
+          "call": "check_and_publish_future_post",
+          "args": [
+            6
+          ],
+          "as": "not_future"
+        },
+        {
+          "call": "check_and_publish_future_post",
+          "args": [
+            999
+          ],
+          "as": "missing"
+        }
+      ]
+    },
+    {
+      "name": "future-hook-publishes",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "do_action",
+          "args": [
+            "publish_future_post",
+            15
+          ],
+          "as": "done",
+          "clock": 1811836800
+        }
+      ]
+    },
+    {
+      "name": "future-back-to-draft",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "check_and_publish_future_post",
+          "args": [
+            15
+          ],
+          "as": "rescheduled"
+        },
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 15,
+              "post_status": "draft"
+            }
+          ],
+          "as": "draft"
+        }
+      ]
+    },
+    {
+      "name": "sticky-stick",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "stick_post",
+          "args": [
+            6
+          ],
+          "snapshot": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "sticky_posts"
+          ],
+          "as": "after_six",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "stick_post",
+          "args": [
+            6
+          ],
+          "snapshot": []
+        },
+        {
+          "call": "stick_post",
+          "args": [
+            "8"
+          ],
+          "snapshot": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "sticky_posts"
+          ],
+          "as": "after_eight",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "is_sticky",
+          "args": [
+            6
+          ],
+          "as": "six",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "is_sticky",
+          "args": [
+            999
+          ],
+          "as": "missing",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "sticky-unstick",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "unstick_post",
+          "args": [
+            1
+          ],
+          "snapshot": []
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "sticky_posts"
+          ],
+          "as": "after",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "unstick_post",
+          "args": [
+            999
+          ],
+          "snapshot": []
+        },
+        {
+          "call": "is_sticky",
+          "args": [
+            1
+          ],
+          "as": "one",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "sticky-insert",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Sticky",
+              "post_status": "publish",
+              "sticky": true
+            }
+          ],
+          "as": "id"
+        },
+        {
+          "call": "get_option",
+          "args": [
+            "sticky_posts"
+          ],
+          "as": "sticky",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "ping-add",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_ping",
+          "args": [
+            6,
+            "http://a.example/"
+          ],
+          "as": "one"
+        },
+        {
+          "call": "add_ping",
+          "args": [
+            6,
+            [
+              "http://b.example/",
+              "http://a.example/"
+            ]
+          ],
+          "as": "two"
+        },
+        {
+          "call": "get_pung",
+          "args": [
+            6
+          ],
+          "as": "pung",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "add_ping",
+          "args": [
+            999,
+            "http://x.example/"
+          ],
+          "as": "missing"
+        }
+      ]
+    },
+    {
+      "name": "ping-to-ping",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Pinger",
+              "post_status": "draft",
+              "to_ping": "http://x.example/\nhttp://y.example/ http://x.example/"
+            }
+          ],
+          "as": "id"
+        },
+        {
+          "call": "get_to_ping",
+          "args": [
+            {
+              "var": "id"
+            }
+          ],
+          "as": "to_ping",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_publish_post",
+          "args": [
+            {
+              "var": "id"
+            }
+          ],
+          "as": "published",
+          "cron": true
+        }
+      ]
+    },
+    {
+      "name": "ping-pinged-removed",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 6,
+              "to_ping": "http://a.example/\nhttp://b.example/"
+            }
+          ],
+          "as": "id"
+        },
+        {
+          "call": "add_ping",
+          "args": [
+            6,
+            "http://a.example/"
+          ],
+          "as": "pinged"
+        },
+        {
+          "call": "get_to_ping",
+          "args": [
+            6
+          ],
+          "as": "to_ping",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "set-type",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "add_action",
+          "args": [
+            "clean_post_cache",
+            {
+              "callback": "return_arg",
+              "label": "rec:clean_post_cache"
+            },
+            10,
+            2
+          ],
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "set_post_type",
+          "args": [
+            6,
+            "page"
+          ],
+          "as": "page"
+        },
+        {
+          "call": "get_post_type",
+          "args": [
+            6
+          ],
+          "as": "type",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "set_post_type",
+          "args": [
+            6,
+            "Not A Type!"
+          ],
+          "as": "sanitized"
+        },
+        {
+          "call": "set_post_type",
+          "args": [
+            999,
+            "post"
+          ],
+          "as": "missing"
+        },
+        {
+          "call": "set_post_type",
+          "args": [
+            6
+          ],
+          "as": "default"
+        }
+      ]
+    },
+    {
+      "name": "auto-drafts-cleanup",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_delete_auto_drafts",
+          "args": [],
+          "as": "cleaned"
+        }
+      ]
+    },
+    {
+      "name": "auto-drafts-insert",
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Auto Draft",
+              "post_status": "auto-draft"
+            }
+          ],
+          "as": "id"
+        },
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 16,
+              "post_title": "Saved",
+              "post_status": "draft"
+            }
+          ],
+          "as": "saved"
+        }
+      ]
+    },
+    {
+      "name": "ms-insert-blog-one",
+      "multisite": true,
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments",
+        "wp_2_posts",
+        "wp_2_postmeta",
+        "wp_2_comments"
+      ],
+      "steps": [
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Blog one",
+              "post_status": "publish",
+              "post_content": "<p>ok</p><script>x()</script>"
+            }
+          ],
+          "as": "id"
+        }
+      ]
+    },
+    {
+      "name": "ms-switch-insert",
+      "multisite": true,
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments",
+        "wp_2_posts",
+        "wp_2_postmeta",
+        "wp_2_comments"
+      ],
+      "steps": [
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "one",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "switch_to_blog",
+          "args": [
+            2
+          ],
+          "snapshot": []
+        },
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "two",
+          "snapshot": [],
+          "cron": false
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Blog two new",
+              "post_status": "publish",
+              "post_category": [
+                1
+              ]
+            }
+          ],
+          "as": "id",
+          "cron": true
+        },
+        {
+          "call": "wp_update_post",
+          "args": [
+            {
+              "ID": 2,
+              "post_title": "Blog two renamed"
+            }
+          ],
+          "as": "updated"
+        },
+        {
+          "call": "restore_current_blog",
+          "args": [],
+          "snapshot": []
+        },
+        {
+          "call": "get_post",
+          "args": [
+            2
+          ],
+          "as": "back",
+          "snapshot": [],
+          "cron": false
+        }
+      ]
+    },
+    {
+      "name": "ms-switch-trash-delete",
+      "multisite": true,
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments",
+        "wp_2_posts",
+        "wp_2_postmeta",
+        "wp_2_comments"
+      ],
+      "steps": [
+        {
+          "call": "switch_to_blog",
+          "args": [
+            2
+          ],
+          "snapshot": []
+        },
+        {
+          "call": "wp_trash_post",
+          "args": [
+            2
+          ],
+          "as": "trashed"
+        },
+        {
+          "call": "wp_untrash_post",
+          "args": [
+            2
+          ],
+          "as": "untrashed"
+        },
+        {
+          "call": "wp_delete_post",
+          "args": [
+            2,
+            true
+          ],
+          "as": "deleted"
+        },
+        {
+          "call": "restore_current_blog",
+          "args": [],
+          "snapshot": []
+        }
+      ]
+    },
+    {
+      "name": "ms-switch-future",
+      "multisite": true,
+      "clock": 1795780800,
+      "user": 1,
+      "snapshot": [
+        "wp_posts",
+        "wp_postmeta",
+        "wp_comments",
+        "wp_2_posts",
+        "wp_2_postmeta",
+        "wp_2_comments"
+      ],
+      "cron": true,
+      "steps": [
+        {
+          "call": "switch_to_blog",
+          "args": [
+            2
+          ],
+          "snapshot": []
+        },
+        {
+          "call": "wp_insert_post",
+          "args": [
+            {
+              "post_title": "Blog two later",
+              "post_status": "publish",
+              "post_date": "2027-06-01 10:00:00"
+            }
+          ],
+          "as": "id"
+        },
+        {
+          "call": "check_and_publish_future_post",
+          "args": [
+            {
+              "var": "id"
+            }
+          ],
+          "as": "published",
+          "clock": 1811840400
+        },
+        {
+          "call": "restore_current_blog",
+          "args": [],
+          "snapshot": []
+        }
+      ]
+    }
+  ]
+}
