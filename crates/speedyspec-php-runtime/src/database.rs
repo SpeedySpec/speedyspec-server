@@ -54,8 +54,8 @@ fn check(registry: &EngineRegistry) -> Result<(), String> {
 }
 
 /// The `default` engine from `config`, and the areas that use it, in the order they must be registered:
-/// `WpDbArea`, `ObjectCacheArea`, `MetaArea`, `PostsArea`, `OptionsArea`, `CronArea`. The engine must answer before `WpDbArea` is built. The
-/// object cache has no persistent level yet (request lifetime, as WordPress's default).
+/// `WpDbArea`, `ObjectCacheArea`, `MetaArea`, `PostsArea`, `OptionsArea`, `CronArea`, `RewriteArea`. The engine must answer
+/// before `WpDbArea` is built. The object cache has no persistent level yet (request lifetime, as WordPress's default).
 pub fn boot_database(
     config: WpDbConfig,
     container: &Rc<Container>,
@@ -93,6 +93,8 @@ pub fn boot_database(
         options.api(),
         Rc::new(CronScheduling::new(cron.api())),
     );
+    // The rewrite API reads its options through the options contracts.
+    let rewrite = crate::ports::rewrite_area(container, hook_api, Some(options.api()));
     let database = WorkerDatabase { registry };
     let areas: Vec<Rc<dyn NativeArea>> = vec![
         Rc::new(wpdb),
@@ -101,6 +103,7 @@ pub fn boot_database(
         Rc::new(posts),
         Rc::new(options),
         Rc::new(cron),
+        Rc::new(rewrite),
     ];
     Ok((database, areas))
 }

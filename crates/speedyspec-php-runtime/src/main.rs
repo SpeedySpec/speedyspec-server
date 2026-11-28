@@ -4,6 +4,7 @@
 //! - `manifest` prints the [`RuntimeManifest`] the server reads before using this binary.
 
 mod database;
+mod ports;
 mod scheduling;
 mod wake;
 mod worker;

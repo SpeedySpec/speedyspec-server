@@ -10,9 +10,19 @@ function wp_installing($is_installing = null) {
 if (!function_exists('is_multisite')) { function is_multisite() { return false; } }
 if (!function_exists('get_current_blog_id')) { function get_current_blog_id() { return 1; } }
 function get_current_network_id() { return 1; }
-function __($text, $domain = 'default') { return $text; }
-function esc_html($text) { return htmlspecialchars((string) $text, ENT_QUOTES); }
-function esc_attr($text) { return htmlspecialchars((string) $text, ENT_QUOTES); }
+// __(), esc_html() and esc_attr() are the runtime's own (the i18n and text ports). The i18n port's uncommon paths
+// still call WordPress's get_translations_for_domain(), which no port declares yet: a domain with nothing loaded
+// answers as WordPress's NOOP_Translations does.
+if (!function_exists('get_translations_for_domain')) {
+    function get_translations_for_domain($domain) {
+        return new class {
+            public function translate($singular, $context = null) { return $singular; }
+            public function translate_plural($singular, $plural, $count, $context = null) {
+                return 1 === (int) $count ? $singular : $plural;
+            }
+        };
+    }
+}
 function _deprecated_argument($function_name, $version, $message = '') {
     do_action('deprecated_argument_run', $function_name, $message, $version);
 }
