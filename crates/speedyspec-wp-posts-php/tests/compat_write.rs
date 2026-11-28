@@ -2,11 +2,11 @@
 //! through the native writers (5a: `wp_insert_post()`, `wp_update_post()`, the status transitions with their default
 //! callbacks, and `set_post_type()`), beside the native reads and meta functions.
 //!
-//! Every `insert-*`, `update-*`, `transition-*` and `set-type*` scenario replays, the multisite ones that insert and
-//! update included, with the PHP-only steps the Rust replay leaves out: `tax_input`, kses, the revisions
-//! `post_updated` writes, `_wp_old_date` and `_wp_old_slug`, and `comment_count`. The scenarios of the 5b writers
-//! (delete, trash, untrash, publish, future posts, sticky posts, pings, auto-drafts) are filtered out until they are
-//! native.
+//! Every scenario replays, single site and multisite, with the PHP-only steps the Rust replay leaves out: `tax_input`,
+//! kses, the revisions `post_updated` writes, `_wp_old_date` and `_wp_old_slug`, and `comment_count`. The 5b writers
+//! (delete, trash, untrash, publish, future posts, sticky posts, pings, auto-drafts) are still WordPress's PHP in the
+//! prepared release, so their scenarios replay them as WordPress's code over the native reads and 5a writers. A
+//! scenario is filtered only once it needs a 5b writer the area declares natively ([`filtered`]).
 //!
 //! Needs MySQL (`SPEEDYSPEC_TEST_MYSQL_URL`); without it the test reports that it was skipped. The replay runs on a
 //! database of its own (`<database>_posts_write`), because compat/posts-write/setup.php empties every table it seeds.
@@ -17,14 +17,33 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use speedyspec_compat::replay_with;
-use speedyspec_wp_posts_php::posts_write_scenario_runner;
+use speedyspec_wp_posts_php::{PORTED_FUNCTIONS, posts_write_scenario_runner};
 
-/// The scenarios of the native writers (5a).
-fn native(name: &str) -> bool {
-    ["insert-", "update-", "transition-", "set-type"]
+/// The 5b writers: still WordPress's PHP in the prepared release (`wp_delete_post()`, `wp_trash_post()`, …), so a
+/// scenario that calls them replays them as WordPress's code over the native reads and 5a writers.
+const FIVE_B: &[&str] = &[
+    "wp_delete_post",
+    "wp_trash_post",
+    "wp_untrash_post",
+    "wp_publish_post",
+    "check_and_publish_future_post",
+    "stick_post",
+    "unstick_post",
+    "add_ping",
+    "wp_delete_auto_drafts",
+];
+
+/// Why a scenario cannot replay yet, from the functions its steps call: one that needs a 5b writer the native area
+/// declares (in [`PORTED_FUNCTIONS`]) but whose Rust use case is not ready. `None` while every 5b writer it calls
+/// still runs as WordPress's PHP, which is every one today.
+fn filtered(scenario: &speedyspec_compat::Scenario) -> Option<String> {
+    let needs: Vec<&str> = scenario
+        .steps
         .iter()
-        .any(|prefix| name.starts_with(prefix))
-        || ["ms-insert-blog-one", "ms-switch-insert"].contains(&name)
+        .map(|step| step.call.as_str())
+        .filter(|call| FIVE_B.contains(call) && PORTED_FUNCTIONS.contains(call))
+        .collect();
+    (!needs.is_empty()).then(|| format!("5b: needs the Rust {}", needs.join(", ")))
 }
 
 fn main() {
@@ -48,10 +67,10 @@ fn main() {
             .filter(|s| only.as_ref().is_none_or(|o| *o == s.name))
             .cloned()
             .collect();
-        let (scenarios, later): (Vec<_>, Vec<_>) =
-            recorded.into_iter().partition(|s| native(&s.name));
+        let (later, scenarios): (Vec<_>, Vec<_>) =
+            recorded.into_iter().partition(|s| filtered(s).is_some());
         for s in &later {
-            println!("filtered: {}: 5b", s.name);
+            println!("filtered: {}: {}", s.name, filtered(s).unwrap_or_default());
         }
         let total = scenarios.len();
         let trace = std::env::var_os("SPEEDYSPEC_COMPAT_TRACE").is_some();
@@ -77,7 +96,7 @@ fn main() {
             ));
         }
         println!(
-            "{}: {} of {total} scenarios match ({} filtered: 5b)",
+            "{}: {} of {total} scenarios match ({} filtered)",
             if network { "multisite" } else { "single site" },
             total.saturating_sub(found.len()),
             later.len()

@@ -158,3 +158,35 @@ async fn scheduling_reports_next_cron() {
         "{report:?}"
     );
 }
+
+/// The posts area's cron port, bound by the runtime to the Rust cron core (`CronScheduling`): the native
+/// `_future_post_hook()` (what `wp_insert_post()` runs for a future post) schedules `publish_future_post` once, however
+/// often it runs, and another event within ten minutes is refused as a duplicate.
+///
+/// Needs MySQL 8.4 (or another server with `MD5()`): the options API's compare-and-swap update of `cron` uses it, as
+/// the other cron tests here do.
+#[tokio::test(flavor = "current_thread")]
+async fn post_writers_schedule_through_the_rust_cron_core() {
+    let Some(env) = mysql_env("postscron_") else {
+        println!("skip: SPEEDYSPEC_TEST_MYSQL_URL is not set");
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let app = fixture("posts-cron-app");
+    let mut worker = spawn(dir.path(), &app, None, &env);
+    worker.ready().await;
+    let answer = worker.get(&app.join("index.php"), "/").await;
+    let state: serde_json::Value =
+        serde_json::from_str(answer.body()).unwrap_or_else(|_| panic!("{}", answer.stdout));
+    assert_eq!(
+        state,
+        serde_json::json!({
+            "writer": "speedyspec://wp-post-writes",
+            "events": 1,
+            "next": true,
+            "duplicate": false,
+        }),
+        "{}",
+        answer.stdout
+    );
+}

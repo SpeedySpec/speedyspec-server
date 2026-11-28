@@ -468,12 +468,10 @@ impl Scheduling for PhpBound {
         hook: &str,
         args: &HookValue,
     ) -> Result<CronResult, CronError> {
+        let timestamp = hook_in(timestamp.clone()).map_err(|_| CronError::new("cron timestamp"))?;
         let args = hook_in(args.clone()).map_err(|_| CronError::new("cron arguments"))?;
-        self.cron(
-            "schedule_single_event",
-            vec![timestamp.clone(), word(hook), args],
-        )
-        .map(CronResult::Value)
+        self.cron("schedule_single_event", vec![timestamp, word(hook), args])
+            .map(CronResult::Value)
     }
 
     fn next_scheduled(&self, hook: &str, args: &HookValue) -> Result<HookValue, CronError> {
