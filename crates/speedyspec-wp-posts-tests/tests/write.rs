@@ -2303,3 +2303,48 @@ fn filtered_php_values_are_formatted_by_the_repository() {
     assert!(row.password.is_empty());
     assert_eq!(row.menu_order, 2);
 }
+
+// ---- fix round 3 ----
+
+/// A hook failure pending from earlier (raised and surfaced before) does not fail a later write that changed
+/// nothing: only a failure raised during the write stops it, and the earlier one stays pending.
+#[test]
+fn a_stale_hook_error_does_not_fail_a_write() {
+    let f = fixture();
+    let _ = speedyspec_wp_db_contracts::take_hook_error();
+    let _: speedyspec_wp_db_contracts::WpDbError = HookError::message("earlier").into();
+    // Post 21 is already a `post`, so the update changes no row.
+    let id = f
+        .api
+        .set_post_type(21, &s("post"))
+        .expect("an unchanged write is not failed by an earlier error");
+    assert_eq!(id, Some(0));
+    assert_eq!(
+        speedyspec_wp_db_contracts::take_hook_error().map(|e| e.message),
+        Some("earlier".to_owned())
+    );
+}
+
+/// `_transition_post_status` reads `get_the_guid( $post->ID )`, which falls back to the global `$post` for ID 0.
+#[test]
+fn guid_of_id_zero_reads_the_global_post() {
+    let f = fixture();
+    *f.global.0.borrow_mut() = Some(PostEntry::wp_post(PostEntry::raw_properties(&f.row(23))));
+    let seen: Rc<RefCell<Vec<PhpValue>>> = Rc::default();
+    let log = seen.clone();
+    f.hooks
+        .add_filter(
+            &HookName::from("get_the_guid"),
+            Callback::rust("guid", move |args: &[HookValue]| {
+                log.borrow_mut().push(from_hook_value(&args[1]).unwrap());
+                Ok(args[0].clone())
+            }),
+            &HookValue::Int(10),
+            2,
+        )
+        .unwrap();
+    f.api
+        .transition_post_status_default("publish", "draft", PostId(0), "post")
+        .unwrap();
+    assert_eq!(*seen.borrow(), [PhpValue::Int(23)]);
+}

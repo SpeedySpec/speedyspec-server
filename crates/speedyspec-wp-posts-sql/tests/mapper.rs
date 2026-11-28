@@ -404,3 +404,46 @@ fn non_utf8_text_is_bytes() {
     assert_eq!(entity.title, vec![0xFF]);
     assert_eq!(entity.content, Vec::<u8>::new());
 }
+
+/// A string under `%d` is printed as `vsprintf( '%d' )` prints it after escaping: PHP's integer conversion of the
+/// whole numeric prefix, exponent included. A float beyond the int range wraps modulo 2^64, as `zend_dval_to_lval()`
+/// does. The same values the memory repository stores.
+#[test]
+fn values_under_d_follow_php_sprintf() {
+    let printed = |value: RowValue| {
+        PostMapper::row_values(&PostRow::new().with("menu_order", value))
+            .pop()
+            .unwrap()
+            .1
+    };
+    let text = |t: &[u8]| RowValue::Str(t.to_vec());
+    for (given, want) in [
+        (&b"1e3"[..], 1000),
+        (b"1.5e2", 150),
+        (b"1.5e2x", 150),
+        (b" 12", 12),
+        (b" 2E2", 200),
+        (b"0x1A", 0),
+        (b"1e400", 0),
+        (b"4x", 4),
+        (b"\n5", 0),
+        (b"99999999999999999999", i64::MAX),
+    ] {
+        assert_eq!(
+            printed(text(given)),
+            WpValue::Int(want),
+            "{}",
+            String::from_utf8_lossy(given)
+        );
+    }
+    assert_eq!(
+        printed(RowValue::Php(WpValue::Float(1e19))),
+        WpValue::Int(-8_446_744_073_709_551_616)
+    );
+    assert_eq!(
+        printed(RowValue::Php(WpValue::Float(1e20))),
+        WpValue::Int(7_766_279_631_452_241_920)
+    );
+    assert_eq!(printed(RowValue::Php(WpValue::Float(2.9))), WpValue::Int(2));
+    assert_eq!(printed(RowValue::Php(WpValue::Bool(true))), WpValue::Int(1));
+}

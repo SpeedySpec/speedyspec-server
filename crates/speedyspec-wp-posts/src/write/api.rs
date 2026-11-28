@@ -232,26 +232,30 @@ pub(crate) fn post_meta() -> MetaType {
     MetaType::new("post").expect("post is a meta type")
 }
 
-/// After a write that answered empty or 0: a `query` callback's exception `$wpdb` hid behind that answer
-/// (`take_hook_error()`) stops the use case, as WordPress would have thrown there. The failure stays in `wpdb`'s side
-/// channel for the PHP bridge to rethrow.
-pub(crate) fn hidden_failure() -> Result<(), PostError> {
-    match take_hook_error() {
+/// Runs one repository write, then stops the use case when a `query` callback's exception was raised during it and
+/// `$wpdb` hid it behind its answer (`take_hook_error()`), as WordPress would have thrown there.
+///
+/// Only a failure raised during this write counts: one already pending before it (raised and surfaced earlier) is
+/// put back untouched, so a write that changed nothing is never failed by a stale error. A failure stays in `wpdb`'s
+/// side channel for the PHP bridge to rethrow.
+pub(crate) fn written<T>(write: impl FnOnce() -> Result<T, PostError>) -> Result<T, PostError> {
+    let before = take_hook_error();
+    let result = write();
+    let during = take_hook_error();
+    // `WpDbError::from` puts a failure back in the side channel; the first one stays first.
+    if let Some(before) = before {
+        let _: WpDbError = before.into();
+    }
+    match during {
         Some(hook) => {
-            // `WpDbError::from` puts it back in the side channel.
             let _: WpDbError = hook.clone().into();
-            Err(PostError::Hook(hook))
+            match result {
+                Err(e) => Err(e),
+                Ok(_) => Err(PostError::Hook(hook)),
+            }
         }
-        None => Ok(()),
+        None => result,
     }
-}
-
-/// [`hidden_failure`] after a write whose answer is the rows changed: `None` (false) or `Some(0)`.
-pub(crate) fn checked_rows(rows: Option<u64>) -> Result<Option<u64>, PostError> {
-    if rows.is_none_or(|n| n == 0) {
-        hidden_failure()?;
-    }
-    Ok(rows)
 }
 
 /// `get_post( $id )` for `wp_unique_post_slug()`'s flat branch, which reads the post being written: id 0 (a new post)

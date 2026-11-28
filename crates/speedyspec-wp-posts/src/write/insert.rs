@@ -19,7 +19,7 @@
 //! 9. [`Insert::finish`]: `get_post()`, the page template, the transition, `edit_post`, `post_updated`, the
 //!    `save_post` family and `wp_after_insert_post`.
 //!
-//! After every write that answers empty or 0, [`hidden_failure`] checks `wpdb`'s side channel. A port's failure stops
+//! Every repository write runs through `written()`, which checks `wpdb`'s side channel for a failure raised during it. A port's failure stops
 //! the use case where it happens; whatever WordPress wrote before stays written.
 
 use std::ops::ControlFlow;
@@ -36,7 +36,7 @@ use speedyspec_wp_posts_contracts::{
 
 use crate::hook::hv;
 use crate::read::Loaded;
-use crate::write::api::{PostWritesApi, SlugReader, checked_rows, hidden_failure, int, post_id};
+use crate::write::api::{PostWritesApi, SlugReader, int, post_id, written};
 use crate::write::error::php_error;
 use crate::write::php::{
     Items, array_filter, at, empty_at, is_str, key, or, s, wp_parse_args, wp_unslash,
@@ -723,17 +723,16 @@ impl<'a> Insert<'a> {
             let id = self.post_id;
             api.action("pre_post_update", || vec![id_arg(id), hv(&data)])?;
             // `$wpdb->update` returns false at its `is_array()` check, with no statement, and leaves
-            // `$wpdb->last_error` as it was; the repository was not reached, so it is empty here.
+            // `$wpdb->last_error` as it was.
+            // WordPress's `WP_Error` carries the `$wpdb->last_error` an earlier statement of the request left; the
+            // repository port has no way to read it, so it is empty here (a known divergence, diagnostic data only).
             let outcome = match &data {
-                PhpValue::Array(items) => repo.update(id, &row_from_data(items))?,
+                PhpValue::Array(items) => written(|| repo.update(id, &row_from_data(items)))?,
                 _ => WriteOutcome::failed(""),
             };
             match outcome {
-                WriteOutcome::Written(rows) => {
-                    checked_rows(Some(rows))?;
-                }
+                WriteOutcome::Written(_) => {}
                 failed => {
-                    hidden_failure()?;
                     return self.refuse(PostWriteError::DbUpdate {
                         attachment,
                         last_error: failed.last_error().unwrap_or_default().to_owned(),
@@ -757,10 +756,9 @@ impl<'a> Insert<'a> {
                     ),
                 ));
             };
-            match repo.insert(&row_from_data(items))? {
+            match written(|| repo.insert(&row_from_data(items)))? {
                 WriteOutcome::Written(id) => self.post_id = id,
                 failed => {
-                    hidden_failure()?;
                     return self.refuse(PostWriteError::DbInsert {
                         attachment,
                         last_error: failed.last_error().unwrap_or_default().to_owned(),
@@ -795,10 +793,10 @@ impl<'a> Insert<'a> {
                 self.post_parent,
             )?;
             set(&mut self.data, "post_name", name.clone());
-            checked_rows(
+            written(|| {
                 api.repository()
-                    .update_name(id, &Slug::new(to_php_string(&name)))?,
-            )?;
+                    .update_name(id, &Slug::new(to_php_string(&name)))
+            })?;
             api.clean_post_cache(id)?;
         }
 
@@ -815,7 +813,7 @@ impl<'a> Insert<'a> {
         let current_guid = api.post_field("guid", id)?;
         if !self.update && is_str(&current_guid, "") {
             let guid = api.d.rewrite.permalink(id)?.unwrap_or_default();
-            checked_rows(api.repository().update_guid(id, &guid)?)?;
+            written(|| api.repository().update_guid(id, &guid))?;
         }
 
         if at(&self.postarr, "post_type").is_some_and(|t| is_str(t, "attachment")) {
@@ -1027,14 +1025,16 @@ impl<'a> Insert<'a> {
         }
 
         let handle = api.d.objects.handle(&object)?;
-        // `$post->post_type`, as the object holds it once the transition's callbacks have run.
-        let post_type = match api.d.objects.read(&handle)? {
-            Some(properties) => id_and_type(&properties).1,
-            None => loaded.post.post_type.as_str().to_owned(),
+        // `$post->post_type` is read at each hook name, as PHP reads the object then: a callback may change it.
+        let post_type = || -> Result<String, PostError> {
+            Ok(match api.d.objects.read(&handle)? {
+                Some(properties) => id_and_type(&properties).1,
+                None => loaded.post.post_type.as_str().to_owned(),
+            })
         };
         let update = self.update;
         if update {
-            api.action(&format!("edit_post_{post_type}"), || {
+            api.action(&format!("edit_post_{}", post_type()?), || {
                 vec![id_arg(id), handle.clone()]
             })?;
             api.action("edit_post", || vec![id_arg(id), handle.clone()])?;
@@ -1043,15 +1043,36 @@ impl<'a> Insert<'a> {
             api.action("post_updated", || vec![id_arg(id), after, before])?;
         }
         let saved = || vec![id_arg(id), handle.clone(), HookValue::Bool(update)];
-        api.action(&format!("save_post_{post_type}"), saved)?;
+        api.action(&format!("save_post_{}", post_type()?), saved)?;
         api.action("save_post", saved)?;
         api.action("wp_insert_post", saved)?;
         if self.fire_after_hooks {
-            // wp_after_insert_post(): get_post() hands the raw object back as it is.
             let before = self.before_handle()?;
-            api.action("wp_after_insert_post", || {
-                vec![id_arg(id), handle.clone(), HookValue::Bool(update), before]
-            })?;
+            // wp_after_insert_post(): `get_post( $post )` hands a raw `WP_Post` back as it is and re-reads any
+            // other by its `ID`; nothing runs without a post. `$post_id` is then `$post->ID`.
+            let after = match api.d.objects.read(&handle)? {
+                Some(properties) => {
+                    let raw = at(&properties, "filter").is_some_and(|f| is_str(f, "raw"));
+                    if raw {
+                        Some((handle.clone(), id_and_type(&properties).0))
+                    } else {
+                        let object = crate::PostEntry::wp_post(properties);
+                        match api.d.posts.resolve_value(object)? {
+                            Some(read) => {
+                                let read_id = read.post.id;
+                                Some((api.d.objects.handle(&PostObject::new(read.post))?, read_id))
+                            }
+                            None => None,
+                        }
+                    }
+                }
+                None => Some((handle.clone(), id)),
+            };
+            if let Some((post, post_id)) = after {
+                api.action("wp_after_insert_post", || {
+                    vec![id_arg(post_id), post, HookValue::Bool(update), before]
+                })?;
+            }
         }
         Ok(ControlFlow::Continue(Ok(id)))
     }
@@ -1202,10 +1223,10 @@ impl PostWritesApi {
         self.add_meta(id, b"_wp_desired_post_slug", s(&name), false)?;
         let mut trashed = self.d.truncation.truncate(&name, 191);
         trashed.extend_from_slice(b"__trashed");
-        checked_rows(
+        written(|| {
             self.repository()
-                .update_name(id, &Slug::new(trashed.clone()))?,
-        )?;
+                .update_name(id, &Slug::new(trashed.clone()))
+        })?;
         self.clean_post_cache(id)?;
         Ok(s(&trashed))
     }

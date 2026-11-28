@@ -24,7 +24,7 @@ use speedyspec_wp_posts_contracts::{
 use crate::check_post_hierarchy_for_loops;
 use crate::hook::{hv, pv};
 use crate::read::Reader;
-use crate::write::api::{PostWritesApi, checked_rows, int, post_id};
+use crate::write::api::{PostWritesApi, int, post_id, written};
 use crate::write::insert::id_and_type;
 use crate::write::php::{at, identical, is_str, key, s};
 use crate::write::ports::cron_error;
@@ -102,8 +102,10 @@ impl PostWritesApi {
     }
 
     /// `get_the_guid( $post_id )`: the post's `guid` (`''` for none) through the `get_the_guid` filter.
+    ///
+    /// `get_post( $post_id )` reads the global `$post` for id 0, as WordPress's does.
     fn the_guid(&self, id: PostId) -> Result<PhpValue, PostError> {
-        let (guid, id) = match self.d.posts.instance(int(id))? {
+        let (guid, id) = match self.d.posts.resolve(PostRef::Id(id))? {
             Some(loaded) => (s(&loaded.post.guid), loaded.post.id),
             None => (s(""), PostId(0)),
         };
@@ -127,7 +129,7 @@ impl PostWritesApi {
         if "publish" != old && "publish" == new {
             if is_str(&self.the_guid(id)?, "") {
                 let guid = self.d.rewrite.permalink(id)?.unwrap_or_default();
-                checked_rows(self.repository().update_guid(id, &guid)?)?;
+                written(|| self.repository().update_guid(id, &guid))?;
             }
             self.hooks().do_action_deprecated(
                 &HookName::from("private_to_published"),

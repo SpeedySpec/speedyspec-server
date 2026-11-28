@@ -2,6 +2,8 @@
 //! (WordPress 7.2-RC2). The `posts` cache group's entry is the read use cases' (`speedyspec_wp_posts::PostEntry`).
 
 use speedyspec_data::{DbValue, Row};
+use speedyspec_php_serialize::PhpValue;
+use speedyspec_php_serialize::semantics::to_php_int;
 use speedyspec_wp_db_contracts::WpValue;
 use speedyspec_wp_posts_contracts::{
     ColumnFormat, CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError,
@@ -119,26 +121,33 @@ fn entity(columns: &impl Columns, id: PostId) -> Result<Post, PostError> {
     })
 }
 
-/// A string under `%d` as `prepare()` prints it: escaped by `mysqli_real_escape_string()` first, then read as
-/// `sprintf( '%d' )` reads it (leading spaces and tabs, a sign, digits; anything else ends it), so `'4x'` is `4` and
-/// `"\n5"` is `0`. Printed here, so every engine stores WordPress's integer (SQLite would keep a bound `'4x'` as
-/// text).
+/// `mysqli_real_escape_string()`: a backslash before NUL, `\n`, `\r`, `\\`, `'`, `"` and `\x1a`.
+fn escape(bytes: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());
+    for &b in bytes {
+        match b {
+            0 => out.extend_from_slice(b"\\0"),
+            b'\n' => out.extend_from_slice(b"\\n"),
+            b'\r' => out.extend_from_slice(b"\\r"),
+            0x1a => out.extend_from_slice(b"\\Z"),
+            b'\\' | b'\'' | b'"' => {
+                out.push(b'\\');
+                out.push(b);
+            }
+            b => out.push(b),
+        }
+    }
+    out
+}
+
+/// A string under `%d` as `prepare()` prints it: escaped by `mysqli_real_escape_string()` first, then read by
+/// `vsprintf( '%d' )`, which converts with PHP's integer rules (`zval_get_long()`): the whole numeric prefix after
+/// leading whitespace, decimals and exponent included. So `'4x'` is `4`, `'1e3'` is `1000`, `'1.5e2'` is `150`,
+/// `'0x1A'` is `0`, an infinite prefix (`'1e400'`) is `0`, an out-of-range one saturates, and `"\n5"` is `0` because the
+/// newline is escaped first. Printed here, so every engine stores WordPress's integer (SQLite would keep a bound
+/// `'4x'` as text), and the memory repository and this one agree.
 fn escaped_int(bytes: &[u8]) -> i64 {
-    // The bytes the escaping prefixes with a backslash end the number at once.
-    let mut rest = bytes;
-    while let [b' ' | b'\t' | 0x0b | 0x0c, tail @ ..] = rest {
-        rest = tail;
-    }
-    let (negative, digits) = match rest {
-        [b'-', tail @ ..] => (true, tail),
-        [b'+', tail @ ..] => (false, tail),
-        _ => (false, rest),
-    };
-    let mut n: i64 = 0;
-    for &b in digits.iter().take_while(|b| b.is_ascii_digit()) {
-        n = n.saturating_mul(10).saturating_add(i64::from(b - b'0'));
-    }
-    if negative { -n } else { n }
+    to_php_int(&PhpValue::Str(escape(bytes)))
 }
 
 /// A float or bool under `%d` as `prepare()` prints it (`sprintf( '%d' )`: a float truncated, a bool `1` or `0`),

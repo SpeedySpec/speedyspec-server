@@ -10,7 +10,7 @@ use speedyspec_wp_posts_contracts::{
 };
 
 use crate::read::{Loaded, Reader};
-use crate::write::api::{PostWritesApi, checked_rows, int};
+use crate::write::api::{PostWritesApi, int, written};
 use crate::write::error::php_error;
 use crate::write::insert::type_name;
 use crate::write::php::{Items, at, empty_at, identical, is_str, list_pluck, s, wp_slash};
@@ -176,7 +176,7 @@ impl PostWritesApi {
             "db",
         )?;
         let name = PostTypeName::new(String::from_utf8_lossy(&to_php_string(&sanitized)));
-        let rows = checked_rows(self.repository().update_post_type(post_id, &name)?)?;
+        let rows = written(|| self.repository().update_post_type(post_id, &name))?;
         match post_id {
             0 => posts.clean_post_cache(PostRef::Current)?,
             id if id > 0 => posts.clean_post_cache(PostRef::Id(PostId(id as u64)))?,
