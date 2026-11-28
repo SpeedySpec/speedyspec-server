@@ -529,7 +529,7 @@ fn raw_items(value: &Value) -> Result<(Vec<(Key, Value)>, bool), NativeError> {
 /// An entry's compared fields, by name, as PHP values.
 type RawFields = Vec<(Vec<u8>, Value)>;
 
-/// The values of `list`, in order, as a packed PHP list for a helper.
+/// `values`, in order, as a packed PHP list (keys `0..n`) for a helper.
 fn packed(values: impl Iterator<Item = Value>) -> Value {
     Value::Array(
         values
