@@ -19,8 +19,8 @@ declare(strict_types=1);
  *
  *  The seed (blog 1), by ID: type, `post_name`, status, parent.
  *
- *  - 1 post `hello-world` publish, in category 1 and tag 2, meta `k` `v`, comments 1 (approved, with meta) and 2
- *    (a reply to 1, unapproved); 4 its revision `1-revision-v1`; 5 attachment `photo` inherit (1, image/jpeg);
+ *  - 1 post `hello-world` publish, in category 1 and tag 2, meta `k` `v`, comments 1 (approved) and 2 (a reply to
+ *    1, unapproved), each with meta; 4 its revision `1-revision-v1`; 5 attachment `photo` inherit (1, image/jpeg);
  *  - 2 page `parent-page` publish; 3 page `child-page` publish (2), the front page;
  *  - 6 post `taken` publish; 7 post `trashed-one__trashed` trash, its trash meta (status `publish`, desired slug
  *    `trashed-one`, comment 3's status `1`), comment 3 `post-trashed`; 8 post `draft-one` draft by user 2 with zero
@@ -32,7 +32,9 @@ declare(strict_types=1);
  *    is chosen so the real date cannot change which one goes);
  *  - 18 post `private-one` private; 19 post `pending-one` pending; 20 page `trashed-page__trashed` trash (2), its
  *    trash meta (status `draft`, desired slug `trashed-page`); 22 post `old-trash` trash, trashed before WordPress
- *    added the suffix.
+ *    added the suffix;
+ *  - 23 post `no-guid` draft, 24 page `no-guid-page` draft and 25 `memo` `no-guid-memo` draft, each with an empty
+ *    GUID, so publishing them runs `_transition_post_status()`'s GUID reset.
  *
  *  Users: 1 `compat` (administrator, with `unfiltered_html`) and 2 `writer` (author), with the roles in
  *  `wp_user_roles`. Terms: 1 `uncategorized` (category), 2 `tagged` (post_tag), 3 `news` (category).
@@ -271,12 +273,21 @@ function speedyspec_compat_posts_write_always_empty($maybe_empty): bool
 }
 
 /**
- * Registers the `genre` taxonomy for posts, which tax_input names, and the `book` type, hierarchical.
+ * Registers the types and taxonomy the scenarios add to the core ones.
+ *
+ *  The `genre` taxonomy is the one tax_input names, `book` a hierarchical type, and `memo` a public type that is
+ *  not publicly queryable, whose permalink (and so its reset GUID) takes the non-viewable form.
  */
 function speedyspec_compat_posts_write_register(): bool
 {
     register_taxonomy('genre', 'post', ['hierarchical' => false, 'rewrite' => false, 'query_var' => false]);
     register_post_type('book', ['public' => true, 'hierarchical' => true, 'rewrite' => false, 'query_var' => false]);
+    register_post_type('memo', [
+        'public' => true,
+        'publicly_queryable' => false,
+        'rewrite' => false,
+        'query_var' => false,
+    ]);
     return true;
 }
 
@@ -589,9 +600,10 @@ function speedyspec_compat_posts_write_schema(): void
 {
     global $wpdb;
     $wpdb->suppress_errors(true);
-    // The tables a step snapshots start their IDs again from 1; the rest are emptied in the seed's one
-    // transaction, which keeps seeding quick on a disk that syncs every commit.
-    $renumbered = '/^wp_(2_)?(posts|postmeta|comments)$/';
+    // The tables a step snapshots start their IDs again from 1 (wp_term_relationships has none); the rest are
+    // emptied in the seed's one transaction, which keeps seeding quick on a disk that syncs every commit, and their
+    // seeded rows carry explicit IDs.
+    $renumbered = '/^wp_(2_)?(posts|postmeta|comments|commentmeta)$/';
     foreach (speedyspec_compat_posts_write_tables() as $table => $create)
     {
         $wpdb->query($create);
@@ -653,6 +665,9 @@ function speedyspec_compat_posts_write_schema(): void
         speedyspec_compat_posts_write_row(20, 'page', 'trashed-page__trashed', 'trash', 2),
         speedyspec_compat_posts_write_row(21, 'post', 'trashed-one', 'publish', 0),
         speedyspec_compat_posts_write_row(22, 'post', 'old-trash', 'trash', 0),
+        speedyspec_compat_posts_write_row(23, 'post', 'no-guid', 'draft', 0, ['guid' => '']),
+        speedyspec_compat_posts_write_row(24, 'page', 'no-guid-page', 'draft', 0, ['guid' => '']),
+        speedyspec_compat_posts_write_row(25, 'memo', 'no-guid-memo', 'draft', 0, ['guid' => '']),
     ];
     foreach ($rows as $row)
     {
@@ -687,7 +702,8 @@ function speedyspec_compat_posts_write_schema(): void
             'comment_approved' => $approved, 'comment_parent' => $parent,
         ]);
     }
-    $wpdb->insert('wp_commentmeta', ['comment_id' => 1, 'meta_key' => 'rating', 'meta_value' => '5']);
+    $wpdb->insert('wp_commentmeta', ['meta_id' => 1, 'comment_id' => 1, 'meta_key' => 'rating', 'meta_value' => '5']);
+    $wpdb->insert('wp_commentmeta', ['meta_id' => 2, 'comment_id' => 2, 'meta_key' => 'rating', 'meta_value' => '3']);
     foreach ([1 => ['compat', 'administrator'], 2 => ['writer', 'author']] as $id => [$login, $role])
     {
         $wpdb->insert('wp_users', [
@@ -695,12 +711,13 @@ function speedyspec_compat_posts_write_schema(): void
             'user_registered' => '2026-01-01 00:00:00', 'display_name' => ucfirst($login),
         ]);
         $wpdb->insert('wp_usermeta', [
-            'user_id' => $id, 'meta_key' => 'wp_capabilities', 'meta_value' => serialize([$role => true]),
+            'umeta_id' => $id, 'user_id' => $id, 'meta_key' => 'wp_capabilities',
+            'meta_value' => serialize([$role => true]),
         ]);
         if (SPEEDYSPEC_COMPAT_MULTISITE)
         {
             $wpdb->insert('wp_usermeta', [
-                'user_id' => $id, 'meta_key' => 'wp_2_capabilities',
+                'umeta_id' => 10 + $id, 'user_id' => $id, 'meta_key' => 'wp_2_capabilities',
                 'meta_value' => serialize(['administrator' => true]),
             ]);
         }
