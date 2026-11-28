@@ -11,6 +11,9 @@ declare(strict_types=1);
  * loaded here; the option tests only need a network id that is not the current one. Sites and users are not made:
  * the one option test that creates them (`Tests_Option_Multisite::test_with_another_site`) is excluded.
  *
+ * With `SPEEDYSPEC_FACTORY_POSTS_INSERT` defined (the post-writing tests' bootstrap), posts are made through
+ * `wp_insert_post()` and updated through `wp_update_post()`, as WordPress's own post factory makes them.
+ *
  * With `SPEEDYSPEC_FACTORY_ROWS` defined (the meta tests' bootstrap), each object is the minimal row its table needs,
  * written through `$wpdb->insert` (the post's type and parent, the comment's post, the term and its taxonomy, the
  * user's login, the blog's path): what `get_object_subtype()` and the meta functions read. WordPress's insert
@@ -43,7 +46,8 @@ final class WP_UnitTest_Factory
     {
         $this->network = new WP_UnitTest_Factory_For_Network();
         $this->user = new WP_UnitTest_Factory_For_User();
-        $this->post = new WP_UnitTest_Factory_For_Post();
+        $this->post = self::inserts_posts() ? new WP_UnitTest_Factory_For_Inserted_Post()
+            : new WP_UnitTest_Factory_For_Post();
         $this->attachment = new WP_UnitTest_Factory_For_Attachment();
         $this->comment = new WP_UnitTest_Factory_For_Comment();
         $this->term = new WP_UnitTest_Factory_For_Term();
@@ -56,6 +60,15 @@ final class WP_UnitTest_Factory
     public static function stores_rows(): bool
     {
         return defined('SPEEDYSPEC_FACTORY_ROWS') && SPEEDYSPEC_FACTORY_ROWS;
+    }
+
+    /**
+     * Whether posts are made through `wp_insert_post()`, as WordPress's own factory makes them
+     *  (`SPEEDYSPEC_FACTORY_POSTS_INSERT`, the post-writing tests' bootstrap).
+     */
+    public static function inserts_posts(): bool
+    {
+        return defined('SPEEDYSPEC_FACTORY_POSTS_INSERT') && SPEEDYSPEC_FACTORY_POSTS_INSERT;
     }
 
     /**
@@ -271,12 +284,198 @@ final class WP_UnitTest_Factory_For_Post
 }
 
 /**
+ * Makes posts through `wp_insert_post()` and updates them through `wp_update_post()`, as WordPress's own post factory
+ *  does (tests/phpunit/includes/factory/class-wp-unittest-factory-for-post.php over
+ *  class-wp-unittest-factory-for-thing.php, GPL-2.0 or later): the same defaults (`publish`, the numbered title,
+ *  content and excerpt, `post`), the same sequence numbering and the same exceptions for a post that cannot be made.
+ *  Generator callbacks (`callback()`) are not supported: none of the post-writing tests uses them.
+ */
+final class WP_UnitTest_Factory_For_Inserted_Post
+{
+    /** @var int WordPress's `WP_UnitTest_Generator_Sequence::$incr`, shared by every object made. */
+    private static int $incr = -1;
+
+    /** @var array<string, string|int> The defaults, a `%s` in a template taking the object's number. */
+    public $default_generation_definitions = array(
+        'post_status' => 'publish',
+        'post_title' => 'Post title %s',
+        'post_content' => 'Post content %s',
+        'post_excerpt' => 'Post excerpt %s',
+        'post_type' => 'post',
+    );
+
+    /**
+     * Creates a post through `wp_insert_post()` and returns its id.
+     *
+     * @param array $args
+     *   What `wp_insert_post()` takes; the defaults fill what is missing.
+     * @param array|null $generation_definitions
+     *   Defaults in place of the factory's.
+     *
+     * @return int
+     *   The new post's id.
+     */
+    public function create($args = array(), $generation_definitions = null)
+    {
+        return $this->create_object($this->generate_args($args, $generation_definitions));
+    }
+
+    /**
+     * Creates a post and reads it back with {@link get_post()}.
+     *
+     * @param array $args
+     *   As for {@see create()}.
+     * @param array|null $generation_definitions
+     *   As for {@see create()}.
+     *
+     * @return WP_Post
+     *   The new post.
+     */
+    public function create_and_get($args = array(), $generation_definitions = null)
+    {
+        return $this->get_object_by_id($this->create($args, $generation_definitions));
+    }
+
+    /**
+     * Creates `$count` posts and returns their ids.
+     *
+     * @param int $count
+     *   How many.
+     * @param array $args
+     *   As for {@see create()}.
+     * @param array|null $generation_definitions
+     *   As for {@see create()}.
+     *
+     * @return int[]
+     *   The new posts' ids.
+     */
+    public function create_many($count, $args = array(), $generation_definitions = null)
+    {
+        $ids = array();
+        for ($i = 0; $i < $count; $i++)
+        {
+            $ids[] = $this->create($args, $generation_definitions);
+        }
+        return $ids;
+    }
+
+    /**
+     * Fills the defaults into `$args`, numbering the templates with the next sequence number.
+     *
+     * @param array $args
+     *   The given fields.
+     * @param array|null $generation_definitions
+     *   The defaults, or null for the factory's.
+     *
+     * @return array
+     *   The fields with the defaults.
+     */
+    public function generate_args($args = array(), $generation_definitions = null)
+    {
+        $generation_definitions ??= $this->default_generation_definitions;
+        $incr = zeroise(++self::$incr, 7);
+        foreach ($generation_definitions as $field => $default)
+        {
+            if (!isset($args[$field]))
+            {
+                $args[$field] = is_string($default) ? sprintf($default, $incr) : $default;
+            }
+        }
+        return $args;
+    }
+
+    /**
+     * Inserts the post as given.
+     *
+     * @param array $args
+     *   What `wp_insert_post()` takes.
+     *
+     * @return int
+     *   The new post's id.
+     */
+    public function create_object($args)
+    {
+        return self::valid_id(wp_insert_post($args, true), 'Unable to create the post');
+    }
+
+    /**
+     * Updates the post through `wp_update_post()`.
+     *
+     * @param int $post_id
+     *   The post.
+     * @param array $fields
+     *   The fields to change.
+     *
+     * @return int
+     *   The post's id.
+     */
+    public function update_object($post_id, $fields)
+    {
+        $fields['ID'] = $post_id;
+        return self::valid_id(wp_update_post($fields, true), 'Unable to update the post');
+    }
+
+    /**
+     * Reads the post.
+     *
+     * @param int $post_id
+     *   The post.
+     *
+     * @return WP_Post
+     *   The post.
+     */
+    public function get_object_by_id($post_id)
+    {
+        $post = get_post($post_id);
+        if (!$post instanceof WP_Post)
+        {
+            throw new RuntimeException("Unable to retrieve the object with ID $post_id.");
+        }
+        return $post;
+    }
+
+    /**
+     * Throws, as WordPress's factory does, when `$id` is a `WP_Error` or not a positive integer.
+     *
+     * @return int
+     *   `$id`.
+     */
+    private static function valid_id($id, string $message): int
+    {
+        if (is_wp_error($id))
+        {
+            throw new RuntimeException(sprintf('%s: %s', $message, $id->get_error_message()));
+        }
+        if (!is_int($id) || $id <= 0)
+        {
+            throw new RuntimeException($message);
+        }
+        return $id;
+    }
+}
+
+/**
  * Makes attachments through WordPress's own `wp_insert_attachment()`, as WordPress's attachment factory does
  *  (tests/phpunit/includes/factory/class-wp-unittest-factory-for-attachment.php), for a suite that loads the post
  *  write path. Uploads (`create_upload_object()`) are not made.
  */
 final class WP_UnitTest_Factory_For_Attachment
 {
+    /**
+     * Creates an attachment with the post factory's defaults filled in, as WordPress's attachment factory inherits
+     *  them from its post factory.
+     *
+     * @param array $args
+     *   As for {@see create_object()}.
+     *
+     * @return int
+     *   The new attachment's id.
+     */
+    public function create($args = array())
+    {
+        return $this->create_object((new WP_UnitTest_Factory_For_Inserted_Post())->generate_args($args));
+    }
+
     /**
      * Creates an attachment and returns its id.
      *
