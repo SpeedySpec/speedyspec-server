@@ -24,6 +24,7 @@ use speedyspec_php_serialize::semantics::to_php_string;
 use speedyspec_php_serialize::{OpaquePhpValue, PhpKey, PhpValue};
 use speedyspec_wp_cron_contracts::{CronError, CronResult};
 use speedyspec_wp_hooks_contracts::HookValue;
+use speedyspec_wp_meta_contracts::{MetaRepositories, MetaRepository, MetaType};
 use speedyspec_wp_posts::{
     PostEntry, PostObjects, Runtime, Scheduling, SlugContext, SlugSettings, WriteFormatting,
 };
@@ -55,6 +56,10 @@ pub const POST_QUERY: &str = "SpeedySpec\\WpPosts\\PostQuery";
 pub const THEME: &str = "SpeedySpec\\WpPosts\\Theme";
 /// The container key of the column charset port (`SpeedySpec\WpPosts\Charset`).
 pub const CHARSET: &str = "SpeedySpec\\WpPosts\\Charset";
+/// The container key the meta area binds its tables at (`SpeedySpec\WpMeta\MetaRepositories`), which
+/// `wp_delete_post()` reads meta ids through.
+pub const META_REPOSITORIES: &str = "SpeedySpec\\WpMeta\\MetaRepositories";
+
 /// The container key of the cron port (`SpeedySpec\WpPosts\Scheduling`).
 pub const SCHEDULING: &str = "SpeedySpec\\WpPosts\\Scheduling";
 
@@ -737,6 +742,69 @@ impl PostObjects for PhpPostObjects {
         }
         Ok(Some(properties))
     }
+
+    fn set(&self, handle: &HookValue, name: &str, value: PhpValue) -> Result<HookValue, PostError> {
+        if let Value::Opaque(any) = handle
+            && let Some(OpaquePhpValue(PhpValue::Object { class, properties })) =
+                any.downcast_ref::<OpaquePhpValue>()
+        {
+            let key = PhpKey::Str(name.as_bytes().to_vec());
+            let mut properties = properties.clone();
+            match properties.iter_mut().find(|(k, _)| *k == key) {
+                Some(slot) => slot.1 = value,
+                None => properties.push((key, value)),
+            }
+            return Ok(Value::Opaque(Rc::new(OpaquePhpValue(PhpValue::Object {
+                class: class.clone(),
+                properties,
+            }))));
+        }
+        if !is_object(handle) {
+            return Ok(handle.clone());
+        }
+        let value = into_php(&value)?;
+        helper(
+            "assign",
+            &[
+                handle.clone(),
+                Value::Array(vec![(Key::Str(name.to_owned()), value)]),
+            ],
+        )
+        .map_err(thrown_error)?;
+        Ok(handle.clone())
+    }
+}
+
+/// `wp_delete_post_revision()` and `wp_save_post_revision()` (revision.php), WordPress's until phase 6 ports them.
+pub struct PhpRevisions;
+
+impl c::Revisions for PhpRevisions {
+    fn save_post_revision(&self, post: PostId) -> Result<(), PostError> {
+        call("wp_save_post_revision", &[int(post)])?;
+        Ok(())
+    }
+
+    fn delete_post_revision(&self, revision: PostId) -> Result<(), PostError> {
+        call("wp_delete_post_revision", &[int(revision)])?;
+        Ok(())
+    }
+}
+
+/// The meta tables the meta area binds (`SpeedySpec\WpMeta\MetaRepositories`), resolved on every call; no table
+/// when the binding fails or the container is gone.
+impl MetaRepositories for Resolved<dyn MetaRepositories> {
+    fn for_type(&self, meta_type: &MetaType) -> Option<Rc<dyn MetaRepository>> {
+        self.port().ok()?.for_type(meta_type)
+    }
+}
+
+/// No meta tables: the fallback of the resolved meta repositories when the container is gone.
+pub struct NoMetaTables;
+
+impl MetaRepositories for NoMetaTables {
+    fn for_type(&self, _: &MetaType) -> Option<Rc<dyn MetaRepository>> {
+        None
+    }
 }
 
 /// `$wp_rewrite->feeds`, `$wp_rewrite->pagination_base` and `get_option( 'permalink_structure' )`, as
@@ -796,6 +864,13 @@ impl Runtime for PhpRuntime {
             &[word(function), word(message), word(version)],
         )?;
         Ok(())
+    }
+
+    fn constant(&self, name: &str) -> Result<Option<PhpValue>, PostError> {
+        if !truthy(&call("defined", &[word(name)])?) {
+            return Ok(None);
+        }
+        Ok(Some(from_answer(&call("constant", &[word(name)])?)?))
     }
 }
 

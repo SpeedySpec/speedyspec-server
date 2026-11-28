@@ -13,16 +13,18 @@ use std::rc::Rc;
 use speedyspec_php_serialize::PhpValue;
 use speedyspec_wp_db_contracts::{WpDbError, take_hook_error};
 use speedyspec_wp_hooks_contracts::{HookApi, HookValue};
-use speedyspec_wp_meta_contracts::{MetaKey, MetaType, ObjectId};
+use speedyspec_wp_meta_contracts::{MetaId, MetaKey, MetaRepositories, MetaType, ObjectId};
 use speedyspec_wp_posts_contracts::{
-    Charset, Clock, Comments, Post, PostError, PostId, PostQuery, PostReader, PostRef,
-    PostRepository, PostTypeSupports, PostWriteError, Rewrite, SlugTruncation, Taxonomy, Theme,
-    Translator, Uploads, Users, WriteResult,
+    Charset, Clock, Comments, Post, PostArg, PostError, PostId, PostObject, PostQuery, PostReader,
+    PostRef, PostRepository, PostTypeSupports, PostWriteError, Revisions, Rewrite, SlugTruncation,
+    Taxonomy, Theme, Translator, Uploads, Users, WriteResult,
 };
 
 use crate::PostsApi;
-use crate::hook::pv;
+use crate::hook::{hv, pv};
 use crate::read::{meta_error, options_error};
+use crate::write::error::php_error;
+use crate::write::php::{at, is_str};
 use crate::write::ports::{PostObjects, Runtime, Scheduling, SlugSettings, WriteFormatting};
 
 /// What the post write use cases work through, beyond the read use cases'. The runtime passes the concrete adapters
@@ -64,8 +66,13 @@ pub struct WriteDeps {
     pub objects: Rc<dyn PostObjects>,
     /// `$wp_rewrite`'s feeds and pagination base and the permalink structure, for `wp_unique_post_slug()`.
     pub slugs: Rc<dyn SlugSettings>,
-    /// `defined()` and `_doing_it_wrong()`.
+    /// `defined()`, `constant()` and `_doing_it_wrong()`.
     pub runtime: Rc<dyn Runtime>,
+    /// `wp_delete_post_revision()`, which `wp_delete_post()` calls for each revision (phase 6 ports it).
+    pub revisions: Rc<dyn Revisions>,
+    /// The meta tables, for `wp_delete_post()`'s `SELECT meta_id FROM {postmeta} WHERE post_id = %d`
+    /// ([`ids_of_object`](speedyspec_wp_meta_contracts::MetaRepository::ids_of_object)).
+    pub meta: Rc<dyn MetaRepositories>,
 }
 
 /// WordPress's post writing (`wp_insert_post()`, `wp_update_post()`, `wp_transition_post_status()` and its default
@@ -125,6 +132,141 @@ impl PostWritesApi {
             .get_option(name, None)
             .map_err(options_error)?;
         pv(&value)
+    }
+
+    /// `get_option( $name, $default )` as a PHP value.
+    pub(crate) fn option_or(&self, name: &str, default: PhpValue) -> Result<PhpValue, PostError> {
+        let value = self
+            .d
+            .posts
+            .deps()
+            .options
+            .get_option(name, Some(hv(&default)))
+            .map_err(options_error)?;
+        pv(&value)
+    }
+
+    /// `update_option( $name, $value )`: whether it wrote.
+    pub(crate) fn update_option(&self, name: &str, value: PhpValue) -> Result<bool, PostError> {
+        self.d
+            .posts
+            .deps()
+            .options
+            .update_option(name, hv(&value), HookValue::Null)
+            .map_err(options_error)
+    }
+
+    /// PHP's `time()`: the clock's GMT now as a timestamp.
+    pub(crate) fn time(&self) -> i64 {
+        let now = self.d.clock.now_gmt();
+        self.d.clock.timestamp(now.as_bytes()).unwrap_or(0)
+    }
+
+    /// `EMPTY_TRASH_DAYS` by PHP truth; PHP's `Error` for an undefined constant.
+    pub(crate) fn trash_enabled(&self) -> Result<bool, PostError> {
+        match self.d.runtime.constant("EMPTY_TRASH_DAYS")? {
+            Some(days) => Ok(!speedyspec_php_serialize::semantics::is_empty(&days)),
+            None => Err(php_error(
+                "Error",
+                "Undefined constant \"EMPTY_TRASH_DAYS\"".into(),
+            )),
+        }
+    }
+
+    /// `get_post( $post )` for a [`PostArg`]: a passed object as it is (its own values and handle), or the post an id
+    /// or the global `$post` names, read as a new object. `None` where `get_post()` returns null.
+    pub(crate) fn post_arg(&self, post: PostArg) -> Result<Option<PostObject>, PostError> {
+        Ok(match post {
+            PostArg::Object(object) => Some(*object),
+            PostArg::Ref(post) => self
+                .d
+                .posts
+                .resolve(post)?
+                .map(|loaded| PostObject::new(loaded.post)),
+        })
+    }
+
+    /// `$post->ID` and `$post->post_type` of the object `handle`, as PHP holds them now; `fallback`'s for a handle
+    /// the port cannot read.
+    pub(crate) fn id_and_type_of(
+        &self,
+        handle: &HookValue,
+        fallback: &PostObject,
+    ) -> Result<(PostId, String), PostError> {
+        Ok(match self.d.objects.read(handle)? {
+            Some(properties) => crate::write::insert::id_and_type(&properties),
+            None => (
+                fallback.post.id,
+                fallback.post.post_type.as_str().to_owned(),
+            ),
+        })
+    }
+
+    /// `wp_after_insert_post( $post, $update, $post_before )` (post.php 5594-5613) for the object `handle` of the
+    /// post `id`: `get_post( $post )` hands a raw `WP_Post` back as it is and re-reads any other by its `ID`, and
+    /// nothing runs without a post; `$post_id` is then `$post->ID`.
+    pub(crate) fn after_insert_post(
+        &self,
+        handle: &HookValue,
+        id: PostId,
+        update: bool,
+        before: HookValue,
+    ) -> Result<(), PostError> {
+        let after = match self.d.objects.read(handle)? {
+            Some(properties) => {
+                let raw = at(&properties, "filter").is_some_and(|f| is_str(f, "raw"));
+                if raw {
+                    Some((
+                        handle.clone(),
+                        crate::write::insert::id_and_type(&properties).0,
+                    ))
+                } else {
+                    let object = crate::PostEntry::wp_post(properties);
+                    match self.d.posts.resolve_value(object)? {
+                        Some(read) => {
+                            let read_id = read.post.id;
+                            Some((self.d.objects.handle(&PostObject::new(read.post))?, read_id))
+                        }
+                        None => None,
+                    }
+                }
+            }
+            None => Some((handle.clone(), id)),
+        };
+        if let Some((post, post_id)) = after {
+            self.action("wp_after_insert_post", || {
+                vec![
+                    HookValue::Int(int(post_id)),
+                    post,
+                    HookValue::Bool(update),
+                    before,
+                ]
+            })?;
+        }
+        Ok(())
+    }
+
+    /// `$wpdb->get_col( "SELECT meta_id FROM {postmeta} WHERE post_id = %d " )`, through meta's repository.
+    pub(crate) fn post_meta_ids(&self, id: PostId) -> Result<Vec<MetaId>, PostError> {
+        let repository = self
+            .d
+            .meta
+            .for_type(&post_meta())
+            .ok_or_else(|| PostError::Db("the post meta table is not available".into()))?;
+        repository
+            .ids_of_object(ObjectId(id.0))
+            .map_err(|e| meta_error(e.into()))
+    }
+
+    /// `delete_metadata_by_mid( 'post', $mid )`.
+    pub(crate) fn delete_meta_by_mid(&self, mid: MetaId) -> Result<(), PostError> {
+        self.d
+            .posts
+            .deps()
+            .metadata
+            .delete_by_mid(&post_meta(), mid)
+            .map_err(meta_error)?;
+        Ok(())
     }
 
     /// `get_post_meta( $id, $key, $single )`.
@@ -267,6 +409,12 @@ impl PostReader for SlugReader<'_> {
     fn post(&self, id: PostId) -> Result<Option<Post>, PostError> {
         self.0.get_post(PostRef::Id(id))
     }
+}
+
+/// `object` with the PHP object its hooks received, for the caller.
+pub(crate) fn handled(mut object: PostObject, handle: HookValue) -> PostObject {
+    object.handle = Some(handle);
+    object
 }
 
 /// A PHP int as a post id: 0 for anything below 1.

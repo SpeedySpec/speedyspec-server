@@ -1048,31 +1048,7 @@ impl<'a> Insert<'a> {
         api.action("wp_insert_post", saved)?;
         if self.fire_after_hooks {
             let before = self.before_handle()?;
-            // wp_after_insert_post(): `get_post( $post )` hands a raw `WP_Post` back as it is and re-reads any
-            // other by its `ID`; nothing runs without a post. `$post_id` is then `$post->ID`.
-            let after = match api.d.objects.read(&handle)? {
-                Some(properties) => {
-                    let raw = at(&properties, "filter").is_some_and(|f| is_str(f, "raw"));
-                    if raw {
-                        Some((handle.clone(), id_and_type(&properties).0))
-                    } else {
-                        let object = crate::PostEntry::wp_post(properties);
-                        match api.d.posts.resolve_value(object)? {
-                            Some(read) => {
-                                let read_id = read.post.id;
-                                Some((api.d.objects.handle(&PostObject::new(read.post))?, read_id))
-                            }
-                            None => None,
-                        }
-                    }
-                }
-                None => Some((handle.clone(), id)),
-            };
-            if let Some((post, post_id)) = after {
-                api.action("wp_after_insert_post", || {
-                    vec![id_arg(post_id), post, HookValue::Bool(update), before]
-                })?;
-            }
+            api.after_insert_post(&handle, id, update, before)?;
         }
         Ok(ControlFlow::Continue(Ok(id)))
     }

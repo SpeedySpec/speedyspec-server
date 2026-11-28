@@ -60,7 +60,7 @@ use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_wp_db_contracts::Wpdb;
 use speedyspec_wp_hooks_contracts::HookApi;
-use speedyspec_wp_meta_contracts::Metadata;
+use speedyspec_wp_meta_contracts::{MetaRepositories, Metadata};
 use speedyspec_wp_object_cache_contracts::ObjectCache;
 use speedyspec_wp_options_contracts::Options;
 use speedyspec_wp_posts::{
@@ -94,9 +94,10 @@ pub use release::{
 pub use runner::{php_string, posts_read_scenario_runner, posts_write_scenario_runner};
 pub use twins::{PhpPostRepository, PostRepositoryTwin};
 pub use write_ports::{
-    CHARSET, COMMENTS, POST_QUERY, PhpCharset, PhpClock, PhpComments, PhpPostObjects, PhpPostQuery,
-    PhpRewrite, PhpRuntime, PhpScheduling, PhpSlugSettings, PhpSlugTruncation, PhpTheme,
-    PhpUploads, PhpWriteFormatting, REWRITE, Resolved, SCHEDULING, TAXONOMY, THEME, UPLOADS, USERS,
+    CHARSET, COMMENTS, META_REPOSITORIES, NoMetaTables, POST_QUERY, PhpCharset, PhpClock,
+    PhpComments, PhpPostObjects, PhpPostQuery, PhpRevisions, PhpRewrite, PhpRuntime, PhpScheduling,
+    PhpSlugSettings, PhpSlugTruncation, PhpTheme, PhpUploads, PhpWriteFormatting, REWRITE,
+    Resolved, SCHEDULING, TAXONOMY, THEME, UPLOADS, USERS,
 };
 
 const FACADE: &str = include_str!("post-types.php");
@@ -199,6 +200,12 @@ impl PostsArea {
             objects: Rc::new(PhpPostObjects),
             slugs: Rc::new(PhpSlugSettings),
             runtime: Rc::new(PhpRuntime),
+            revisions: Rc::new(PhpRevisions),
+            meta: Rc::new(Resolved::<dyn MetaRepositories>::new(
+                &container,
+                META_REPOSITORIES,
+                Rc::new(NoMetaTables),
+            )),
         });
         register_post_write_handlers(&container, writes.clone());
         let reading = Rc::new(read::Reading::new(&container, current));

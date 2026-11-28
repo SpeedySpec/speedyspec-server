@@ -100,9 +100,28 @@ impl Formatting for RustFormatting {
         Ok(!speedyspec_php_serialize::semantics::is_empty(&out))
     }
 
-    /// Not recorded by these tests: the text as it is.
+    /// `sanitize_trackback_urls()` for the URLs the recordings use: split at `\r`, `\n`, tab and space, empty
+    /// pieces dropped, those not matching `#^https?://.#i` dropped, joined with line feeds (`sanitize_url()` leaves
+    /// these URLs as they are, and no `sanitize_trackback_urls` filter is added).
     fn sanitize_trackback_urls(&self, to_ping: PhpValue) -> Result<PhpValue, PostError> {
-        Ok(to_ping)
+        let text = speedyspec_php_serialize::semantics::to_php_string(&to_ping);
+        let strip = |b: &u8| b" \t\n\r\0\x0B".contains(b);
+        let start = text.iter().position(|b| !strip(b)).unwrap_or(text.len());
+        let end = text
+            .iter()
+            .rposition(|b| !strip(b))
+            .map_or(start, |e| e + 1);
+        let kept: Vec<&[u8]> = text[start..end]
+            .split(|b| matches!(b, b'\r' | b'\n' | b'\t' | b' '))
+            .filter(|url| {
+                let lower = url.to_ascii_lowercase();
+                let rest = lower
+                    .strip_prefix(b"https://")
+                    .or_else(|| lower.strip_prefix(b"http://"));
+                rest.is_some_and(|r| !r.is_empty())
+            })
+            .collect();
+        Ok(PhpValue::Str(kept.join(&b'\n')))
     }
 }
 

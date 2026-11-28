@@ -7,6 +7,10 @@
 //! | `publish_post` | `_publish_post_hook()` (post.php 8462-8492) | 5, 1 | default-filters.php 453 |
 //! | `transition_post_status` | `_transition_post_status()` (post.php 8396-8431) | 5, 3 | default-filters.php 454 |
 //! | `future_{$post_type}` | `_future_post_hook()` (post.php 8447-8450) | 5, 2 | `WP_Post_Type::add_hooks()` |
+//! | `publish_future_post` | `check_and_publish_future_post()` (post.php 5723-5745) | 10, 1 | default-filters.php 362 |
+//! | `before_delete_post` | `_reset_front_page_settings_for_post()` (post.php 4226-4245) | 10, 1 | default-filters.php 609 |
+//! | `before_delete_post` | `_reset_privacy_policy_page_for_post()` (post.php 4257-4261) | 10, 1 | default-filters.php 610 |
+//! | `wp_trash_post` | `_reset_front_page_settings_for_post()` | 10, 1 | default-filters.php 611 |
 //!
 //! Each callback's id is the WordPress function's name, so `remove_action( 'transition_post_status',
 //! '_transition_post_status', 5 )` removes it. The callbacks read the post object a hook received through the
@@ -18,7 +22,7 @@ use speedyspec_php_serialize::semantics::{is_empty, to_php_int, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_hooks_contracts::{Callback, HookApi, HookError, HookName, HookValue};
 use speedyspec_wp_posts_contracts::{
-    PostError, PostId, PostObject, PostRef, PostStatusName, PostTypeName,
+    PostArg, PostError, PostId, PostObject, PostRef, PostStatusName, PostTypeName,
 };
 
 use crate::check_post_hierarchy_for_loops;
@@ -30,7 +34,7 @@ use crate::write::php::{at, identical, is_str, key, s};
 use crate::write::ports::cron_error;
 
 /// `array( $post_id )`, the cron arguments of `publish_future_post`.
-fn id_list(id: PostId) -> HookValue {
+pub(crate) fn id_list(id: PostId) -> HookValue {
     HookValue::Array(vec![(
         speedyspec_wp_hooks_contracts::Key::Int(0),
         HookValue::Int(int(id)),
@@ -324,10 +328,47 @@ pub fn register_future_post_hook(
     Ok(())
 }
 
+/// A post argument a callback received, as `get_post()` takes it: a raw `WP_Post` as that object, anything else by
+/// its `(int)` (0, the global `$post`, for an empty value).
+fn post_arg_of(api: &PostWritesApi, value: Option<&HookValue>) -> Result<PostArg, PostError> {
+    let Some(value) = value else {
+        return Ok(PostArg::Ref(PostRef::Current));
+    };
+    if let Some(properties) = api.d.objects.read(value)? {
+        let raw = at(&properties, "filter").is_some_and(|f| crate::write::php::is_str(f, "raw"));
+        if raw {
+            let post = crate::PostEntry::from_properties(&properties);
+            return Ok(PostArg::Object(Box::new(PostObject::with_handle(
+                post,
+                value.clone(),
+            ))));
+        }
+        let (id, _) = id_and_type(&properties);
+        return Ok(PostArg::Ref(PostRef::Id(id)));
+    }
+    Ok(match to_php_int(&pv(value)?) {
+        0 => PostArg::Ref(PostRef::Current),
+        id => PostArg::Ref(PostRef::Id(post_id(id))),
+    })
+}
+
+/// A callback's first argument as PHP holds it: an object read through the port, anything else as it is.
+fn value_of(api: &PostWritesApi, value: Option<&HookValue>) -> Result<PhpValue, PostError> {
+    let Some(value) = value else {
+        return Ok(PhpValue::Null);
+    };
+    Ok(match api.d.objects.read(value)? {
+        Some(properties) => crate::PostEntry::wp_post(properties),
+        None => pv(value)?,
+    })
+}
+
 /// Registers the write use cases' default callbacks as default-filters.php does, in its order:
-/// `wp_check_post_hierarchy_for_loops` on `wp_insert_post_parent` (10, 2), `_publish_post_hook` on `publish_post`
-/// (5, 1) and `_transition_post_status` on `transition_post_status` (5, 3). `_future_post_hook` is per post type
-/// ([`register_future_post_hook`]).
+/// `wp_check_post_hierarchy_for_loops` on `wp_insert_post_parent` (10, 2), `check_and_publish_future_post` on
+/// `publish_future_post` (10, 1), `_publish_post_hook` on `publish_post` (5, 1), `_transition_post_status` on
+/// `transition_post_status` (5, 3), then `_reset_front_page_settings_for_post` and
+/// `_reset_privacy_policy_page_for_post` on `before_delete_post` and `_reset_front_page_settings_for_post` on
+/// `wp_trash_post` (each 10, 1). `_future_post_hook` is per post type ([`register_future_post_hook`]).
 pub fn register_post_write_callbacks(
     hooks: &dyn HookApi,
     api: &Rc<PostWritesApi>,
@@ -348,6 +389,15 @@ pub fn register_post_write_callbacks(
         2,
     )?;
     hooks.add_filter(
+        &HookName::from("publish_future_post"),
+        callback("check_and_publish_future_post", me.clone(), |api, args| {
+            api.check_and_publish_future_post(post_arg_of(api, args.first())?)?;
+            Ok(HookValue::Null)
+        }),
+        &HookValue::Int(10),
+        1,
+    )?;
+    hooks.add_filter(
         &HookName::from("publish_post"),
         callback("_publish_post_hook", me.clone(), |api, args| {
             let id = args
@@ -363,7 +413,7 @@ pub fn register_post_write_callbacks(
     )?;
     hooks.add_filter(
         &HookName::from("transition_post_status"),
-        callback("_transition_post_status", me, |api, args| {
+        callback("_transition_post_status", me.clone(), |api, args| {
             let new = args.first().map(text_arg).transpose()?.unwrap_or_default();
             let old = args.get(1).map(text_arg).transpose()?.unwrap_or_default();
             if let Some(properties) = object_arg(api, args, 2)? {
@@ -374,6 +424,38 @@ pub fn register_post_write_callbacks(
         }),
         &HookValue::Int(5),
         3,
+    )?;
+    let front_page = |me: Weak<PostWritesApi>| {
+        callback("_reset_front_page_settings_for_post", me, |api, args| {
+            api.reset_front_page_settings_for_post(&value_of(api, args.first())?)?;
+            Ok(HookValue::Null)
+        })
+    };
+    hooks.add_filter(
+        &HookName::from("before_delete_post"),
+        front_page(me.clone()),
+        &HookValue::Int(10),
+        1,
+    )?;
+    hooks.add_filter(
+        &HookName::from("before_delete_post"),
+        callback(
+            "_reset_privacy_policy_page_for_post",
+            me.clone(),
+            |api, args| {
+                let id = to_php_int(&value_of(api, args.first())?);
+                api.reset_privacy_policy_page_for_post(id)?;
+                Ok(HookValue::Null)
+            },
+        ),
+        &HookValue::Int(10),
+        1,
+    )?;
+    hooks.add_filter(
+        &HookName::from("wp_trash_post"),
+        front_page(me),
+        &HookValue::Int(10),
+        1,
     )?;
     Ok(())
 }
