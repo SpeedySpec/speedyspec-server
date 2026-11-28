@@ -270,11 +270,18 @@ fn main() {
 
 /// Boots the embedded PHP with the native areas and runs one PHPUnit configuration.
 fn run_one(run: &Run, url: &str) {
-    let (_release, prepared) = support::prepared("posts-tests-port");
+    // The writers run beside the native options, as the runtime runs them; the readers beside option.php.
+    let native_options = std::ptr::eq(run.suite, &WRITE);
+    let name = if native_options {
+        "posts-write-tests-port"
+    } else {
+        "posts-tests-port"
+    };
+    let (_release, prepared) = support::prepared_with(name, native_options);
     // SAFETY: nothing else runs yet; PHP is not booted and this process has one thread.
     unsafe { std::env::set_var("SPEEDYSPEC_POSTS_WP_ROOT", &prepared) };
     let phar = phpunit();
-    let (php, _container) = support::boot_with(url, true);
+    let (php, _container) = support::boot_with(url, true, native_options);
     let config = root().join(run.suite.config);
     let junit = Path::new(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("wordpress-posts-{}.junit.xml", run.name));

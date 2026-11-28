@@ -20,15 +20,33 @@ declare(strict_types=1);
  *  `WP_POST_REVISIONS`, deprecated.php, the comment classes, wp-admin's post.php (`edit_post()`), and the test
  *  utilities `rand_str()` and `get_locale()`.
  *
- *  Users, terms and comments stay rows (`SPEEDYSPEC_FACTORY_ROWS`); the post functions that are not ported yet
- *  (`wp_delete_post()`, `wp_trash_post()`, `wp_publish_post()` and the rest) are WordPress's own.
+ *  Users, terms and comments stay rows (`SPEEDYSPEC_FACTORY_ROWS`). Every post writer is the native one: insert,
+ *  update, the transitions and set_post_type(), and delete, trash, untrash, publish, future posts, sticky posts,
+ *  pings and auto-drafts; the bootstrap refuses to run otherwise. The option functions are native too, as the
+ *  runtime runs them beside the writers (the harness strips option.php for this suite). The attachment and revision functions behind their
+ *  ports (`wp_delete_attachment()`, `wp_delete_post_revision()`) are WordPress's own.
  */
 
 define('SPEEDYSPEC_FACTORY_POSTS_INSERT', true);
 require __DIR__ . '/posts-bootstrap.php';
 // The point of the suite: the writers under test are the native ones (the area's facade over its natives), not a
 // PHP copy left in the release.
-foreach (['wp_insert_post', 'wp_update_post', 'wp_transition_post_status', 'set_post_type'] as $speedyspec_writer)
+$speedyspec_writers = [
+    'wp_insert_post',
+    'wp_update_post',
+    'wp_transition_post_status',
+    'set_post_type',
+    'wp_delete_post',
+    'wp_trash_post',
+    'wp_untrash_post',
+    'wp_publish_post',
+    'check_and_publish_future_post',
+    'stick_post',
+    'unstick_post',
+    'add_ping',
+    'wp_delete_auto_drafts',
+];
+foreach ($speedyspec_writers as $speedyspec_writer)
 {
     if (str_starts_with((string) (new ReflectionFunction($speedyspec_writer))->getFileName(), ABSPATH))
     {
