@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-posts-php"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "WordPress's post registries, post reading and post writing (register_post_type(), get_post() and the post caches, wp_insert_post(), wp_update_post() and the status transitions) as native PHP over the Rust post rules and use cases."
 edition.workspace = true

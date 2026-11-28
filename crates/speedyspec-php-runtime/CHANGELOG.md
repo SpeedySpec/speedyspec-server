@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.6.0](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-php-runtime-v1.5.0...speedyspec-php-runtime-v1.6.0) (2026-11-28)
+
+
+### Features
+
+* **posts:** reading posts wired (posts and meta, phase 4) ([#136](https://github.com/SpeedySpec/speedyspec-server/issues/136)) ([05887e8](https://github.com/SpeedySpec/speedyspec-server/commit/05887e84f175a7913f4297e998d20ec7564a2753))
+* **posts:** writing posts wired (posts and meta, phase 5a) ([#144](https://github.com/SpeedySpec/speedyspec-server/issues/144)) ([3fbedbe](https://github.com/SpeedySpec/speedyspec-server/commit/3fbedbef3249505d0496aa3587525d2e4c194112))
+* **runtime:** every worker declares the text, content and transport ports ([#146](https://github.com/SpeedySpec/speedyspec-server/issues/146)) ([5160bd6](https://github.com/SpeedySpec/speedyspec-server/commit/5160bd66884d706942ec4fdb5ef71cdd028fa03e))
+
+
+### Code Refactoring
+
+* **options:** other seams call the options contracts ([#143](https://github.com/SpeedySpec/speedyspec-server/issues/143)) ([fa4251f](https://github.com/SpeedySpec/speedyspec-server/commit/fa4251f389d53cb190409f0518b5b0114030fab1))
+
 ## [1.5.0](https://github.com/SpeedySpec/speedyspec-server/compare/speedyspec-php-runtime-v1.4.1...speedyspec-php-runtime-v1.5.0) (2026-11-27)
 
 

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-xmlrpc-php"
-version = "0.1.1"
+version = "0.2.0"
 publish = false
 description = "The XML-RPC transport's PHP adapter: WordPress's XML-RPC hooks and login, XmlRpc::bind, and the wp_xmlrpc_server shim whose methods run as operations."
 edition.workspace = true

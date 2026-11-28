@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-posts-memory"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "An in-memory post repository, for tests and for callers with no database."
 edition.workspace = true

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-i18n-tests"
-version = "0.1.4"
+version = "0.1.5"
 publish = false
 description = "Integration tests of speedyspec-wp-i18n with its file and memory adapters. A crate of its own so no crate has a dev-dependency on one that depends on it (release-please's cargo-workspace plugin refuses such cycles)."
 edition.workspace = true
