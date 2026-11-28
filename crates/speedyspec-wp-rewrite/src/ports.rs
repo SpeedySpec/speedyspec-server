@@ -3,7 +3,7 @@ use std::rc::Rc;
 use speedyspec_routing::Rule;
 use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{HookName, HookValue, Key};
-use speedyspec_wp_options::OptionsApi;
+use speedyspec_wp_options_contracts::Options;
 
 use crate::{RewriteError, RewriteState};
 
@@ -160,13 +160,13 @@ fn php_bool(value: &HookValue) -> bool {
     }
 }
 
-/// [`RewriteOptions`] over the ported options API (Adapter).
+/// [`RewriteOptions`] over the options contracts (Adapter).
 pub struct OptionsRewriteOptions {
-    api: Rc<OptionsApi>,
+    api: Rc<dyn Options>,
 }
 
 impl OptionsRewriteOptions {
-    pub fn new(api: Rc<OptionsApi>) -> OptionsRewriteOptions {
+    pub fn new(api: Rc<dyn Options>) -> OptionsRewriteOptions {
         OptionsRewriteOptions { api }
     }
 }

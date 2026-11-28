@@ -18,7 +18,7 @@ speedyspec-wp-hooks.workspace = true
 speedyspec-wp-cron = { path = "../speedyspec-wp-cron" }
 speedyspec-wp-cron-contracts.workspace = true
 speedyspec-wp-cron-options = { path = "../speedyspec-wp-cron-options" }
-speedyspec-wp-options = { path = "../speedyspec-wp-options" }
+speedyspec-wp-options-contracts.workspace = true
 speedyspec-wp-options-php = { path = "../speedyspec-wp-options-php" }
 speedyspec-compat.workspace = true
 speedyspec-wp-hooks-contracts.workspace = true

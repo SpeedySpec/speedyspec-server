@@ -6,7 +6,8 @@ use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_object_cache::{CurrentObjectCache, ObjectCachePorts};
-use speedyspec_wp_options::{Options, OptionsApi, OptionsDeps};
+use speedyspec_wp_options::{OptionsApi, OptionsDeps};
+use speedyspec_wp_options_contracts::TypedOptions;
 use speedyspec_wp_options_memory::MemoryOptionRepository;
 
 fn api() -> Rc<OptionsApi> {
@@ -24,7 +25,7 @@ fn api() -> Rc<OptionsApi> {
 
 #[test]
 fn missing_options_give_defaults() {
-    let source = OptionsSettingsSource::new(Options::new(api()));
+    let source = OptionsSettingsSource::new(TypedOptions::new(api()));
     assert_eq!(source.load().unwrap(), RawSettings::default());
 }
 
@@ -62,7 +63,7 @@ fn stored_options_are_read() {
         auto,
     )
     .unwrap();
-    let raw = OptionsSettingsSource::new(Options::new(api))
+    let raw = OptionsSettingsSource::new(TypedOptions::new(api))
         .load()
         .unwrap();
     assert_eq!(

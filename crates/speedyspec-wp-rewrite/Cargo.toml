@@ -15,7 +15,7 @@ role = "implementation"
 speedyspec-routing.workspace = true
 speedyspec-router = { path = "../speedyspec-router" }
 speedyspec-wp-hooks.workspace = true
-speedyspec-wp-options = { path = "../speedyspec-wp-options" }
+speedyspec-wp-options-contracts.workspace = true
 speedyspec-http.workspace = true
 speedyspec-container.workspace = true
 speedyspec-cqrs.workspace = true

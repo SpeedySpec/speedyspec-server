@@ -167,6 +167,25 @@ fn main() {
         return [[''], [], ['http://example.org/a.mp3'], false, [[false, false], [false, 4], [false, 7]],
             [5 => 'kept', 30 => 'x', 31 => 'y']] === $out ? true : $out;"#,
     );
+    // is_sticky() reads `sticky_posts` through the options contracts (the Rust options API over the same wpdb and
+    // object cache): what option.php stored, its `option_` filter, and a `pre_option_` callback's exception, rethrown
+    // whole.
+    ok &= yes(
+        &php,
+        &setup,
+        "sticky_posts_is_read_through_the_options_api",
+        r#"update_option('sticky_posts', [4, '7']);
+        $stored = [is_sticky(4), is_sticky(7), is_sticky(5)];
+        add_filter('option_sticky_posts', function ($ids) { $ids[] = 5; return $ids; });
+        $filtered = is_sticky(5);
+        add_filter('pre_option_sticky_posts', function () { throw new LogicException('stop'); });
+        try { is_sticky(4); $thrown = null; } catch (LogicException $e) { $thrown = $e->getMessage(); }
+        remove_all_filters('pre_option_sticky_posts');
+        remove_all_filters('option_sticky_posts');
+        delete_option('sticky_posts');
+        $out = [$stored, $filtered, $thrown, is_sticky(4)];
+        return [[true, true, false], true, 'stop', false] === $out ? true : $out;"#,
+    );
     // A warm get_post() builds its WP_Post over the cached entry without copying it (PostObject::Entry): every call
     // is still a new object, a change to one reaches neither the entry nor the next read, and the object is the one
     // `new WP_Post( $entry )` makes. The entry stays a raw stdClass.

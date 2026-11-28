@@ -1,7 +1,7 @@
 //! [`OptionCronStore`]: the `cron` option through the options port, every write a compare-and-swap.
 //!
 //! The version a save compares is the bytes `update_option` would store for the value read
-//! (`OptionsApi::serialized_form`), so the conditional write matches only if no one wrote since. A value a filter
+//! (`ConditionalOptions::serialized_form`), so the conditional write matches only if no one wrote since. A value a filter
 //! rewrote on read (`pre_option_cron`, `option_cron`) is not the stored one; [`OptionCronStore::reload`] says so, and
 //! the core then writes unconditionally, as WordPress does.
 
@@ -10,13 +10,13 @@ use std::rc::Rc;
 
 use speedyspec_wp_cron_contracts::{CronError, CronStore, SaveOutcome, Version};
 use speedyspec_wp_hooks_contracts::HookValue;
-use speedyspec_wp_options::{ConditionalWrite, OptionsApi, OptionsError};
+use speedyspec_wp_options_contracts::{ConditionalOptions, ConditionalWrite, OptionsError};
 
 const CRON: &str = "cron";
 
-/// The `cron` option over the options port (Adapter).
+/// The `cron` option over the options contracts (Adapter).
 pub struct OptionCronStore {
-    options: Rc<OptionsApi>,
+    options: Rc<dyn ConditionalOptions>,
 }
 
 fn error(e: OptionsError) -> CronError {
@@ -34,7 +34,7 @@ fn error(e: OptionsError) -> CronError {
 }
 
 impl OptionCronStore {
-    pub fn new(options: Rc<OptionsApi>) -> OptionCronStore {
+    pub fn new(options: Rc<dyn ConditionalOptions>) -> OptionCronStore {
         OptionCronStore { options }
     }
 }
@@ -73,12 +73,7 @@ impl CronStore for OptionCronStore {
         Ok(
             match self
                 .options
-                .update_option_if_unchanged(
-                    CRON,
-                    expected.0.as_deref(),
-                    value,
-                    HookValue::Bool(true),
-                )
+                .update_option_if(CRON, expected.0.as_deref(), value, HookValue::Bool(true))
                 .map_err(error)?
             {
                 ConditionalWrite::Written => SaveOutcome::Written,

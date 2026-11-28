@@ -13,9 +13,10 @@ role = "adapter"
 
 [dependencies]
 speedyspec-firewall = { path = "../speedyspec-firewall" }
-speedyspec-wp-options = { path = "../speedyspec-wp-options" }
+speedyspec-wp-options-contracts.workspace = true
 
 [dev-dependencies]
+speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 speedyspec-wp-hooks.workspace = true
 speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }

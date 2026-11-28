@@ -5,20 +5,7 @@ use speedyspec_wp_hooks_contracts::HookValue;
 
 use crate::api::{OptionsApi, isset, unset_key};
 use crate::write::PlannedWrite;
-use crate::{OptionName, OptionsError, SerializedValue};
-
-/// What [`OptionsApi::update_option_if_unchanged`] did.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConditionalWrite {
-    /// Written; every cache update and action `update_option` makes after its write ran.
-    Written,
-    /// `update_option`'s `false`: nothing to write (the filtered value equals the old one), or a filter refused.
-    Unchanged,
-    /// Another process wrote first: the stored bytes are not the expected ones. No action after the write fired and
-    /// no cache changed. The `update_option` action and the `pre_update_option` filters, which WordPress runs before
-    /// its write, have run.
-    Conflict,
-}
+use crate::{ConditionalWrite, OptionName, OptionsError, SerializedValue};
 
 impl OptionsApi {
     /// `update_option( $option, $value, $autoload )`, whose write happens only where the option's stored bytes are

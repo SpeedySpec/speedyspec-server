@@ -7,7 +7,7 @@ use speedyspec_firewall_infra_cache::{CacheBanStore, CacheCounterStore, SystemCl
 use speedyspec_firewall_infra_options::OptionsSettingsSource;
 use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::HookError;
-use speedyspec_wp_options::Options;
+use speedyspec_wp_options_contracts::TypedOptions;
 
 use crate::hooks::register_hooks;
 use crate::stage::{CurrentClient, FirewallStage};
@@ -26,7 +26,7 @@ pub struct FirewallComposition;
 
 impl FirewallComposition {
     pub fn build(
-        options: Options,
+        options: TypedOptions,
         cache: Rc<dyn CachingStore>,
         hooks: &WpHookApi,
         scope: FirewallScope,

@@ -23,6 +23,7 @@ speedyspec-wp-db-contracts.workspace = true
 speedyspec-wp-hooks-contracts.workspace = true
 speedyspec-wp-meta-contracts.workspace = true
 speedyspec-wp-object-cache-contracts.workspace = true
+speedyspec-wp-options-contracts.workspace = true
 speedyspec-wp-posts = { path = "../speedyspec-wp-posts" }
 speedyspec-wp-posts-contracts.workspace = true
 speedyspec-wp-posts-sql = { path = "../speedyspec-wp-posts-sql" }
@@ -38,6 +39,7 @@ speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-hooks-php.workspace = true
 speedyspec-wp-meta-php = { path = "../speedyspec-wp-meta-php" }
 speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
+speedyspec-wp-options-php = { path = "../speedyspec-wp-options-php" }
 criterion = { version = "0.8", default-features = false }
 serde_json = "1"
 sha2 = "0.11"

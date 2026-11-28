@@ -15,4 +15,4 @@ pub use api::{PostRead, PostsApi, PostsDeps, read_hooks};
 pub use entry::PostEntry;
 pub use get::PostObject;
 pub use messages::*;
-pub use ports::{CacheInvalidation, Microtime, Options, Taxonomy, Users};
+pub use ports::{CacheInvalidation, Microtime, Taxonomy, Users};

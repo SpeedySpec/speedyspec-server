@@ -28,6 +28,7 @@ use speedyspec_wp_db_php::WpDbArea;
 use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::WpHooksArea;
 use speedyspec_wp_object_cache_php::ObjectCacheArea;
+use speedyspec_wp_options_php::OptionsArea;
 use speedyspec_wp_posts_php::{PostsArea, prepare_release};
 
 /// `url` with its database replaced by `<database>_<suffix>`, which is made when missing.
@@ -85,12 +86,16 @@ fn boot(url: &str) -> Php {
         cache.api(),
         wpdb.api(),
     );
+    // The release's own option.php runs here, so the options area is not registered; its API only backs
+    // `is_sticky()`'s native read of `sticky_posts`, over the same wpdb and object cache.
+    let options = OptionsArea::new(container.clone(), hooks.api(), cache.api(), wpdb.api());
     let posts = PostsArea::new(
         container.clone(),
         hooks.api(),
         cache.api(),
         wpdb.api(),
         meta.api(),
+        options.api(),
     );
     let areas: Vec<Rc<dyn NativeArea>> = vec![
         twins_area(),

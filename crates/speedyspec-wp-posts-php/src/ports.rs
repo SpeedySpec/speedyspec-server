@@ -15,7 +15,7 @@ use speedyspec_php_ext::{Key, Value};
 use speedyspec_php_serialize::PhpValue;
 use speedyspec_wp_hooks_contracts::{HookError, HookValue};
 use speedyspec_wp_object_cache_contracts::{ObjectCache, ObjectCacheError};
-use speedyspec_wp_posts::{CacheInvalidation, Formatting, Microtime, Options, Taxonomy, Users};
+use speedyspec_wp_posts::{CacheInvalidation, Formatting, Microtime, Taxonomy, Users};
 use speedyspec_wp_posts_contracts::{
     CurrentPost, LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError,
     PostId, PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
@@ -150,18 +150,6 @@ impl Formatting for PhpFormatting {
     fn sanitize_trackback_urls(&self, to_ping: PhpValue) -> Result<PhpValue, PostError> {
         let args = [into_php(&to_ping)?];
         self.text("sanitize_trackback_urls", &args, to_ping)
-    }
-}
-
-/// `get_option()` (the native options functions, or option.php): `false` while it is not declared.
-pub struct PhpOptions;
-
-impl Options for PhpOptions {
-    fn get_option(&self, name: &str) -> Result<PhpValue, PostError> {
-        if !exists("get_option") {
-            return Ok(PhpValue::Bool(false));
-        }
-        from_answer(&call("get_option", &[Value::Str(name.into())])?)
     }
 }
 

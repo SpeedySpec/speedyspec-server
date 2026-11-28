@@ -19,10 +19,11 @@ speedyspec-firewall-infra-cache = { path = "../speedyspec-firewall-infra-cache" 
 speedyspec-firewall-infra-options = { path = "../speedyspec-firewall-infra-options" }
 speedyspec-native-stage.workspace = true
 speedyspec-wp-hooks.workspace = true
-speedyspec-wp-options = { path = "../speedyspec-wp-options" }
+speedyspec-wp-options-contracts.workspace = true
 speedyspec-wp-hooks-contracts.workspace = true
 
 [dev-dependencies]
+speedyspec-wp-options = { path = "../speedyspec-wp-options" }
 speedyspec-cache-memory = { path = "../speedyspec-cache-memory" }
 speedyspec-wp-hooks-memory.workspace = true
 speedyspec-wp-object-cache = { path = "../speedyspec-wp-object-cache" }

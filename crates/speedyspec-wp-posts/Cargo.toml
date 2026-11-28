@@ -17,6 +17,7 @@ speedyspec-php-serialize.workspace = true
 speedyspec-wp-hooks-contracts.workspace = true
 speedyspec-wp-meta-contracts.workspace = true
 speedyspec-wp-object-cache-contracts.workspace = true
+speedyspec-wp-options-contracts.workspace = true
 speedyspec-container.workspace = true
 speedyspec-cqrs.workspace = true
 indexmap = "2"

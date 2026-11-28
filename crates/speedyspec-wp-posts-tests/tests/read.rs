@@ -19,6 +19,7 @@ use speedyspec_wp_meta_contracts::{
 };
 use speedyspec_wp_meta_memory::MemoryMetaRepositories;
 use speedyspec_wp_object_cache::{ObjectCachePorts, WpObjectCache};
+use speedyspec_wp_options_contracts::{Options, OptionsError};
 use speedyspec_wp_posts::{
     CacheInvalidation, CleanPostCache, GetPost, InitialOptions, Microtime, PostEntry, PostObject,
     PostRead, PostStatusRegistry, PostTypePorts, PostTypeRegistry, PostsApi, PostsDeps,
@@ -1707,9 +1708,36 @@ fn update_post_cache_objects_key_string_ids_as_ints() {
 /// No option exists (`get_option()` answers false).
 struct NoOptions;
 
-impl speedyspec_wp_posts::Options for NoOptions {
-    fn get_option(&self, _name: &str) -> Result<PhpValue, PostError> {
-        Ok(PhpValue::Bool(false))
+impl Options for NoOptions {
+    fn get_option(
+        &self,
+        _name: &str,
+        default: Option<HookValue>,
+    ) -> Result<HookValue, OptionsError> {
+        Ok(default.unwrap_or(HookValue::Bool(false)))
+    }
+
+    fn add_option(
+        &self,
+        _name: &str,
+        _value: HookValue,
+        _deprecated: HookValue,
+        _autoload: HookValue,
+    ) -> Result<bool, OptionsError> {
+        Ok(false)
+    }
+
+    fn update_option(
+        &self,
+        _name: &str,
+        _value: HookValue,
+        _autoload: HookValue,
+    ) -> Result<bool, OptionsError> {
+        Ok(false)
+    }
+
+    fn delete_option(&self, _name: &str) -> Result<bool, OptionsError> {
+        Ok(false)
     }
 }
 

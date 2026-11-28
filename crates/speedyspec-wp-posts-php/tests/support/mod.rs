@@ -25,6 +25,7 @@ use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_hooks_php::WpHooksArea;
 use speedyspec_wp_meta_php::MetaArea;
 use speedyspec_wp_object_cache_php::ObjectCacheArea;
+use speedyspec_wp_options_php::OptionsArea;
 use speedyspec_wp_posts_php::PostsArea;
 
 /// `url` with its database replaced by `<database>_<suffix>`, which is made when missing.
@@ -108,12 +109,16 @@ pub fn boot_with(url: &str, testing: bool) -> (Php, Rc<Container>) {
     let wpdb = WpDbArea::new(container.clone(), hooks.api(), registry, config);
     let cache = ObjectCacheArea::new(container.clone(), None);
     let meta = MetaArea::new(container.clone(), hooks.api(), cache.api(), wpdb.api());
+    // The release's own option.php runs here, so the options area is not registered; its API only backs
+    // `is_sticky()`'s native read of `sticky_posts`, over the same wpdb and object cache.
+    let options = OptionsArea::new(container.clone(), hooks.api(), cache.api(), wpdb.api());
     let posts = PostsArea::new(
         container.clone(),
         hooks.api(),
         cache.api(),
         wpdb.api(),
         meta.api(),
+        options.api(),
     );
     let ports = PostsArea::ports(MetaArea::ports(ContainerArea::new(
         "tests",
