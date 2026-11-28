@@ -12,4 +12,4 @@ static cache does), `sanitize_title()` and the escapers, `__()`, the notice func
 `wp_get_global_settings()`, `current_theme_supports()` and `current_user_can()`. Filters go through the Rust Hook API, so
 `ThemeJsonArea::new` takes the `WpHookApi`, as the shortcode area does.
 
-The area is not yet in the runtime's worker: see the engine's README, "Not done yet". See [`speedyspec-wp-theme-json`](../speedyspec-wp-theme-json/README.md).
+Every runtime worker declares the area (`speedyspec-php-runtime`, `src/ports.rs`). See [`speedyspec-wp-theme-json`](../speedyspec-wp-theme-json/README.md).

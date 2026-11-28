@@ -342,6 +342,15 @@ pub fn run_worker(spec: WorkerSpec) -> i32 {
         }
         None => None,
     };
+    // Without a database, the rewrite API reads its options through PHP's get_option().
+    if database.is_none() {
+        areas.push(Rc::new(crate::ports::rewrite_area(
+            &container, &hook_api, None,
+        )));
+    }
+    // The text, content and transport ports: WordPress never runs here, so every worker declares them.
+    areas.extend(crate::ports::text_areas(&container, &hook_api));
+    areas.extend(crate::ports::transport_areas(&container));
     areas.push(Rc::new(crypto));
     areas.push(Rc::new(password));
     areas.push(Rc::new(text_diff));

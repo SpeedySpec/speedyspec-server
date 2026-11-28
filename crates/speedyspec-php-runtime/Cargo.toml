@@ -62,6 +62,23 @@ speedyspec-wp-password-contracts.workspace = true
 speedyspec-wp-password-php = { path = "../speedyspec-wp-password-php" }
 speedyspec-wp-text-diff-contracts.workspace = true
 speedyspec-wp-text-diff-php = { path = "../speedyspec-wp-text-diff-php" }
+# The text, content and transport ports (src/ports.rs).
+speedyspec-wp-utf8-php = { path = "../speedyspec-wp-utf8-php" }
+speedyspec-wp-token-map-php = { path = "../speedyspec-wp-token-map-php" }
+speedyspec-wp-i18n-php = { path = "../speedyspec-wp-i18n-php" }
+speedyspec-wp-kses-php = { path = "../speedyspec-wp-kses-php" }
+speedyspec-wp-text-php = { path = "../speedyspec-wp-text-php" }
+speedyspec-wp-shortcode-php = { path = "../speedyspec-wp-shortcode-php" }
+speedyspec-wp-theme-json-php = { path = "../speedyspec-wp-theme-json-php" }
+speedyspec-wp-rewrite = { path = "../speedyspec-wp-rewrite" }
+speedyspec-wp-rewrite-php = { path = "../speedyspec-wp-rewrite-php" }
+speedyspec-wp-options-contracts.workspace = true
+speedyspec-operation-contracts.workspace = true
+speedyspec-operation-php = { path = "../speedyspec-operation-php" }
+speedyspec-transport = { path = "../speedyspec-transport" }
+speedyspec-abilities-php = { path = "../speedyspec-abilities-php" }
+speedyspec-rest-php = { path = "../speedyspec-rest-php" }
+speedyspec-xmlrpc-php = { path = "../speedyspec-xmlrpc-php" }
 
 [dev-dependencies]
 tempfile = "3"

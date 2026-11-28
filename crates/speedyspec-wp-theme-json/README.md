@@ -98,9 +98,6 @@ filter may change.
 
 ## Not done yet
 
-- The area is not in the runtime's worker list: the worker loads WordPress's own files and runs no area's
-  `prepare_release` yet (kses, shortcodes and i18n are in the same state), and WordPress's theme.json class files
-  are not guarded, so wiring the area now would declare `WP_Theme_JSON` twice. `release.rs` is ready for it.
 - WordPress's PHPUnit theme tests (`wpThemeJson.php`, `wpThemeJsonResolver.php`, …) are not yet run against the area.
 - No per-worker stylesheet or merged-data cache: a hit would skip PHP callbacks the work reaches (kses and escaper
   filters, data filters, notices). WordPress's own per-request statics and object cache calls are kept.

@@ -273,6 +273,29 @@ read each other's process environment.
 
 ### Native WordPress areas
 
+WordPress never runs in the runtime: each port's functions and classes are the only declarations of their names, so
+every worker declares the ports below. A port's twins and container ports let PHP replace its adapters.
+
+| Port | Crate | What PHP sees | Turned on by |
+|---|---|---|---|
+| UTF-8 | `speedyspec-wp-utf8-php` | `utf8.php`, `compat-utf8.php` and compat.php's UTF-8 helpers | every worker |
+| Token map | `speedyspec-wp-token-map-php` | `WP_Token_Map` and the HTML5 named character references | every worker |
+| i18n | `speedyspec-wp-i18n-php` | `__()` and the translation functions, the translation controller and files, `WP_Locale`, pomo's fast paths | every worker |
+| kses | `speedyspec-wp-kses-php` | `kses.php`'s functions, `safecss_filter_attr()` among them | every worker |
+| Formatting text | `speedyspec-wp-text-php` | the formatting functions (`wpautop()`, `wptexturize()`, the escapers, the sanitizers) | every worker |
+| Shortcodes | `speedyspec-wp-shortcode-php` | `shortcodes.php`'s functions | every worker |
+| theme.json | `speedyspec-wp-theme-json-php` | `WP_Theme_JSON`, `WP_Theme_JSON_Resolver` and the global styles functions | every worker |
+| Rewrite | `speedyspec-wp-rewrite-php` | `WP_Rewrite`, `WP_MatchesMapRegex`, the `EP_*` constants and `rewrite.php`'s functions | every worker; its options come from the options port with `DB_NAME`, from PHP's `get_option()` without |
+| Operations | `speedyspec-operation-php` | `SpeedySpec\Operation\…`; capabilities through `user_can()`, sites from the current blog | every worker |
+| Abilities | `speedyspec-abilities-php` | `WP_Ability` over the Rust Abilities server, `SpeedySpec\Abilities\…` | every worker |
+| REST | `speedyspec-rest-php` | `WP_REST_Server` (SpeedySpec's shim), `SpeedySpec\Rest\Rest::bind()` | every worker |
+| XML-RPC | `speedyspec-xmlrpc-php` | the `wp_xmlrpc_server` shim, `SpeedySpec\XmlRpc\XmlRpc::bind()` | every worker |
+| Crypto, passwords, text diff, media | `speedyspec-wp-crypto-php`, `-password-php`, `-text-diff-php`, `-media-php` | `wp_fast_hash()` and the sodium functions, the password functions, `wp_text_diff()`, the media functions | every worker |
+| `$wpdb`, object cache, meta, posts, options, cron | `speedyspec-wp-db-php`, `-object-cache-php`, `-meta-php`, `-posts-php`, `-options-php`, `-cron-php` | see below | `DB_NAME` |
+
+Operation, ability, REST and XML-RPC bindings live for the worker. The i18n port's uncommon paths still call
+WordPress's `get_translations_for_domain()`, which no port declares yet.
+
 `DB_NAME` in a worker's environment turns on the database, object cache, options and cron areas: native `$wpdb`,
 `wp_cache_*`, `get_option()`, `wp_schedule_event()` and the rest, over one engine kept for the worker's life. Cron's
 writes to the `cron` option are compare-and-swap: two workers (or replicas) scheduling at once both keep their
@@ -296,9 +319,8 @@ answer at start. Each request is answered 500 without running PHP while a `db.ph
 (`php_worker_drop_in_refused`). A transaction a request leaves open is rolled back when it ends
 (`php_worker_open_transaction`).
 
-A release served this way must not load WordPress's own `option.php`, `cache.php` or `class-wpdb.php` functions beside
-the native ones (nor `cron.php`'s ported functions): each port's `prepare_release` writes a copy of WordPress without
-them.
+Each port's `prepare_release` writes a copy of WordPress without the functions the port declares: the ports' tests and
+benchmarks compare them against WordPress that way.
 
 ## `php.bindings`
 
