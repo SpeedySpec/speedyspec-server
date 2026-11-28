@@ -309,17 +309,14 @@ impl SqlPostRepository {
         })
     }
 
-    /// `$wpdb->update( $wpdb->posts, array( $column => $value ), array( 'ID' => $id ) )`.
+    /// `$wpdb->update( $wpdb->posts, array( $column => $value ), array( 'ID' => $id ) )`, `id` as `%d` binds it.
     fn update_column(
         &self,
-        id: i64,
+        id: WpValue,
         column: &str,
         value: WpValue,
     ) -> Result<Option<u64>, PostError> {
-        self.update_rows(
-            &[(column.to_owned(), value)],
-            &[("ID".to_owned(), WpValue::Int(id))],
-        )
+        self.update_rows(&[(column.to_owned(), value)], &[("ID".to_owned(), id)])
     }
 
     /// `$wpdb->get_results()` of a prepared statement, as entities.
@@ -679,31 +676,23 @@ impl PostRepository for SqlPostRepository {
     }
 
     fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {
-        self.update_column(
-            PostParent::from(id).prepared(),
-            "post_name",
-            php_string(name.as_bytes()),
-        )
+        self.update_column(int(id.0), "post_name", php_string(name.as_bytes()))
     }
 
     fn update_guid(&self, id: PostId, guid: &[u8]) -> Result<Option<u64>, PostError> {
-        self.update_column(PostParent::from(id).prepared(), "guid", php_string(guid))
+        self.update_column(int(id.0), "guid", php_string(guid))
     }
 
     fn update_status(&self, id: PostId, status: &PostStatusName) -> Result<Option<u64>, PostError> {
         self.update_column(
-            PostParent::from(id).prepared(),
+            int(id.0),
             "post_status",
             WpValue::Str(status.as_str().to_owned()),
         )
     }
 
     fn update_pinged(&self, id: PostId, pinged: &[u8]) -> Result<Option<u64>, PostError> {
-        self.update_column(
-            PostParent::from(id).prepared(),
-            "pinged",
-            php_string(pinged),
-        )
+        self.update_column(int(id.0), "pinged", php_string(pinged))
     }
 
     fn update_post_type(
@@ -711,7 +700,11 @@ impl PostRepository for SqlPostRepository {
         id: i64,
         post_type: &PostTypeName,
     ) -> Result<Option<u64>, PostError> {
-        self.update_column(id, "post_type", WpValue::Str(post_type.as_str().to_owned()))
+        self.update_column(
+            WpValue::Int(id),
+            "post_type",
+            WpValue::Str(post_type.as_str().to_owned()),
+        )
     }
 
     /// `$wpdb->get_var()`'s answer is truthy: a row holds the id.

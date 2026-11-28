@@ -19,7 +19,7 @@ use speedyspec_wp_db_contracts::{WpValue, take_hook_error};
 use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_contracts::{Callback, HookError, HookName};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
-use speedyspec_wp_posts_contracts::conformance::{mysql_suite, post_repository_suite};
+use speedyspec_wp_posts_contracts::conformance::{mysql_suite, post_repository_suite, read_suite};
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, Post, PostDate, PostDateTime, PostError, PostId, PostParent,
     PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
@@ -199,14 +199,14 @@ fn suite_on_mysql() {
     suite(Engine::MySql);
 }
 
-/// Ignored since contracts 0.4.0: the suite's write checks are MySQL's answers under `wpdb::set_sql_mode()`'s mode
-/// (a negative `post_parent` stored as 0, `NULL` stored as 0 by an `UPDATE`, an `ID` of 0 or -5 taking the next
-/// auto-increment id), which the SQLite engine does not emulate yet: it stores `-5` and rejects the `NULL`. The read
-/// statements' SQLite coverage stays in the engine tests below.
+/// The read checks only: the write checks are MySQL's answers under `wpdb::set_sql_mode()`'s mode, which the SQLite
+/// engine does not copy. It stores a `-5` parent as `-5` and rejects the `NULL`-parent update that MySQL stores as 0.
 #[test]
-#[ignore = "the write checks are MySQL sql_mode facts the SQLite engine does not emulate yet"]
 fn suite_on_sqlite() {
-    suite(Engine::Sqlite);
+    on(Engine::Sqlite, |rig| {
+        assert_eq!(rig.repo.engine(), Engine::Sqlite.name());
+        read_suite(&rig.repo);
+    });
 }
 
 /// Not run locally or in CI yet. Expect the suite's NUL-content post (`find_returns_what_insert_wrote`) to fail

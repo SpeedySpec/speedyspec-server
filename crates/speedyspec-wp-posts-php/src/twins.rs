@@ -161,12 +161,43 @@ fn parent_value(parent: PostParent) -> Value {
     }
 }
 
-/// `wp_insert_post()`'s `$data`: the post's columns without `ID`, `comment_count` and `filter`.
+/// `wp_insert_post()`'s `compact()` order (post.php 5153-5175), which `$wpdb->insert` and `$wpdb->update` keep in
+/// the statement's columns.
+const DATA_COLUMNS: [&str; 21] = [
+    "post_author",
+    "post_date",
+    "post_date_gmt",
+    "post_content",
+    "post_content_filtered",
+    "post_title",
+    "post_excerpt",
+    "post_status",
+    "post_type",
+    "comment_status",
+    "ping_status",
+    "post_password",
+    "post_name",
+    "to_ping",
+    "pinged",
+    "post_modified",
+    "post_modified_gmt",
+    "post_parent",
+    "menu_order",
+    "post_mime_type",
+    "guid",
+];
+
+/// `wp_insert_post()`'s `$data`: the 21 columns it writes, in its `compact()` order, so a twin that hands it to
+/// `$wpdb->insert` or `$wpdb->update` sends WordPress's statement text. `ID`, `comment_count` and `filter` are not in
+/// it.
 fn data(post: &Post) -> Result<Value, PostError> {
-    let mut columns = PostEntry::raw_properties(post);
-    columns.retain(|(k, _)| {
-        !matches!(k, PhpKey::Str(name) if matches!(name.as_slice(), b"ID" | b"comment_count" | b"filter"))
-    });
+    let properties = PostEntry::raw_properties(post);
+    let columns: Vec<(PhpKey, PhpValue)> = DATA_COLUMNS
+        .iter()
+        .filter_map(|column| {
+            get(&properties, column).map(|v| (PhpKey::Str(column.as_bytes().to_vec()), v.clone()))
+        })
+        .collect();
     to_php(&PhpValue::Array(columns)).map_err(thrown_error)
 }
 
