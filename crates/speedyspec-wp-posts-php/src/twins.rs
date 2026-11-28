@@ -17,14 +17,14 @@ use std::rc::Rc;
 use speedyspec_php_ext::{Key, PhpObject, PortError, Value, php_port};
 use speedyspec_php_serialize::semantics::{get, to_php_int, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
-use speedyspec_wp_posts::{PostEntry, Taxonomy};
+use speedyspec_wp_posts::PostEntry;
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
     PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, RowValue, Slug, Timezone,
     WriteOutcome,
 };
 
-use crate::codec::{Thrown, copy_php, string, to_php};
+use crate::codec::{Thrown, copy_php, string};
 use crate::ports::thrown_error;
 
 /// `wp_posts`' twin: one method per `$wpdb` call `post.php` makes, as the `PostRepository` port names them.
@@ -539,98 +539,4 @@ impl PostRepository for PhpPostRepository {
 /// The twin's [`Rc`] for the container port.
 pub(crate) fn wrap(object: PhpObject) -> Rc<dyn PostRepository> {
     Rc::new(PhpPostRepository::new(object))
-}
-
-/// The taxonomy port's twin: the term cache functions the post caches call, and `WP_Post::__get()`'s term branch.
-/// Ids cross as a list of ints, types as PHP holds them, and a post as a `WP_Post`.
-#[php_port(name = "SpeedySpec\\WpPosts\\Taxonomy")]
-pub trait TaxonomyTwin {
-    fn update_object_term_cache(
-        &self,
-        object_ids: Value,
-        object_types: Value,
-    ) -> Result<Value, PortError>;
-    fn clean_object_term_cache(
-        &self,
-        object_ids: Value,
-        object_type: Value,
-    ) -> Result<Value, PortError>;
-    fn post_term_fields(
-        &self,
-        post: Value,
-        taxonomy: Value,
-        field: Value,
-    ) -> Result<Value, PortError>;
-}
-
-/// A PHP implementation of `SpeedySpec\WpPosts\Taxonomy`. An exception it throws stops the use case and reaches the
-/// caller as the same object ([`PostError::Hook`] carries it).
-pub struct PhpBoundTaxonomy(PhpObject);
-
-impl PhpBoundTaxonomy {
-    pub fn new(object: PhpObject) -> PhpBoundTaxonomy {
-        PhpBoundTaxonomy(object)
-    }
-
-    fn call(&self, method: &str, args: Vec<Value>) -> Result<PhpValue, PostError> {
-        let callable = Value::Array(vec![
-            (Key::Int(0), self.0.value().clone()),
-            (Key::Int(1), Value::Str(method.to_owned())),
-        ]);
-        let answer = speedyspec_php::call_catching(&callable, &args)
-            .map_err(|failure| thrown_error(Thrown(failure.exception)))?;
-        copy_php(&answer).map_err(thrown_error)
-    }
-}
-
-fn values(list: &[PhpValue]) -> Result<Value, PostError> {
-    Ok(Value::Array(
-        list.iter()
-            .enumerate()
-            .map(|(i, v)| Ok((Key::Int(i as i64), to_php(v).map_err(thrown_error)?)))
-            .collect::<Result<_, PostError>>()?,
-    ))
-}
-
-impl Taxonomy for PhpBoundTaxonomy {
-    fn update_object_term_cache(
-        &self,
-        ids: &[PostId],
-        object_types: &[PhpValue],
-    ) -> Result<(), PostError> {
-        self.call(
-            "update_object_term_cache",
-            vec![self::ids(ids), values(object_types)?],
-        )?;
-        Ok(())
-    }
-
-    fn clean_object_term_cache(&self, ids: &[PostId], object_type: &str) -> Result<(), PostError> {
-        self.call(
-            "clean_object_term_cache",
-            vec![self::ids(ids), Value::Str(object_type.to_owned())],
-        )?;
-        Ok(())
-    }
-
-    fn post_term_fields(
-        &self,
-        post: &PhpValue,
-        taxonomy: &str,
-        field: &str,
-    ) -> Result<PhpValue, PostError> {
-        self.call(
-            "post_term_fields",
-            vec![
-                to_php(post).map_err(thrown_error)?,
-                Value::Str(taxonomy.to_owned()),
-                Value::Str(field.to_owned()),
-            ],
-        )
-    }
-}
-
-/// The taxonomy twin's [`Rc`] for the container port.
-pub(crate) fn wrap_taxonomy(object: PhpObject) -> Rc<dyn Taxonomy> {
-    Rc::new(PhpBoundTaxonomy::new(object))
 }

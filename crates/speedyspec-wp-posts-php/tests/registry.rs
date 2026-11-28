@@ -96,6 +96,7 @@ fn boot(url: &str) -> Php {
         wpdb.api(),
         meta.api(),
         options.api(),
+        Rc::new(speedyspec_wp_posts_php::PhpScheduling),
     );
     let areas: Vec<Rc<dyn NativeArea>> = vec![
         twins_area(),

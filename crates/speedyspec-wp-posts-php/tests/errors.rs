@@ -1,6 +1,8 @@
-//! The native post reading functions from PHP over MySQL: a callback's exception reaches the caller as the same
-//! object, with nothing cached after it, and the values callbacks return cross back as PHP gave them. PHP boots once
-//! per process (`harness = false`); each case runs in a fresh request over compat/posts-read/setup.php's seed.
+//! The native post reading and writing functions from PHP over MySQL: a callback's exception reaches the caller as
+//! the same object, with nothing cached after it, and the values callbacks return cross back as PHP gave them. A
+//! writer's row stays written where WordPress has written it before the exception, and is never written where
+//! WordPress throws first. PHP boots once per process (`harness = false`); each case runs in a fresh request over
+//! compat/posts-read/setup.php's seed, or compat/posts-write/setup.php's for the writers.
 
 mod support;
 
@@ -263,7 +265,103 @@ fn main() {
         return 1 === $status ? true : $status;"#,
     );
 
+    ok &= writes(&php, &support::write_setup_code(&root));
+
     if !ok {
         std::process::exit(1);
     }
+}
+
+/// The writers: an exception from `save_post`, `transition_post_status`, `wp_insert_post_data` or a `query` filter
+/// reaches the caller unchanged, and the row stays written exactly where WordPress has written it by then.
+fn writes(php: &speedyspec_php::Php, setup: &str) -> bool {
+    let mut ok = true;
+    // save_post fires after the row, its meta and terms are written: the post stays, and the hooks after save_post
+    // (wp_insert_post, wp_after_insert_post) never run.
+    ok &= yes(
+        php,
+        setup,
+        "save_post_exception_keeps_the_row",
+        r#"wp_set_current_user(1);
+        $thrown = new LogicException('from save_post');
+        $after = [];
+        add_action('save_post', function () use ($thrown) { throw $thrown; });
+        add_action('wp_insert_post', function ($id) use (&$after) { $after[] = $id; });
+        try { wp_insert_post(['post_title' => 'Saved then thrown', 'post_status' => 'publish']); $caught = null; }
+        catch (LogicException $e) { $caught = $e; }
+        global $wpdb;
+        $row = $wpdb->get_row("SELECT ID, post_status, post_name FROM $wpdb->posts WHERE post_title = 'Saved then thrown'");
+        return $caught === $thrown && $row && 'publish' === $row->post_status && 'saved-then-thrown' === $row->post_name
+            && [] === $after ? true : [$caught, $row, $after];"#,
+    );
+    // An update: the row is changed before save_post throws, and stays changed.
+    ok &= yes(
+        php,
+        setup,
+        "save_post_exception_keeps_the_update",
+        r#"wp_set_current_user(1);
+        $thrown = new RuntimeException('from save_post on update');
+        add_action('save_post', function () use ($thrown) { throw $thrown; });
+        try { wp_update_post(['ID' => 6, 'post_title' => 'Retitled before the throw']); $caught = null; }
+        catch (RuntimeException $e) { $caught = $e; }
+        global $wpdb;
+        $title = $wpdb->get_var("SELECT post_title FROM $wpdb->posts WHERE ID = 6");
+        return $caught === $thrown && 'Retitled before the throw' === $title ? true : [$caught, $title];"#,
+    );
+    // transition_post_status fires after the row, its terms and meta_input are written: they stay, and save_post
+    // never runs.
+    ok &= yes(
+        php,
+        setup,
+        "transition_post_status_exception_keeps_the_row",
+        r#"wp_set_current_user(1);
+        $thrown = new DomainException('from transition_post_status');
+        add_action('transition_post_status', function () use ($thrown) { throw $thrown; }, 10, 3);
+        $saved = 0;
+        add_action('save_post', function () use (&$saved) { $saved++; });
+        try {
+            wp_insert_post(['post_title' => 'Transitioned then thrown', 'post_status' => 'publish', 'meta_input' => ['m' => 'v']]);
+            $caught = null;
+        } catch (DomainException $e) { $caught = $e; }
+        global $wpdb;
+        $id = (int) $wpdb->get_var("SELECT ID FROM $wpdb->posts WHERE post_title = 'Transitioned then thrown'");
+        $meta = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = 'm'", $id));
+        return $caught === $thrown && $id > 0 && '1' === $meta && 0 === $saved ? true : [$caught, $id, $meta, $saved];"#,
+    );
+    // wp_insert_post_data runs before the statement: nothing is written.
+    ok &= yes(
+        php,
+        setup,
+        "wp_insert_post_data_exception_writes_nothing",
+        r#"wp_set_current_user(1);
+        global $wpdb;
+        $before = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->posts");
+        $thrown = new UnexpectedValueException('from wp_insert_post_data');
+        add_filter('wp_insert_post_data', function () use ($thrown) { throw $thrown; });
+        try { wp_insert_post(['post_title' => 'Never written']); $caught = null; }
+        catch (UnexpectedValueException $e) { $caught = $e; }
+        $after = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->posts");
+        return $caught === $thrown && $before === $after ? true : [$caught, $before, $after];"#,
+    );
+    // A `query` callback that throws on the INSERT: wpdb hides it behind a failed insert, and the native writer still
+    // rethrows the very exception; no row, no db_insert_error answered, and no hook after the insert runs.
+    ok &= yes(
+        php,
+        setup,
+        "query_exception_during_insert_is_rethrown",
+        r#"wp_set_current_user(1);
+        global $wpdb;
+        $before = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->posts");
+        $thrown = new LogicException('from query');
+        $transitions = 0;
+        add_action('transition_post_status', function () use (&$transitions) { $transitions++; });
+        $cb = function ($sql) use ($thrown) { if (str_starts_with($sql, "INSERT INTO `$GLOBALS[table_prefix]posts`")) { throw $thrown; } return $sql; };
+        add_filter('query', $cb);
+        try { $r = wp_insert_post(['post_title' => 'Query thrown'], true); $caught = $r; }
+        catch (LogicException $e) { $caught = $e; }
+        remove_filter('query', $cb);
+        $after = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->posts");
+        return $caught === $thrown && $before === $after && 0 === $transitions ? true : [$caught, $before, $after, $transitions];"#,
+    );
+    ok
 }

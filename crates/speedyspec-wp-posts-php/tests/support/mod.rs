@@ -119,6 +119,7 @@ pub fn boot_with(url: &str, testing: bool) -> (Php, Rc<Container>) {
         wpdb.api(),
         meta.api(),
         options.api(),
+        Rc::new(speedyspec_wp_posts_php::PhpScheduling),
     );
     let ports = PostsArea::ports(MetaArea::ports(ContainerArea::new(
         "tests",
@@ -153,6 +154,23 @@ pub fn setup_code(root: &Path) -> String {
         php_string(
             &speedyspec_compat::compat_dir()
                 .join("posts-read/setup.php")
+                .display()
+                .to_string()
+        )
+    )
+}
+
+/// The code that loads compat/posts-write/setup.php (single site) over `root`: the writers' files, the seeded tables,
+/// and the default callbacks the writers run.
+pub fn write_setup_code(root: &Path) -> String {
+    use speedyspec_wp_posts_php::php_string;
+    format!(
+        "define('SPEEDYSPEC_COMPAT_WP_ROOT', {}); define('SPEEDYSPEC_COMPAT_PORT', true); \
+         define('SPEEDYSPEC_COMPAT_MULTISITE', false); require {}; return true;",
+        php_string(&format!("{}/", root.display())),
+        php_string(
+            &speedyspec_compat::compat_dir()
+                .join("posts-write/setup.php")
                 .display()
                 .to_string()
         )

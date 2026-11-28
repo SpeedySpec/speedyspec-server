@@ -37,19 +37,19 @@ pub(crate) fn thrown_error(thrown: Thrown) -> PostError {
 }
 
 /// Calls a PHP function for a port.
-fn call(name: &str, args: &[Value]) -> Result<Value, PostError> {
+pub(crate) fn call(name: &str, args: &[Value]) -> Result<Value, PostError> {
     php(name, args).map_err(thrown_error)
 }
 
-fn into_php(value: &PhpValue) -> Result<Value, PostError> {
+pub(crate) fn into_php(value: &PhpValue) -> Result<Value, PostError> {
     to_php(value).map_err(thrown_error)
 }
 
-fn from_answer(value: &Value) -> Result<PhpValue, PostError> {
+pub(crate) fn from_answer(value: &Value) -> Result<PhpValue, PostError> {
     copy_php(value).map_err(thrown_error)
 }
 
-fn id_list(ids: &[PostId]) -> Value {
+pub(crate) fn id_list(ids: &[PostId]) -> Value {
     Value::Array(
         ids.iter()
             .enumerate()
@@ -247,6 +247,19 @@ impl Microtime for SystemMicrotime {
     }
 }
 
+/// PHP's own `microtime()`, so `last_changed` follows PHP's clock (and the compat recorder's frozen one): two bumps
+/// in the same microsecond store the same value, as WordPress's do. The system clock where PHP cannot answer.
+pub struct PhpMicrotime;
+
+impl Microtime for PhpMicrotime {
+    fn microtime(&self) -> String {
+        match crate::adapters::ask("microtime", &[]) {
+            Some(Value::Str(now)) => now,
+            _ => SystemMicrotime.microtime(),
+        }
+    }
+}
+
 /// `$_wp_suspend_cache_invalidation`, read live.
 pub struct PhpCacheInvalidation;
 
@@ -399,58 +412,6 @@ impl ObjectCache for PhpValueCache {
 
     fn is_persistent(&self) -> bool {
         self.inner.is_persistent()
-    }
-}
-
-/// The container key of the taxonomy port: PHP binds an object implementing the `SpeedySpec\WpPosts\Taxonomy`
-/// twin here to replace WordPress's term cache functions for the post reads.
-pub const TAXONOMY: &str = "SpeedySpec\\WpPosts\\Taxonomy";
-
-/// The taxonomy port resolved from the container on every call (as [`ResolvedRepository`] is): [`PhpTaxonomy`] is
-/// the default binding; a binding that fails is [`PostError::Db`], and nothing falls back.
-pub struct ResolvedTaxonomy {
-    container: Weak<Container>,
-    fallback: Rc<dyn Taxonomy>,
-}
-
-impl ResolvedTaxonomy {
-    pub fn new(container: &Rc<Container>, fallback: Rc<dyn Taxonomy>) -> ResolvedTaxonomy {
-        ResolvedTaxonomy {
-            container: Rc::downgrade(container),
-            fallback,
-        }
-    }
-
-    fn resolved(&self) -> Result<Rc<dyn Taxonomy>, PostError> {
-        let Some(container) = self.container.upgrade() else {
-            return Ok(self.fallback.clone());
-        };
-        container
-            .make_port::<dyn Taxonomy>(TAXONOMY)
-            .map_err(|e| PostError::Db(format!("the taxonomy binding failed: {e}")))
-    }
-}
-
-impl Taxonomy for ResolvedTaxonomy {
-    fn update_object_term_cache(
-        &self,
-        ids: &[PostId],
-        object_types: &[PhpValue],
-    ) -> Result<(), PostError> {
-        self.resolved()?.update_object_term_cache(ids, object_types)
-    }
-
-    fn clean_object_term_cache(&self, ids: &[PostId], object_type: &str) -> Result<(), PostError> {
-        self.resolved()?.clean_object_term_cache(ids, object_type)
-    }
-
-    fn post_term_fields(
-        &self,
-        post: &PhpValue,
-        taxonomy: &str,
-        field: &str,
-    ) -> Result<PhpValue, PostError> {
-        self.resolved()?.post_term_fields(post, taxonomy, field)
     }
 }
 

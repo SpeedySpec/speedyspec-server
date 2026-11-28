@@ -1,5 +1,7 @@
 //! The spec's replacement test: a PHP implementation of the post repository, bound in the container at
-//! `SpeedySpec\WpPosts\PostRepository`, replaces `wp_posts` for the use cases.
+//! `SpeedySpec\WpPosts\PostRepository`, replaces `wp_posts` for the use cases; and PHP implementations of the
+//! writers' ports (rewrite, comments, cron, users, taxonomy, charset), each bound at its twin's key, replace
+//! WordPress's functions for `wp_insert_post()` and the transitions.
 
 mod support;
 
@@ -102,6 +104,14 @@ fn main() {
             public function update_object_term_cache($object_ids, $object_types) { self::$calls[] = ['update', $object_ids, $object_types]; }
             public function clean_object_term_cache($object_ids, $object_type) { self::$calls[] = ['clean', $object_ids, $object_type]; }
             public function post_term_fields($post, $taxonomy, $field) { self::$calls[] = ['fields', $post->ID, $taxonomy, $field]; return [7, 8]; }
+            public function set_post_terms($post_id, $terms, $taxonomy, $append) { return []; }
+            public function object_taxonomies($post_type) { return []; }
+            public function default_terms($post_type) { return []; }
+            public function assign_terms_cap($taxonomy) { return null; }
+            public function get_object_terms($post_id, $taxonomy, $args) { return []; }
+            public function get_the_terms($post_id, $taxonomy) { return false; }
+            public function is_object_in_taxonomy($post_type, $taxonomy) { return false; }
+            public function delete_object_term_relationships($post_id, $taxonomies) {}
         }
         SpeedySpec\Container\Container::getInstance()->bind('SpeedySpec\WpPosts\Taxonomy', fn () => new MemoryTaxonomy(), true);
         $category = get_post_field('post_category', 1, 'raw');
@@ -127,7 +137,115 @@ fn main() {
         r#"$post = get_post(1);
         return $post instanceof WP_Post && 'hello-world' === $post->post_name && !class_exists('MemoryPostRepository', false);"#,
     );
+    ok &= write_ports(&php, &support::write_setup_code(&root));
     if !ok {
         std::process::exit(1);
     }
+}
+
+/// The writers' container ports, each replaced by a PHP object implementing its twin.
+fn write_ports(php: &speedyspec_php::Php, setup: &str) -> bool {
+    let mut ok = true;
+    // Rewrite, comments, charset and the cron port: the GUID is the bound permalink, the comment status the bound
+    // default, the emoji check reads the bound charset, and publishing schedules through the bound cron port.
+    ok &= yes(
+        php,
+        setup,
+        "php_write_ports_are_used",
+        r#"wp_set_current_user(1);
+        final class Calls { public static array $seen = []; }
+        final class FixedRewrite implements SpeedySpec\WpPosts\Rewrite
+        {
+            public function permalink($post_id) { Calls::$seen[] = ['permalink', $post_id]; return "http://bound.test/$post_id"; }
+        }
+        final class ClosedComments implements SpeedySpec\WpPosts\Comments
+        {
+            public function default_comment_status($post_type, $comment_type) { Calls::$seen[] = ['status', $post_type, $comment_type]; return 'closed'; }
+            public function trash_post_comments($post_id) {}
+            public function untrash_post_comments($post_id) {}
+            public function delete_post_comments($post_id) {}
+            public function defer_counting($defer) {}
+        }
+        final class Utf8Charset implements SpeedySpec\WpPosts\Charset
+        {
+            public function col_charset($table, $column) { Calls::$seen[] = ['charset', $table, $column]; return 'utf8'; }
+        }
+        final class RecordedCron implements SpeedySpec\WpPosts\Scheduling
+        {
+            public function clear_scheduled_hook($hook, $args) { Calls::$seen[] = ['clear', $hook, $args]; return 0; }
+            public function schedule_single_event($timestamp, $hook, $args) { Calls::$seen[] = ['schedule', $hook, $args]; return true; }
+            public function next_scheduled($hook, $args) { Calls::$seen[] = ['next', $hook]; return false; }
+        }
+        $c = SpeedySpec\Container\Container::getInstance();
+        $c->bind('SpeedySpec\WpPosts\Rewrite', fn () => new FixedRewrite(), true);
+        $c->bind('SpeedySpec\WpPosts\Comments', fn () => new ClosedComments(), true);
+        $c->bind('SpeedySpec\WpPosts\Charset', fn () => new Utf8Charset(), true);
+        $c->bind('SpeedySpec\WpPosts\Scheduling', fn () => new RecordedCron(), true);
+        $id = wp_insert_post(['post_title' => "Bound \u{1F600}", 'post_status' => 'publish']);
+        $post = get_post($id);
+        $kinds = array_values(array_unique(array_map(fn ($c) => $c[0], Calls::$seen)));
+        $out = [
+            "http://bound.test/$id" === $post->guid, 'closed' === $post->comment_status, 'closed' === $post->ping_status,
+            str_contains($post->post_title, '&#x1f600;'),
+            in_array(['clear', 'publish_future_post', [$id]], Calls::$seen, true),
+            in_array(['schedule', 'do_pings', []], Calls::$seen, true),
+            ['status', 'charset', 'permalink', 'clear', 'next', 'schedule'] === $kinds,
+        ];
+        return !in_array(false, $out, true) ? true : [$out, $post, Calls::$seen];"#,
+    );
+    // Users and taxonomy: the bound users port decides the author, and the bound taxonomy port receives the
+    // categories.
+    ok &= yes(
+        php,
+        setup,
+        "php_users_and_taxonomy_are_used",
+        r#"final class Seven implements SpeedySpec\WpPosts\Users
+        {
+            public static array $asked = [];
+            public function is_user_logged_in() { return true; }
+            public function get_current_user_id() { return 7; }
+            public function current_user_can($capability, $args) { self::$asked[] = [$capability, $args]; return true; }
+        }
+        final class Terms implements SpeedySpec\WpPosts\Taxonomy
+        {
+            public static array $set = [];
+            public function update_object_term_cache($object_ids, $object_types) {}
+            public function clean_object_term_cache($object_ids, $object_type) {}
+            public function post_term_fields($post, $taxonomy, $field) { return []; }
+            public function set_post_terms($post_id, $terms, $taxonomy, $append) { self::$set[] = [$post_id, $terms, $taxonomy, $append]; return []; }
+            public function object_taxonomies($post_type) { return ['category']; }
+            public function default_terms($post_type) { return []; }
+            public function assign_terms_cap($taxonomy) { return 'manage_categories'; }
+            public function get_object_terms($post_id, $taxonomy, $args) { return []; }
+            public function get_the_terms($post_id, $taxonomy) { return false; }
+            public function is_object_in_taxonomy($post_type, $taxonomy) { return 'category' === $taxonomy; }
+            public function delete_object_term_relationships($post_id, $taxonomies) {}
+        }
+        $c = SpeedySpec\Container\Container::getInstance();
+        $c->bind('SpeedySpec\WpPosts\Users', fn () => new Seven(), true);
+        $c->bind('SpeedySpec\WpPosts\Taxonomy', fn () => new Terms(), true);
+        $id = wp_insert_post(['post_title' => 'By seven', 'post_category' => [3]]);
+        $post = get_post($id);
+        return '7' === $post->post_author && [[$id, [3], 'category', false]] === Terms::$set
+            ? true : [$post, Terms::$set, Seven::$asked];"#,
+    );
+    // A bound port's exception reaches the caller as the same object; the row written before it stays.
+    ok &= yes(
+        php,
+        setup,
+        "bound_port_exception_is_rethrown",
+        r#"final class Broken implements SpeedySpec\WpPosts\Rewrite
+        {
+            public static $thrown;
+            public function permalink($post_id) { throw self::$thrown; }
+        }
+        Broken::$thrown = new LogicException('from the bound rewrite');
+        SpeedySpec\Container\Container::getInstance()->bind('SpeedySpec\WpPosts\Rewrite', fn () => new Broken(), true);
+        try { wp_insert_post(['post_title' => 'Permalink thrown', 'post_status' => 'publish']); $caught = null; }
+        catch (LogicException $e) { $caught = $e; }
+        global $wpdb;
+        $row = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->posts WHERE post_title = 'Permalink thrown'");
+        return $caught === Broken::$thrown && '1' === $row ? true : [$caught, $row];"#,
+    );
+    ok
 }

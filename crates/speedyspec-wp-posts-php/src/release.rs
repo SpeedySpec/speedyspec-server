@@ -12,9 +12,11 @@ use std::path::{Path, PathBuf};
 use speedyspec_compat::ReleaseMirror;
 
 /// The `post.php` functions the native area declares (WordPress 7.2-RC2): the post type and post status registries,
-/// then post reading and the post caches. The meta wrappers (`get_post_meta()` and the rest), the functions that call
-/// `WP_Query` (`get_posts()`, `get_children()`, `get_pages()`, `wp_get_recent_posts()`, …),
-/// `update_post_author_caches()` and the attachment readers stay WordPress's own.
+/// post reading and the post caches, then post writing (`wp_insert_post()`, `wp_update_post()`, the status
+/// transitions and their default callbacks, `set_post_type()`). The meta wrappers (`get_post_meta()` and the rest),
+/// the functions that call `WP_Query` (`get_posts()`, `get_children()`, `get_pages()`, `wp_get_recent_posts()`, …),
+/// `update_post_author_caches()`, the attachment readers, `wp_unique_post_slug()`, `wp_set_post_categories()` and the
+/// other writers (delete, trash, untrash, publish, sticky posts, pings, auto-drafts) stay WordPress's own.
 pub const PORTED_FUNCTIONS: &[&str] = &[
     "create_initial_post_types",
     "register_post_status",
@@ -71,6 +73,14 @@ pub const PORTED_FUNCTIONS: &[&str] = &[
     "get_to_ping",
     "get_enclosed",
     "is_sticky",
+    "set_post_type",
+    "wp_insert_post",
+    "wp_update_post",
+    "wp_transition_post_status",
+    "_transition_post_status",
+    "_future_post_hook",
+    "_publish_post_hook",
+    "wp_check_post_hierarchy_for_loops",
 ];
 
 /// `post.php`'s text without the ported functions, each with its docblock. A function is a line

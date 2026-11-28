@@ -2,7 +2,7 @@
 name = "speedyspec-wp-posts-php"
 version = "0.1.0"
 publish = false
-description = "WordPress's post registries and post reading (register_post_type(), get_post() and the post caches) as native PHP over the Rust post rules and read use cases."
+description = "WordPress's post registries, post reading and post writing (register_post_type(), get_post() and the post caches, wp_insert_post(), wp_update_post() and the status transitions) as native PHP over the Rust post rules and use cases."
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -19,6 +19,7 @@ speedyspec-cqrs.workspace = true
 speedyspec-php.workspace = true
 speedyspec-php-ext.workspace = true
 speedyspec-php-serialize.workspace = true
+speedyspec-wp-cron-contracts.workspace = true
 speedyspec-wp-db-contracts.workspace = true
 speedyspec-wp-hooks-contracts.workspace = true
 speedyspec-wp-meta-contracts.workspace = true
@@ -52,6 +53,10 @@ harness = false
 
 [[test]]
 name = "compat"
+harness = false
+
+[[test]]
+name = "compat_write"
 harness = false
 
 [[test]]

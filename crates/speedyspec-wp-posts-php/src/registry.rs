@@ -1042,6 +1042,7 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
     ENTRIES
         .iter()
         .chain(crate::read::ENTRIES)
+        .chain(crate::write::ENTRIES)
         .map(|&(name, f)| {
             native::function(&format!("{NATIVE}{name}"), move |args: &[Value]| {
                 guarded(f, args)
