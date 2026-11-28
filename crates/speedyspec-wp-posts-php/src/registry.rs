@@ -81,9 +81,17 @@ pub(crate) fn thrown(t: Thrown) -> NativeError {
     }
 }
 
-/// A hook failure as PHP sees it: the callback's exception rethrown, PHP unwinding left alone, anything else an
+/// A hook failure as PHP sees it: the callback's exception rethrown, an error WordPress's own code would raise
+/// ([`speedyspec_wp_posts::PhpThrow`]) thrown with its class and message, PHP unwinding left alone, anything else an
 /// `Error`.
 pub(crate) fn hook_error(hook: HookError) -> NativeError {
+    if let Some(thrown) = hook
+        .payload
+        .as_ref()
+        .and_then(|p| p.downcast_ref::<speedyspec_wp_posts::PhpThrow>())
+    {
+        return NativeError::throw(thrown.class, thrown.message.clone());
+    }
     match hook
         .payload
         .as_ref()
@@ -280,7 +288,7 @@ fn register_post_type(x: &[Value]) -> R {
     let args = filter(&*hooks, &hook_name(hook), args, vec![name_value.clone()])?;
     let args = to_array(php_in(&args)?);
     let type_name = PostTypeName::new(String::from_utf8_lossy(&name));
-    let resolved = resolve_post_type(type_name, args, &ports());
+    let resolved = resolve_post_type(type_name, args, &ports()).map_err(crate::read::post_error)?;
     stop_if_parked()?;
     // get_post_type_capabilities() remembers the meta capabilities before the labels are filtered.
     meta_caps_add(&resolved.meta_caps)?;
@@ -841,7 +849,8 @@ fn get_post_type_labels(x: &[Value]) -> R {
     let object = a(x, 0);
     let read = LabelObject::read(&object)?;
     let given = custom_object_labels(&read.source(), &[]).given;
-    let labels = post_type_labels(&read.source(), &PhpTranslator);
+    let labels =
+        post_type_labels(&read.source(), &PhpTranslator).map_err(crate::read::post_error)?;
     stop_if_parked()?;
     store_given_labels(&object, given)?;
     let hook = hook_name(format!("post_type_labels_{}", read.name).into_bytes());
@@ -937,7 +946,8 @@ fn create_initial_post_types(_: &[Value]) -> R {
             attachment_pages_enabled,
         },
         &PhpTranslator,
-    );
+    )
+    .map_err(crate::read::post_error)?;
     stop_if_parked()?;
     for call in calls {
         match call {
@@ -1032,6 +1042,7 @@ pub(crate) fn functions() -> Vec<FunctionBuilder<'static>> {
     ENTRIES
         .iter()
         .chain(crate::read::ENTRIES)
+        .chain(crate::write::ENTRIES)
         .map(|&(name, f)| {
             native::function(&format!("{NATIVE}{name}"), move |args: &[Value]| {
                 guarded(f, args)

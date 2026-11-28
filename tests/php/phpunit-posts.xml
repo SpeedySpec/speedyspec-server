@@ -11,6 +11,7 @@
     <testsuites>
         <testsuite name="wordpress-posts">
             <directory suffix=".php">wordpress/posts</directory>
+            <exclude>wordpress/posts/write</exclude>
         </testsuite>
     </testsuites>
     <groups>

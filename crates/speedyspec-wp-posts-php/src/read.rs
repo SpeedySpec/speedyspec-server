@@ -54,7 +54,8 @@ use speedyspec_wp_posts::{
     WpCacheSetPostsLastChanged, WpCountAttachments, WpCountPosts, WpGetPostParentId,
 };
 use speedyspec_wp_posts_contracts::{
-    LastPostField, MimeFilter, Post, PostError, PostId, PostRef, PostTypeArg, PostTypeName,
+    LastPostField, MimeFilter, Post, PostError, PostId, PostParent, PostRef, PostTypeArg,
+    PostTypeName,
 };
 
 use crate::adapters::truthy;
@@ -170,7 +171,7 @@ fn reading() -> Result<Rc<Reading>, NativeError> {
 }
 
 /// A post read failure as PHP sees it: a callback's exception (or a port's) rethrown, anything else an `Error`.
-fn post_error(e: PostError) -> NativeError {
+pub(crate) fn post_error(e: PostError) -> NativeError {
     match e {
         PostError::Hook(hook) => hook_error(hook),
         other => NativeError::throw("Error", other.to_string()),
@@ -864,7 +865,7 @@ fn update_post_parent_caches(x: &[Value]) -> R {
         if let Some(parent) = parent {
             let parent = to_php_int(&parent).unsigned_abs();
             posts.push(Post {
-                parent: PostId(parent),
+                parent: PostParent::from(PostId(parent)),
                 ..Post::default()
             });
         }

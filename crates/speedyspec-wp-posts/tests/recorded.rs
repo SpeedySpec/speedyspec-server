@@ -38,7 +38,7 @@ fn labels_match_wordpress() {
             labels: support::property(&object, "labels").unwrap(),
             hierarchical: support::property(&object, "hierarchical").is_some_and(|v| !is_empty(v)),
         };
-        let defaults = post_type_labels(&source, &Untranslated);
+        let defaults = post_type_labels(&source, &Untranslated).unwrap();
         // No filter: the filtered labels are the defaults themselves.
         let got = merge_filtered_labels(defaults.clone(), defaults);
         let got = support::normalize_keys(PhpValue::Object {
@@ -119,7 +119,8 @@ fn set_props_matches_wordpress() {
             PostTypeName::new(case["post_type"].as_str().unwrap()),
             args,
             &support::ports(permalinks),
-        );
+        )
+        .unwrap();
         // The recording is get_object_vars(): the properties as an array.
         let PhpValue::Object { class, properties } = resolved.post_type.to_php() else {
             panic!("to_php() gives an object");
@@ -316,17 +317,17 @@ fn status_label_tables_match_wordpress() {
     let cases = support::cases();
     let tables = &cases["status_labels"];
     assert_eq!(
-        owned_table(post_statuses(&Untranslated)),
+        owned_table(post_statuses(&Untranslated).unwrap()),
         recorded_table(support::decode(&tables["post"])),
         "get_post_statuses()"
     );
     assert_eq!(
-        owned_table(page_statuses(&Untranslated)),
+        owned_table(page_statuses(&Untranslated).unwrap()),
         recorded_table(support::decode(&tables["page"])),
         "get_page_statuses()"
     );
     assert_eq!(
-        owned_table(privacy_statuses(&Untranslated)),
+        owned_table(privacy_statuses(&Untranslated).unwrap()),
         recorded_table(support::decode(&tables["privacy"])),
         "_wp_privacy_statuses()"
     );
@@ -387,7 +388,8 @@ fn initial_post_types_match_wordpress() {
             &mut registries.statuses,
             &options,
             &ports,
-        );
+        )
+        .unwrap();
         assert_scenario_state(run, &registries);
 
         let actions: Vec<support::Action> = registrations

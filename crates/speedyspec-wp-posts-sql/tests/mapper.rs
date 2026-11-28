@@ -9,10 +9,11 @@ use std::rc::Rc;
 use speedyspec_data::{DbValue, Row};
 use speedyspec_php_serialize::semantics::{get, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
+use speedyspec_wp_db_contracts::WpValue;
 use speedyspec_wp_posts::PostEntry;
 use speedyspec_wp_posts_contracts::{
     CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
-    PostStatusName, PostTypeName, Slug,
+    PostParent, PostRow, PostStatusName, PostTypeName, RowValue, Slug,
 };
 use speedyspec_wp_posts_sql::PostMapper;
 use support::{cases, decode};
@@ -138,7 +139,7 @@ fn entry_casts_numbers_and_defaults_missing_columns() {
     };
     let post = PostEntry::from_entry(&entry).unwrap();
     assert_eq!(post.id, PostId(12));
-    assert_eq!(post.parent, PostId(4));
+    assert_eq!(post.parent, PostParent::Int(4));
     assert_eq!(post.menu_order, -2);
     assert_eq!(post.author, 7);
     assert_eq!(post.comment_count, 3);
@@ -179,7 +180,7 @@ fn sample(id: u64) -> Post {
         pinged: Vec::new(),
         modified: PostDate::default(),
         content_filtered: Vec::new(),
-        parent: PostId(2),
+        parent: PostParent::Int(2),
         guid: b"http://example.org/?p=1".to_vec(),
         menu_order: -1,
         post_type: PostTypeName::new("page"),
@@ -189,10 +190,10 @@ fn sample(id: u64) -> Post {
 }
 
 #[test]
-fn insert_values_order_and_import_id() {
-    let text = |v: &str| DbValue::Text(v.into());
+fn row_values_keep_the_row_order_and_import_id() {
+    let text = |v: &str| WpValue::Str(v.into());
     let expected = vec![
-        ("post_author", DbValue::UInt(5)),
+        ("post_author", WpValue::Int(5)),
         ("post_date", text("2024-03-01 06:00:00")),
         ("post_date_gmt", text("2024-03-01 12:00:00")),
         ("post_content", text("body")),
@@ -209,23 +210,46 @@ fn insert_values_order_and_import_id() {
         ("pinged", text("")),
         ("post_modified", text("0000-00-00 00:00:00")),
         ("post_modified_gmt", text("0000-00-00 00:00:00")),
-        ("post_parent", DbValue::UInt(2)),
-        ("menu_order", DbValue::Int(-1)),
+        ("post_parent", WpValue::Int(2)),
+        ("menu_order", WpValue::Int(-1)),
         ("post_mime_type", text("text/plain")),
         ("guid", text("http://example.org/?p=1")),
     ];
-    let expected: Vec<(String, DbValue)> = expected
+    let expected: Vec<(String, WpValue)> = expected
         .into_iter()
         .map(|(c, v)| (c.to_string(), v))
         .collect();
-    let new = PostMapper::insert_values(&sample(0));
+    let values = PostMapper::row_values;
+    let new = values(&PostRow::from_post(&sample(14)));
     assert_eq!(new.len(), 21);
     assert_eq!(new, expected);
 
-    let imported = PostMapper::insert_values(&sample(14));
+    let imported = values(&PostRow::from_post(&sample(0)).with("ID", RowValue::Int(14)));
     assert_eq!(imported.len(), 22);
     assert_eq!(imported[..21], expected[..]);
-    assert_eq!(imported[21], ("ID".to_string(), DbValue::UInt(14)));
+    assert_eq!(imported[21], ("ID".to_string(), WpValue::Int(14)));
+
+    let negative = values(&PostRow::from_post(&sample(0)).with("ID", RowValue::Int(-5)));
+    assert_eq!(negative[21], ("ID".to_string(), WpValue::Int(-5)));
+
+    let orphan = values(&PostRow::from_post(&Post {
+        parent: PostParent::Null,
+        ..sample(0)
+    }));
+    assert_eq!(orphan[17], ("post_parent".to_string(), WpValue::Null));
+
+    // A dropped column is left out, an added key kept, and a PHP value passed on as it is for `wpdb` to format.
+    let mut dropped = PostRow::from_post(&sample(0)).with("bogus", RowValue::Str(b"1".to_vec()));
+    dropped.remove("post_content");
+    let filtered = values(&dropped);
+    assert_eq!(filtered.len(), 21);
+    assert!(filtered.iter().all(|(c, _)| c != "post_content"));
+    assert_eq!(
+        filtered[20],
+        ("bogus".to_string(), WpValue::Str("1".into()))
+    );
+    let typed = values(&PostRow::new().with("post_content", RowValue::Php(WpValue::Float(1.5))));
+    assert_eq!(typed, [("post_content".to_string(), WpValue::Float(1.5))]);
 }
 
 #[test]
@@ -252,7 +276,7 @@ fn missing_or_bad_id_is_db_error() {
     );
     let post = PostMapper::to_entity(&numeric).unwrap();
     assert_eq!(post.id, PostId(8));
-    assert_eq!(post.parent, PostId(3));
+    assert_eq!(post.parent, PostParent::Int(3));
 }
 
 #[test]
@@ -284,7 +308,8 @@ fn unsigned_columns_above_i64_max_parse() {
     let post = PostMapper::to_entity(&r).unwrap();
     assert_eq!(post.id, PostId(big));
     assert_eq!(post.author, big);
-    assert_eq!(post.parent, PostId(i64::MAX as u64 + 1));
+    // `(int)` reads a parent past `PHP_INT_MAX` as `PHP_INT_MAX`.
+    assert_eq!(post.parent, PostParent::Int(i64::MAX));
     // `(int)` saturates the decimal string, as sanitize_post() does; the author stays a string.
     let cached = PostEntry::to_entry(&post);
     let PhpValue::Object { properties, .. } = &cached else {
@@ -350,7 +375,7 @@ fn cache_clamps_negative_unsigned_columns() {
     };
     let post = PostEntry::from_entry(&entry).unwrap();
     assert_eq!(post.author, 0);
-    assert_eq!(post.parent, PostId(0));
+    assert_eq!(post.parent, PostParent::Int(0));
 }
 
 #[test]
@@ -359,7 +384,7 @@ fn non_utf8_text_is_bytes() {
     post.title = vec![0xFF, 0xFE];
     post.name = Slug::new(vec![0xC3]);
     post.content = "Café".as_bytes().to_vec();
-    let values = PostMapper::insert_values(&post);
+    let values = PostMapper::row_values(&PostRow::from_post(&post));
     let value = |column: &str| {
         values
             .iter()
@@ -367,9 +392,9 @@ fn non_utf8_text_is_bytes() {
             .map(|(_, v)| v.clone())
             .unwrap()
     };
-    assert_eq!(value("post_title"), DbValue::Bytes(vec![0xFF, 0xFE]));
-    assert_eq!(value("post_name"), DbValue::Bytes(vec![0xC3]));
-    assert_eq!(value("post_content"), DbValue::Text("Café".into()));
+    assert_eq!(value("post_title"), WpValue::Bytes(vec![0xFF, 0xFE]));
+    assert_eq!(value("post_name"), WpValue::Bytes(vec![0xC3]));
+    assert_eq!(value("post_content"), WpValue::Str("Café".into()));
 
     let r = row(
         &["ID", "post_title", "post_content"],
@@ -378,4 +403,47 @@ fn non_utf8_text_is_bytes() {
     let entity = PostMapper::to_entity(&r).unwrap();
     assert_eq!(entity.title, vec![0xFF]);
     assert_eq!(entity.content, Vec::<u8>::new());
+}
+
+/// A string under `%d` is printed as `vsprintf( '%d' )` prints it after escaping: PHP's integer conversion of the
+/// whole numeric prefix, exponent included. A float beyond the int range wraps modulo 2^64, as `zend_dval_to_lval()`
+/// does. The same values the memory repository stores.
+#[test]
+fn values_under_d_follow_php_sprintf() {
+    let printed = |value: RowValue| {
+        PostMapper::row_values(&PostRow::new().with("menu_order", value))
+            .pop()
+            .unwrap()
+            .1
+    };
+    let text = |t: &[u8]| RowValue::Str(t.to_vec());
+    for (given, want) in [
+        (&b"1e3"[..], 1000),
+        (b"1.5e2", 150),
+        (b"1.5e2x", 150),
+        (b" 12", 12),
+        (b" 2E2", 200),
+        (b"0x1A", 0),
+        (b"1e400", 0),
+        (b"4x", 4),
+        (b"\n5", 0),
+        (b"99999999999999999999", i64::MAX),
+    ] {
+        assert_eq!(
+            printed(text(given)),
+            WpValue::Int(want),
+            "{}",
+            String::from_utf8_lossy(given)
+        );
+    }
+    assert_eq!(
+        printed(RowValue::Php(WpValue::Float(1e19))),
+        WpValue::Int(-8_446_744_073_709_551_616)
+    );
+    assert_eq!(
+        printed(RowValue::Php(WpValue::Float(1e20))),
+        WpValue::Int(7_766_279_631_452_241_920)
+    );
+    assert_eq!(printed(RowValue::Php(WpValue::Float(2.9))), WpValue::Int(2));
+    assert_eq!(printed(RowValue::Php(WpValue::Bool(true))), WpValue::Int(1));
 }

@@ -18,8 +18,8 @@ use speedyspec_wp_meta::{
     UpdateMetadata, UpdateMetadataByMid, object_subtype, read_hooks, register_meta_handlers,
 };
 use speedyspec_wp_meta_contracts::{
-    Installing, Meta, MetaError, MetaId, MetaKey, MetaRepositories, MetaRepository, MetaType,
-    Metadata, MetadataError, ObjectId, ObjectSubtypes, ProtectedMeta, RegisteredMetaKey,
+    Installing, Meta, MetaError, MetaId, MetaKey, MetaRepositories, MetaRepository, MetaRow,
+    MetaType, Metadata, MetadataError, ObjectId, ObjectSubtypes, ProtectedMeta, RegisteredMetaKey,
     SerializedValue, UpdateOutcome,
 };
 use speedyspec_wp_meta_memory::MemoryMetaRepositories;
@@ -132,9 +132,13 @@ impl MetaRepository for Counting {
         self.note("delete_by_mid");
         self.inner.delete_by_mid(mid)
     }
-    fn for_objects(&self, objects: &[ObjectId]) -> Result<Vec<Meta>, MetaError> {
+    fn for_objects(&self, objects: &[ObjectId]) -> Result<Vec<MetaRow>, MetaError> {
         self.note("for_objects");
         self.inner.for_objects(objects)
+    }
+    fn ids_of_object(&self, object: ObjectId) -> Result<Vec<MetaId>, MetaError> {
+        self.note("ids_of_object");
+        self.inner.ids_of_object(object)
     }
 }
 

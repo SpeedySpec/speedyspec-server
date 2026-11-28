@@ -5,7 +5,7 @@
 //! are bytes: the dates are `&[u8]`, and only the status and post type names are text.
 
 use speedyspec_php_serialize::{PhpKey, PhpValue};
-use speedyspec_wp_posts_contracts::{Clock, PostDateTime, PostStatuses};
+use speedyspec_wp_posts_contracts::{Clock, PostDateTime, PostError, PostStatuses};
 
 use crate::post_status_names;
 
@@ -48,25 +48,27 @@ fn empty_date(date: &[u8]) -> bool {
 ///
 /// Dates are bytes here, as PHP strings are, while [`PostDateTime`] holds a `String`: a caller converts between
 /// them, lossily for bytes that are not UTF-8.
+///
+/// `Err` is the clock's failure (an option filter that throws while it reads the time zone).
 pub fn resolve_post_date(
     post_date: &[u8],
     post_date_gmt: &[u8],
     clock: &dyn Clock,
-) -> ResolvedPostDate {
+) -> Result<ResolvedPostDate, PostError> {
     let date = if !empty_date(post_date) {
         post_date.to_vec()
     } else if empty_date(post_date_gmt) {
-        clock.now_local().into_bytes()
+        clock.now_local()?.into_bytes()
     } else {
-        clock.date_from_gmt(post_date_gmt)
+        clock.date_from_gmt(post_date_gmt)?
     };
-    match date_parts(&date) {
+    Ok(match date_parts(&date) {
         None => ResolvedPostDate::NoDate,
         Some((year, month, day)) => ResolvedPostDate::Checked {
             valid: gregorian_date_valid(month, day, year),
             date,
         },
-    }
+    })
 }
 
 /// `preg_match( '/^(\d{4})-(\d{1,2})-(\d{1,2})/', … )`: ASCII digits (no `u` flag), greedy, anchored at the start
@@ -149,22 +151,27 @@ pub struct InsertDates {
 ///
 /// Dates are bytes here, as PHP strings are, while [`PostDateTime`] holds a `String`: a caller converts between
 /// them, lossily for bytes that are not UTF-8.
+///
+/// `Err` is the clock's failure, where WordPress's exception would stop `wp_insert_post()`.
 pub fn insert_post_dates(
     input: &InsertDateInput<'_>,
     statuses: &dyn PostStatuses,
     clock: &dyn Clock,
-) -> InsertDates {
+) -> Result<InsertDates, PostError> {
     let date_gmt = if !empty_date(input.post_date_gmt) {
         input.post_date_gmt.to_vec()
     } else if status_floats(input.status, statuses) {
         PostDateTime::ZERO.as_str().as_bytes().to_vec()
     } else {
-        clock.gmt_from_date(input.post_date)
+        clock.gmt_from_date(input.post_date)?
     };
 
     let (modified, modified_gmt) =
         if input.update || input.post_date == PostDateTime::ZERO.as_str().as_bytes() {
-            (clock.now_local().into_bytes(), clock.now_gmt().into_bytes())
+            (
+                clock.now_local()?.into_bytes(),
+                clock.now_gmt().into_bytes(),
+            )
         } else {
             (input.post_date.to_vec(), date_gmt.clone())
         };
@@ -181,12 +188,12 @@ pub fn insert_post_dates(
         }
     }
 
-    InsertDates {
+    Ok(InsertDates {
         date_gmt,
         modified,
         modified_gmt,
         status,
-    }
+    })
 }
 
 /// `in_array( $post_status, get_post_stati( array( 'date_floating' => true ) ), true )`.
@@ -238,21 +245,21 @@ mod tests {
     }
 
     impl Clock for Fixed {
-        fn now_local(&self) -> String {
-            NOW_LOCAL.to_owned()
+        fn now_local(&self) -> Result<String, PostError> {
+            Ok(NOW_LOCAL.to_owned())
         }
         fn now_gmt(&self) -> String {
             NOW_GMT.to_owned()
         }
-        fn date_from_gmt(&self, gmt: &[u8]) -> Vec<u8> {
+        fn date_from_gmt(&self, gmt: &[u8]) -> Result<Vec<u8>, PostError> {
             panic!(
                 "get_date_from_gmt({:?}) unexpected",
                 String::from_utf8_lossy(gmt)
             )
         }
-        fn gmt_from_date(&self, local: &[u8]) -> Vec<u8> {
+        fn gmt_from_date(&self, local: &[u8]) -> Result<Vec<u8>, PostError> {
             let local = std::str::from_utf8(local).unwrap();
-            self.to_gmt[local].as_bytes().to_vec()
+            Ok(self.to_gmt[local].as_bytes().to_vec())
         }
         fn timestamp(&self, datetime: &[u8]) -> Option<i64> {
             self.timestamps
@@ -290,10 +297,13 @@ mod tests {
             &statuses(),
             &Fixed::new(),
         )
+        .unwrap()
     }
 
     fn resolve(date: &str) -> Option<Vec<u8>> {
-        resolve_post_date(date.as_bytes(), b"", &Fixed::new()).unfiltered()
+        resolve_post_date(date.as_bytes(), b"", &Fixed::new())
+            .unwrap()
+            .unfiltered()
     }
 
     #[test]
@@ -321,7 +331,7 @@ mod tests {
         assert_eq!(resolve("2024-123-1"), None);
         assert_eq!(resolve("２０２４-01-01"), None);
         assert!(matches!(
-            resolve_post_date(b"abc", b"", &Fixed::new()),
+            resolve_post_date(b"abc", b"", &Fixed::new()).unwrap(),
             ResolvedPostDate::NoDate
         ));
     }
@@ -331,7 +341,7 @@ mod tests {
         assert_eq!(resolve("0000-01-01 00:00:00"), None);
         assert_eq!(resolve("2023-02-29 10:00:00"), None);
         assert!(matches!(
-            resolve_post_date(b"2023-02-29", b"", &Fixed::new()),
+            resolve_post_date(b"2023-02-29", b"", &Fixed::new()).unwrap(),
             ResolvedPostDate::Checked { valid: false, .. }
         ));
         assert_eq!(

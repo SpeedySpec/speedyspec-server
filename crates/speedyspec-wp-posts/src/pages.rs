@@ -15,7 +15,10 @@ use speedyspec_wp_posts_contracts::{Post, PostId, Slug};
 fn children_of(pages: &[Post]) -> HashMap<PostId, Vec<&Post>> {
     let mut children: HashMap<PostId, Vec<&Post>> = HashMap::new();
     for page in pages {
-        children.entry(page.parent).or_default().push(page);
+        children
+            .entry(crate::hierarchy::parent_id(page))
+            .or_default()
+            .push(page);
     }
     children
 }
@@ -62,13 +65,14 @@ pub fn page_children(page_id: PostId, pages: &[Post]) -> Vec<Post> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use speedyspec_wp_posts_contracts::PostParent;
 
     /// Pages of `(ID, post_parent, post_name)`, in list order.
     fn pages(rows: &[(u64, u64, &str)]) -> Vec<Post> {
         rows.iter()
             .map(|(id, parent, name)| Post {
                 id: PostId(*id),
-                parent: PostId(*parent),
+                parent: PostParent::from(PostId(*parent)),
                 name: Slug::from(*name),
                 ..Post::default()
             })

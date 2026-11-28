@@ -1,9 +1,14 @@
-//! WordPress's own post-reading tests (tests/php/wordpress/posts, copied from wordpress-develop at 7.2-RC2) pass
-//! against the native post functions, beside the native meta functions, on MySQL, run by the pinned PHPUnit inside
-//! the embedded PHP. Tests marked `@group documented-break` are excluded, and each must be listed in
-//! compat/posts-read/breaks.json's `wordpress_tests`.
+//! WordPress's own post tests (copied from wordpress-develop at 7.2-RC2) pass against the native post functions,
+//! beside the native meta functions, on MySQL, run by the pinned PHPUnit inside the embedded PHP:
 //!
-//! Two runs, each in its own process (PHP boots once per process): single site, and multisite
+//! - the post-reading tests (tests/php/wordpress/posts), whose factory stores posts as rows;
+//! - the post-writing tests (tests/php/wordpress/posts/write), whose factory makes posts through the native
+//!   `wp_insert_post()`.
+//!
+//! Tests marked `@group documented-break` are excluded, and each must be listed in its area's breaks.json
+//! (compat/posts-read or compat/posts-write) under `wordpress_tests`.
+//!
+//! Each suite runs twice, each run in its own process (PHP boots once per process): single site, and multisite
 //! (`WP_TESTS_MULTISITE=1`, `ms-required` included and `ms-excluded` left out).
 //!
 //! Needs MySQL (`SPEEDYSPEC_TEST_MYSQL_URL`); without it the test reports that it was skipped. The runs use a
@@ -55,10 +60,10 @@ fn phpunit() -> PathBuf {
     path
 }
 
-/// `Class::method` of every test in `tests/php/wordpress/posts` marked `@group documented-break`.
-fn marked_breaks() -> Vec<String> {
+/// `Class::method` of every test directly in `dir` (under tests/php) marked `@group documented-break`.
+fn marked_breaks(dir: &str) -> Vec<String> {
     let mut found = Vec::new();
-    for entry in std::fs::read_dir(root().join("tests/php/wordpress/posts")).unwrap() {
+    for entry in std::fs::read_dir(root().join("tests/php").join(dir)).unwrap() {
         let path = entry.unwrap().path();
         if path.extension().is_none_or(|e| e != "php") {
             continue;
@@ -89,10 +94,21 @@ fn marked_breaks() -> Vec<String> {
     found
 }
 
-/// One PHPUnit run: the groups and tests it leaves out, and how many tests it must at least run (an exit status of 0
+/// One suite of WordPress's tests: where they are, the PHPUnit configuration and test suite that runs them, the area
+/// whose breaks.json lists its documented breaks, and the tests it leaves out.
+struct Suite {
+    dir: &'static str,
+    config: &'static str,
+    testsuite: &'static str,
+    area: &'static str,
+    exclude_filter: &'static str,
+}
+
+/// One PHPUnit run: its suite, the groups it leaves out, and how many tests it must at least run (an exit status of 0
 /// alone does not show that any test ran).
 struct Run {
     name: &'static str,
+    suite: &'static Suite,
     multisite: bool,
     exclude_groups: &'static [&'static str],
     min_tests: i64,
@@ -107,33 +123,83 @@ struct Run {
 /// - `test_get_tags_input_property`: `wp_set_post_tags()` makes terms, whose names default-filters.php's
 ///   `pre_term_name` filters trim (taxonomy is not ported, and its filters are not loaded).
 /// - `test_should_return_expected_post_mime_types`: `create_upload_object()` uploads files (media is not loaded).
-const EXCLUDE_FILTER: &str = concat!(
+const READ_EXCLUDE_FILTER: &str = concat!(
     "/::(test_get_page_uri_without_argument|test_query_caches_post_filter",
     "|test_get_post_category_property|test_get_tags_input_property",
     "|test_should_return_expected_post_mime_types)( |$)/"
 );
 
+const READ: Suite = Suite {
+    dir: "wordpress/posts",
+    config: "tests/php/phpunit-posts.xml",
+    testsuite: "wordpress-posts",
+    area: "posts-read",
+    exclude_filter: READ_EXCLUDE_FILTER,
+};
+
+/// Tests of the post-writing suite left out of both runs because they need code that is not ported or not loaded;
+/// they are untested, not different, so none is a documented break. One reason each:
+///
+/// - `test_wp_tag_cloud_link_with_post_type`: `wp_tag_cloud()` translates its counts with l10n.php, not loaded.
+/// - `test_post_title_with_percentage_followed_by_numbers`: `go_to()`, which needs WordPress's whole request.
+/// - `test_wp_insert_post_for_customize_changeset_should_not_drop_post_name`: the customizer's
+///   `_wp_customize_changeset_filter_insert_post_data()` and `WP_Customize_Manager`, not loaded.
+/// - `test_update_via_rest_controller`, `test_new_post_via_rest_controller`,
+///   `test_update_attachment_via_rest_controller`: the REST server and requests, not loaded.
+const WRITE_EXCLUDE_FILTER: &str = concat!(
+    "/::(test_wp_tag_cloud_link_with_post_type|test_post_title_with_percentage_followed_by_numbers",
+    "|test_wp_insert_post_for_customize_changeset_should_not_drop_post_name",
+    "|test_update_via_rest_controller|test_new_post_via_rest_controller",
+    "|test_update_attachment_via_rest_controller)( |$)/"
+);
+
+const WRITE: Suite = Suite {
+    dir: "wordpress/posts/write",
+    config: "tests/php/phpunit-posts-write.xml",
+    testsuite: "wordpress-posts-write",
+    area: "posts-write",
+    exclude_filter: WRITE_EXCLUDE_FILTER,
+};
+
 const RUNS: &[Run] = &[
     Run {
         name: "single_site",
+        suite: &READ,
         multisite: false,
         exclude_groups: &["documented-break", "ms-required"],
         min_tests: 235,
     },
     Run {
         name: "multisite",
+        suite: &READ,
         multisite: true,
         exclude_groups: &["documented-break", "ms-excluded"],
         min_tests: 235,
+    },
+    Run {
+        name: "write_single_site",
+        suite: &WRITE,
+        multisite: false,
+        exclude_groups: &["documented-break", "ms-required"],
+        min_tests: 213,
+    },
+    Run {
+        name: "write_multisite",
+        suite: &WRITE,
+        multisite: true,
+        exclude_groups: &["documented-break", "ms-excluded"],
+        min_tests: 213,
     },
 ];
 
 /// Which run a child process makes.
 const RUN_VAR: &str = "SPEEDYSPEC_WORDPRESS_POSTS_RUN";
 
-fn main() {
+/// The documented breaks of `suite` that its area's breaks.json does not list.
+fn unlisted_breaks(suite: &Suite) -> Vec<String> {
     let breaks: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(root().join("compat/posts-read/breaks.json")).unwrap(),
+        &std::fs::read_to_string(root().join(format!("compat/{}/breaks.json", suite.area)))
+            .unwrap(),
     )
     .unwrap();
     let listed: Vec<String> = breaks["wordpress_tests"]
@@ -145,9 +211,16 @@ fn main() {
                 .collect()
         })
         .unwrap_or_default();
-    let unlisted: Vec<String> = marked_breaks()
+    marked_breaks(suite.dir)
         .into_iter()
         .filter(|t| !listed.contains(t))
+        .collect()
+}
+
+fn main() {
+    let unlisted: Vec<String> = [&READ, &WRITE]
+        .into_iter()
+        .flat_map(unlisted_breaks)
         .collect();
     if !check(
         "documented_breaks_are_listed",
@@ -202,7 +275,7 @@ fn run_one(run: &Run, url: &str) {
     unsafe { std::env::set_var("SPEEDYSPEC_POSTS_WP_ROOT", &prepared) };
     let phar = phpunit();
     let (php, _container) = support::boot_with(url, true);
-    let config = root().join("tests/php/phpunit-posts.xml");
+    let config = root().join(run.suite.config);
     let junit = Path::new(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("wordpress-posts-{}.junit.xml", run.name));
     std::fs::remove_file(&junit).ok();
@@ -210,11 +283,11 @@ fn run_one(run: &Run, url: &str) {
         "--configuration".to_string(),
         config.display().to_string(),
         "--testsuite".to_string(),
-        "wordpress-posts".to_string(),
+        run.suite.testsuite.to_string(),
         "--log-junit".to_string(),
         junit.display().to_string(),
         "--exclude-filter".to_string(),
-        EXCLUDE_FILTER.to_string(),
+        run.suite.exclude_filter.to_string(),
     ];
     for group in run.exclude_groups {
         argv.extend(["--exclude-group".to_string(), group.to_string()]);

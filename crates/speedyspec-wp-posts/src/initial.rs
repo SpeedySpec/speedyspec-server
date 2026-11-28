@@ -7,7 +7,7 @@
 //! are built per call. `build_query()` does not encode, so the two site editor edit links are constants.
 
 use speedyspec_php_serialize::{PhpKey, PhpValue};
-use speedyspec_wp_posts_contracts::{PostTypeName, Translator};
+use speedyspec_wp_posts_contracts::{PostError, PostTypeName, Translator};
 
 use crate::post_type::PostTypePorts;
 use crate::registry::{PostTypeRegistration, PostTypeRegistry};
@@ -45,12 +45,12 @@ pub fn create_initial_post_types(
     statuses: &mut PostStatusRegistry,
     options: &InitialOptions,
     ports: &PostTypePorts<'_>,
-) -> Vec<PostTypeRegistration> {
+) -> Result<Vec<PostTypeRegistration>, PostError> {
     let mut registrations = Vec::new();
-    for step in initial_calls(options, ports.translator) {
+    for step in initial_calls(options, ports.translator)? {
         match step {
             InitialCall::PostType(name, args) => {
-                registrations.push(types.register(PostTypeName::new(name), args, ports));
+                registrations.push(types.register(PostTypeName::new(name), args, ports)?);
             }
             InitialCall::AddSupport(post_type, feature) => {
                 types.add_support(post_type, &[feature], Vec::new());
@@ -63,7 +63,7 @@ pub fn create_initial_post_types(
             }
         }
     }
-    registrations
+    Ok(registrations)
 }
 
 /// A PHP array literal, keys assigned as PHP assigns them: [`Arr::push`] takes the next integer key.
@@ -143,20 +143,20 @@ fn pairs(entries: &[(&str, &str)]) -> Arr {
 }
 
 /// `array( 'key' => __( 'text' ), ... )`.
-fn labels(t: &dyn Translator, entries: &[(&str, &str)]) -> Arr {
+fn labels(t: &Recording<'_>, entries: &[(&str, &str)]) -> Arr {
     entries
         .iter()
-        .fold(Arr::new(), |arr, (k, v)| arr.set(k, t.translate(v, None)))
+        .fold(Arr::new(), |arr, (k, v)| arr.set(k, t.text(v, None)))
 }
 
 /// `_x( $text, $context )`.
-fn x(t: &dyn Translator, text: &str, context: &str) -> String {
-    t.translate(text, Some(context))
+fn x(t: &Recording<'_>, text: &str, context: &str) -> String {
+    t.text(text, Some(context))
 }
 
 /// `__( $text )`.
-fn tr(t: &dyn Translator, text: &str) -> String {
-    t.translate(text, None)
+fn tr(t: &Recording<'_>, text: &str) -> String {
+    t.text(text, None)
 }
 
 /// `capabilities` that map every listed capability to `edit_theme_options`.
@@ -175,10 +175,56 @@ fn count(singular: &str, plural: &str) -> Value {
 
 /// Every call `create_initial_post_types()` makes, in WordPress's order, for an adapter that makes them itself (the
 /// PHP one runs each through the native `register_post_type()` and the rest, so their hooks fire).
-pub fn initial_calls(options: &InitialOptions, t: &dyn Translator) -> Vec<InitialCall> {
-    let mut steps = post_type_steps(options, t);
-    steps.extend(status_steps(t));
-    steps
+///
+/// A translator that fails (a `gettext` callback that throws) stops the build: no later text is translated and no
+/// call is answered. A known divergence: WordPress translates each type's labels as it registers that type, so the
+/// types before the failing one were already registered there; here nothing is.
+pub fn initial_calls(
+    options: &InitialOptions,
+    t: &dyn Translator,
+) -> Result<Vec<InitialCall>, PostError> {
+    let t = Recording::new(t);
+    let mut steps = post_type_steps(options, &t);
+    steps.extend(status_steps(&t));
+    t.finish()?;
+    Ok(steps)
+}
+
+/// A translator that keeps its first failure and translates nothing after it, so the pure builders below read
+/// plain strings; [`Recording::finish`] reports the failure.
+struct Recording<'a> {
+    inner: &'a dyn Translator,
+    error: std::cell::RefCell<Option<PostError>>,
+}
+
+impl<'a> Recording<'a> {
+    fn new(inner: &'a dyn Translator) -> Self {
+        Self {
+            inner,
+            error: std::cell::RefCell::new(None),
+        }
+    }
+
+    /// The translation, or `''` once a translation has failed.
+    fn text(&self, text: &str, context: Option<&str>) -> String {
+        if self.error.borrow().is_some() {
+            return String::new();
+        }
+        match self.inner.translate(text, context) {
+            Ok(text) => text,
+            Err(e) => {
+                *self.error.borrow_mut() = Some(e);
+                String::new()
+            }
+        }
+    }
+
+    fn finish(self) -> Result<(), PostError> {
+        match self.error.into_inner() {
+            Some(e) => Err(e),
+            None => Ok(()),
+        }
+    }
 }
 
 /// The editor feature's `array( 'notes' => true )` for posts and pages.
@@ -186,7 +232,7 @@ fn editor_notes() -> Arr {
     Arr::new().set("notes", true)
 }
 
-fn post_type_steps(options: &InitialOptions, t: &dyn Translator) -> Vec<InitialCall> {
+fn post_type_steps(options: &InitialOptions, t: &Recording<'_>) -> Vec<InitialCall> {
     // wp_template and wp_template_part give the same capabilities.
     let template_caps = || {
         theme_options(&[
@@ -893,7 +939,7 @@ fn counted(label: &str) -> String {
     format!("{label} <span class=\"count\">(%s)</span>")
 }
 
-fn status_steps(t: &dyn Translator) -> Vec<InitialCall> {
+fn status_steps(t: &Recording<'_>) -> Vec<InitialCall> {
     // `register_post_status()` for the request statuses differs only in its label and count text.
     let request = |name: &'static str, label: &str| {
         InitialCall::Status(
@@ -1010,8 +1056,8 @@ mod tests {
 
     struct Plain;
     impl RewriteContext for Plain {
-        fn rewrite_applies(&self) -> bool {
-            false
+        fn rewrite_applies(&self) -> Result<bool, speedyspec_wp_posts_contracts::PostError> {
+            Ok(false)
         }
     }
     impl TitleSanitizer for Plain {
@@ -1034,7 +1080,8 @@ mod tests {
             &mut statuses,
             &InitialOptions::default(),
             &ports,
-        );
+        )
+        .unwrap();
         let order = [
             "post",
             "page",

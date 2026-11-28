@@ -4986,9 +4986,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-compat"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "124449a1a1246a8cfb61e57b40197e52de9e8f6ac901a908a0a7f38b21cdee5a"
+checksum = "fc3bd103cf0a0641f7676d0f2a615efeceb8d2807709eac07b5515932d42a485"
 dependencies = [
  "flate2",
  "serde",
@@ -5450,6 +5450,7 @@ dependencies = [
  "speedyspec-php",
  "speedyspec-php-ext",
  "speedyspec-runtime-contract",
+ "speedyspec-wp-cron",
  "speedyspec-wp-cron-contracts",
  "speedyspec-wp-cron-php",
  "speedyspec-wp-crypto-contracts",
@@ -5458,6 +5459,7 @@ dependencies = [
  "speedyspec-wp-db",
  "speedyspec-wp-db-php",
  "speedyspec-wp-hooks",
+ "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-hooks-memory",
  "speedyspec-wp-hooks-php",
  "speedyspec-wp-media-contracts",
@@ -5468,6 +5470,7 @@ dependencies = [
  "speedyspec-wp-options-php",
  "speedyspec-wp-password-contracts",
  "speedyspec-wp-password-php",
+ "speedyspec-wp-posts",
  "speedyspec-wp-posts-php",
  "speedyspec-wp-text-diff-contracts",
  "speedyspec-wp-text-diff-php",
@@ -6411,9 +6414,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-meta-contracts"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "519feb4b11a8edb55632f931b1bb10a1f71a004e4137bacb1967f3082a7e377a"
+checksum = "b1074060022bbf3e084e26d15bea463680caad4224fb1cb658e066107cce4abf"
 dependencies = [
  "speedyspec-php-serialize",
  "speedyspec-wp-hooks-contracts",
@@ -6740,6 +6743,8 @@ dependencies = [
  "speedyspec-container",
  "speedyspec-cqrs",
  "speedyspec-php-serialize",
+ "speedyspec-wp-cron-contracts",
+ "speedyspec-wp-db-contracts",
  "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-meta-contracts",
  "speedyspec-wp-object-cache-contracts",
@@ -6751,9 +6756,9 @@ dependencies = [
 
 [[package]]
 name = "speedyspec-wp-posts-contracts"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88e9e1fb29b32085cb07be0ba827b1399537e0c6e958b5fb7814a4c613521d7f"
+checksum = "6d3394b481eb4302b982d9c97d2d0238f10140c2dfbf357681db8323115dde82"
 dependencies = [
  "speedyspec-php-serialize",
  "speedyspec-wp-hooks-contracts",
@@ -6764,6 +6769,7 @@ dependencies = [
 name = "speedyspec-wp-posts-memory"
 version = "0.1.0"
 dependencies = [
+ "speedyspec-php-serialize",
  "speedyspec-wp-posts-contracts",
 ]
 
@@ -6785,6 +6791,7 @@ dependencies = [
  "speedyspec-php",
  "speedyspec-php-ext",
  "speedyspec-php-serialize",
+ "speedyspec-wp-cron-contracts",
  "speedyspec-wp-db",
  "speedyspec-wp-db-contracts",
  "speedyspec-wp-db-php",
@@ -6836,6 +6843,8 @@ dependencies = [
  "speedyspec-container",
  "speedyspec-cqrs",
  "speedyspec-php-serialize",
+ "speedyspec-wp-cron-contracts",
+ "speedyspec-wp-db-contracts",
  "speedyspec-wp-hooks",
  "speedyspec-wp-hooks-contracts",
  "speedyspec-wp-hooks-memory",

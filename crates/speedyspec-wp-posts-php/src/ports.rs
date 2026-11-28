@@ -18,7 +18,8 @@ use speedyspec_wp_object_cache_contracts::{ObjectCache, ObjectCacheError};
 use speedyspec_wp_posts::{CacheInvalidation, Formatting, Microtime, Taxonomy, Users};
 use speedyspec_wp_posts_contracts::{
     CurrentPost, LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError,
-    PostId, PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+    PostId, PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, Slug, Timezone,
+    WriteOutcome,
 };
 
 use crate::adapters::{exists, is_parked, park, truthy};
@@ -36,19 +37,19 @@ pub(crate) fn thrown_error(thrown: Thrown) -> PostError {
 }
 
 /// Calls a PHP function for a port.
-fn call(name: &str, args: &[Value]) -> Result<Value, PostError> {
+pub(crate) fn call(name: &str, args: &[Value]) -> Result<Value, PostError> {
     php(name, args).map_err(thrown_error)
 }
 
-fn into_php(value: &PhpValue) -> Result<Value, PostError> {
+pub(crate) fn into_php(value: &PhpValue) -> Result<Value, PostError> {
     to_php(value).map_err(thrown_error)
 }
 
-fn from_answer(value: &Value) -> Result<PhpValue, PostError> {
+pub(crate) fn from_answer(value: &Value) -> Result<PhpValue, PostError> {
     copy_php(value).map_err(thrown_error)
 }
 
-fn id_list(ids: &[PostId]) -> Value {
+pub(crate) fn id_list(ids: &[PostId]) -> Value {
     Value::Array(
         ids.iter()
             .enumerate()
@@ -246,6 +247,19 @@ impl Microtime for SystemMicrotime {
     }
 }
 
+/// PHP's own `microtime()`, so `last_changed` follows PHP's clock (and the compat recorder's frozen one): two bumps
+/// in the same microsecond store the same value, as WordPress's do. The system clock where PHP cannot answer.
+pub struct PhpMicrotime;
+
+impl Microtime for PhpMicrotime {
+    fn microtime(&self) -> String {
+        match crate::adapters::ask("microtime", &[]) {
+            Some(Value::Str(now)) => now,
+            _ => SystemMicrotime.microtime(),
+        }
+    }
+}
+
 /// `$_wp_suspend_cache_invalidation`, read live.
 pub struct PhpCacheInvalidation;
 
@@ -401,58 +415,6 @@ impl ObjectCache for PhpValueCache {
     }
 }
 
-/// The container key of the taxonomy port: PHP binds an object implementing the `SpeedySpec\WpPosts\Taxonomy`
-/// twin here to replace WordPress's term cache functions for the post reads.
-pub const TAXONOMY: &str = "SpeedySpec\\WpPosts\\Taxonomy";
-
-/// The taxonomy port resolved from the container on every call (as [`ResolvedRepository`] is): [`PhpTaxonomy`] is
-/// the default binding; a binding that fails is [`PostError::Db`], and nothing falls back.
-pub struct ResolvedTaxonomy {
-    container: Weak<Container>,
-    fallback: Rc<dyn Taxonomy>,
-}
-
-impl ResolvedTaxonomy {
-    pub fn new(container: &Rc<Container>, fallback: Rc<dyn Taxonomy>) -> ResolvedTaxonomy {
-        ResolvedTaxonomy {
-            container: Rc::downgrade(container),
-            fallback,
-        }
-    }
-
-    fn resolved(&self) -> Result<Rc<dyn Taxonomy>, PostError> {
-        let Some(container) = self.container.upgrade() else {
-            return Ok(self.fallback.clone());
-        };
-        container
-            .make_port::<dyn Taxonomy>(TAXONOMY)
-            .map_err(|e| PostError::Db(format!("the taxonomy binding failed: {e}")))
-    }
-}
-
-impl Taxonomy for ResolvedTaxonomy {
-    fn update_object_term_cache(
-        &self,
-        ids: &[PostId],
-        object_types: &[PhpValue],
-    ) -> Result<(), PostError> {
-        self.resolved()?.update_object_term_cache(ids, object_types)
-    }
-
-    fn clean_object_term_cache(&self, ids: &[PostId], object_type: &str) -> Result<(), PostError> {
-        self.resolved()?.clean_object_term_cache(ids, object_type)
-    }
-
-    fn post_term_fields(
-        &self,
-        post: &PhpValue,
-        taxonomy: &str,
-        field: &str,
-    ) -> Result<PhpValue, PostError> {
-        self.resolved()?.post_term_fields(post, taxonomy, field)
-    }
-}
-
 /// The container key of the post repository port: PHP binds an object implementing the
 /// `SpeedySpec\WpPosts\PostRepository` twin here to replace `wp_posts`.
 pub const POST_REPOSITORY: &str = "SpeedySpec\\WpPosts\\PostRepository";
@@ -494,8 +456,8 @@ impl PostRepository for ResolvedRepository {
         self.resolved()?.find(id)
     }
 
-    fn insert(&self, post: &Post) -> Result<Option<PostId>, PostError> {
-        self.resolved()?.insert(post)
+    fn insert(&self, row: &PostRow) -> Result<WriteOutcome<PostId>, PostError> {
+        self.resolved()?.insert(row)
     }
 
     fn attachment_slug_owner(
@@ -511,7 +473,7 @@ impl PostRepository for ResolvedRepository {
         slug: &Slug,
         post_type: &PostTypeName,
         except: PostId,
-        parent: PostId,
+        parent: PostParent,
     ) -> Result<Option<Slug>, PostError> {
         self.resolved()?
             .hierarchical_slug_owner(slug, post_type, except, parent)
@@ -572,5 +534,74 @@ impl PostRepository for ResolvedRepository {
 
     fn available_mime_types(&self, post_type: &PostTypeName) -> Result<Vec<MimeType>, PostError> {
         self.resolved()?.available_mime_types(post_type)
+    }
+
+    fn update(&self, id: PostId, row: &PostRow) -> Result<WriteOutcome<u64>, PostError> {
+        self.resolved()?.update(id, row)
+    }
+
+    fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {
+        self.resolved()?.update_name(id, name)
+    }
+
+    fn update_guid(&self, id: PostId, guid: &[u8]) -> Result<Option<u64>, PostError> {
+        self.resolved()?.update_guid(id, guid)
+    }
+
+    fn update_status(&self, id: PostId, status: &PostStatusName) -> Result<Option<u64>, PostError> {
+        self.resolved()?.update_status(id, status)
+    }
+
+    fn update_pinged(&self, id: PostId, pinged: &[u8]) -> Result<Option<u64>, PostError> {
+        self.resolved()?.update_pinged(id, pinged)
+    }
+
+    fn update_post_type(
+        &self,
+        id: i64,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        self.resolved()?.update_post_type(id, post_type)
+    }
+
+    fn import_id_taken(&self, id: i64) -> Result<bool, PostError> {
+        self.resolved()?.import_id_taken(id)
+    }
+
+    fn raw_row(&self, id: PostId) -> Result<Option<Post>, PostError> {
+        self.resolved()?.raw_row(id)
+    }
+
+    fn children_of_type(
+        &self,
+        parent: PostId,
+        post_type: &PostTypeName,
+    ) -> Result<Vec<Post>, PostError> {
+        self.resolved()?.children_of_type(parent, post_type)
+    }
+
+    fn reparent_children(
+        &self,
+        from: PostId,
+        to: PostParent,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        self.resolved()?.reparent_children(from, to, post_type)
+    }
+
+    fn revision_ids(&self, parent: PostId) -> Result<Vec<PostId>, PostError> {
+        self.resolved()?.revision_ids(parent)
+    }
+
+    fn reparent_attachments(&self, from: PostId, to: PostParent) -> Result<Option<u64>, PostError> {
+        self.resolved()?.reparent_attachments(from, to)
+    }
+
+    fn remove(&self, id: PostId) -> Result<Option<u64>, PostError> {
+        self.resolved()?.remove(id)
+    }
+
+    fn auto_drafts_older_than_a_week(&self) -> Result<Vec<PostId>, PostError> {
+        self.resolved()?.auto_drafts_older_than_a_week()
     }
 }

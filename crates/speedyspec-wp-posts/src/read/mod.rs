@@ -12,7 +12,9 @@ mod pings;
 mod ports;
 
 pub use api::{PostRead, PostsApi, PostsDeps, read_hooks};
+pub(crate) use api::{meta_error, options_error};
 pub use entry::PostEntry;
 pub use get::PostObject;
+pub(crate) use get::{Loaded, Reader};
 pub use messages::*;
 pub use ports::{CacheInvalidation, Microtime, Taxonomy, Users};

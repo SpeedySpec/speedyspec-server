@@ -26,7 +26,9 @@ fn list(items: &[&str]) -> PhpValue {
 }
 
 fn register(registry: &mut PostTypeRegistry, name: &str, args: Vec<(PhpKey, PhpValue)>) {
-    registry.register(PostTypeName::new(name), args, &support::ports(false));
+    registry
+        .register(PostTypeName::new(name), args, &support::ports(false))
+        .unwrap();
 }
 
 fn names(registry: &PostTypeRegistry) -> Vec<String> {
@@ -106,11 +108,13 @@ fn re_register_accumulates_meta_caps() {
 #[test]
 fn supports_false_keeps_property_and_adds_nothing() {
     let mut registry = PostTypeRegistry::new();
-    let registration = registry.register(
-        PostTypeName::new("book"),
-        vec![(k("supports"), PhpValue::Bool(false))],
-        &support::ports(false),
-    );
+    let registration = registry
+        .register(
+            PostTypeName::new("book"),
+            vec![(k("supports"), PhpValue::Bool(false))],
+            &support::ports(false),
+        )
+        .unwrap();
     assert_eq!(
         registration.post_type.get("supports"),
         Some(&PhpValue::Bool(false))
@@ -128,11 +132,13 @@ fn supports_empty_adds_defaults_and_keeps_property() {
         PhpValue::Int(0),
     ] {
         let mut registry = PostTypeRegistry::new();
-        let registration = registry.register(
-            PostTypeName::new("book"),
-            vec![(k("supports"), empty.clone())],
-            &support::ports(false),
-        );
+        let registration = registry
+            .register(
+                PostTypeName::new("book"),
+                vec![(k("supports"), empty.clone())],
+                &support::ports(false),
+            )
+            .unwrap();
         assert_eq!(
             feature_names(&registry, "book"),
             ["title", "editor", "autosave"],
@@ -156,11 +162,13 @@ fn supports_list_removes_property() {
         ),
         (PhpKey::Int(1), s("thumbnail")),
     ]);
-    let registration = registry.register(
-        PostTypeName::new("book"),
-        vec![(k("supports"), supports)],
-        &support::ports(false),
-    );
+    let registration = registry
+        .register(
+            PostTypeName::new("book"),
+            vec![(k("supports"), supports)],
+            &support::ports(false),
+        )
+        .unwrap();
     assert_eq!(registration.post_type.get("supports"), None);
     assert_eq!(registry.post_type("book").unwrap().get("supports"), None);
     assert_eq!(
@@ -195,11 +203,13 @@ fn supports_object_iterates_its_properties() {
             (k("1"), s("thumbnail")),
         ],
     };
-    let registration = registry.register(
-        PostTypeName::new("book"),
-        vec![(k("supports"), supports)],
-        &support::ports(false),
-    );
+    let registration = registry
+        .register(
+            PostTypeName::new("book"),
+            vec![(k("supports"), supports)],
+            &support::ports(false),
+        )
+        .unwrap();
     assert_eq!(registration.post_type.get("supports"), None);
     assert_eq!(
         registry.all_supports("book"),
@@ -365,7 +375,9 @@ fn unregister_missing_is_invalid() {
 fn integer_like_name_is_a_string_key() {
     let mut registry = PostTypeRegistry::new();
     let name = check_post_type_name(b"123").unwrap();
-    let registration = registry.register(name, Vec::new(), &support::ports(false));
+    let registration = registry
+        .register(name, Vec::new(), &support::ports(false))
+        .unwrap();
     assert_eq!(registration.actions.len(), 1);
     assert_eq!(registration.actions[0].hook, "future_123");
     assert!(registry.post_type("123").is_some());

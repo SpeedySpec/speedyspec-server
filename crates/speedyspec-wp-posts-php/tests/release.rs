@@ -1,6 +1,7 @@
-//! The release copy the native post functions run beside: `post.php` loses the 55 ported functions and keeps the
-//! rest (the meta wrappers, the `WP_Query` callers, `update_post_author_caches()`, the attachment readers), and it
-//! still parses.
+//! The release copy the native post functions run beside: `post.php` loses the 63 ported functions (the registries,
+//! the readers, and the 5a writers with their default callbacks) and keeps the rest (the meta wrappers, the
+//! `WP_Query` callers, `update_post_author_caches()`, the attachment readers, the 5b writers), and it still parses.
+//! The mirror strips every ported function, the writers included.
 
 use speedyspec_wp_posts_php::{
     CLASS_FILE, GET_INSTANCE_BODY, PORTED_FUNCTIONS, prepare_release, strip_ported,
@@ -26,9 +27,31 @@ const KEPT: &[&str] = &[
     "get_post_custom",
     "update_post_author_caches",
     "wp_get_attachment_metadata",
-    "wp_insert_post",
     "get_extended",
     "wp_unique_post_slug",
+    "wp_set_post_categories",
+    "wp_add_trashed_suffix_to_post_name_for_trashed_posts",
+    "wp_insert_attachment",
+    "wp_delete_post",
+    "wp_trash_post",
+    "wp_untrash_post",
+    "wp_publish_post",
+    "check_and_publish_future_post",
+    "stick_post",
+    "add_ping",
+    "wp_delete_auto_drafts",
+];
+
+/// The 5a writers and their default callbacks, which the release copy must not declare.
+const WRITERS: &[&str] = &[
+    "set_post_type",
+    "wp_insert_post",
+    "wp_update_post",
+    "wp_transition_post_status",
+    "_transition_post_status",
+    "_future_post_hook",
+    "_publish_post_hook",
+    "wp_check_post_hierarchy_for_loops",
 ];
 
 #[test]
@@ -36,7 +59,10 @@ fn strips_exactly_the_ported_functions() {
     let release = release();
     let source = std::fs::read_to_string(release.join("wp-includes/post.php")).unwrap();
     let stripped = strip_ported(&source).unwrap();
-    assert_eq!(PORTED_FUNCTIONS.len(), 55);
+    assert_eq!(PORTED_FUNCTIONS.len(), 63);
+    for name in WRITERS {
+        assert!(PORTED_FUNCTIONS.contains(name), "{name} is not ported");
+    }
     for name in PORTED_FUNCTIONS {
         assert!(
             !stripped.contains(&format!("\nfunction {name}(")),
@@ -89,6 +115,13 @@ fn preparations_chain_in_one_copy() {
     );
     let post = std::fs::read_to_string(root.join("wp-includes/post.php")).unwrap();
     assert!(!post.contains("\nfunction get_post("));
+    for name in WRITERS {
+        assert!(
+            !post.contains(&format!("\nfunction {name}(")),
+            "the mirror still declares {name}"
+        );
+    }
+    assert!(post.contains("\nfunction wp_delete_post("));
 }
 
 #[test]
@@ -112,6 +145,7 @@ fn facades_declare_every_ported_function() {
     let facade = [
         include_str!("../src/post-types.php"),
         include_str!("../src/posts.php"),
+        include_str!("../src/post-writes.php"),
     ]
     .concat();
     let source = std::fs::read_to_string(release().join("wp-includes/post.php")).unwrap();

@@ -53,8 +53,11 @@ speedyspec-wp-object-cache-php = { path = "../speedyspec-wp-object-cache-php" }
 speedyspec-wp-meta-php = { path = "../speedyspec-wp-meta-php" }
 speedyspec-wp-posts-php = { path = "../speedyspec-wp-posts-php" }
 speedyspec-wp-options-php = { path = "../speedyspec-wp-options-php" }
+speedyspec-wp-cron = { path = "../speedyspec-wp-cron" }
 speedyspec-wp-cron-php = { path = "../speedyspec-wp-cron-php" }
 speedyspec-wp-cron-contracts.workspace = true
+speedyspec-wp-hooks-contracts.workspace = true
+speedyspec-wp-posts = { path = "../speedyspec-wp-posts" }
 speedyspec-wp-password-contracts.workspace = true
 speedyspec-wp-password-php = { path = "../speedyspec-wp-password-php" }
 speedyspec-wp-text-diff-contracts.workspace = true

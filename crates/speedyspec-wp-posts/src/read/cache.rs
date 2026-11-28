@@ -402,7 +402,7 @@ impl PostsApi {
     pub fn update_post_parent_caches(&self, posts: &[Post]) -> Result<(), PostError> {
         let parents: Vec<PostId> = posts
             .iter()
-            .map(|p| p.parent)
+            .map(crate::hierarchy::parent_id)
             .filter(|p| p.0 != 0)
             .collect::<IndexSet<PostId>>()
             .into_iter()

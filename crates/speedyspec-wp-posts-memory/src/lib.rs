@@ -3,12 +3,22 @@
 //! Rows live in insert order, which is also the "engine's order" for statements with no `ORDER BY`. `LIMIT 1` without
 //! `ORDER BY` answers the first matching row in that order. Names, types and mime types are compared byte for byte
 //! (the SQL repository and `sanitize_title` handle case), and the auto-increment continues past an explicit ID, as MySQL's does.
+//!
+//! Writes take the filtered row ([`PostRow`]) and behave as MySQL does under `wpdb::set_sql_mode()`'s mode: a column
+//! the row leaves out keeps its default (insert) or stored value (update), an unknown column or an empty row is
+//! rejected, a negative parent is stored as `0`, `NULL` fails an insert and stores the column's implicit default in an
+//! update, and an update counts the rows it changed. `NOW()` is the
+//! system clock in UTC.
 
 use std::cell::RefCell;
+use std::time::{SystemTime, UNIX_EPOCH};
 
+use speedyspec_php_serialize::semantics::{to_php_int, to_php_string};
+use speedyspec_php_serialize::{PhpValue, from_hook_value};
 use speedyspec_wp_posts_contracts::{
-    LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
-    PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+    ColumnFormat, CommentStatus, LastPostField, MimeFilter, MimeType, PageRow, PingStatus, Post,
+    PostDateTime, PostError, PostId, PostParent, PostRepository, PostRow, PostStatusName,
+    PostTypeName, RowValue, Slug, Timezone, WriteOutcome, column_format,
 };
 
 /// `wp_posts` held in memory (Repository, Strategy for the engine).
@@ -41,6 +51,325 @@ impl MemoryPostRepository {
             .find(|p| matches(p))
             .map(|p| p.name.clone())
     }
+
+    /// `UPDATE ... WHERE ID = id`: `change` edits the row, and the answer is the rows changed (0 when the row is
+    /// missing or `change` left it as it was).
+    fn change_row(&self, id: PostId, change: impl FnOnce(&mut Post)) -> Option<u64> {
+        let mut state = self.state.borrow_mut();
+        let Some(row) = state.rows.iter_mut().find(|p| p.id == id) else {
+            return Some(0);
+        };
+        let before = row.clone();
+        change(row);
+        Some(u64::from(*row != before))
+    }
+
+    /// `UPDATE ... SET post_parent = to WHERE post_parent = from AND post_type = post_type`: the rows changed.
+    fn reparent(&self, from: PostId, to: PostParent, post_type: &str) -> Option<u64> {
+        let to = to.stored();
+        let mut state = self.state.borrow_mut();
+        let mut changed = 0;
+        for row in state
+            .rows
+            .iter_mut()
+            .filter(|p| p.parent == PostParent::from(from) && p.post_type.as_str() == post_type)
+        {
+            if row.parent != to {
+                row.parent = to;
+                changed += 1;
+            }
+        }
+        Some(changed)
+    }
+
+    /// The ids of the rows that `matches`, in insert order.
+    fn ids_where(&self, matches: impl Fn(&Post) -> bool) -> Vec<PostId> {
+        self.state
+            .borrow()
+            .rows
+            .iter()
+            .filter(|p| matches(p))
+            .map(|p| p.id)
+            .collect()
+    }
+}
+
+/// The `wp_posts` columns, as MySQL names them (matched without regard to ASCII case, as MySQL matches column names).
+const COLUMNS: [&str; 23] = [
+    "ID",
+    "post_author",
+    "post_date",
+    "post_date_gmt",
+    "post_content",
+    "post_title",
+    "post_excerpt",
+    "post_status",
+    "comment_status",
+    "ping_status",
+    "post_password",
+    "post_name",
+    "to_ping",
+    "pinged",
+    "post_modified",
+    "post_modified_gmt",
+    "post_content_filtered",
+    "post_parent",
+    "guid",
+    "menu_order",
+    "post_type",
+    "post_mime_type",
+    "comment_count",
+];
+
+/// A value as `wpdb::prepare()` prints it under its column's placeholder ([`RowValue`]'s rules): `NULL`, a number
+/// (`%d`), or quoted text (`%s`).
+#[derive(Debug, Clone, PartialEq)]
+enum Printed {
+    Null,
+    Number(i64),
+    Text(Vec<u8>),
+}
+
+/// `mysqli_real_escape_string()`: a backslash before NUL, `\n`, `\r`, `\\`, `'`, `"` and `\x1a`.
+fn escape(bytes: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());
+    for &b in bytes {
+        match b {
+            0 => out.extend_from_slice(b"\\0"),
+            b'\n' => out.extend_from_slice(b"\\n"),
+            b'\r' => out.extend_from_slice(b"\\r"),
+            0x1a => out.extend_from_slice(b"\\Z"),
+            b'\\' | b'\'' | b'"' => {
+                out.push(b'\\');
+                out.push(b);
+            }
+            b => out.push(b),
+        }
+    }
+    out
+}
+
+/// What `prepare()` prints for `value` under the placeholder of the column `name`.
+///
+/// A known limitation: an array or object prints `''` (`0` under `%d`) as `prepare()` does, but the `_doing_it_wrong`
+/// hooks `prepare()` runs first are not run, since this repository has no hook API.
+fn printed(name: &[u8], value: &RowValue) -> Printed {
+    let int = column_format(name) == ColumnFormat::Int;
+    // Not an exhaustive match: the contract's value type may grow.
+    let php = if matches!(value, RowValue::Null) {
+        return Printed::Null;
+    } else if let RowValue::Int(n) = value {
+        PhpValue::Int(*n)
+    } else if let RowValue::Str(bytes) = value {
+        // Escaped first: `%d` then reads the escaped text.
+        return if int {
+            Printed::Number(to_php_int(&PhpValue::Str(escape(bytes))))
+        } else {
+            Printed::Text(bytes.clone())
+        };
+    } else if let RowValue::Php(hook) = value {
+        match from_hook_value(hook) {
+            Ok(PhpValue::Null) => return Printed::Null,
+            Ok(
+                v @ (PhpValue::Int(_) | PhpValue::Float(_) | PhpValue::Bool(_) | PhpValue::Str(_)),
+            ) => v,
+            // An array or an object: "Unsupported value type".
+            _ => {
+                return if int {
+                    Printed::Number(0)
+                } else {
+                    Printed::Text(Vec::new())
+                };
+            }
+        }
+    } else {
+        return Printed::Null;
+    };
+    if int {
+        Printed::Number(to_php_int(&php))
+    } else {
+        Printed::Text(to_php_string(&php))
+    }
+}
+
+/// A row's columns resolved to `wp_posts` columns, each value as `prepare()` prints it; `Err` with MySQL's message
+/// when a column is unknown or the row is empty, as MySQL rejects the statement.
+fn resolve(row: &PostRow) -> Result<Vec<(&'static str, Printed)>, String> {
+    if row.is_empty() {
+        return Err("You have an error in your SQL syntax; check the manual that corresponds to your MySQL server \
+             version for the right syntax to use"
+            .to_owned());
+    }
+    // `process_fields()` first: a string under `%s` longer than its column fails before any statement.
+    let too_long: Vec<String> = row
+        .columns()
+        .iter()
+        .filter(|(name, value)| {
+            column_format(name) == ColumnFormat::Str
+                && matches!(value, RowValue::Str(bytes) if too_long_for(name, bytes))
+        })
+        .map(|(name, _)| String::from_utf8_lossy(name).into_owned())
+        .collect();
+    if let [field] = too_long.as_slice() {
+        return Err(format!(
+            "WordPress database error: Processing the value for the following field failed: {field}. The supplied \
+             value may be too long or contains invalid data."
+        ));
+    }
+    if !too_long.is_empty() {
+        return Err(format!(
+            "WordPress database error: Processing the values for the following fields failed: {}. The supplied \
+             values may be too long or contain invalid data.",
+            too_long.join(", ")
+        ));
+    }
+    let mut resolved = Vec::with_capacity(row.columns().len());
+    for (name, value) in row.columns() {
+        let Some(column) = COLUMNS
+            .iter()
+            .find(|c| c.as_bytes().eq_ignore_ascii_case(name))
+        else {
+            return Err(format!(
+                "Unknown column '{}' in 'field list'",
+                String::from_utf8_lossy(name)
+            ));
+        };
+        let mut value = printed(name, value);
+        // Outside strict mode MySQL keeps what fits of a value no length check saw (a float under `%s`).
+        if let (Printed::Text(text), Some(limit)) = (&mut value, varchar_length(column)) {
+            let kept: String = String::from_utf8_lossy(text).chars().take(limit).collect();
+            if kept.len() < text.len() {
+                *text = kept.into_bytes();
+            }
+        }
+        resolved.push((*column, value));
+    }
+    Ok(resolved)
+}
+
+/// A `varchar` column's length in characters (`schema.php`); `None` for the other columns.
+fn varchar_length(column: &str) -> Option<usize> {
+    match column {
+        "post_status" | "comment_status" | "ping_status" | "post_type" => Some(20),
+        "post_name" => Some(200),
+        "post_password" | "guid" => Some(255),
+        "post_mime_type" => Some(100),
+        _ => None,
+    }
+}
+
+/// Whether `strip_invalid_text()` finds `bytes` longer than the column `name` (`get_col_length()`): characters for a
+/// `varchar`, bytes for a `text` column (65535); `longtext` and unknown names have no limit here. A known limitation:
+/// the charset check (invalid UTF-8) is not made, so the table stays binary safe as the conformance suite expects.
+fn too_long_for(name: &[u8], bytes: &[u8]) -> bool {
+    let Some(column) = COLUMNS
+        .iter()
+        .find(|c| c.as_bytes().eq_ignore_ascii_case(name))
+    else {
+        return false;
+    };
+    match *column {
+        "post_title" | "post_excerpt" | "to_ping" | "pinged" => bytes.len() > 65_535,
+        other => varchar_length(other)
+            .is_some_and(|limit| String::from_utf8_lossy(bytes).chars().count() > limit),
+    }
+}
+
+/// A printed value as an integer column stores it: MySQL reads a string's leading number; `NULL` in an `UPDATE` is
+/// `0`.
+fn int_value(value: &Printed) -> i64 {
+    match value {
+        Printed::Null => 0,
+        Printed::Number(n) => *n,
+        Printed::Text(bytes) => {
+            let text = String::from_utf8_lossy(bytes);
+            let text = text.trim_start();
+            let end = text
+                .char_indices()
+                .find(|&(i, c)| !(c.is_ascii_digit() || (i == 0 && c == '-')))
+                .map_or(text.len(), |(i, _)| i);
+            text[..end].parse().unwrap_or(0)
+        }
+    }
+}
+
+/// A printed value as a text column stores it; `NULL` in an `UPDATE` is the implicit default `''`.
+fn text_value(value: &Printed) -> Vec<u8> {
+    match value {
+        Printed::Null => Vec::new(),
+        Printed::Number(n) => n.to_string().into_bytes(),
+        Printed::Text(bytes) => bytes.clone(),
+    }
+}
+
+/// A printed value as a `datetime` column stores it; `NULL` in an `UPDATE` is the zero date.
+fn date_value(value: &Printed) -> PostDateTime {
+    if matches!(value, Printed::Null) {
+        PostDateTime::ZERO
+    } else {
+        PostDateTime::new(String::from_utf8_lossy(&text_value(value)).into_owned())
+    }
+}
+
+/// Writes one column into `post` (not `ID`), as MySQL stores the value under `wpdb::set_sql_mode()`'s mode.
+fn write_column(post: &mut Post, column: &str, value: &Printed) {
+    let text = || text_value(value);
+    let name = || String::from_utf8_lossy(&text_value(value)).into_owned();
+    match column {
+        "post_author" => post.author = u64::try_from(int_value(value)).unwrap_or(0),
+        "post_date" => post.date.local = date_value(value),
+        "post_date_gmt" => post.date.gmt = date_value(value),
+        "post_content" => post.content = text(),
+        "post_title" => post.title = text(),
+        "post_excerpt" => post.excerpt = text(),
+        "post_status" => post.status = PostStatusName::new(name()),
+        "comment_status" => post.comment_status = CommentStatus::new(name()),
+        "ping_status" => post.ping_status = PingStatus::new(name()),
+        "post_password" => post.password = text(),
+        "post_name" => post.name = Slug::new(text()),
+        "to_ping" => post.to_ping = text(),
+        "pinged" => post.pinged = text(),
+        "post_modified" => post.modified.local = date_value(value),
+        "post_modified_gmt" => post.modified.gmt = date_value(value),
+        "post_content_filtered" => post.content_filtered = text(),
+        "post_parent" => post.parent = PostParent::Int(int_value(value).max(0)),
+        "guid" => post.guid = text(),
+        "menu_order" => post.menu_order = int_value(value),
+        "post_type" => post.post_type = PostTypeName::new(name()),
+        "post_mime_type" => post.mime_type = MimeType::new(text()),
+        "comment_count" => post.comment_count = int_value(value),
+        _ => {}
+    }
+}
+
+/// A stored parent as the id the read statements return.
+fn parent_id(parent: PostParent) -> PostId {
+    parent.id().unwrap_or_default()
+}
+
+/// `DATE_SUB( NOW(), INTERVAL 7 DAY )` as `Y-m-d H:i:s`, `NOW()` being the system clock in UTC.
+fn a_week_ago() -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    let at = now.saturating_sub(7 * 86_400);
+    let (days, secs) = (at / 86_400, at % 86_400);
+    // Howard Hinnant's civil_from_days, for days since 1970-01-01.
+    let z = days as i64 + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!(
+        "{year:04}-{month:02}-{day:02} {:02}:{:02}:{:02}",
+        secs / 3_600,
+        secs % 3_600 / 60,
+        secs % 60
+    )
 }
 
 impl Default for MemoryPostRepository {
@@ -64,23 +393,45 @@ impl PostRepository for MemoryPostRepository {
             .cloned())
     }
 
-    fn insert(&self, post: &Post) -> Result<Option<PostId>, PostError> {
+    fn insert(&self, row: &PostRow) -> Result<WriteOutcome<PostId>, PostError> {
+        let columns = match resolve(row) {
+            Ok(columns) => columns,
+            Err(message) => return Ok(WriteOutcome::failed(message)),
+        };
+        // NULL in a NOT NULL column: error 1048, even outside strict mode (an auto-increment `ID` takes the next id).
+        if let Some((column, _)) = columns
+            .iter()
+            .find(|(c, v)| *c != "ID" && matches!(v, Printed::Null))
+        {
+            return Ok(WriteOutcome::failed(format!(
+                "Column '{column}' cannot be null"
+            )));
+        }
         let mut state = self.state.borrow_mut();
-        let id = if post.id == PostId(0) {
-            state.last_id + 1
-        } else {
-            post.id.0
+        // 0 asks for the next id, and the unsigned column clamps a negative one to 0.
+        let id = match columns
+            .iter()
+            .find(|(c, _)| *c == "ID")
+            .map(|(_, v)| int_value(v))
+        {
+            Some(id) if id > 0 => id as u64,
+            _ => state.last_id + 1,
         };
         if state.rows.iter().any(|p| p.id.0 == id) {
-            return Ok(None);
+            return Ok(WriteOutcome::failed(format!(
+                "Duplicate entry '{id}' for key 'wp_posts.PRIMARY'"
+            )));
+        }
+        let mut post = Post {
+            id: PostId(id),
+            ..Post::default()
+        };
+        for (column, value) in &columns {
+            write_column(&mut post, column, value);
         }
         state.last_id = state.last_id.max(id);
-        state.rows.push(Post {
-            id: PostId(id),
-            comment_count: 0,
-            ..post.clone()
-        });
-        Ok(Some(PostId(id)))
+        state.rows.push(post);
+        Ok(WriteOutcome::Written(PostId(id)))
     }
 
     fn attachment_slug_owner(
@@ -96,8 +447,10 @@ impl PostRepository for MemoryPostRepository {
         slug: &Slug,
         post_type: &PostTypeName,
         except: PostId,
-        parent: PostId,
+        parent: PostParent,
     ) -> Result<Option<Slug>, PostError> {
+        // `post_parent = %d`: `null` prints as 0, and a negative value matches no stored (unsigned) parent.
+        let parent = PostParent::Int(parent.prepared());
         Ok(self.first_name(|p| {
             &p.name == slug
                 && (&p.post_type == post_type || p.post_type.as_str() == "attachment")
@@ -133,7 +486,7 @@ impl PostRepository for MemoryPostRepository {
             .rows
             .iter()
             .filter(|p| ids.contains(&p.id))
-            .map(|p| (p.id, p.parent))
+            .map(|p| (p.id, parent_id(p.parent)))
             .collect())
     }
 
@@ -162,7 +515,7 @@ impl PostRepository for MemoryPostRepository {
             .map(|p| PageRow {
                 id: p.id,
                 name: p.name.clone(),
-                parent: p.parent,
+                parent: parent_id(p.parent),
                 post_type: p.post_type.clone(),
             })
             .collect())
@@ -278,6 +631,128 @@ impl PostRepository for MemoryPostRepository {
             }
         }
         Ok(types)
+    }
+
+    fn update(&self, id: PostId, row: &PostRow) -> Result<WriteOutcome<u64>, PostError> {
+        let columns = match resolve(row) {
+            Ok(columns) => columns,
+            Err(message) => return Ok(WriteOutcome::failed(message)),
+        };
+        // `SET ID = …`: a duplicate key fails the statement.
+        if let Some(new_id) = columns
+            .iter()
+            .find(|(c, _)| *c == "ID")
+            .map(|(_, v)| int_value(v))
+            && u64::try_from(new_id).is_ok_and(|n| n != id.0)
+            && self
+                .state
+                .borrow()
+                .rows
+                .iter()
+                .any(|p| p.id.0 == new_id as u64)
+            && self.state.borrow().rows.iter().any(|p| p.id == id)
+        {
+            return Ok(WriteOutcome::failed(format!(
+                "Duplicate entry '{new_id}' for key 'wp_posts.PRIMARY'"
+            )));
+        }
+        let changed = self.change_row(id, |post| {
+            for (column, value) in &columns {
+                match *column {
+                    "ID" => post.id = PostId(u64::try_from(int_value(value)).unwrap_or(0)),
+                    other => write_column(post, other, value),
+                }
+            }
+        });
+        Ok(WriteOutcome::Written(changed.unwrap_or(0)))
+    }
+
+    fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {
+        Ok(self.change_row(id, |row| row.name = name.clone()))
+    }
+
+    fn update_guid(&self, id: PostId, guid: &[u8]) -> Result<Option<u64>, PostError> {
+        Ok(self.change_row(id, |row| row.guid = guid.to_vec()))
+    }
+
+    fn update_status(&self, id: PostId, status: &PostStatusName) -> Result<Option<u64>, PostError> {
+        Ok(self.change_row(id, |row| row.status = status.clone()))
+    }
+
+    fn update_pinged(&self, id: PostId, pinged: &[u8]) -> Result<Option<u64>, PostError> {
+        Ok(self.change_row(id, |row| row.pinged = pinged.to_vec()))
+    }
+
+    fn update_post_type(
+        &self,
+        id: i64,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        // `WHERE ID = -3` matches no row.
+        let Ok(id) = u64::try_from(id) else {
+            return Ok(Some(0));
+        };
+        Ok(self.change_row(PostId(id), |row| row.post_type = post_type.clone()))
+    }
+
+    fn import_id_taken(&self, id: i64) -> Result<bool, PostError> {
+        let Ok(id) = u64::try_from(id) else {
+            return Ok(false);
+        };
+        Ok(id > 0 && self.state.borrow().rows.iter().any(|p| p.id.0 == id))
+    }
+
+    fn raw_row(&self, id: PostId) -> Result<Option<Post>, PostError> {
+        self.find(id)
+    }
+
+    fn children_of_type(
+        &self,
+        parent: PostId,
+        post_type: &PostTypeName,
+    ) -> Result<Vec<Post>, PostError> {
+        let parent = PostParent::from(parent);
+        Ok(self
+            .state
+            .borrow()
+            .rows
+            .iter()
+            .filter(|p| p.parent == parent && &p.post_type == post_type)
+            .cloned()
+            .collect())
+    }
+
+    fn reparent_children(
+        &self,
+        from: PostId,
+        to: PostParent,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        Ok(self.reparent(from, to, post_type.as_str()))
+    }
+
+    fn revision_ids(&self, parent: PostId) -> Result<Vec<PostId>, PostError> {
+        let parent = PostParent::from(parent);
+        Ok(self.ids_where(|p| p.parent == parent && p.post_type.as_str() == "revision"))
+    }
+
+    fn reparent_attachments(&self, from: PostId, to: PostParent) -> Result<Option<u64>, PostError> {
+        Ok(self.reparent(from, to, "attachment"))
+    }
+
+    fn remove(&self, id: PostId) -> Result<Option<u64>, PostError> {
+        let mut state = self.state.borrow_mut();
+        let before = state.rows.len();
+        state.rows.retain(|p| p.id != id);
+        Ok(Some((before - state.rows.len()) as u64))
+    }
+
+    fn auto_drafts_older_than_a_week(&self) -> Result<Vec<PostId>, PostError> {
+        // `Y-m-d H:i:s` compares as text in date order, and the zero date is older than any.
+        let cutoff = a_week_ago();
+        Ok(self.ids_where(|p| {
+            p.status.as_str() == "auto-draft" && p.date.local.as_str() < cutoff.as_str()
+        }))
     }
 }
 

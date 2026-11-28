@@ -9,8 +9,8 @@ use speedyspec_php_serialize::semantics::{get, isset, set, to_php_int, to_php_st
 use speedyspec_php_serialize::{OpaquePhpValue, PhpKey, PhpValue};
 use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_posts_contracts::{
-    CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostId, PostStatusName,
-    PostTypeName, Slug,
+    CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostId, PostParent,
+    PostStatusName, PostTypeName, Slug,
 };
 
 /// Maps the post entity to and from the `posts` cache entry and `WP_Post`'s properties. It holds no state.
@@ -157,7 +157,7 @@ impl PostEntry {
                 gmt: datetime("post_modified_gmt", defaults.modified.gmt.clone()),
             },
             content_filtered: text("post_content_filtered", defaults.content_filtered.clone()),
-            parent: PostId(uint("post_parent", defaults.parent.0)),
+            parent: PostParent::from(PostId(uint("post_parent", 0))),
             guid: text("guid", defaults.guid.clone()),
             menu_order: int("menu_order", defaults.menu_order),
             post_type: PostTypeName::new(word("post_type", defaults.post_type.as_str())),
@@ -205,7 +205,13 @@ impl PostEntry {
                 s(post.modified.gmt.as_str().as_bytes()),
             ),
             ("post_content_filtered", s(&post.content_filtered)),
-            ("post_parent", int(post.parent.0)),
+            (
+                "post_parent",
+                match post.parent {
+                    PostParent::Int(n) => PhpValue::Int(n),
+                    PostParent::Null => PhpValue::Null,
+                },
+            ),
             ("guid", s(&post.guid)),
             ("menu_order", PhpValue::Int(post.menu_order)),
             ("post_type", s(post.post_type.as_str().as_bytes())),

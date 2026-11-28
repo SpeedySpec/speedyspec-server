@@ -7,8 +7,9 @@
 //! - the ones it builds with `sprintf()` or concatenation (`_prime_post_caches()`, `get_page_by_path()`,
 //!   `wp_count_attachments()`, `_get_last_post_time()`, `get_all_page_ids()`) are built the same way here, quoted
 //!   items through `esc_sql()`, and sent with `Wpdb::query_bytes`;
-//! - `wp_insert_post()`'s write goes through `$wpdb->insert` with no formats, so `$wpdb->field_types` and charset
-//!   stripping are `wpdb`'s.
+//! - the writes go through `$wpdb->insert`, `$wpdb->update` and `$wpdb->delete` with no formats, as `post.php` sends
+//!   them, so `$wpdb->field_types`, charset stripping and the statement text (backticked table and columns) are
+//!   `wpdb`'s.
 //!
 //! Rows become entities through [`PostMapper`] (Data Mapper). There is no query builder: the seam's adapters speak
 //! only the `wpdb` contract. The table is `wpdb.table_name("posts")`, read on every call, so `switch_to_blog` is
@@ -20,7 +21,8 @@ use speedyspec_data::{DbValue, Row};
 use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue, Wpdb, take_hook_error};
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
-    PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+    PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, Slug, Timezone,
+    WriteOutcome,
 };
 
 use crate::PostMapper;
@@ -283,11 +285,72 @@ impl SqlPostRepository {
         }
     }
 
-    fn written(&self, result: Result<u64, WpDbError>) -> Result<u64, PostError> {
-        match result {
-            Ok(n) => Ok(n),
-            Err(e) => surfaced(e).map(|()| 0),
-        }
+    /// `$wpdb->update( $wpdb->posts, $data, $where )` with no formats: the rows changed, `None` where it returns
+    /// false.
+    fn update_rows(
+        &self,
+        data: &[(String, WpValue)],
+        conditions: &[(String, WpValue)],
+    ) -> Result<Option<u64>, PostError> {
+        self.hidden_checked(|| {
+            match self
+                .wpdb
+                .update(&self.table(), data, conditions, None, None)
+            {
+                Ok(n) => Ok(Some(n)),
+                Err(e) => surfaced(e).map(|()| None),
+            }
+        })
+    }
+
+    /// `$wpdb->update( $wpdb->posts, array( $column => $value ), array( 'ID' => $id ) )`, `id` as `%d` binds it.
+    fn update_column(
+        &self,
+        id: WpValue,
+        column: &str,
+        value: WpValue,
+    ) -> Result<Option<u64>, PostError> {
+        self.update_rows(&[(column.to_owned(), value)], &[("ID".to_owned(), id)])
+    }
+
+    /// `$wpdb->get_results()` of a prepared statement, as entities.
+    fn posts(&self, template: &str, args: &[WpValue]) -> Result<Vec<Post>, PostError> {
+        self.hidden_checked(|| {
+            self.select(template, args)?
+                .iter()
+                .map(|row| PostMapper::to_entity(&to_row(row)))
+                .collect()
+        })
+    }
+
+    /// `$wpdb->get_col()` of statement text, as ids.
+    fn id_column(&self, sql: &[u8]) -> Result<Vec<PostId>, PostError> {
+        self.hidden_checked(|| {
+            Ok(self
+                .select_text(sql)?
+                .iter()
+                .map(|row| PostId(number(column(row, 0))))
+                .collect())
+        })
+    }
+
+    /// `wp_delete_post()`'s `$wpdb->update( $wpdb->posts, $parent_data, $parent_where + array( 'post_type' => .. ) )`.
+    fn reparent(
+        &self,
+        from: PostId,
+        to: PostParent,
+        post_type: &str,
+    ) -> Result<Option<u64>, PostError> {
+        self.update_rows(
+            &[(
+                "post_parent".to_owned(),
+                wp_value(PostMapper::parent_value(to)),
+            )],
+            &[
+                ("post_parent".to_owned(), int(from.0)),
+                ("post_type".to_owned(), WpValue::Str(post_type.to_owned())),
+            ],
+        )
     }
 
     /// The first `post_name` a `wp_unique_post_slug()` statement selects.
@@ -317,17 +380,14 @@ impl PostRepository for SqlPostRepository {
     /// `$wpdb->insert( $wpdb->posts, $data )` with no formats, as `wp_insert_post()` sends it, then
     /// `$wpdb->insert_id`. A `query` callback's failure that `$wpdb->insert`'s charset lookup hides is
     /// [`PostError::Hook`]; the payload stays in `take_hook_error()`.
-    fn insert(&self, post: &Post) -> Result<Option<PostId>, PostError> {
-        let data: Vec<(String, WpValue)> = PostMapper::insert_values(post)
-            .into_iter()
-            .map(|(column, value)| (column, wp_value(value)))
-            .collect();
-        self.hidden_checked(|| {
-            let inserted = self.written(self.wpdb.insert(&self.table(), &data, None))?;
-            if inserted == 0 {
-                return Ok(None);
-            }
-            Ok(Some(PostId(self.wpdb.insert_id())))
+    ///
+    /// A failure `$wpdb` answers with false comes back as [`WriteOutcome::Failed`] with its `$wpdb->last_error`.
+    fn insert(&self, row: &PostRow) -> Result<WriteOutcome<PostId>, PostError> {
+        let data = PostMapper::row_values(row);
+        self.hidden_checked(|| match self.wpdb.insert(&self.table(), &data, None) {
+            Ok(0) => Ok(WriteOutcome::failed("")),
+            Ok(_) => Ok(WriteOutcome::Written(PostId(self.wpdb.insert_id()))),
+            Err(e) => surfaced(e.clone()).map(|()| WriteOutcome::failed(e.last_error())),
         })
     }
 
@@ -348,7 +408,7 @@ impl PostRepository for SqlPostRepository {
         slug: &Slug,
         post_type: &PostTypeName,
         except: PostId,
-        parent: PostId,
+        parent: PostParent,
     ) -> Result<Option<Slug>, PostError> {
         let template = format!(
             "SELECT post_name FROM {} WHERE post_name = %s AND post_type IN ( %s, 'attachment' ) AND ID != %d \
@@ -361,7 +421,7 @@ impl PostRepository for SqlPostRepository {
                 php_string(slug.as_bytes()),
                 WpValue::Str(post_type.as_str().to_string()),
                 int(except.0),
-                int(parent.0),
+                WpValue::Int(parent.prepared()),
             ],
         )
     }
@@ -595,5 +655,129 @@ impl PostRepository for SqlPostRepository {
                 .map(|row| MimeType::new(text(row, 0)))
                 .collect())
         })
+    }
+
+    /// `wp_insert_post()`'s `$wpdb->update( $wpdb->posts, $data, $where )`, no formats; a failure comes back as
+    /// [`WriteOutcome::Failed`] with its `$wpdb->last_error`.
+    fn update(&self, id: PostId, row: &PostRow) -> Result<WriteOutcome<u64>, PostError> {
+        let data = PostMapper::row_values(row);
+        let conditions = [("ID".to_owned(), int(id.0))];
+        self.hidden_checked(|| {
+            match self
+                .wpdb
+                .update(&self.table(), &data, &conditions, None, None)
+            {
+                Ok(n) => Ok(WriteOutcome::Written(n)),
+                Err(e) => surfaced(e.clone()).map(|()| WriteOutcome::failed(e.last_error())),
+            }
+        })
+    }
+
+    fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {
+        self.update_column(int(id.0), "post_name", php_string(name.as_bytes()))
+    }
+
+    fn update_guid(&self, id: PostId, guid: &[u8]) -> Result<Option<u64>, PostError> {
+        self.update_column(int(id.0), "guid", php_string(guid))
+    }
+
+    fn update_status(&self, id: PostId, status: &PostStatusName) -> Result<Option<u64>, PostError> {
+        self.update_column(
+            int(id.0),
+            "post_status",
+            WpValue::Str(status.as_str().to_owned()),
+        )
+    }
+
+    fn update_pinged(&self, id: PostId, pinged: &[u8]) -> Result<Option<u64>, PostError> {
+        self.update_column(int(id.0), "pinged", php_string(pinged))
+    }
+
+    fn update_post_type(
+        &self,
+        id: i64,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        self.update_column(
+            WpValue::Int(id),
+            "post_type",
+            WpValue::Str(post_type.as_str().to_owned()),
+        )
+    }
+
+    /// `$wpdb->get_var()`'s answer is truthy: a row holds the id.
+    fn import_id_taken(&self, id: i64) -> Result<bool, PostError> {
+        let template = format!("SELECT ID FROM {} WHERE ID = %d", self.table());
+        self.hidden_checked(|| {
+            let rows = self.select(&template, &[WpValue::Int(id)])?;
+            // PHP truth of a string: neither `""` nor `"0"`.
+            Ok(Self::var(&rows).is_some_and(|id| !matches!(id.as_slice(), b"" | b"0")))
+        })
+    }
+
+    fn raw_row(&self, id: PostId) -> Result<Option<Post>, PostError> {
+        let template = format!("SELECT * FROM {} WHERE ID = %d", self.table());
+        Ok(self.posts(&template, &[int(id.0)])?.into_iter().next())
+    }
+
+    fn children_of_type(
+        &self,
+        parent: PostId,
+        post_type: &PostTypeName,
+    ) -> Result<Vec<Post>, PostError> {
+        let template = format!(
+            "SELECT * FROM {} WHERE post_parent = %d AND post_type = %s",
+            self.table()
+        );
+        self.posts(
+            &template,
+            &[int(parent.0), WpValue::Str(post_type.as_str().to_owned())],
+        )
+    }
+
+    fn reparent_children(
+        &self,
+        from: PostId,
+        to: PostParent,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        self.reparent(from, to, post_type.as_str())
+    }
+
+    fn revision_ids(&self, parent: PostId) -> Result<Vec<PostId>, PostError> {
+        let template = format!(
+            "SELECT ID FROM {} WHERE post_parent = %d AND post_type = 'revision'",
+            self.table()
+        );
+        let Some(sql) = self
+            .wpdb
+            .prepare(Some(template.as_bytes()), &[int(parent.0)])
+        else {
+            return Ok(Vec::new());
+        };
+        self.id_column(&sql)
+    }
+
+    fn reparent_attachments(&self, from: PostId, to: PostParent) -> Result<Option<u64>, PostError> {
+        self.reparent(from, to, "attachment")
+    }
+
+    /// `$wpdb->delete( $wpdb->posts, array( 'ID' => $post_id ) )`, no format.
+    fn remove(&self, id: PostId) -> Result<Option<u64>, PostError> {
+        let conditions = [("ID".to_owned(), int(id.0))];
+        self.hidden_checked(
+            || match self.wpdb.delete(&self.table(), &conditions, None) {
+                Ok(n) => Ok(Some(n)),
+                Err(e) => surfaced(e).map(|()| None),
+            },
+        )
+    }
+
+    fn auto_drafts_older_than_a_week(&self) -> Result<Vec<PostId>, PostError> {
+        let sql = format!(
+            "SELECT ID FROM {} WHERE post_status = 'auto-draft' AND DATE_SUB( NOW(), INTERVAL 7 DAY ) > post_date",
+            self.table()
+        );
+        self.id_column(sql.as_bytes())
     }
 }

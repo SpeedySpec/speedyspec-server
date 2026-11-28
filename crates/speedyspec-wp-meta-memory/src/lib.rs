@@ -8,8 +8,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use speedyspec_wp_meta_contracts::{
-    Meta, MetaError, MetaId, MetaKey, MetaRepositories, MetaRepository, MetaType, ObjectId,
-    SerializedValue,
+    Meta, MetaError, MetaId, MetaKey, MetaRepositories, MetaRepository, MetaRow, MetaType,
+    ObjectId, SerializedValue,
 };
 
 /// One meta table held in memory (Repository per meta type, Strategy for the engine).
@@ -178,13 +178,27 @@ impl MetaRepository for MemoryMetaRepository {
         self.delete_ids(&[mid])
     }
 
-    fn for_objects(&self, objects: &[ObjectId]) -> Result<Vec<Meta>, MetaError> {
+    fn for_objects(&self, objects: &[ObjectId]) -> Result<Vec<MetaRow>, MetaError> {
         let state = self.state.borrow();
         Ok(state
             .rows
             .iter()
             .filter(|m| objects.contains(&m.object_id))
-            .cloned()
+            .map(|m| MetaRow {
+                object_id: m.object_id,
+                key: m.key.clone(),
+                value: m.value.clone(),
+            })
+            .collect())
+    }
+
+    fn ids_of_object(&self, object: ObjectId) -> Result<Vec<MetaId>, MetaError> {
+        let state = self.state.borrow();
+        Ok(state
+            .rows
+            .iter()
+            .filter(|m| m.object_id == object)
+            .map(|m| m.mid)
             .collect())
     }
 }

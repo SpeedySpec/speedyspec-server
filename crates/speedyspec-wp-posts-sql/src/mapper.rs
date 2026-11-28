@@ -2,9 +2,12 @@
 //! (WordPress 7.2-RC2). The `posts` cache group's entry is the read use cases' (`speedyspec_wp_posts::PostEntry`).
 
 use speedyspec_data::{DbValue, Row};
+use speedyspec_php_serialize::PhpValue;
+use speedyspec_php_serialize::semantics::to_php_int;
+use speedyspec_wp_db_contracts::WpValue;
 use speedyspec_wp_posts_contracts::{
-    CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
-    PostStatusName, PostTypeName, Slug,
+    ColumnFormat, CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError,
+    PostId, PostParent, PostRow, PostStatusName, PostTypeName, RowValue, Slug, column_format,
 };
 
 /// Maps the post entity to and from its row and its insert values. It holds no state.
@@ -13,14 +16,6 @@ pub struct PostMapper;
 /// A column's bytes as mysqli's text protocol gives them; `None` for a missing column or `NULL`.
 fn bytes(value: Option<&DbValue>) -> Option<Vec<u8>> {
     value.and_then(DbValue::to_mysql_text)
-}
-
-/// Text when the bytes are UTF-8, bytes otherwise.
-fn text_or_bytes(raw: &[u8]) -> DbValue {
-    match String::from_utf8(raw.to_vec()) {
-        Ok(text) => DbValue::Text(text),
-        Err(e) => DbValue::Bytes(e.into_bytes()),
-    }
 }
 
 /// Bytes as a name or datetime: lossily, as the contracts keep names.
@@ -110,7 +105,9 @@ fn entity(columns: &impl Columns, id: PostId) -> Result<Post, PostError> {
             gmt: datetime("post_modified_gmt", defaults.modified.gmt),
         },
         content_filtered: text("post_content_filtered", defaults.content_filtered),
-        parent: columns.uint("post_parent")?.map_or(defaults.parent, PostId),
+        parent: columns
+            .uint("post_parent")?
+            .map_or(defaults.parent, |id| PostParent::from(PostId(id))),
         guid: text("guid", defaults.guid),
         menu_order: columns.int("menu_order")?.unwrap_or(defaults.menu_order),
         post_type: PostTypeName::new(name("post_type", defaults.post_type.as_str())),
@@ -122,6 +119,54 @@ fn entity(columns: &impl Columns, id: PostId) -> Result<Post, PostError> {
             .int("comment_count")?
             .unwrap_or(defaults.comment_count),
     })
+}
+
+/// `mysqli_real_escape_string()`: a backslash before NUL, `\n`, `\r`, `\\`, `'`, `"` and `\x1a`.
+fn escape(bytes: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());
+    for &b in bytes {
+        match b {
+            0 => out.extend_from_slice(b"\\0"),
+            b'\n' => out.extend_from_slice(b"\\n"),
+            b'\r' => out.extend_from_slice(b"\\r"),
+            0x1a => out.extend_from_slice(b"\\Z"),
+            b'\\' | b'\'' | b'"' => {
+                out.push(b'\\');
+                out.push(b);
+            }
+            b => out.push(b),
+        }
+    }
+    out
+}
+
+/// A string under `%d` as `prepare()` prints it: escaped by `mysqli_real_escape_string()` first, then read by
+/// `vsprintf( '%d' )`, which converts with PHP's integer rules (`zval_get_long()`): the whole numeric prefix after
+/// leading whitespace, decimals and exponent included. So `'4x'` is `4`, `'1e3'` is `1000`, `'1.5e2'` is `150`,
+/// `'0x1A'` is `0`, an infinite prefix (`'1e400'`) is `0`, an out-of-range one saturates, and `"\n5"` is `0` because the
+/// newline is escaped first. Printed here, so every engine stores WordPress's integer (SQLite would keep a bound
+/// `'4x'` as text), and the memory repository and this one agree.
+fn escaped_int(bytes: &[u8]) -> i64 {
+    to_php_int(&PhpValue::Str(escape(bytes)))
+}
+
+/// A float or bool under `%d` as `prepare()` prints it (`sprintf( '%d' )`: a float truncated, a bool `1` or `0`),
+/// so the engine receives WordPress's integer whatever its own float formatting is; under `%s`, and for any other
+/// value, the PHP value as it is, for `wpdb` to format (and to leave unchecked by `strip_invalid_text()`, which reads
+/// only strings).
+fn under_placeholder(column: &[u8], value: &WpValue) -> WpValue {
+    if column_format(column) != ColumnFormat::Int {
+        return value.clone();
+    }
+    match value {
+        // `zend_dval_to_lval()`: truncation, wrapping modulo 2^64 outside the int range.
+        WpValue::Float(f) if f.is_finite() => {
+            WpValue::Int((f.trunc() % 18_446_744_073_709_551_616.0) as i128 as i64)
+        }
+        WpValue::Float(_) => WpValue::Int(0),
+        WpValue::Bool(b) => WpValue::Int(i64::from(*b)),
+        other => other.clone(),
+    }
 }
 
 impl PostMapper {
@@ -139,47 +184,42 @@ impl PostMapper {
         entity(&RowColumns(row), PostId(id))
     }
 
-    /// `wp_insert_post()`'s `$data`, in its `compact()` order (post.php, WordPress 7.2-RC2): `post_author`,
-    /// `post_date`, `post_date_gmt`, `post_content`, `post_content_filtered`, `post_title`, `post_excerpt`,
-    /// `post_status`, `post_type`, `comment_status`, `ping_status`, `post_password`, `post_name`, `to_ping`,
-    /// `pinged`, `post_modified`, `post_modified_gmt`, `post_parent`, `menu_order`, `post_mime_type`, `guid`;
-    /// then `ID` (the import ID) when the post's ID is not 0. Text is [`DbValue::Text`] when UTF-8 and
-    /// [`DbValue::Bytes`] otherwise, as `MetaMapper` chooses; IDs are [`DbValue::UInt`], `menu_order`
-    /// [`DbValue::Int`].
-    pub fn insert_values(post: &Post) -> Vec<(String, DbValue)> {
-        let text = |s: &str| DbValue::Text(s.to_owned());
-        let mut values = vec![
-            ("post_author", DbValue::UInt(post.author)),
-            ("post_date", text(post.date.local.as_str())),
-            ("post_date_gmt", text(post.date.gmt.as_str())),
-            ("post_content", text_or_bytes(&post.content)),
-            (
-                "post_content_filtered",
-                text_or_bytes(&post.content_filtered),
-            ),
-            ("post_title", text_or_bytes(&post.title)),
-            ("post_excerpt", text_or_bytes(&post.excerpt)),
-            ("post_status", text(post.status.as_str())),
-            ("post_type", text(post.post_type.as_str())),
-            ("comment_status", text(post.comment_status.as_str())),
-            ("ping_status", text(post.ping_status.as_str())),
-            ("post_password", text_or_bytes(&post.password)),
-            ("post_name", text_or_bytes(post.name.as_bytes())),
-            ("to_ping", text_or_bytes(&post.to_ping)),
-            ("pinged", text_or_bytes(&post.pinged)),
-            ("post_modified", text(post.modified.local.as_str())),
-            ("post_modified_gmt", text(post.modified.gmt.as_str())),
-            ("post_parent", DbValue::UInt(post.parent.0)),
-            ("menu_order", DbValue::Int(post.menu_order)),
-            ("post_mime_type", text_or_bytes(post.mime_type.as_bytes())),
-            ("guid", text_or_bytes(&post.guid)),
-        ];
-        if post.id.0 != 0 {
-            values.push(("ID", DbValue::UInt(post.id.0)));
-        }
-        values
-            .into_iter()
-            .map(|(column, value)| (column.to_owned(), value))
+    /// The filtered `$data` ([`PostRow`]) as `$wpdb->insert` and `$wpdb->update` take it: its columns in order, each
+    /// value the PHP value it is, so `wpdb` formats it as [`RowValue`] documents (an int, a string, `null`, or a float,
+    /// bool, array or object as the hooks carry it). A string is text when UTF-8 and bytes otherwise; a key that is
+    /// not UTF-8 is read lossily, since `wpdb`'s port names columns by text (a known limitation: such a key names no
+    /// column either way, so the statement fails as WordPress's would).
+    pub fn row_values(row: &PostRow) -> Vec<(String, WpValue)> {
+        row.columns()
+            .iter()
+            .map(|(column, value)| {
+                // Not an exhaustive match: the contract's value type may grow.
+                let wp = if let RowValue::Int(n) = value {
+                    WpValue::Int(*n)
+                } else if let RowValue::Str(bytes) = value
+                    && column_format(column) == ColumnFormat::Int
+                {
+                    WpValue::Int(escaped_int(bytes))
+                } else if let RowValue::Str(bytes) = value {
+                    match String::from_utf8(bytes.clone()) {
+                        Ok(text) => WpValue::Str(text),
+                        Err(e) => WpValue::Bytes(e.into_bytes()),
+                    }
+                } else if let RowValue::Php(php) = value {
+                    under_placeholder(column, php)
+                } else {
+                    WpValue::Null
+                };
+                (String::from_utf8_lossy(column).into_owned(), wp)
+            })
             .collect()
+    }
+
+    /// A parent as `$data['post_parent']` holds it: the integer, or `null`.
+    pub fn parent_value(parent: PostParent) -> DbValue {
+        match parent {
+            PostParent::Int(n) => DbValue::Int(n),
+            PostParent::Null => DbValue::Null,
+        }
     }
 }

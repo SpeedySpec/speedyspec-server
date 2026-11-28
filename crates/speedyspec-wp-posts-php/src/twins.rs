@@ -7,20 +7,24 @@
 //! - a post is a row array keyed by column (`ID`, `post_author`, … `comment_count`), as `$wpdb->get_row( …, ARRAY_A )`
 //!   gives it, read with PHP's casts (Data Mapper: `PostEntry`);
 //! - ids are ints, names and types strings, and "nothing" is `null`;
-//! - `count_attachments()` answers `array( 'counts' => array( mime => n ), 'trash' => n )`.
+//! - `count_attachments()` answers `array( 'counts' => array( mime => n ), 'trash' => n )`;
+//! - `insert()` and `update()` take `wp_insert_post()`'s `$data` (the 21 columns it writes, `post_parent` an int or
+//!   `null`), `insert()` with the `import_id` (an int, or `null` for none) and `update()` with the post's id;
+//! - an update or delete answers the rows changed, and `null` or `false` where `$wpdb` returns false.
 
 use std::rc::Rc;
 
 use speedyspec_php_ext::{Key, PhpObject, PortError, Value, php_port};
 use speedyspec_php_serialize::semantics::{get, to_php_int, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
-use speedyspec_wp_posts::{PostEntry, Taxonomy};
+use speedyspec_wp_posts::PostEntry;
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
-    PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+    PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, RowValue, Slug, Timezone,
+    WriteOutcome,
 };
 
-use crate::codec::{Thrown, copy_php, string, to_php};
+use crate::codec::{Thrown, copy_php, string};
 use crate::ports::thrown_error;
 
 /// `wp_posts`' twin: one method per `$wpdb` call `post.php` makes, as the `PostRepository` port names them.
@@ -56,6 +60,21 @@ pub trait PostRepositoryTwin {
         timezone: Value,
     ) -> Result<Value, PortError>;
     fn available_mime_types(&self, post_type: Value) -> Result<Value, PortError>;
+    fn update(&self, id: i64, row: Value) -> Result<Value, PortError>;
+    fn update_name(&self, id: i64, name: Value) -> Result<Value, PortError>;
+    fn update_guid(&self, id: i64, guid: Value) -> Result<Value, PortError>;
+    fn update_status(&self, id: i64, status: Value) -> Result<Value, PortError>;
+    fn update_pinged(&self, id: i64, pinged: Value) -> Result<Value, PortError>;
+    fn update_post_type(&self, id: i64, post_type: Value) -> Result<Value, PortError>;
+    fn import_id_taken(&self, id: i64) -> Result<Value, PortError>;
+    fn raw_row(&self, id: i64) -> Result<Value, PortError>;
+    fn children_of_type(&self, parent: i64, post_type: Value) -> Result<Value, PortError>;
+    fn reparent_children(&self, from: i64, to: Value, post_type: Value)
+    -> Result<Value, PortError>;
+    fn revision_ids(&self, parent: i64) -> Result<Value, PortError>;
+    fn reparent_attachments(&self, from: i64, to: Value) -> Result<Value, PortError>;
+    fn remove(&self, id: i64) -> Result<Value, PortError>;
+    fn auto_drafts_older_than_a_week(&self) -> Result<Value, PortError>;
 }
 
 /// A PHP implementation of `SpeedySpec\WpPosts\PostRepository`. An exception it throws stops the use case and
@@ -130,6 +149,60 @@ fn lossy(bytes: Vec<u8>) -> String {
     String::from_utf8_lossy(&bytes).into_owned()
 }
 
+/// A parent as `%d` sees it in a statement: `null` is 0.
+fn parent(parent: PostParent) -> Value {
+    Value::Int(parent.prepared())
+}
+
+/// A parent as `$data['post_parent']` holds it: the int, or `null`.
+fn parent_value(parent: PostParent) -> Value {
+    match parent {
+        PostParent::Int(n) => Value::Int(n),
+        PostParent::Null => Value::Null,
+    }
+}
+
+/// `wp_insert_post()`'s filtered `$data` ([`PostRow`]) as the PHP array a twin hands to `$wpdb->insert` or
+/// `$wpdb->update`: its keys in order, `null`, ints and strings as the row holds them, so the twin sends WordPress's
+/// statement text.
+fn data(row: &PostRow) -> Result<Value, PostError> {
+    let mut columns = Vec::with_capacity(row.columns().len());
+    for (column, value) in row.columns() {
+        // Not an exhaustive match: the contract's value type may grow.
+        let value = if let RowValue::Int(n) = value {
+            Value::Int(*n)
+        } else if let RowValue::Str(bytes) = value {
+            string(bytes)
+        } else if let RowValue::Php(php) = value {
+            crate::codec::hook_in(php.clone()).map_err(thrown_error)?
+        } else {
+            Value::Null
+        };
+        // A key that is not UTF-8 is read lossily: the PHP array keys a twin receives are text here.
+        columns.push((
+            Key::Str(String::from_utf8_lossy(column).into_owned()),
+            value,
+        ));
+    }
+    Ok(Value::Array(columns))
+}
+
+/// The rows an update or delete changed; `None` for `null` or `false` (`$wpdb` returned false).
+fn changed(value: PhpValue) -> Option<u64> {
+    match value {
+        PhpValue::Null | PhpValue::Bool(false) => None,
+        other => Some(number(&other)),
+    }
+}
+
+/// A list of ids.
+fn id_list(value: PhpValue) -> Vec<PostId> {
+    items(value)
+        .into_iter()
+        .map(|(_, v)| PostId(number(&v)))
+        .collect()
+}
+
 impl PostRepository for PhpPostRepository {
     fn engine(&self) -> String {
         self.call("engine", Vec::new())
@@ -142,12 +215,19 @@ impl PostRepository for PhpPostRepository {
         Ok(row(self.call("find", vec![id(post)])?))
     }
 
-    fn insert(&self, post: &Post) -> Result<Option<PostId>, PostError> {
-        let mut columns = PostEntry::raw_properties(post);
-        columns.retain(|(k, _)| *k != PhpKey::Str(b"filter".to_vec()));
-        let row = to_php(&PhpValue::Array(columns)).map_err(thrown_error)?;
-        let new = number(&self.call("insert", vec![row])?);
-        Ok((new > 0).then_some(PostId(new)))
+    /// The twin answers the new id, or `false`/`0` for a failed insert; a string answer is the failure's
+    /// `$wpdb->last_error`.
+    fn insert(&self, row: &PostRow) -> Result<WriteOutcome<PostId>, PostError> {
+        let answer = self.call("insert", vec![data(row)?])?;
+        if let PhpValue::Str(error) = &answer {
+            return Ok(WriteOutcome::failed(String::from_utf8_lossy(error)));
+        }
+        let new = number(&answer);
+        Ok(if new > 0 {
+            WriteOutcome::Written(PostId(new))
+        } else {
+            WriteOutcome::failed("")
+        })
     }
 
     fn attachment_slug_owner(
@@ -167,7 +247,7 @@ impl PostRepository for PhpPostRepository {
         slug: &Slug,
         post_type: &PostTypeName,
         except: PostId,
-        parent: PostId,
+        parent: PostParent,
     ) -> Result<Option<Slug>, PostError> {
         let answer = self.call(
             "hierarchical_slug_owner",
@@ -175,7 +255,7 @@ impl PostRepository for PhpPostRepository {
                 string(slug.as_bytes()),
                 Value::Str(post_type.as_str().to_owned()),
                 id(except),
-                id(parent),
+                self::parent(parent),
             ],
         )?;
         Ok(text(answer).map(Slug::new))
@@ -340,103 +420,123 @@ impl PostRepository for PhpPostRepository {
             .map(|(_, v)| MimeType::new(to_php_string(&v)))
             .collect())
     }
+
+    /// The twin answers the rows changed, or `false`/`null` for a failed update; a string answer is the failure's
+    /// `$wpdb->last_error`.
+    fn update(&self, post: PostId, row: &PostRow) -> Result<WriteOutcome<u64>, PostError> {
+        let answer = self.call("update", vec![id(post), data(row)?])?;
+        if let PhpValue::Str(error) = &answer {
+            return Ok(WriteOutcome::failed(String::from_utf8_lossy(error)));
+        }
+        Ok(match changed(answer) {
+            Some(rows) => WriteOutcome::Written(rows),
+            None => WriteOutcome::failed(""),
+        })
+    }
+
+    fn update_name(&self, post: PostId, name: &Slug) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call(
+            "update_name",
+            vec![id(post), string(name.as_bytes())],
+        )?))
+    }
+
+    fn update_guid(&self, post: PostId, guid: &[u8]) -> Result<Option<u64>, PostError> {
+        Ok(changed(
+            self.call("update_guid", vec![id(post), string(guid)])?,
+        ))
+    }
+
+    fn update_status(
+        &self,
+        post: PostId,
+        status: &PostStatusName,
+    ) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call(
+            "update_status",
+            vec![id(post), Value::Str(status.as_str().to_owned())],
+        )?))
+    }
+
+    fn update_pinged(&self, post: PostId, pinged: &[u8]) -> Result<Option<u64>, PostError> {
+        Ok(changed(
+            self.call("update_pinged", vec![id(post), string(pinged)])?,
+        ))
+    }
+
+    fn update_post_type(
+        &self,
+        post: i64,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call(
+            "update_post_type",
+            vec![Value::Int(post), Value::Str(post_type.as_str().to_owned())],
+        )?))
+    }
+
+    fn import_id_taken(&self, post: i64) -> Result<bool, PostError> {
+        let answer = self.call("import_id_taken", vec![Value::Int(post)])?;
+        Ok(!speedyspec_php_serialize::semantics::is_empty(&answer))
+    }
+
+    fn raw_row(&self, post: PostId) -> Result<Option<Post>, PostError> {
+        Ok(row(self.call("raw_row", vec![id(post)])?))
+    }
+
+    fn children_of_type(
+        &self,
+        parent: PostId,
+        post_type: &PostTypeName,
+    ) -> Result<Vec<Post>, PostError> {
+        Ok(items(self.call(
+            "children_of_type",
+            vec![id(parent), Value::Str(post_type.as_str().to_owned())],
+        )?)
+        .into_iter()
+        .filter_map(|(_, v)| row(v))
+        .collect())
+    }
+
+    fn reparent_children(
+        &self,
+        from: PostId,
+        to: PostParent,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call(
+            "reparent_children",
+            vec![
+                id(from),
+                parent_value(to),
+                Value::Str(post_type.as_str().to_owned()),
+            ],
+        )?))
+    }
+
+    fn revision_ids(&self, parent: PostId) -> Result<Vec<PostId>, PostError> {
+        Ok(id_list(self.call("revision_ids", vec![id(parent)])?))
+    }
+
+    fn reparent_attachments(&self, from: PostId, to: PostParent) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call(
+            "reparent_attachments",
+            vec![id(from), parent_value(to)],
+        )?))
+    }
+
+    fn remove(&self, post: PostId) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call("remove", vec![id(post)])?))
+    }
+
+    fn auto_drafts_older_than_a_week(&self) -> Result<Vec<PostId>, PostError> {
+        Ok(id_list(
+            self.call("auto_drafts_older_than_a_week", Vec::new())?,
+        ))
+    }
 }
 
 /// The twin's [`Rc`] for the container port.
 pub(crate) fn wrap(object: PhpObject) -> Rc<dyn PostRepository> {
     Rc::new(PhpPostRepository::new(object))
-}
-
-/// The taxonomy port's twin: the term cache functions the post caches call, and `WP_Post::__get()`'s term branch.
-/// Ids cross as a list of ints, types as PHP holds them, and a post as a `WP_Post`.
-#[php_port(name = "SpeedySpec\\WpPosts\\Taxonomy")]
-pub trait TaxonomyTwin {
-    fn update_object_term_cache(
-        &self,
-        object_ids: Value,
-        object_types: Value,
-    ) -> Result<Value, PortError>;
-    fn clean_object_term_cache(
-        &self,
-        object_ids: Value,
-        object_type: Value,
-    ) -> Result<Value, PortError>;
-    fn post_term_fields(
-        &self,
-        post: Value,
-        taxonomy: Value,
-        field: Value,
-    ) -> Result<Value, PortError>;
-}
-
-/// A PHP implementation of `SpeedySpec\WpPosts\Taxonomy`. An exception it throws stops the use case and reaches the
-/// caller as the same object ([`PostError::Hook`] carries it).
-pub struct PhpBoundTaxonomy(PhpObject);
-
-impl PhpBoundTaxonomy {
-    pub fn new(object: PhpObject) -> PhpBoundTaxonomy {
-        PhpBoundTaxonomy(object)
-    }
-
-    fn call(&self, method: &str, args: Vec<Value>) -> Result<PhpValue, PostError> {
-        let callable = Value::Array(vec![
-            (Key::Int(0), self.0.value().clone()),
-            (Key::Int(1), Value::Str(method.to_owned())),
-        ]);
-        let answer = speedyspec_php::call_catching(&callable, &args)
-            .map_err(|failure| thrown_error(Thrown(failure.exception)))?;
-        copy_php(&answer).map_err(thrown_error)
-    }
-}
-
-fn values(list: &[PhpValue]) -> Result<Value, PostError> {
-    Ok(Value::Array(
-        list.iter()
-            .enumerate()
-            .map(|(i, v)| Ok((Key::Int(i as i64), to_php(v).map_err(thrown_error)?)))
-            .collect::<Result<_, PostError>>()?,
-    ))
-}
-
-impl Taxonomy for PhpBoundTaxonomy {
-    fn update_object_term_cache(
-        &self,
-        ids: &[PostId],
-        object_types: &[PhpValue],
-    ) -> Result<(), PostError> {
-        self.call(
-            "update_object_term_cache",
-            vec![self::ids(ids), values(object_types)?],
-        )?;
-        Ok(())
-    }
-
-    fn clean_object_term_cache(&self, ids: &[PostId], object_type: &str) -> Result<(), PostError> {
-        self.call(
-            "clean_object_term_cache",
-            vec![self::ids(ids), Value::Str(object_type.to_owned())],
-        )?;
-        Ok(())
-    }
-
-    fn post_term_fields(
-        &self,
-        post: &PhpValue,
-        taxonomy: &str,
-        field: &str,
-    ) -> Result<PhpValue, PostError> {
-        self.call(
-            "post_term_fields",
-            vec![
-                to_php(post).map_err(thrown_error)?,
-                Value::Str(taxonomy.to_owned()),
-                Value::Str(field.to_owned()),
-            ],
-        )
-    }
-}
-
-/// The taxonomy twin's [`Rc`] for the container port.
-pub(crate) fn wrap_taxonomy(object: PhpObject) -> Rc<dyn Taxonomy> {
-    Rc::new(PhpBoundTaxonomy::new(object))
 }

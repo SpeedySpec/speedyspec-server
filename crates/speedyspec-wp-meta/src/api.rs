@@ -11,12 +11,10 @@ use speedyspec_php_serialize::semantics::{is_empty, is_integer_key, to_array_key
 use speedyspec_php_serialize::{PhpKey, PhpValue, from_hook_value, maybe_serialize, to_hook_value};
 use speedyspec_wp_hooks_contracts::{Count, HookApi, HookError, HookName, HookValue};
 use speedyspec_wp_meta_contracts::{
-    Installing, Meta, MetaId, MetaKey, MetaRepositories, MetaType, Metadata, MetadataError,
-    ObjectId, ObjectSubtypes, ProtectedMeta, SerializedValue, UpdateOutcome,
+    Installing, Meta, MetaId, MetaKey, MetaKeys, MetaRepositories, MetaType, Metadata,
+    MetadataError, ObjectId, ObjectSubtypes, ProtectedMeta, SerializedValue, UpdateOutcome,
 };
 use speedyspec_wp_object_cache_contracts::ObjectCache;
-
-use crate::MetaKeyIndex;
 
 /// What the metadata use cases work through. The runtime passes the concrete adapters in.
 #[derive(Clone)]
@@ -26,9 +24,9 @@ pub struct MetaDeps {
     pub cache: Rc<dyn ObjectCache>,
     /// `_get_meta_table()` and the Repository per meta type.
     pub repositories: Rc<dyn MetaRepositories>,
-    /// `$wp_meta_keys`, read through [`MetaKeyIndex`] (the [`MetaKeys`](speedyspec_wp_meta_contracts::MetaKeys)
-    /// read port plus the registered subtypes `filter_default_metadata()` walks).
-    pub keys: Rc<dyn MetaKeyIndex>,
+    /// `$wp_meta_keys`, read through the [`MetaKeys`] port (with the registered subtypes
+    /// `filter_default_metadata()` walks).
+    pub keys: Rc<dyn MetaKeys>,
     /// `get_object_subtype()`'s switch, before its filter.
     pub subtypes: Rc<dyn ObjectSubtypes>,
     /// `is_protected_meta()`'s unfiltered rule ([`UnfilteredProtection`](crate::UnfilteredProtection) or a PHP

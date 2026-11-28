@@ -6,7 +6,7 @@ use speedyspec_php_serialize::semantics::{
     array_merge, get, is_empty, isset, set, to_array, to_php_string,
 };
 use speedyspec_php_serialize::{PhpKey, PhpValue};
-use speedyspec_wp_posts_contracts::Translator;
+use speedyspec_wp_posts_contracts::{PostError, Translator};
 
 /// A default label: `[non-hierarchical, hierarchical]`. `None` is PHP's null.
 pub type LabelPair = [Option<String>; 2];
@@ -201,11 +201,16 @@ const DEFAULT_LABELS: [(&str, [Option<Text>; 2]); 33] = [
 ];
 
 /// `WP_Post_Type::get_default_labels()`, in order, each through the translator with its context.
-pub fn default_labels(t: &dyn Translator) -> Vec<(&'static str, LabelPair)> {
-    let translate = |text: &Option<Text>| text.map(|(text, context)| t.translate(text, context));
+///
+/// A failing translation (a `gettext` callback that throws) stops at once: no later label is translated.
+pub fn default_labels(t: &dyn Translator) -> Result<Vec<(&'static str, LabelPair)>, PostError> {
+    let translate = |text: &Option<Text>| {
+        text.map(|(text, context)| t.translate(text, context))
+            .transpose()
+    };
     DEFAULT_LABELS
         .iter()
-        .map(|(key, [flat, hierarchical])| (*key, [translate(flat), translate(hierarchical)]))
+        .map(|(key, [flat, hierarchical])| Ok((*key, [translate(flat)?, translate(hierarchical)?])))
         .collect()
 }
 
@@ -282,8 +287,11 @@ pub fn custom_object_labels(
 }
 
 /// `get_post_type_labels()` before its `post_type_labels_{$post_type}` filter.
-pub fn post_type_labels(source: &LabelSource<'_>, t: &dyn Translator) -> Vec<(PhpKey, PhpValue)> {
-    let mut defaults = default_labels(t);
+pub fn post_type_labels(
+    source: &LabelSource<'_>,
+    t: &dyn Translator,
+) -> Result<Vec<(PhpKey, PhpValue)>, PostError> {
+    let mut defaults = default_labels(t)?;
     let name = defaults
         .iter()
         .find(|(key, _)| *key == "name")
@@ -296,11 +304,11 @@ pub fn post_type_labels(source: &LabelSource<'_>, t: &dyn Translator) -> Vec<(Ph
         && let Some(singular) = isset(&given, "singular_name")
     {
         /* translators: %s: Post type name. */
-        let format = t.translate("Single item: %s", None);
+        let format = t.translate("Single item: %s", None)?;
         let template = sprintf(format.as_bytes(), &to_php_string(singular));
         set(&mut labels, "template_name", PhpValue::Str(template));
     }
-    labels
+    Ok(labels)
 }
 
 /// `sprintf()` with one string argument: `%s`, `%1$s` and `%%`. Anything else is copied as written.
@@ -347,8 +355,8 @@ pub fn merge_filtered_labels(
 pub struct Untranslated;
 
 impl Translator for Untranslated {
-    fn translate(&self, text: &str, _context: Option<&str>) -> String {
-        text.to_owned()
+    fn translate(&self, text: &str, _context: Option<&str>) -> Result<String, PostError> {
+        Ok(text.to_owned())
     }
 }
 
@@ -359,8 +367,8 @@ mod tests {
     /// Answers `"[{context}]{text}"`.
     struct Bracketed;
     impl Translator for Bracketed {
-        fn translate(&self, text: &str, context: Option<&str>) -> String {
-            format!("[{}]{text}", context.unwrap_or(""))
+        fn translate(&self, text: &str, context: Option<&str>) -> Result<String, PostError> {
+            Ok(format!("[{}]{text}", context.unwrap_or("")))
         }
     }
 
@@ -381,7 +389,7 @@ mod tests {
 
     #[test]
     fn labels_go_through_the_translator() {
-        let defaults = default_labels(&Bracketed);
+        let defaults = default_labels(&Bracketed).unwrap();
         let singular = defaults
             .iter()
             .find(|(key, _)| *key == "singular_name")
@@ -406,7 +414,7 @@ mod tests {
             labels: &labels,
             hierarchical: false,
         };
-        let out = post_type_labels(&source, &Bracketed);
+        let out = post_type_labels(&source, &Bracketed).unwrap();
         assert_eq!(
             lookup(&out, "template_name"),
             Some(&s("[]Single item: Book"))
@@ -424,12 +432,12 @@ mod tests {
     fn template_name_formats_positional_and_percent() {
         struct Positional;
         impl Translator for Positional {
-            fn translate(&self, text: &str, _context: Option<&str>) -> String {
-                if text == "Single item: %s" {
+            fn translate(&self, text: &str, _context: Option<&str>) -> Result<String, PostError> {
+                Ok(if text == "Single item: %s" {
                     "100%% %1$s".to_owned()
                 } else {
                     text.to_owned()
-                }
+                })
             }
         }
         let labels = PhpValue::Array(vec![(k("singular_name"), s("Book"))]);
@@ -439,7 +447,7 @@ mod tests {
             labels: &labels,
             hierarchical: false,
         };
-        let out = post_type_labels(&source, &Positional);
+        let out = post_type_labels(&source, &Positional).unwrap();
         assert_eq!(lookup(&out, "template_name"), Some(&s("100% Book")));
     }
 

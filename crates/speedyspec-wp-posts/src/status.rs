@@ -8,7 +8,9 @@
 use indexmap::IndexMap;
 use speedyspec_php_serialize::semantics::{array_merge, is_empty};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
-use speedyspec_wp_posts_contracts::{PostStatusName, PostStatusObject, PostStatuses, Translator};
+use speedyspec_wp_posts_contracts::{
+    PostError, PostStatusName, PostStatusObject, PostStatuses, Translator,
+};
 
 use crate::key::sanitize_key;
 
@@ -146,33 +148,33 @@ impl PostStatuses for PostStatusRegistry {
 }
 
 /// `get_post_statuses()`.
-pub fn post_statuses(t: &dyn Translator) -> Vec<(&'static str, String)> {
-    vec![
-        ("draft", t.translate("Draft", None)),
-        ("pending", t.translate("Pending Review", None)),
-        ("private", t.translate("Private", None)),
-        ("publish", t.translate("Published", None)),
-    ]
+pub fn post_statuses(t: &dyn Translator) -> Result<Vec<(&'static str, String)>, PostError> {
+    Ok(vec![
+        ("draft", t.translate("Draft", None)?),
+        ("pending", t.translate("Pending Review", None)?),
+        ("private", t.translate("Private", None)?),
+        ("publish", t.translate("Published", None)?),
+    ])
 }
 
 /// `get_page_statuses()`: the post statuses without `pending`.
-pub fn page_statuses(t: &dyn Translator) -> Vec<(&'static str, String)> {
-    vec![
-        ("draft", t.translate("Draft", None)),
-        ("private", t.translate("Private", None)),
-        ("publish", t.translate("Published", None)),
-    ]
+pub fn page_statuses(t: &dyn Translator) -> Result<Vec<(&'static str, String)>, PostError> {
+    Ok(vec![
+        ("draft", t.translate("Draft", None)?),
+        ("private", t.translate("Private", None)?),
+        ("publish", t.translate("Published", None)?),
+    ])
 }
 
 /// `_wp_privacy_statuses()`, each label in the `request status` context.
-pub fn privacy_statuses(t: &dyn Translator) -> Vec<(&'static str, String)> {
+pub fn privacy_statuses(t: &dyn Translator) -> Result<Vec<(&'static str, String)>, PostError> {
     const CONTEXT: Option<&str> = Some("request status");
-    vec![
-        ("request-pending", t.translate("Pending", CONTEXT)),
-        ("request-confirmed", t.translate("Confirmed", CONTEXT)),
-        ("request-failed", t.translate("Failed", CONTEXT)),
-        ("request-completed", t.translate("Completed", CONTEXT)),
-    ]
+    Ok(vec![
+        ("request-pending", t.translate("Pending", CONTEXT)?),
+        ("request-confirmed", t.translate("Confirmed", CONTEXT)?),
+        ("request-failed", t.translate("Failed", CONTEXT)?),
+        ("request-completed", t.translate("Completed", CONTEXT)?),
+    ])
 }
 
 #[cfg(test)]

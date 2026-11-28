@@ -19,15 +19,24 @@ use speedyspec_wp_db_contracts::{WpValue, take_hook_error};
 use speedyspec_wp_hooks::{IgnoreDeprecations, WpHookApi};
 use speedyspec_wp_hooks_contracts::{Callback, HookError, HookName};
 use speedyspec_wp_hooks_memory::MemoryHookStore;
-use speedyspec_wp_posts_contracts::conformance::{mysql_suite, post_repository_suite};
+use speedyspec_wp_posts_contracts::conformance::{mysql_suite, post_repository_suite, read_suite};
 use speedyspec_wp_posts_contracts::{
-    LastPostField, MimeFilter, Post, PostDate, PostDateTime, PostError, PostId, PostRepository,
-    PostStatusName, PostTypeName, Slug, Timezone,
+    LastPostField, MimeFilter, Post, PostDate, PostDateTime, PostError, PostId, PostParent,
+    PostRepository, PostRow, PostStatusName, PostTypeName, RowValue, Slug, Timezone,
 };
 use speedyspec_wp_posts_sql::SqlPostRepository;
 
 /// The tests share the posts tables: one at a time.
 static TABLES: Mutex<()> = Mutex::new(());
+
+/// `post` as the row `wp_insert_post()` writes, with `$data['ID']` set when `id` is given.
+fn data_row(post: &Post, id: Option<i64>) -> PostRow {
+    let row = PostRow::from_post(post);
+    match id {
+        Some(id) => row.with("ID", RowValue::Int(id)),
+        None => row,
+    }
+}
 
 /// The engines the repository must run on.
 #[derive(Clone, Copy)]
@@ -199,9 +208,14 @@ fn suite_on_mysql() {
     suite(Engine::MySql);
 }
 
+/// The read checks only: the write checks are MySQL's answers under `wpdb::set_sql_mode()`'s mode, which the SQLite
+/// engine does not copy. It stores a `-5` parent as `-5` and rejects the `NULL`-parent update that MySQL stores as 0.
 #[test]
 fn suite_on_sqlite() {
-    suite(Engine::Sqlite);
+    on(Engine::Sqlite, |rig| {
+        assert_eq!(rig.repo.engine(), Engine::Sqlite.name());
+        read_suite(&rig.repo);
+    });
 }
 
 /// Not run locally or in CI yet. Expect the suite's NUL-content post (`find_returns_what_insert_wrote`) to fail
@@ -218,7 +232,12 @@ fn nul_content_round_trips(engine: Engine) {
             content: b"before\x00after".to_vec(),
             ..named("nul", "post")
         };
-        let id = rig.repo.insert(&post).unwrap().expect("an id");
+        let id = rig
+            .repo
+            .insert(&data_row(&post, None))
+            .unwrap()
+            .written()
+            .expect("an id");
         assert_eq!(rig.repo.find(id).unwrap(), Some(Post { id, ..post }));
     });
 }
@@ -239,15 +258,19 @@ fn last_post_time_of_nothing_is_none(engine: Engine) {
     on(engine, |rig| {
         let at = PostDateTime::new("2024-01-01 00:00:00");
         rig.repo
-            .insert(&Post {
-                status: PostStatusName::new("draft"),
-                date: PostDate {
-                    local: at.clone(),
-                    gmt: at,
+            .insert(&data_row(
+                &Post {
+                    status: PostStatusName::new("draft"),
+                    date: PostDate {
+                        local: at.clone(),
+                        gmt: at,
+                    },
+                    ..named("dated", "rd-last-draft")
                 },
-                ..named("dated", "rd-last-draft")
-            })
+                None,
+            ))
             .unwrap()
+            .written()
             .expect("an id");
         let last = |kinds: &[&str], field, timezone| {
             let kinds: Vec<_> = kinds.iter().map(|k| PostTypeName::new(*k)).collect();
@@ -283,14 +306,18 @@ fn server_time_keeps_mysql_fraction() {
     on(Engine::MySql, |rig| {
         let at = PostDateTime::new("2024-03-01 20:00:00");
         rig.repo
-            .insert(&Post {
-                date: PostDate {
-                    local: at.clone(),
-                    gmt: at,
+            .insert(&data_row(
+                &Post {
+                    date: PostDate {
+                        local: at.clone(),
+                        gmt: at,
+                    },
+                    ..named("dated", "post")
                 },
-                ..named("dated", "post")
-            })
+                None,
+            ))
             .unwrap()
+            .written()
             .expect("an id");
         let server = rig
             .repo
@@ -326,7 +353,12 @@ fn zero_dates_round_trip(engine: Engine) {
             modified: zero,
             ..named("zero", "post")
         };
-        let id = rig.repo.insert(&post).unwrap().expect("an id");
+        let id = rig
+            .repo
+            .insert(&data_row(&post, None))
+            .unwrap()
+            .written()
+            .expect("an id");
         let expected = Post { id, ..post };
         assert_eq!(rig.repo.find(id).unwrap(), Some(expected.clone()));
         assert_eq!(rig.repo.find_many(&[id]).unwrap(), vec![expected]);
@@ -371,8 +403,9 @@ fn page_by_path_ignores_case() {
     on(Engine::MySql, |rig| {
         let about = rig
             .repo
-            .insert(&named("about", "page"))
+            .insert(&data_row(&named("about", "page"), None))
             .unwrap()
+            .written()
             .expect("an id");
         for asked in ["About", "ABOUT", "about "] {
             let rows = rig
@@ -394,8 +427,9 @@ fn follows_switched_prefix(engine: Engine) {
     on(engine, |rig| {
         let main = rig
             .repo
-            .insert(&named("main", "page"))
+            .insert(&data_row(&named("main", "page"), None))
             .unwrap()
+            .written()
             .expect("an id");
         rig.host.multisite.replace(true);
         rig.host.define("MULTISITE", WpValue::Bool(true));
@@ -405,8 +439,9 @@ fn follows_switched_prefix(engine: Engine) {
         assert!(rig.repo.all_page_ids().unwrap().is_empty());
         let id = rig
             .repo
-            .insert(&named("blog-two", "page"))
+            .insert(&data_row(&named("blog-two", "page"), None))
             .unwrap()
+            .written()
             .expect("an id");
         assert_eq!(count(&rig.db, "wp_2_posts"), 1);
         assert_eq!(count(&rig.db, "wp_posts"), 1);
@@ -460,7 +495,7 @@ fn hook_failure_surfaces() {
             "{failed:?}"
         );
         assert_eq!(take_hook_error().map(|e| e.message), Some("boom".into()));
-        let hidden = rig.repo.insert(&named("x", "post"));
+        let hidden = rig.repo.insert(&data_row(&named("x", "post"), None));
         assert!(matches!(hidden, Err(PostError::Hook(_))), "{hidden:?}");
         assert!(take_hook_error().is_some());
         let none = rig.repo.all_page_ids();
@@ -637,7 +672,7 @@ fn statements_match_post_php() {
             &Slug::from("child"),
             &PostTypeName::new("page"),
             PostId(4),
-            PostId(2),
+            PostParent::Int(2),
         )
         .unwrap();
         repo.flat_slug_owner(&Slug::from("hello"), &PostTypeName::new("post"), PostId(4))
@@ -683,13 +718,15 @@ fn statements_match_post_php() {
 
         // `wp_insert_post()`'s `$wpdb->insert( $wpdb->posts, $data )`, no formats: `$wpdb->field_types` makes the
         // ids and `menu_order` `%d`, the rest `%s`, in `compact()`'s order.
-        repo.insert(&Post {
-            id: PostId(50),
-            author: 2,
-            parent: PostId(3),
-            menu_order: -1,
-            ..named("new", "page")
-        })
+        repo.insert(&data_row(
+            &Post {
+                author: 2,
+                parent: PostParent::Int(3),
+                menu_order: -1,
+                ..named("new", "page")
+            },
+            Some(50),
+        ))
         .unwrap();
         assert_eq!(
             take(),
@@ -700,6 +737,98 @@ fn statements_match_post_php() {
               `post_modified_gmt`, `post_parent`, `menu_order`, `post_mime_type`, `guid`, `ID`) VALUES (2, \
               '0000-00-00 00:00:00', '0000-00-00 00:00:00', '', '', '', '', 'publish', 'page', 'open', 'open', '', \
               'new', '', '', '0000-00-00 00:00:00', '0000-00-00 00:00:00', 3, -1, '', '', 50)"
+            ]
+        );
+
+        // A negative parent and import id go in as they are, and a `null` parent is written `NULL`.
+        repo.insert(&data_row(
+            &Post {
+                parent: PostParent::Int(-5),
+                ..named("negative", "page")
+            },
+            Some(-5),
+        ))
+        .unwrap();
+        repo.insert(&data_row(
+            &Post {
+                parent: PostParent::Null,
+                ..named("orphan", "page")
+            },
+            None,
+        ))
+        .unwrap();
+        let taken = take();
+        assert!(
+            taken[0].ends_with("'0000-00-00 00:00:00', -5, 0, '', '', -5)"),
+            "{taken:?}"
+        );
+        assert!(
+            taken[1].ends_with("'0000-00-00 00:00:00', NULL, 0, '', '')"),
+            "{taken:?}"
+        );
+
+        // `wp_insert_post()`'s `$wpdb->update( $wpdb->posts, $data, $where )`: the same columns, `ID` in the
+        // condition.
+        repo.update(
+            PostId(50),
+            &PostRow::from_post(&Post {
+                author: 2,
+                parent: PostParent::Null,
+                ..named("new", "page")
+            }),
+        )
+        .unwrap();
+        assert_eq!(
+            take(),
+            [
+                "UPDATE `wp_posts` SET `post_author` = 2, `post_date` = '0000-00-00 00:00:00', `post_date_gmt` = \
+              '0000-00-00 00:00:00', `post_content` = '', `post_content_filtered` = '', `post_title` = '', \
+              `post_excerpt` = '', `post_status` = 'publish', `post_type` = 'page', `comment_status` = 'open', \
+              `ping_status` = 'open', `post_password` = '', `post_name` = 'new', `to_ping` = '', `pinged` = '', \
+              `post_modified` = '0000-00-00 00:00:00', `post_modified_gmt` = '0000-00-00 00:00:00', \
+              `post_parent` = NULL, `menu_order` = 0, `post_mime_type` = '', `guid` = '' WHERE `ID` = 50"
+            ]
+        );
+
+        // The one-column updates, the delete and `wp_delete_post()`'s and `wp_delete_auto_drafts()`' reads.
+        repo.update_name(PostId(50), &Slug::from("new__trashed"))
+            .unwrap();
+        repo.update_guid(PostId(50), b"http://example.org/?p=50")
+            .unwrap();
+        repo.update_status(PostId(50), &PostStatusName::new("publish"))
+            .unwrap();
+        repo.update_pinged(PostId(50), b"http://a.example/")
+            .unwrap();
+        repo.update_post_type(-3, &PostTypeName::new("page"))
+            .unwrap();
+        repo.import_id_taken(-5).unwrap();
+        repo.raw_row(PostId(50)).unwrap();
+        repo.children_of_type(PostId(50), &PostTypeName::new("page"))
+            .unwrap();
+        repo.reparent_children(PostId(50), PostParent::Int(3), &PostTypeName::new("page"))
+            .unwrap();
+        repo.revision_ids(PostId(50)).unwrap();
+        repo.reparent_attachments(PostId(50), PostParent::Int(3))
+            .unwrap();
+        repo.remove(PostId(50)).unwrap();
+        repo.auto_drafts_older_than_a_week().unwrap();
+        assert_eq!(
+            take(),
+            [
+                "UPDATE `wp_posts` SET `post_name` = 'new__trashed' WHERE `ID` = 50",
+                "UPDATE `wp_posts` SET `guid` = 'http://example.org/?p=50' WHERE `ID` = 50",
+                "UPDATE `wp_posts` SET `post_status` = 'publish' WHERE `ID` = 50",
+                "UPDATE `wp_posts` SET `pinged` = 'http://a.example/' WHERE `ID` = 50",
+                "UPDATE `wp_posts` SET `post_type` = 'page' WHERE `ID` = -3",
+                "SELECT ID FROM wp_posts WHERE ID = -5",
+                "SELECT * FROM wp_posts WHERE ID = 50",
+                "SELECT * FROM wp_posts WHERE post_parent = 50 AND post_type = 'page'",
+                "UPDATE `wp_posts` SET `post_parent` = 3 WHERE `post_parent` = 50 AND `post_type` = 'page'",
+                "SELECT ID FROM wp_posts WHERE post_parent = 50 AND post_type = 'revision'",
+                "UPDATE `wp_posts` SET `post_parent` = 3 WHERE `post_parent` = 50 AND `post_type` = 'attachment'",
+                "DELETE FROM `wp_posts` WHERE `ID` = 50",
+                "SELECT ID FROM wp_posts WHERE post_status = 'auto-draft' AND DATE_SUB( NOW(), INTERVAL 7 DAY ) > \
+                 post_date",
             ]
         );
     });

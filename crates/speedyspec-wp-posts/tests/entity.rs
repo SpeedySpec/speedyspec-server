@@ -15,7 +15,7 @@ use speedyspec_wp_posts::{
     page_children, page_hierarchy, page_uri, post_ancestors, post_parent_id, resolve_post_date,
     unique_post_slug,
 };
-use speedyspec_wp_posts_contracts::{PostId, PostReader};
+use speedyspec_wp_posts_contracts::{PostId, PostParent, PostReader};
 use support::entity::{
     FakeTypes, Recording, TableClock, TextTruncation, context, entity_cases, row_post, seed,
     statements,
@@ -44,7 +44,8 @@ fn dates_match_wordpress() {
             other => panic!("{name}: {field} is a string, not {other:?}"),
         };
         let clock = TableClock::from_case(&case["clock"]);
-        let resolved = resolve_post_date(&bytes("post_date"), &bytes("post_date_gmt"), &clock);
+        let resolved =
+            resolve_post_date(&bytes("post_date"), &bytes("post_date_gmt"), &clock).unwrap();
         let expected = match support::decode(&case["result"]) {
             PhpValue::Str(s) => Some(s),
             PhpValue::Bool(false) => None,
@@ -67,6 +68,7 @@ fn dates_match_wordpress() {
                     &statuses,
                     &clock,
                 )
+                .unwrap()
             };
             let (_, gmt) = &clock.gmt_from_date_pairs()[0];
             assert_eq!(&insert("private").date_gmt, gmt, "{name}: date_gmt");
@@ -90,7 +92,7 @@ fn clock_refuses_now_where_none_was_recorded() {
         .iter()
         .find(|case| case["name"] == "leap-day")
         .unwrap();
-    TableClock::from_case(&leap_day["clock"]).now_local();
+    let _ = TableClock::from_case(&leap_day["clock"]).now_local();
 }
 
 #[test]
@@ -135,7 +137,7 @@ fn slug_scenarios_match_wordpress() {
                 post_id: id(1),
                 status: &status,
                 post_type: &post_type,
-                parent: id(4),
+                parent: PostParent::from(id(4)),
             };
             let label = format!("{name}: {:?}", String::from_utf8_lossy(&slug));
             // The skip scenario proves the no-check guard runs before any query: its calls record no statements.
