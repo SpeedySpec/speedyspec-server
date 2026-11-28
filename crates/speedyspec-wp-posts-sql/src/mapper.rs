@@ -4,7 +4,7 @@
 use speedyspec_data::{DbValue, Row};
 use speedyspec_wp_posts_contracts::{
     CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
-    PostParent, PostStatusName, PostTypeName, Slug,
+    PostParent, PostRow, PostStatusName, PostTypeName, RowValue, Slug, column_format,
 };
 
 /// Maps the post entity to and from its row and its insert values. It holds no state.
@@ -141,55 +141,30 @@ impl PostMapper {
         entity(&RowColumns(row), PostId(id))
     }
 
-    /// `wp_insert_post()`'s `$data`, in its `compact()` order (post.php, WordPress 7.2-RC2): `post_author`,
-    /// `post_date`, `post_date_gmt`, `post_content`, `post_content_filtered`, `post_title`, `post_excerpt`,
-    /// `post_status`, `post_type`, `comment_status`, `ping_status`, `post_password`, `post_name`, `to_ping`,
-    /// `pinged`, `post_modified`, `post_modified_gmt`, `post_parent`, `menu_order`, `post_mime_type`, `guid`;
-    /// then `ID` when there is an `import_id`, sent as it is (`0` and negative values included). `post.id` is not
-    /// read. Text is [`DbValue::Text`] when UTF-8 and [`DbValue::Bytes`] otherwise, as `MetaMapper` chooses;
-    /// `post_author` is [`DbValue::UInt`], `post_parent`, `menu_order` and `ID` [`DbValue::Int`], and a
-    /// [`PostParent::Null`] parent [`DbValue::Null`], which `wpdb` writes as `NULL`.
-    pub fn insert_values(post: &Post, import_id: Option<i64>) -> Vec<(String, DbValue)> {
-        let mut values = Self::update_values(post);
-        if let Some(id) = import_id {
-            values.push(("ID".to_owned(), DbValue::Int(id)));
-        }
-        values
-    }
-
-    /// The same 21 columns as [`PostMapper::insert_values`], in its order, without `ID`: `wp_insert_post()`'s
-    /// `$data` for `$wpdb->update`.
-    pub fn update_values(post: &Post) -> Vec<(String, DbValue)> {
-        let text = |s: &str| DbValue::Text(s.to_owned());
-        let values = vec![
-            ("post_author", DbValue::UInt(post.author)),
-            ("post_date", text(post.date.local.as_str())),
-            ("post_date_gmt", text(post.date.gmt.as_str())),
-            ("post_content", text_or_bytes(&post.content)),
-            (
-                "post_content_filtered",
-                text_or_bytes(&post.content_filtered),
-            ),
-            ("post_title", text_or_bytes(&post.title)),
-            ("post_excerpt", text_or_bytes(&post.excerpt)),
-            ("post_status", text(post.status.as_str())),
-            ("post_type", text(post.post_type.as_str())),
-            ("comment_status", text(post.comment_status.as_str())),
-            ("ping_status", text(post.ping_status.as_str())),
-            ("post_password", text_or_bytes(&post.password)),
-            ("post_name", text_or_bytes(post.name.as_bytes())),
-            ("to_ping", text_or_bytes(&post.to_ping)),
-            ("pinged", text_or_bytes(&post.pinged)),
-            ("post_modified", text(post.modified.local.as_str())),
-            ("post_modified_gmt", text(post.modified.gmt.as_str())),
-            ("post_parent", Self::parent_value(post.parent)),
-            ("menu_order", DbValue::Int(post.menu_order)),
-            ("post_mime_type", text_or_bytes(post.mime_type.as_bytes())),
-            ("guid", text_or_bytes(&post.guid)),
-        ];
-        values
-            .into_iter()
-            .map(|(column, value)| (column.to_owned(), value))
+    /// The filtered `$data` ([`PostRow`]) as `$wpdb->insert` and `$wpdb->update` take it: its columns in order,
+    /// [`RowValue::Int`] as [`DbValue::Int`], text as [`DbValue::Text`] when UTF-8 and [`DbValue::Bytes`] otherwise
+    /// (as `MetaMapper` chooses), and [`RowValue::Null`] as [`DbValue::Null`], which `wpdb` writes as `NULL`. A value
+    /// that does not fit its column's placeholder ([`RowValue::fits`]) is [`PostError::Db`]: `wpdb` would never print
+    /// it, so no statement is sent.
+    pub fn row_values(row: &PostRow) -> Result<Vec<(String, DbValue)>, PostError> {
+        row.columns()
+            .iter()
+            .map(|(column, value)| {
+                if !value.fits(column_format(column)) {
+                    return Err(PostError::Db(format!(
+                        "the value of `{column}` does not fit its placeholder"
+                    )));
+                }
+                // Not an exhaustive match: the contract's value type may grow.
+                let db = if let RowValue::Int(n) = value {
+                    DbValue::Int(*n)
+                } else if let RowValue::Str(bytes) = value {
+                    text_or_bytes(bytes)
+                } else {
+                    DbValue::Null
+                };
+                Ok((column.clone(), db))
+            })
             .collect()
     }
 

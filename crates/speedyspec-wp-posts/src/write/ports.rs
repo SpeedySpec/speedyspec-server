@@ -6,8 +6,6 @@
 //! as each seam lands, and PHP may replace any of them. A callback's failure comes back as [`PostError::Hook`], and
 //! the use case stops there, as WordPress would.
 
-use std::cell::RefCell;
-
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_cron_contracts::{CronError, CronResult};
 use speedyspec_wp_hooks_contracts::{HookApi, HookError, HookName, HookValue};
@@ -115,56 +113,43 @@ pub(crate) fn cron_error(e: CronError) -> PostError {
 }
 
 /// The `wp_unique_post_slug_is_bad_*_slug` filters through the Hook API (Observer behind the [`BadSlugs`]
-/// Strategy). [`BadSlugs`] answers a bool, so a callback's failure is kept and reported once the slug is chosen
-/// ([`HookBadSlugs::take_error`]); after a failure every later check answers false and runs no filter, as WordPress
-/// would have stopped.
+/// Strategy). A callback's failure is the answer, so the use case stops before the `wp_unique_post_slug` filter, as
+/// WordPress's exception would.
 pub(crate) struct HookBadSlugs<'a> {
     hooks: &'a dyn HookApi,
-    error: RefCell<Option<PostError>>,
 }
 
 impl<'a> HookBadSlugs<'a> {
     pub(crate) fn new(hooks: &'a dyn HookApi) -> Self {
-        Self {
-            hooks,
-            error: RefCell::new(None),
-        }
+        Self { hooks }
     }
 
-    /// The failure a filter met, once.
-    pub(crate) fn take_error(&self) -> Option<PostError> {
-        self.error.borrow_mut().take()
-    }
-
-    fn run(&self, hook: &str, args: impl FnOnce() -> Vec<HookValue>) -> bool {
-        if self.error.borrow().is_some() {
-            return false;
-        }
-        match filter_hook(
+    fn run(&self, hook: &str, args: impl FnOnce() -> Vec<HookValue>) -> Result<bool, PostError> {
+        let answer = filter_hook(
             self.hooks,
             &HookName::from(hook),
             HookValue::Bool(false),
             args,
-        )
-        .and_then(|v| pv(&v))
-        {
-            Ok(v) => !speedyspec_php_serialize::semantics::is_empty(&v),
-            Err(e) => {
-                *self.error.borrow_mut() = Some(e);
-                false
-            }
-        }
+        )?;
+        Ok(!speedyspec_php_serialize::semantics::is_empty(&pv(
+            &answer,
+        )?))
     }
 }
 
 impl BadSlugs for HookBadSlugs<'_> {
-    fn bad_attachment_slug(&self, slug: &[u8]) -> bool {
+    fn bad_attachment_slug(&self, slug: &[u8]) -> Result<bool, PostError> {
         self.run("wp_unique_post_slug_is_bad_attachment_slug", || {
             vec![bytes_value(slug)]
         })
     }
 
-    fn bad_hierarchical_slug(&self, slug: &[u8], post_type: &str, parent: PostParent) -> bool {
+    fn bad_hierarchical_slug(
+        &self,
+        slug: &[u8],
+        post_type: &str,
+        parent: PostParent,
+    ) -> Result<bool, PostError> {
         self.run("wp_unique_post_slug_is_bad_hierarchical_slug", || {
             vec![
                 bytes_value(slug),
@@ -177,7 +162,7 @@ impl BadSlugs for HookBadSlugs<'_> {
         })
     }
 
-    fn bad_flat_slug(&self, slug: &[u8], post_type: &str) -> bool {
+    fn bad_flat_slug(&self, slug: &[u8], post_type: &str) -> Result<bool, PostError> {
         self.run("wp_unique_post_slug_is_bad_flat_slug", || {
             vec![bytes_value(slug), HookValue::Str(post_type.to_owned())]
         })

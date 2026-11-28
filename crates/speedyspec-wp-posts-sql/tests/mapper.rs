@@ -12,7 +12,7 @@ use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::PostEntry;
 use speedyspec_wp_posts_contracts::{
     CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
-    PostParent, PostStatusName, PostTypeName, Slug,
+    PostParent, PostRow, PostStatusName, PostTypeName, RowValue, Slug,
 };
 use speedyspec_wp_posts_sql::PostMapper;
 use support::{cases, decode};
@@ -189,10 +189,10 @@ fn sample(id: u64) -> Post {
 }
 
 #[test]
-fn insert_values_order_and_import_id() {
+fn row_values_keep_the_row_order_and_import_id() {
     let text = |v: &str| DbValue::Text(v.into());
     let expected = vec![
-        ("post_author", DbValue::UInt(5)),
+        ("post_author", DbValue::Int(5)),
         ("post_date", text("2024-03-01 06:00:00")),
         ("post_date_gmt", text("2024-03-01 12:00:00")),
         ("post_content", text("body")),
@@ -218,27 +218,39 @@ fn insert_values_order_and_import_id() {
         .into_iter()
         .map(|(c, v)| (c.to_string(), v))
         .collect();
-    let new = PostMapper::insert_values(&sample(14), None);
+    let values = |row: &PostRow| PostMapper::row_values(row).unwrap();
+    let new = values(&PostRow::from_post(&sample(14)));
     assert_eq!(new.len(), 21);
     assert_eq!(new, expected);
-    assert_eq!(PostMapper::update_values(&sample(14)), expected);
 
-    let imported = PostMapper::insert_values(&sample(0), Some(14));
+    let imported = values(&PostRow::from_post(&sample(0)).with("ID", RowValue::Int(14)));
     assert_eq!(imported.len(), 22);
     assert_eq!(imported[..21], expected[..]);
     assert_eq!(imported[21], ("ID".to_string(), DbValue::Int(14)));
 
-    let negative = PostMapper::insert_values(&sample(0), Some(-5));
+    let negative = values(&PostRow::from_post(&sample(0)).with("ID", RowValue::Int(-5)));
     assert_eq!(negative[21], ("ID".to_string(), DbValue::Int(-5)));
 
-    let orphan = PostMapper::insert_values(
-        &Post {
-            parent: PostParent::Null,
-            ..sample(0)
-        },
-        None,
-    );
+    let orphan = values(&PostRow::from_post(&Post {
+        parent: PostParent::Null,
+        ..sample(0)
+    }));
     assert_eq!(orphan[17], ("post_parent".to_string(), DbValue::Null));
+
+    // A dropped column is left out, an added key kept, and a value that does not fit its placeholder refused.
+    let mut dropped = PostRow::from_post(&sample(0)).with("bogus", RowValue::Str(b"1".to_vec()));
+    dropped.remove("post_content");
+    let filtered = values(&dropped);
+    assert_eq!(filtered.len(), 21);
+    assert!(filtered.iter().all(|(c, _)| c != "post_content"));
+    assert_eq!(
+        filtered[20],
+        ("bogus".to_string(), DbValue::Text("1".into()))
+    );
+    assert!(matches!(
+        PostMapper::row_values(&PostRow::new().with("menu_order", RowValue::Str(b"4".to_vec()))),
+        Err(PostError::Db(_))
+    ));
 }
 
 #[test]
@@ -373,7 +385,7 @@ fn non_utf8_text_is_bytes() {
     post.title = vec![0xFF, 0xFE];
     post.name = Slug::new(vec![0xC3]);
     post.content = "Café".as_bytes().to_vec();
-    let values = PostMapper::insert_values(&post, None);
+    let values = PostMapper::row_values(&PostRow::from_post(&post)).unwrap();
     let value = |column: &str| {
         values
             .iter()

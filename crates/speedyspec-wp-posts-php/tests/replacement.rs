@@ -15,7 +15,7 @@ final class MemoryPostRepository implements SpeedySpec\WpPosts\PostRepository
     private function seen($method) { self::$calls[] = $method; }
     public function engine() { return 'memory'; }
     public function find($id) { $this->seen('find'); return $this->rows[$id] ?? null; }
-    public function insert($row, $import_id) { return null; }
+    public function insert($row) { return null; }
     public function attachment_slug_owner($slug, $except) { return null; }
     public function hierarchical_slug_owner($slug, $post_type, $except, $parent) { return null; }
     public function flat_slug_owner($slug, $post_type, $except) { return null; }

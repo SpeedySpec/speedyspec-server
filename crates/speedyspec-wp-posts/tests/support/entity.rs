@@ -10,12 +10,21 @@ use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::SlugContext;
 use speedyspec_wp_posts_contracts::{
     Clock, CommentStatus, LastPostField, MimeFilter, MimeType, PageRow, PingStatus, Post, PostDate,
-    PostDateTime, PostError, PostId, PostParent, PostRepository, PostStatusName, PostType,
-    PostTypeName, PostTypes, Slug, SlugTruncation, Timezone,
+    PostDateTime, PostError, PostId, PostParent, PostRepository, PostRow, PostStatusName, PostType,
+    PostTypeName, PostTypes, RowValue, Slug, SlugTruncation, Timezone,
 };
 use speedyspec_wp_posts_memory::MemoryPostRepository;
 
 use super::decode;
+
+/// `post` as the row `wp_insert_post()` writes, with `$data['ID']` set when `id` is given.
+fn data_row(post: &Post, id: Option<i64>) -> PostRow {
+    let row = PostRow::from_post(post);
+    match id {
+        Some(id) => row.with("ID", RowValue::Int(id)),
+        None => row,
+    }
+}
 
 /// The recorded entity cases. The file is large: read it once per test.
 #[allow(dead_code)]
@@ -239,7 +248,9 @@ pub fn seed(rows: &Value) -> MemoryPostRepository {
         let post = row_post(row);
         let id = post.id;
         assert_eq!(
-            repository.insert(&post, Some(id.0 as i64)).unwrap(),
+            repository
+                .insert(&data_row(&post, Some(id.0 as i64)))
+                .unwrap(),
             Some(id),
             "seeding {id:?}"
         );
@@ -295,8 +306,8 @@ impl<R: PostRepository> PostRepository for Recording<R> {
         self.inner.find(id)
     }
 
-    fn insert(&self, post: &Post, import_id: Option<i64>) -> Result<Option<PostId>, PostError> {
-        self.inner.insert(post, import_id)
+    fn insert(&self, row: &PostRow) -> Result<Option<PostId>, PostError> {
+        self.inner.insert(row)
     }
 
     fn attachment_slug_owner(
@@ -396,8 +407,8 @@ impl<R: PostRepository> PostRepository for Recording<R> {
         self.inner.available_mime_types(post_type)
     }
 
-    fn update(&self, post: &Post) -> Result<Option<u64>, PostError> {
-        self.inner.update(post)
+    fn update(&self, id: PostId, row: &PostRow) -> Result<Option<u64>, PostError> {
+        self.inner.update(id, row)
     }
 
     fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {

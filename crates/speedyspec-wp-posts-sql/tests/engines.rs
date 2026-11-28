@@ -22,12 +22,21 @@ use speedyspec_wp_hooks_memory::MemoryHookStore;
 use speedyspec_wp_posts_contracts::conformance::{mysql_suite, post_repository_suite, read_suite};
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, Post, PostDate, PostDateTime, PostError, PostId, PostParent,
-    PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+    PostRepository, PostRow, PostStatusName, PostTypeName, RowValue, Slug, Timezone,
 };
 use speedyspec_wp_posts_sql::SqlPostRepository;
 
 /// The tests share the posts tables: one at a time.
 static TABLES: Mutex<()> = Mutex::new(());
+
+/// `post` as the row `wp_insert_post()` writes, with `$data['ID']` set when `id` is given.
+fn data_row(post: &Post, id: Option<i64>) -> PostRow {
+    let row = PostRow::from_post(post);
+    match id {
+        Some(id) => row.with("ID", RowValue::Int(id)),
+        None => row,
+    }
+}
 
 /// The engines the repository must run on.
 #[derive(Clone, Copy)]
@@ -223,7 +232,11 @@ fn nul_content_round_trips(engine: Engine) {
             content: b"before\x00after".to_vec(),
             ..named("nul", "post")
         };
-        let id = rig.repo.insert(&post, None).unwrap().expect("an id");
+        let id = rig
+            .repo
+            .insert(&data_row(&post, None))
+            .unwrap()
+            .expect("an id");
         assert_eq!(rig.repo.find(id).unwrap(), Some(Post { id, ..post }));
     });
 }
@@ -244,7 +257,7 @@ fn last_post_time_of_nothing_is_none(engine: Engine) {
     on(engine, |rig| {
         let at = PostDateTime::new("2024-01-01 00:00:00");
         rig.repo
-            .insert(
+            .insert(&data_row(
                 &Post {
                     status: PostStatusName::new("draft"),
                     date: PostDate {
@@ -254,7 +267,7 @@ fn last_post_time_of_nothing_is_none(engine: Engine) {
                     ..named("dated", "rd-last-draft")
                 },
                 None,
-            )
+            ))
             .unwrap()
             .expect("an id");
         let last = |kinds: &[&str], field, timezone| {
@@ -291,7 +304,7 @@ fn server_time_keeps_mysql_fraction() {
     on(Engine::MySql, |rig| {
         let at = PostDateTime::new("2024-03-01 20:00:00");
         rig.repo
-            .insert(
+            .insert(&data_row(
                 &Post {
                     date: PostDate {
                         local: at.clone(),
@@ -300,7 +313,7 @@ fn server_time_keeps_mysql_fraction() {
                     ..named("dated", "post")
                 },
                 None,
-            )
+            ))
             .unwrap()
             .expect("an id");
         let server = rig
@@ -337,7 +350,11 @@ fn zero_dates_round_trip(engine: Engine) {
             modified: zero,
             ..named("zero", "post")
         };
-        let id = rig.repo.insert(&post, None).unwrap().expect("an id");
+        let id = rig
+            .repo
+            .insert(&data_row(&post, None))
+            .unwrap()
+            .expect("an id");
         let expected = Post { id, ..post };
         assert_eq!(rig.repo.find(id).unwrap(), Some(expected.clone()));
         assert_eq!(rig.repo.find_many(&[id]).unwrap(), vec![expected]);
@@ -382,7 +399,7 @@ fn page_by_path_ignores_case() {
     on(Engine::MySql, |rig| {
         let about = rig
             .repo
-            .insert(&named("about", "page"), None)
+            .insert(&data_row(&named("about", "page"), None))
             .unwrap()
             .expect("an id");
         for asked in ["About", "ABOUT", "about "] {
@@ -405,7 +422,7 @@ fn follows_switched_prefix(engine: Engine) {
     on(engine, |rig| {
         let main = rig
             .repo
-            .insert(&named("main", "page"), None)
+            .insert(&data_row(&named("main", "page"), None))
             .unwrap()
             .expect("an id");
         rig.host.multisite.replace(true);
@@ -416,7 +433,7 @@ fn follows_switched_prefix(engine: Engine) {
         assert!(rig.repo.all_page_ids().unwrap().is_empty());
         let id = rig
             .repo
-            .insert(&named("blog-two", "page"), None)
+            .insert(&data_row(&named("blog-two", "page"), None))
             .unwrap()
             .expect("an id");
         assert_eq!(count(&rig.db, "wp_2_posts"), 1);
@@ -471,7 +488,7 @@ fn hook_failure_surfaces() {
             "{failed:?}"
         );
         assert_eq!(take_hook_error().map(|e| e.message), Some("boom".into()));
-        let hidden = rig.repo.insert(&named("x", "post"), None);
+        let hidden = rig.repo.insert(&data_row(&named("x", "post"), None));
         assert!(matches!(hidden, Err(PostError::Hook(_))), "{hidden:?}");
         assert!(take_hook_error().is_some());
         let none = rig.repo.all_page_ids();
@@ -694,7 +711,7 @@ fn statements_match_post_php() {
 
         // `wp_insert_post()`'s `$wpdb->insert( $wpdb->posts, $data )`, no formats: `$wpdb->field_types` makes the
         // ids and `menu_order` `%d`, the rest `%s`, in `compact()`'s order.
-        repo.insert(
+        repo.insert(&data_row(
             &Post {
                 author: 2,
                 parent: PostParent::Int(3),
@@ -702,7 +719,7 @@ fn statements_match_post_php() {
                 ..named("new", "page")
             },
             Some(50),
-        )
+        ))
         .unwrap();
         assert_eq!(
             take(),
@@ -717,21 +734,21 @@ fn statements_match_post_php() {
         );
 
         // A negative parent and import id go in as they are, and a `null` parent is written `NULL`.
-        repo.insert(
+        repo.insert(&data_row(
             &Post {
                 parent: PostParent::Int(-5),
                 ..named("negative", "page")
             },
             Some(-5),
-        )
+        ))
         .unwrap();
-        repo.insert(
+        repo.insert(&data_row(
             &Post {
                 parent: PostParent::Null,
                 ..named("orphan", "page")
             },
             None,
-        )
+        ))
         .unwrap();
         let taken = take();
         assert!(
@@ -745,12 +762,14 @@ fn statements_match_post_php() {
 
         // `wp_insert_post()`'s `$wpdb->update( $wpdb->posts, $data, $where )`: the same columns, `ID` in the
         // condition.
-        repo.update(&Post {
-            id: PostId(50),
-            author: 2,
-            parent: PostParent::Null,
-            ..named("new", "page")
-        })
+        repo.update(
+            PostId(50),
+            &PostRow::from_post(&Post {
+                author: 2,
+                parent: PostParent::Null,
+                ..named("new", "page")
+            }),
+        )
         .unwrap();
         assert_eq!(
             take(),

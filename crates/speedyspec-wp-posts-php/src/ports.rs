@@ -18,7 +18,7 @@ use speedyspec_wp_object_cache_contracts::{ObjectCache, ObjectCacheError};
 use speedyspec_wp_posts::{CacheInvalidation, Formatting, Microtime, Taxonomy, Users};
 use speedyspec_wp_posts_contracts::{
     CurrentPost, LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError,
-    PostId, PostParent, PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+    PostId, PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, Slug, Timezone,
 };
 
 use crate::adapters::{exists, is_parked, park, truthy};
@@ -494,8 +494,8 @@ impl PostRepository for ResolvedRepository {
         self.resolved()?.find(id)
     }
 
-    fn insert(&self, post: &Post, import_id: Option<i64>) -> Result<Option<PostId>, PostError> {
-        self.resolved()?.insert(post, import_id)
+    fn insert(&self, row: &PostRow) -> Result<Option<PostId>, PostError> {
+        self.resolved()?.insert(row)
     }
 
     fn attachment_slug_owner(
@@ -574,8 +574,8 @@ impl PostRepository for ResolvedRepository {
         self.resolved()?.available_mime_types(post_type)
     }
 
-    fn update(&self, post: &Post) -> Result<Option<u64>, PostError> {
-        self.resolved()?.update(post)
+    fn update(&self, id: PostId, row: &PostRow) -> Result<Option<u64>, PostError> {
+        self.resolved()?.update(id, row)
     }
 
     fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {

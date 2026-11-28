@@ -11,6 +11,8 @@ use speedyspec_wp_posts_contracts::{
 
 use crate::read::{Loaded, Reader};
 use crate::write::api::{PostWritesApi, checked_rows, int};
+use crate::write::error::php_error;
+use crate::write::insert::type_name;
 use crate::write::php::{Items, at, empty_at, identical, is_str, list_pluck, s, wp_slash};
 use crate::{post_ancestors, sanitize_post_field_word};
 
@@ -53,14 +55,26 @@ impl PostWritesApi {
     /// 5. `tags_input` equal to the post's tag names is dropped;
     /// 6. [`PostWritesApi::wp_insert_post`].
     ///
-    /// A known divergence: a `$postarr` that is neither an array nor an object is read as an empty array, where PHP
-    /// reads `$postarr['ID']` of a scalar.
+    /// A `$postarr` that is neither an array nor an object fails as PHP fails, before anything is written: a string at
+    /// `$postarr['ID']` (`TypeError`, "Cannot access offset of type string on string"); any other scalar or `null`
+    /// reads `ID` as `null`, so `get_post()` takes the global `$post` (none is `invalid_post`), and `array_merge()`
+    /// throws its `TypeError` once the post is read.
     pub fn wp_update_post(
         &self,
         postarr: PhpValue,
         wp_error: bool,
         fire_after_hooks: bool,
     ) -> Result<WriteResult, PostError> {
+        let scalar = match &postarr {
+            PhpValue::Object { .. } | PhpValue::Array(_) => None,
+            PhpValue::Str(_) => {
+                return Err(php_error(
+                    "TypeError",
+                    "Cannot access offset of type string on string".into(),
+                ));
+            }
+            other => Some(type_name(other)),
+        };
         let given: Items = match postarr {
             PhpValue::Object { properties, .. } => to_array(wp_slash(PhpValue::Array(properties))),
             PhpValue::Array(items) => items,
@@ -90,6 +104,12 @@ impl PostWritesApi {
         }) && empty_at(&given, "edit_date")
             && at(&post, "post_date_gmt").is_some_and(|gmt| is_str(gmt, "0000-00-00 00:00:00"));
 
+        if let Some(given_type) = scalar {
+            return Err(php_error(
+                "TypeError",
+                format!("array_merge(): Argument #2 must be of type array, {given_type} given"),
+            ));
+        }
         let mut postarr = array_merge(post, given);
         set(&mut postarr, "post_category", categories);
         if clear_date {

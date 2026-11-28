@@ -81,9 +81,17 @@ pub(crate) fn thrown(t: Thrown) -> NativeError {
     }
 }
 
-/// A hook failure as PHP sees it: the callback's exception rethrown, PHP unwinding left alone, anything else an
+/// A hook failure as PHP sees it: the callback's exception rethrown, an error WordPress's own code would raise
+/// ([`speedyspec_wp_posts::PhpThrow`]) thrown with its class and message, PHP unwinding left alone, anything else an
 /// `Error`.
 pub(crate) fn hook_error(hook: HookError) -> NativeError {
+    if let Some(thrown) = hook
+        .payload
+        .as_ref()
+        .and_then(|p| p.downcast_ref::<speedyspec_wp_posts::PhpThrow>())
+    {
+        return NativeError::throw(thrown.class, thrown.message.clone());
+    }
     match hook
         .payload
         .as_ref()

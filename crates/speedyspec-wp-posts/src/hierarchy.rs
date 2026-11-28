@@ -177,7 +177,7 @@ pub fn page_uri(posts: &dyn PostReader, page: &Post) -> Result<Vec<u8>, PostErro
 
 #[cfg(test)]
 mod tests {
-    use speedyspec_wp_posts_contracts::{PostParent, PostRepository, Slug};
+    use speedyspec_wp_posts_contracts::{PostParent, PostRepository, PostRow, RowValue, Slug};
     use speedyspec_wp_posts_memory::MemoryPostRepository;
 
     use super::*;
@@ -189,12 +189,12 @@ mod tests {
         for (id, parent, name) in rows {
             repository
                 .insert(
-                    &Post {
+                    &PostRow::from_post(&Post {
                         parent: PostParent::from(PostId(*parent)),
                         name: Slug::from(*name),
                         ..Post::default()
-                    },
-                    Some(*id as i64),
+                    })
+                    .with("ID", RowValue::Int(*id as i64)),
                 )
                 .unwrap();
         }

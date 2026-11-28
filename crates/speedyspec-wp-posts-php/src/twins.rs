@@ -20,7 +20,7 @@ use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::{PostEntry, Taxonomy};
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
-    PostParent, PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+    PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, RowValue, Slug, Timezone,
 };
 
 use crate::codec::{Thrown, copy_php, string, to_php};
@@ -31,7 +31,7 @@ use crate::ports::thrown_error;
 pub trait PostRepositoryTwin {
     fn engine(&self) -> Result<Value, PortError>;
     fn find(&self, id: i64) -> Result<Value, PortError>;
-    fn insert(&self, row: Value, import_id: Value) -> Result<Value, PortError>;
+    fn insert(&self, row: Value) -> Result<Value, PortError>;
     fn attachment_slug_owner(&self, slug: Value, except: i64) -> Result<Value, PortError>;
     fn hierarchical_slug_owner(
         &self,
@@ -161,41 +161,23 @@ fn parent_value(parent: PostParent) -> Value {
     }
 }
 
-/// `wp_insert_post()`'s `compact()` order (post.php 5153-5175), which `$wpdb->insert` and `$wpdb->update` keep in
-/// the statement's columns.
-const DATA_COLUMNS: [&str; 21] = [
-    "post_author",
-    "post_date",
-    "post_date_gmt",
-    "post_content",
-    "post_content_filtered",
-    "post_title",
-    "post_excerpt",
-    "post_status",
-    "post_type",
-    "comment_status",
-    "ping_status",
-    "post_password",
-    "post_name",
-    "to_ping",
-    "pinged",
-    "post_modified",
-    "post_modified_gmt",
-    "post_parent",
-    "menu_order",
-    "post_mime_type",
-    "guid",
-];
-
-/// `wp_insert_post()`'s `$data`: the 21 columns it writes, in its `compact()` order, so a twin that hands it to
-/// `$wpdb->insert` or `$wpdb->update` sends WordPress's statement text. `ID`, `comment_count` and `filter` are not in
-/// it.
-fn data(post: &Post) -> Result<Value, PostError> {
-    let properties = PostEntry::raw_properties(post);
-    let columns: Vec<(PhpKey, PhpValue)> = DATA_COLUMNS
+/// `wp_insert_post()`'s filtered `$data` ([`PostRow`]) as the PHP array a twin hands to `$wpdb->insert` or
+/// `$wpdb->update`: its keys in order, `null`, ints and strings as the row holds them, so the twin sends WordPress's
+/// statement text.
+fn data(row: &PostRow) -> Result<Value, PostError> {
+    let columns: Vec<(PhpKey, PhpValue)> = row
+        .columns()
         .iter()
-        .filter_map(|column| {
-            get(&properties, column).map(|v| (PhpKey::Str(column.as_bytes().to_vec()), v.clone()))
+        .map(|(column, value)| {
+            // Not an exhaustive match: the contract's value type may grow.
+            let value = if let RowValue::Int(n) = value {
+                PhpValue::Int(*n)
+            } else if let RowValue::Str(bytes) = value {
+                PhpValue::Str(bytes.clone())
+            } else {
+                PhpValue::Null
+            };
+            (PhpKey::Str(column.as_bytes().to_vec()), value)
         })
         .collect();
     to_php(&PhpValue::Array(columns)).map_err(thrown_error)
@@ -229,9 +211,8 @@ impl PostRepository for PhpPostRepository {
         Ok(row(self.call("find", vec![id(post)])?))
     }
 
-    fn insert(&self, post: &Post, import_id: Option<i64>) -> Result<Option<PostId>, PostError> {
-        let import_id = import_id.map_or(Value::Null, Value::Int);
-        let new = number(&self.call("insert", vec![data(post)?, import_id])?);
+    fn insert(&self, row: &PostRow) -> Result<Option<PostId>, PostError> {
+        let new = number(&self.call("insert", vec![data(row)?])?);
         Ok((new > 0).then_some(PostId(new)))
     }
 
@@ -426,10 +407,8 @@ impl PostRepository for PhpPostRepository {
             .collect())
     }
 
-    fn update(&self, post: &Post) -> Result<Option<u64>, PostError> {
-        Ok(changed(
-            self.call("update", vec![id(post.id), data(post)?])?,
-        ))
+    fn update(&self, post: PostId, row: &PostRow) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call("update", vec![id(post), data(row)?])?))
     }
 
     fn update_name(&self, post: PostId, name: &Slug) -> Result<Option<u64>, PostError> {

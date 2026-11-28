@@ -165,14 +165,22 @@ pub(crate) fn wp_unslash(value: PhpValue) -> PhpValue {
     }
 }
 
-/// `array_filter( $array )`: the entries PHP holds true, keys kept. A value that is not an array is returned as it
-/// is (PHP 8 throws a `TypeError` there; WordPress never passes one).
-pub(crate) fn array_filter(value: PhpValue) -> PhpValue {
+/// `array_filter( $array )`: the entries PHP holds true, keys kept. Anything but an array is PHP 8's `TypeError`
+/// (a scalar `post_category` reaches it).
+pub(crate) fn array_filter(
+    value: PhpValue,
+) -> Result<PhpValue, speedyspec_wp_posts_contracts::PostError> {
     match value {
-        PhpValue::Array(items) => {
-            PhpValue::Array(items.into_iter().filter(|(_, v)| !is_empty(v)).collect())
-        }
-        other => other,
+        PhpValue::Array(items) => Ok(PhpValue::Array(
+            items.into_iter().filter(|(_, v)| !is_empty(v)).collect(),
+        )),
+        other => Err(crate::write::error::php_error(
+            "TypeError",
+            format!(
+                "array_filter(): Argument #1 ($array) must be of type array, {} given",
+                crate::write::insert::type_name(&other)
+            ),
+        )),
     }
 }
 

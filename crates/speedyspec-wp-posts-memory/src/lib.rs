@@ -4,16 +4,19 @@
 //! `ORDER BY` answers the first matching row in that order. Names, types and mime types are compared byte for byte
 //! (the SQL repository and `sanitize_title` handle case), and the auto-increment continues past an explicit ID, as MySQL's does.
 //!
-//! Writes behave as MySQL does under `wpdb::set_sql_mode()`'s mode: a negative parent is stored as `0`, a `NULL`
-//! parent fails an insert and is stored as `0` by an update, and an update counts the rows it changed. `NOW()` is the
+//! Writes take the filtered row ([`PostRow`]) and behave as MySQL does under `wpdb::set_sql_mode()`'s mode: a column
+//! the row leaves out keeps its default (insert) or stored value (update), an unknown column or an empty row is
+//! rejected, a negative parent is stored as `0`, `NULL` fails an insert and stores the column's implicit default in an
+//! update, and an update counts the rows it changed. `NOW()` is the
 //! system clock in UTC.
 
 use std::cell::RefCell;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use speedyspec_wp_posts_contracts::{
-    LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
-    PostParent, PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+    CommentStatus, LastPostField, MimeFilter, MimeType, PageRow, PingStatus, Post, PostDateTime,
+    PostError, PostId, PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, RowValue,
+    Slug, Timezone, column_format,
 };
 
 /// `wp_posts` held in memory (Repository, Strategy for the engine).
@@ -89,6 +92,122 @@ impl MemoryPostRepository {
     }
 }
 
+/// The `wp_posts` columns, as MySQL names them (matched without regard to ASCII case, as MySQL matches column names).
+const COLUMNS: [&str; 23] = [
+    "ID",
+    "post_author",
+    "post_date",
+    "post_date_gmt",
+    "post_content",
+    "post_title",
+    "post_excerpt",
+    "post_status",
+    "comment_status",
+    "ping_status",
+    "post_password",
+    "post_name",
+    "to_ping",
+    "pinged",
+    "post_modified",
+    "post_modified_gmt",
+    "post_content_filtered",
+    "post_parent",
+    "guid",
+    "menu_order",
+    "post_type",
+    "post_mime_type",
+    "comment_count",
+];
+
+/// A row's columns resolved to `wp_posts` columns: `Ok(None)` when one is unknown or the row is empty (MySQL rejects
+/// the statement), `Err` when a value does not fit its placeholder (`wpdb` would never print it).
+fn resolve(row: &PostRow) -> Result<Option<Vec<(&'static str, &RowValue)>>, PostError> {
+    let mut resolved = Vec::with_capacity(row.columns().len());
+    for (name, value) in row.columns() {
+        if !value.fits(column_format(name)) {
+            return Err(PostError::Db(format!(
+                "the value of `{name}` does not fit its placeholder"
+            )));
+        }
+        match COLUMNS.iter().find(|c| c.eq_ignore_ascii_case(name)) {
+            Some(column) => resolved.push((*column, value)),
+            None => return Ok(None),
+        }
+    }
+    Ok((!resolved.is_empty()).then_some(resolved))
+}
+
+/// A value as an integer column stores it (MySQL reads a string's leading number).
+fn int_value(value: &RowValue) -> i64 {
+    // Not an exhaustive match: the contract's value type may grow.
+    if let RowValue::Int(n) = value {
+        *n
+    } else if let RowValue::Str(bytes) = value {
+        {
+            let text = String::from_utf8_lossy(bytes);
+            let text = text.trim_start();
+            let end = text
+                .char_indices()
+                .find(|&(i, c)| !(c.is_ascii_digit() || (i == 0 && c == '-')))
+                .map_or(text.len(), |(i, _)| i);
+            text[..end].parse().unwrap_or(0)
+        }
+    } else {
+        0
+    }
+}
+
+/// A value as a text column stores it; `NULL` in an `UPDATE` is the implicit default `''`.
+fn text_value(value: &RowValue) -> Vec<u8> {
+    if let RowValue::Str(bytes) = value {
+        bytes.clone()
+    } else if let RowValue::Int(n) = value {
+        n.to_string().into_bytes()
+    } else {
+        Vec::new()
+    }
+}
+
+/// A value as a `datetime` column stores it; `NULL` in an `UPDATE` is the zero date.
+fn date_value(value: &RowValue) -> PostDateTime {
+    if matches!(value, RowValue::Null) {
+        PostDateTime::ZERO
+    } else {
+        PostDateTime::new(String::from_utf8_lossy(&text_value(value)).into_owned())
+    }
+}
+
+/// Writes one column into `post` (not `ID`), as MySQL stores the value under `wpdb::set_sql_mode()`'s mode.
+fn write_column(post: &mut Post, column: &str, value: &RowValue) {
+    let text = || text_value(value);
+    let name = || String::from_utf8_lossy(&text_value(value)).into_owned();
+    match column {
+        "post_author" => post.author = u64::try_from(int_value(value)).unwrap_or(0),
+        "post_date" => post.date.local = date_value(value),
+        "post_date_gmt" => post.date.gmt = date_value(value),
+        "post_content" => post.content = text(),
+        "post_title" => post.title = text(),
+        "post_excerpt" => post.excerpt = text(),
+        "post_status" => post.status = PostStatusName::new(name()),
+        "comment_status" => post.comment_status = CommentStatus::new(name()),
+        "ping_status" => post.ping_status = PingStatus::new(name()),
+        "post_password" => post.password = text(),
+        "post_name" => post.name = Slug::new(text()),
+        "to_ping" => post.to_ping = text(),
+        "pinged" => post.pinged = text(),
+        "post_modified" => post.modified.local = date_value(value),
+        "post_modified_gmt" => post.modified.gmt = date_value(value),
+        "post_content_filtered" => post.content_filtered = text(),
+        "post_parent" => post.parent = PostParent::Int(int_value(value).max(0)),
+        "guid" => post.guid = text(),
+        "menu_order" => post.menu_order = int_value(value),
+        "post_type" => post.post_type = PostTypeName::new(name()),
+        "post_mime_type" => post.mime_type = MimeType::new(text()),
+        "comment_count" => post.comment_count = int_value(value),
+        _ => {}
+    }
+}
+
 /// A stored parent as the id the read statements return.
 fn parent_id(parent: PostParent) -> PostId {
     parent.id().unwrap_or_default()
@@ -140,27 +259,39 @@ impl PostRepository for MemoryPostRepository {
             .cloned())
     }
 
-    fn insert(&self, post: &Post, import_id: Option<i64>) -> Result<Option<PostId>, PostError> {
-        // NULL in the NOT NULL column: error 1048, even outside strict mode.
-        if post.parent == PostParent::Null {
+    fn insert(&self, row: &PostRow) -> Result<Option<PostId>, PostError> {
+        let Some(columns) = resolve(row)? else {
+            return Ok(None);
+        };
+        // NULL in a NOT NULL column: error 1048, even outside strict mode (an auto-increment `ID` takes the next id).
+        if columns
+            .iter()
+            .any(|(c, v)| *c != "ID" && matches!(v, RowValue::Null))
+        {
             return Ok(None);
         }
         let mut state = self.state.borrow_mut();
         // 0 asks for the next id, and the unsigned column clamps a negative one to 0.
-        let id = match import_id.and_then(|id| u64::try_from(id).ok()) {
-            Some(id) if id > 0 => id,
+        let id = match columns
+            .iter()
+            .find(|(c, _)| *c == "ID")
+            .map(|(_, v)| int_value(v))
+        {
+            Some(id) if id > 0 => id as u64,
             _ => state.last_id + 1,
         };
         if state.rows.iter().any(|p| p.id.0 == id) {
             return Ok(None);
         }
-        state.last_id = state.last_id.max(id);
-        state.rows.push(Post {
+        let mut post = Post {
             id: PostId(id),
-            parent: post.parent.stored(),
-            comment_count: 0,
-            ..post.clone()
-        });
+            ..Post::default()
+        };
+        for (column, value) in &columns {
+            write_column(&mut post, column, value);
+        }
+        state.last_id = state.last_id.max(id);
+        state.rows.push(post);
         Ok(Some(PostId(id)))
     }
 
@@ -363,14 +494,33 @@ impl PostRepository for MemoryPostRepository {
         Ok(types)
     }
 
-    fn update(&self, post: &Post) -> Result<Option<u64>, PostError> {
-        Ok(self.change_row(post.id, |row| {
-            *row = Post {
-                id: row.id,
-                parent: post.parent.stored(),
-                comment_count: row.comment_count,
-                ..post.clone()
-            };
+    fn update(&self, id: PostId, row: &PostRow) -> Result<Option<u64>, PostError> {
+        let Some(columns) = resolve(row)? else {
+            return Ok(None);
+        };
+        // `SET ID = …`: a duplicate key fails the statement.
+        if let Some(new_id) = columns
+            .iter()
+            .find(|(c, _)| *c == "ID")
+            .map(|(_, v)| int_value(v))
+            && u64::try_from(new_id).is_ok_and(|n| n != id.0)
+            && self
+                .state
+                .borrow()
+                .rows
+                .iter()
+                .any(|p| p.id.0 == new_id as u64)
+            && self.state.borrow().rows.iter().any(|p| p.id == id)
+        {
+            return Ok(None);
+        }
+        Ok(self.change_row(id, |post| {
+            for (column, value) in &columns {
+                match *column {
+                    "ID" => post.id = PostId(u64::try_from(int_value(value)).unwrap_or(0)),
+                    other => write_column(post, other, value),
+                }
+            }
         }))
     }
 

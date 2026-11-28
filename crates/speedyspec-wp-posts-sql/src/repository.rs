@@ -21,7 +21,7 @@ use speedyspec_data::{DbValue, Row};
 use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue, Wpdb, take_hook_error};
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
-    PostParent, PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+    PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, Slug, Timezone,
 };
 
 use crate::PostMapper;
@@ -386,8 +386,8 @@ impl PostRepository for SqlPostRepository {
     /// `$wpdb->insert( $wpdb->posts, $data )` with no formats, as `wp_insert_post()` sends it, then
     /// `$wpdb->insert_id`. A `query` callback's failure that `$wpdb->insert`'s charset lookup hides is
     /// [`PostError::Hook`]; the payload stays in `take_hook_error()`.
-    fn insert(&self, post: &Post, import_id: Option<i64>) -> Result<Option<PostId>, PostError> {
-        let data: Vec<(String, WpValue)> = PostMapper::insert_values(post, import_id)
+    fn insert(&self, row: &PostRow) -> Result<Option<PostId>, PostError> {
+        let data: Vec<(String, WpValue)> = PostMapper::row_values(row)?
             .into_iter()
             .map(|(column, value)| (column, wp_value(value)))
             .collect();
@@ -667,12 +667,12 @@ impl PostRepository for SqlPostRepository {
     }
 
     /// `wp_insert_post()`'s `$wpdb->update( $wpdb->posts, $data, $where )`, no formats.
-    fn update(&self, post: &Post) -> Result<Option<u64>, PostError> {
-        let data: Vec<(String, WpValue)> = PostMapper::update_values(post)
+    fn update(&self, id: PostId, row: &PostRow) -> Result<Option<u64>, PostError> {
+        let data: Vec<(String, WpValue)> = PostMapper::row_values(row)?
             .into_iter()
             .map(|(column, value)| (column, wp_value(value)))
             .collect();
-        self.update_rows(&data, &[("ID".to_owned(), int(post.id.0))])
+        self.update_rows(&data, &[("ID".to_owned(), int(id.0))])
     }
 
     fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {

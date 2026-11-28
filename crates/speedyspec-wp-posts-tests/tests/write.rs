@@ -5,8 +5,7 @@
 //! The replay runs the recorded `insert-*`, `update-*`, `transition-*` and `set-type` steps that are pure in Rust
 //! (no kses, no terms read back, no attachment files) and compares what each returned, every fixture callback's run
 //! with its arguments, `wp_posts` and `wp_postmeta` whole, and the cron events. What WordPress's own revision code
-//! and `post_updated` callbacks wrote is left out (they stay PHP until their phases), and so is `comment_count`
-//! (see `without_comment_count()`). `transition-guid-reset` goes through `wp_publish_post()`, which phase 5b ports.
+//! and `post_updated` callbacks wrote is left out (they stay PHP until their phases). `transition-guid-reset` goes through `wp_publish_post()`, which phase 5b ports.
 
 mod support;
 
@@ -35,10 +34,10 @@ use speedyspec_wp_posts::{
 };
 use speedyspec_wp_posts_contracts::{
     Charset, Clock, Comments, CurrentPost, LastPostField, MimeFilter, MimeType, PageRow, Post,
-    PostDateTime, PostError, PostId, PostObject, PostParent, PostQuery, PostRepository,
+    PostDateTime, PostError, PostId, PostObject, PostParent, PostQuery, PostRepository, PostRow,
     PostStatusName, PostType, PostTypeName, PostTypeSupports, PostTypes, Rewrite, RewriteContext,
-    Slug, SlugTruncation, Taxonomy, Theme, Timezone, TitleSanitizer, Translator, Uploads, Users,
-    WriteResult,
+    RowValue, Slug, SlugTruncation, Taxonomy, Theme, Timezone, TitleSanitizer, Translator, Uploads,
+    Users, WriteResult,
 };
 use speedyspec_wp_posts_memory::MemoryPostRepository;
 
@@ -655,7 +654,7 @@ impl PostRepository for HidingRepository {
     delegate! {
         engine() -> String;
         find(id: PostId) -> Result<Option<Post>, PostError>;
-        insert(post: &Post, import_id: Option<i64>) -> Result<Option<PostId>, PostError>;
+        insert(row: &PostRow) -> Result<Option<PostId>, PostError>;
         attachment_slug_owner(slug: &Slug, except: PostId) -> Result<Option<Slug>, PostError>;
         hierarchical_slug_owner(slug: &Slug, post_type: &PostTypeName, except: PostId, parent: PostParent) -> Result<Option<Slug>, PostError>;
         flat_slug_owner(slug: &Slug, post_type: &PostTypeName, except: PostId) -> Result<Option<Slug>, PostError>;
@@ -667,7 +666,7 @@ impl PostRepository for HidingRepository {
         count_attachments(mime_type: Option<&MimeFilter>) -> Result<(Vec<(MimeType, u64)>, u64), PostError>;
         last_post_time(field: LastPostField, post_types: &[PostTypeName], timezone: Timezone) -> Result<Option<PostDateTime>, PostError>;
         available_mime_types(post_type: &PostTypeName) -> Result<Vec<MimeType>, PostError>;
-        update(post: &Post) -> Result<Option<u64>, PostError>;
+        update(id: PostId, row: &PostRow) -> Result<Option<u64>, PostError>;
         update_guid(id: PostId, guid: &[u8]) -> Result<Option<u64>, PostError>;
         update_status(id: PostId, status: &PostStatusName) -> Result<Option<u64>, PostError>;
         update_pinged(id: PostId, pinged: &[u8]) -> Result<Option<u64>, PostError>;
@@ -853,7 +852,11 @@ fn fixture_with(wrap: impl FnOnce(Rc<MemoryPostRepository>) -> Rc<dyn PostReposi
     let repo = Rc::new(MemoryPostRepository::new());
     let (posts, meta_rows) = seed();
     for post in &posts {
-        repo.insert(post, Some(post.id.0 as i64)).unwrap();
+        // The seeded row as stored: its `ID` and `comment_count` too, which a row may carry.
+        let row = PostRow::from_post(post)
+            .with("ID", RowValue::Int(post.id.0 as i64))
+            .with("comment_count", RowValue::Int(post.comment_count));
+        repo.insert(&row).unwrap();
     }
     let meta = Rc::new(MemoryMetaRepositories::new(&["post"]));
     let post_meta = meta.for_type(&MetaType::new("post").unwrap()).unwrap();
@@ -1150,22 +1153,6 @@ fn reported(value: PhpValue) -> PhpValue {
         PhpValue::Array(items) => {
             PhpValue::Array(items.into_iter().map(|(k, v)| (k, reported(v))).collect())
         }
-        other => other,
-    }
-}
-
-/// `comment_count` dropped at any depth: the seed goes through the repository's insert, which (as `wp_insert_post()`'s
-/// `$wpdb->insert`) never writes it, so seeded posts read 0 where the recorded site has comments. No writer here sets
-/// it.
-fn without_comment_count(value: PhpValue) -> PhpValue {
-    match value {
-        PhpValue::Array(items) => PhpValue::Array(
-            items
-                .into_iter()
-                .filter(|(k, _)| *k != PhpKey::Str(b"comment_count".to_vec()))
-                .map(|(k, v)| (k, without_comment_count(v)))
-                .collect(),
-        ),
         other => other,
     }
 }
@@ -1471,25 +1458,14 @@ fn replay(name: &str) {
                 "{at}: the fixture callbacks' runs"
             );
             for ((label, got), (_, want)) in got.iter().zip(&want) {
-                let (got, want) = (
-                    without_comment_count(got.clone()),
-                    without_comment_count(want.clone()),
-                );
-                if let Some(path) = first_difference(&got, &want, String::new()) {
+                if let Some(path) = first_difference(got, want, String::new()) {
                     panic!("{at}: {label}'s arguments differ at {path}");
                 }
             }
             let snapshot = result.get("snapshot");
             if let Some(rows) = snapshot.and_then(|s| snapshot_table(s, "wp_posts")) {
-                // The revisions WordPress's revision code wrote are left out (see from_revision()), and so is
-                // comment_count, which no writer here sets (the comment code keeps it).
-                let comparable = |row: Vec<(String, String)>| {
-                    sorted(
-                        row.into_iter()
-                            .filter(|(c, _)| c != "comment_count")
-                            .collect(),
-                    )
-                };
+                // The revisions WordPress's revision code wrote are left out (see from_revision()).
+                let comparable = sorted;
                 let want: Vec<_> = rows
                     .into_iter()
                     .filter(|r| {
@@ -1930,4 +1906,321 @@ fn write_handlers_are_bound() {
         .unwrap();
     assert_eq!(id, Ok(PostId(26)));
     assert_eq!(f.row(26).title, b"Bus".to_vec());
+}
+
+// ---- fix round 1 ----
+
+/// Adds a `wp_insert_post_data` callback answering `answer( $data )`.
+fn on_data(f: &Fixture, answer: impl Fn(PhpValue) -> PhpValue + 'static) {
+    f.hooks
+        .add_filter(
+            &HookName::from("wp_insert_post_data"),
+            Callback::rust("data", move |args: &[HookValue]| {
+                Ok(speedyspec_php_serialize::to_hook_value(&answer(
+                    from_hook_value(&args[0]).unwrap(),
+                )))
+            }),
+            &HookValue::Int(10),
+            4,
+        )
+        .unwrap();
+}
+
+/// Counts the runs of `hook`.
+fn count_runs(f: &Fixture, hook: &str) -> Rc<Cell<u32>> {
+    let runs: Rc<Cell<u32>> = Rc::default();
+    let seen = runs.clone();
+    f.hooks
+        .add_filter(
+            &HookName::from(hook),
+            Callback::rust("count", move |args: &[HookValue]| {
+                seen.set(seen.get() + 1);
+                Ok(args.first().cloned().unwrap_or(HookValue::Null))
+            }),
+            &HookValue::Int(10),
+            1,
+        )
+        .unwrap();
+    runs
+}
+
+fn unset_key(data: PhpValue, name: &str) -> PhpValue {
+    let PhpValue::Array(mut items) = data else {
+        panic!("$data is an array")
+    };
+    items.retain(|(k, _)| *k != k_(name));
+    PhpValue::Array(items)
+}
+
+fn k_(name: &str) -> PhpKey {
+    PhpKey::Str(name.as_bytes().to_vec())
+}
+
+fn thrown(result: Result<WriteResult, PostError>) -> speedyspec_wp_posts::PhpThrow {
+    let error = result.expect_err("PHP throws");
+    speedyspec_wp_posts::php_throw(&error)
+        .unwrap_or_else(|| panic!("a PHP error, not {error:?}"))
+        .clone()
+}
+
+/// A `wp_insert_post_data` callback that unsets `post_content` on an update leaves the stored content alone, as
+/// `$wpdb->update` writes only `$data`'s columns.
+#[test]
+fn update_keeps_a_column_the_filter_dropped() {
+    let f = fixture();
+    on_data(&f, |data| unset_key(data, "post_content"));
+    let id = f.api.wp_update_post(
+        array(vec![
+            ("ID", PhpValue::Int(6)),
+            ("post_title", s("Retitled")),
+            ("post_content", s("New body")),
+        ]),
+        true,
+        true,
+    );
+    assert_eq!(id.unwrap(), Ok(PostId(6)));
+    assert_eq!(f.row(6).content, b"Content 6".to_vec());
+    assert_eq!(f.row(6).title, b"Retitled".to_vec());
+}
+
+/// An insert leaves a dropped column to its default and writes an added one; an unknown added column makes the
+/// statement fail, which is `db_insert_error`.
+#[test]
+fn insert_writes_exactly_the_filtered_data() {
+    let f = fixture();
+    on_data(&f, |data| {
+        let PhpValue::Array(mut items) = unset_key(data, "post_status") else {
+            unreachable!()
+        };
+        items.push((k_("comment_count"), PhpValue::Int(4)));
+        PhpValue::Array(items)
+    });
+    assert_eq!(
+        f.insert(array(vec![("post_title", s("Filtered"))])),
+        Ok(PostId(26))
+    );
+    let row = f.row(26);
+    assert_eq!(row.status.as_str(), "publish", "the column's default");
+    assert_eq!(row.comment_count, 4);
+
+    let f = fixture();
+    on_data(&f, |data| {
+        let PhpValue::Array(mut items) = data else {
+            unreachable!()
+        };
+        items.push((k_("bogus"), s("x")));
+        PhpValue::Array(items)
+    });
+    let refused = f.insert(array(vec![("post_title", s("Unknown"))]));
+    assert_eq!(refused.map_err(|e| e.code()), Err(Some("db_insert_error")));
+    assert!(f.repo.find(PostId(26)).unwrap().is_none());
+}
+
+/// A filter answer that is not an array: an update is `db_update_error` with no statement; an insert of `null` with
+/// a free `import_id` writes `ID` alone; any other insert raises PHP's `TypeError` after `pre_post_insert`.
+#[test]
+fn non_array_data_follows_wordpress() {
+    let f = fixture();
+    on_data(&f, |_| PhpValue::Bool(false));
+    let before = f.row(6);
+    let refused = f
+        .api
+        .wp_update_post(
+            array(vec![("ID", PhpValue::Int(6)), ("post_title", s("Never"))]),
+            true,
+            true,
+        )
+        .unwrap();
+    assert_eq!(refused.map_err(|e| e.code()), Err(Some("db_update_error")));
+    assert_eq!(f.row(6), before);
+
+    let f = fixture();
+    on_data(&f, |_| PhpValue::Null);
+    let id = f.insert(array(vec![
+        ("post_title", s("Only an id")),
+        ("import_id", PhpValue::Int(900)),
+    ]));
+    assert_eq!(id, Ok(PostId(900)));
+    let row = f.row(900);
+    assert_eq!(
+        row.title,
+        Vec::<u8>::new(),
+        "every other column is the default"
+    );
+    assert_eq!(row.status.as_str(), "publish");
+
+    let f = fixture();
+    on_data(&f, |_| s("not an array"));
+    let inserts = count_runs(&f, "pre_post_insert");
+    let error = thrown(
+        f.api
+            .wp_insert_post(array(vec![("post_title", s("Typed"))]), true, true),
+    );
+    assert_eq!(error.class, "TypeError");
+    assert_eq!(
+        error.message,
+        "array_keys(): Argument #1 ($array) must be of type array, string given"
+    );
+    assert_eq!(
+        inserts.get(),
+        1,
+        "pre_post_insert ran before the insert threw"
+    );
+    assert!(f.repo.find(PostId(26)).unwrap().is_none());
+
+    let f = fixture();
+    on_data(&f, |_| s("x"));
+    let error = thrown(f.api.wp_insert_post(
+        array(vec![
+            ("post_title", s("Typed")),
+            ("import_id", PhpValue::Int(901)),
+        ]),
+        true,
+        true,
+    ));
+    assert_eq!(
+        error.message,
+        "Cannot access offset of type string on string"
+    );
+}
+
+/// A scalar or `null` `$postarr` fails as WordPress's does: a string at `$postarr['ID']`; any other value once the
+/// global post is read, at `array_merge()`. Nothing is written and no write hook runs. With no global post, it is
+/// `invalid_post`.
+#[test]
+fn scalar_postarr_to_wp_update_post_throws() {
+    let f = fixture();
+    let error = thrown(f.api.wp_update_post(s("ID=6"), false, true));
+    assert_eq!(
+        (error.class, error.message.as_str()),
+        ("TypeError", "Cannot access offset of type string on string")
+    );
+
+    let missing = f.api.wp_update_post(PhpValue::Int(5), true, true).unwrap();
+    assert_eq!(missing.map_err(|e| e.code()), Err(Some("invalid_post")));
+
+    let global = PostEntry::wp_post(PostEntry::raw_properties(&f.row(6)));
+    *f.global.0.borrow_mut() = Some(global);
+    let updates = count_runs(&f, "pre_post_update");
+    let before = f.row(6);
+    for (value, given) in [
+        (PhpValue::Int(5), "int"),
+        (PhpValue::Null, "null"),
+        (PhpValue::Bool(true), "true"),
+    ] {
+        let error = thrown(f.api.wp_update_post(value, false, true));
+        assert_eq!(
+            error.message,
+            format!("array_merge(): Argument #2 must be of type array, {given} given")
+        );
+    }
+    assert_eq!(updates.get(), 0);
+    assert_eq!(f.row(6), before);
+}
+
+/// A scalar `post_category` reaches `array_filter()`, which throws: no row is written.
+#[test]
+fn scalar_post_category_throws() {
+    let f = fixture();
+    let error = thrown(f.api.wp_insert_post(
+        array(vec![("post_title", s("Cats")), ("post_category", s("3"))]),
+        true,
+        true,
+    ));
+    assert_eq!(
+        error.message,
+        "array_filter(): Argument #1 ($array) must be of type array, string given"
+    );
+    assert!(f.repo.find(PostId(26)).unwrap().is_none());
+}
+
+/// A bad-slug callback that throws stops the use case before the `wp_unique_post_slug` filter and before any write.
+#[test]
+fn bad_slug_exception_stops_before_the_slug_filter() {
+    let f = fixture();
+    let payload: Rc<dyn std::any::Any> = Rc::new("bad slug");
+    let kept = payload.clone();
+    f.hooks
+        .add_filter(
+            &HookName::from("wp_unique_post_slug_is_bad_flat_slug"),
+            Callback::rust("fail", move |_: &[HookValue]| {
+                Err::<HookValue, _>(HookError {
+                    message: "thrown".into(),
+                    payload: Some(kept.clone()),
+                })
+            }),
+            &HookValue::Int(10),
+            3,
+        )
+        .unwrap();
+    let slug_filter = count_runs(&f, "wp_unique_post_slug");
+    let result = f.api.wp_insert_post(
+        array(vec![
+            ("post_title", s("Fresh")),
+            ("post_status", s("publish")),
+        ]),
+        true,
+        true,
+    );
+    let Err(PostError::Hook(e)) = result else {
+        panic!("the callback's failure comes back: {result:?}")
+    };
+    assert!(Rc::ptr_eq(e.payload.as_ref().unwrap(), &payload));
+    assert_eq!(slug_filter.get(), 0);
+    assert!(f.repo.find(PostId(26)).unwrap().is_none());
+}
+
+/// `_transition_post_status`: a post first published with no GUID takes its permalink; another transition leaves the
+/// empty GUID alone.
+#[test]
+fn transition_to_publish_resets_an_empty_guid() {
+    let f = fixture();
+    let post = f
+        .posts
+        .get_post(speedyspec_wp_posts_contracts::PostRef::Id(PostId(23)))
+        .unwrap()
+        .unwrap();
+    assert!(post.guid.is_empty());
+    let object = PostObject::new(post);
+    f.api
+        .wp_transition_post_status(
+            &PostStatusName::new("pending"),
+            &PostStatusName::new("draft"),
+            &object,
+        )
+        .unwrap();
+    assert!(f.row(23).guid.is_empty(), "only a first publish sets it");
+    f.api
+        .wp_transition_post_status(
+            &PostStatusName::new("publish"),
+            &PostStatusName::new("draft"),
+            &object,
+        )
+        .unwrap();
+    assert_eq!(f.row(23).guid, b"http://example.org/?p=23".to_vec());
+    // A `get_the_guid` filter that answers a GUID keeps the column empty.
+    let f = fixture();
+    f.hooks
+        .add_filter(
+            &HookName::from("get_the_guid"),
+            Callback::rust("guid", |_: &[HookValue]| {
+                Ok(HookValue::Str("urn:kept".into()))
+            }),
+            &HookValue::Int(10),
+            2,
+        )
+        .unwrap();
+    let post = f
+        .posts
+        .get_post(speedyspec_wp_posts_contracts::PostRef::Id(PostId(23)))
+        .unwrap()
+        .unwrap();
+    f.api
+        .wp_transition_post_status(
+            &PostStatusName::new("publish"),
+            &PostStatusName::new("draft"),
+            &PostObject::new(post),
+        )
+        .unwrap();
+    assert!(f.row(23).guid.is_empty());
 }

@@ -6,6 +6,7 @@
 //! all of them; until then these are [`PostWritesApi`]'s methods and messages.
 
 mod api;
+mod error;
 mod insert;
 mod messages;
 mod php;
@@ -14,6 +15,7 @@ mod transition;
 mod update;
 
 pub use api::{PostWritesApi, WriteDeps};
+pub use error::{PhpThrow, php_throw};
 pub use messages::*;
 pub use ports::{
     PlainPostObjects, PostObjects, Runtime, Scheduling, SlugSettings, WriteFormatting,

@@ -17,8 +17,8 @@ use speedyspec_wp_posts::{
     post_type_name_viewable_filtered, unique_post_slug_filtered,
 };
 use speedyspec_wp_posts_contracts::{
-    Post, PostId, PostParent, PostRepository, PostStatusName, PostType, PostTypeName, PostTypes,
-    RewriteContext, Slug, SlugTruncation, TitleSanitizer,
+    Post, PostId, PostParent, PostRepository, PostRow, PostStatusName, PostType, PostTypeName,
+    PostTypes, RewriteContext, Slug, SlugTruncation, TitleSanitizer,
 };
 use speedyspec_wp_posts_memory::MemoryPostRepository;
 
@@ -383,15 +383,12 @@ fn slug_of(
 fn taken(slug: &str) -> MemoryPostRepository {
     let repository = MemoryPostRepository::new();
     repository
-        .insert(
-            &Post {
-                name: Slug::new(slug.as_bytes()),
-                post_type: PostTypeName::new("post"),
-                status: PostStatusName::new("publish"),
-                ..Post::default()
-            },
-            None,
-        )
+        .insert(&PostRow::from_post(&Post {
+            name: Slug::new(slug.as_bytes()),
+            post_type: PostTypeName::new("post"),
+            status: PostStatusName::new("publish"),
+            ..Post::default()
+        }))
         .unwrap();
     repository
 }

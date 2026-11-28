@@ -71,16 +71,21 @@ pub struct SlugPorts<'a> {
 pub struct NoBadSlugs;
 
 impl BadSlugs for NoBadSlugs {
-    fn bad_attachment_slug(&self, _slug: &[u8]) -> bool {
-        false
+    fn bad_attachment_slug(&self, _slug: &[u8]) -> Result<bool, PostError> {
+        Ok(false)
     }
 
-    fn bad_hierarchical_slug(&self, _slug: &[u8], _post_type: &str, _parent: PostParent) -> bool {
-        false
+    fn bad_hierarchical_slug(
+        &self,
+        _slug: &[u8],
+        _post_type: &str,
+        _parent: PostParent,
+    ) -> Result<bool, PostError> {
+        Ok(false)
     }
 
-    fn bad_flat_slug(&self, _slug: &[u8], _post_type: &str) -> bool {
-        false
+    fn bad_flat_slug(&self, _slug: &[u8], _post_type: &str) -> Result<bool, PostError> {
+        Ok(false)
     }
 }
 
@@ -209,30 +214,33 @@ pub fn unique_post_slug(
     let post_type = PostTypeName::new(request.post_type);
     let (query, conflict) = if "attachment" == request.post_type {
         let query = OwnerQuery::Attachment;
-        let taken = query.taken(slug, request, ports)?;
-        let bad = ports.bad.bad_attachment_slug(slug);
-        (query, taken || reserved(slug, context) || bad)
+        // `||` short-circuits: the filter runs only when nothing before it conflicts.
+        let conflict = query.taken(slug, request, ports)?
+            || reserved(slug, context)
+            || ports.bad.bad_attachment_slug(slug)?;
+        (query, conflict)
     } else if is_post_type_hierarchical(ports.types, request.post_type) {
         if "nav_menu_item" == request.post_type {
             return Ok(slug.to_vec());
         }
         let query = OwnerQuery::Hierarchical(&post_type);
-        let taken = query.taken(slug, request, ports)?;
-        let bad = ports
-            .bad
-            .bad_hierarchical_slug(slug, request.post_type, request.parent);
-        let conflict = taken
+        let conflict = query.taken(slug, request, ports)?
             || reserved(slug, context)
             || is_pagination(slug, &context.pagination_base)
-            || bad;
+            || ports
+                .bad
+                .bad_hierarchical_slug(slug, request.post_type, request.parent)?;
         (query, conflict)
     } else {
         let query = OwnerQuery::Flat(&post_type);
         let taken = query.taken(slug, request, ports)?;
         let own = ports.posts.post(request.post_id)?;
         let date = conflicts_with_date_archive(request, context, own.as_ref().map(|p| &p.name));
-        let bad = ports.bad.bad_flat_slug(slug, request.post_type);
-        (query, taken || reserved(slug, context) || date || bad)
+        let conflict = taken
+            || reserved(slug, context)
+            || date
+            || ports.bad.bad_flat_slug(slug, request.post_type)?;
+        (query, conflict)
     };
     if !conflict {
         return Ok(slug.to_vec());
@@ -319,7 +327,7 @@ pub fn unique_post_slug_filtered(
 #[cfg(test)]
 mod tests {
     use speedyspec_php_serialize::PhpKey;
-    use speedyspec_wp_posts_contracts::{Post, PostType};
+    use speedyspec_wp_posts_contracts::{Post, PostRow, PostType};
     use speedyspec_wp_posts_memory::MemoryPostRepository;
 
     use crate::test_support::Silent;
@@ -358,8 +366,8 @@ mod tests {
     struct AllBad;
 
     impl BadSlugs for AllBad {
-        fn bad_attachment_slug(&self, _slug: &[u8]) -> bool {
-            true
+        fn bad_attachment_slug(&self, _slug: &[u8]) -> Result<bool, PostError> {
+            Ok(true)
         }
 
         fn bad_hierarchical_slug(
@@ -367,12 +375,12 @@ mod tests {
             _slug: &[u8],
             _post_type: &str,
             _parent: PostParent,
-        ) -> bool {
-            true
+        ) -> Result<bool, PostError> {
+            Ok(true)
         }
 
-        fn bad_flat_slug(&self, _slug: &[u8], _post_type: &str) -> bool {
-            true
+        fn bad_flat_slug(&self, _slug: &[u8], _post_type: &str) -> Result<bool, PostError> {
+            Ok(true)
         }
     }
 
@@ -380,14 +388,11 @@ mod tests {
         let repository = MemoryPostRepository::new();
         for (name, post_type) in posts {
             repository
-                .insert(
-                    &Post {
-                        name: Slug::new(*name),
-                        post_type: PostTypeName::new(*post_type),
-                        ..Post::default()
-                    },
-                    None,
-                )
+                .insert(&PostRow::from_post(&Post {
+                    name: Slug::new(*name),
+                    post_type: PostTypeName::new(*post_type),
+                    ..Post::default()
+                }))
                 .unwrap();
         }
         repository

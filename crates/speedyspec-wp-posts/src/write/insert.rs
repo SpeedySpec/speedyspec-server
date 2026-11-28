@@ -13,7 +13,7 @@
 //! 5. [`Insert::slug`]: the trashed-slug suffixes, then `wp_unique_post_slug()` (Strategy: hierarchical or flat).
 //! 6. [`Insert::data`]: `$data`, the emoji check, the `wp_insert_post_data` filter and `wp_unslash()`.
 //! 7. [`Insert::write`]: `pre_post_update` and the repository update, or the `import_id` check, `pre_post_insert` and
-//!    the repository insert.
+//!    the repository insert, each of exactly the filtered `$data` ([`PostRow`]).
 //! 8. [`Insert::after_write`]: the slug of a post that had none, terms, meta input, GUID, the attachment's file and
 //!    context, the featured image, and `clean_post_cache()`.
 //! 9. [`Insert::finish`]: `get_post()`, the page template, the transition, `edit_post`, `post_updated`, the
@@ -30,14 +30,14 @@ use speedyspec_php_serialize::semantics::{
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_posts_contracts::{
-    CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
-    PostObject, PostParent, PostRef, PostStatusName, PostTypeName, PostWriteError, Slug,
-    WriteResult,
+    ColumnFormat, PostError, PostId, PostObject, PostParent, PostRef, PostRow, PostStatusName,
+    PostTypeName, PostWriteError, RowValue, Slug, WriteResult, column_format,
 };
 
 use crate::hook::hv;
 use crate::read::Loaded;
 use crate::write::api::{PostWritesApi, SlugReader, checked_rows, hidden_failure, int, post_id};
+use crate::write::error::php_error;
 use crate::write::php::{
     Items, array_filter, at, empty_at, is_str, key, or, s, wp_parse_args, wp_unslash,
 };
@@ -127,47 +127,38 @@ fn defaults(user_id: u64) -> Items {
     .collect()
 }
 
-/// Data Mapper: `$data` after `wp_unslash()` as the [`Post`] entity the repository writes, `id` its `ID`.
-///
-/// Each column is read as `$wpdb->insert` and `$wpdb->update` print it: `%d` columns with `(int)`, the rest with
-/// `(string)`. A known divergence: a column a `wp_insert_post_data` callback removed from `$data` is written with its
-/// default here, where `$wpdb` would leave it out of the statement.
-fn post_from_data(data: &Items, id: PostId) -> Post {
-    let bytes = |name: &str| at(data, name).map(to_php_string).unwrap_or_default();
-    let string = |name: &str| String::from_utf8_lossy(&bytes(name)).into_owned();
-    let date = |name: &str| PostDateTime::new(string(name));
-    Post {
-        id,
-        author: u64::try_from(at(data, "post_author").map_or(0, to_php_int)).unwrap_or(0),
-        date: PostDate {
-            local: date("post_date"),
-            gmt: date("post_date_gmt"),
-        },
-        content: bytes("post_content"),
-        title: bytes("post_title"),
-        excerpt: bytes("post_excerpt"),
-        status: PostStatusName::new(string("post_status")),
-        comment_status: CommentStatus::new(string("comment_status")),
-        ping_status: PingStatus::new(string("ping_status")),
-        password: bytes("post_password"),
-        name: Slug::new(bytes("post_name")),
-        to_ping: bytes("to_ping"),
-        pinged: bytes("pinged"),
-        modified: PostDate {
-            local: date("post_modified"),
-            gmt: date("post_modified_gmt"),
-        },
-        content_filtered: bytes("post_content_filtered"),
-        parent: match at(data, "post_parent") {
-            Some(PhpValue::Null) => PostParent::Null,
-            Some(v) => PostParent::Int(to_php_int(v)),
-            None => PostParent::NONE,
-        },
-        guid: bytes("guid"),
-        menu_order: at(data, "menu_order").map_or(0, to_php_int),
-        post_type: PostTypeName::new(string("post_type")),
-        mime_type: MimeType::new(bytes("post_mime_type")),
-        comment_count: 0,
+/// Data Mapper: `$data` after the filter and `wp_unslash()` as the [`PostRow`] `$wpdb` writes: its keys in order (an
+/// integer key as its decimal text), each value as `wpdb` prints it under its column's placeholder
+/// ([`column_format`]): `(int)` for `%d`, `(string)` for `%s`, and `null` as `NULL`. A column a callback dropped is
+/// left out and a key it added is kept, so the statement is WordPress's.
+fn row_from_data(data: &Items) -> PostRow {
+    let mut row = PostRow::new();
+    for (k, value) in data {
+        let name = key_to_string(k);
+        let value = match value {
+            PhpValue::Null => RowValue::Null,
+            v if column_format(&name) == ColumnFormat::Int => RowValue::Int(to_php_int(v)),
+            v => RowValue::Str(to_php_string(v)),
+        };
+        row.set(name, value);
+    }
+    row
+}
+
+/// PHP's name for a value's type in an error message (`zend_zval_value_name()`).
+pub(crate) fn type_name(value: &PhpValue) -> String {
+    match value {
+        PhpValue::Null => "null".into(),
+        PhpValue::Bool(true) => "true".into(),
+        PhpValue::Bool(false) => "false".into(),
+        PhpValue::Int(_) => "int".into(),
+        PhpValue::Float(_) => "float".into(),
+        PhpValue::Str(_) => "string".into(),
+        PhpValue::Array(_) => "array".into(),
+        PhpValue::Object { class, .. }
+        | PhpValue::Custom { class, .. }
+        | PhpValue::Enum { class, .. } => class.clone(),
+        PhpValue::Ref(_) | PhpValue::ObjectRef(_) => "object".into(),
     }
 }
 
@@ -211,7 +202,10 @@ pub(crate) struct Insert<'a> {
     menu_order: i64,
     post_password: PhpValue,
     post_parent: PostParent,
+    /// `$data` once the filter answered: an array from step 7 on (WordPress stops on anything else).
     data: Items,
+    /// The filter's answer, as it came, until step 7 reads it.
+    filtered: PhpValue,
 }
 
 impl<'a> Insert<'a> {
@@ -256,6 +250,7 @@ impl<'a> Insert<'a> {
             post_password: s(""),
             post_parent: PostParent::NONE,
             data: Vec::new(),
+            filtered: PhpValue::Null,
         }
     }
 
@@ -465,7 +460,7 @@ impl<'a> Insert<'a> {
                 at(&self.postarr, "post_category")
                     .cloned()
                     .unwrap_or(PhpValue::Null),
-            ));
+            )?);
         } else if self.update && isset(&self.postarr, "post_category").is_none() {
             let before = self.post_before.as_ref().expect("an update has a post");
             category = Some(api.d.taxonomy.post_term_fields(
@@ -711,21 +706,28 @@ impl<'a> Insert<'a> {
         let filtered = api.filter(hook, PhpValue::Array(data), || {
             vec![hv(&postarr), hv(&unsanitized), HookValue::Bool(update)]
         })?;
-        self.data = to_array(wp_unslash(filtered));
+        self.filtered = wp_unslash(filtered);
         Ok(())
     }
 
     /// Step 7 (post.php 5222-5281): the update, or the insert with its `import_id`. A failed write is WordPress's
     /// `db_update_error` or `db_insert_error`.
+    ///
+    /// A filter answer that is not an array is handled as WordPress handles it (the [`PostRow`] contract): an update
+    /// answers `db_update_error` with no statement (`$wpdb->update`'s `is_array()` check); an insert raises PHP's
+    /// error, except `null` or `false` with a free `import_id`, which `$data['ID'] = $import_id` makes `ID` alone.
     fn write(&mut self) -> Flow<()> {
         let api = self.api;
         let repo = api.repository();
         let attachment = "attachment" == self.post_type;
+        let mut data = std::mem::replace(&mut self.filtered, PhpValue::Null);
         if self.update {
             let id = self.post_id;
-            let data = PhpValue::Array(self.data.clone());
             api.action("pre_post_update", || vec![id_arg(id), hv(&data)])?;
-            let rows = checked_rows(repo.update(&post_from_data(&self.data, id))?)?;
+            let rows = match &data {
+                PhpValue::Array(items) => checked_rows(repo.update(id, &row_from_data(items))?)?,
+                _ => None,
+            };
             if rows.is_none() {
                 return self.refuse(PostWriteError::DbUpdate {
                     attachment,
@@ -733,17 +735,23 @@ impl<'a> Insert<'a> {
                 });
             }
         } else {
-            let mut import = None;
             if !is_empty(&self.import_id) {
                 let import_id = to_php_int(&self.import_id);
                 if !repo.import_id_taken(import_id)? {
-                    self.data.push((key("ID"), PhpValue::Int(import_id)));
-                    import = Some(import_id);
+                    data = assign_id(data, import_id)?;
                 }
             }
-            let data = PhpValue::Array(self.data.clone());
             api.action("pre_post_insert", || vec![hv(&data)])?;
-            let Some(id) = repo.insert(&post_from_data(&self.data, PostId(0)), import)? else {
+            let PhpValue::Array(items) = &data else {
+                return Err(php_error(
+                    "TypeError",
+                    format!(
+                        "array_keys(): Argument #1 ($array) must be of type array, {} given",
+                        type_name(&data)
+                    ),
+                ));
+            };
+            let Some(id) = repo.insert(&row_from_data(items))? else {
                 hidden_failure()?;
                 return self.refuse(PostWriteError::DbInsert {
                     attachment,
@@ -752,6 +760,7 @@ impl<'a> Insert<'a> {
             };
             self.post_id = id;
         }
+        self.data = to_array(data);
         Ok(ControlFlow::Continue(()))
     }
 
@@ -853,7 +862,7 @@ impl<'a> Insert<'a> {
                     *input = Some(PhpValue::Array(items));
                 };
                 if let Some(value @ PhpValue::Array(_)) = entry(&tax_input) {
-                    put(&mut tax_input, array_filter(value));
+                    put(&mut tax_input, array_filter(value)?);
                 }
                 let args = PhpValue::Array(vec![(key("fields"), s("ids"))]);
                 let terms = tax.get_object_terms(id, &taxonomy, &args)?;
@@ -893,7 +902,7 @@ impl<'a> Insert<'a> {
                     continue;
                 };
                 let tags = match tags {
-                    tags @ PhpValue::Array(_) => array_filter(tags),
+                    tags @ PhpValue::Array(_) => array_filter(tags)?,
                     other => other,
                 };
                 if api.d.users.current_user_can(&cap, &[])? {
@@ -1040,6 +1049,32 @@ impl<'a> Insert<'a> {
     }
 }
 
+/// `$data['ID'] = $import_id`: set in place or appended on an array; `null` and `false` become `array( 'ID' => … )`;
+/// any other value throws as PHP does.
+fn assign_id(data: PhpValue, id: i64) -> Result<PhpValue, PostError> {
+    match data {
+        PhpValue::Array(mut items) => {
+            set(&mut items, "ID", PhpValue::Int(id));
+            Ok(PhpValue::Array(items))
+        }
+        PhpValue::Null | PhpValue::Bool(false) => {
+            Ok(PhpValue::Array(vec![(key("ID"), PhpValue::Int(id))]))
+        }
+        PhpValue::Str(_) => Err(php_error(
+            "TypeError",
+            "Cannot access offset of type string on string".into(),
+        )),
+        PhpValue::Object { class, .. } => Err(php_error(
+            "Error",
+            format!("Cannot use object of type {class} as array"),
+        )),
+        _ => Err(php_error(
+            "Error",
+            "Cannot use a scalar value as an array".into(),
+        )),
+    }
+}
+
 /// `urlencode()`: letters, digits and `-_.` as they are, a space as `+`, every other byte `%XX` in upper case.
 fn urlencode(bytes: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(bytes.len());
@@ -1094,7 +1129,7 @@ impl PostWritesApi {
         let deps = self.d.posts.deps();
         let bad = HookBadSlugs::new(self.hooks());
         let reader = SlugReader(&self.d.posts);
-        let answer = unique_post_slug_filtered(
+        unique_post_slug_filtered(
             self.hooks(),
             &SlugRequest {
                 slug,
@@ -1111,11 +1146,7 @@ impl PostWritesApi {
                 truncation: &*self.d.truncation,
                 bad: &bad,
             },
-        );
-        if let Some(e) = bad.take_error() {
-            return Err(e);
-        }
-        answer
+        )
     }
 
     /// `wp_add_trashed_suffix_to_post_name_for_trashed_posts( $post_name, $post_id )` (post.php 8821-8838): every
@@ -1250,18 +1281,34 @@ mod tests {
     }
 
     #[test]
-    fn data_maps_to_the_entity() {
+    fn data_maps_to_the_row() {
         let data: Items = vec![
             (key("post_author"), s("3")),
             (key("post_parent"), PhpValue::Null),
-            (key("menu_order"), s("7")),
-            (key("post_title"), s("T")),
+            (key("menu_order"), s("7x")),
+            (key("post_title"), PhpValue::Int(5)),
+            (PhpKey::Int(4), PhpValue::Bool(true)),
         ];
-        let post = post_from_data(&data, PostId(5));
-        assert_eq!(post.id, PostId(5));
-        assert_eq!(post.author, 3);
-        assert_eq!(post.parent, PostParent::Null);
-        assert_eq!(post.menu_order, 7);
-        assert_eq!(post.title, b"T".to_vec());
+        let row = row_from_data(&data);
+        assert_eq!(
+            row.columns(),
+            [
+                ("post_author".to_owned(), RowValue::Int(3)),
+                ("post_parent".to_owned(), RowValue::Null),
+                ("menu_order".to_owned(), RowValue::Int(7)),
+                ("post_title".to_owned(), RowValue::Str(b"5".to_vec())),
+                ("4".to_owned(), RowValue::Str(b"1".to_vec())),
+            ]
+        );
+    }
+
+    #[test]
+    fn id_assignment_follows_php() {
+        assert_eq!(
+            assign_id(PhpValue::Null, 9).unwrap(),
+            PhpValue::Array(vec![(key("ID"), PhpValue::Int(9))])
+        );
+        assert!(assign_id(s("x"), 9).is_err());
+        assert!(assign_id(PhpValue::Int(1), 9).is_err());
     }
 }
