@@ -102,6 +102,9 @@ struct Suite {
     testsuite: &'static str,
     area: &'static str,
     exclude_filter: &'static str,
+    /// Whether the suite runs beside the native option functions (the writers, as the runtime runs them) rather
+    /// than WordPress's own option.php (the readers).
+    native_options: bool,
 }
 
 /// One PHPUnit run: its suite, the groups it leaves out, and how many tests it must at least run (an exit status of 0
@@ -135,6 +138,7 @@ const READ: Suite = Suite {
     testsuite: "wordpress-posts",
     area: "posts-read",
     exclude_filter: READ_EXCLUDE_FILTER,
+    native_options: false,
 };
 
 /// Tests of the post-writing suite left out of both runs because they need code that is not ported or not loaded;
@@ -159,6 +163,7 @@ const WRITE: Suite = Suite {
     testsuite: "wordpress-posts-write",
     area: "posts-write",
     exclude_filter: WRITE_EXCLUDE_FILTER,
+    native_options: true,
 };
 
 const RUNS: &[Run] = &[
@@ -270,8 +275,7 @@ fn main() {
 
 /// Boots the embedded PHP with the native areas and runs one PHPUnit configuration.
 fn run_one(run: &Run, url: &str) {
-    // The writers run beside the native options, as the runtime runs them; the readers beside option.php.
-    let native_options = std::ptr::eq(run.suite, &WRITE);
+    let native_options = run.suite.native_options;
     let name = if native_options {
         "posts-write-tests-port"
     } else {

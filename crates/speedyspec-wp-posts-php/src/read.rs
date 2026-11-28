@@ -265,9 +265,39 @@ fn entries(value: &Value) -> Vec<(Key, Value)> {
     }
 }
 
+/// What `get_post( $post )` makes of its argument (post.php 1159-1168), shared by the readers and the writers.
+pub(crate) enum PostArgKind {
+    /// `get_post( $post )` gives null: a non-numeric value that is not empty (`true`, an array, `'6abc'`) or an id
+    /// below 1.
+    Missing,
+    /// An id, or the current post for an empty argument.
+    Ref(PostRef),
+    /// An object, which the caller reads as it needs.
+    Object,
+}
+
+/// `get_post()`'s branches: empty is the global `$post`, an object is itself, a numeric value is `(int)` it (`null`
+/// below 1), and anything else is `null`.
+pub(crate) fn post_arg_kind(value: &Value) -> Result<PostArgKind, NativeError> {
+    if !truthy(value) {
+        return Ok(PostArgKind::Ref(PostRef::Current));
+    }
+    if is_object(value) {
+        return Ok(PostArgKind::Object);
+    }
+    if is_numeric(value)? {
+        let id = int(value)?;
+        return Ok(match u64::try_from(id) {
+            Ok(id) if id > 0 => PostArgKind::Ref(PostRef::Id(PostId(id))),
+            _ => PostArgKind::Missing,
+        });
+    }
+    Ok(PostArgKind::Missing)
+}
+
 /// `$post` as WordPress's readers take it.
 enum PostArg {
-    /// `get_post( $post )` gives null: a non-numeric scalar, an array, an id below 1.
+    /// `get_post( $post )` gives null.
     Missing,
     /// An id, or the current post for an empty argument.
     Ref(PostRef),
@@ -276,20 +306,11 @@ enum PostArg {
 }
 
 fn post_arg(value: &Value) -> Result<PostArg, NativeError> {
-    if !truthy(value) {
-        return Ok(PostArg::Ref(PostRef::Current));
-    }
-    if is_object(value) {
-        return Ok(PostArg::Object(copy(value)?));
-    }
-    if is_numeric(value)? {
-        let id = int(value)?;
-        return Ok(match u64::try_from(id) {
-            Ok(id) if id > 0 => PostArg::Ref(PostRef::Id(PostId(id))),
-            _ => PostArg::Missing,
-        });
-    }
-    Ok(PostArg::Missing)
+    Ok(match post_arg_kind(value)? {
+        PostArgKind::Missing => PostArg::Missing,
+        PostArgKind::Ref(post) => PostArg::Ref(post),
+        PostArgKind::Object => PostArg::Object(copy(value)?),
+    })
 }
 
 /// Runs a use case on `$post`: `None` when there is no post to read.

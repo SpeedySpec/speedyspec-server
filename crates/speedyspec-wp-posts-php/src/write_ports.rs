@@ -564,11 +564,10 @@ impl Uploads for PhpUploads {
         from_answer(&call("wp_insert_attachment", &args)?)
     }
 
+    /// The answer is carried as PHP gave it: the `WP_Post` stays the very object `deleted_post` received.
     fn delete_attachment(&self, post: PostId, force: bool) -> Result<PhpValue, PostError> {
-        from_answer(&call(
-            "wp_delete_attachment",
-            &[int(post), Value::Bool(force)],
-        )?)
+        let answer = call("wp_delete_attachment", &[int(post), Value::Bool(force)])?;
+        from_php(&answer).map_err(thrown_error)
     }
 
     fn update_attached_file(&self, post: PostId, file: &PhpValue) -> Result<(), PostError> {

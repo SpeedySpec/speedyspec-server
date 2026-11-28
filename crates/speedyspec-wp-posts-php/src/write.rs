@@ -15,8 +15,8 @@
 //! - a post object a callback or caller passes stays the object itself: it is the handle the hooks receive
 //!   ([`crate::PhpPostObjects`]), so the hooks share one instance, and what `wp_delete_post()`, `wp_trash_post()`
 //!   and `wp_untrash_post()` return;
-//! - a post argument `get_post()` would read is the global `$post` when empty, the object when one, and `(int)`
-//!   otherwise;
+//! - a post argument `get_post()` would read is the global `$post` when empty, the object when one, and `(int)` when
+//!   numeric; anything else is no post, answered as WordPress answers it without dispatching;
 //! - a `WP_Error` the use cases answer is built as WordPress builds it: `new WP_Error( $code, __( $message ), $data )`
 //!   with `$wpdb->last_error` as the data of the database errors, and a delegated one (`wp_insert_attachment()`'s)
 //!   handed back as PHP holds it;
@@ -39,15 +39,15 @@ use speedyspec_wp_posts::{
     WpUpdatePost,
 };
 use speedyspec_wp_posts_contracts::{
-    PostArg, PostError, PostId, PostObject, PostRef, PostReturn, PostStatusName, PostWriteError,
-    Translator, WriteResult,
+    PostArg, PostError, PostId, PostObject, PostReturn, PostStatusName, PostWriteError, Translator,
+    WriteResult,
 };
 
 use crate::adapters::{PhpTranslator, truthy};
-use crate::codec::{copy_php, hook_in, is_object, php, to_php};
-use crate::read::post_error;
+use crate::codec::{copy_php, hook_in, php, to_php};
+use crate::read::{PostArgKind, post_arg_kind, post_error};
 use crate::registry::{Native, R, a, thrown};
-use crate::write_ports::PhpPostObjects;
+use crate::write_ports::{PhpPostObjects, PhpRuntime};
 
 /// The handlers the write natives dispatch through, each resolved once.
 pub(crate) struct Writing {
@@ -282,20 +282,15 @@ fn int_arg(x: &[Value], i: usize) -> Result<i64, NativeError> {
     }
 }
 
-/// `$post` as `get_post( $post )` takes it: an empty value is the global `$post`, an object is itself (the handle
-/// the hooks receive), and anything else is `(int)`, as `WP_Post::get_instance()` casts it (0, which reads nothing,
-/// for an id below 1).
-fn post_ref_arg(value: &Value) -> Result<PostArg, NativeError> {
-    if !truthy(value) {
-        return Ok(PostArg::Ref(PostRef::Current));
-    }
-    if is_object(value) {
-        return Ok(PostArg::Object(Box::new(post_object(value)?)));
-    }
-    let id = to_php_int(&copy(value)?);
-    Ok(PostArg::Ref(PostRef::Id(PostId(
-        u64::try_from(id).unwrap_or(0),
-    ))))
+/// `$post` as `get_post( $post )` takes it ([`post_arg_kind`]): an empty value is the global `$post`, an object is
+/// itself (the handle the hooks receive), a numeric value is `(int)` it; `None` where `get_post()` gives null (`true`,
+/// an array, `'6abc'`, an id below 1), which the caller answers as WordPress does without dispatching.
+fn post_ref_arg(value: &Value) -> Result<Option<PostArg>, NativeError> {
+    Ok(match post_arg_kind(value)? {
+        PostArgKind::Missing => None,
+        PostArgKind::Ref(post) => Some(PostArg::Ref(post)),
+        PostArgKind::Object => Some(PostArg::Object(Box::new(post_object(value)?))),
+    })
 }
 
 /// What `wp_delete_post()`, `wp_trash_post()` and `wp_untrash_post()` return: the post (the very object the hooks
@@ -321,33 +316,50 @@ fn wp_delete_post(x: &[Value]) -> R {
     post_return(send(|w| &w.delete, m)?)
 }
 
-fn wp_trash_post(x: &[Value]) -> R {
-    let m = WpTrashPost {
-        post: post_ref_arg(&a(x, 0))?,
+/// `wp_trash_post( $post_id )` with an argument `get_post()` reads as null: without `EMPTY_TRASH_DAYS`,
+/// `wp_delete_post( $post_id, true )` (which casts it with `(int)`), else `null`. An undefined constant is PHP's
+/// `Error`, as in WordPress.
+fn trash_missing(post_id: &Value) -> R {
+    use speedyspec_wp_posts::Runtime;
+    let days = PhpRuntime
+        .constant("EMPTY_TRASH_DAYS")
+        .map_err(post_error)?
+        .ok_or_else(|| NativeError::throw("Error", "Undefined constant \"EMPTY_TRASH_DAYS\""))?;
+    if !speedyspec_php_serialize::semantics::is_empty(&days) {
+        return Ok(Value::Null);
+    }
+    let m = WpDeletePost {
+        post_id: to_php_int(&copy(post_id)?),
+        force: true,
     };
-    post_return(send(|w| &w.trash, m)?)
+    post_return(send(|w| &w.delete, m)?)
+}
+
+fn wp_trash_post(x: &[Value]) -> R {
+    let Some(post) = post_ref_arg(&a(x, 0))? else {
+        return trash_missing(&a(x, 0));
+    };
+    post_return(send(|w| &w.trash, WpTrashPost { post })?)
 }
 
 fn wp_untrash_post(x: &[Value]) -> R {
-    let m = WpUntrashPost {
-        post: post_ref_arg(&a(x, 0))?,
+    let Some(post) = post_ref_arg(&a(x, 0))? else {
+        return Ok(Value::Null);
     };
-    post_return(send(|w| &w.untrash, m)?)
+    post_return(send(|w| &w.untrash, WpUntrashPost { post })?)
 }
 
 fn wp_publish_post(x: &[Value]) -> R {
-    let m = WpPublishPost {
-        post: post_ref_arg(&a(x, 0))?,
-    };
-    send(|w| &w.publish_post, m)?;
+    if let Some(post) = post_ref_arg(&a(x, 0))? {
+        send(|w| &w.publish_post, WpPublishPost { post })?;
+    }
     Ok(Value::Null)
 }
 
 fn check_and_publish_future_post(x: &[Value]) -> R {
-    let m = CheckAndPublishFuturePost {
-        post: post_ref_arg(&a(x, 0))?,
-    };
-    send(|w| &w.check_future, m)?;
+    if let Some(post) = post_ref_arg(&a(x, 0))? {
+        send(|w| &w.check_future, CheckAndPublishFuturePost { post })?;
+    }
     Ok(Value::Null)
 }
 
@@ -372,8 +384,11 @@ fn unstick_post(x: &[Value]) -> R {
 }
 
 fn add_ping(x: &[Value]) -> R {
+    let Some(post) = post_ref_arg(&a(x, 0))? else {
+        return Ok(Value::Bool(false));
+    };
     let m = AddPing {
-        post: post_ref_arg(&a(x, 0))?,
+        post,
         uri: copy(&a(x, 1))?,
     };
     Ok(match send(|w| &w.ping, m)? {

@@ -458,8 +458,41 @@ fn deletes_and_trashes(php: &speedyspec_php::Php, setup: &str) -> bool {
         stick_post(6);
         return [6] === get_option('sticky_posts') ? true : get_option('sticky_posts');"#,
     );
+    // An argument get_post() reads as null (`true`, an array, a string that is not numeric, an id below 1) is no
+    // post: the trash and untrash functions answer null, add_ping() false, the publishers nothing, and no row is
+    // written. An id below 1 does not fall back to the global post.
+    ok &= yes(
+        php,
+        setup,
+        "non_numeric_post_arguments_are_no_post",
+        r#"global $wpdb;
+        $GLOBALS['post'] = get_post(21);
+        $status = fn ($id) => $wpdb->get_var("SELECT post_status FROM $wpdb->posts WHERE ID = $id");
+        $pinged = fn ($id) => $wpdb->get_var("SELECT pinged FROM $wpdb->posts WHERE ID = $id");
+        $before = array_map($pinged, [1, 6, 21]);
+        $out = [];
+        foreach ([true, [6], '6abc', -1] as $arg) {
+            $out[] = null === wp_trash_post($arg);
+            $out[] = false === add_ping($arg, 'http://example.org/pinged');
+        }
+        foreach ([true, [7], '7abc', -7] as $arg) {
+            $out[] = null === wp_untrash_post($arg);
+        }
+        foreach ([true, [8], '8abc', -8] as $arg) {
+            $out[] = null === wp_publish_post($arg);
+        }
+        foreach ([true, [15], '15abc', -15] as $arg) {
+            $out[] = null === check_and_publish_future_post($arg);
+        }
+        $out = array_merge($out, [
+            'publish' === $status(1), 'publish' === $status(6), 'publish' === $status(21), 'trash' === $status(7),
+            'draft' === $status(8), 'future' === $status(15), $before === array_map($pinged, [1, 6, 21]),
+            '0' === $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->postmeta WHERE meta_key = '_wp_trash_meta_status' AND post_id IN (1, 6, 21)"),
+        ]);
+        return !in_array(false, $out, true) ? true : $out;"#,
+    );
     // The post the trash and delete functions answer is the very object the caller passed, or the WP_Post the hooks
-    // received; an id below 1 is `false`, and no post `null`.
+    // received (an attachment's too, through wp_delete_attachment()); no post is `null`.
     ok &= yes(
         php,
         setup,
@@ -469,7 +502,10 @@ fn deletes_and_trashes(php: &speedyspec_php::Php, setup: &str) -> bool {
         $seen = null;
         add_action('deleted_post', function ($id, $p) use (&$seen) { $seen = $p; }, 10, 2);
         $deleted = wp_delete_post(21, true);
-        $out = [$trashed === $post, $deleted === $seen, $deleted instanceof WP_Post, 21 === $deleted->ID,
+        $deleted_seen = $seen;
+        $attachment = wp_delete_post(14, true);
+        $out = [$trashed === $post, $deleted === $deleted_seen, $deleted instanceof WP_Post, 21 === $deleted->ID,
+            $attachment instanceof WP_Post, $attachment === $seen, 14 === $attachment->ID,
             null === wp_delete_post(999), null === wp_trash_post(999),
             'trash' === $GLOBALS['wpdb']->get_var("SELECT post_status FROM {$GLOBALS['wpdb']->posts} WHERE ID = 6")];
         return !in_array(false, $out, true) ? true : $out;"#,

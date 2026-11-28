@@ -23,8 +23,8 @@ declare(strict_types=1);
  *  Users, terms and comments stay rows (`SPEEDYSPEC_FACTORY_ROWS`). Every post writer is the native one: insert,
  *  update, the transitions and set_post_type(), and delete, trash, untrash, publish, future posts, sticky posts,
  *  pings and auto-drafts; the bootstrap refuses to run otherwise. The option functions are native too, as the
- *  runtime runs them beside the writers (the harness strips option.php for this suite). The attachment and revision functions behind their
- *  ports (`wp_delete_attachment()`, `wp_delete_post_revision()`) are WordPress's own.
+ *  runtime runs them beside the writers (the harness strips option.php for this suite). The attachment and
+ *  revision functions behind their ports (`wp_delete_attachment()`, `wp_delete_post_revision()`) are WordPress's own.
  */
 
 define('SPEEDYSPEC_FACTORY_POSTS_INSERT', true);

@@ -272,6 +272,40 @@ fn write_ports(php: &speedyspec_php::Php, setup: &str) -> bool {
         return $deleted instanceof WP_Post && 'kept' === $attachment && $expected === Seen::$calls
             && '1' === $revision && '0' !== $comments ? true : [$deleted, $attachment, Seen::$calls, $revision, $comments];"#,
     );
+    // A bound revisions port's exception stops wp_delete_post() at the revision, and a bound uploads port's stops it
+    // at the attachment: each reaches the caller as the same object, and the post stays.
+    ok &= yes(
+        php,
+        setup,
+        "bound_revisions_and_uploads_exceptions_are_rethrown",
+        r#"final class BrokenRevisions implements SpeedySpec\WpPosts\Revisions
+        {
+            public static $thrown;
+            public function save_post_revision($post_id) {}
+            public function delete_post_revision($revision_id) { throw self::$thrown; }
+        }
+        final class BrokenUploads implements SpeedySpec\WpPosts\Uploads
+        {
+            public static $thrown;
+            public function insert_attachment($postarr, $wp_error) { return 0; }
+            public function delete_attachment($post_id, $force) { throw self::$thrown; }
+            public function update_attached_file($post_id, $file) {}
+            public function attachment_is($kind, $post_id) { return false; }
+            public function set_post_thumbnail($post_id, $thumbnail_id) {}
+            public function delete_post_thumbnail($post_id) {}
+        }
+        BrokenRevisions::$thrown = new LogicException('from the bound revisions');
+        BrokenUploads::$thrown = new RuntimeException('from the bound uploads');
+        $c = SpeedySpec\Container\Container::getInstance();
+        $c->bind('SpeedySpec\WpPosts\Revisions', fn () => new BrokenRevisions(), true);
+        $c->bind('SpeedySpec\WpPosts\Uploads', fn () => new BrokenUploads(), true);
+        try { wp_delete_post(1, true); $revision = null; } catch (LogicException $e) { $revision = $e; }
+        try { wp_delete_post(5, true); $upload = null; } catch (RuntimeException $e) { $upload = $e; }
+        global $wpdb;
+        $rows = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->posts WHERE ID IN (1, 4, 5)");
+        return $revision === BrokenRevisions::$thrown && $upload === BrokenUploads::$thrown && '3' === $rows
+            ? true : [$revision, $upload, $rows];"#,
+    );
     // A bound port's exception reaches the caller as the same object; the row written before it stays.
     ok &= yes(
         php,

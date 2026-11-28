@@ -406,8 +406,12 @@ impl Uploads for PhpBound {
         )
     }
 
+    /// The answer is carried as the object gave it: a `WP_Post` stays the very object.
     fn delete_attachment(&self, post: PostId, force: bool) -> Result<PhpValue, PostError> {
-        self.call("delete_attachment", vec![id(post), Value::Bool(force)])
+        let answer = self
+            .raw("delete_attachment", vec![id(post), Value::Bool(force)])
+            .map_err(thrown_error)?;
+        crate::codec::from_php(&answer).map_err(thrown_error)
     }
 
     fn update_attached_file(&self, post: PostId, file: &PhpValue) -> Result<(), PostError> {
