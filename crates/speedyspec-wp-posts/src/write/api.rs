@@ -379,24 +379,22 @@ pub(crate) fn post_meta() -> MetaType {
 ///
 /// Only a failure raised during this write counts: one already pending before it (raised and surfaced earlier) is
 /// put back untouched, so a write that changed nothing is never failed by a stale error. A failure stays in `wpdb`'s
-/// side channel for the PHP bridge to rethrow.
+/// side channel for the PHP bridge to rethrow; when both exist, the channel holds this write's.
 pub(crate) fn written<T>(write: impl FnOnce() -> Result<T, PostError>) -> Result<T, PostError> {
     let before = take_hook_error();
     let result = write();
     let during = take_hook_error();
-    // `WpDbError::from` puts a failure back in the side channel; the first one stays first.
+    // `WpDbError::from` puts a failure back in the side channel and keeps the one already there, so the failure of
+    // this write goes back first: the channel then holds the error the use case returns, not an older one.
+    if let Some(hook) = &during {
+        let _: WpDbError = hook.clone().into();
+    }
     if let Some(before) = before {
         let _: WpDbError = before.into();
     }
-    match during {
-        Some(hook) => {
-            let _: WpDbError = hook.clone().into();
-            match result {
-                Err(e) => Err(e),
-                Ok(_) => Err(PostError::Hook(hook)),
-            }
-        }
-        None => result,
+    match (during, result) {
+        (Some(hook), Ok(_)) => Err(PostError::Hook(hook)),
+        (_, result) => result,
     }
 }
 

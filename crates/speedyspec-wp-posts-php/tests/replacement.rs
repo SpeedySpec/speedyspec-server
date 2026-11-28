@@ -1,7 +1,7 @@
 //! The spec's replacement test: a PHP implementation of the post repository, bound in the container at
 //! `SpeedySpec\WpPosts\PostRepository`, replaces `wp_posts` for the use cases; and PHP implementations of the
-//! writers' ports (rewrite, comments, cron, users, taxonomy, charset), each bound at its twin's key, replace
-//! WordPress's functions for `wp_insert_post()` and the transitions.
+//! writers' ports (rewrite, comments, cron, users, taxonomy, charset, revisions, uploads), each bound at its twin's
+//! key, replace WordPress's functions for `wp_insert_post()`, the transitions and `wp_delete_post()`.
 
 mod support;
 
@@ -50,8 +50,8 @@ fn main() {
     let Some(url) = support::mysql("posts_read_php") else {
         return;
     };
-    let (_release, root) = support::prepared("posts-read-php-port");
-    let (php, _container) = support::boot(&url);
+    let (_release, root) = support::prepared_with("posts-read-php-port", true);
+    let (php, _container) = support::boot_with(&url, false, true);
     let setup = support::setup_code(&root);
     let bind = format!(
         "{MEMORY}\nSpeedySpec\\Container\\Container::getInstance()->bind('SpeedySpec\\WpPosts\\PostRepository', fn () => new MemoryPostRepository(), true);\n"
@@ -228,6 +228,49 @@ fn write_ports(php: &speedyspec_php::Php, setup: &str) -> bool {
         $post = get_post($id);
         return '7' === $post->post_author && [[$id, [3], 'category', false]] === Terms::$set
             ? true : [$post, Terms::$set, Seven::$asked];"#,
+    );
+    // Revisions, uploads and comments on delete: wp_delete_post() hands post 1's revision (4) to the bound revisions
+    // port and its comments to the bound comments port, and an attachment to the bound uploads port, whose answer it
+    // returns as it is.
+    ok &= yes(
+        php,
+        setup,
+        "php_delete_ports_are_used",
+        r#"final class Seen { public static array $calls = []; }
+        final class KeptRevisions implements SpeedySpec\WpPosts\Revisions
+        {
+            public function save_post_revision($post_id) { Seen::$calls[] = ['save', $post_id]; }
+            public function delete_post_revision($revision_id) { Seen::$calls[] = ['revision', $revision_id]; }
+        }
+        final class KeptComments implements SpeedySpec\WpPosts\Comments
+        {
+            public function default_comment_status($post_type, $comment_type) { return 'open'; }
+            public function trash_post_comments($post_id) {}
+            public function untrash_post_comments($post_id) {}
+            public function delete_post_comments($post_id) { Seen::$calls[] = ['comments', $post_id]; }
+            public function defer_counting($defer) { Seen::$calls[] = ['defer', $defer]; }
+        }
+        final class KeptUploads implements SpeedySpec\WpPosts\Uploads
+        {
+            public function insert_attachment($postarr, $wp_error) { return 0; }
+            public function delete_attachment($post_id, $force) { Seen::$calls[] = ['attachment', $post_id, $force]; return 'kept'; }
+            public function update_attached_file($post_id, $file) {}
+            public function attachment_is($kind, $post_id) { return false; }
+            public function set_post_thumbnail($post_id, $thumbnail_id) {}
+            public function delete_post_thumbnail($post_id) {}
+        }
+        $c = SpeedySpec\Container\Container::getInstance();
+        $c->bind('SpeedySpec\WpPosts\Revisions', fn () => new KeptRevisions(), true);
+        $c->bind('SpeedySpec\WpPosts\Comments', fn () => new KeptComments(), true);
+        $c->bind('SpeedySpec\WpPosts\Uploads', fn () => new KeptUploads(), true);
+        $deleted = wp_delete_post(1, true);
+        $attachment = wp_delete_post(5, true);
+        global $wpdb;
+        $revision = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->posts WHERE ID = 4");
+        $comments = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->comments WHERE comment_post_ID = 1");
+        $expected = [['revision', 4], ['defer', true], ['comments', 1], ['defer', false], ['attachment', 5, true]];
+        return $deleted instanceof WP_Post && 'kept' === $attachment && $expected === Seen::$calls
+            && '1' === $revision && '0' !== $comments ? true : [$deleted, $attachment, Seen::$calls, $revision, $comments];"#,
     );
     // A bound port's exception reaches the caller as the same object; the row written before it stays.
     ok &= yes(

@@ -13,10 +13,12 @@ use speedyspec_compat::ReleaseMirror;
 
 /// The `post.php` functions the native area declares (WordPress 7.2-RC2): the post type and post status registries,
 /// post reading and the post caches, then post writing (`wp_insert_post()`, `wp_update_post()`, the status
-/// transitions and their default callbacks, `set_post_type()`). The meta wrappers (`get_post_meta()` and the rest),
-/// the functions that call `WP_Query` (`get_posts()`, `get_children()`, `get_pages()`, `wp_get_recent_posts()`, …),
-/// `update_post_author_caches()`, the attachment readers, `wp_unique_post_slug()`, `wp_set_post_categories()` and the
-/// other writers (delete, trash, untrash, publish, sticky posts, pings, auto-drafts) stay WordPress's own.
+/// transitions and their default callbacks, `set_post_type()`, deleting, trashing and untrashing with the front-page
+/// and privacy-page resets, publishing and future posts, sticky posts, pings and auto-drafts). The meta wrappers
+/// (`get_post_meta()` and the rest), the functions that call `WP_Query` (`get_posts()`, `get_children()`,
+/// `get_pages()`, `wp_get_recent_posts()`, …), `update_post_author_caches()`, the attachment readers and writers
+/// (`wp_insert_attachment()`, `wp_delete_attachment()`), `wp_unique_post_slug()`, `wp_set_post_categories()` and
+/// `wp_untrash_post_set_previous_status()` stay WordPress's own.
 pub const PORTED_FUNCTIONS: &[&str] = &[
     "create_initial_post_types",
     "register_post_status",
@@ -81,6 +83,17 @@ pub const PORTED_FUNCTIONS: &[&str] = &[
     "_future_post_hook",
     "_publish_post_hook",
     "wp_check_post_hierarchy_for_loops",
+    "stick_post",
+    "unstick_post",
+    "wp_delete_post",
+    "_reset_front_page_settings_for_post",
+    "_reset_privacy_policy_page_for_post",
+    "wp_trash_post",
+    "wp_untrash_post",
+    "wp_publish_post",
+    "check_and_publish_future_post",
+    "add_ping",
+    "wp_delete_auto_drafts",
 ];
 
 /// `post.php`'s text without the ported functions, each with its docblock. A function is a line

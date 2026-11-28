@@ -2719,6 +2719,32 @@ fn a_stale_hook_error_does_not_fail_a_write() {
     );
 }
 
+/// With an older failure still pending, a write's own failure is the one left in the side channel for the bridge: the
+/// error the use case returns, not the older one.
+#[test]
+fn a_new_hook_error_wins_over_a_stale_one() {
+    let f = fixture_with(|repo| Rc::new(HidingRepository(repo)));
+    let _ = speedyspec_wp_db_contracts::take_hook_error();
+    let _: speedyspec_wp_db_contracts::WpDbError = HookError::message("earlier").into();
+    let result = f.api.wp_insert_post(
+        array(vec![
+            ("post_title", s("!!!")),
+            ("post_status", s("publish")),
+            ("post_name", s("!!!")),
+        ]),
+        false,
+        true,
+    );
+    let Err(PostError::Hook(e)) = result else {
+        panic!("the hidden failure stops it: {result:?}")
+    };
+    assert_eq!(e.message, "query threw");
+    assert_eq!(
+        speedyspec_wp_db_contracts::take_hook_error().map(|e| e.message),
+        Some("query threw".to_owned())
+    );
+}
+
 /// `_transition_post_status` reads `get_the_guid( $post->ID )`, which falls back to the global `$post` for ID 0.
 #[test]
 fn guid_of_id_zero_reads_the_global_post() {

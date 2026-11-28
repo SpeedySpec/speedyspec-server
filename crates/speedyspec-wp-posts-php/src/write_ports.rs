@@ -7,8 +7,8 @@
 //! [`PhpSlugSettings`], [`PhpRuntime::defined`], [`PhpClock::now_gmt`]) parks the exception instead
 //! ([`park`]), and the native function rethrows what was parked.
 //!
-//! The ports to unported seams (users, taxonomy, comments, rewrite, uploads, `WP_Query`, the theme, the column
-//! charsets) and the cron functions are container ports ([`Resolved`]): the adapter here (or, for cron, the Rust
+//! The ports to unported seams (users, taxonomy, comments, rewrite, uploads, revisions, `WP_Query`, the theme, the
+//! column charsets) and the cron functions are container ports ([`Resolved`]): the adapter here (or, for cron, the Rust
 //! adapter the runtime passes in) is the default binding, and a PHP object implementing the port's twin
 //! (`SpeedySpec\WpPosts\<Port>`, see [`crate::port_twins`]) bound at the same key replaces it for the request. A binding
 //! that fails is an error, and nothing falls back.
@@ -56,8 +56,11 @@ pub const POST_QUERY: &str = "SpeedySpec\\WpPosts\\PostQuery";
 pub const THEME: &str = "SpeedySpec\\WpPosts\\Theme";
 /// The container key of the column charset port (`SpeedySpec\WpPosts\Charset`).
 pub const CHARSET: &str = "SpeedySpec\\WpPosts\\Charset";
+/// The container key of the revisions port (`SpeedySpec\WpPosts\Revisions`).
+pub const REVISIONS: &str = "SpeedySpec\\WpPosts\\Revisions";
 /// The container key the meta area binds its tables at (`SpeedySpec\WpMeta\MetaRepositories`), which
-/// `wp_delete_post()` reads meta ids through.
+/// `wp_delete_post()` reads meta ids through. A copy of meta-php's own key (this crate may not depend on that seam's
+/// implementation); `tests/keys.rs` fails if the two drift.
 pub const META_REPOSITORIES: &str = "SpeedySpec\\WpMeta\\MetaRepositories";
 
 /// The container key of the cron port (`SpeedySpec\WpPosts\Scheduling`).
@@ -258,6 +261,16 @@ impl Comments for Resolved<dyn Comments> {
 
     fn defer_counting(&self, defer: bool) -> Result<(), PostError> {
         self.get()?.defer_counting(defer)
+    }
+}
+
+impl c::Revisions for Resolved<dyn c::Revisions> {
+    fn save_post_revision(&self, post: PostId) -> Result<(), PostError> {
+        self.get()?.save_post_revision(post)
+    }
+
+    fn delete_post_revision(&self, revision: PostId) -> Result<(), PostError> {
+        self.get()?.delete_post_revision(revision)
     }
 }
 

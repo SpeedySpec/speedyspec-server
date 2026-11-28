@@ -4,12 +4,48 @@ namespace
 {
     use SpeedySpec\WpPosts\Native as N;
 
-    // post.php (WordPress 7.2-RC2): writing posts, native. wp_insert_post(), wp_update_post(), the status
-    // transitions, set_post_type(), and the default callbacks WordPress registers by name.
+    // post.php (WordPress 7.2-RC2): writing posts, native. Sticky posts, set_post_type(), deleting, trashing and
+    // untrashing, wp_insert_post(), wp_update_post(), publishing and future posts, the status transitions, pings,
+    // auto-drafts, and the default callbacks WordPress registers by name.
+
+    function stick_post($post_id)
+    {
+        N\stick_post($post_id);
+    }
+
+    function unstick_post($post_id)
+    {
+        N\unstick_post($post_id);
+    }
 
     function set_post_type($post_id = 0, $post_type = 'post')
     {
         return N\set_post_type($post_id, $post_type);
+    }
+
+    function wp_delete_post($post_id = 0, $force_delete = false)
+    {
+        return N\wp_delete_post($post_id, $force_delete);
+    }
+
+    function _reset_front_page_settings_for_post($post_id)
+    {
+        N\_reset_front_page_settings_for_post($post_id);
+    }
+
+    function _reset_privacy_policy_page_for_post(int $post_id): void
+    {
+        N\_reset_privacy_policy_page_for_post($post_id);
+    }
+
+    function wp_trash_post($post_id = 0)
+    {
+        return N\wp_trash_post($post_id);
+    }
+
+    function wp_untrash_post($post_id = 0)
+    {
+        return N\wp_untrash_post($post_id);
     }
 
     function wp_insert_post($postarr, $wp_error = false, $fire_after_hooks = true)
@@ -22,9 +58,29 @@ namespace
         return N\wp_update_post($postarr, $wp_error, $fire_after_hooks);
     }
 
+    function wp_publish_post($post)
+    {
+        N\wp_publish_post($post);
+    }
+
+    function check_and_publish_future_post($post)
+    {
+        N\check_and_publish_future_post($post);
+    }
+
     function wp_transition_post_status($new_status, $old_status, $post)
     {
         N\wp_transition_post_status($new_status, $old_status, $post);
+    }
+
+    function add_ping($post, $uri)
+    {
+        return N\add_ping($post, $uri);
+    }
+
+    function wp_delete_auto_drafts()
+    {
+        N\wp_delete_auto_drafts();
     }
 
     function _transition_post_status($new_status, $old_status, $post)
