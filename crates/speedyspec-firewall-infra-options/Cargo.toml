@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-firewall-infra-options"
-version = "0.1.5"
+version = "0.1.6"
 publish = false
 description = "The firewall's settings, read through the ported options API."
 edition.workspace = true

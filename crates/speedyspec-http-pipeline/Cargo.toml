@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-http-pipeline"
-version = "0.1.0"
+version = "0.1.1"
 publish = false
 description = "The middleware pipeline the runtime passes every request through, and an adapter for native request stages."
 edition.workspace = true

@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-posts-sql"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "wp_posts over the wpdb port: the post repository and its row mapper."
 edition.workspace = true

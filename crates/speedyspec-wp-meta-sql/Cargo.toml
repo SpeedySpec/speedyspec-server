@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-meta-sql"
-version = "0.2.0"
+version = "0.3.0"
 publish = false
 description = "The meta tables over the wpdb port: the meta repository per type and its row mapper."
 edition.workspace = true

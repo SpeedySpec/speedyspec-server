@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-meta"
-version = "0.2.0"
+version = "0.3.0"
 publish = false
 description = "WordPress's metadata API in Rust: the meta.php use cases over their ports, protected keys, hook names, register_meta() and the registered-keys registry."
 edition.workspace = true

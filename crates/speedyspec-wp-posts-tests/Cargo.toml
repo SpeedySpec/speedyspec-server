@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-posts-tests"
-version = "0.1.0"
+version = "0.1.1"
 publish = false
 description = "Integration tests of speedyspec-wp-posts's filtered use cases with the Rust hook API, the Rust escaping and the in-memory post repository, replaying the recorded compat/posts-read scenarios; and of the read use cases over the Rust object cache and the metadata API. A crate of its own so speedyspec-wp-posts depends on contracts only."
 edition.workspace = true

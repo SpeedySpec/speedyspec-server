@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-http-message"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "HTTP messages, URIs, bodies, uploaded files and their factories, implementing the speedyspec-http contracts."
 edition.workspace = true

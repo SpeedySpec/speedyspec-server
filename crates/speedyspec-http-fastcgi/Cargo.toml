@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-http-fastcgi"
-version = "0.1.0"
+version = "0.1.1"
 publish = false
 description = "Server requests built from FastCGI params and stdin, and responses written back as CGI output."
 edition.workspace = true

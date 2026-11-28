@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-wp-options"
-version = "0.3.0"
+version = "0.3.1"
 publish = false
 description = "WordPress's options API (get_option, update_option and the rest) in Rust: the entity, its ports and the API."
 edition.workspace = true

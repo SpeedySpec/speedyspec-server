@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-operation"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 description = "The unified operation API's specification: the S schema builder, the validator, Type and Operation builders, the registries with their registration checks, and document export."
 edition.workspace = true

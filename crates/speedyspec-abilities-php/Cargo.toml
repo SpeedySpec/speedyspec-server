@@ -1,6 +1,6 @@
 [package]
 name = "speedyspec-abilities-php"
-version = "0.1.1"
+version = "0.2.0"
 publish = false
 description = "The Abilities transport's PHP adapter: WordPress's ability hooks, Abilities::publish, and the WP_Ability shim that runs every ability through the Rust Abilities server."
 edition.workspace = true
