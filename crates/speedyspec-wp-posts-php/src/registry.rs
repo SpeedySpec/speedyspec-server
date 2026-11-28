@@ -526,15 +526,53 @@ fn raw_items(value: &Value) -> Result<(Vec<(Key, Value)>, bool), NativeError> {
     })
 }
 
-/// The fields of `value` that `wanted` names, as PHP values: `isset( $obj->{$key} )` for an object,
-/// `array_key_exists()` for an array, none for anything else.
-fn raw_fields(value: &Value, wanted: &[Vec<u8>]) -> Result<Vec<(Vec<u8>, Value)>, NativeError> {
-    let (items, object) = raw_items(value)?;
-    Ok(items
+/// An entry's compared fields, by name, as PHP values.
+type RawFields = Vec<(Vec<u8>, Value)>;
+
+/// The values of `list`, in order, as a packed PHP list for a helper.
+fn packed(values: impl Iterator<Item = Value>) -> Value {
+    Value::Array(
+        values
+            .enumerate()
+            .map(|(i, v)| (Key::Int(i as i64), v))
+            .collect(),
+    )
+}
+
+/// The items of a PHP list a helper returned, in order.
+fn list_items(value: Value) -> Vec<Value> {
+    match value.read().into_owned() {
+        Value::Array(items) => items.into_iter().map(|(_, v)| v).collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// The fields of each of `values` that `wanted` names, as PHP values: `isset( $obj->{$key} )` for an object,
+/// `array_key_exists()` for an array, none for anything else. One PHP call for the whole list (the `list_fields`
+/// helper), so only the compared fields are converted, not every property of every entry.
+fn raw_fields(values: Vec<Value>, wanted: &[Vec<u8>]) -> Result<Vec<RawFields>, NativeError> {
+    let count = values.len();
+    let names = packed(wanted.iter().map(|w| Value::Bytes(w.clone())));
+    let found = helper("list_fields", &[packed(values.into_iter()), names]).map_err(thrown)?;
+    let mut out: Vec<RawFields> = list_items(found)
         .into_iter()
-        .map(|(k, v)| (crate::adapters::key_text(&k).into_bytes(), v))
-        .filter(|(name, v)| wanted.contains(name) && !(object && matches!(&*v.read(), Value::Null)))
-        .collect())
+        .map(|fields| {
+            list_items(fields)
+                .into_iter()
+                .filter_map(|pair| {
+                    let mut pair = list_items(pair).into_iter();
+                    let name = match pair.next()?.read().into_owned() {
+                        Value::Str(s) => s.into_bytes(),
+                        Value::Bytes(b) => b,
+                        _ => return None,
+                    };
+                    Some((name, pair.next().unwrap_or(Value::Null)))
+                })
+                .collect()
+        })
+        .collect();
+    out.resize_with(count, Vec::new);
+    Ok(out)
 }
 
 /// Whether a converted value holds an object the codec keeps live, which the rules cannot compare as PHP does.
@@ -573,13 +611,14 @@ fn filter_global(global: &str, x: &[Value]) -> R {
         .map(|(k, _)| key_to_string(k).into_bytes())
         .collect();
     let filtering = !args.is_empty() && FilterOperator::parse(&operator).is_some();
+    let mut raws = if filtering {
+        raw_fields(list.iter().map(|(_, v)| v.clone()).collect(), &wanted)?
+    } else {
+        Vec::new()
+    };
+    raws.resize_with(list.len(), Vec::new);
     let mut entries = Vec::with_capacity(list.len());
-    for (key, value) in list {
-        let raw = if filtering {
-            raw_fields(&value, &wanted)?
-        } else {
-            Vec::new()
-        };
+    for ((key, value), raw) in list.into_iter().zip(raws) {
         let fields = raw
             .iter()
             .map(|(name, v)| Ok((name.clone(), php_in(v)?)))
@@ -627,25 +666,21 @@ fn filter_global(global: &str, x: &[Value]) -> R {
                 .collect(),
         ));
     }
-    // WP_List_Util::pluck( 'name' ).
-    let mut out = Vec::with_capacity(kept.len());
-    for (key, entry) in kept {
-        let name = if is_object(&entry.value) {
-            object_property(&entry.value, "name")?
-        } else if let Value::Array(items) = entry.value.read().into_owned() {
-            items
-                .into_iter()
-                .find(|(k, _)| matches!(k, Key::Str(s) if s == "name"))
-                .map_or(Value::Null, |(_, v)| v)
-        } else {
+    // WP_List_Util::pluck( 'name' ), every name read in one PHP call (the `list_names` helper).
+    let (keys, values): (Vec<_>, Vec<_>) = kept.into_iter().map(|(k, e)| (k, e.value)).unzip();
+    let names = list_items(helper("list_names", &[packed(values.into_iter())]).map_err(thrown)?);
+    let mut out = Vec::with_capacity(keys.len());
+    for (key, found) in keys.into_iter().zip(names) {
+        let mut found = list_items(found).into_iter();
+        if !found.next().is_some_and(|plucked| truthy(&plucked)) {
             doing_it_wrong(
                 "WP_List_Util::pluck",
                 "Values for the input array must be either objects or arrays.",
                 "6.2.0",
             )?;
             continue;
-        };
-        out.push((php_key(&key), name));
+        }
+        out.push((php_key(&key), found.next().unwrap_or(Value::Null)));
     }
     Ok(Value::Array(out))
 }

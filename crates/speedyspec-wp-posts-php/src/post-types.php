@@ -227,6 +227,58 @@ namespace SpeedySpec\WpPosts\Php
     }
 
     /**
+     * The fields of each entry of `$list` that `$wanted` names, as `[name, value]` pairs in the entry's order: an
+     * object's non-null public properties (`get_object_vars()`), an array's entries, none for anything else. One call
+     * for the whole list, so the native filter converts only the fields it compares.
+     */
+    function list_fields(array $list, array $wanted)
+    {
+        $names = array_flip($wanted);
+        $out = [];
+        foreach ($list as $value)
+        {
+            $object = is_object($value);
+            $items = $object ? get_object_vars($value) : (is_array($value) ? $value : []);
+            $fields = [];
+            foreach ($items as $name => $field)
+            {
+                if (isset($names[$name]) && !($object && null === $field))
+                {
+                    $fields[] = [(string) $name, $field];
+                }
+            }
+            $out[] = $fields;
+        }
+        return $out;
+    }
+
+    /**
+     * Each value's `name` for `WP_List_Util::pluck( 'name' )`: `[true, name]` for an object (null when it has no such
+     * public property) or an array (null when it has no such key), `[false]` for anything else.
+     */
+    function list_names(array $list)
+    {
+        $out = [];
+        foreach ($list as $value)
+        {
+            if (is_object($value))
+            {
+                $vars = get_object_vars($value);
+                $out[] = [true, array_key_exists('name', $vars) ? $vars['name'] : null];
+            }
+            elseif (is_array($value))
+            {
+                $out[] = [true, array_key_exists('name', $value) ? $value['name'] : null];
+            }
+            else
+            {
+                $out[] = [false];
+            }
+        }
+        return $out;
+    }
+
+    /**
      * remove_post_type_support()'s write.
      */
     function remove_support($post_type, $feature)
