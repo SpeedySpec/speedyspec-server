@@ -110,6 +110,13 @@ pub trait UploadsTwin {
     fn delete_post_thumbnail(&self, post_id: Value) -> Result<Value, PortError>;
 }
 
+/// The revisions port's twin: `wp_save_post_revision()` and `wp_delete_post_revision()`, each given the id.
+#[php_port(name = "SpeedySpec\\WpPosts\\Revisions")]
+pub trait RevisionsTwin {
+    fn save_post_revision(&self, post_id: Value) -> Result<Value, PortError>;
+    fn delete_post_revision(&self, revision_id: Value) -> Result<Value, PortError>;
+}
+
 /// The `WP_Query` port's twin.
 #[php_port(name = "SpeedySpec\\WpPosts\\PostQuery")]
 pub trait PostQueryTwin {
@@ -399,8 +406,12 @@ impl Uploads for PhpBound {
         )
     }
 
+    /// The answer is carried as the object gave it: a `WP_Post` stays the very object.
     fn delete_attachment(&self, post: PostId, force: bool) -> Result<PhpValue, PostError> {
-        self.call("delete_attachment", vec![id(post), Value::Bool(force)])
+        let answer = self
+            .raw("delete_attachment", vec![id(post), Value::Bool(force)])
+            .map_err(thrown_error)?;
+        crate::codec::from_php(&answer).map_err(thrown_error)
     }
 
     fn update_attached_file(&self, post: PostId, file: &PhpValue) -> Result<(), PostError> {
@@ -419,6 +430,18 @@ impl Uploads for PhpBound {
 
     fn delete_post_thumbnail(&self, post: PostId) -> Result<(), PostError> {
         self.call("delete_post_thumbnail", vec![id(post)])?;
+        Ok(())
+    }
+}
+
+impl c::Revisions for PhpBound {
+    fn save_post_revision(&self, post: PostId) -> Result<(), PostError> {
+        self.call("save_post_revision", vec![id(post)])?;
+        Ok(())
+    }
+
+    fn delete_post_revision(&self, revision: PostId) -> Result<(), PostError> {
+        self.call("delete_post_revision", vec![id(revision)])?;
         Ok(())
     }
 }
@@ -498,6 +521,10 @@ pub(crate) fn rewrite(object: PhpObject) -> Rc<dyn Rewrite> {
 }
 
 pub(crate) fn uploads(object: PhpObject) -> Rc<dyn Uploads> {
+    Rc::new(PhpBound::new(object))
+}
+
+pub(crate) fn revisions(object: PhpObject) -> Rc<dyn c::Revisions> {
     Rc::new(PhpBound::new(object))
 }
 

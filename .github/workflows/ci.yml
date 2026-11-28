@@ -179,7 +179,7 @@ jobs:
           # <db>_posts_read, as compat/posts-read/setup.php seeds it (the registry and the replay), <db>_posts_write
           # for the post-writing replay, <db>_posts_read_php for the errors and replacement tests (the read and write
           # seeds in turn), and <db>_posts_wordpress for WordPress's own.
-          scripts/linux-php.sh cargo test -p speedyspec-wp-posts-php --test registry --test compat --test compat_write --test errors --test replacement --test release --test wordpress
+          scripts/linux-php.sh cargo test -p speedyspec-wp-posts-php --test registry --test compat --test compat_write --test errors --test replacement --test release --test keys --test wordpress
           scripts/linux-php.sh cargo test -p speedyspec-wp-options-tests --test conditional
           scripts/linux-php.sh cargo test -p speedyspec-wp-cron -p speedyspec-wp-cron-options -p speedyspec-wp-cron-php
 

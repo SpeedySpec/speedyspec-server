@@ -20,6 +20,7 @@ use speedyspec_wp_cron_contracts::{CronError, CronResult};
 use speedyspec_wp_hooks::WpHookApi;
 use speedyspec_wp_hooks_contracts::{Callback, HookError, HookName, HookValue};
 use speedyspec_wp_meta::{MetaDeps, MetaKeyRegistry, MetadataApi, UnfilteredProtection};
+use speedyspec_wp_meta_contracts::Metadata;
 use speedyspec_wp_meta_contracts::{
     Installing, MetaKey, MetaRepositories, MetaType, ObjectId, ObjectSubtypes, SerializedValue,
 };
@@ -34,10 +35,11 @@ use speedyspec_wp_posts::{
 };
 use speedyspec_wp_posts_contracts::{
     Charset, Clock, Comments, CurrentPost, LastPostField, MimeFilter, MimeType, PageRow, Post,
-    PostDateTime, PostError, PostId, PostObject, PostParent, PostQuery, PostRepository, PostRow,
-    PostStatusName, PostType, PostTypeName, PostTypeSupports, PostTypes, PostWriteError, Rewrite,
-    RewriteContext, RowValue, Slug, SlugTruncation, Taxonomy, Theme, Timezone, TitleSanitizer,
-    Translator, Uploads, Users, WriteOutcome, WriteResult,
+    PostArg, PostDateTime, PostError, PostId, PostObject, PostParent, PostQuery, PostRef,
+    PostRepository, PostReturn, PostRow, PostStatusName, PostType, PostTypeName, PostTypeSupports,
+    PostTypes, PostWriteError, Revisions, Rewrite, RewriteContext, RowValue, Slug, SlugTruncation,
+    Taxonomy, Theme, Timezone, TitleSanitizer, Translator, Uploads, Users, WriteOutcome,
+    WriteResult,
 };
 use speedyspec_wp_posts_memory::MemoryPostRepository;
 
@@ -45,6 +47,15 @@ use speedyspec_wp_posts_memory::MemoryPostRepository;
 
 const NOW: i64 = 1_795_780_800;
 const OFFSET: i64 = 2 * 3600;
+
+thread_local! {
+    /// The frozen `time()`: [`NOW`], or a step's own `clock`.
+    static CLOCK: Cell<i64> = const { Cell::new(NOW) };
+}
+
+fn now() -> i64 {
+    CLOCK.with(Cell::get)
+}
 
 fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
     let y = if m <= 2 { y - 1 } else { y };
@@ -122,10 +133,10 @@ struct FixedClock;
 impl Clock for FixedClock {
     fn now_local(&self) -> Result<String, PostError> {
         local_time()?;
-        Ok(format(NOW + OFFSET))
+        Ok(format(now() + OFFSET))
     }
     fn now_gmt(&self) -> String {
-        format(NOW)
+        format(now())
     }
     fn date_from_gmt(&self, gmt: &[u8]) -> Result<Vec<u8>, PostError> {
         local_time()?;
@@ -142,7 +153,7 @@ impl Clock for FixedClock {
 
 impl Microtime for FixedClock {
     fn microtime(&self) -> String {
-        format!("0.00000000 {NOW}")
+        format!("0.00000000 {}", now())
     }
 }
 
@@ -345,7 +356,28 @@ impl speedyspec_wp_posts::Taxonomy for Terms {
 
 /// `get_default_comment_status()` as WordPress answers it on the site: `closed` for pages and for types without the
 /// support, else the `default_*_status` option (`open`).
-struct DefaultComments(Rc<Types>);
+struct DefaultComments {
+    types: Rc<Types>,
+    calls: RefCell<Vec<String>>,
+    /// The seeded comments' statuses by post (setup.php): post 1 has comments 1 (approved) and 2 (not), post 7
+    /// comment 3 (`post-trashed`).
+    statuses: RefCell<HashMap<u64, Vec<(i64, &'static str)>>>,
+    metadata: Rc<MetadataApi>,
+}
+
+impl DefaultComments {
+    fn new(types: Rc<Types>, metadata: Rc<MetadataApi>) -> Self {
+        DefaultComments {
+            types,
+            calls: RefCell::default(),
+            statuses: RefCell::new(HashMap::from([
+                (1, vec![(1, "1"), (2, "0")]),
+                (7, vec![(3, "post-trashed")]),
+            ])),
+            metadata,
+        }
+    }
+}
 impl Comments for DefaultComments {
     fn default_comment_status(
         &self,
@@ -359,22 +391,62 @@ impl Comments for DefaultComments {
         };
         Ok(s(if post_type.as_str() == "page" {
             "closed"
-        } else if self.0.supports(post_type.as_str(), supports) {
+        } else if self.types.supports(post_type.as_str(), supports) {
             "open"
         } else {
             "closed"
         }))
     }
-    fn trash_post_comments(&self, _: PostId) -> Result<(), PostError> {
+    /// `wp_trash_post_comments()`: the statuses kept in `_wp_trash_meta_comments_status`, then `post-trashed`.
+    fn trash_post_comments(&self, post: PostId) -> Result<(), PostError> {
+        self.calls.borrow_mut().push(format!("trash {}", post.0));
+        let mut statuses = self.statuses.borrow_mut();
+        let Some(comments) = statuses.get_mut(&post.0) else {
+            return Ok(());
+        };
+        let kept = PhpValue::Array(
+            comments
+                .iter()
+                .map(|(id, status)| (PhpKey::Int(*id), s(status)))
+                .collect(),
+        );
+        self.metadata
+            .add(
+                &MetaType::new("post").unwrap(),
+                ObjectId(post.0),
+                &MetaKey::from("_wp_trash_meta_comments_status"),
+                kept,
+                false,
+            )
+            .unwrap();
+        for comment in comments.iter_mut() {
+            comment.1 = "post-trashed";
+        }
         Ok(())
     }
-    fn untrash_post_comments(&self, _: PostId) -> Result<(), PostError> {
+    /// `wp_untrash_post_comments()`: the kept statuses dropped with their meta.
+    fn untrash_post_comments(&self, post: PostId) -> Result<(), PostError> {
+        self.calls.borrow_mut().push(format!("untrash {}", post.0));
+        if self.statuses.borrow().contains_key(&post.0) {
+            self.metadata
+                .delete(
+                    &MetaType::new("post").unwrap(),
+                    ObjectId(post.0),
+                    &MetaKey::from("_wp_trash_meta_comments_status"),
+                    None,
+                    false,
+                )
+                .unwrap();
+        }
         Ok(())
     }
-    fn delete_post_comments(&self, _: PostId) -> Result<(), PostError> {
+    fn delete_post_comments(&self, post: PostId) -> Result<(), PostError> {
+        self.calls.borrow_mut().push(format!("delete {}", post.0));
+        self.statuses.borrow_mut().remove(&post.0);
         Ok(())
     }
-    fn defer_counting(&self, _: bool) -> Result<(), PostError> {
+    fn defer_counting(&self, defer: bool) -> Result<(), PostError> {
+        self.calls.borrow_mut().push(format!("defer {defer}"));
         Ok(())
     }
 }
@@ -606,21 +678,71 @@ impl Runtime for Rt {
             .push(format!("{function}: {message} ({version})"));
         Ok(())
     }
+    fn constant(&self, name: &str) -> Result<Option<PhpValue>, PostError> {
+        Ok(match name {
+            "EMPTY_TRASH_DAYS" => Some(PhpValue::Int(TRASH_DAYS.with(Cell::get))),
+            _ => None,
+        })
+    }
 }
 
-/// The site's options.
-struct SiteOptions;
+thread_local! {
+    /// `EMPTY_TRASH_DAYS`: 30 on the recorded site; a test sets 0 to turn the trash off.
+    static TRASH_DAYS: Cell<i64> = const { Cell::new(30) };
+}
+
+/// The site's options as setup.php seeds them (`show_on_front` `page`, `page_on_front` 3, `sticky_posts` holding post
+/// 1), read and written in memory. `update_option()` writes and answers true only for a changed value.
+struct SiteOptions(RefCell<HashMap<String, HookValue>>);
+impl Default for SiteOptions {
+    fn default() -> Self {
+        let text = |v: &str| HookValue::Str(v.into());
+        let mut options = HashMap::new();
+        for (name, value) in [
+            ("default_category", "1"),
+            ("default_pingback_flag", "1"),
+            ("show_on_front", "page"),
+            ("page_on_front", "3"),
+            ("page_for_posts", "0"),
+            ("wp_page_for_privacy_policy", "0"),
+        ] {
+            options.insert(name.to_owned(), text(value));
+        }
+        options.insert(
+            "sticky_posts".into(),
+            HookValue::Array(vec![(
+                speedyspec_wp_hooks_contracts::Key::Int(0),
+                HookValue::Int(1),
+            )]),
+        );
+        SiteOptions(RefCell::new(options))
+    }
+}
+impl SiteOptions {
+    fn get(&self, name: &str) -> PhpValue {
+        from_hook_value(
+            &self
+                .0
+                .borrow()
+                .get(name)
+                .cloned()
+                .unwrap_or(HookValue::Bool(false)),
+        )
+        .unwrap()
+    }
+}
 impl Options for SiteOptions {
     fn get_option(
         &self,
         name: &str,
         default: Option<HookValue>,
     ) -> Result<HookValue, OptionsError> {
-        Ok(match name {
-            "default_category" | "default_pingback_flag" => HookValue::Str("1".into()),
-            "sticky_posts" => HookValue::Array(Vec::new()),
-            _ => default.unwrap_or(HookValue::Bool(false)),
-        })
+        Ok(self
+            .0
+            .borrow()
+            .get(name)
+            .cloned()
+            .unwrap_or_else(|| default.unwrap_or(HookValue::Bool(false))))
     }
     fn add_option(
         &self,
@@ -631,11 +753,45 @@ impl Options for SiteOptions {
     ) -> Result<bool, OptionsError> {
         Ok(false)
     }
-    fn update_option(&self, _: &str, _: HookValue, _: HookValue) -> Result<bool, OptionsError> {
-        Ok(false)
+    fn update_option(
+        &self,
+        name: &str,
+        value: HookValue,
+        _: HookValue,
+    ) -> Result<bool, OptionsError> {
+        let mut options = self.0.borrow_mut();
+        let old = options.get(name).map(|v| from_hook_value(v).unwrap());
+        let new = from_hook_value(&value).unwrap();
+        // update_option() compares the serialized values (a scalar as its string).
+        let same = |a: &PhpValue, b: &PhpValue| match (a, b) {
+            (PhpValue::Array(_), _) | (_, PhpValue::Array(_)) => serialize(a) == serialize(b),
+            _ => to_php_string(a) == to_php_string(b),
+        };
+        if old.as_ref().is_some_and(|old| same(old, &new)) {
+            return Ok(false);
+        }
+        options.insert(name.to_owned(), value);
+        Ok(true)
     }
     fn delete_option(&self, _: &str) -> Result<bool, OptionsError> {
         Ok(false)
+    }
+}
+
+/// `wp_delete_post_revision( $id )`: `wp_delete_post( $id )` through the API, as revision.php does (the revision
+/// code stays WordPress's until phase 6; this stands in for it).
+#[derive(Default)]
+struct DeletingRevisions(RefCell<std::rc::Weak<PostWritesApi>>, RefCell<Vec<u64>>);
+impl Revisions for DeletingRevisions {
+    fn save_post_revision(&self, _: PostId) -> Result<(), PostError> {
+        Ok(())
+    }
+    fn delete_post_revision(&self, revision: PostId) -> Result<(), PostError> {
+        self.1.borrow_mut().push(revision.0);
+        if let Some(api) = self.0.borrow().upgrade() {
+            api.wp_delete_post(revision.0 as i64, false)?;
+        }
+        Ok(())
     }
 }
 
@@ -725,6 +881,9 @@ struct Fixture {
     global: Rc<Global>,
     rewriting: Rc<Rewriting>,
     runtime: Rc<Rt>,
+    options: Rc<SiteOptions>,
+    comments: Rc<DefaultComments>,
+    revisions: Rc<DeletingRevisions>,
     log: support::Invocations,
 }
 
@@ -908,6 +1067,9 @@ fn fixture_with(wrap: impl FnOnce(Rc<MemoryPostRepository>) -> Rc<dyn PostReposi
     .unwrap();
     let global: Rc<Global> = Rc::default();
     let terms: Rc<Terms> = Rc::default();
+    let options: Rc<SiteOptions> = Rc::default();
+    let comments = Rc::new(DefaultComments::new(types.clone(), metadata.clone()));
+    let revisions: Rc<DeletingRevisions> = Rc::default();
     let posts = PostsApi::new(PostsDeps {
         hooks: hooks.clone(),
         cache,
@@ -921,7 +1083,7 @@ fn fixture_with(wrap: impl FnOnce(Rc<MemoryPostRepository>) -> Rc<dyn PostReposi
         terms: terms.clone(),
         clock: Rc::new(FixedClock),
         invalidation: Rc::new(Never),
-        options: Rc::new(SiteOptions),
+        options: options.clone(),
     });
     let cron: Rc<Cron> = Rc::default();
     let rewriting: Rc<Rewriting> = Rc::default();
@@ -932,7 +1094,7 @@ fn fixture_with(wrap: impl FnOnce(Rc<MemoryPostRepository>) -> Rc<dyn PostReposi
         clock: Rc::new(FixedClock),
         users: Rc::new(Admin),
         taxonomy: terms.clone(),
-        comments: Rc::new(DefaultComments(types.clone())),
+        comments: comments.clone(),
         rewrite: Rc::new(PlainPermalinks(repo.clone(), types.clone())),
         uploads: Rc::new(NoUploads),
         theme: Rc::new(Templates),
@@ -945,7 +1107,10 @@ fn fixture_with(wrap: impl FnOnce(Rc<MemoryPostRepository>) -> Rc<dyn PostReposi
         objects: Rc::new(PlainPostObjects),
         slugs: rewriting.clone(),
         runtime: runtime.clone(),
+        revisions: revisions.clone(),
+        meta: meta.clone(),
     });
+    *revisions.0.borrow_mut() = Rc::downgrade(&api);
     // setup.php's default filters for the writers, in its order, as Rust callbacks.
     add_default_filters(&hooks, &posts);
     // default-filters.php's writers' callbacks, then each core type's `future_{type}` hook.
@@ -965,6 +1130,9 @@ fn fixture_with(wrap: impl FnOnce(Rc<MemoryPostRepository>) -> Rc<dyn PostReposi
         global,
         rewriting,
         runtime,
+        options,
+        comments,
+        revisions,
         log: Rc::default(),
     }
 }
@@ -1112,11 +1280,33 @@ fn plain(value: &serde_json::Value, vars: &HashMap<String, Var>) -> Var {
         serde_json::Value::Object(map) if map.len() == 1 && map.contains_key("var") => {
             vars[map["var"].as_str().unwrap()].clone()
         }
-        other => Var::Value(plain_value(other)),
+        other => Var::Value(plain_value_with(other, vars)),
     }
 }
 
-fn plain_value(value: &serde_json::Value) -> PhpValue {
+/// A plain JSON value, each nested `{"var": name}` replaced by the value kept as `name`.
+fn plain_value_with(value: &serde_json::Value, vars: &HashMap<String, Var>) -> PhpValue {
+    match value {
+        serde_json::Value::Object(map) if map.len() == 1 && map.contains_key("var") => {
+            plain(value, vars).value()
+        }
+        serde_json::Value::Array(items) => PhpValue::Array(
+            items
+                .iter()
+                .enumerate()
+                .map(|(i, v)| (PhpKey::Int(i as i64), plain_value_with(v, vars)))
+                .collect(),
+        ),
+        serde_json::Value::Object(map) => PhpValue::Array(
+            map.iter()
+                .map(|(n, v)| (support::php_key(n), plain_value_with(v, vars)))
+                .collect(),
+        ),
+        other => plain_scalar(other),
+    }
+}
+
+fn plain_scalar(value: &serde_json::Value) -> PhpValue {
     match value {
         serde_json::Value::Null => PhpValue::Null,
         serde_json::Value::Bool(b) => PhpValue::Bool(*b),
@@ -1124,18 +1314,7 @@ fn plain_value(value: &serde_json::Value) -> PhpValue {
             .as_i64()
             .map_or_else(|| PhpValue::Float(n.as_f64().unwrap()), PhpValue::Int),
         serde_json::Value::String(t) => s(t),
-        serde_json::Value::Array(items) => PhpValue::Array(
-            items
-                .iter()
-                .enumerate()
-                .map(|(i, v)| (PhpKey::Int(i as i64), plain_value(v)))
-                .collect(),
-        ),
-        serde_json::Value::Object(map) => PhpValue::Array(
-            map.iter()
-                .map(|(n, v)| (support::php_key(n), plain_value(v)))
-                .collect(),
-        ),
+        _ => unreachable!("arrays and objects are plain_value_with()'s"),
     }
 }
 
@@ -1298,6 +1477,53 @@ fn recorded_error(state: &serde_json::Value, name: &str) -> String {
     key_to_string(&errors[0].0)
 }
 
+/// The fixture callbacks code that is not ported fires (the comment functions, `wp_delete_attachment()`): the
+/// replay goes through their ports, which fire nothing.
+const FROM_UNPORTED: [&str; 6] = [
+    "rec:delete_comment",
+    "rec:trash_post_comments",
+    "rec:trashed_post_comments",
+    "rec:untrash_post_comments",
+    "rec:untrashed_post_comments",
+    "rec:delete_attachment",
+];
+
+/// A value a step kept with `as`, as the recorder reported it (`None` when it did not change in that step).
+fn kept_value(state: &serde_json::Value, name: &str) -> Option<PhpValue> {
+    state["array"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p[0] == format!("kept:{name}"))
+        .map(|entry| support::decode_kept(&entry[1]))
+}
+
+/// Inserts each revision row (id 26 and up) of a recorded `wp_posts` snapshot that the memory table lacks.
+fn copy_revisions(f: &Fixture, rows: &[Vec<(String, String)>]) {
+    for row in rows {
+        let id: u64 = col(row, "ID").parse().unwrap();
+        if col(row, "post_type") != "revision"
+            || id < 26
+            || f.repo.find(PostId(id)).unwrap().is_some()
+        {
+            continue;
+        }
+        let mut post_row = PostRow::default();
+        for (column, value) in row {
+            post_row = post_row.with(
+                column.as_str(),
+                match column.as_str() {
+                    "ID" | "post_author" | "post_parent" | "menu_order" | "comment_count" => {
+                        RowValue::Int(value.parse().unwrap())
+                    }
+                    _ => RowValue::Str(value.as_bytes().to_vec()),
+                },
+            );
+        }
+        f.repo.insert(&post_row).unwrap();
+    }
+}
+
 fn write_answer(result: WriteResult) -> Result<i64, &'static str> {
     match result {
         Ok(id) => Ok(id.0 as i64),
@@ -1331,6 +1557,19 @@ fn replay(name: &str) {
             let flag = |i: usize, default: bool| {
                 arg(i).map_or(default, |v| matches!(v.value(), PhpValue::Bool(true)))
             };
+            CLOCK.with(|c| {
+                c.set(
+                    step["clock"]
+                        .as_i64()
+                        .or(scenario["clock"].as_i64())
+                        .unwrap_or(NOW),
+                )
+            });
+            let post_arg = |i: usize| match to_php_int(&arg(i).unwrap().value()) {
+                0 => PostArg::Ref(PostRef::Current),
+                id => PostArg::Ref(PostRef::Id(PostId(id as u64))),
+            };
+            let kept = |var: &str| kept_value(&result["state"], var);
             let returned: Option<PhpValue> = match step["call"].as_str().unwrap() {
                 "add_action" | "add_filter" => {
                     let hook = args[0].as_str().unwrap();
@@ -1353,6 +1592,10 @@ fn replay(name: &str) {
                                     },
                                     "speedyspec_compat_posts_write_always_empty" => {
                                         |_| Ok(HookValue::Bool(true))
+                                    }
+                                    // wp_untrash_post_set_previous_status( $new, $post_id, $previous ).
+                                    "wp_untrash_post_set_previous_status" => {
+                                        |args| Ok(args[2].clone())
                                     }
                                     other => panic!("{at}: callback {other} is not replayed"),
                                 };
@@ -1445,12 +1688,102 @@ fn replay(name: &str) {
                     let rows = f.api.set_post_type(id, &post_type).unwrap();
                     Some(rows.map_or(PhpValue::Bool(false), |n| PhpValue::Int(n as i64)))
                 }
+                "wp_delete_post" | "wp_trash_post" | "wp_untrash_post" => {
+                    let answer = match step["call"].as_str().unwrap() {
+                        "wp_delete_post" => {
+                            let id = to_php_int(&arg(0).unwrap().value());
+                            f.api.wp_delete_post(id, flag(1, false))
+                        }
+                        "wp_trash_post" => f.api.wp_trash_post(post_arg(0)),
+                        _ => f.api.wp_untrash_post(post_arg(0)),
+                    }
+                    .unwrap_or_else(|e| panic!("{at}: {e}"));
+                    match answer {
+                        PostReturn::Post(object) => {
+                            let got = from_hook_value(object.handle.as_ref().unwrap()).unwrap();
+                            let var = step["as"].as_str().unwrap();
+                            let want = kept(var).unwrap_or_else(|| panic!("{at}: kept {var}"));
+                            if let Some(path) =
+                                first_difference(&reported(got), &reported(want), String::new())
+                            {
+                                panic!("{at}: the post returned differs at {path}");
+                            }
+                            None
+                        }
+                        PostReturn::Value(value) => Some(value),
+                    }
+                }
+                "wp_publish_post" => {
+                    f.api.wp_publish_post(post_arg(0)).unwrap();
+                    Some(PhpValue::Null)
+                }
+                "check_and_publish_future_post" => {
+                    f.api.check_and_publish_future_post(post_arg(0)).unwrap();
+                    Some(PhpValue::Null)
+                }
+                "stick_post" | "unstick_post" => {
+                    let id = to_php_int(&arg(0).unwrap().value());
+                    if step["call"] == "stick_post" {
+                        f.api.stick_post(id).unwrap();
+                    } else {
+                        f.api.unstick_post(id).unwrap();
+                    }
+                    Some(PhpValue::Null)
+                }
+                "add_ping" => {
+                    let rows = f
+                        .api
+                        .add_ping(post_arg(0), &arg(1).unwrap().value())
+                        .unwrap();
+                    Some(rows.map_or(PhpValue::Bool(false), |n| PhpValue::Int(n as i64)))
+                }
+                "wp_delete_auto_drafts" => {
+                    f.api.wp_delete_auto_drafts().unwrap();
+                    Some(PhpValue::Null)
+                }
+                "do_action" => {
+                    let hook = args[0].as_str().unwrap();
+                    let rest = (1..args.len())
+                        .map(|i| speedyspec_php_serialize::to_hook_value(&arg(i).unwrap().value()))
+                        .collect();
+                    f.hooks
+                        .do_action(&HookName::from(hook), rest)
+                        .unwrap_or_else(|e| panic!("{at}: {e}"));
+                    Some(PhpValue::Null)
+                }
+                // get_the_guid(): the post's `guid` as `get_post()` reads it (no `get_the_guid` filter is added).
+                "get_the_guid" => {
+                    let id = to_php_int(&arg(0).unwrap().value());
+                    let post = f.posts.get_post(PostRef::Id(PostId(id as u64))).unwrap();
+                    Some(s(&String::from_utf8_lossy(&post.unwrap().guid)))
+                }
+                "get_option" => Some(f.options.get(args[0].as_str().unwrap())),
+                "is_sticky" => Some(f.posts.is_sticky(&arg(0).unwrap().value()).unwrap()),
+                "get_pung" | "get_to_ping" | "get_post_status" => {
+                    let post = match post_arg(0) {
+                        PostArg::Ref(post) => post,
+                        _ => unreachable!(),
+                    };
+                    Some(
+                        match step["call"].as_str().unwrap() {
+                            "get_pung" => f.posts.get_pung(post),
+                            "get_to_ping" => f.posts.get_to_ping(post),
+                            _ => f.posts.get_post_status(post),
+                        }
+                        .unwrap(),
+                    )
+                }
                 // Term reads are the taxonomy code's (WordPress's until it is ported): not replayed.
-                "wp_get_post_categories" | "wp_get_post_terms" | "wp_get_object_terms" => continue,
+                "wp_get_post_categories"
+                | "wp_get_post_terms"
+                | "wp_get_object_terms"
+                | "get_term" => {
+                    continue;
+                }
                 other => panic!("{at}: {other} is not replayed"),
             };
             if let Some(returned) = returned
-                && !result["returned"].is_object()
+                && result["returned"].get("callback").is_none()
             {
                 assert_eq!(
                     returned,
@@ -1463,10 +1796,11 @@ fn replay(name: &str) {
                 .borrow()
                 .iter()
                 .map(|(l, a)| (l.clone(), reported(a.clone())))
+                .filter(|(_, a)| !from_revision(a))
                 .collect();
             let want: Vec<_> = support::recorded_invocations(result)
                 .into_iter()
-                .filter(|(_, a)| !from_revision(a))
+                .filter(|(l, a)| !from_revision(a) && !FROM_UNPORTED.contains(&l.as_str()))
                 .collect();
             let labels = |list: &[(String, PhpValue)]| {
                 list.iter().map(|(l, _)| l.clone()).collect::<Vec<_>>()
@@ -1483,16 +1817,11 @@ fn replay(name: &str) {
             }
             let snapshot = result.get("snapshot");
             if let Some(rows) = snapshot.and_then(|s| snapshot_table(s, "wp_posts")) {
-                // The revisions WordPress's revision code wrote are left out (see from_revision()).
+                // The revisions WordPress's revision code wrote during the step are copied in (it stays
+                // WordPress's until phase 6), so later inserts take the ids they took there.
+                copy_revisions(&f, &rows);
                 let comparable = sorted;
-                let want: Vec<_> = rows
-                    .into_iter()
-                    .filter(|r| {
-                        col(r, "post_type") != "revision"
-                            || col(r, "ID").parse::<u64>().unwrap() < 26
-                    })
-                    .map(comparable)
-                    .collect();
+                let want: Vec<_> = rows.into_iter().map(comparable).collect();
                 let got: Vec<_> = table(&f).into_iter().map(comparable).collect();
                 for (got, want) in got.iter().zip(&want) {
                     assert_eq!(got, want, "{at}: a wp_posts row");
@@ -1589,6 +1918,71 @@ fn updates_replay() {
 #[test]
 fn set_post_type_replays() {
     replay("set-type");
+}
+
+#[test]
+fn deletes_replay() {
+    // Not replayed: delete-attachments, which goes to `wp_delete_attachment()` (the uploads port, phase 7).
+    for name in [
+        "delete-force",
+        "delete-not-forced",
+        "delete-children-reparented",
+        "delete-front-page",
+        "delete-revision",
+        "delete-missing",
+        "delete-hierarchical-book",
+    ] {
+        replay(name);
+    }
+}
+
+#[test]
+fn trash_and_untrash_replay() {
+    for name in [
+        "trash-with-comments",
+        "trash-already-trashed",
+        "trash-front-page",
+        "trash-draft-no-slug",
+        "untrash-default-status",
+        "untrash-previous-status",
+        "untrash-not-trashed",
+        "trash-untrash-slug-taken",
+        "trash-untrash-round-trip",
+    ] {
+        replay(name);
+    }
+}
+
+#[test]
+fn publishing_replays() {
+    for name in [
+        "publish-draft",
+        "publish-future-early",
+        "publish-already-and-missing",
+        "future-scheduled-then-published",
+        "future-too-early",
+        "future-hook-publishes",
+        "future-back-to-draft",
+        "transition-guid-reset",
+    ] {
+        replay(name);
+    }
+}
+
+#[test]
+fn sticky_ping_and_auto_draft_replays() {
+    for name in [
+        "sticky-stick",
+        "sticky-unstick",
+        "sticky-insert",
+        "ping-add",
+        "ping-to-ping",
+        "ping-pinged-removed",
+        "auto-drafts-cleanup",
+        "auto-drafts-insert",
+    ] {
+        replay(name);
+    }
 }
 
 /// Review focus 1: a parent that closes a loop the post is not on. `wp_check_post_hierarchy_for_loops()` runs inside
@@ -2325,6 +2719,32 @@ fn a_stale_hook_error_does_not_fail_a_write() {
     );
 }
 
+/// With an older failure still pending, a write's own failure is the one left in the side channel for the bridge: the
+/// error the use case returns, not the older one.
+#[test]
+fn a_new_hook_error_wins_over_a_stale_one() {
+    let f = fixture_with(|repo| Rc::new(HidingRepository(repo)));
+    let _ = speedyspec_wp_db_contracts::take_hook_error();
+    let _: speedyspec_wp_db_contracts::WpDbError = HookError::message("earlier").into();
+    let result = f.api.wp_insert_post(
+        array(vec![
+            ("post_title", s("!!!")),
+            ("post_status", s("publish")),
+            ("post_name", s("!!!")),
+        ]),
+        false,
+        true,
+    );
+    let Err(PostError::Hook(e)) = result else {
+        panic!("the hidden failure stops it: {result:?}")
+    };
+    assert_eq!(e.message, "query threw");
+    assert_eq!(
+        speedyspec_wp_db_contracts::take_hook_error().map(|e| e.message),
+        Some("query threw".to_owned())
+    );
+}
+
 /// `_transition_post_status` reads `get_the_guid( $post->ID )`, which falls back to the global `$post` for ID 0.
 #[test]
 fn guid_of_id_zero_reads_the_global_post() {
@@ -2347,4 +2767,448 @@ fn guid_of_id_zero_reads_the_global_post() {
         .transition_post_status_default("publish", "draft", PostId(0), "post")
         .unwrap();
     assert_eq!(*seen.borrow(), [PhpValue::Int(23)]);
+}
+
+// ---- phase 5b: delete, trash, publish, sticky posts, pings and auto-drafts ----
+
+/// A callback on `hook` that records the `(int)` of each run's first argument.
+fn record_ids(f: &Fixture, hook: &str) -> Rc<RefCell<Vec<i64>>> {
+    let ids: Rc<RefCell<Vec<i64>>> = Rc::default();
+    let seen = ids.clone();
+    f.hooks
+        .add_filter(
+            &HookName::from(hook),
+            Callback::rust("record", move |args: &[HookValue]| {
+                seen.borrow_mut()
+                    .push(to_php_int(&from_hook_value(&args[0]).unwrap()));
+                Ok(args[0].clone())
+            }),
+            &HookValue::Int(10),
+            2,
+        )
+        .unwrap();
+    ids
+}
+
+fn by_id(id: u64) -> PostArg {
+    PostArg::Ref(PostRef::Id(PostId(id)))
+}
+
+/// Review focus 4: a future post is scheduled through the cron contracts when it is written, rescheduled by
+/// `check_and_publish_future_post()` while its time has not come, and published by it (directly and through the
+/// `publish_future_post` hook) once it has: the event is cleared and `_publish_post_hook()` schedules `do_pings`.
+#[test]
+fn future_post_is_scheduled_and_published() {
+    let f = fixture();
+    let id = f.insert(array(vec![
+        ("post_title", s("Scheduled")),
+        ("post_status", s("publish")),
+        ("post_date", s("2027-06-01 10:00:00")),
+    ]));
+    assert_eq!(id, Ok(PostId(26)));
+    assert_eq!(f.row(26).status.as_str(), "future");
+    let at = parse(b"2027-06-01 08:00:00").unwrap();
+    let args = |id: i64| PhpValue::Array(vec![(PhpKey::Int(0), PhpValue::Int(id))]);
+    assert_eq!(
+        *f.cron.0.borrow(),
+        [(at, "publish_future_post".to_owned(), args(26))]
+    );
+
+    // Too early: cleared and scheduled again at the same time, still future.
+    f.cron.0.borrow_mut().clear();
+    f.api.check_and_publish_future_post(by_id(26)).unwrap();
+    assert_eq!(f.row(26).status.as_str(), "future");
+    assert_eq!(
+        *f.cron.0.borrow(),
+        [(at, "publish_future_post".to_owned(), args(26))]
+    );
+
+    // Not future, or no post: nothing.
+    f.api.check_and_publish_future_post(by_id(6)).unwrap();
+    f.api.check_and_publish_future_post(by_id(999)).unwrap();
+    assert_eq!(f.cron.0.borrow().len(), 1);
+
+    // Its time has come: published through the transition, the event cleared, `do_pings` scheduled now.
+    CLOCK.with(|c| c.set(at + 3600));
+    let transitions = record_ids(&f, "future_to_publish");
+    f.api.check_and_publish_future_post(by_id(26)).unwrap();
+    assert_eq!(f.row(26).status.as_str(), "publish");
+    assert_eq!(transitions.borrow().len(), 1);
+    assert_eq!(
+        *f.cron.0.borrow(),
+        [(
+            at + 3600,
+            "do_pings".to_owned(),
+            PhpValue::Array(Vec::new())
+        )]
+    );
+
+    // The seeded future post 15, through the hook default-filters.php registers.
+    f.hooks
+        .do_action(
+            &HookName::from("publish_future_post"),
+            vec![HookValue::Int(15)],
+        )
+        .unwrap();
+    assert_eq!(f.row(15).status.as_str(), "publish");
+    CLOCK.with(|c| c.set(NOW));
+}
+
+/// Deleting a hierarchical post points its children at its own parent, then cleans the post's cache (with the object,
+/// the row being gone) and each child's, and unschedules `publish_future_post`; the comments are deleted between
+/// deferring and flushing the counts.
+#[test]
+fn delete_reparents_children_and_cleans_caches() {
+    let f = fixture();
+    // Read them first, so their `posts` entries are cached.
+    for id in [2, 3, 20] {
+        f.posts.get_post(PostRef::Id(PostId(id))).unwrap().unwrap();
+    }
+    f.cron.0.borrow_mut().push((
+        NOW + 60,
+        "publish_future_post".to_owned(),
+        PhpValue::Array(vec![(PhpKey::Int(0), PhpValue::Int(2))]),
+    ));
+    let cleaned = record_ids(&f, "clean_post_cache");
+    let answer = f.api.wp_delete_post(2, true).unwrap();
+    let PostReturn::Post(post) = answer else {
+        panic!("the post")
+    };
+    assert_eq!(post.post.id, PostId(2));
+    assert!(post.handle.is_some());
+    assert!(f.repo.find(PostId(2)).unwrap().is_none());
+    for child in [3, 20] {
+        assert_eq!(f.row(child).parent, PostParent::Int(0), "child {child}");
+        // The cache was cleaned: a read sees the new parent.
+        let read = f
+            .posts
+            .get_post(PostRef::Id(PostId(child)))
+            .unwrap()
+            .unwrap();
+        assert_eq!(read.parent, PostParent::Int(0));
+    }
+    assert_eq!(*cleaned.borrow(), [2, 3, 20]);
+    assert!(f.cron.0.borrow().is_empty());
+    assert_eq!(
+        *f.comments.calls.borrow(),
+        ["defer true", "delete 2", "defer false"]
+    );
+    // The trash meta of page 20 is its own; page 2 had none, and its rows are gone.
+    assert!(f.meta_of(2, "_wp_trash_meta_status").is_empty());
+}
+
+/// Review focus 3: trashing gives the post the `__trashed` suffix and keeps its slug in `_wp_desired_post_slug`;
+/// another post takes the slug meanwhile, so untrashing reclaims it as `taken-2` and drops the meta.
+#[test]
+fn trash_and_untrash_when_the_slug_is_taken() {
+    let f = fixture();
+    let PostReturn::Post(trashed) = f.api.wp_trash_post(by_id(6)).unwrap() else {
+        panic!("the post")
+    };
+    assert_eq!(trashed.post.status.as_str(), "publish", "as it was read");
+    assert_eq!(f.row(6).status.as_str(), "trash");
+    assert_eq!(f.row(6).name.as_bytes(), b"taken__trashed");
+    assert_eq!(f.meta_of(6, "_wp_desired_post_slug"), ["taken"]);
+    assert_eq!(f.meta_of(6, "_wp_trash_meta_status"), ["publish"]);
+    assert_eq!(f.meta_of(6, "_wp_trash_meta_time"), [NOW.to_string()]);
+
+    let taker = f.insert(array(vec![
+        ("post_title", s("Taken again")),
+        ("post_name", s("taken")),
+        ("post_status", s("publish")),
+    ]));
+    let taker = taker.unwrap().0;
+    assert_eq!(f.row(taker).name.as_bytes(), b"taken");
+
+    // wp_untrash_post_set_previous_status(): back to `publish`, so the slug goes through wp_unique_post_slug().
+    f.hooks
+        .add_filter(
+            &HookName::from("wp_untrash_post_status"),
+            Callback::rust(
+                "wp_untrash_post_set_previous_status",
+                |args: &[HookValue]| Ok(args[2].clone()),
+            ),
+            &HookValue::Int(10),
+            3,
+        )
+        .unwrap();
+    let PostReturn::Post(_) = f.api.wp_untrash_post(by_id(6)).unwrap() else {
+        panic!("the post")
+    };
+    assert_eq!(f.row(6).status.as_str(), "publish");
+    assert_eq!(f.row(6).name.as_bytes(), b"taken-2");
+    assert_eq!(f.row(taker).name.as_bytes(), b"taken", "the taker keeps it");
+    assert!(f.meta_of(6, "_wp_desired_post_slug").is_empty());
+    assert!(f.meta_of(6, "_wp_trash_meta_status").is_empty());
+    assert!(f.meta_of(6, "_wp_trash_meta_time").is_empty());
+}
+
+/// `pre_delete_post`, `pre_trash_post` and `pre_untrash_post` answer instead of the use case when not null, and
+/// nothing is written.
+#[test]
+fn pre_filters_short_circuit() {
+    let f = fixture();
+    for hook in ["pre_delete_post", "pre_trash_post", "pre_untrash_post"] {
+        f.hooks
+            .add_filter(
+                &HookName::from(hook),
+                Callback::rust("refuse", |_: &[HookValue]| Ok(HookValue::Str("no".into()))),
+                &HookValue::Int(10),
+                1,
+            )
+            .unwrap();
+    }
+    assert_eq!(
+        f.api.wp_delete_post(1, true).unwrap(),
+        PostReturn::Value(s("no"))
+    );
+    assert_eq!(
+        f.api.wp_trash_post(by_id(1)).unwrap(),
+        PostReturn::Value(s("no"))
+    );
+    assert_eq!(
+        f.api.wp_untrash_post(by_id(7)).unwrap(),
+        PostReturn::Value(s("no"))
+    );
+    assert_eq!(f.row(1).status.as_str(), "publish");
+    assert_eq!(f.row(7).status.as_str(), "trash");
+}
+
+/// An id of 0 or below is `_doing_it_wrong()` and `false`; with `EMPTY_TRASH_DAYS` 0, trashing deletes.
+#[test]
+fn delete_guards_and_disabled_trash() {
+    let f = fixture();
+    assert_eq!(
+        f.api.wp_delete_post(0, false).unwrap(),
+        PostReturn::Value(PhpValue::Bool(false))
+    );
+    assert_eq!(
+        *f.runtime.0.borrow(),
+        ["wp_delete_post: The post ID must be greater than 0. (6.9.0)"]
+    );
+    TRASH_DAYS.with(|d| d.set(0));
+    let answer = f.api.wp_trash_post(by_id(6));
+    TRASH_DAYS.with(|d| d.set(30));
+    assert!(matches!(answer.unwrap(), PostReturn::Post(_)));
+    assert!(f.repo.find(PostId(6)).unwrap().is_none());
+}
+
+/// A callback's exception stops the delete where it is thrown: the row stays, and nothing after runs.
+#[test]
+fn hook_error_stops_the_delete() {
+    let f = fixture();
+    f.hooks
+        .add_filter(
+            &HookName::from("delete_post"),
+            Callback::rust("fail", |_: &[HookValue]| {
+                Err::<HookValue, _>(HookError::message("thrown by delete_post"))
+            }),
+            &HookValue::Int(10),
+            2,
+        )
+        .unwrap();
+    let after = count_runs(&f, "after_delete_post");
+    let Err(PostError::Hook(e)) = f.api.wp_delete_post(6, true) else {
+        panic!("the hook error")
+    };
+    assert_eq!(e.message, "thrown by delete_post");
+    assert!(f.repo.find(PostId(6)).unwrap().is_some());
+    assert_eq!(after.get(), 0);
+}
+
+/// `wp_publish_post()` given an object reads its status, sets `post_status` to `publish` on it and fires the hooks
+/// with that one object, which the caller gets back changed (the binding writes through its handle).
+#[test]
+fn publish_sets_the_status_on_the_given_object() {
+    let f = fixture();
+    let draft = f.row(19);
+    let handle = speedyspec_wp_posts::PostObjects::handle(
+        &PlainPostObjects,
+        &PostObject::new(draft.clone()),
+    )
+    .unwrap();
+    let statuses: Rc<RefCell<Vec<PhpValue>>> = Rc::default();
+    let seen = statuses.clone();
+    f.hooks
+        .add_filter(
+            &HookName::from("save_post"),
+            Callback::rust("status", move |args: &[HookValue]| {
+                let PhpValue::Object { properties, .. } = from_hook_value(&args[1]).unwrap() else {
+                    panic!("an object")
+                };
+                seen.borrow_mut().push(
+                    speedyspec_php_serialize::semantics::get(&properties, "post_status")
+                        .cloned()
+                        .unwrap(),
+                );
+                Ok(HookValue::Null)
+            }),
+            &HookValue::Int(10),
+            3,
+        )
+        .unwrap();
+    let transitions = record_ids(&f, "pending_to_publish");
+    f.api
+        .wp_publish_post(PostArg::Object(Box::new(PostObject::with_handle(
+            draft, handle,
+        ))))
+        .unwrap();
+    assert_eq!(f.row(19).status.as_str(), "publish");
+    assert_eq!(*statuses.borrow(), [s("publish")]);
+    assert_eq!(transitions.borrow().len(), 1);
+}
+
+/// `wp_publish_post()` gives a post with no category the default one, and leaves a published post alone.
+#[test]
+fn publish_assigns_the_default_category() {
+    let f = fixture();
+    f.api.wp_publish_post(by_id(8)).unwrap();
+    assert_eq!(*f.terms.set.borrow(), ["8:category:a:1:{i:0;i:1;}:false"]);
+    f.api.wp_publish_post(by_id(6)).unwrap();
+    assert_eq!(f.terms.set.borrow().len(), 1);
+}
+
+/// `stick_post()` and `unstick_post()` keep `sticky_posts` a list of unique ints and fire `post_stuck` and
+/// `post_unstuck` only when the option was written.
+#[test]
+fn sticky_posts_follow_wordpress() {
+    let f = fixture();
+    let stuck = count_runs(&f, "post_stuck");
+    let unstuck = count_runs(&f, "post_unstuck");
+    f.api.stick_post(6).unwrap();
+    f.api.stick_post(6).unwrap();
+    let list = |ids: &[i64]| {
+        PhpValue::Array(
+            ids.iter()
+                .enumerate()
+                .map(|(i, n)| (PhpKey::Int(i as i64), PhpValue::Int(*n)))
+                .collect(),
+        )
+    };
+    assert_eq!(f.options.get("sticky_posts"), list(&[1, 6]));
+    assert_eq!(stuck.get(), 1);
+    f.api.unstick_post(1).unwrap();
+    f.api.unstick_post(999).unwrap();
+    assert_eq!(f.options.get("sticky_posts"), list(&[6]));
+    assert_eq!(unstuck.get(), 1);
+}
+
+/// Trashing the front page resets `show_on_front` and `page_on_front`; trashing a sticky post unsticks it
+/// (`_reset_front_page_settings_for_post()` on `wp_trash_post`).
+#[test]
+fn trashing_resets_the_front_page_and_unsticks() {
+    let f = fixture();
+    f.api.wp_trash_post(by_id(3)).unwrap();
+    assert_eq!(f.options.get("show_on_front"), s("posts"));
+    assert_eq!(to_php_int(&f.options.get("page_on_front")), 0);
+    f.api.wp_trash_post(by_id(1)).unwrap();
+    assert_eq!(f.options.get("sticky_posts"), PhpValue::Array(Vec::new()));
+}
+
+/// `wp_delete_auto_drafts()` force-deletes the auto-drafts more than a week old (16, dated 2020) and keeps the rest
+/// (17, dated 2099).
+#[test]
+fn old_auto_drafts_are_deleted() {
+    let f = fixture();
+    let deleted = record_ids(&f, "deleted_post");
+    f.api.wp_delete_auto_drafts().unwrap();
+    assert_eq!(*deleted.borrow(), [16]);
+    assert!(f.repo.find(PostId(17)).unwrap().is_some());
+}
+
+/// `wp_delete_post()` deletes each revision through the revision port, before the attachments are re-pointed.
+#[test]
+fn revisions_are_deleted_through_the_port() {
+    let f = fixture();
+    f.api.wp_delete_post(1, true).unwrap();
+    assert_eq!(*f.revisions.1.borrow(), [4]);
+    assert!(f.repo.find(PostId(4)).unwrap().is_none());
+    assert_eq!(
+        f.row(5).parent,
+        PostParent::Int(0),
+        "the attachment is re-pointed"
+    );
+}
+
+/// `add_ping()` appends to `pinged` through the `add_ping` filter and answers the rows changed; no post is false.
+#[test]
+fn pings_are_added() {
+    let f = fixture();
+    assert_eq!(
+        f.api.add_ping(by_id(6), &s("http://a.example/")).unwrap(),
+        Some(1)
+    );
+    // `preg_split()` of an empty `pinged` is one empty piece, so the first URL follows a line feed.
+    assert_eq!(f.row(6).pinged, b"\nhttp://a.example/".to_vec());
+    let both = PhpValue::Array(vec![
+        (PhpKey::Int(0), s("http://b.example/")),
+        (PhpKey::Int(1), s("http://c.example/")),
+    ]);
+    assert_eq!(f.api.add_ping(by_id(6), &both).unwrap(), Some(1));
+    assert_eq!(
+        f.row(6).pinged,
+        b"http://a.example/\nhttp://b.example/\nhttp://c.example/".to_vec(),
+        "trim() drops it the next time"
+    );
+    assert_eq!(f.api.add_ping(by_id(999), &s("x")).unwrap(), None);
+}
+
+/// The rest of the write contract: every method reaches its use case, and every message is bound.
+#[test]
+fn the_write_contract_and_messages() {
+    use speedyspec_cqrs::Command;
+    use speedyspec_wp_posts::{
+        AddPing, CheckAndPublishFuturePost, ResetFrontPageSettingsForPost,
+        ResetPrivacyPolicyPageForPost, StickPost, UnstickPost, WpDeleteAutoDrafts, WpDeletePost,
+        WpPublishPost, WpTrashPost, WpUntrashPost, register_post_write_handlers,
+    };
+    use speedyspec_wp_posts_contracts::PostWrites;
+    let f = fixture();
+    let writes: &dyn PostWrites = &*f.api;
+    writes.stick(8).unwrap();
+    writes.unstick(8).unwrap();
+    assert!(matches!(
+        writes.trash(by_id(6)).unwrap(),
+        PostReturn::Post(_)
+    ));
+    assert!(matches!(
+        writes.untrash(by_id(6)).unwrap(),
+        PostReturn::Post(_)
+    ));
+    writes.publish(by_id(6)).unwrap();
+    assert_eq!(f.row(6).status.as_str(), "publish");
+    writes.check_and_publish_future(by_id(999)).unwrap();
+    assert_eq!(writes.add_ping(by_id(999), &s("x")).unwrap(), None);
+    writes.delete_auto_drafts().unwrap();
+    assert!(matches!(
+        writes.delete(13, true).unwrap(),
+        PostReturn::Post(_)
+    ));
+
+    let container = Rc::new(speedyspec_container::Container::new());
+    register_post_write_handlers(&container, f.api.clone());
+    for key in [
+        <WpDeletePost as Command>::KEY,
+        <WpTrashPost as Command>::KEY,
+        <WpUntrashPost as Command>::KEY,
+        <WpPublishPost as Command>::KEY,
+        <CheckAndPublishFuturePost as Command>::KEY,
+        <StickPost as Command>::KEY,
+        <UnstickPost as Command>::KEY,
+        <AddPing as Command>::KEY,
+        <WpDeleteAutoDrafts as Command>::KEY,
+        <ResetFrontPageSettingsForPost as Command>::KEY,
+        <ResetPrivacyPolicyPageForPost as Command>::KEY,
+    ] {
+        assert!(container.has(key), "{key}");
+    }
+    let bus = speedyspec_cqrs::CommandBus::new(container.clone());
+    let answer = bus
+        .dispatch(WpDeletePost {
+            post_id: 999,
+            force: true,
+        })
+        .unwrap()
+        .unwrap();
+    assert_eq!(answer, PostReturn::Value(PhpValue::Null));
 }

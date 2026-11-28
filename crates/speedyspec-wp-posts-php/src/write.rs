@@ -1,8 +1,11 @@
 //! The native post writing functions `post-writes.php` (the facade) calls, one per WordPress function (post.php,
-//! WordPress 7.2-RC2): `wp_insert_post()`, `wp_update_post()`, `wp_transition_post_status()`, `set_post_type()`, and
+//! WordPress 7.2-RC2): `wp_insert_post()`, `wp_update_post()`, `wp_transition_post_status()`, `set_post_type()`,
+//! `wp_delete_post()`, `wp_trash_post()`, `wp_untrash_post()`, `wp_publish_post()`,
+//! `check_and_publish_future_post()`, `stick_post()`, `unstick_post()`, `add_ping()`, `wp_delete_auto_drafts()`, and
 //! the default callbacks default-filters.php and `WP_Post_Type::add_hooks()` register by name
 //! (`_transition_post_status()`, `_publish_post_hook()`, `_future_post_hook()`,
-//! `wp_check_post_hierarchy_for_loops()`). Each dispatches its message through the handler bound in the container
+//! `wp_check_post_hierarchy_for_loops()`, `_reset_front_page_settings_for_post()`,
+//! `_reset_privacy_policy_page_for_post()`). Each dispatches its message through the handler bound in the container
 //! (Command/CQRS), so PHP may override one by binding the same key.
 //!
 //! This adapter does what the use cases leave to the PHP edge:
@@ -10,7 +13,10 @@
 //! - `$postarr` crosses as a copy (an object with its class and public properties, which `wp_parse_args()` and
 //!   `get_object_vars()` read alike);
 //! - a post object a callback or caller passes stays the object itself: it is the handle the hooks receive
-//!   ([`crate::PhpPostObjects`]), so the hooks share one instance;
+//!   ([`crate::PhpPostObjects`]), so the hooks share one instance, and what `wp_delete_post()`, `wp_trash_post()`
+//!   and `wp_untrash_post()` return;
+//! - a post argument `get_post()` would read is the global `$post` when empty, the object when one, and `(int)` when
+//!   numeric; anything else is no post, answered as WordPress answers it without dispatching;
 //! - a `WP_Error` the use cases answer is built as WordPress builds it: `new WP_Error( $code, __( $message ), $data )`
 //!   with `$wpdb->last_error` as the data of the database errors, and a delegated one (`wp_insert_attachment()`'s)
 //!   handed back as PHP holds it;
@@ -26,18 +32,22 @@ use speedyspec_php_ext::Value;
 use speedyspec_php_serialize::semantics::{get, to_php_int, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::{
-    CheckPostHierarchyForLoops, FuturePostHook, PostEntry, PostObjects, PublishPostHook,
-    SetPostType, TransitionPostStatusDefault, WpInsertPost, WpTransitionPostStatus, WpUpdatePost,
+    AddPing, CheckAndPublishFuturePost, CheckPostHierarchyForLoops, FuturePostHook, PostEntry,
+    PostObjects, PublishPostHook, ResetFrontPageSettingsForPost, ResetPrivacyPolicyPageForPost,
+    SetPostType, StickPost, TransitionPostStatusDefault, UnstickPost, WpDeleteAutoDrafts,
+    WpDeletePost, WpInsertPost, WpPublishPost, WpTransitionPostStatus, WpTrashPost, WpUntrashPost,
+    WpUpdatePost,
 };
 use speedyspec_wp_posts_contracts::{
-    PostError, PostId, PostObject, PostStatusName, PostWriteError, Translator, WriteResult,
+    PostArg, PostError, PostId, PostObject, PostReturn, PostStatusName, PostWriteError, Translator,
+    WriteResult,
 };
 
 use crate::adapters::{PhpTranslator, truthy};
-use crate::codec::{copy_php, php, to_php};
-use crate::read::post_error;
+use crate::codec::{copy_php, hook_in, php, to_php};
+use crate::read::{PostArgKind, post_arg_kind, post_error};
 use crate::registry::{Native, R, a, thrown};
-use crate::write_ports::PhpPostObjects;
+use crate::write_ports::{PhpPostObjects, PhpRuntime};
 
 /// The handlers the write natives dispatch through, each resolved once.
 pub(crate) struct Writing {
@@ -49,6 +59,17 @@ pub(crate) struct Writing {
     publish: HandlerRef<PublishPostHook>,
     future: HandlerRef<FuturePostHook>,
     loops: HandlerRef<CheckPostHierarchyForLoops>,
+    delete: HandlerRef<WpDeletePost>,
+    trash: HandlerRef<WpTrashPost>,
+    untrash: HandlerRef<WpUntrashPost>,
+    publish_post: HandlerRef<WpPublishPost>,
+    check_future: HandlerRef<CheckAndPublishFuturePost>,
+    stick: HandlerRef<StickPost>,
+    unstick: HandlerRef<UnstickPost>,
+    ping: HandlerRef<AddPing>,
+    auto_drafts: HandlerRef<WpDeleteAutoDrafts>,
+    front_page: HandlerRef<ResetFrontPageSettingsForPost>,
+    privacy_page: HandlerRef<ResetPrivacyPolicyPageForPost>,
 }
 
 impl Writing {
@@ -62,6 +83,17 @@ impl Writing {
             publish: HandlerRef::new(c.clone()),
             future: HandlerRef::new(c.clone()),
             loops: HandlerRef::new(c.clone()),
+            delete: HandlerRef::new(c.clone()),
+            trash: HandlerRef::new(c.clone()),
+            untrash: HandlerRef::new(c.clone()),
+            publish_post: HandlerRef::new(c.clone()),
+            check_future: HandlerRef::new(c.clone()),
+            stick: HandlerRef::new(c.clone()),
+            unstick: HandlerRef::new(c.clone()),
+            ping: HandlerRef::new(c.clone()),
+            auto_drafts: HandlerRef::new(c.clone()),
+            front_page: HandlerRef::new(c.clone()),
+            privacy_page: HandlerRef::new(c.clone()),
         }
     }
 }
@@ -242,11 +274,175 @@ fn check_post_hierarchy_for_loops(x: &[Value]) -> R {
     to_php(&send(|w| &w.loops, m)?).map_err(thrown)
 }
 
+/// `(int) $value`, 0 for an argument not passed.
+fn int_arg(x: &[Value], i: usize) -> Result<i64, NativeError> {
+    match x.get(i) {
+        Some(value) => Ok(to_php_int(&copy(value)?)),
+        None => Ok(0),
+    }
+}
+
+/// `$post` as `get_post( $post )` takes it ([`post_arg_kind`]): an empty value is the global `$post`, an object is
+/// itself (the handle the hooks receive), a numeric value is `(int)` it; `None` where `get_post()` gives null (`true`,
+/// an array, `'6abc'`, an id below 1), which the caller answers as WordPress does without dispatching.
+fn post_ref_arg(value: &Value) -> Result<Option<PostArg>, NativeError> {
+    Ok(match post_arg_kind(value)? {
+        PostArgKind::Missing => None,
+        PostArgKind::Ref(post) => Some(PostArg::Ref(post)),
+        PostArgKind::Object => Some(PostArg::Object(Box::new(post_object(value)?))),
+    })
+}
+
+/// What `wp_delete_post()`, `wp_trash_post()` and `wp_untrash_post()` return: the post (the very object the hooks
+/// received), or the other value as PHP holds it.
+fn post_return(answer: PostReturn) -> R {
+    match answer {
+        PostReturn::Post(object) => {
+            let handle = match &object.handle {
+                Some(handle) => handle.clone(),
+                None => PhpPostObjects.handle(&object).map_err(post_error)?,
+            };
+            hook_in(handle).map_err(thrown)
+        }
+        PostReturn::Value(value) => to_php(&value).map_err(thrown),
+    }
+}
+
+fn wp_delete_post(x: &[Value]) -> R {
+    let m = WpDeletePost {
+        post_id: int_arg(x, 0)?,
+        force: truthy(&a(x, 1)),
+    };
+    post_return(send(|w| &w.delete, m)?)
+}
+
+/// `wp_trash_post( $post_id )` with an argument `get_post()` reads as null: without `EMPTY_TRASH_DAYS`,
+/// `wp_delete_post( $post_id, true )` (which casts it with `(int)`), else `null`. An undefined constant is PHP's
+/// `Error`, as in WordPress.
+fn trash_missing(post_id: &Value) -> R {
+    use speedyspec_wp_posts::Runtime;
+    let days = PhpRuntime
+        .constant("EMPTY_TRASH_DAYS")
+        .map_err(post_error)?
+        .ok_or_else(|| NativeError::throw("Error", "Undefined constant \"EMPTY_TRASH_DAYS\""))?;
+    if !speedyspec_php_serialize::semantics::is_empty(&days) {
+        return Ok(Value::Null);
+    }
+    let m = WpDeletePost {
+        post_id: to_php_int(&copy(post_id)?),
+        force: true,
+    };
+    post_return(send(|w| &w.delete, m)?)
+}
+
+fn wp_trash_post(x: &[Value]) -> R {
+    let Some(post) = post_ref_arg(&a(x, 0))? else {
+        return trash_missing(&a(x, 0));
+    };
+    post_return(send(|w| &w.trash, WpTrashPost { post })?)
+}
+
+fn wp_untrash_post(x: &[Value]) -> R {
+    let Some(post) = post_ref_arg(&a(x, 0))? else {
+        return Ok(Value::Null);
+    };
+    post_return(send(|w| &w.untrash, WpUntrashPost { post })?)
+}
+
+fn wp_publish_post(x: &[Value]) -> R {
+    if let Some(post) = post_ref_arg(&a(x, 0))? {
+        send(|w| &w.publish_post, WpPublishPost { post })?;
+    }
+    Ok(Value::Null)
+}
+
+fn check_and_publish_future_post(x: &[Value]) -> R {
+    if let Some(post) = post_ref_arg(&a(x, 0))? {
+        send(|w| &w.check_future, CheckAndPublishFuturePost { post })?;
+    }
+    Ok(Value::Null)
+}
+
+fn stick_post(x: &[Value]) -> R {
+    send(
+        |w| &w.stick,
+        StickPost {
+            post_id: int_arg(x, 0)?,
+        },
+    )?;
+    Ok(Value::Null)
+}
+
+fn unstick_post(x: &[Value]) -> R {
+    send(
+        |w| &w.unstick,
+        UnstickPost {
+            post_id: int_arg(x, 0)?,
+        },
+    )?;
+    Ok(Value::Null)
+}
+
+fn add_ping(x: &[Value]) -> R {
+    let Some(post) = post_ref_arg(&a(x, 0))? else {
+        return Ok(Value::Bool(false));
+    };
+    let m = AddPing {
+        post,
+        uri: copy(&a(x, 1))?,
+    };
+    Ok(match send(|w| &w.ping, m)? {
+        Some(rows) => Value::Int(i64::try_from(rows).unwrap_or(i64::MAX)),
+        None => Value::Bool(false),
+    })
+}
+
+fn wp_delete_auto_drafts(_: &[Value]) -> R {
+    send(|w| &w.auto_drafts, WpDeleteAutoDrafts {})?;
+    Ok(Value::Null)
+}
+
+fn reset_front_page_settings_for_post(x: &[Value]) -> R {
+    let m = ResetFrontPageSettingsForPost {
+        post_id: copy(&a(x, 0))?,
+    };
+    send(|w| &w.front_page, m)?;
+    Ok(Value::Null)
+}
+
+fn reset_privacy_policy_page_for_post(x: &[Value]) -> R {
+    let m = ResetPrivacyPolicyPageForPost {
+        post_id: int_arg(x, 0)?,
+    };
+    send(|w| &w.privacy_page, m)?;
+    Ok(Value::Null)
+}
+
 /// The functions the facade calls, with WordPress's names.
 pub(crate) const ENTRIES: &[(&str, Native)] = &[
+    ("stick_post", stick_post),
+    ("unstick_post", unstick_post),
     ("set_post_type", set_post_type),
     ("wp_insert_post", wp_insert_post),
+    ("wp_delete_post", wp_delete_post),
+    (
+        "_reset_front_page_settings_for_post",
+        reset_front_page_settings_for_post,
+    ),
+    (
+        "_reset_privacy_policy_page_for_post",
+        reset_privacy_policy_page_for_post,
+    ),
+    ("wp_trash_post", wp_trash_post),
+    ("wp_untrash_post", wp_untrash_post),
     ("wp_update_post", wp_update_post),
+    ("wp_publish_post", wp_publish_post),
+    (
+        "check_and_publish_future_post",
+        check_and_publish_future_post,
+    ),
+    ("add_ping", add_ping),
+    ("wp_delete_auto_drafts", wp_delete_auto_drafts),
     ("wp_transition_post_status", wp_transition_post_status),
     ("_transition_post_status", transition_post_status),
     ("_future_post_hook", future_post_hook),

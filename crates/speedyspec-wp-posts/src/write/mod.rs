@@ -1,17 +1,28 @@
-//! Writing posts: `wp_insert_post()`, `wp_update_post()`, `wp_transition_post_status()` and its default callbacks,
-//! and `set_post_type()`, behind the write contracts, with their messages and the outbound ports they call.
+//! Writing posts: `post.php`'s writers behind the [`PostWrites`](speedyspec_wp_posts_contracts::PostWrites) contract
+//! ([`PostWritesApi`]), with their messages, their default callbacks and the outbound ports they call.
 //!
-//! The rest of `post.php`'s writers (delete, trash, untrash, publish, sticky posts, pings and auto-drafts) come
-//! with phase 5b, which also implements the [`PostWrites`](speedyspec_wp_posts_contracts::PostWrites) contract over
-//! all of them; until then these are [`PostWritesApi`]'s methods and messages.
+//! - `wp_insert_post()` ([`insert`]), `wp_update_post()` and `set_post_type()` ([`update`]);
+//! - `wp_transition_post_status()` and its default callbacks ([`transition`]);
+//! - `wp_delete_post()` and the front-page and privacy-page resets ([`delete`]);
+//! - `wp_trash_post()` and `wp_untrash_post()` ([`trash`]);
+//! - `wp_publish_post()` and `check_and_publish_future_post()` ([`publish`]);
+//! - `stick_post()` and `unstick_post()` ([`sticky`]), `add_ping()` ([`pings`]) and `wp_delete_auto_drafts()`
+//!   ([`drafts`]).
 
 mod api;
+mod contract;
+mod delete;
+mod drafts;
 mod error;
 mod insert;
 mod messages;
 mod php;
+mod pings;
 mod ports;
+mod publish;
+mod sticky;
 mod transition;
+mod trash;
 mod update;
 
 pub use api::{PostWritesApi, WriteDeps};

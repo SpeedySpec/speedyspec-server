@@ -8,12 +8,16 @@
 //!
 //! It also refuses every hook while a port has parked a failure: the use case stops at its next hook, before
 //! anything else is filtered, fired or written, as WordPress stops where the exception is thrown.
+//!
+//! [`PhpValueOptions`] does the same for the options API: a stored option may be any PHP value, an object included
+//! (`sticky_posts` holding a `stdClass`, say), which the use cases read as a carried `PhpValue`.
 
 use std::rc::Rc;
 
 use speedyspec_wp_hooks_contracts::{
     Callback, CallbackId, Count, HasFilterResult, HookApi, HookError, HookName, HookValue,
 };
+use speedyspec_wp_options_contracts::{Options, OptionsError};
 
 use crate::adapters::is_parked;
 use crate::codec::{Thrown, hook_in, hook_out};
@@ -126,5 +130,57 @@ impl HookApi for PhpValueHooks {
         not_parked()?;
         self.inner
             .do_action_deprecated(hook, into_php(args)?, version, replacement, message)
+    }
+}
+
+/// The options API with the post use cases' values converted at the edge (Decorator): each carried value a PHP value
+/// on the way in, each PHP object in an answer carried on the way out.
+pub struct PhpValueOptions {
+    inner: Rc<dyn Options>,
+}
+
+impl PhpValueOptions {
+    pub fn new(inner: Rc<dyn Options>) -> PhpValueOptions {
+        PhpValueOptions { inner }
+    }
+}
+
+fn option_in(value: HookValue) -> Result<HookValue, OptionsError> {
+    hook_in(value).map_err(|t| OptionsError::Hook(failed(t)))
+}
+
+impl Options for PhpValueOptions {
+    fn get_option(
+        &self,
+        name: &str,
+        default: Option<HookValue>,
+    ) -> Result<HookValue, OptionsError> {
+        let default = default.map(option_in).transpose()?;
+        let value = self.inner.get_option(name, default)?;
+        hook_out(value).map_err(|t| OptionsError::Hook(failed(t)))
+    }
+
+    fn add_option(
+        &self,
+        name: &str,
+        value: HookValue,
+        deprecated: HookValue,
+        autoload: HookValue,
+    ) -> Result<bool, OptionsError> {
+        self.inner
+            .add_option(name, option_in(value)?, deprecated, autoload)
+    }
+
+    fn update_option(
+        &self,
+        name: &str,
+        value: HookValue,
+        autoload: HookValue,
+    ) -> Result<bool, OptionsError> {
+        self.inner.update_option(name, option_in(value)?, autoload)
+    }
+
+    fn delete_option(&self, name: &str) -> Result<bool, OptionsError> {
+        self.inner.delete_option(name)
     }
 }

@@ -58,6 +58,10 @@ pub trait PostObjects {
     fn handle(&self, post: &PostObject) -> Result<HookValue, PostError>;
     /// The object's properties as PHP holds them now; `None` for a value that is not an object.
     fn read(&self, handle: &HookValue) -> Result<Option<Vec<(PhpKey, PhpValue)>>, PostError>;
+    /// `$post->{$name} = $value` on the object: `wp_publish_post()`'s `$post->post_status = 'publish'`. The answer is
+    /// the handle to use from then on: the same PHP object, changed in place, or a new value where the adapter carries
+    /// objects by value.
+    fn set(&self, handle: &HookValue, name: &str, value: PhpValue) -> Result<HookValue, PostError>;
 }
 
 /// [`PostObjects`] in Rust: a `WP_Post` value (`PhpValue::Object`) carried opaque, the same `Rc` to every hook.
@@ -86,6 +90,24 @@ impl PostObjects for PlainPostObjects {
             _ => None,
         })
     }
+
+    fn set(&self, handle: &HookValue, name: &str, value: PhpValue) -> Result<HookValue, PostError> {
+        Ok(match pv(handle)? {
+            PhpValue::Object {
+                class,
+                mut properties,
+            } => {
+                let key = PhpKey::Str(name.as_bytes().to_vec());
+                match properties.iter_mut().find(|(k, _)| *k == key) {
+                    Some(slot) => slot.1 = value,
+                    None => properties.push((key, value)),
+                }
+                hv(&PhpValue::Object { class, properties })
+            }
+            // Not an object: PHP would raise an error there, which no post writer reaches.
+            _ => handle.clone(),
+        })
+    }
 }
 
 /// What `wp_unique_post_slug()` reads from `$wp_rewrite` and the options: the feeds, the pagination base and the
@@ -102,6 +124,9 @@ pub trait Runtime {
     /// `_doing_it_wrong( $function, $message, $version )`, with its hooks; `message` is already translated.
     fn doing_it_wrong(&self, function: &str, message: &str, version: &str)
     -> Result<(), PostError>;
+    /// `constant( $name )`: `EMPTY_TRASH_DAYS` for `wp_delete_post()` and `wp_trash_post()`. `None` when it is not
+    /// defined, where PHP throws.
+    fn constant(&self, name: &str) -> Result<Option<PhpValue>, PostError>;
 }
 
 /// A cron failure as a post failure: a callback's payload travels whole.

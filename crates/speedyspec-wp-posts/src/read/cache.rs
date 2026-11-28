@@ -174,9 +174,27 @@ impl PostsApi {
         if self.d.invalidation.suspended() {
             return Ok(());
         }
-        let Some(loaded) = self.resolve(post)? else {
+        match self.resolve(post)? {
+            Some(loaded) => self.clean_loaded(loaded),
+            None => Ok(()),
+        }
+    }
+
+    /// `clean_post_cache( $post )` given a post object (a `WP_Post`, or a row `$wpdb` read), which `get_post()`
+    /// resolves by its branches: a raw `WP_Post` is used as it is, so a post already deleted from
+    /// the table is still cleaned (`wp_delete_post()`'s `clean_post_cache( $post )`).
+    pub fn clean_post_cache_object(&self, post: PhpValue) -> Result<(), PostError> {
+        if self.d.invalidation.suspended() {
             return Ok(());
-        };
+        }
+        match self.resolve_value(post)? {
+            Some(loaded) => self.clean_loaded(loaded),
+            None => Ok(()),
+        }
+    }
+
+    /// `clean_post_cache()` once the post is read.
+    fn clean_loaded(&self, loaded: crate::read::Loaded) -> Result<(), PostError> {
         let id = loaded.id();
         let post = &loaded.post;
         self.cache_delete(&HookValue::Int(id), "posts")?;

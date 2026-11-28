@@ -61,26 +61,45 @@ pub fn mysql(suffix: &str) -> Option<String> {
     Some(own)
 }
 
-/// The pinned release, prepared in `<release>-<name>` for the native meta and post functions.
+/// The pinned release, prepared in `<release>-<name>` for the native meta and post functions, with WordPress's own
+/// option.php.
 pub fn prepared(name: &str) -> (PathBuf, PathBuf) {
+    prepared_with(name, false)
+}
+
+/// As [`prepared`]; with `native_options`, option.php also loses the functions the native options area declares
+/// (the runtime's arrangement, which [`boot_with`] matches). Otherwise option.php is the release's own, even in a copy
+/// an earlier run prepared for the native options.
+pub fn prepared_with(name: &str, native_options: bool) -> (PathBuf, PathBuf) {
     let release =
         speedyspec_compat::wordpress_release(&speedyspec_compat::area_wordpress("posts-read"))
             .expect("the pinned release");
     let out = release.with_file_name(format!("wordpress-{name}"));
     speedyspec_wp_meta_php::prepare_release(&release, &out).expect("meta.php prepares");
+    if native_options {
+        speedyspec_wp_options_php::prepare_release(&release, &out).expect("option.php prepares");
+    } else {
+        let mirror = speedyspec_compat::ReleaseMirror::new(&release, &out).expect("the copy");
+        let option = "wp-includes/option.php";
+        mirror
+            .write(option, &mirror.read(option).expect("option.php"))
+            .expect("option.php is the release's own");
+    }
     let root = speedyspec_wp_posts_php::prepare_release(&release, &out).expect("post.php prepares");
     (release, root)
 }
 
 /// Boots PHP with the twins, the container (with the meta and post ports), the Hook API, `wpdb`, the object cache,
-/// the meta area and the post area, over `url`.
+/// the meta area and the post area, over `url`, for a release [`prepared`] with WordPress's own option.php.
 pub fn boot(url: &str) -> (Php, Rc<Container>) {
-    boot_with(url, false)
+    boot_with(url, false, false)
 }
 
 /// As [`boot`], with the Hook API's testing class (`SpeedySpec\WpHooks\Testing`, the snapshots WordPress's test case
-/// stand-in takes) when `testing` is set.
-pub fn boot_with(url: &str, testing: bool) -> (Php, Rc<Container>) {
+/// stand-in takes) when `testing` is set, and with the options area registered for `native_options` (a release
+/// [`prepared_with`] them). Without it the release's own option.php runs, and the options API only backs the post
+/// functions' native option reads and writes over the same wpdb and object cache.
+pub fn boot_with(url: &str, testing: bool, native_options: bool) -> (Php, Rc<Container>) {
     let container = Rc::new(Container::new());
     let hooks = WpHooksArea::new(container.clone(), Rc::new(MemoryHookStore::new()));
     let hooks = if testing { hooks.with_testing() } else { hooks };
@@ -109,8 +128,8 @@ pub fn boot_with(url: &str, testing: bool) -> (Php, Rc<Container>) {
     let wpdb = WpDbArea::new(container.clone(), hooks.api(), registry, config);
     let cache = ObjectCacheArea::new(container.clone(), None);
     let meta = MetaArea::new(container.clone(), hooks.api(), cache.api(), wpdb.api());
-    // The release's own option.php runs here, so the options area is not registered; its API only backs
-    // `is_sticky()`'s native read of `sticky_posts`, over the same wpdb and object cache.
+    // The options API backs the post functions' option reads and writes (`sticky_posts`, the front page) over the
+    // same wpdb and object cache; registered, its natives replace option.php's functions, as the runtime runs them.
     let options = OptionsArea::new(container.clone(), hooks.api(), cache.api(), wpdb.api());
     let posts = PostsArea::new(
         container.clone(),
@@ -125,7 +144,7 @@ pub fn boot_with(url: &str, testing: bool) -> (Php, Rc<Container>) {
         "tests",
         container.clone(),
     )));
-    let areas: Vec<Rc<dyn NativeArea>> = vec![
+    let mut areas: Vec<Rc<dyn NativeArea>> = vec![
         twins_area(),
         Rc::new(ports),
         Rc::new(hooks),
@@ -134,6 +153,9 @@ pub fn boot_with(url: &str, testing: bool) -> (Php, Rc<Container>) {
         Rc::new(meta),
         Rc::new(posts),
     ];
+    if native_options {
+        areas.push(Rc::new(options));
+    }
     let php = Php::boot(BootOptions {
         hooks: Rc::new(MemoryHooks::new()),
         preload: &[],

@@ -36,8 +36,8 @@ fn main() {
     let Some(url) = support::mysql("posts_read_php") else {
         return;
     };
-    let (_release, root) = support::prepared("posts-read-php-port");
-    let (php, container) = support::boot(&url);
+    let (_release, root) = support::prepared_with("posts-read-php-port", true);
+    let (php, container) = support::boot_with(&url, false, true);
     let setup = support::setup_code(&root);
     let mut ok = true;
 
@@ -272,8 +272,9 @@ fn main() {
     }
 }
 
-/// The writers: an exception from `save_post`, `transition_post_status`, `wp_insert_post_data` or a `query` filter
-/// reaches the caller unchanged, and the row stays written exactly where WordPress has written it by then.
+/// The writers: an exception from `save_post`, `transition_post_status`, `wp_insert_post_data`, a `query` filter,
+/// `before_delete_post`, `delete_post`, `pre_trash_post`, `trashed_post` or `post_stuck` reaches the caller unchanged,
+/// and the rows stay written exactly where WordPress has written them by then.
 fn writes(php: &speedyspec_php::Php, setup: &str) -> bool {
     let mut ok = true;
     // save_post fires after the row, its meta and terms are written: the post stays, and the hooks after save_post
@@ -362,6 +363,152 @@ fn writes(php: &speedyspec_php::Php, setup: &str) -> bool {
         remove_filter('query', $cb);
         $after = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->posts");
         return $caught === $thrown && $before === $after && 0 === $transitions ? true : [$caught, $before, $after, $transitions];"#,
+    );
+    ok &= deletes_and_trashes(php, setup);
+    ok
+}
+
+/// Deleting, trashing and sticking: the exception reaches the caller as the very object, and what WordPress wrote
+/// before it stays.
+fn deletes_and_trashes(php: &speedyspec_php::Php, setup: &str) -> bool {
+    let mut ok = true;
+    // before_delete_post fires before anything is deleted: the post, its meta and its comments stay, and nothing
+    // after it runs.
+    ok &= yes(
+        php,
+        setup,
+        "before_delete_post_exception_deletes_nothing",
+        r#"$thrown = new LogicException('from before_delete_post');
+        $after = 0;
+        add_action('before_delete_post', function () use ($thrown) { throw $thrown; });
+        add_action('delete_post', function () use (&$after) { $after++; });
+        try { wp_delete_post(1, true); $caught = null; } catch (LogicException $e) { $caught = $e; }
+        global $wpdb;
+        $row = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->posts WHERE ID = 1");
+        $meta = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->postmeta WHERE post_id = 1");
+        $comments = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->comments WHERE comment_post_ID = 1");
+        return $caught === $thrown && '1' === $row && '0' !== $meta && '0' !== $comments && 0 === $after
+            ? true : [$caught, $row, $meta, $comments, $after];"#,
+    );
+    // delete_post fires after the terms, comments and meta are deleted and before the row: the row stays, the rest is
+    // gone, and deleted_post never runs.
+    ok &= yes(
+        php,
+        setup,
+        "delete_post_exception_keeps_the_row",
+        r#"$thrown = new RuntimeException('from delete_post');
+        $deleted = 0;
+        // Post 1's revision (4) is deleted first, through wp_delete_post() and its own delete_post.
+        add_action('delete_post', function ($id) use ($thrown) { if (1 === $id) { throw $thrown; } });
+        add_action('deleted_post', function ($id) use (&$deleted) { if (1 === $id) { $deleted++; } });
+        try { wp_delete_post(1, true); $caught = null; } catch (RuntimeException $e) { $caught = $e; }
+        global $wpdb;
+        $row = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->posts WHERE ID = 1");
+        $meta = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->postmeta WHERE post_id = 1");
+        $comments = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->comments WHERE comment_post_ID = 1");
+        $terms = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->term_relationships WHERE object_id = 1");
+        return $caught === $thrown && '1' === $row && '0' === $meta && '0' === $comments && '0' === $terms
+            && 0 === $deleted ? true : [$caught, $row, $meta, $comments, $terms, $deleted];"#,
+    );
+    // pre_trash_post runs first: nothing is written.
+    ok &= yes(
+        php,
+        setup,
+        "pre_trash_post_exception_writes_nothing",
+        r#"$thrown = new DomainException('from pre_trash_post');
+        add_filter('pre_trash_post', function () use ($thrown) { throw $thrown; });
+        try { wp_trash_post(6); $caught = null; } catch (DomainException $e) { $caught = $e; }
+        global $wpdb;
+        $status = $wpdb->get_var("SELECT post_status FROM $wpdb->posts WHERE ID = 6");
+        $meta = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->postmeta WHERE post_id = 6");
+        return $caught === $thrown && 'publish' === $status && '0' === $meta ? true : [$caught, $status, $meta];"#,
+    );
+    // trashed_post fires after the post is trashed: the status and the trash meta stay.
+    ok &= yes(
+        php,
+        setup,
+        "trashed_post_exception_keeps_the_trash",
+        r#"$thrown = new UnexpectedValueException('from trashed_post');
+        add_action('trashed_post', function () use ($thrown) { throw $thrown; });
+        try { wp_trash_post(6); $caught = null; } catch (UnexpectedValueException $e) { $caught = $e; }
+        global $wpdb;
+        $status = $wpdb->get_var("SELECT post_status FROM $wpdb->posts WHERE ID = 6");
+        $previous = $wpdb->get_var("SELECT meta_value FROM $wpdb->postmeta WHERE post_id = 6 AND meta_key = '_wp_trash_meta_status'");
+        return $caught === $thrown && 'trash' === $status && 'publish' === $previous ? true : [$caught, $status, $previous];"#,
+    );
+    // post_stuck fires after `sticky_posts` is written: the post stays stuck.
+    ok &= yes(
+        php,
+        setup,
+        "post_stuck_exception_keeps_the_option",
+        r#"$thrown = new LogicException('from post_stuck');
+        add_action('post_stuck', function () use ($thrown) { throw $thrown; });
+        try { stick_post(6); $caught = null; } catch (LogicException $e) { $caught = $e; }
+        wp_cache_delete('alloptions', 'options');
+        wp_cache_delete('sticky_posts', 'options');
+        return $caught === $thrown && [1, 6] === get_option('sticky_posts') ? true : [$caught, get_option('sticky_posts')];"#,
+    );
+    // `sticky_posts` holding an object: get_option() answers the object, which the native writer reads as not an
+    // array (the options API's live objects are carried across, not refused), so the list starts again.
+    ok &= yes(
+        php,
+        setup,
+        "sticky_posts_holding_an_object_starts_again",
+        r#"update_option('sticky_posts', new stdClass());
+        stick_post(6);
+        return [6] === get_option('sticky_posts') ? true : get_option('sticky_posts');"#,
+    );
+    // An argument get_post() reads as null (`true`, an array, a string that is not numeric, an id below 1) is no
+    // post: the trash and untrash functions answer null, add_ping() false, the publishers nothing, and no row is
+    // written. An id below 1 does not fall back to the global post.
+    ok &= yes(
+        php,
+        setup,
+        "non_numeric_post_arguments_are_no_post",
+        r#"global $wpdb;
+        $GLOBALS['post'] = get_post(21);
+        $status = fn ($id) => $wpdb->get_var("SELECT post_status FROM $wpdb->posts WHERE ID = $id");
+        $pinged = fn ($id) => $wpdb->get_var("SELECT pinged FROM $wpdb->posts WHERE ID = $id");
+        $before = array_map($pinged, [1, 6, 21]);
+        $out = [];
+        foreach ([true, [6], '6abc', -1] as $arg) {
+            $out[] = null === wp_trash_post($arg);
+            $out[] = false === add_ping($arg, 'http://example.org/pinged');
+        }
+        foreach ([true, [7], '7abc', -7] as $arg) {
+            $out[] = null === wp_untrash_post($arg);
+        }
+        foreach ([true, [8], '8abc', -8] as $arg) {
+            $out[] = null === wp_publish_post($arg);
+        }
+        foreach ([true, [15], '15abc', -15] as $arg) {
+            $out[] = null === check_and_publish_future_post($arg);
+        }
+        $out = array_merge($out, [
+            'publish' === $status(1), 'publish' === $status(6), 'publish' === $status(21), 'trash' === $status(7),
+            'draft' === $status(8), 'future' === $status(15), $before === array_map($pinged, [1, 6, 21]),
+            '0' === $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->postmeta WHERE meta_key = '_wp_trash_meta_status' AND post_id IN (1, 6, 21)"),
+        ]);
+        return !in_array(false, $out, true) ? true : $out;"#,
+    );
+    // The post the trash and delete functions answer is the very object the caller passed, or the WP_Post the hooks
+    // received (an attachment's too, through wp_delete_attachment()); no post is `null`.
+    ok &= yes(
+        php,
+        setup,
+        "trash_and_delete_answer_the_post",
+        r#"$post = get_post(6);
+        $trashed = wp_trash_post($post);
+        $seen = null;
+        add_action('deleted_post', function ($id, $p) use (&$seen) { $seen = $p; }, 10, 2);
+        $deleted = wp_delete_post(21, true);
+        $deleted_seen = $seen;
+        $attachment = wp_delete_post(14, true);
+        $out = [$trashed === $post, $deleted === $deleted_seen, $deleted instanceof WP_Post, 21 === $deleted->ID,
+            $attachment instanceof WP_Post, $attachment === $seen, 14 === $attachment->ID,
+            null === wp_delete_post(999), null === wp_trash_post(999),
+            'trash' === $GLOBALS['wpdb']->get_var("SELECT post_status FROM {$GLOBALS['wpdb']->posts} WHERE ID = 6")];
+        return !in_array(false, $out, true) ? true : $out;"#,
     );
     ok
 }

@@ -9,17 +9,19 @@
 //! - from `posts.php`, the 35 reading functions (`get_post()` and the readers beside it, the page functions, the
 //!   counts and dates, the `posts` cache functions, `sanitize_post()` and `sanitize_post_field()`, the pings and
 //!   `is_sticky()`);
-//! - from `post-writes.php`, the 8 writing functions (`wp_insert_post()`, `wp_update_post()`,
-//!   `wp_transition_post_status()`, `set_post_type()`, and the default callbacks WordPress registers by name:
-//!   `_transition_post_status()`, `_publish_post_hook()`, `_future_post_hook()` and
-//!   `wp_check_post_hierarchy_for_loops()`).
+//! - from `post-writes.php`, the 19 writing functions (`wp_insert_post()`, `wp_update_post()`,
+//!   `wp_transition_post_status()`, `set_post_type()`, `wp_delete_post()`, `wp_trash_post()`, `wp_untrash_post()`,
+//!   `wp_publish_post()`, `check_and_publish_future_post()`, `stick_post()`, `unstick_post()`, `add_ping()`,
+//!   `wp_delete_auto_drafts()`, and the default callbacks WordPress registers by name: `_transition_post_status()`,
+//!   `_publish_post_hook()`, `_future_post_hook()`, `wp_check_post_hierarchy_for_loops()`,
+//!   `_reset_front_page_settings_for_post()` and `_reset_privacy_policy_page_for_post()`).
 //!
 //! Each is one line calling a native function under `SpeedySpec\WpPosts\Native\`. The reading and writing natives
 //! dispatch through the use case's handler bound in the container (Command/CQRS), so PHP may override one.
 //!
 //! The write use cases reach unported code through container ports ([`Resolved`]) whose default bindings are PHP
-//! adapters calling WordPress's own functions (users, taxonomy, comments, rewrite, uploads, `WP_Query`, the theme, the
-//! column charsets), and cron through the Rust adapter over the cron scheduling core the runtime passes in. PHP
+//! adapters calling WordPress's own functions (users, taxonomy, comments, rewrite, uploads, revisions, `WP_Query`, the
+//! theme, the column charsets), and cron through the Rust adapter over the cron scheduling core the runtime passes in. PHP
 //! replaces any of them by binding an object implementing the port's twin (`SpeedySpec\WpPosts\<Port>`). The PHP
 //! edge (the clock, `wp_truncate_slug()`, `sanitize_title()`, the `WP_Post` handles, `$wp_rewrite`'s slug settings,
 //! `defined()` and `_doing_it_wrong()`) goes through plain adapters. Options go through the options contracts.
@@ -60,7 +62,7 @@ use speedyspec_php::NativeArea;
 use speedyspec_php::ext_php_rs::builders::FunctionBuilder;
 use speedyspec_wp_db_contracts::Wpdb;
 use speedyspec_wp_hooks_contracts::HookApi;
-use speedyspec_wp_meta_contracts::Metadata;
+use speedyspec_wp_meta_contracts::{MetaRepositories, Metadata};
 use speedyspec_wp_object_cache_contracts::ObjectCache;
 use speedyspec_wp_options_contracts::Options;
 use speedyspec_wp_posts::{
@@ -78,10 +80,10 @@ pub use adapters::{
     PhpTranslator,
 };
 pub use codec::{Thrown, copy_php, from_php, to_php};
-pub use hooks::PhpValueHooks;
+pub use hooks::{PhpValueHooks, PhpValueOptions};
 pub use port_twins::{
-    CharsetTwin, CommentsTwin, PhpBound, PostQueryTwin, RewriteTwin, SchedulingTwin, TaxonomyTwin,
-    ThemeTwin, UploadsTwin, UsersTwin,
+    CharsetTwin, CommentsTwin, PhpBound, PostQueryTwin, RevisionsTwin, RewriteTwin, SchedulingTwin,
+    TaxonomyTwin, ThemeTwin, UploadsTwin, UsersTwin,
 };
 pub use ports::{
     POST_REPOSITORY, PhpCacheInvalidation, PhpCurrentPost, PhpFormatting, PhpMicrotime,
@@ -94,9 +96,10 @@ pub use release::{
 pub use runner::{php_string, posts_read_scenario_runner, posts_write_scenario_runner};
 pub use twins::{PhpPostRepository, PostRepositoryTwin};
 pub use write_ports::{
-    CHARSET, COMMENTS, POST_QUERY, PhpCharset, PhpClock, PhpComments, PhpPostObjects, PhpPostQuery,
-    PhpRewrite, PhpRuntime, PhpScheduling, PhpSlugSettings, PhpSlugTruncation, PhpTheme,
-    PhpUploads, PhpWriteFormatting, REWRITE, Resolved, SCHEDULING, TAXONOMY, THEME, UPLOADS, USERS,
+    CHARSET, COMMENTS, META_REPOSITORIES, NoMetaTables, POST_QUERY, PhpCharset, PhpClock,
+    PhpComments, PhpPostObjects, PhpPostQuery, PhpRevisions, PhpRewrite, PhpRuntime, PhpScheduling,
+    PhpSlugSettings, PhpSlugTruncation, PhpTheme, PhpUploads, PhpWriteFormatting, REVISIONS,
+    REWRITE, Resolved, SCHEDULING, TAXONOMY, THEME, UPLOADS, USERS,
 };
 
 const FACADE: &str = include_str!("post-types.php");
@@ -151,7 +154,7 @@ impl PostsArea {
             terms: terms.clone(),
             clock: Rc::new(PhpMicrotime),
             invalidation: Rc::new(PhpCacheInvalidation),
-            options,
+            options: Rc::new(PhpValueOptions::new(options)),
         });
         register_posts_handlers(&container, api.clone());
         let writes = PostWritesApi::new(WriteDeps {
@@ -199,6 +202,16 @@ impl PostsArea {
             objects: Rc::new(PhpPostObjects),
             slugs: Rc::new(PhpSlugSettings),
             runtime: Rc::new(PhpRuntime),
+            revisions: Rc::new(Resolved::<dyn c::Revisions>::bind(
+                &container,
+                REVISIONS,
+                Rc::new(PhpRevisions),
+            )),
+            meta: Rc::new(Resolved::<dyn MetaRepositories>::new(
+                &container,
+                META_REPOSITORIES,
+                Rc::new(NoMetaTables),
+            )),
         });
         register_post_write_handlers(&container, writes.clone());
         let reading = Rc::new(read::Reading::new(&container, current));
@@ -220,8 +233,8 @@ impl PostsArea {
 
     /// `area` with the post repository and the other container ports registered, so a PHP object implementing a
     /// port's twin (`SpeedySpec\WpPosts\PostRepository`, `…\Taxonomy`, `…\Users`, `…\Comments`, `…\Rewrite`,
-    /// `…\Uploads`, `…\PostQuery`, `…\Theme`, `…\Charset`, `…\Scheduling`) and bound at its key reaches the use
-    /// cases.
+    /// `…\Uploads`, `…\PostQuery`, `…\Theme`, `…\Charset`, `…\Revisions`, `…\Scheduling`) and bound at its key
+    /// reaches the use cases.
     pub fn ports(area: ContainerArea) -> ContainerArea {
         area.port::<dyn PostRepository>(POST_REPOSITORY, twins::wrap)
             .port::<dyn c::Taxonomy>(TAXONOMY, port_twins::taxonomy)
@@ -232,6 +245,7 @@ impl PostsArea {
             .port::<dyn PostQuery>(POST_QUERY, port_twins::post_query)
             .port::<dyn Theme>(THEME, port_twins::theme)
             .port::<dyn Charset>(CHARSET, port_twins::charset)
+            .port::<dyn c::Revisions>(REVISIONS, port_twins::revisions)
             .port::<dyn Scheduling>(SCHEDULING, port_twins::scheduling)
     }
 }
