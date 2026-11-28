@@ -113,7 +113,7 @@ impl PostWritesApi {
         let mut postarr = array_merge(post, given);
         set(&mut postarr, "post_category", categories);
         if clear_date {
-            set(&mut postarr, "post_date", s(self.d.clock.now_local()));
+            set(&mut postarr, "post_date", s(self.d.clock.now_local()?));
             set(&mut postarr, "post_date_gmt", s(""));
         }
 

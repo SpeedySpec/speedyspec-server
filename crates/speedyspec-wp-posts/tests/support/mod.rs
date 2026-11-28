@@ -14,7 +14,7 @@ use speedyspec_wp_posts::{
     post_types_by_support,
 };
 use speedyspec_wp_posts_contracts::{
-    PostStatuses, PostTypeError, PostTypes, RewriteContext, TitleSanitizer,
+    PostError, PostStatuses, PostTypeError, PostTypes, RewriteContext, TitleSanitizer,
 };
 
 /// The recorded cases. The file is large: read it once per test.
@@ -117,8 +117,8 @@ pub fn property<'a>(value: &'a PhpValue, name: &str) -> Option<&'a PhpValue> {
 pub struct Permalinks(pub bool);
 
 impl RewriteContext for Permalinks {
-    fn rewrite_applies(&self) -> bool {
-        self.0
+    fn rewrite_applies(&self) -> Result<bool, PostError> {
+        Ok(self.0)
     }
 }
 
@@ -293,10 +293,10 @@ pub fn replay_calls(
                         replayed.result = wp_error(error);
                     }
                     Ok(name) => {
-                        let registration =
-                            registries
-                                .post_types
-                                .register(name.clone(), type_args, ports);
+                        let registration = registries
+                            .post_types
+                            .register(name.clone(), type_args, ports)
+                            .expect("no port fails here");
                         replayed.actions = registration
                             .actions
                             .into_iter()

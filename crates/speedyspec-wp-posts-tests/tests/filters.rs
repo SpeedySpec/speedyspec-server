@@ -17,8 +17,8 @@ use speedyspec_wp_posts::{
     post_type_name_viewable_filtered, unique_post_slug_filtered,
 };
 use speedyspec_wp_posts_contracts::{
-    Post, PostId, PostParent, PostRepository, PostRow, PostStatusName, PostType, PostTypeName,
-    PostTypes, RewriteContext, Slug, SlugTruncation, TitleSanitizer,
+    Post, PostError, PostId, PostParent, PostRepository, PostRow, PostStatusName, PostType,
+    PostTypeName, PostTypes, RewriteContext, Slug, SlugTruncation, TitleSanitizer,
 };
 use speedyspec_wp_posts_memory::MemoryPostRepository;
 
@@ -73,8 +73,8 @@ fn fired(log: &Invocations) -> Vec<String> {
 
 struct NoRewrite;
 impl RewriteContext for NoRewrite {
-    fn rewrite_applies(&self) -> bool {
-        false
+    fn rewrite_applies(&self) -> Result<bool, PostError> {
+        Ok(false)
     }
 }
 
@@ -138,6 +138,7 @@ fn a_labels_filter_changes_a_label_and_keeps_the_defaults() {
     let mut registry = PostTypeRegistry::new();
     let unfiltered = registry
         .register(PostTypeName::new("plain"), Vec::new(), &ports())
+        .unwrap()
         .post_type;
     registry
         .register_filtered(PostTypeName::new("book"), Vec::new(), &ports(), &*hooks)
@@ -177,7 +178,9 @@ fn no_labels_callback_leaves_the_registration_as_register_makes_it() {
     let mut plain = PostTypeRegistry::new();
     let mut filtered = PostTypeRegistry::new();
     let args = vec![(k("labels"), PhpValue::Array(vec![(k("name"), s("Books"))]))];
-    plain.register(PostTypeName::new("book"), args.clone(), &ports());
+    plain
+        .register(PostTypeName::new("book"), args.clone(), &ports())
+        .unwrap();
     filtered
         .register_filtered(PostTypeName::new("book"), args, &ports(), &*hooks)
         .unwrap();

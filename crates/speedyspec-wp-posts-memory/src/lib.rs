@@ -13,10 +13,12 @@
 use std::cell::RefCell;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use speedyspec_php_serialize::semantics::{to_php_int, to_php_string};
+use speedyspec_php_serialize::{PhpValue, from_hook_value};
 use speedyspec_wp_posts_contracts::{
-    CommentStatus, LastPostField, MimeFilter, MimeType, PageRow, PingStatus, Post, PostDateTime,
-    PostError, PostId, PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, RowValue,
-    Slug, Timezone, column_format,
+    ColumnFormat, CommentStatus, LastPostField, MimeFilter, MimeType, PageRow, PingStatus, Post,
+    PostDateTime, PostError, PostId, PostParent, PostRepository, PostRow, PostStatusName,
+    PostTypeName, RowValue, Slug, Timezone, WriteOutcome, column_format,
 };
 
 /// `wp_posts` held in memory (Repository, Strategy for the engine).
@@ -119,31 +121,167 @@ const COLUMNS: [&str; 23] = [
     "comment_count",
 ];
 
-/// A row's columns resolved to `wp_posts` columns: `Ok(None)` when one is unknown or the row is empty (MySQL rejects
-/// the statement), `Err` when a value does not fit its placeholder (`wpdb` would never print it).
-fn resolve(row: &PostRow) -> Result<Option<Vec<(&'static str, &RowValue)>>, PostError> {
-    let mut resolved = Vec::with_capacity(row.columns().len());
-    for (name, value) in row.columns() {
-        if !value.fits(column_format(name)) {
-            return Err(PostError::Db(format!(
-                "the value of `{name}` does not fit its placeholder"
-            )));
-        }
-        match COLUMNS.iter().find(|c| c.eq_ignore_ascii_case(name)) {
-            Some(column) => resolved.push((*column, value)),
-            None => return Ok(None),
-        }
-    }
-    Ok((!resolved.is_empty()).then_some(resolved))
+/// A value as `wpdb::prepare()` prints it under its column's placeholder ([`RowValue`]'s rules): `NULL`, a number
+/// (`%d`), or quoted text (`%s`).
+#[derive(Debug, Clone, PartialEq)]
+enum Printed {
+    Null,
+    Number(i64),
+    Text(Vec<u8>),
 }
 
-/// A value as an integer column stores it (MySQL reads a string's leading number).
-fn int_value(value: &RowValue) -> i64 {
+/// `mysqli_real_escape_string()`: a backslash before NUL, `\n`, `\r`, `\\`, `'`, `"` and `\x1a`.
+fn escape(bytes: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());
+    for &b in bytes {
+        match b {
+            0 => out.extend_from_slice(b"\\0"),
+            b'\n' => out.extend_from_slice(b"\\n"),
+            b'\r' => out.extend_from_slice(b"\\r"),
+            0x1a => out.extend_from_slice(b"\\Z"),
+            b'\\' | b'\'' | b'"' => {
+                out.push(b'\\');
+                out.push(b);
+            }
+            b => out.push(b),
+        }
+    }
+    out
+}
+
+/// What `prepare()` prints for `value` under the placeholder of the column `name`.
+///
+/// A known limitation: an array or object prints `''` (`0` under `%d`) as `prepare()` does, but the `_doing_it_wrong`
+/// hooks `prepare()` runs first are not run, since this repository has no hook API.
+fn printed(name: &[u8], value: &RowValue) -> Printed {
+    let int = column_format(name) == ColumnFormat::Int;
     // Not an exhaustive match: the contract's value type may grow.
-    if let RowValue::Int(n) = value {
-        *n
+    let php = if matches!(value, RowValue::Null) {
+        return Printed::Null;
+    } else if let RowValue::Int(n) = value {
+        PhpValue::Int(*n)
     } else if let RowValue::Str(bytes) = value {
-        {
+        // Escaped first: `%d` then reads the escaped text.
+        return if int {
+            Printed::Number(to_php_int(&PhpValue::Str(escape(bytes))))
+        } else {
+            Printed::Text(bytes.clone())
+        };
+    } else if let RowValue::Php(hook) = value {
+        match from_hook_value(hook) {
+            Ok(PhpValue::Null) => return Printed::Null,
+            Ok(
+                v @ (PhpValue::Int(_) | PhpValue::Float(_) | PhpValue::Bool(_) | PhpValue::Str(_)),
+            ) => v,
+            // An array or an object: "Unsupported value type".
+            _ => {
+                return if int {
+                    Printed::Number(0)
+                } else {
+                    Printed::Text(Vec::new())
+                };
+            }
+        }
+    } else {
+        return Printed::Null;
+    };
+    if int {
+        Printed::Number(to_php_int(&php))
+    } else {
+        Printed::Text(to_php_string(&php))
+    }
+}
+
+/// A row's columns resolved to `wp_posts` columns, each value as `prepare()` prints it; `Err` with MySQL's message
+/// when a column is unknown or the row is empty, as MySQL rejects the statement.
+fn resolve(row: &PostRow) -> Result<Vec<(&'static str, Printed)>, String> {
+    if row.is_empty() {
+        return Err("You have an error in your SQL syntax; check the manual that corresponds to your MySQL server \
+             version for the right syntax to use"
+            .to_owned());
+    }
+    // `process_fields()` first: a string under `%s` longer than its column fails before any statement.
+    let too_long: Vec<String> = row
+        .columns()
+        .iter()
+        .filter(|(name, value)| {
+            column_format(name) == ColumnFormat::Str
+                && matches!(value, RowValue::Str(bytes) if too_long_for(name, bytes))
+        })
+        .map(|(name, _)| String::from_utf8_lossy(name).into_owned())
+        .collect();
+    if let [field] = too_long.as_slice() {
+        return Err(format!(
+            "WordPress database error: Processing the value for the following field failed: {field}. The supplied \
+             value may be too long or contains invalid data."
+        ));
+    }
+    if !too_long.is_empty() {
+        return Err(format!(
+            "WordPress database error: Processing the values for the following fields failed: {}. The supplied \
+             values may be too long or contain invalid data.",
+            too_long.join(", ")
+        ));
+    }
+    let mut resolved = Vec::with_capacity(row.columns().len());
+    for (name, value) in row.columns() {
+        let Some(column) = COLUMNS
+            .iter()
+            .find(|c| c.as_bytes().eq_ignore_ascii_case(name))
+        else {
+            return Err(format!(
+                "Unknown column '{}' in 'field list'",
+                String::from_utf8_lossy(name)
+            ));
+        };
+        let mut value = printed(name, value);
+        // Outside strict mode MySQL keeps what fits of a value no length check saw (a float under `%s`).
+        if let (Printed::Text(text), Some(limit)) = (&mut value, varchar_length(column)) {
+            let kept: String = String::from_utf8_lossy(text).chars().take(limit).collect();
+            if kept.len() < text.len() {
+                *text = kept.into_bytes();
+            }
+        }
+        resolved.push((*column, value));
+    }
+    Ok(resolved)
+}
+
+/// A `varchar` column's length in characters (`schema.php`); `None` for the other columns.
+fn varchar_length(column: &str) -> Option<usize> {
+    match column {
+        "post_status" | "comment_status" | "ping_status" | "post_type" => Some(20),
+        "post_name" => Some(200),
+        "post_password" | "guid" => Some(255),
+        "post_mime_type" => Some(100),
+        _ => None,
+    }
+}
+
+/// Whether `strip_invalid_text()` finds `bytes` longer than the column `name` (`get_col_length()`): characters for a
+/// `varchar`, bytes for a `text` column (65535); `longtext` and unknown names have no limit here. A known limitation:
+/// the charset check (invalid UTF-8) is not made, so the table stays binary safe as the conformance suite expects.
+fn too_long_for(name: &[u8], bytes: &[u8]) -> bool {
+    let Some(column) = COLUMNS
+        .iter()
+        .find(|c| c.as_bytes().eq_ignore_ascii_case(name))
+    else {
+        return false;
+    };
+    match *column {
+        "post_title" | "post_excerpt" | "to_ping" | "pinged" => bytes.len() > 65_535,
+        other => varchar_length(other)
+            .is_some_and(|limit| String::from_utf8_lossy(bytes).chars().count() > limit),
+    }
+}
+
+/// A printed value as an integer column stores it: MySQL reads a string's leading number; `NULL` in an `UPDATE` is
+/// `0`.
+fn int_value(value: &Printed) -> i64 {
+    match value {
+        Printed::Null => 0,
+        Printed::Number(n) => *n,
+        Printed::Text(bytes) => {
             let text = String::from_utf8_lossy(bytes);
             let text = text.trim_start();
             let end = text
@@ -152,25 +290,21 @@ fn int_value(value: &RowValue) -> i64 {
                 .map_or(text.len(), |(i, _)| i);
             text[..end].parse().unwrap_or(0)
         }
-    } else {
-        0
     }
 }
 
-/// A value as a text column stores it; `NULL` in an `UPDATE` is the implicit default `''`.
-fn text_value(value: &RowValue) -> Vec<u8> {
-    if let RowValue::Str(bytes) = value {
-        bytes.clone()
-    } else if let RowValue::Int(n) = value {
-        n.to_string().into_bytes()
-    } else {
-        Vec::new()
+/// A printed value as a text column stores it; `NULL` in an `UPDATE` is the implicit default `''`.
+fn text_value(value: &Printed) -> Vec<u8> {
+    match value {
+        Printed::Null => Vec::new(),
+        Printed::Number(n) => n.to_string().into_bytes(),
+        Printed::Text(bytes) => bytes.clone(),
     }
 }
 
-/// A value as a `datetime` column stores it; `NULL` in an `UPDATE` is the zero date.
-fn date_value(value: &RowValue) -> PostDateTime {
-    if matches!(value, RowValue::Null) {
+/// A printed value as a `datetime` column stores it; `NULL` in an `UPDATE` is the zero date.
+fn date_value(value: &Printed) -> PostDateTime {
+    if matches!(value, Printed::Null) {
         PostDateTime::ZERO
     } else {
         PostDateTime::new(String::from_utf8_lossy(&text_value(value)).into_owned())
@@ -178,7 +312,7 @@ fn date_value(value: &RowValue) -> PostDateTime {
 }
 
 /// Writes one column into `post` (not `ID`), as MySQL stores the value under `wpdb::set_sql_mode()`'s mode.
-fn write_column(post: &mut Post, column: &str, value: &RowValue) {
+fn write_column(post: &mut Post, column: &str, value: &Printed) {
     let text = || text_value(value);
     let name = || String::from_utf8_lossy(&text_value(value)).into_owned();
     match column {
@@ -259,16 +393,19 @@ impl PostRepository for MemoryPostRepository {
             .cloned())
     }
 
-    fn insert(&self, row: &PostRow) -> Result<Option<PostId>, PostError> {
-        let Some(columns) = resolve(row)? else {
-            return Ok(None);
+    fn insert(&self, row: &PostRow) -> Result<WriteOutcome<PostId>, PostError> {
+        let columns = match resolve(row) {
+            Ok(columns) => columns,
+            Err(message) => return Ok(WriteOutcome::failed(message)),
         };
         // NULL in a NOT NULL column: error 1048, even outside strict mode (an auto-increment `ID` takes the next id).
-        if columns
+        if let Some((column, _)) = columns
             .iter()
-            .any(|(c, v)| *c != "ID" && matches!(v, RowValue::Null))
+            .find(|(c, v)| *c != "ID" && matches!(v, Printed::Null))
         {
-            return Ok(None);
+            return Ok(WriteOutcome::failed(format!(
+                "Column '{column}' cannot be null"
+            )));
         }
         let mut state = self.state.borrow_mut();
         // 0 asks for the next id, and the unsigned column clamps a negative one to 0.
@@ -281,7 +418,9 @@ impl PostRepository for MemoryPostRepository {
             _ => state.last_id + 1,
         };
         if state.rows.iter().any(|p| p.id.0 == id) {
-            return Ok(None);
+            return Ok(WriteOutcome::failed(format!(
+                "Duplicate entry '{id}' for key 'wp_posts.PRIMARY'"
+            )));
         }
         let mut post = Post {
             id: PostId(id),
@@ -292,7 +431,7 @@ impl PostRepository for MemoryPostRepository {
         }
         state.last_id = state.last_id.max(id);
         state.rows.push(post);
-        Ok(Some(PostId(id)))
+        Ok(WriteOutcome::Written(PostId(id)))
     }
 
     fn attachment_slug_owner(
@@ -494,9 +633,10 @@ impl PostRepository for MemoryPostRepository {
         Ok(types)
     }
 
-    fn update(&self, id: PostId, row: &PostRow) -> Result<Option<u64>, PostError> {
-        let Some(columns) = resolve(row)? else {
-            return Ok(None);
+    fn update(&self, id: PostId, row: &PostRow) -> Result<WriteOutcome<u64>, PostError> {
+        let columns = match resolve(row) {
+            Ok(columns) => columns,
+            Err(message) => return Ok(WriteOutcome::failed(message)),
         };
         // `SET ID = …`: a duplicate key fails the statement.
         if let Some(new_id) = columns
@@ -512,16 +652,19 @@ impl PostRepository for MemoryPostRepository {
                 .any(|p| p.id.0 == new_id as u64)
             && self.state.borrow().rows.iter().any(|p| p.id == id)
         {
-            return Ok(None);
+            return Ok(WriteOutcome::failed(format!(
+                "Duplicate entry '{new_id}' for key 'wp_posts.PRIMARY'"
+            )));
         }
-        Ok(self.change_row(id, |post| {
+        let changed = self.change_row(id, |post| {
             for (column, value) in &columns {
                 match *column {
                     "ID" => post.id = PostId(u64::try_from(int_value(value)).unwrap_or(0)),
                     other => write_column(post, other, value),
                 }
             }
-        }))
+        });
+        Ok(WriteOutcome::Written(changed.unwrap_or(0)))
     }
 
     fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {

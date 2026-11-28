@@ -19,6 +19,7 @@ use speedyspec_wp_posts::{CacheInvalidation, Formatting, Microtime, Taxonomy, Us
 use speedyspec_wp_posts_contracts::{
     CurrentPost, LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError,
     PostId, PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, Slug, Timezone,
+    WriteOutcome,
 };
 
 use crate::adapters::{exists, is_parked, park, truthy};
@@ -494,7 +495,7 @@ impl PostRepository for ResolvedRepository {
         self.resolved()?.find(id)
     }
 
-    fn insert(&self, row: &PostRow) -> Result<Option<PostId>, PostError> {
+    fn insert(&self, row: &PostRow) -> Result<WriteOutcome<PostId>, PostError> {
         self.resolved()?.insert(row)
     }
 
@@ -574,7 +575,7 @@ impl PostRepository for ResolvedRepository {
         self.resolved()?.available_mime_types(post_type)
     }
 
-    fn update(&self, id: PostId, row: &PostRow) -> Result<Option<u64>, PostError> {
+    fn update(&self, id: PostId, row: &PostRow) -> Result<WriteOutcome<u64>, PostError> {
         self.resolved()?.update(id, row)
     }
 

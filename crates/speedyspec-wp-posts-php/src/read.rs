@@ -171,7 +171,7 @@ fn reading() -> Result<Rc<Reading>, NativeError> {
 }
 
 /// A post read failure as PHP sees it: a callback's exception (or a port's) rethrown, anything else an `Error`.
-fn post_error(e: PostError) -> NativeError {
+pub(crate) fn post_error(e: PostError) -> NativeError {
     match e {
         PostError::Hook(hook) => hook_error(hook),
         other => NativeError::throw("Error", other.to_string()),

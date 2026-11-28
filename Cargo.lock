@@ -6760,6 +6760,7 @@ dependencies = [
 name = "speedyspec-wp-posts-memory"
 version = "0.1.0"
 dependencies = [
+ "speedyspec-php-serialize",
  "speedyspec-wp-posts-contracts",
 ]
 

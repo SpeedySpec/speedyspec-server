@@ -11,7 +11,7 @@ use speedyspec_wp_posts::SlugContext;
 use speedyspec_wp_posts_contracts::{
     Clock, CommentStatus, LastPostField, MimeFilter, MimeType, PageRow, PingStatus, Post, PostDate,
     PostDateTime, PostError, PostId, PostParent, PostRepository, PostRow, PostStatusName, PostType,
-    PostTypeName, PostTypes, RowValue, Slug, SlugTruncation, Timezone,
+    PostTypeName, PostTypes, RowValue, Slug, SlugTruncation, Timezone, WriteOutcome,
 };
 use speedyspec_wp_posts_memory::MemoryPostRepository;
 
@@ -95,10 +95,11 @@ fn lookup(table: &[(Vec<u8>, Vec<u8>)], function: &str, input: &[u8]) -> Vec<u8>
 }
 
 impl Clock for TableClock {
-    fn now_local(&self) -> String {
-        self.now_local
+    fn now_local(&self) -> Result<String, PostError> {
+        Ok(self
+            .now_local
             .clone()
-            .expect("current_time( 'mysql' ) read in a case that recorded no now")
+            .expect("current_time( 'mysql' ) read in a case that recorded no now"))
     }
 
     fn now_gmt(&self) -> String {
@@ -107,12 +108,12 @@ impl Clock for TableClock {
             .expect("current_time( 'mysql', true ) read in a case that recorded no now")
     }
 
-    fn date_from_gmt(&self, gmt: &[u8]) -> Vec<u8> {
-        lookup(&self.date_from_gmt, "get_date_from_gmt", gmt)
+    fn date_from_gmt(&self, gmt: &[u8]) -> Result<Vec<u8>, PostError> {
+        Ok(lookup(&self.date_from_gmt, "get_date_from_gmt", gmt))
     }
 
-    fn gmt_from_date(&self, local: &[u8]) -> Vec<u8> {
-        lookup(&self.gmt_from_date, "get_gmt_from_date", local)
+    fn gmt_from_date(&self, local: &[u8]) -> Result<Vec<u8>, PostError> {
+        Ok(lookup(&self.gmt_from_date, "get_gmt_from_date", local))
     }
 
     fn timestamp(&self, datetime: &[u8]) -> Option<i64> {
@@ -250,7 +251,8 @@ pub fn seed(rows: &Value) -> MemoryPostRepository {
         assert_eq!(
             repository
                 .insert(&data_row(&post, Some(id.0 as i64)))
-                .unwrap(),
+                .unwrap()
+                .written(),
             Some(id),
             "seeding {id:?}"
         );
@@ -306,7 +308,7 @@ impl<R: PostRepository> PostRepository for Recording<R> {
         self.inner.find(id)
     }
 
-    fn insert(&self, row: &PostRow) -> Result<Option<PostId>, PostError> {
+    fn insert(&self, row: &PostRow) -> Result<WriteOutcome<PostId>, PostError> {
         self.inner.insert(row)
     }
 
@@ -407,7 +409,7 @@ impl<R: PostRepository> PostRepository for Recording<R> {
         self.inner.available_mime_types(post_type)
     }
 
-    fn update(&self, id: PostId, row: &PostRow) -> Result<Option<u64>, PostError> {
+    fn update(&self, id: PostId, row: &PostRow) -> Result<WriteOutcome<u64>, PostError> {
         self.inner.update(id, row)
     }
 

@@ -173,12 +173,13 @@ fn set_property(properties: &mut Vec<(PhpKey, PhpValue)>, key: PhpKey, value: Ph
 }
 
 /// `new WP_Post_Type( $name, $args )` after set_props()' two args filters, with no post_type_labels_{$name}
-/// callback.
+/// callback. `Err` carries a failure of the rewrite context (`get_option( 'permalink_structure' )`'s filters) or of
+/// the translator (`gettext`), where WordPress's exception would stop `register_post_type()`.
 pub fn resolve_post_type(
     name: PostTypeName,
     args: Vec<(PhpKey, PhpValue)>,
     ports: &PostTypePorts<'_>,
-) -> ResolvedPostType {
+) -> Result<ResolvedPostType, PostError> {
     let mut properties = declared(&name);
     let name_value = s(name.as_str());
 
@@ -287,7 +288,7 @@ pub fn resolve_post_type(
 
     // Rewrite.
     let rewrite = arg(&args, "rewrite");
-    if !matches!(rewrite, PhpValue::Bool(false)) && ports.rewrite.rewrite_applies() {
+    if !matches!(rewrite, PhpValue::Bool(false)) && ports.rewrite.rewrite_applies()? {
         let mut rewrite = match rewrite {
             PhpValue::Array(items) => items,
             _ => Vec::new(),
@@ -328,16 +329,16 @@ pub fn resolve_post_type(
         labels: &labels_given,
         hierarchical,
     };
-    let labels = post_type_labels(&source, ports.translator);
+    let labels = post_type_labels(&source, ports.translator)?;
     // With no callback, the filtered labels are the defaults themselves.
     let labels = merge_filtered_labels(labels.clone(), labels);
 
     let mut post_type = PostType::new(name, properties);
     store_labels(&mut post_type, labels);
-    ResolvedPostType {
+    Ok(ResolvedPostType {
         post_type,
         meta_caps,
-    }
+    })
 }
 
 /// `$this->labels = (object) $labels; $this->label = $this->labels->name;`.
@@ -403,8 +404,8 @@ mod tests {
 
     struct Applies(bool);
     impl RewriteContext for Applies {
-        fn rewrite_applies(&self) -> bool {
-            self.0
+        fn rewrite_applies(&self) -> Result<bool, PostError> {
+            Ok(self.0)
         }
     }
 
@@ -425,7 +426,7 @@ mod tests {
             rewrite: &Applies(applies),
             titles: &Same,
         };
-        resolve_post_type(PostTypeName::new("book"), args, &ports)
+        resolve_post_type(PostTypeName::new("book"), args, &ports).unwrap()
     }
 
     #[test]

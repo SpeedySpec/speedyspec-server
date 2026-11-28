@@ -13,6 +13,7 @@ role = "adapter"
 
 [dependencies]
 speedyspec-wp-posts-contracts.workspace = true
+speedyspec-php-serialize.workspace = true
 
 [dev-dependencies]
 speedyspec-wp-posts-contracts = { workspace = true, features = ["conformance"] }

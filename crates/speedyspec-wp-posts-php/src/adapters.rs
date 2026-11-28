@@ -15,8 +15,8 @@ use speedyspec_php_ext::{Key, Value};
 use speedyspec_php_serialize::semantics::{bytes_truthy, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts_contracts::{
-    PostStatusName, PostStatusObject, PostStatuses, PostType, PostTypeName, PostTypeSupports,
-    PostTypes, RewriteContext, TitleSanitizer, Translator,
+    PostError, PostStatusName, PostStatusObject, PostStatuses, PostType, PostTypeName,
+    PostTypeSupports, PostTypes, RewriteContext, TitleSanitizer, Translator,
 };
 
 use crate::codec::{Thrown, from_php, is_object, object_vars, php};
@@ -264,8 +264,9 @@ fn answer_bytes(value: &Value) -> Vec<u8> {
 /// `__()` and `_x()`; the text itself when l10n.php is not loaded.
 pub struct PhpTranslator;
 
+/// A `gettext` callback's exception comes back as [`PostError::Hook`], so the use case stops there.
 impl Translator for PhpTranslator {
-    fn translate(&self, text: &str, context: Option<&str>) -> String {
+    fn translate(&self, text: &str, context: Option<&str>) -> Result<String, PostError> {
         let (name, args) = match context {
             None => ("__", vec![Value::Str(text.into())]),
             Some(context) => (
@@ -274,26 +275,27 @@ impl Translator for PhpTranslator {
             ),
         };
         if !exists(name) {
-            return text.to_owned();
+            return Ok(text.to_owned());
         }
-        match ask(name, &args) {
-            Some(v) => String::from_utf8_lossy(&answer_bytes(&v)).into_owned(),
-            None => text.to_owned(),
-        }
+        let answer = php(name, &args).map_err(crate::ports::thrown_error)?;
+        Ok(String::from_utf8_lossy(&answer_bytes(&answer)).into_owned())
     }
 }
 
 /// `is_admin() || get_option( 'permalink_structure' )`.
 pub struct PhpRewriteContext;
 
+/// An option filter's exception comes back as [`PostError::Hook`].
 impl RewriteContext for PhpRewriteContext {
-    fn rewrite_applies(&self) -> bool {
-        if exists("is_admin") && ask("is_admin", &[]).is_some_and(|v| truthy(&v)) {
-            return true;
+    fn rewrite_applies(&self) -> Result<bool, PostError> {
+        let thrown = crate::ports::thrown_error;
+        if exists("is_admin") && truthy(&php("is_admin", &[]).map_err(thrown)?) {
+            return Ok(true);
         }
-        exists("get_option")
-            && ask("get_option", &[Value::Str("permalink_structure".into())])
-                .is_some_and(|v| truthy(&v))
+        Ok(exists("get_option")
+            && truthy(
+                &php("get_option", &[Value::Str("permalink_structure".into())]).map_err(thrown)?,
+            ))
     }
 }
 

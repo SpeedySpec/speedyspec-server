@@ -30,8 +30,8 @@ use speedyspec_php_serialize::semantics::{
 use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_hooks_contracts::HookValue;
 use speedyspec_wp_posts_contracts::{
-    ColumnFormat, PostError, PostId, PostObject, PostParent, PostRef, PostRow, PostStatusName,
-    PostTypeName, PostWriteError, RowValue, Slug, WriteResult, column_format,
+    PostError, PostId, PostObject, PostParent, PostRef, PostRow, PostStatusName, PostTypeName,
+    PostWriteError, RowValue, Slug, WriteOutcome, WriteResult,
 };
 
 use crate::hook::hv;
@@ -127,20 +127,18 @@ fn defaults(user_id: u64) -> Items {
     .collect()
 }
 
-/// Data Mapper: `$data` after the filter and `wp_unslash()` as the [`PostRow`] `$wpdb` writes: its keys in order (an
-/// integer key as its decimal text), each value as `wpdb` prints it under its column's placeholder
-/// ([`column_format`]): `(int)` for `%d`, `(string)` for `%s`, and `null` as `NULL`. A column a callback dropped is
-/// left out and a key it added is kept, so the statement is WordPress's.
+/// Data Mapper: `$data` after the filter and `wp_unslash()` as the [`PostRow`] `$wpdb` writes: its keys in order (a
+/// string key as its bytes, an integer key as its decimal text), each value as PHP holds it ([`RowValue`]), which
+/// `wpdb` formats by its column's placeholder. A column a callback dropped is left out and a key it added is kept, so
+/// the statement is WordPress's.
 fn row_from_data(data: &Items) -> PostRow {
     let mut row = PostRow::new();
     for (k, value) in data {
-        let name = key_to_string(k);
-        let value = match value {
-            PhpValue::Null => RowValue::Null,
-            v if column_format(&name) == ColumnFormat::Int => RowValue::Int(to_php_int(v)),
-            v => RowValue::Str(to_php_string(v)),
+        let name = match k {
+            PhpKey::Str(bytes) => bytes.clone(),
+            PhpKey::Int(n) => n.to_string().into_bytes(),
         };
-        row.set(name, value);
+        row.set(name, RowValue::from_hook(hv(value)));
     }
     row
 }
@@ -397,7 +395,7 @@ impl<'a> Insert<'a> {
             },
             &*api.d.posts.deps().statuses,
             &*api.d.clock,
-        );
+        )?;
         self.post_date = post_date;
         self.post_date_gmt = dates.date_gmt;
         self.post_modified = dates.modified;
@@ -544,7 +542,7 @@ impl<'a> Insert<'a> {
 
     /// `wp_resolve_post_date( $post_date, $post_date_gmt )` with its `wp_checkdate` filter (post.php 5761-5784).
     fn resolve_date(&self, date: &[u8], date_gmt: &[u8]) -> Result<Option<Vec<u8>>, PostError> {
-        match resolve_post_date(date, date_gmt, &*self.api.d.clock) {
+        match resolve_post_date(date, date_gmt, &*self.api.d.clock)? {
             ResolvedPostDate::NoDate => Ok(None),
             ResolvedPostDate::Checked { date, valid } => {
                 let source = s(&date);
@@ -724,15 +722,23 @@ impl<'a> Insert<'a> {
         if self.update {
             let id = self.post_id;
             api.action("pre_post_update", || vec![id_arg(id), hv(&data)])?;
-            let rows = match &data {
-                PhpValue::Array(items) => checked_rows(repo.update(id, &row_from_data(items))?)?,
-                _ => None,
+            // `$wpdb->update` returns false at its `is_array()` check, with no statement, and leaves
+            // `$wpdb->last_error` as it was; the repository was not reached, so it is empty here.
+            let outcome = match &data {
+                PhpValue::Array(items) => repo.update(id, &row_from_data(items))?,
+                _ => WriteOutcome::failed(""),
             };
-            if rows.is_none() {
-                return self.refuse(PostWriteError::DbUpdate {
-                    attachment,
-                    last_error: String::new(),
-                });
+            match outcome {
+                WriteOutcome::Written(rows) => {
+                    checked_rows(Some(rows))?;
+                }
+                failed => {
+                    hidden_failure()?;
+                    return self.refuse(PostWriteError::DbUpdate {
+                        attachment,
+                        last_error: failed.last_error().unwrap_or_default().to_owned(),
+                    });
+                }
             }
         } else {
             if !is_empty(&self.import_id) {
@@ -751,14 +757,16 @@ impl<'a> Insert<'a> {
                     ),
                 ));
             };
-            let Some(id) = repo.insert(&row_from_data(items))? else {
-                hidden_failure()?;
-                return self.refuse(PostWriteError::DbInsert {
-                    attachment,
-                    last_error: String::new(),
-                });
-            };
-            self.post_id = id;
+            match repo.insert(&row_from_data(items))? {
+                WriteOutcome::Written(id) => self.post_id = id,
+                failed => {
+                    hidden_failure()?;
+                    return self.refuse(PostWriteError::DbInsert {
+                        attachment,
+                        last_error: failed.last_error().unwrap_or_default().to_owned(),
+                    });
+                }
+            }
         }
         self.data = to_array(data);
         Ok(ControlFlow::Continue(()))
@@ -894,7 +902,7 @@ impl<'a> Insert<'a> {
                     let message = api
                         .d
                         .translator
-                        .translate("Invalid taxonomy: %s.", None)
+                        .translate("Invalid taxonomy: %s.", None)?
                         .replacen("%s", &taxonomy, 1);
                     api.d
                         .runtime
@@ -1290,14 +1298,15 @@ mod tests {
             (PhpKey::Int(4), PhpValue::Bool(true)),
         ];
         let row = row_from_data(&data);
+        // Values stay the PHP values they are: `wpdb` formats them.
         assert_eq!(
             row.columns(),
             [
-                ("post_author".to_owned(), RowValue::Int(3)),
-                ("post_parent".to_owned(), RowValue::Null),
-                ("menu_order".to_owned(), RowValue::Int(7)),
-                ("post_title".to_owned(), RowValue::Str(b"5".to_vec())),
-                ("4".to_owned(), RowValue::Str(b"1".to_vec())),
+                (b"post_author".to_vec(), RowValue::Str(b"3".to_vec())),
+                (b"post_parent".to_vec(), RowValue::Null),
+                (b"menu_order".to_vec(), RowValue::Str(b"7x".to_vec())),
+                (b"post_title".to_vec(), RowValue::Int(5)),
+                (b"4".to_vec(), RowValue::Php(HookValue::Bool(true))),
             ]
         );
     }

@@ -22,6 +22,7 @@ use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue, Wpdb, 
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
     PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, Slug, Timezone,
+    WriteOutcome,
 };
 
 use crate::PostMapper;
@@ -284,13 +285,6 @@ impl SqlPostRepository {
         }
     }
 
-    fn written(&self, result: Result<u64, WpDbError>) -> Result<u64, PostError> {
-        match result {
-            Ok(n) => Ok(n),
-            Err(e) => surfaced(e).map(|()| 0),
-        }
-    }
-
     /// `$wpdb->update( $wpdb->posts, $data, $where )` with no formats: the rows changed, `None` where it returns
     /// false.
     fn update_rows(
@@ -386,17 +380,14 @@ impl PostRepository for SqlPostRepository {
     /// `$wpdb->insert( $wpdb->posts, $data )` with no formats, as `wp_insert_post()` sends it, then
     /// `$wpdb->insert_id`. A `query` callback's failure that `$wpdb->insert`'s charset lookup hides is
     /// [`PostError::Hook`]; the payload stays in `take_hook_error()`.
-    fn insert(&self, row: &PostRow) -> Result<Option<PostId>, PostError> {
-        let data: Vec<(String, WpValue)> = PostMapper::row_values(row)?
-            .into_iter()
-            .map(|(column, value)| (column, wp_value(value)))
-            .collect();
-        self.hidden_checked(|| {
-            let inserted = self.written(self.wpdb.insert(&self.table(), &data, None))?;
-            if inserted == 0 {
-                return Ok(None);
-            }
-            Ok(Some(PostId(self.wpdb.insert_id())))
+    ///
+    /// A failure `$wpdb` answers with false comes back as [`WriteOutcome::Failed`] with its `$wpdb->last_error`.
+    fn insert(&self, row: &PostRow) -> Result<WriteOutcome<PostId>, PostError> {
+        let data = PostMapper::row_values(row);
+        self.hidden_checked(|| match self.wpdb.insert(&self.table(), &data, None) {
+            Ok(0) => Ok(WriteOutcome::failed("")),
+            Ok(_) => Ok(WriteOutcome::Written(PostId(self.wpdb.insert_id()))),
+            Err(e) => surfaced(e.clone()).map(|()| WriteOutcome::failed(e.last_error())),
         })
     }
 
@@ -666,13 +657,20 @@ impl PostRepository for SqlPostRepository {
         })
     }
 
-    /// `wp_insert_post()`'s `$wpdb->update( $wpdb->posts, $data, $where )`, no formats.
-    fn update(&self, id: PostId, row: &PostRow) -> Result<Option<u64>, PostError> {
-        let data: Vec<(String, WpValue)> = PostMapper::row_values(row)?
-            .into_iter()
-            .map(|(column, value)| (column, wp_value(value)))
-            .collect();
-        self.update_rows(&data, &[("ID".to_owned(), int(id.0))])
+    /// `wp_insert_post()`'s `$wpdb->update( $wpdb->posts, $data, $where )`, no formats; a failure comes back as
+    /// [`WriteOutcome::Failed`] with its `$wpdb->last_error`.
+    fn update(&self, id: PostId, row: &PostRow) -> Result<WriteOutcome<u64>, PostError> {
+        let data = PostMapper::row_values(row);
+        let conditions = [("ID".to_owned(), int(id.0))];
+        self.hidden_checked(|| {
+            match self
+                .wpdb
+                .update(&self.table(), &data, &conditions, None, None)
+            {
+                Ok(n) => Ok(WriteOutcome::Written(n)),
+                Err(e) => surfaced(e.clone()).map(|()| WriteOutcome::failed(e.last_error())),
+            }
+        })
     }
 
     fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {

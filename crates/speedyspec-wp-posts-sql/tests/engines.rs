@@ -236,6 +236,7 @@ fn nul_content_round_trips(engine: Engine) {
             .repo
             .insert(&data_row(&post, None))
             .unwrap()
+            .written()
             .expect("an id");
         assert_eq!(rig.repo.find(id).unwrap(), Some(Post { id, ..post }));
     });
@@ -269,6 +270,7 @@ fn last_post_time_of_nothing_is_none(engine: Engine) {
                 None,
             ))
             .unwrap()
+            .written()
             .expect("an id");
         let last = |kinds: &[&str], field, timezone| {
             let kinds: Vec<_> = kinds.iter().map(|k| PostTypeName::new(*k)).collect();
@@ -315,6 +317,7 @@ fn server_time_keeps_mysql_fraction() {
                 None,
             ))
             .unwrap()
+            .written()
             .expect("an id");
         let server = rig
             .repo
@@ -354,6 +357,7 @@ fn zero_dates_round_trip(engine: Engine) {
             .repo
             .insert(&data_row(&post, None))
             .unwrap()
+            .written()
             .expect("an id");
         let expected = Post { id, ..post };
         assert_eq!(rig.repo.find(id).unwrap(), Some(expected.clone()));
@@ -401,6 +405,7 @@ fn page_by_path_ignores_case() {
             .repo
             .insert(&data_row(&named("about", "page"), None))
             .unwrap()
+            .written()
             .expect("an id");
         for asked in ["About", "ABOUT", "about "] {
             let rows = rig
@@ -424,6 +429,7 @@ fn follows_switched_prefix(engine: Engine) {
             .repo
             .insert(&data_row(&named("main", "page"), None))
             .unwrap()
+            .written()
             .expect("an id");
         rig.host.multisite.replace(true);
         rig.host.define("MULTISITE", WpValue::Bool(true));
@@ -435,6 +441,7 @@ fn follows_switched_prefix(engine: Engine) {
             .repo
             .insert(&data_row(&named("blog-two", "page"), None))
             .unwrap()
+            .written()
             .expect("an id");
         assert_eq!(count(&rig.db, "wp_2_posts"), 1);
         assert_eq!(count(&rig.db, "wp_posts"), 1);

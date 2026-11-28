@@ -3,6 +3,7 @@
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
     PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, Slug, Timezone,
+    WriteOutcome,
 };
 
 /// A repository that answers nothing: any statement panics.
@@ -17,7 +18,7 @@ impl PostRepository for Silent {
         panic!("find({})", id.0)
     }
 
-    fn insert(&self, _row: &PostRow) -> Result<Option<PostId>, PostError> {
+    fn insert(&self, _row: &PostRow) -> Result<WriteOutcome<PostId>, PostError> {
         panic!("insert")
     }
 
@@ -96,7 +97,7 @@ impl PostRepository for Silent {
         panic!("available_mime_types")
     }
 
-    fn update(&self, _id: PostId, _row: &PostRow) -> Result<Option<u64>, PostError> {
+    fn update(&self, _id: PostId, _row: &PostRow) -> Result<WriteOutcome<u64>, PostError> {
         panic!("update")
     }
 

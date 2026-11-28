@@ -2,9 +2,10 @@
 //! (WordPress 7.2-RC2). The `posts` cache group's entry is the read use cases' (`speedyspec_wp_posts::PostEntry`).
 
 use speedyspec_data::{DbValue, Row};
+use speedyspec_wp_db_contracts::WpValue;
 use speedyspec_wp_posts_contracts::{
-    CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
-    PostParent, PostRow, PostStatusName, PostTypeName, RowValue, Slug, column_format,
+    ColumnFormat, CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError,
+    PostId, PostParent, PostRow, PostStatusName, PostTypeName, RowValue, Slug, column_format,
 };
 
 /// Maps the post entity to and from its row and its insert values. It holds no state.
@@ -13,14 +14,6 @@ pub struct PostMapper;
 /// A column's bytes as mysqli's text protocol gives them; `None` for a missing column or `NULL`.
 fn bytes(value: Option<&DbValue>) -> Option<Vec<u8>> {
     value.and_then(DbValue::to_mysql_text)
-}
-
-/// Text when the bytes are UTF-8, bytes otherwise.
-fn text_or_bytes(raw: &[u8]) -> DbValue {
-    match String::from_utf8(raw.to_vec()) {
-        Ok(text) => DbValue::Text(text),
-        Err(e) => DbValue::Bytes(e.into_bytes()),
-    }
 }
 
 /// Bytes as a name or datetime: lossily, as the contracts keep names.
@@ -126,6 +119,47 @@ fn entity(columns: &impl Columns, id: PostId) -> Result<Post, PostError> {
     })
 }
 
+/// A string under `%d` as `prepare()` prints it: escaped by `mysqli_real_escape_string()` first, then read as
+/// `sprintf( '%d' )` reads it (leading spaces and tabs, a sign, digits; anything else ends it), so `'4x'` is `4` and
+/// `"\n5"` is `0`. Printed here, so every engine stores WordPress's integer (SQLite would keep a bound `'4x'` as
+/// text).
+fn escaped_int(bytes: &[u8]) -> i64 {
+    // The bytes the escaping prefixes with a backslash end the number at once.
+    let mut rest = bytes;
+    while let [b' ' | b'\t' | 0x0b | 0x0c, tail @ ..] = rest {
+        rest = tail;
+    }
+    let (negative, digits) = match rest {
+        [b'-', tail @ ..] => (true, tail),
+        [b'+', tail @ ..] => (false, tail),
+        _ => (false, rest),
+    };
+    let mut n: i64 = 0;
+    for &b in digits.iter().take_while(|b| b.is_ascii_digit()) {
+        n = n.saturating_mul(10).saturating_add(i64::from(b - b'0'));
+    }
+    if negative { -n } else { n }
+}
+
+/// A float or bool under `%d` as `prepare()` prints it (`sprintf( '%d' )`: a float truncated, a bool `1` or `0`),
+/// so the engine receives WordPress's integer whatever its own float formatting is; under `%s`, and for any other
+/// value, the PHP value as it is, for `wpdb` to format (and to leave unchecked by `strip_invalid_text()`, which reads
+/// only strings).
+fn under_placeholder(column: &[u8], value: &WpValue) -> WpValue {
+    if column_format(column) != ColumnFormat::Int {
+        return value.clone();
+    }
+    match value {
+        // `zend_dval_to_lval()`: truncation, wrapping modulo 2^64 outside the int range.
+        WpValue::Float(f) if f.is_finite() => {
+            WpValue::Int((f.trunc() % 18_446_744_073_709_551_616.0) as i128 as i64)
+        }
+        WpValue::Float(_) => WpValue::Int(0),
+        WpValue::Bool(b) => WpValue::Int(i64::from(*b)),
+        other => other.clone(),
+    }
+}
+
 impl PostMapper {
     /// A `SELECT *` row. `ID` parses as `MetaMapper`'s ids do: a [`PostError::Db`] when it is missing, `NULL` or
     /// not a non-negative number. `ID`, `post_author` and `post_parent` are `u64`, and `menu_order` and
@@ -141,29 +175,33 @@ impl PostMapper {
         entity(&RowColumns(row), PostId(id))
     }
 
-    /// The filtered `$data` ([`PostRow`]) as `$wpdb->insert` and `$wpdb->update` take it: its columns in order,
-    /// [`RowValue::Int`] as [`DbValue::Int`], text as [`DbValue::Text`] when UTF-8 and [`DbValue::Bytes`] otherwise
-    /// (as `MetaMapper` chooses), and [`RowValue::Null`] as [`DbValue::Null`], which `wpdb` writes as `NULL`. A value
-    /// that does not fit its column's placeholder ([`RowValue::fits`]) is [`PostError::Db`]: `wpdb` would never print
-    /// it, so no statement is sent.
-    pub fn row_values(row: &PostRow) -> Result<Vec<(String, DbValue)>, PostError> {
+    /// The filtered `$data` ([`PostRow`]) as `$wpdb->insert` and `$wpdb->update` take it: its columns in order, each
+    /// value the PHP value it is, so `wpdb` formats it as [`RowValue`] documents (an int, a string, `null`, or a float,
+    /// bool, array or object as the hooks carry it). A string is text when UTF-8 and bytes otherwise; a key that is
+    /// not UTF-8 is read lossily, since `wpdb`'s port names columns by text (a known limitation: such a key names no
+    /// column either way, so the statement fails as WordPress's would).
+    pub fn row_values(row: &PostRow) -> Vec<(String, WpValue)> {
         row.columns()
             .iter()
             .map(|(column, value)| {
-                if !value.fits(column_format(column)) {
-                    return Err(PostError::Db(format!(
-                        "the value of `{column}` does not fit its placeholder"
-                    )));
-                }
                 // Not an exhaustive match: the contract's value type may grow.
-                let db = if let RowValue::Int(n) = value {
-                    DbValue::Int(*n)
+                let wp = if let RowValue::Int(n) = value {
+                    WpValue::Int(*n)
+                } else if let RowValue::Str(bytes) = value
+                    && column_format(column) == ColumnFormat::Int
+                {
+                    WpValue::Int(escaped_int(bytes))
                 } else if let RowValue::Str(bytes) = value {
-                    text_or_bytes(bytes)
+                    match String::from_utf8(bytes.clone()) {
+                        Ok(text) => WpValue::Str(text),
+                        Err(e) => WpValue::Bytes(e.into_bytes()),
+                    }
+                } else if let RowValue::Php(php) = value {
+                    under_placeholder(column, php)
                 } else {
-                    DbValue::Null
+                    WpValue::Null
                 };
-                Ok((column.clone(), db))
+                (String::from_utf8_lossy(column).into_owned(), wp)
             })
             .collect()
     }

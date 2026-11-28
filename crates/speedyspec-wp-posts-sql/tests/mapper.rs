@@ -9,6 +9,7 @@ use std::rc::Rc;
 use speedyspec_data::{DbValue, Row};
 use speedyspec_php_serialize::semantics::{get, to_php_string};
 use speedyspec_php_serialize::{PhpKey, PhpValue};
+use speedyspec_wp_db_contracts::WpValue;
 use speedyspec_wp_posts::PostEntry;
 use speedyspec_wp_posts_contracts::{
     CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
@@ -190,9 +191,9 @@ fn sample(id: u64) -> Post {
 
 #[test]
 fn row_values_keep_the_row_order_and_import_id() {
-    let text = |v: &str| DbValue::Text(v.into());
+    let text = |v: &str| WpValue::Str(v.into());
     let expected = vec![
-        ("post_author", DbValue::Int(5)),
+        ("post_author", WpValue::Int(5)),
         ("post_date", text("2024-03-01 06:00:00")),
         ("post_date_gmt", text("2024-03-01 12:00:00")),
         ("post_content", text("body")),
@@ -209,16 +210,16 @@ fn row_values_keep_the_row_order_and_import_id() {
         ("pinged", text("")),
         ("post_modified", text("0000-00-00 00:00:00")),
         ("post_modified_gmt", text("0000-00-00 00:00:00")),
-        ("post_parent", DbValue::Int(2)),
-        ("menu_order", DbValue::Int(-1)),
+        ("post_parent", WpValue::Int(2)),
+        ("menu_order", WpValue::Int(-1)),
         ("post_mime_type", text("text/plain")),
         ("guid", text("http://example.org/?p=1")),
     ];
-    let expected: Vec<(String, DbValue)> = expected
+    let expected: Vec<(String, WpValue)> = expected
         .into_iter()
         .map(|(c, v)| (c.to_string(), v))
         .collect();
-    let values = |row: &PostRow| PostMapper::row_values(row).unwrap();
+    let values = PostMapper::row_values;
     let new = values(&PostRow::from_post(&sample(14)));
     assert_eq!(new.len(), 21);
     assert_eq!(new, expected);
@@ -226,18 +227,18 @@ fn row_values_keep_the_row_order_and_import_id() {
     let imported = values(&PostRow::from_post(&sample(0)).with("ID", RowValue::Int(14)));
     assert_eq!(imported.len(), 22);
     assert_eq!(imported[..21], expected[..]);
-    assert_eq!(imported[21], ("ID".to_string(), DbValue::Int(14)));
+    assert_eq!(imported[21], ("ID".to_string(), WpValue::Int(14)));
 
     let negative = values(&PostRow::from_post(&sample(0)).with("ID", RowValue::Int(-5)));
-    assert_eq!(negative[21], ("ID".to_string(), DbValue::Int(-5)));
+    assert_eq!(negative[21], ("ID".to_string(), WpValue::Int(-5)));
 
     let orphan = values(&PostRow::from_post(&Post {
         parent: PostParent::Null,
         ..sample(0)
     }));
-    assert_eq!(orphan[17], ("post_parent".to_string(), DbValue::Null));
+    assert_eq!(orphan[17], ("post_parent".to_string(), WpValue::Null));
 
-    // A dropped column is left out, an added key kept, and a value that does not fit its placeholder refused.
+    // A dropped column is left out, an added key kept, and a PHP value passed on as it is for `wpdb` to format.
     let mut dropped = PostRow::from_post(&sample(0)).with("bogus", RowValue::Str(b"1".to_vec()));
     dropped.remove("post_content");
     let filtered = values(&dropped);
@@ -245,12 +246,10 @@ fn row_values_keep_the_row_order_and_import_id() {
     assert!(filtered.iter().all(|(c, _)| c != "post_content"));
     assert_eq!(
         filtered[20],
-        ("bogus".to_string(), DbValue::Text("1".into()))
+        ("bogus".to_string(), WpValue::Str("1".into()))
     );
-    assert!(matches!(
-        PostMapper::row_values(&PostRow::new().with("menu_order", RowValue::Str(b"4".to_vec()))),
-        Err(PostError::Db(_))
-    ));
+    let typed = values(&PostRow::new().with("post_content", RowValue::Php(WpValue::Float(1.5))));
+    assert_eq!(typed, [("post_content".to_string(), WpValue::Float(1.5))]);
 }
 
 #[test]
@@ -385,7 +384,7 @@ fn non_utf8_text_is_bytes() {
     post.title = vec![0xFF, 0xFE];
     post.name = Slug::new(vec![0xC3]);
     post.content = "Café".as_bytes().to_vec();
-    let values = PostMapper::row_values(&PostRow::from_post(&post)).unwrap();
+    let values = PostMapper::row_values(&PostRow::from_post(&post));
     let value = |column: &str| {
         values
             .iter()
@@ -393,9 +392,9 @@ fn non_utf8_text_is_bytes() {
             .map(|(_, v)| v.clone())
             .unwrap()
     };
-    assert_eq!(value("post_title"), DbValue::Bytes(vec![0xFF, 0xFE]));
-    assert_eq!(value("post_name"), DbValue::Bytes(vec![0xC3]));
-    assert_eq!(value("post_content"), DbValue::Text("Café".into()));
+    assert_eq!(value("post_title"), WpValue::Bytes(vec![0xFF, 0xFE]));
+    assert_eq!(value("post_name"), WpValue::Bytes(vec![0xC3]));
+    assert_eq!(value("post_content"), WpValue::Str("Café".into()));
 
     let r = row(
         &["ID", "post_title", "post_content"],

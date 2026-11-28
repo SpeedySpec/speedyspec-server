@@ -21,6 +21,7 @@ use speedyspec_wp_posts::{PostEntry, Taxonomy};
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
     PostParent, PostRepository, PostRow, PostStatusName, PostTypeName, RowValue, Slug, Timezone,
+    WriteOutcome,
 };
 
 use crate::codec::{Thrown, copy_php, string, to_php};
@@ -165,22 +166,25 @@ fn parent_value(parent: PostParent) -> Value {
 /// `$wpdb->update`: its keys in order, `null`, ints and strings as the row holds them, so the twin sends WordPress's
 /// statement text.
 fn data(row: &PostRow) -> Result<Value, PostError> {
-    let columns: Vec<(PhpKey, PhpValue)> = row
-        .columns()
-        .iter()
-        .map(|(column, value)| {
-            // Not an exhaustive match: the contract's value type may grow.
-            let value = if let RowValue::Int(n) = value {
-                PhpValue::Int(*n)
-            } else if let RowValue::Str(bytes) = value {
-                PhpValue::Str(bytes.clone())
-            } else {
-                PhpValue::Null
-            };
-            (PhpKey::Str(column.as_bytes().to_vec()), value)
-        })
-        .collect();
-    to_php(&PhpValue::Array(columns)).map_err(thrown_error)
+    let mut columns = Vec::with_capacity(row.columns().len());
+    for (column, value) in row.columns() {
+        // Not an exhaustive match: the contract's value type may grow.
+        let value = if let RowValue::Int(n) = value {
+            Value::Int(*n)
+        } else if let RowValue::Str(bytes) = value {
+            string(bytes)
+        } else if let RowValue::Php(php) = value {
+            crate::codec::hook_in(php.clone()).map_err(thrown_error)?
+        } else {
+            Value::Null
+        };
+        // A key that is not UTF-8 is read lossily: the PHP array keys a twin receives are text here.
+        columns.push((
+            Key::Str(String::from_utf8_lossy(column).into_owned()),
+            value,
+        ));
+    }
+    Ok(Value::Array(columns))
 }
 
 /// The rows an update or delete changed; `None` for `null` or `false` (`$wpdb` returned false).
@@ -211,9 +215,19 @@ impl PostRepository for PhpPostRepository {
         Ok(row(self.call("find", vec![id(post)])?))
     }
 
-    fn insert(&self, row: &PostRow) -> Result<Option<PostId>, PostError> {
-        let new = number(&self.call("insert", vec![data(row)?])?);
-        Ok((new > 0).then_some(PostId(new)))
+    /// The twin answers the new id, or `false`/`0` for a failed insert; a string answer is the failure's
+    /// `$wpdb->last_error`.
+    fn insert(&self, row: &PostRow) -> Result<WriteOutcome<PostId>, PostError> {
+        let answer = self.call("insert", vec![data(row)?])?;
+        if let PhpValue::Str(error) = &answer {
+            return Ok(WriteOutcome::failed(String::from_utf8_lossy(error)));
+        }
+        let new = number(&answer);
+        Ok(if new > 0 {
+            WriteOutcome::Written(PostId(new))
+        } else {
+            WriteOutcome::failed("")
+        })
     }
 
     fn attachment_slug_owner(
@@ -407,8 +421,17 @@ impl PostRepository for PhpPostRepository {
             .collect())
     }
 
-    fn update(&self, post: PostId, row: &PostRow) -> Result<Option<u64>, PostError> {
-        Ok(changed(self.call("update", vec![id(post), data(row)?])?))
+    /// The twin answers the rows changed, or `false`/`null` for a failed update; a string answer is the failure's
+    /// `$wpdb->last_error`.
+    fn update(&self, post: PostId, row: &PostRow) -> Result<WriteOutcome<u64>, PostError> {
+        let answer = self.call("update", vec![id(post), data(row)?])?;
+        if let PhpValue::Str(error) = &answer {
+            return Ok(WriteOutcome::failed(String::from_utf8_lossy(error)));
+        }
+        Ok(match changed(answer) {
+            Some(rows) => WriteOutcome::Written(rows),
+            None => WriteOutcome::failed(""),
+        })
     }
 
     fn update_name(&self, post: PostId, name: &Slug) -> Result<Option<u64>, PostError> {

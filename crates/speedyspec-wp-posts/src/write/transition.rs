@@ -168,7 +168,7 @@ impl PostWritesApi {
         let cron = &*self.d.cron;
         cron.clear_scheduled_hook("publish_future_post", &id_list(id))
             .map_err(cron_error)?;
-        let mut gmt = self.d.clock.gmt_from_date(post_date);
+        let mut gmt = self.d.clock.gmt_from_date(post_date)?;
         gmt.extend_from_slice(b" GMT");
         let timestamp = self
             .d

@@ -44,7 +44,8 @@ fn dates_match_wordpress() {
             other => panic!("{name}: {field} is a string, not {other:?}"),
         };
         let clock = TableClock::from_case(&case["clock"]);
-        let resolved = resolve_post_date(&bytes("post_date"), &bytes("post_date_gmt"), &clock);
+        let resolved =
+            resolve_post_date(&bytes("post_date"), &bytes("post_date_gmt"), &clock).unwrap();
         let expected = match support::decode(&case["result"]) {
             PhpValue::Str(s) => Some(s),
             PhpValue::Bool(false) => None,
@@ -67,6 +68,7 @@ fn dates_match_wordpress() {
                     &statuses,
                     &clock,
                 )
+                .unwrap()
             };
             let (_, gmt) = &clock.gmt_from_date_pairs()[0];
             assert_eq!(&insert("private").date_gmt, gmt, "{name}: date_gmt");
@@ -90,7 +92,7 @@ fn clock_refuses_now_where_none_was_recorded() {
         .iter()
         .find(|case| case["name"] == "leap-day")
         .unwrap();
-    TableClock::from_case(&leap_day["clock"]).now_local();
+    let _ = TableClock::from_case(&leap_day["clock"]).now_local();
 }
 
 #[test]

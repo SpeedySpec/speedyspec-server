@@ -29,7 +29,7 @@ use speedyspec_wp_posts::{
 use speedyspec_wp_posts_contracts::{
     CurrentPost, Filter, LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime,
     PostError, PostId, PostParent, PostRef, PostRepository, PostRow, PostStatusName, PostTypeArg,
-    PostTypeName, Posts, RewriteContext, RowValue, Slug, Timezone, TitleSanitizer,
+    PostTypeName, Posts, RewriteContext, RowValue, Slug, Timezone, TitleSanitizer, WriteOutcome,
 };
 use speedyspec_wp_posts_memory::MemoryPostRepository;
 
@@ -66,7 +66,7 @@ impl PostRepository for Counting {
         self.note(format!("find({})", id.0));
         self.inner.find(id)
     }
-    fn insert(&self, row: &PostRow) -> Result<Option<PostId>, PostError> {
+    fn insert(&self, row: &PostRow) -> Result<WriteOutcome<PostId>, PostError> {
         self.inner.insert(row)
     }
     fn attachment_slug_owner(
@@ -144,7 +144,7 @@ impl PostRepository for Counting {
         self.inner.available_mime_types(post_type)
     }
 
-    fn update(&self, id: PostId, row: &PostRow) -> Result<Option<u64>, PostError> {
+    fn update(&self, id: PostId, row: &PostRow) -> Result<WriteOutcome<u64>, PostError> {
         self.inner.update(id, row)
     }
 
@@ -315,8 +315,8 @@ impl Installing for NotInstalling {
 
 struct NoRewrite;
 impl RewriteContext for NoRewrite {
-    fn rewrite_applies(&self) -> bool {
-        false
+    fn rewrite_applies(&self) -> Result<bool, PostError> {
+        Ok(false)
     }
 }
 
@@ -405,7 +405,8 @@ fn fixture_with(posts: Vec<Post>) -> Fixture {
             rewrite: &NoRewrite,
             titles: &Same,
         },
-    );
+    )
+    .unwrap();
     let global: Rc<Global> = Rc::default();
     let users: Rc<Reader> = Rc::default();
     let terms: Rc<Terms> = Rc::default();

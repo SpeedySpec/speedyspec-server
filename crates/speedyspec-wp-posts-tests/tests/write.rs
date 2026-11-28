@@ -35,9 +35,9 @@ use speedyspec_wp_posts::{
 use speedyspec_wp_posts_contracts::{
     Charset, Clock, Comments, CurrentPost, LastPostField, MimeFilter, MimeType, PageRow, Post,
     PostDateTime, PostError, PostId, PostObject, PostParent, PostQuery, PostRepository, PostRow,
-    PostStatusName, PostType, PostTypeName, PostTypeSupports, PostTypes, Rewrite, RewriteContext,
-    RowValue, Slug, SlugTruncation, Taxonomy, Theme, Timezone, TitleSanitizer, Translator, Uploads,
-    Users, WriteResult,
+    PostStatusName, PostType, PostTypeName, PostTypeSupports, PostTypes, PostWriteError, Rewrite,
+    RewriteContext, RowValue, Slug, SlugTruncation, Taxonomy, Theme, Timezone, TitleSanitizer,
+    Translator, Uploads, Users, WriteOutcome, WriteResult,
 };
 use speedyspec_wp_posts_memory::MemoryPostRepository;
 
@@ -104,19 +104,36 @@ fn format(ts: i64) -> String {
     )
 }
 
+thread_local! {
+    /// When set, the local-time methods fail as a throwing `gmt_offset` option filter would.
+    static CLOCK_THROWS: Cell<bool> = const { Cell::new(false) };
+}
+
+fn local_time() -> Result<(), PostError> {
+    if CLOCK_THROWS.with(Cell::get) {
+        return Err(PostError::Hook(HookError::message(
+            "option_gmt_offset threw",
+        )));
+    }
+    Ok(())
+}
+
 struct FixedClock;
 impl Clock for FixedClock {
-    fn now_local(&self) -> String {
-        format(NOW + OFFSET)
+    fn now_local(&self) -> Result<String, PostError> {
+        local_time()?;
+        Ok(format(NOW + OFFSET))
     }
     fn now_gmt(&self) -> String {
         format(NOW)
     }
-    fn date_from_gmt(&self, gmt: &[u8]) -> Vec<u8> {
-        parse(gmt).map_or(gmt.to_vec(), |t| format(t + OFFSET).into_bytes())
+    fn date_from_gmt(&self, gmt: &[u8]) -> Result<Vec<u8>, PostError> {
+        local_time()?;
+        Ok(parse(gmt).map_or(gmt.to_vec(), |t| format(t + OFFSET).into_bytes()))
     }
-    fn gmt_from_date(&self, local: &[u8]) -> Vec<u8> {
-        parse(local).map_or(local.to_vec(), |t| format(t - OFFSET).into_bytes())
+    fn gmt_from_date(&self, local: &[u8]) -> Result<Vec<u8>, PostError> {
+        local_time()?;
+        Ok(parse(local).map_or(local.to_vec(), |t| format(t - OFFSET).into_bytes()))
     }
     fn timestamp(&self, datetime: &[u8]) -> Option<i64> {
         parse(datetime)
@@ -152,8 +169,8 @@ impl PostTypeSupports for Types {
 
 struct NoRewrite;
 impl RewriteContext for NoRewrite {
-    fn rewrite_applies(&self) -> bool {
-        false
+    fn rewrite_applies(&self) -> Result<bool, PostError> {
+        Ok(false)
     }
 }
 struct Same;
@@ -465,8 +482,8 @@ impl SlugTruncation for Cut {
 
 struct English;
 impl Translator for English {
-    fn translate(&self, text: &str, _: Option<&str>) -> String {
-        text.to_owned()
+    fn translate(&self, text: &str, _: Option<&str>) -> Result<String, PostError> {
+        Ok(text.to_owned())
     }
 }
 
@@ -654,7 +671,7 @@ impl PostRepository for HidingRepository {
     delegate! {
         engine() -> String;
         find(id: PostId) -> Result<Option<Post>, PostError>;
-        insert(row: &PostRow) -> Result<Option<PostId>, PostError>;
+        insert(row: &PostRow) -> Result<WriteOutcome<PostId>, PostError>;
         attachment_slug_owner(slug: &Slug, except: PostId) -> Result<Option<Slug>, PostError>;
         hierarchical_slug_owner(slug: &Slug, post_type: &PostTypeName, except: PostId, parent: PostParent) -> Result<Option<Slug>, PostError>;
         flat_slug_owner(slug: &Slug, post_type: &PostTypeName, except: PostId) -> Result<Option<Slug>, PostError>;
@@ -666,7 +683,7 @@ impl PostRepository for HidingRepository {
         count_attachments(mime_type: Option<&MimeFilter>) -> Result<(Vec<(MimeType, u64)>, u64), PostError>;
         last_post_time(field: LastPostField, post_types: &[PostTypeName], timezone: Timezone) -> Result<Option<PostDateTime>, PostError>;
         available_mime_types(post_type: &PostTypeName) -> Result<Vec<MimeType>, PostError>;
-        update(id: PostId, row: &PostRow) -> Result<Option<u64>, PostError>;
+        update(id: PostId, row: &PostRow) -> Result<WriteOutcome<u64>, PostError>;
         update_guid(id: PostId, guid: &[u8]) -> Result<Option<u64>, PostError>;
         update_status(id: PostId, status: &PostStatusName) -> Result<Option<u64>, PostError>;
         update_pinged(id: PostId, pinged: &[u8]) -> Result<Option<u64>, PostError>;
@@ -887,7 +904,8 @@ fn fixture_with(wrap: impl FnOnce(Rc<MemoryPostRepository>) -> Rc<dyn PostReposi
             attachment_pages_enabled: false,
         },
         &ports(),
-    );
+    )
+    .unwrap();
     let global: Rc<Global> = Rc::default();
     let terms: Rc<Terms> = Rc::default();
     let posts = PostsApi::new(PostsDeps {
@@ -1054,7 +1072,8 @@ impl Fixture {
             self.types
                 .0
                 .borrow_mut()
-                .register(name.clone(), args, &ports());
+                .register(name.clone(), args, &ports())
+                .unwrap();
             register_future_post_hook(&*self.hooks, &self.api, &name).unwrap();
         }
     }
@@ -2012,7 +2031,14 @@ fn insert_writes_exactly_the_filtered_data() {
         PhpValue::Array(items)
     });
     let refused = f.insert(array(vec![("post_title", s("Unknown"))]));
-    assert_eq!(refused.map_err(|e| e.code()), Err(Some("db_insert_error")));
+    // The WP_Error's data is `$wpdb->last_error`, as the repository reported it.
+    assert_eq!(
+        refused,
+        Err(PostWriteError::DbInsert {
+            attachment: false,
+            last_error: "Unknown column 'bogus' in 'field list'".into(),
+        })
+    );
     assert!(f.repo.find(PostId(26)).unwrap().is_none());
 }
 
@@ -2223,4 +2249,57 @@ fn transition_to_publish_resets_an_empty_guid() {
         )
         .unwrap();
     assert!(f.row(23).guid.is_empty());
+}
+
+// ---- fix round 2 ----
+
+/// A clock that throws (an option filter while it reads the time zone) stops `wp_insert_post()` where WordPress's
+/// exception would: no row, no hook after it.
+#[test]
+fn throwing_clock_stops_the_insert() {
+    let f = fixture();
+    let filtered = count_runs(&f, "wp_insert_post_data");
+    CLOCK_THROWS.with(|c| c.set(true));
+    let result = f
+        .api
+        .wp_insert_post(array(vec![("post_title", s("Clocked"))]), true, true);
+    CLOCK_THROWS.with(|c| c.set(false));
+    let Err(PostError::Hook(e)) = result else {
+        panic!("the clock's failure comes back: {result:?}")
+    };
+    assert_eq!(e.message, "option_gmt_offset threw");
+    assert_eq!(filtered.get(), 0);
+    assert!(f.repo.find(PostId(26)).unwrap().is_none());
+}
+
+/// A float, a bool or an array a `wp_insert_post_data` callback puts in `$data` reaches the repository as the PHP
+/// value it is, which formats it as `wpdb` does: a float under `%s` is its `(string)`, `true` is `'1'`, an array is
+/// `''`, and a float under `%d` is truncated.
+#[test]
+fn filtered_php_values_are_formatted_by_the_repository() {
+    let f = fixture();
+    on_data(&f, |data| {
+        let PhpValue::Array(mut items) = data else {
+            unreachable!()
+        };
+        for (key, value) in &mut items {
+            match key_to_string(key).as_str() {
+                "post_content" => *value = PhpValue::Float(1.5),
+                "post_excerpt" => *value = PhpValue::Bool(true),
+                "post_password" => *value = PhpValue::Array(Vec::new()),
+                "menu_order" => *value = PhpValue::Float(2.9),
+                _ => {}
+            }
+        }
+        PhpValue::Array(items)
+    });
+    assert_eq!(
+        f.insert(array(vec![("post_title", s("Typed"))])),
+        Ok(PostId(26))
+    );
+    let row = f.row(26);
+    assert_eq!(row.content, b"1.5".to_vec());
+    assert_eq!(row.excerpt, b"1".to_vec());
+    assert!(row.password.is_empty());
+    assert_eq!(row.menu_order, 2);
 }

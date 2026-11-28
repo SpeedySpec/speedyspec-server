@@ -251,8 +251,8 @@ impl PostTypeRegistry {
         name: PostTypeName,
         args: Vec<(PhpKey, PhpValue)>,
         ports: &PostTypePorts<'_>,
-    ) -> PostTypeRegistration {
-        self.store(resolve_post_type(name, args, ports))
+    ) -> Result<PostTypeRegistration, PostError> {
+        Ok(self.store(resolve_post_type(name, args, ports)?))
     }
 
     /// [`Self::register`] with the `post_type_labels_{$name}` filter run on the new object
@@ -265,7 +265,7 @@ impl PostTypeRegistry {
         ports: &PostTypePorts<'_>,
         hooks: &dyn HookApi,
     ) -> Result<PostTypeRegistration, PostError> {
-        let mut resolved = resolve_post_type(name, args, ports);
+        let mut resolved = resolve_post_type(name, args, ports)?;
         filter_post_type_labels(hooks, &mut resolved.post_type)?;
         Ok(self.store(resolved))
     }
