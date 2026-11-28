@@ -15,7 +15,7 @@ final class MemoryPostRepository implements SpeedySpec\WpPosts\PostRepository
     private function seen($method) { self::$calls[] = $method; }
     public function engine() { return 'memory'; }
     public function find($id) { $this->seen('find'); return $this->rows[$id] ?? null; }
-    public function insert($row) { return null; }
+    public function insert($row, $import_id) { return null; }
     public function attachment_slug_owner($slug, $except) { return null; }
     public function hierarchical_slug_owner($slug, $post_type, $except, $parent) { return null; }
     public function flat_slug_owner($slug, $post_type, $except) { return null; }
@@ -27,6 +27,20 @@ final class MemoryPostRepository implements SpeedySpec\WpPosts\PostRepository
     public function count_attachments($mime_type) { return ['counts' => [], 'trash' => 0]; }
     public function last_post_time($field, $post_types, $timezone) { return null; }
     public function available_mime_types($post_type) { return []; }
+    public function update($id, $row) { return 0; }
+    public function update_name($id, $name) { return 0; }
+    public function update_guid($id, $guid) { return 0; }
+    public function update_status($id, $status) { return 0; }
+    public function update_pinged($id, $pinged) { return 0; }
+    public function update_post_type($id, $post_type) { return 0; }
+    public function import_id_taken($id) { return isset($this->rows[$id]); }
+    public function raw_row($id) { return $this->rows[$id] ?? null; }
+    public function children_of_type($parent, $post_type) { return []; }
+    public function reparent_children($from, $to, $post_type) { return 0; }
+    public function revision_ids($parent) { return []; }
+    public function reparent_attachments($from, $to) { return 0; }
+    public function remove($id) { return 0; }
+    public function auto_drafts_older_than_a_week() { return []; }
 }
 "#;
 

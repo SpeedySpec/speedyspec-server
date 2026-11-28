@@ -12,7 +12,7 @@ use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::PostEntry;
 use speedyspec_wp_posts_contracts::{
     CommentStatus, MimeType, PingStatus, Post, PostDate, PostDateTime, PostError, PostId,
-    PostStatusName, PostTypeName, Slug,
+    PostParent, PostStatusName, PostTypeName, Slug,
 };
 use speedyspec_wp_posts_sql::PostMapper;
 use support::{cases, decode};
@@ -138,7 +138,7 @@ fn entry_casts_numbers_and_defaults_missing_columns() {
     };
     let post = PostEntry::from_entry(&entry).unwrap();
     assert_eq!(post.id, PostId(12));
-    assert_eq!(post.parent, PostId(4));
+    assert_eq!(post.parent, PostParent::Int(4));
     assert_eq!(post.menu_order, -2);
     assert_eq!(post.author, 7);
     assert_eq!(post.comment_count, 3);
@@ -179,7 +179,7 @@ fn sample(id: u64) -> Post {
         pinged: Vec::new(),
         modified: PostDate::default(),
         content_filtered: Vec::new(),
-        parent: PostId(2),
+        parent: PostParent::Int(2),
         guid: b"http://example.org/?p=1".to_vec(),
         menu_order: -1,
         post_type: PostTypeName::new("page"),
@@ -209,7 +209,7 @@ fn insert_values_order_and_import_id() {
         ("pinged", text("")),
         ("post_modified", text("0000-00-00 00:00:00")),
         ("post_modified_gmt", text("0000-00-00 00:00:00")),
-        ("post_parent", DbValue::UInt(2)),
+        ("post_parent", DbValue::Int(2)),
         ("menu_order", DbValue::Int(-1)),
         ("post_mime_type", text("text/plain")),
         ("guid", text("http://example.org/?p=1")),
@@ -218,14 +218,27 @@ fn insert_values_order_and_import_id() {
         .into_iter()
         .map(|(c, v)| (c.to_string(), v))
         .collect();
-    let new = PostMapper::insert_values(&sample(0));
+    let new = PostMapper::insert_values(&sample(14), None);
     assert_eq!(new.len(), 21);
     assert_eq!(new, expected);
+    assert_eq!(PostMapper::update_values(&sample(14)), expected);
 
-    let imported = PostMapper::insert_values(&sample(14));
+    let imported = PostMapper::insert_values(&sample(0), Some(14));
     assert_eq!(imported.len(), 22);
     assert_eq!(imported[..21], expected[..]);
-    assert_eq!(imported[21], ("ID".to_string(), DbValue::UInt(14)));
+    assert_eq!(imported[21], ("ID".to_string(), DbValue::Int(14)));
+
+    let negative = PostMapper::insert_values(&sample(0), Some(-5));
+    assert_eq!(negative[21], ("ID".to_string(), DbValue::Int(-5)));
+
+    let orphan = PostMapper::insert_values(
+        &Post {
+            parent: PostParent::Null,
+            ..sample(0)
+        },
+        None,
+    );
+    assert_eq!(orphan[17], ("post_parent".to_string(), DbValue::Null));
 }
 
 #[test]
@@ -252,7 +265,7 @@ fn missing_or_bad_id_is_db_error() {
     );
     let post = PostMapper::to_entity(&numeric).unwrap();
     assert_eq!(post.id, PostId(8));
-    assert_eq!(post.parent, PostId(3));
+    assert_eq!(post.parent, PostParent::Int(3));
 }
 
 #[test]
@@ -284,7 +297,8 @@ fn unsigned_columns_above_i64_max_parse() {
     let post = PostMapper::to_entity(&r).unwrap();
     assert_eq!(post.id, PostId(big));
     assert_eq!(post.author, big);
-    assert_eq!(post.parent, PostId(i64::MAX as u64 + 1));
+    // `(int)` reads a parent past `PHP_INT_MAX` as `PHP_INT_MAX`.
+    assert_eq!(post.parent, PostParent::Int(i64::MAX));
     // `(int)` saturates the decimal string, as sanitize_post() does; the author stays a string.
     let cached = PostEntry::to_entry(&post);
     let PhpValue::Object { properties, .. } = &cached else {
@@ -350,7 +364,7 @@ fn cache_clamps_negative_unsigned_columns() {
     };
     let post = PostEntry::from_entry(&entry).unwrap();
     assert_eq!(post.author, 0);
-    assert_eq!(post.parent, PostId(0));
+    assert_eq!(post.parent, PostParent::Int(0));
 }
 
 #[test]
@@ -359,7 +373,7 @@ fn non_utf8_text_is_bytes() {
     post.title = vec![0xFF, 0xFE];
     post.name = Slug::new(vec![0xC3]);
     post.content = "Café".as_bytes().to_vec();
-    let values = PostMapper::insert_values(&post);
+    let values = PostMapper::insert_values(&post, None);
     let value = |column: &str| {
         values
             .iter()

@@ -11,8 +11,8 @@ use speedyspec_php_serialize::PhpValue;
 use speedyspec_php_serialize::semantics::{bytes_truthy, to_php_int};
 use speedyspec_wp_hooks_contracts::{HookApi, HookName, HookValue};
 use speedyspec_wp_posts_contracts::{
-    BadSlugs, PostError, PostId, PostReader, PostRepository, PostTypeName, PostTypes, Slug,
-    SlugTruncation,
+    BadSlugs, PostError, PostId, PostParent, PostReader, PostRepository, PostTypeName, PostTypes,
+    Slug, SlugTruncation,
 };
 
 use crate::hook::{bytes_value, filter_hook, pv};
@@ -37,7 +37,7 @@ pub struct SlugRequest<'a> {
     /// `$post_type`.
     pub post_type: &'a str,
     /// `$post_parent`: hierarchical slugs are unique among siblings.
-    pub parent: PostId,
+    pub parent: PostParent,
 }
 
 /// `$wp_rewrite->feeds` (an empty list when not an array), its `pagination_base`, and the `permalink_structure`
@@ -75,7 +75,7 @@ impl BadSlugs for NoBadSlugs {
         false
     }
 
-    fn bad_hierarchical_slug(&self, _slug: &[u8], _post_type: &str, _parent: PostId) -> bool {
+    fn bad_hierarchical_slug(&self, _slug: &[u8], _post_type: &str, _parent: PostParent) -> bool {
         false
     }
 
@@ -275,7 +275,10 @@ pub fn unique_post_slug_filtered(
             int(request.post_id),
             HookValue::Str(request.status.to_owned()),
             HookValue::Str(request.post_type.to_owned()),
-            int(request.parent),
+            match request.parent {
+                PostParent::Int(n) => HookValue::Int(n),
+                PostParent::Null => HookValue::Null,
+            },
         ]
     };
 
@@ -359,7 +362,12 @@ mod tests {
             true
         }
 
-        fn bad_hierarchical_slug(&self, _slug: &[u8], _post_type: &str, _parent: PostId) -> bool {
+        fn bad_hierarchical_slug(
+            &self,
+            _slug: &[u8],
+            _post_type: &str,
+            _parent: PostParent,
+        ) -> bool {
             true
         }
 
@@ -372,11 +380,14 @@ mod tests {
         let repository = MemoryPostRepository::new();
         for (name, post_type) in posts {
             repository
-                .insert(&Post {
-                    name: Slug::new(*name),
-                    post_type: PostTypeName::new(*post_type),
-                    ..Post::default()
-                })
+                .insert(
+                    &Post {
+                        name: Slug::new(*name),
+                        post_type: PostTypeName::new(*post_type),
+                        ..Post::default()
+                    },
+                    None,
+                )
                 .unwrap();
         }
         repository
@@ -410,7 +421,7 @@ mod tests {
             post_id: PostId(0),
             status: "publish",
             post_type,
-            parent: PostId(0),
+            parent: PostParent::NONE,
         };
         unique_post_slug(&request, &context(), &ports).unwrap()
     }
@@ -469,7 +480,7 @@ mod tests {
             post_id: PostId(0),
             status: "publish",
             post_type: "nav_menu_item",
-            parent: PostId(0),
+            parent: PostParent::NONE,
         };
         assert_eq!(
             unique_post_slug(&request, &context(), &ports).unwrap(),

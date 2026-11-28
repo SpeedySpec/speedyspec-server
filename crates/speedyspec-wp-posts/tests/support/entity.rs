@@ -10,8 +10,8 @@ use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::SlugContext;
 use speedyspec_wp_posts_contracts::{
     Clock, CommentStatus, LastPostField, MimeFilter, MimeType, PageRow, PingStatus, Post, PostDate,
-    PostDateTime, PostError, PostId, PostRepository, PostStatusName, PostType, PostTypeName,
-    PostTypes, Slug, SlugTruncation, Timezone,
+    PostDateTime, PostError, PostId, PostParent, PostRepository, PostStatusName, PostType,
+    PostTypeName, PostTypes, Slug, SlugTruncation, Timezone,
 };
 use speedyspec_wp_posts_memory::MemoryPostRepository;
 
@@ -222,7 +222,7 @@ pub fn row_post(row: &Value) -> Post {
         pinged: column("pinged"),
         modified: date("post_modified", "post_modified_gmt"),
         content_filtered: column("post_content_filtered"),
-        parent: id("post_parent"),
+        parent: PostParent::from(id("post_parent")),
         guid: column("guid"),
         menu_order: int("menu_order"),
         post_type: PostTypeName::new(text("post_type")),
@@ -239,7 +239,7 @@ pub fn seed(rows: &Value) -> MemoryPostRepository {
         let post = row_post(row);
         let id = post.id;
         assert_eq!(
-            repository.insert(&post).unwrap(),
+            repository.insert(&post, Some(id.0 as i64)).unwrap(),
             Some(id),
             "seeding {id:?}"
         );
@@ -295,8 +295,8 @@ impl<R: PostRepository> PostRepository for Recording<R> {
         self.inner.find(id)
     }
 
-    fn insert(&self, post: &Post) -> Result<Option<PostId>, PostError> {
-        self.inner.insert(post)
+    fn insert(&self, post: &Post, import_id: Option<i64>) -> Result<Option<PostId>, PostError> {
+        self.inner.insert(post, import_id)
     }
 
     fn attachment_slug_owner(
@@ -316,7 +316,7 @@ impl<R: PostRepository> PostRepository for Recording<R> {
         slug: &Slug,
         post_type: &PostTypeName,
         except: PostId,
-        parent: PostId,
+        parent: PostParent,
     ) -> Result<Option<Slug>, PostError> {
         self.record(
             "hierarchical_slug",
@@ -324,7 +324,7 @@ impl<R: PostRepository> PostRepository for Recording<R> {
                 PhpValue::Str(slug.as_bytes().to_vec()),
                 PhpValue::Str(post_type.as_str().as_bytes().to_vec()),
                 id_arg(except),
-                id_arg(parent),
+                PhpValue::Int(parent.prepared()),
             ],
         );
         self.inner
@@ -394,6 +394,75 @@ impl<R: PostRepository> PostRepository for Recording<R> {
 
     fn available_mime_types(&self, post_type: &PostTypeName) -> Result<Vec<MimeType>, PostError> {
         self.inner.available_mime_types(post_type)
+    }
+
+    fn update(&self, post: &Post) -> Result<Option<u64>, PostError> {
+        self.inner.update(post)
+    }
+
+    fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {
+        self.inner.update_name(id, name)
+    }
+
+    fn update_guid(&self, id: PostId, guid: &[u8]) -> Result<Option<u64>, PostError> {
+        self.inner.update_guid(id, guid)
+    }
+
+    fn update_status(&self, id: PostId, status: &PostStatusName) -> Result<Option<u64>, PostError> {
+        self.inner.update_status(id, status)
+    }
+
+    fn update_pinged(&self, id: PostId, pinged: &[u8]) -> Result<Option<u64>, PostError> {
+        self.inner.update_pinged(id, pinged)
+    }
+
+    fn update_post_type(
+        &self,
+        id: i64,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        self.inner.update_post_type(id, post_type)
+    }
+
+    fn import_id_taken(&self, id: i64) -> Result<bool, PostError> {
+        self.inner.import_id_taken(id)
+    }
+
+    fn raw_row(&self, id: PostId) -> Result<Option<Post>, PostError> {
+        self.inner.raw_row(id)
+    }
+
+    fn children_of_type(
+        &self,
+        parent: PostId,
+        post_type: &PostTypeName,
+    ) -> Result<Vec<Post>, PostError> {
+        self.inner.children_of_type(parent, post_type)
+    }
+
+    fn reparent_children(
+        &self,
+        from: PostId,
+        to: PostParent,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        self.inner.reparent_children(from, to, post_type)
+    }
+
+    fn revision_ids(&self, parent: PostId) -> Result<Vec<PostId>, PostError> {
+        self.inner.revision_ids(parent)
+    }
+
+    fn reparent_attachments(&self, from: PostId, to: PostParent) -> Result<Option<u64>, PostError> {
+        self.inner.reparent_attachments(from, to)
+    }
+
+    fn remove(&self, id: PostId) -> Result<Option<u64>, PostError> {
+        self.inner.remove(id)
+    }
+
+    fn auto_drafts_older_than_a_week(&self) -> Result<Vec<PostId>, PostError> {
+        self.inner.auto_drafts_older_than_a_week()
     }
 }
 

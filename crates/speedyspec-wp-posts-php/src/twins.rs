@@ -7,7 +7,10 @@
 //! - a post is a row array keyed by column (`ID`, `post_author`, … `comment_count`), as `$wpdb->get_row( …, ARRAY_A )`
 //!   gives it, read with PHP's casts (Data Mapper: `PostEntry`);
 //! - ids are ints, names and types strings, and "nothing" is `null`;
-//! - `count_attachments()` answers `array( 'counts' => array( mime => n ), 'trash' => n )`.
+//! - `count_attachments()` answers `array( 'counts' => array( mime => n ), 'trash' => n )`;
+//! - `insert()` and `update()` take `wp_insert_post()`'s `$data` (the 21 columns it writes, `post_parent` an int or
+//!   `null`), `insert()` with the `import_id` (an int, or `null` for none) and `update()` with the post's id;
+//! - an update or delete answers the rows changed, and `null` or `false` where `$wpdb` returns false.
 
 use std::rc::Rc;
 
@@ -17,7 +20,7 @@ use speedyspec_php_serialize::{PhpKey, PhpValue};
 use speedyspec_wp_posts::{PostEntry, Taxonomy};
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
-    PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+    PostParent, PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
 };
 
 use crate::codec::{Thrown, copy_php, string, to_php};
@@ -28,7 +31,7 @@ use crate::ports::thrown_error;
 pub trait PostRepositoryTwin {
     fn engine(&self) -> Result<Value, PortError>;
     fn find(&self, id: i64) -> Result<Value, PortError>;
-    fn insert(&self, row: Value) -> Result<Value, PortError>;
+    fn insert(&self, row: Value, import_id: Value) -> Result<Value, PortError>;
     fn attachment_slug_owner(&self, slug: Value, except: i64) -> Result<Value, PortError>;
     fn hierarchical_slug_owner(
         &self,
@@ -56,6 +59,21 @@ pub trait PostRepositoryTwin {
         timezone: Value,
     ) -> Result<Value, PortError>;
     fn available_mime_types(&self, post_type: Value) -> Result<Value, PortError>;
+    fn update(&self, id: i64, row: Value) -> Result<Value, PortError>;
+    fn update_name(&self, id: i64, name: Value) -> Result<Value, PortError>;
+    fn update_guid(&self, id: i64, guid: Value) -> Result<Value, PortError>;
+    fn update_status(&self, id: i64, status: Value) -> Result<Value, PortError>;
+    fn update_pinged(&self, id: i64, pinged: Value) -> Result<Value, PortError>;
+    fn update_post_type(&self, id: i64, post_type: Value) -> Result<Value, PortError>;
+    fn import_id_taken(&self, id: i64) -> Result<Value, PortError>;
+    fn raw_row(&self, id: i64) -> Result<Value, PortError>;
+    fn children_of_type(&self, parent: i64, post_type: Value) -> Result<Value, PortError>;
+    fn reparent_children(&self, from: i64, to: Value, post_type: Value)
+    -> Result<Value, PortError>;
+    fn revision_ids(&self, parent: i64) -> Result<Value, PortError>;
+    fn reparent_attachments(&self, from: i64, to: Value) -> Result<Value, PortError>;
+    fn remove(&self, id: i64) -> Result<Value, PortError>;
+    fn auto_drafts_older_than_a_week(&self) -> Result<Value, PortError>;
 }
 
 /// A PHP implementation of `SpeedySpec\WpPosts\PostRepository`. An exception it throws stops the use case and
@@ -130,6 +148,44 @@ fn lossy(bytes: Vec<u8>) -> String {
     String::from_utf8_lossy(&bytes).into_owned()
 }
 
+/// A parent as `%d` sees it in a statement: `null` is 0.
+fn parent(parent: PostParent) -> Value {
+    Value::Int(parent.prepared())
+}
+
+/// A parent as `$data['post_parent']` holds it: the int, or `null`.
+fn parent_value(parent: PostParent) -> Value {
+    match parent {
+        PostParent::Int(n) => Value::Int(n),
+        PostParent::Null => Value::Null,
+    }
+}
+
+/// `wp_insert_post()`'s `$data`: the post's columns without `ID`, `comment_count` and `filter`.
+fn data(post: &Post) -> Result<Value, PostError> {
+    let mut columns = PostEntry::raw_properties(post);
+    columns.retain(|(k, _)| {
+        !matches!(k, PhpKey::Str(name) if matches!(name.as_slice(), b"ID" | b"comment_count" | b"filter"))
+    });
+    to_php(&PhpValue::Array(columns)).map_err(thrown_error)
+}
+
+/// The rows an update or delete changed; `None` for `null` or `false` (`$wpdb` returned false).
+fn changed(value: PhpValue) -> Option<u64> {
+    match value {
+        PhpValue::Null | PhpValue::Bool(false) => None,
+        other => Some(number(&other)),
+    }
+}
+
+/// A list of ids.
+fn id_list(value: PhpValue) -> Vec<PostId> {
+    items(value)
+        .into_iter()
+        .map(|(_, v)| PostId(number(&v)))
+        .collect()
+}
+
 impl PostRepository for PhpPostRepository {
     fn engine(&self) -> String {
         self.call("engine", Vec::new())
@@ -142,11 +198,9 @@ impl PostRepository for PhpPostRepository {
         Ok(row(self.call("find", vec![id(post)])?))
     }
 
-    fn insert(&self, post: &Post) -> Result<Option<PostId>, PostError> {
-        let mut columns = PostEntry::raw_properties(post);
-        columns.retain(|(k, _)| *k != PhpKey::Str(b"filter".to_vec()));
-        let row = to_php(&PhpValue::Array(columns)).map_err(thrown_error)?;
-        let new = number(&self.call("insert", vec![row])?);
+    fn insert(&self, post: &Post, import_id: Option<i64>) -> Result<Option<PostId>, PostError> {
+        let import_id = import_id.map_or(Value::Null, Value::Int);
+        let new = number(&self.call("insert", vec![data(post)?, import_id])?);
         Ok((new > 0).then_some(PostId(new)))
     }
 
@@ -167,7 +221,7 @@ impl PostRepository for PhpPostRepository {
         slug: &Slug,
         post_type: &PostTypeName,
         except: PostId,
-        parent: PostId,
+        parent: PostParent,
     ) -> Result<Option<Slug>, PostError> {
         let answer = self.call(
             "hierarchical_slug_owner",
@@ -175,7 +229,7 @@ impl PostRepository for PhpPostRepository {
                 string(slug.as_bytes()),
                 Value::Str(post_type.as_str().to_owned()),
                 id(except),
-                id(parent),
+                self::parent(parent),
             ],
         )?;
         Ok(text(answer).map(Slug::new))
@@ -339,6 +393,113 @@ impl PostRepository for PhpPostRepository {
             .into_iter()
             .map(|(_, v)| MimeType::new(to_php_string(&v)))
             .collect())
+    }
+
+    fn update(&self, post: &Post) -> Result<Option<u64>, PostError> {
+        Ok(changed(
+            self.call("update", vec![id(post.id), data(post)?])?,
+        ))
+    }
+
+    fn update_name(&self, post: PostId, name: &Slug) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call(
+            "update_name",
+            vec![id(post), string(name.as_bytes())],
+        )?))
+    }
+
+    fn update_guid(&self, post: PostId, guid: &[u8]) -> Result<Option<u64>, PostError> {
+        Ok(changed(
+            self.call("update_guid", vec![id(post), string(guid)])?,
+        ))
+    }
+
+    fn update_status(
+        &self,
+        post: PostId,
+        status: &PostStatusName,
+    ) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call(
+            "update_status",
+            vec![id(post), Value::Str(status.as_str().to_owned())],
+        )?))
+    }
+
+    fn update_pinged(&self, post: PostId, pinged: &[u8]) -> Result<Option<u64>, PostError> {
+        Ok(changed(
+            self.call("update_pinged", vec![id(post), string(pinged)])?,
+        ))
+    }
+
+    fn update_post_type(
+        &self,
+        post: i64,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call(
+            "update_post_type",
+            vec![Value::Int(post), Value::Str(post_type.as_str().to_owned())],
+        )?))
+    }
+
+    fn import_id_taken(&self, post: i64) -> Result<bool, PostError> {
+        let answer = self.call("import_id_taken", vec![Value::Int(post)])?;
+        Ok(!speedyspec_php_serialize::semantics::is_empty(&answer))
+    }
+
+    fn raw_row(&self, post: PostId) -> Result<Option<Post>, PostError> {
+        Ok(row(self.call("raw_row", vec![id(post)])?))
+    }
+
+    fn children_of_type(
+        &self,
+        parent: PostId,
+        post_type: &PostTypeName,
+    ) -> Result<Vec<Post>, PostError> {
+        Ok(items(self.call(
+            "children_of_type",
+            vec![id(parent), Value::Str(post_type.as_str().to_owned())],
+        )?)
+        .into_iter()
+        .filter_map(|(_, v)| row(v))
+        .collect())
+    }
+
+    fn reparent_children(
+        &self,
+        from: PostId,
+        to: PostParent,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call(
+            "reparent_children",
+            vec![
+                id(from),
+                parent_value(to),
+                Value::Str(post_type.as_str().to_owned()),
+            ],
+        )?))
+    }
+
+    fn revision_ids(&self, parent: PostId) -> Result<Vec<PostId>, PostError> {
+        Ok(id_list(self.call("revision_ids", vec![id(parent)])?))
+    }
+
+    fn reparent_attachments(&self, from: PostId, to: PostParent) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call(
+            "reparent_attachments",
+            vec![id(from), parent_value(to)],
+        )?))
+    }
+
+    fn remove(&self, post: PostId) -> Result<Option<u64>, PostError> {
+        Ok(changed(self.call("remove", vec![id(post)])?))
+    }
+
+    fn auto_drafts_older_than_a_week(&self) -> Result<Vec<PostId>, PostError> {
+        Ok(id_list(
+            self.call("auto_drafts_older_than_a_week", Vec::new())?,
+        ))
     }
 }
 

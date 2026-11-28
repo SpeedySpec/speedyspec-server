@@ -28,8 +28,8 @@ use speedyspec_wp_posts::{
 };
 use speedyspec_wp_posts_contracts::{
     CurrentPost, Filter, LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime,
-    PostError, PostId, PostRef, PostRepository, PostStatusName, PostTypeArg, PostTypeName, Posts,
-    RewriteContext, Slug, Timezone, TitleSanitizer,
+    PostError, PostId, PostParent, PostRef, PostRepository, PostStatusName, PostTypeArg,
+    PostTypeName, Posts, RewriteContext, Slug, Timezone, TitleSanitizer,
 };
 use speedyspec_wp_posts_memory::MemoryPostRepository;
 
@@ -57,8 +57,8 @@ impl PostRepository for Counting {
         self.note(format!("find({})", id.0));
         self.inner.find(id)
     }
-    fn insert(&self, post: &Post) -> Result<Option<PostId>, PostError> {
-        self.inner.insert(post)
+    fn insert(&self, post: &Post, import_id: Option<i64>) -> Result<Option<PostId>, PostError> {
+        self.inner.insert(post, import_id)
     }
     fn attachment_slug_owner(
         &self,
@@ -72,7 +72,7 @@ impl PostRepository for Counting {
         slug: &Slug,
         post_type: &PostTypeName,
         except: PostId,
-        parent: PostId,
+        parent: PostParent,
     ) -> Result<Option<Slug>, PostError> {
         self.inner
             .hierarchical_slug_owner(slug, post_type, except, parent)
@@ -133,6 +133,75 @@ impl PostRepository for Counting {
     }
     fn available_mime_types(&self, post_type: &PostTypeName) -> Result<Vec<MimeType>, PostError> {
         self.inner.available_mime_types(post_type)
+    }
+
+    fn update(&self, post: &Post) -> Result<Option<u64>, PostError> {
+        self.inner.update(post)
+    }
+
+    fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {
+        self.inner.update_name(id, name)
+    }
+
+    fn update_guid(&self, id: PostId, guid: &[u8]) -> Result<Option<u64>, PostError> {
+        self.inner.update_guid(id, guid)
+    }
+
+    fn update_status(&self, id: PostId, status: &PostStatusName) -> Result<Option<u64>, PostError> {
+        self.inner.update_status(id, status)
+    }
+
+    fn update_pinged(&self, id: PostId, pinged: &[u8]) -> Result<Option<u64>, PostError> {
+        self.inner.update_pinged(id, pinged)
+    }
+
+    fn update_post_type(
+        &self,
+        id: i64,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        self.inner.update_post_type(id, post_type)
+    }
+
+    fn import_id_taken(&self, id: i64) -> Result<bool, PostError> {
+        self.inner.import_id_taken(id)
+    }
+
+    fn raw_row(&self, id: PostId) -> Result<Option<Post>, PostError> {
+        self.inner.raw_row(id)
+    }
+
+    fn children_of_type(
+        &self,
+        parent: PostId,
+        post_type: &PostTypeName,
+    ) -> Result<Vec<Post>, PostError> {
+        self.inner.children_of_type(parent, post_type)
+    }
+
+    fn reparent_children(
+        &self,
+        from: PostId,
+        to: PostParent,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        self.inner.reparent_children(from, to, post_type)
+    }
+
+    fn revision_ids(&self, parent: PostId) -> Result<Vec<PostId>, PostError> {
+        self.inner.revision_ids(parent)
+    }
+
+    fn reparent_attachments(&self, from: PostId, to: PostParent) -> Result<Option<u64>, PostError> {
+        self.inner.reparent_attachments(from, to)
+    }
+
+    fn remove(&self, id: PostId) -> Result<Option<u64>, PostError> {
+        self.inner.remove(id)
+    }
+
+    fn auto_drafts_older_than_a_week(&self) -> Result<Vec<PostId>, PostError> {
+        self.inner.auto_drafts_older_than_a_week()
     }
 }
 
@@ -272,7 +341,7 @@ fn post(id: u64, post_type: &str, name: &str, parent: u64, status: &str, author:
         title: format!("Title {id}").into_bytes(),
         status: PostStatusName::new(status),
         name: Slug::from(name),
-        parent: PostId(parent),
+        parent: PostParent::from(PostId(parent)),
         menu_order: id as i64,
         post_type: PostTypeName::new(post_type),
         date: speedyspec_wp_posts_contracts::PostDate {
@@ -300,7 +369,7 @@ fn fixture_with(posts: Vec<Post>) -> Fixture {
     let cache = Rc::new(WpObjectCache::new(ObjectCachePorts::rust(), None));
     let repository = MemoryPostRepository::new();
     for p in posts {
-        repository.insert(&p).unwrap();
+        repository.insert(&p, Some(p.id.0 as i64)).unwrap();
     }
     let calls: Calls = Rc::default();
     let metadata = MetadataApi::new(MetaDeps {
@@ -568,7 +637,7 @@ fn reads_php_shaped_post_entry() {
     assert_eq!(read.id, PostId(7));
     assert_eq!(read.author, 3);
     assert_eq!(read.title, b"From PHP");
-    assert_eq!(read.parent, PostId(2));
+    assert_eq!(read.parent, PostParent::Int(2));
     assert_eq!(read.comment_count, 4);
     assert_eq!(read.post_type.as_str(), "page");
     assert!(calls(&f).is_empty(), "no statement: {:?}", calls(&f));

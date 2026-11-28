@@ -4,14 +4,16 @@
 //! `#[php_port]` declares each interface at the start of every request. A PHP object implementing
 //! `SpeedySpec\WpMeta\MetaRepositories` and bound at that key in the container reaches the use cases as
 //! [`PhpMetaRepositories`]. Values cross as PHP holds them: keys and stored values as strings (`null` for SQL
-//! `NULL`), ids as ints, a row as `array( 'meta_id', 'object_id', 'meta_key', 'meta_value' )`.
+//! `NULL`), ids as ints, a row as `array( 'meta_id', 'object_id', 'meta_key', 'meta_value' )`, and a row of
+//! `for_objects()` (`update_meta_cache()`'s statement, which does not select the id) as `array( 'object_id',
+//! 'meta_key', 'meta_value' )`.
 
 use std::rc::Rc;
 
 use speedyspec_php_ext::{Key, PhpObject, PortError, Value, php_port};
 use speedyspec_wp_meta_contracts::{
-    Meta, MetaError, MetaId, MetaKey, MetaRepositories, MetaRepository, MetaType, ObjectId,
-    SerializedValue,
+    Meta, MetaError, MetaId, MetaKey, MetaRepositories, MetaRepository, MetaRow, MetaType,
+    ObjectId, SerializedValue,
 };
 
 use crate::adapters::{int_list, park};
@@ -55,6 +57,7 @@ pub trait MetaRepositoryTwin {
     ) -> Result<Value, PortError>;
     fn delete_by_mid(&self, meta_id: i64) -> Result<Value, PortError>;
     fn for_objects(&self, object_ids: Value) -> Result<Value, PortError>;
+    fn ids_of_object(&self, object_id: i64) -> Result<Value, PortError>;
 }
 
 /// Calls `$object->method(...$args)`; an exception is parked for the running native function to rethrow, and the
@@ -156,6 +159,21 @@ fn row(value: &Value) -> Option<Meta> {
     };
     Some(Meta {
         mid: MetaId(field(items, "meta_id").map_or(0, number)),
+        object_id: ObjectId(field(items, "object_id").map_or(0, number)),
+        key: MetaKey::new(field(items, "meta_key").and_then(bytes).unwrap_or_default()),
+        value: field(items, "meta_value")
+            .and_then(bytes)
+            .map(SerializedValue::new),
+    })
+}
+
+/// A `for_objects()` row array as the row value (Data Mapper): no `meta_id`.
+fn object_row(value: &Value) -> Option<MetaRow> {
+    let read = value.read();
+    let Value::Array(items) = &*read else {
+        return None;
+    };
+    Some(MetaRow {
         object_id: ObjectId(field(items, "object_id").map_or(0, number)),
         key: MetaKey::new(field(items, "meta_key").and_then(bytes).unwrap_or_default()),
         value: field(items, "meta_value")
@@ -274,11 +292,16 @@ impl MetaRepository for PhpMetaRepository {
         ))
     }
 
-    fn for_objects(&self, objects: &[ObjectId]) -> Result<Vec<Meta>, MetaError> {
+    fn for_objects(&self, objects: &[ObjectId]) -> Result<Vec<MetaRow>, MetaError> {
         let rows = self.call("for_objects", vec![int_list(objects.iter().map(|o| o.0))])?;
         Ok(match &*rows.read() {
-            Value::Array(items) => items.iter().filter_map(|(_, v)| row(v)).collect(),
+            Value::Array(items) => items.iter().filter_map(|(_, v)| object_row(v)).collect(),
             _ => Vec::new(),
         })
+    }
+
+    fn ids_of_object(&self, object: ObjectId) -> Result<Vec<MetaId>, MetaError> {
+        let ids = self.call("ids_of_object", vec![Value::Int(id(object.0))])?;
+        Ok(numbers(&ids).into_iter().map(MetaId).collect())
     }
 }

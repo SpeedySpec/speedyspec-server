@@ -14,8 +14,8 @@ use std::rc::Rc;
 use speedyspec_data::{DbValue, Row};
 use speedyspec_wp_db_contracts::{QueryOutcome, WpDbError, WpRow, WpValue, Wpdb, take_hook_error};
 use speedyspec_wp_meta_contracts::{
-    Meta, MetaError, MetaId, MetaKey, MetaRepositories, MetaRepository, MetaType, ObjectId,
-    SerializedValue,
+    Meta, MetaError, MetaId, MetaKey, MetaRepositories, MetaRepository, MetaRow, MetaType,
+    ObjectId, SerializedValue,
 };
 
 use crate::MetaMapper;
@@ -353,24 +353,35 @@ impl MetaRepository for SqlMetaRepository {
         self.hidden_checked(|| self.written(self.wpdb.delete(&self.table(), &conditions, None)))
     }
 
-    /// `update_meta_cache()`'s query with one known difference: the id column is added, because [`Meta`] carries
-    /// `mid`. The `query` filter sees `SELECT meta_id, post_id, meta_key, meta_value FROM wp_postmeta WHERE post_id
-    /// IN (..) ORDER BY meta_id ASC` where WordPress sends `SELECT post_id, meta_key, meta_value ...`.
-    fn for_objects(&self, objects: &[ObjectId]) -> Result<Vec<Meta>, MetaError> {
+    /// `update_meta_cache()`'s query as WordPress sends it, the ids joined without `prepare`:
+    /// `SELECT post_id, meta_key, meta_value FROM wp_postmeta WHERE post_id IN (1,2) ORDER BY meta_id ASC`.
+    fn for_objects(&self, objects: &[ObjectId]) -> Result<Vec<MetaRow>, MetaError> {
         if objects.is_empty() {
             return Ok(Vec::new());
         }
         let column = self.object_column();
         let sql = format!(
-            "SELECT {id}, {column}, meta_key, meta_value FROM {table} WHERE {column} IN ({list}) ORDER BY {id} ASC",
+            "SELECT {column}, meta_key, meta_value FROM {table} WHERE {column} IN ({list}) ORDER BY {id} ASC",
             id = self.id_column(),
             table = self.table(),
             list = id_list(objects.iter().map(|o| o.0)),
         );
         self.select_text(sql.as_bytes())?
             .iter()
-            .map(|row| self.mapper.to_entity(&to_row(row)))
+            .map(|row| self.mapper.to_row(&to_row(row)))
             .collect()
+    }
+
+    /// The delete paths' `get_col( prepare( "SELECT {id} FROM {table} WHERE {object} = %d", .. ) )`, with the
+    /// trailing space [`MetaType::object_ids_query`] gives the post, term and blog types. No `ORDER BY`: the ids come
+    /// back in the engine's order.
+    fn ids_of_object(&self, object: ObjectId) -> Result<Vec<MetaId>, MetaError> {
+        let template = self.meta_type.object_ids_query(&self.table());
+        Ok(self
+            .ids(&template, &[int(object.0)])?
+            .into_iter()
+            .map(MetaId)
+            .collect())
     }
 }
 

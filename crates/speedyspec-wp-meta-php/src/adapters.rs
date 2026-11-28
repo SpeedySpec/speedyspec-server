@@ -18,7 +18,7 @@ use speedyspec_php_ext::{Key, Value};
 use speedyspec_php_serialize::PhpValue;
 use speedyspec_php_serialize::semantics::bytes_truthy;
 use speedyspec_wp_db_contracts::{Field, QueryOutcome, WpDbError, WpValue, Wpdb};
-use speedyspec_wp_meta::{MetaKeyIndex, Sites};
+use speedyspec_wp_meta::Sites;
 use speedyspec_wp_meta_contracts::{
     Callables, DefaultSchemaCheck, Installing, MetaKey, MetaKeys, MetaRepositories, MetaRepository,
     MetaType, ObjectId, ObjectSubtypes, RegisteredMetaKey, RevisionSupport,
@@ -279,9 +279,7 @@ impl MetaKeys for PhpMetaKeys {
             .find(|(k, _)| same_key(k, key))
             .map(|(k, args)| Self::registered(object_type, subtype, k, args))
     }
-}
 
-impl MetaKeyIndex for PhpMetaKeys {
     fn subtypes(&self, object_type: &str) -> Vec<String> {
         Self::subtypes_of(object_type)
             .into_iter()

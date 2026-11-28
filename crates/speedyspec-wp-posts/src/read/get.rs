@@ -421,7 +421,7 @@ impl PostsApi {
         let post = &loaded.post;
         let attachment = post.post_type.as_str() == "attachment";
         let own = post.status.as_str();
-        let parent = post.parent;
+        let parent = crate::hierarchy::parent_id(post);
         let status = if attachment && own == "inherit" {
             if parent.0 == 0 || self.instance(int(parent.0))?.is_none() || post.id == parent {
                 s("publish")
@@ -456,7 +456,9 @@ impl PostsApi {
     /// `wp_get_post_parent_id( $post )` (post.php 8503-8511): `None` (false) when there is no post, otherwise the
     /// parent, `PostId(0)` for none (WordPress returns the int 0 there, not false).
     pub fn wp_get_post_parent_id(&self, post: PostRef) -> Result<Option<PostId>, PostError> {
-        Ok(self.resolve(post)?.map(|l| l.post.parent))
+        Ok(self
+            .resolve(post)?
+            .map(|l| crate::hierarchy::parent_id(&l.post)))
     }
 }
 

@@ -353,6 +353,49 @@ fn comment_add_sends_comment_id_as_string() {
     });
 }
 
+/// `update_meta_cache()`'s statement and the delete paths' meta id reads, as the `query` filter sees them: the
+/// cache-priming read selects no id column, and the post type's id read keeps WordPress's trailing space.
+#[test]
+fn cache_prime_and_object_ids_statements() {
+    on(Engine::Sqlite, |rig| {
+        let sent: Rc<RefCell<Vec<String>>> = Rc::default();
+        let log = sent.clone();
+        rig.hooks
+            .add_filter(
+                &HookName::from("query"),
+                Callback::rust("record", move |args: &[WpValue]| {
+                    let query = args.first().cloned().unwrap_or(WpValue::Null);
+                    if let WpValue::Str(text) = &query {
+                        log.borrow_mut().push(text.clone());
+                    }
+                    Ok(query)
+                }),
+                &WpValue::Int(10),
+                1,
+            )
+            .unwrap();
+        repo(&rig, "post")
+            .for_objects(&[ObjectId(1), ObjectId(2)])
+            .unwrap();
+        repo(&rig, "post").ids_of_object(ObjectId(7)).unwrap();
+        repo(&rig, "user").ids_of_object(ObjectId(3)).unwrap();
+        let selects: Vec<String> = sent
+            .borrow()
+            .iter()
+            .filter(|q| q.starts_with("SELECT") && !q.starts_with("SELECT @@"))
+            .cloned()
+            .collect();
+        assert_eq!(
+            selects,
+            [
+                "SELECT post_id, meta_key, meta_value FROM wp_postmeta WHERE post_id IN (1,2) ORDER BY meta_id ASC",
+                "SELECT meta_id FROM wp_postmeta WHERE post_id = 7 ",
+                "SELECT umeta_id FROM wp_usermeta WHERE user_id = 3",
+            ]
+        );
+    });
+}
+
 /// `_get_meta_table( 'blog' )` is false on a single site: `$wpdb->blogmeta` is unset.
 #[test]
 fn single_site_has_no_blogmeta() {

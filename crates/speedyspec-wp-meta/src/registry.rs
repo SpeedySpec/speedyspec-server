@@ -82,19 +82,7 @@ impl MetaKeys for MetaKeyRegistry {
     fn find(&self, object_type: &str, subtype: &str, key: &MetaKey) -> Option<RegisteredMetaKey> {
         self.level(object_type, subtype)?.get(key).cloned()
     }
-}
 
-/// The registered keys with the one read [`MetaKeys`] lacks: which subtypes a type has registered keys under.
-///
-/// `filter_default_metadata()` walks every subtype of `$wp_meta_keys[ $meta_type ]` to find the key's defaults before
-/// it asks for the object's subtype, so the read port needs the subtypes. Contracts 0.3.0's [`MetaKeys`] cannot list
-/// them; this extension belongs in the contracts' next release.
-pub trait MetaKeyIndex: MetaKeys {
-    /// The subtypes of `$wp_meta_keys[ $object_type ]` in insertion order, empty for an unknown type.
-    fn subtypes(&self, object_type: &str) -> Vec<String>;
-}
-
-impl MetaKeyIndex for MetaKeyRegistry {
     fn subtypes(&self, object_type: &str) -> Vec<String> {
         self.types
             .get(object_type)
@@ -114,7 +102,7 @@ impl MetaKeyIndex for MetaKeyRegistry {
 /// WordPress compares the stored key with `===`, and PHP stores a key like `"10"` as the int `10`, so such a key never
 /// finds its default.
 pub fn default_for<E>(
-    keys: &dyn MetaKeyIndex,
+    keys: &dyn MetaKeys,
     meta_type: &MetaType,
     key: &MetaKey,
     single: bool,

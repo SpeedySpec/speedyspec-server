@@ -33,7 +33,7 @@ pub use register::{
     FilterToAdd, PreparedArgs, RegisterPorts, Registration, allowed_args, prepare_registration,
     resolve_registration,
 };
-pub use registry::{MetaKeyIndex, MetaKeyRegistry, default_for, filters_to_remove};
+pub use registry::{MetaKeyRegistry, default_for, filters_to_remove};
 pub use sanitize::{FilteredProtection, is_protected_meta, protected_meta_answer, sanitize_meta};
 pub use subtype::{BlogSubtypes, Sites, SubtypesByType, object_subtype};
 pub use unslash::{stripslashes, wp_unslash};

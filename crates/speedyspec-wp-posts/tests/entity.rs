@@ -15,7 +15,7 @@ use speedyspec_wp_posts::{
     page_children, page_hierarchy, page_uri, post_ancestors, post_parent_id, resolve_post_date,
     unique_post_slug,
 };
-use speedyspec_wp_posts_contracts::{PostId, PostReader};
+use speedyspec_wp_posts_contracts::{PostId, PostParent, PostReader};
 use support::entity::{
     FakeTypes, Recording, TableClock, TextTruncation, context, entity_cases, row_post, seed,
     statements,
@@ -135,7 +135,7 @@ fn slug_scenarios_match_wordpress() {
                 post_id: id(1),
                 status: &status,
                 post_type: &post_type,
-                parent: id(4),
+                parent: PostParent::from(id(4)),
             };
             let label = format!("{name}: {:?}", String::from_utf8_lossy(&slug));
             // The skip scenario proves the no-check guard runs before any query: its calls record no statements.

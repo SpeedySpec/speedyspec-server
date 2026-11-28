@@ -9,9 +9,15 @@
 use speedyspec_php_serialize::semantics::bytes_truthy;
 use speedyspec_wp_posts_contracts::{Post, PostError, PostId, PostReader};
 
+/// A post's `(int) $post->post_parent` as an id: 0 for none. A row read back is never negative or null, and such a
+/// parent reads as 0 too.
+pub fn parent_id(post: &Post) -> PostId {
+    post.parent.id().unwrap_or_default()
+}
+
 /// `wp_get_post_parent_id( $id )`: the post's `post_parent` (0 for none), or `None` for a missing post (false).
 pub fn post_parent_id(posts: &dyn PostReader, id: PostId) -> Result<Option<PostId>, PostError> {
-    Ok(posts.post(id)?.map(|post| post.parent))
+    Ok(posts.post(id)?.map(|post| parent_id(&post)))
 }
 
 /// A tortoise and hare value with PHP truth: `None` (false) and 0 end the walk.
@@ -136,19 +142,18 @@ pub fn check_post_hierarchy_for_loops(
 /// `get_post_ancestors()` for a post already read: its parent, grandparent and so on, stopping at a post with no
 /// parent, a missing post, the post itself or an ancestor already listed. Reads each ancestor once.
 pub fn post_ancestors(posts: &dyn PostReader, post: &Post) -> Result<Vec<PostId>, PostError> {
-    if post.parent.0 == 0 || post.parent == post.id {
+    let parent = parent_id(post);
+    if parent.0 == 0 || parent == post.id {
         return Ok(Vec::new());
     }
-    let mut ancestors = vec![post.parent];
-    let mut id = post.parent;
+    let mut ancestors = vec![parent];
+    let mut id = parent;
     while let Some(ancestor) = posts.post(id)? {
-        if ancestor.parent.0 == 0
-            || ancestor.parent == post.id
-            || ancestors.contains(&ancestor.parent)
-        {
+        let next = parent_id(&ancestor);
+        if next.0 == 0 || next == post.id || ancestors.contains(&next) {
             break;
         }
-        id = ancestor.parent;
+        id = next;
         ancestors.push(id);
     }
     Ok(ancestors)
@@ -172,7 +177,7 @@ pub fn page_uri(posts: &dyn PostReader, page: &Post) -> Result<Vec<u8>, PostErro
 
 #[cfg(test)]
 mod tests {
-    use speedyspec_wp_posts_contracts::{PostRepository, Slug};
+    use speedyspec_wp_posts_contracts::{PostParent, PostRepository, Slug};
     use speedyspec_wp_posts_memory::MemoryPostRepository;
 
     use super::*;
@@ -183,12 +188,14 @@ mod tests {
         let repository = MemoryPostRepository::new();
         for (id, parent, name) in rows {
             repository
-                .insert(&Post {
-                    id: PostId(*id),
-                    parent: PostId(*parent),
-                    name: Slug::from(*name),
-                    ..Post::default()
-                })
+                .insert(
+                    &Post {
+                        parent: PostParent::from(PostId(*parent)),
+                        name: Slug::from(*name),
+                        ..Post::default()
+                    },
+                    Some(*id as i64),
+                )
                 .unwrap();
         }
         repository

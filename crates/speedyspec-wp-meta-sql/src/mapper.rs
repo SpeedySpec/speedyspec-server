@@ -3,7 +3,7 @@
 use speedyspec_data::{DbValue, Row};
 use speedyspec_wp_db_contracts::WpValue;
 use speedyspec_wp_meta_contracts::{
-    Meta, MetaError, MetaId, MetaKey, MetaType, ObjectId, SerializedValue,
+    Meta, MetaError, MetaId, MetaKey, MetaRow, MetaType, ObjectId, SerializedValue,
 };
 
 pub struct MetaMapper {
@@ -48,6 +48,17 @@ impl MetaMapper {
         let key = bytes(row.get("meta_key")).unwrap_or_default();
         Ok(Meta {
             mid: MetaId(mid),
+            object_id: ObjectId(object_id),
+            key: MetaKey::new(key),
+            value: bytes(row.get("meta_value")).map(SerializedValue::new),
+        })
+    }
+
+    /// A row of `update_meta_cache()`'s statement, which selects the object, key and value but not the id.
+    pub fn to_row(&self, row: &Row) -> Result<MetaRow, MetaError> {
+        let object_id = Self::id(row, &self.meta_type.object_column())?;
+        let key = bytes(row.get("meta_key")).unwrap_or_default();
+        Ok(MetaRow {
             object_id: ObjectId(object_id),
             key: MetaKey::new(key),
             value: bytes(row.get("meta_value")).map(SerializedValue::new),

@@ -3,12 +3,17 @@
 //! Rows live in insert order, which is also the "engine's order" for statements with no `ORDER BY`. `LIMIT 1` without
 //! `ORDER BY` answers the first matching row in that order. Names, types and mime types are compared byte for byte
 //! (the SQL repository and `sanitize_title` handle case), and the auto-increment continues past an explicit ID, as MySQL's does.
+//!
+//! Writes behave as MySQL does under `wpdb::set_sql_mode()`'s mode: a negative parent is stored as `0`, a `NULL`
+//! parent fails an insert and is stored as `0` by an update, and an update counts the rows it changed. `NOW()` is the
+//! system clock in UTC.
 
 use std::cell::RefCell;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use speedyspec_wp_posts_contracts::{
     LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError, PostId,
-    PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+    PostParent, PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
 };
 
 /// `wp_posts` held in memory (Repository, Strategy for the engine).
@@ -41,6 +46,77 @@ impl MemoryPostRepository {
             .find(|p| matches(p))
             .map(|p| p.name.clone())
     }
+
+    /// `UPDATE ... WHERE ID = id`: `change` edits the row, and the answer is the rows changed (0 when the row is
+    /// missing or `change` left it as it was).
+    fn change_row(&self, id: PostId, change: impl FnOnce(&mut Post)) -> Option<u64> {
+        let mut state = self.state.borrow_mut();
+        let Some(row) = state.rows.iter_mut().find(|p| p.id == id) else {
+            return Some(0);
+        };
+        let before = row.clone();
+        change(row);
+        Some(u64::from(*row != before))
+    }
+
+    /// `UPDATE ... SET post_parent = to WHERE post_parent = from AND post_type = post_type`: the rows changed.
+    fn reparent(&self, from: PostId, to: PostParent, post_type: &str) -> Option<u64> {
+        let to = to.stored();
+        let mut state = self.state.borrow_mut();
+        let mut changed = 0;
+        for row in state
+            .rows
+            .iter_mut()
+            .filter(|p| p.parent == PostParent::from(from) && p.post_type.as_str() == post_type)
+        {
+            if row.parent != to {
+                row.parent = to;
+                changed += 1;
+            }
+        }
+        Some(changed)
+    }
+
+    /// The ids of the rows that `matches`, in insert order.
+    fn ids_where(&self, matches: impl Fn(&Post) -> bool) -> Vec<PostId> {
+        self.state
+            .borrow()
+            .rows
+            .iter()
+            .filter(|p| matches(p))
+            .map(|p| p.id)
+            .collect()
+    }
+}
+
+/// A stored parent as the id the read statements return.
+fn parent_id(parent: PostParent) -> PostId {
+    parent.id().unwrap_or_default()
+}
+
+/// `DATE_SUB( NOW(), INTERVAL 7 DAY )` as `Y-m-d H:i:s`, `NOW()` being the system clock in UTC.
+fn a_week_ago() -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    let at = now.saturating_sub(7 * 86_400);
+    let (days, secs) = (at / 86_400, at % 86_400);
+    // Howard Hinnant's civil_from_days, for days since 1970-01-01.
+    let z = days as i64 + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!(
+        "{year:04}-{month:02}-{day:02} {:02}:{:02}:{:02}",
+        secs / 3_600,
+        secs % 3_600 / 60,
+        secs % 60
+    )
 }
 
 impl Default for MemoryPostRepository {
@@ -64,12 +140,16 @@ impl PostRepository for MemoryPostRepository {
             .cloned())
     }
 
-    fn insert(&self, post: &Post) -> Result<Option<PostId>, PostError> {
+    fn insert(&self, post: &Post, import_id: Option<i64>) -> Result<Option<PostId>, PostError> {
+        // NULL in the NOT NULL column: error 1048, even outside strict mode.
+        if post.parent == PostParent::Null {
+            return Ok(None);
+        }
         let mut state = self.state.borrow_mut();
-        let id = if post.id == PostId(0) {
-            state.last_id + 1
-        } else {
-            post.id.0
+        // 0 asks for the next id, and the unsigned column clamps a negative one to 0.
+        let id = match import_id.and_then(|id| u64::try_from(id).ok()) {
+            Some(id) if id > 0 => id,
+            _ => state.last_id + 1,
         };
         if state.rows.iter().any(|p| p.id.0 == id) {
             return Ok(None);
@@ -77,6 +157,7 @@ impl PostRepository for MemoryPostRepository {
         state.last_id = state.last_id.max(id);
         state.rows.push(Post {
             id: PostId(id),
+            parent: post.parent.stored(),
             comment_count: 0,
             ..post.clone()
         });
@@ -96,8 +177,10 @@ impl PostRepository for MemoryPostRepository {
         slug: &Slug,
         post_type: &PostTypeName,
         except: PostId,
-        parent: PostId,
+        parent: PostParent,
     ) -> Result<Option<Slug>, PostError> {
+        // `post_parent = %d`: `null` prints as 0, and a negative value matches no stored (unsigned) parent.
+        let parent = PostParent::Int(parent.prepared());
         Ok(self.first_name(|p| {
             &p.name == slug
                 && (&p.post_type == post_type || p.post_type.as_str() == "attachment")
@@ -133,7 +216,7 @@ impl PostRepository for MemoryPostRepository {
             .rows
             .iter()
             .filter(|p| ids.contains(&p.id))
-            .map(|p| (p.id, p.parent))
+            .map(|p| (p.id, parent_id(p.parent)))
             .collect())
     }
 
@@ -162,7 +245,7 @@ impl PostRepository for MemoryPostRepository {
             .map(|p| PageRow {
                 id: p.id,
                 name: p.name.clone(),
-                parent: p.parent,
+                parent: parent_id(p.parent),
                 post_type: p.post_type.clone(),
             })
             .collect())
@@ -278,6 +361,105 @@ impl PostRepository for MemoryPostRepository {
             }
         }
         Ok(types)
+    }
+
+    fn update(&self, post: &Post) -> Result<Option<u64>, PostError> {
+        Ok(self.change_row(post.id, |row| {
+            *row = Post {
+                id: row.id,
+                parent: post.parent.stored(),
+                comment_count: row.comment_count,
+                ..post.clone()
+            };
+        }))
+    }
+
+    fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {
+        Ok(self.change_row(id, |row| row.name = name.clone()))
+    }
+
+    fn update_guid(&self, id: PostId, guid: &[u8]) -> Result<Option<u64>, PostError> {
+        Ok(self.change_row(id, |row| row.guid = guid.to_vec()))
+    }
+
+    fn update_status(&self, id: PostId, status: &PostStatusName) -> Result<Option<u64>, PostError> {
+        Ok(self.change_row(id, |row| row.status = status.clone()))
+    }
+
+    fn update_pinged(&self, id: PostId, pinged: &[u8]) -> Result<Option<u64>, PostError> {
+        Ok(self.change_row(id, |row| row.pinged = pinged.to_vec()))
+    }
+
+    fn update_post_type(
+        &self,
+        id: i64,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        // `WHERE ID = -3` matches no row.
+        let Ok(id) = u64::try_from(id) else {
+            return Ok(Some(0));
+        };
+        Ok(self.change_row(PostId(id), |row| row.post_type = post_type.clone()))
+    }
+
+    fn import_id_taken(&self, id: i64) -> Result<bool, PostError> {
+        let Ok(id) = u64::try_from(id) else {
+            return Ok(false);
+        };
+        Ok(id > 0 && self.state.borrow().rows.iter().any(|p| p.id.0 == id))
+    }
+
+    fn raw_row(&self, id: PostId) -> Result<Option<Post>, PostError> {
+        self.find(id)
+    }
+
+    fn children_of_type(
+        &self,
+        parent: PostId,
+        post_type: &PostTypeName,
+    ) -> Result<Vec<Post>, PostError> {
+        let parent = PostParent::from(parent);
+        Ok(self
+            .state
+            .borrow()
+            .rows
+            .iter()
+            .filter(|p| p.parent == parent && &p.post_type == post_type)
+            .cloned()
+            .collect())
+    }
+
+    fn reparent_children(
+        &self,
+        from: PostId,
+        to: PostParent,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        Ok(self.reparent(from, to, post_type.as_str()))
+    }
+
+    fn revision_ids(&self, parent: PostId) -> Result<Vec<PostId>, PostError> {
+        let parent = PostParent::from(parent);
+        Ok(self.ids_where(|p| p.parent == parent && p.post_type.as_str() == "revision"))
+    }
+
+    fn reparent_attachments(&self, from: PostId, to: PostParent) -> Result<Option<u64>, PostError> {
+        Ok(self.reparent(from, to, "attachment"))
+    }
+
+    fn remove(&self, id: PostId) -> Result<Option<u64>, PostError> {
+        let mut state = self.state.borrow_mut();
+        let before = state.rows.len();
+        state.rows.retain(|p| p.id != id);
+        Ok(Some((before - state.rows.len()) as u64))
+    }
+
+    fn auto_drafts_older_than_a_week(&self) -> Result<Vec<PostId>, PostError> {
+        // `Y-m-d H:i:s` compares as text in date order, and the zero date is older than any.
+        let cutoff = a_week_ago();
+        Ok(self.ids_where(|p| {
+            p.status.as_str() == "auto-draft" && p.date.local.as_str() < cutoff.as_str()
+        }))
     }
 }
 

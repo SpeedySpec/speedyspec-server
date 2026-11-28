@@ -27,7 +27,8 @@ fn main() {
             public function by_mid($meta_id) { return $this->rows[$meta_id] ?? null; }
             public function update_by_mid($meta_id, $meta_key, $meta_value) { return 0; }
             public function delete_by_mid($meta_id) { return 0; }
-            public function for_objects($object_ids) { return array_values(array_filter($this->rows, fn ($r) => in_array($r['object_id'], $object_ids, true))); }
+            public function for_objects($object_ids) { return array_values(array_map(fn ($r) => ['object_id' => $r['object_id'], 'meta_key' => $r['meta_key'], 'meta_value' => $r['meta_value']], array_filter($this->rows, fn ($r) => in_array($r['object_id'], $object_ids, true)))); }
+            public function ids_of_object($object_id) { return array_values(array_map(fn ($r) => $r['meta_id'], array_filter($this->rows, fn ($r) => $r['object_id'] === $object_id))); }
         }
         final class MemoryMetaRepositories implements SpeedySpec\WpMeta\MetaRepositories
         {

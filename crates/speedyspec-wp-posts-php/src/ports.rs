@@ -18,7 +18,7 @@ use speedyspec_wp_object_cache_contracts::{ObjectCache, ObjectCacheError};
 use speedyspec_wp_posts::{CacheInvalidation, Formatting, Microtime, Taxonomy, Users};
 use speedyspec_wp_posts_contracts::{
     CurrentPost, LastPostField, MimeFilter, MimeType, PageRow, Post, PostDateTime, PostError,
-    PostId, PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
+    PostId, PostParent, PostRepository, PostStatusName, PostTypeName, Slug, Timezone,
 };
 
 use crate::adapters::{exists, is_parked, park, truthy};
@@ -494,8 +494,8 @@ impl PostRepository for ResolvedRepository {
         self.resolved()?.find(id)
     }
 
-    fn insert(&self, post: &Post) -> Result<Option<PostId>, PostError> {
-        self.resolved()?.insert(post)
+    fn insert(&self, post: &Post, import_id: Option<i64>) -> Result<Option<PostId>, PostError> {
+        self.resolved()?.insert(post, import_id)
     }
 
     fn attachment_slug_owner(
@@ -511,7 +511,7 @@ impl PostRepository for ResolvedRepository {
         slug: &Slug,
         post_type: &PostTypeName,
         except: PostId,
-        parent: PostId,
+        parent: PostParent,
     ) -> Result<Option<Slug>, PostError> {
         self.resolved()?
             .hierarchical_slug_owner(slug, post_type, except, parent)
@@ -572,5 +572,74 @@ impl PostRepository for ResolvedRepository {
 
     fn available_mime_types(&self, post_type: &PostTypeName) -> Result<Vec<MimeType>, PostError> {
         self.resolved()?.available_mime_types(post_type)
+    }
+
+    fn update(&self, post: &Post) -> Result<Option<u64>, PostError> {
+        self.resolved()?.update(post)
+    }
+
+    fn update_name(&self, id: PostId, name: &Slug) -> Result<Option<u64>, PostError> {
+        self.resolved()?.update_name(id, name)
+    }
+
+    fn update_guid(&self, id: PostId, guid: &[u8]) -> Result<Option<u64>, PostError> {
+        self.resolved()?.update_guid(id, guid)
+    }
+
+    fn update_status(&self, id: PostId, status: &PostStatusName) -> Result<Option<u64>, PostError> {
+        self.resolved()?.update_status(id, status)
+    }
+
+    fn update_pinged(&self, id: PostId, pinged: &[u8]) -> Result<Option<u64>, PostError> {
+        self.resolved()?.update_pinged(id, pinged)
+    }
+
+    fn update_post_type(
+        &self,
+        id: i64,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        self.resolved()?.update_post_type(id, post_type)
+    }
+
+    fn import_id_taken(&self, id: i64) -> Result<bool, PostError> {
+        self.resolved()?.import_id_taken(id)
+    }
+
+    fn raw_row(&self, id: PostId) -> Result<Option<Post>, PostError> {
+        self.resolved()?.raw_row(id)
+    }
+
+    fn children_of_type(
+        &self,
+        parent: PostId,
+        post_type: &PostTypeName,
+    ) -> Result<Vec<Post>, PostError> {
+        self.resolved()?.children_of_type(parent, post_type)
+    }
+
+    fn reparent_children(
+        &self,
+        from: PostId,
+        to: PostParent,
+        post_type: &PostTypeName,
+    ) -> Result<Option<u64>, PostError> {
+        self.resolved()?.reparent_children(from, to, post_type)
+    }
+
+    fn revision_ids(&self, parent: PostId) -> Result<Vec<PostId>, PostError> {
+        self.resolved()?.revision_ids(parent)
+    }
+
+    fn reparent_attachments(&self, from: PostId, to: PostParent) -> Result<Option<u64>, PostError> {
+        self.resolved()?.reparent_attachments(from, to)
+    }
+
+    fn remove(&self, id: PostId) -> Result<Option<u64>, PostError> {
+        self.resolved()?.remove(id)
+    }
+
+    fn auto_drafts_older_than_a_week(&self) -> Result<Vec<PostId>, PostError> {
+        self.resolved()?.auto_drafts_older_than_a_week()
     }
 }
