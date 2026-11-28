@@ -334,6 +334,65 @@ fn main() {
             && !post_type_exists('page') && null === get_post_type_object('page');"#,
     );
 
+    // get_post_types() and get_post_stati() over registries a plugin may have written by hand: array entries, null
+    // and dynamic properties, non-scalar field values, an integer key and integer-like property and argument keys.
+    // Each operator and output answers exactly what WordPress's own wp_filter_object_list() gives on the same list.
+    ok &= yes(
+        php,
+        &setup,
+        "filter_global_matches_wp_filter_object_list",
+        r#"global $wp_post_types;
+        $shared = (object) array('y' => 2);
+        $a = (object) array('name' => 'a', 'public' => true, 'n' => 1, 'nul' => null, 'arr' => array('x' => 1),
+            'obj' => $shared, 'label' => 'A');
+        $a->{'7'} = 'seven';
+        $a->dynamic = 'yes';
+        $five = (object) array('name' => 'five', 'public' => false, 'n' => '1', 'arr' => array('x' => '1'),
+            'obj' => (object) array('y' => 2), 'nul' => 0);
+        $five->{'7'} = 'seven';
+        $list = array(
+            'a' => $a,
+            'b' => array('name' => 'b', 'public' => 1, 'n' => 2, 'nul' => null, 'arr' => array(), 7 => 'seven',
+                0 => 'zero'),
+            5 => $five,
+            'c' => (object) array('name' => 'c', 'public' => '', 'obj' => $shared, 'n' => 1.0),
+            'd' => array('name' => 'd', 'obj' => (object) array('y' => 3), 'arr' => array('x' => 1)),
+        );
+        $cases = array(
+            array(), array('public' => true), array('n' => 1), array('nul' => null), array('nul' => 0),
+            array('arr' => array('x' => 1)), array('obj' => $shared), array('obj' => (object) array('y' => 2)),
+            array(7 => 'seven'), array('7' => 'seven'), array(0 => 'zero'), array('public' => true, 'n' => 1),
+            array('missing' => false), array('dynamic' => 'yes', 'name' => 'a'),
+        );
+        $failures = array();
+        foreach (array('wp_post_types' => 'get_post_types', 'wp_post_statuses' => 'get_post_stati') as $global => $function) {
+            $GLOBALS[$global] = $list;
+            foreach ($cases as $i => $args) {
+                foreach (array('and', 'or', 'not', 'OR', 'xor') as $operator) {
+                    foreach (array('names', 'objects') as $output) {
+                        $native = $function($args, $output, $operator);
+                        $stock = wp_filter_object_list($list, $args, $operator, 'names' === $output ? 'name' : false);
+                        if ($native !== $stock) {
+                            $failures[] = array($function, $i, $operator, $output, array_keys($native), array_keys($stock));
+                        }
+                    }
+                }
+            }
+        }
+        // A scalar entry: no field matches it (objects output only: pluck() would complain about it).
+        $wp_post_types = $list + array('s' => 'scalar');
+        foreach ($cases as $i => $args) {
+            foreach (array('and', 'or', 'not') as $operator) {
+                $native = get_post_types($args, 'objects', $operator);
+                $stock = wp_filter_object_list($wp_post_types, $args, $operator, false);
+                if ($native !== $stock) {
+                    $failures[] = array('scalar', $i, $operator, array_keys($native), array_keys($stock));
+                }
+            }
+        }
+        return $failures ? json_encode($failures) : true;"#,
+    );
+
     let compare = format!(
         "namespace {{\n{SNAPSHOT}\n}}\nnamespace SpeedySpec\\Release {{\n{}\n}}\nnamespace {{\n{}\n}}",
         release_registry(&release),
